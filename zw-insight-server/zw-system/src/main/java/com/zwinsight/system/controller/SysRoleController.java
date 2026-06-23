@@ -1,0 +1,60 @@
+package com.zwinsight.system.controller;
+
+import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.result.R;
+import com.zwinsight.system.domain.SysRole;
+import com.zwinsight.system.service.SysRoleService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * 角色管理接口
+ */
+@RestController
+@RequestMapping("/v1/system/role")
+@RequiredArgsConstructor
+public class SysRoleController {
+
+    private final SysRoleService roleService;
+
+    @GetMapping
+    public R<PageResult<SysRole>> page(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String roleName,
+            @RequestParam(required = false) Integer status) {
+        return R.ok(roleService.page(page, size, roleName, status));
+    }
+
+    @GetMapping("/{id}")
+    public R<SysRole> getById(@PathVariable Long id) {
+        return R.ok(roleService.getById(id));
+    }
+
+    @PostMapping
+    public R<Void> save(@RequestBody SysRole role) {
+        roleService.save(role);
+        return R.ok();
+    }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody SysRole role) {
+        role.setId(id);
+        roleService.update(role);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        roleService.delete(id);
+        return R.ok();
+    }
+
+    @PutMapping("/{id}/menus")
+    public R<Void> assignMenus(@PathVariable Long id, @RequestBody List<Long> menuIds) {
+        roleService.assignMenus(id, menuIds);
+        return R.ok();
+    }
+}

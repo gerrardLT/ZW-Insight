@@ -1,0 +1,79 @@
+// 全局样式
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+}
+
+// 卡片通用样式
+.el-card {
+  border-radius: 4px;
+
+  .el-card__header {
+    padding: 12px 20px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+}
+
+// 表格通用样式
+.el-table {
+  --el-table-border-color: #ebeef5;
+
+  .el-table__header th {
+    background-color: #fafafa;
+    font-weight: 600;
+  }
+}
+
+// 分页通用样式
+.pagination-wrap {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+// 表单通用样式
+.el-form--inline .el-form-item {
+  margin-bottom: 12px;
+}
+
+// 操作栏通用样式
+.table-toolbar {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+// 卡片头部通用样式
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// 滚动条优化
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+// Element Plus 覆盖
+.el-menu--collapse .el-sub-menu__title span,
+.el-menu--collapse .el-sub-menu__title .el-sub-menu__icon-arrow {
+  display: none;
+}

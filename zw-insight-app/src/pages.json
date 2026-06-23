@@ -1,0 +1,40 @@
+{
+  "pages": [
+    { "path": "pages/login/index", "style": { "navigationBarTitleText": "登录", "navigationStyle": "custom" } },
+    { "path": "pages/home/index", "style": { "navigationBarTitleText": "首页" } },
+    { "path": "pages/workbench/index", "style": { "navigationBarTitleText": "工作台" } },
+    { "path": "pages/approval/index", "style": { "navigationBarTitleText": "我的审批" } },
+    { "path": "pages/approval/detail", "style": { "navigationBarTitleText": "审批详情" } },
+    { "path": "pages/material/inbound", "style": { "navigationBarTitleText": "材料入库" } },
+    { "path": "pages/material/outbound", "style": { "navigationBarTitleText": "材料出库" } },
+    { "path": "pages/site/construction-log", "style": { "navigationBarTitleText": "施工日志" } },
+    { "path": "pages/site/progress-feedback", "style": { "navigationBarTitleText": "进度反馈" } },
+    { "path": "pages/site/quality-check", "style": { "navigationBarTitleText": "质量检查" } },
+    { "path": "pages/site/safety-check", "style": { "navigationBarTitleText": "安全检查" } },
+    { "path": "pages/finance/invoice-apply", "style": { "navigationBarTitleText": "开票申请" } },
+    { "path": "pages/finance/payment-received", "style": { "navigationBarTitleText": "回款登记" } },
+    { "path": "pages/finance/payment-apply", "style": { "navigationBarTitleText": "付款申请" } },
+    { "path": "pages/finance/reimbursement", "style": { "navigationBarTitleText": "项目报销" } },
+    { "path": "pages/project/archive", "style": { "navigationBarTitleText": "项目档案" } },
+    { "path": "pages/mine/index", "style": { "navigationBarTitleText": "我的" } },
+    { "path": "pages/mine/password", "style": { "navigationBarTitleText": "修改密码" } }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "中维智营",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#409eff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页", "iconPath": "static/tabbar/home.png", "selectedIconPath": "static/tabbar/home-active.png" },
+      { "pagePath": "pages/workbench/index", "text": "工作台", "iconPath": "static/tabbar/work.png", "selectedIconPath": "static/tabbar/work-active.png" },
+      { "pagePath": "pages/approval/index", "text": "审批", "iconPath": "static/tabbar/approval.png", "selectedIconPath": "static/tabbar/approval-active.png" },
+      { "pagePath": "pages/mine/index", "text": "我的", "iconPath": "static/tabbar/mine.png", "selectedIconPath": "static/tabbar/mine-active.png" }
+    ]
+  }
+}

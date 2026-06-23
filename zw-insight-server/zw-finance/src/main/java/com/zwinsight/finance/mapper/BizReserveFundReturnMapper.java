@@ -1,0 +1,9 @@
+package com.zwinsight.finance.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.zwinsight.finance.domain.BizReserveFundReturn;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface BizReserveFundReturnMapper extends BaseMapper<BizReserveFundReturn> {
+}

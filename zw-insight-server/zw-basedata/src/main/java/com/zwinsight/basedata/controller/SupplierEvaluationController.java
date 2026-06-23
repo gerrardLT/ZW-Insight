@@ -1,0 +1,49 @@
+package com.zwinsight.basedata.controller;
+
+import com.zwinsight.basedata.domain.BizSupplierEvaluation;
+import com.zwinsight.basedata.service.SupplierEvaluationService;
+import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.result.R;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+
+/**
+ * 供应商评价接口
+ */
+@RestController
+@RequestMapping("/api/v1/basedata/supplier-evaluation")
+@RequiredArgsConstructor
+public class SupplierEvaluationController {
+
+    private final SupplierEvaluationService evaluationService;
+
+    /**
+     * 分页查询评价
+     */
+    @GetMapping
+    public R<PageResult<BizSupplierEvaluation>> page(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long supplierId) {
+        return R.ok(evaluationService.page(page, size, supplierId));
+    }
+
+    /**
+     * 新增评价
+     */
+    @PostMapping
+    public R<Void> save(@RequestBody BizSupplierEvaluation evaluation) {
+        evaluationService.save(evaluation);
+        return R.ok();
+    }
+
+    /**
+     * 获取供应商平均评分
+     */
+    @GetMapping("/avg-score/{supplierId}")
+    public R<BigDecimal> getAvgScore(@PathVariable Long supplierId) {
+        return R.ok(evaluationService.getAvgScore(supplierId));
+    }
+}
