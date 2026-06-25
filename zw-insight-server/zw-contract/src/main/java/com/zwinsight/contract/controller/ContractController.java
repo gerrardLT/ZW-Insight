@@ -29,6 +29,15 @@ public class ContractController {
         return R.ok(contractService.page(page, size, projectId, status));
     }
 
+    @GetMapping("/page")
+    public R<PageResult<BizConstructionContract>> pageAlias(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String status) {
+        return page(page, size, projectId, status);
+    }
+
     @GetMapping("/{id}")
     public R<BizConstructionContract> getById(@PathVariable Long id) {
         return R.ok(contractService.getById(id));
@@ -51,6 +60,11 @@ public class ContractController {
     public R<Void> submit(@PathVariable Long id) {
         contractService.submit(id);
         return R.ok();
+    }
+
+    @PutMapping("/{id}/submit")
+    public R<Void> submitByPut(@PathVariable Long id) {
+        return submit(id);
     }
 
     @GetMapping("/{id}/details")

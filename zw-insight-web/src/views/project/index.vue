@@ -146,7 +146,7 @@ function handleEdit(row: any) {
 }
 
 function handleView(row: any) {
-  router.push(`/project/edit/${row.id}`)
+  router.push(`/project/detail/${row.id}`)
 }
 
 async function handleSubmit(row: any) {

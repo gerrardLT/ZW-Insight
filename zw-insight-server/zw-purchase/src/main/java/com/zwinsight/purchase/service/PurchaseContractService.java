@@ -3,6 +3,7 @@ package com.zwinsight.purchase.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.budget.service.BudgetControlService;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
@@ -105,6 +106,7 @@ public class PurchaseContractService {
     /**
      * 提交审批
      */
+    @BudgetCheck(category = "MATERIAL")
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizPurchaseContract contract = purchaseContractMapper.selectById(id);
@@ -135,5 +137,19 @@ public class PurchaseContractService {
         wrapper.eq(BizPurchaseContractDetail::getContractId, contractId)
                 .orderByAsc(BizPurchaseContractDetail::getSortOrder);
         return detailMapper.selectList(wrapper);
+    }
+
+    /**
+     * 删除采购合同
+     */
+    public void delete(Long id) {
+        BizPurchaseContract existing = purchaseContractMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("采购合同不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        purchaseContractMapper.deleteById(id);
     }
 }

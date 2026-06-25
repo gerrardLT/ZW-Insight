@@ -38,6 +38,26 @@ public class SubcontractOutputService {
         outputReportMapper.insert(report);
     }
 
+    public BizSubcontractOutputReport getById(Long id) {
+        BizSubcontractOutputReport report = outputReportMapper.selectById(id);
+        if (report == null) throw new BusinessException("产值报告不存在");
+        return report;
+    }
+
+    public void update(BizSubcontractOutputReport report) {
+        BizSubcontractOutputReport existing = outputReportMapper.selectById(report.getId());
+        if (existing == null) throw new BusinessException("产值报告不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        outputReportMapper.updateById(report);
+    }
+
+    public void delete(Long id) {
+        BizSubcontractOutputReport existing = outputReportMapper.selectById(id);
+        if (existing == null) throw new BusinessException("产值报告不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        outputReportMapper.deleteById(id);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizSubcontractOutputReport report = outputReportMapper.selectById(id);

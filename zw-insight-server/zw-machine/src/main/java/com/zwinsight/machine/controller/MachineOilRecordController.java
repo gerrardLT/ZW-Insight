@@ -18,6 +18,7 @@ public class MachineOilRecordController {
     private final MachineOilRecordService oilRecordService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizMachineOilRecord>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -29,6 +30,12 @@ public class MachineOilRecordController {
     @PostMapping
     public R<Void> save(@RequestBody BizMachineOilRecord record) {
         oilRecordService.save(record);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        oilRecordService.delete(id);
         return R.ok();
     }
 }

@@ -20,6 +20,7 @@ public class TenderFeeController {
     private final TenderFeeService feeService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizTenderFee>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -30,6 +31,19 @@ public class TenderFeeController {
     @PostMapping
     public R<Void> save(@RequestBody BizTenderFee fee) {
         feeService.save(fee);
+        return R.ok();
+    }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizTenderFee fee) {
+        fee.setId(id);
+        feeService.update(fee);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        feeService.delete(id);
         return R.ok();
     }
 

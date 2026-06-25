@@ -19,7 +19,7 @@
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="contractNo" label="合同编号" width="150" />
+        <el-table-column prop="contractCode" label="合同编号" width="150" />
         <el-table-column prop="contractName" label="合同名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="supplierName" label="设备供应商" width="150" />
         <el-table-column prop="machineName" label="设备名称" width="130" />

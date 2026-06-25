@@ -43,6 +43,35 @@ public class MaterialInboundService {
     }
 
     /**
+     * 根据ID查询
+     */
+    public BizMaterialInbound getById(Long id) {
+        BizMaterialInbound inbound = inboundMapper.selectById(id);
+        if (inbound == null) throw new BusinessException("入库单不存在");
+        return inbound;
+    }
+
+    /**
+     * 更新入库单
+     */
+    public void update(BizMaterialInbound inbound) {
+        BizMaterialInbound existing = inboundMapper.selectById(inbound.getId());
+        if (existing == null) throw new BusinessException("入库单不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        inboundMapper.updateById(inbound);
+    }
+
+    /**
+     * 删除入库单
+     */
+    public void delete(Long id) {
+        BizMaterialInbound existing = inboundMapper.selectById(id);
+        if (existing == null) throw new BusinessException("入库单不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        inboundMapper.deleteById(id);
+    }
+
+    /**
      * 保存入库单（更新库存,更新合同cumulativeInbound; 直接出库则同时生成outbound）
      */
     @Transactional(rollbackFor = Exception.class)

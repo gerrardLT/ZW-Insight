@@ -39,4 +39,9 @@ public class BizInquiry extends BaseEntity {
      * 发布时间
      */
     private LocalDateTime publishTime;
+
+    /**
+     * 报价截止时间
+     */
+    private LocalDateTime deadline;
 }

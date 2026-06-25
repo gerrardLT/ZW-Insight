@@ -72,6 +72,6 @@ public class SysPostService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void batchDelete(List<Long> ids) {
-        postMapper.deleteByIds(ids);
+        postMapper.deleteBatchIds(ids);
     }
 }

@@ -29,6 +29,13 @@ public class ScheduleController {
         return R.ok(planService.list(projectId));
     }
 
+    /** 进度计划分页别名，兼容前端 /schedule/page 调用 */
+    @GetMapping("/page")
+    public R<List<BizSchedulePlan>> planPage(
+            @RequestParam(required = false) Long projectId) {
+        return R.ok(planService.list(projectId));
+    }
+
     @PostMapping("/plan")
     public R<Void> savePlan(@RequestBody BizSchedulePlan plan) {
         planService.save(plan);
@@ -50,7 +57,7 @@ public class ScheduleController {
 
     // ===== 进度反馈 =====
 
-    @GetMapping("/feedback")
+    @GetMapping("/feedback/page")
     public R<PageResult<BizScheduleFeedback>> feedbackPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,

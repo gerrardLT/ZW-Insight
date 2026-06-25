@@ -18,6 +18,7 @@ public class PurchaseSettlementController {
     private final PurchaseSettlementService purchaseSettlementService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizPurchaseSettlement>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -26,13 +27,32 @@ public class PurchaseSettlementController {
         return R.ok(purchaseSettlementService.page(page, size, projectId, contractId));
     }
 
+    @GetMapping("/{id}")
+    public R<BizPurchaseSettlement> getById(@PathVariable Long id) {
+        return R.ok(purchaseSettlementService.getById(id));
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody BizPurchaseSettlement settlement) {
         purchaseSettlementService.save(settlement);
         return R.ok();
     }
 
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizPurchaseSettlement settlement) {
+        settlement.setId(id);
+        purchaseSettlementService.update(settlement);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        purchaseSettlementService.delete(id);
+        return R.ok();
+    }
+
     @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
         purchaseSettlementService.submit(id);
         return R.ok();

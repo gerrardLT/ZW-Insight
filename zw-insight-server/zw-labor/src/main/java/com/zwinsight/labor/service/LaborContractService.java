@@ -91,4 +91,43 @@ public class LaborContractService {
         contract.setStatus("EFFECTIVE");
         laborContractMapper.updateById(contract);
     }
+
+    /**
+     * 根据ID查询
+     */
+    public BizLaborContract getById(Long id) {
+        BizLaborContract contract = laborContractMapper.selectById(id);
+        if (contract == null) {
+            throw new BusinessException("劳务合同不存在");
+        }
+        return contract;
+    }
+
+    /**
+     * 更新劳务合同
+     */
+    public void update(BizLaborContract contract) {
+        BizLaborContract existing = laborContractMapper.selectById(contract.getId());
+        if (existing == null) {
+            throw new BusinessException("劳务合同不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可编辑");
+        }
+        laborContractMapper.updateById(contract);
+    }
+
+    /**
+     * 删除劳务合同
+     */
+    public void delete(Long id) {
+        BizLaborContract existing = laborContractMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("劳务合同不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        laborContractMapper.deleteById(id);
+    }
 }

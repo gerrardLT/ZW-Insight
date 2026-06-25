@@ -21,6 +21,7 @@ public class InventoryController {
     private final MaterialInventoryService inventoryService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizMaterialInventory>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -28,10 +29,29 @@ public class InventoryController {
         return R.ok(inventoryService.page(page, size, projectId));
     }
 
+    @GetMapping("/{id}")
+    public R<BizMaterialInventory> getById(@PathVariable Long id) {
+        return R.ok(inventoryService.getById(id));
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody Map<String, Object> body) {
         BizMaterialInventory inventory = new BizMaterialInventory();
         inventoryService.save(inventory, Map.of());
+        return R.ok();
+    }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        BizMaterialInventory inventory = new BizMaterialInventory();
+        inventory.setId(id);
+        inventoryService.update(inventory);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        inventoryService.delete(id);
         return R.ok();
     }
 }

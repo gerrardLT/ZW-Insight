@@ -14,7 +14,7 @@ export function createMachineContract(data: any) {
 }
 
 export function updateMachineContract(data: any) {
-  return request.put('/v1/machine/contract', data)
+  return request.put(`/v1/machine/contract/${data.id}`, data)
 }
 
 export function deleteMachineContract(id: number) {
@@ -27,40 +27,44 @@ export function submitMachineContract(id: number) {
 
 // ======================== 使用记录 ========================
 export function getMachineUsagePage(params: any) {
-  return request.get('/v1/machine/usage/page', { params })
+  return request.get('/v1/machine/usage-record/page', { params })
 }
 
 export function createMachineUsage(data: any) {
-  return request.post('/v1/machine/usage', data)
+  return request.post('/v1/machine/usage-record', data)
 }
 
 export function updateMachineUsage(data: any) {
-  return request.put('/v1/machine/usage', data)
+  return request.put(`/v1/machine/usage-record/${data.id}`, data)
 }
 
 export function deleteMachineUsage(id: number) {
-  return request.delete(`/v1/machine/usage/${id}`)
+  return request.delete(`/v1/machine/usage-record/${id}`)
 }
 
 // ======================== 机械结算 ========================
 export function getMachineSettlementPage(params: any) {
-  return request.get('/v1/machine/settlement/page', { params })
+  return request.get('/v1/machine/settlement', { params })
+}
+
+export function getMachineSettlementDetail(id: number) {
+  return request.get(`/v1/machine/settlement/${id}`)
 }
 
 export function createMachineSettlement(data: any) {
   return request.post('/v1/machine/settlement', data)
 }
 
-export function updateMachineSettlement(data: any) {
-  return request.put('/v1/machine/settlement', data)
-}
-
-export function deleteMachineSettlement(id: number) {
-  return request.delete(`/v1/machine/settlement/${id}`)
-}
-
 export function submitMachineSettlement(id: number) {
-  return request.put(`/v1/machine/settlement/${id}/submit`)
+  return request.post(`/v1/machine/settlement/${id}/submit`)
+}
+
+export function getMachineSettlementSummary(params: any) {
+  return request.get('/v1/machine/settlement/summary', { params })
+}
+
+export function exportMachineSettlement(id: number) {
+  return request.get(`/v1/machine/settlement/${id}/export`, { responseType: 'blob' })
 }
 
 // ======================== 机械台账 ========================
@@ -77,7 +81,7 @@ export function createMachineLedger(data: any) {
 }
 
 export function updateMachineLedger(data: any) {
-  return request.put('/v1/machine/ledger', data)
+  return request.put(`/v1/machine/ledger/${data.id}`, data)
 }
 
 export function deleteMachineLedger(id: number) {
@@ -94,7 +98,7 @@ export function createMachineEntry(data: any) {
 }
 
 export function updateMachineEntry(data: any) {
-  return request.put('/v1/machine/entry', data)
+  return request.put(`/v1/machine/entry/${data.id}`, data)
 }
 
 export function deleteMachineEntry(id: number) {
@@ -111,7 +115,7 @@ export function createMachineWorkLog(data: any) {
 }
 
 export function updateMachineWorkLog(data: any) {
-  return request.put('/v1/machine/work-log', data)
+  return request.put(`/v1/machine/work-log/${data.id}`, data)
 }
 
 export function deleteMachineWorkLog(id: number) {
@@ -120,15 +124,15 @@ export function deleteMachineWorkLog(id: number) {
 
 // ======================== 加油记录 ========================
 export function getMachineRefuelPage(params: any) {
-  return request.get('/v1/machine/refuel/page', { params })
+  return request.get('/v1/machine/oil-record/page', { params })
 }
 
 export function createMachineRefuel(data: any) {
-  return request.post('/v1/machine/refuel', data)
+  return request.post('/v1/machine/oil-record', data)
 }
 
 export function deleteMachineRefuel(id: number) {
-  return request.delete(`/v1/machine/refuel/${id}`)
+  return request.delete(`/v1/machine/oil-record/${id}`)
 }
 
 // ======================== 维修记录 ========================
@@ -141,7 +145,7 @@ export function createMachineRepair(data: any) {
 }
 
 export function updateMachineRepair(data: any) {
-  return request.put('/v1/machine/repair', data)
+  return request.put(`/v1/machine/repair/${data.id}`, data)
 }
 
 export function deleteMachineRepair(id: number) {

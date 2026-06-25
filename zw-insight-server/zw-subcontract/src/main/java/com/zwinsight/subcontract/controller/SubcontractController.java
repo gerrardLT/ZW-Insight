@@ -18,11 +18,17 @@ public class SubcontractController {
     private final SubcontractService subcontractService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizSubcontract>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId) {
         return R.ok(subcontractService.page(page, size, projectId));
+    }
+
+    @GetMapping("/{id}")
+    public R<BizSubcontract> getById(@PathVariable Long id) {
+        return R.ok(subcontractService.getById(id));
     }
 
     @PostMapping
@@ -31,7 +37,21 @@ public class SubcontractController {
         return R.ok();
     }
 
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizSubcontract contract) {
+        contract.setId(id);
+        subcontractService.update(contract);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        subcontractService.delete(id);
+        return R.ok();
+    }
+
     @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
         subcontractService.submit(id);
         return R.ok();

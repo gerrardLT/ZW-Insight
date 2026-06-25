@@ -96,4 +96,32 @@ public class MaterialTransferService {
             }
         }
     }
+
+    public BizMaterialTransfer getById(Long id) {
+        BizMaterialTransfer transfer = transferMapper.selectById(id);
+        if (transfer == null) throw new BusinessException("调拨单不存在");
+        return transfer;
+    }
+
+    public void update(BizMaterialTransfer transfer) {
+        BizMaterialTransfer existing = transferMapper.selectById(transfer.getId());
+        if (existing == null) throw new BusinessException("调拨单不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        transferMapper.updateById(transfer);
+    }
+
+    public void delete(Long id) {
+        BizMaterialTransfer existing = transferMapper.selectById(id);
+        if (existing == null) throw new BusinessException("调拨单不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        transferMapper.deleteById(id);
+    }
+
+    public void submit(Long id) {
+        BizMaterialTransfer transfer = transferMapper.selectById(id);
+        if (transfer == null) throw new BusinessException("调拨单不存在");
+        if (!"DRAFT".equals(transfer.getStatus())) throw new BusinessException("仅草稿状态可提交");
+        transfer.setStatus("APPROVED");
+        transferMapper.updateById(transfer);
+    }
 }

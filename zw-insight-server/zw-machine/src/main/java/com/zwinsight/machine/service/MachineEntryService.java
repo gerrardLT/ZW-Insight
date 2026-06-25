@@ -1,7 +1,9 @@
 package com.zwinsight.machine.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.result.PageResult;
 import com.zwinsight.machine.domain.BizMachineEntry;
 import com.zwinsight.machine.domain.BizMachineLedger;
 import com.zwinsight.machine.mapper.BizMachineEntryMapper;
@@ -21,6 +23,32 @@ public class MachineEntryService {
 
     private final BizMachineEntryMapper entryMapper;
     private final BizMachineLedgerMapper ledgerMapper;
+
+    /**
+     * 分页查询进退场记录
+     */
+    public PageResult<BizMachineEntry> page(int page, int size, Long machineId, Long projectId) {
+        Page<BizMachineEntry> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<BizMachineEntry> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(machineId != null, BizMachineEntry::getMachineId, machineId)
+                .eq(projectId != null, BizMachineEntry::getProjectId, projectId)
+                .orderByDesc(BizMachineEntry::getEntryDate);
+        return PageResult.of(entryMapper.selectPage(pageParam, wrapper));
+    }
+
+    /**
+     * 更新
+     */
+    public void update(BizMachineEntry entry) {
+        entryMapper.updateById(entry);
+    }
+
+    /**
+     * 删除
+     */
+    public void delete(Long id) {
+        entryMapper.deleteById(id);
+    }
 
     /**
      * 进场（仅REGISTERED/OUT_FIELD可进场）

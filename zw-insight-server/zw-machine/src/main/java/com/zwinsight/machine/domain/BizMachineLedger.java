@@ -24,8 +24,20 @@ public class BizMachineLedger extends BaseEntity {
     /** 机械类型 */
     private String machineType;
 
+    /** 品牌 */
+    private String brand;
+
     /** 规格型号 */
+    private String specification;
+
+    /** 型号（旧字段兼容） */
     private String model;
+
+    /** 权属（OWN-自有/RENT-租赁） */
+    private String ownerType;
+
+    /** 当前所在项目 */
+    private String currentProject;
 
     /** 购置日期 */
     private LocalDate purchaseDate;

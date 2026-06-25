@@ -11,8 +11,7 @@
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
             <el-option label="草稿" value="DRAFT" />
-            <el-option label="执行中" value="EXECUTING" />
-            <el-option label="已完成" value="COMPLETED" />
+            <el-option label="生效" value="EFFECTIVE" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -26,17 +25,17 @@
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="contractNo" label="合同编号" width="150" />
+        <el-table-column prop="contractCode" label="合同编号" width="150" />
         <el-table-column prop="contractName" label="合同名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="supplierName" label="供应商" width="160" show-overflow-tooltip />
         <el-table-column prop="contractAmount" label="合同金额(元)" width="140" align="right">
           <template #default="{ row }">{{ row.contractAmount?.toLocaleString() }}</template>
         </el-table-column>
-        <el-table-column prop="signDate" label="签订日期" width="110" />
+        <el-table-column prop="signingDate" label="签订日期" width="110" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'COMPLETED' ? 'success' : row.status === 'EXECUTING' ? 'warning' : 'info'" size="small">
-              {{ row.status === 'COMPLETED' ? '已完成' : row.status === 'EXECUTING' ? '执行中' : '草稿' }}
+            <el-tag :type="row.status === 'EFFECTIVE' ? 'success' : 'info'" size="small">
+              {{ row.status === 'EFFECTIVE' ? '生效' : '草稿' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -64,8 +63,8 @@
         <el-form-item label="合同金额" prop="contractAmount">
           <el-input-number v-model="formData.contractAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="签订日期" prop="signDate">
-          <el-date-picker v-model="formData.signDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+        <el-form-item label="签订日期" prop="signingDate">
+          <el-date-picker v-model="formData.signingDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
         <el-form-item label="合同内容">
           <el-input v-model="formData.content" type="textarea" :rows="3" />
@@ -94,7 +93,7 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, contractName: '', supplierName: '', status: '' })
-const formData = ref({ id: undefined as number | undefined, contractName: '', supplierName: '', contractAmount: 0, signDate: '', content: '' })
+const formData = ref({ id: undefined as number | undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', content: '' })
 const formRules = {
   contractName: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
   supplierName: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }],
@@ -112,7 +111,7 @@ async function loadData() {
 
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, contractName: '', supplierName: '', status: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, contractName: '', supplierName: '', contractAmount: 0, signDate: '', content: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', content: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 
 async function handleFormSubmit() {

@@ -18,6 +18,7 @@ public class TenderRegisterController {
     private final TenderRegisterService registerService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizTenderRegister>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -34,5 +35,25 @@ public class TenderRegisterController {
     @GetMapping("/{id}")
     public R<BizTenderRegister> getById(@PathVariable Long id) {
         return R.ok(registerService.getById(id));
+    }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizTenderRegister register) {
+        register.setId(id);
+        registerService.update(register);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        registerService.delete(id);
+        return R.ok();
+    }
+
+    @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
+    public R<Void> submit(@PathVariable Long id) {
+        registerService.submit(id);
+        return R.ok();
     }
 }

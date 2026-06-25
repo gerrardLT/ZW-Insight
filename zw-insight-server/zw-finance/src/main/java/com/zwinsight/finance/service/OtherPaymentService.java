@@ -2,6 +2,7 @@ package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizOtherPayment;
 import com.zwinsight.finance.mapper.BizOtherPaymentMapper;
@@ -38,6 +39,7 @@ public class OtherPaymentService {
     /**
      * 新增其他支付（回写项目totalOtherPayment）
      */
+    @BudgetCheck(category = "")
     @Transactional(rollbackFor = Exception.class)
     public void save(BizOtherPayment otherPayment) {
         otherPayment.setStatus("APPROVED");

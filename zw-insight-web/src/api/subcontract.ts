@@ -14,7 +14,7 @@ export function createSubcontract(data: any) {
 }
 
 export function updateSubcontract(data: any) {
-  return request.put('/v1/subcontract/contract', data)
+  return request.put(`/v1/subcontract/contract/${data.id}`, data)
 }
 
 export function deleteSubcontract(id: number) {
@@ -35,7 +35,7 @@ export function createSubcontractOutput(data: any) {
 }
 
 export function updateSubcontractOutput(data: any) {
-  return request.put('/v1/subcontract/output', data)
+  return request.put(`/v1/subcontract/output/${data.id}`, data)
 }
 
 export function deleteSubcontractOutput(id: number) {
@@ -56,7 +56,7 @@ export function createSubcontractSettlement(data: any) {
 }
 
 export function updateSubcontractSettlement(data: any) {
-  return request.put('/v1/subcontract/settlement', data)
+  return request.put(`/v1/subcontract/settlement/${data.id}`, data)
 }
 
 export function deleteSubcontractSettlement(id: number) {
@@ -69,13 +69,13 @@ export function submitSubcontractSettlement(id: number) {
 
 // ======================== 奖惩 ========================
 export function getSubcontractRewardPage(params: any) {
-  return request.get('/v1/subcontract/reward/page', { params })
+  return request.get('/v1/subcontract/reward-punish/page', { params })
 }
 
 export function createSubcontractReward(data: any) {
-  return request.post('/v1/subcontract/reward', data)
+  return request.post('/v1/subcontract/reward-punish', data)
 }
 
 export function deleteSubcontractReward(id: number) {
-  return request.delete(`/v1/subcontract/reward/${id}`)
+  return request.delete(`/v1/subcontract/reward-punish/${id}`)
 }

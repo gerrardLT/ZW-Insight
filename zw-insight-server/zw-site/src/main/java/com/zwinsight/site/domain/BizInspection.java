@@ -24,6 +24,9 @@ public class BizInspection extends BaseEntity {
     /** 检查方案ID */
     private Long schemeId;
 
+    /** 检查方案快照（JSON格式） */
+    private String schemeSnapshot;
+
     /** 检查内容 */
     private String inspectionContent;
 

@@ -46,6 +46,45 @@ public class LaborOutputReportService {
     }
 
     /**
+     * 根据ID查询
+     */
+    public BizLaborOutputReport getById(Long id) {
+        BizLaborOutputReport report = outputReportMapper.selectById(id);
+        if (report == null) {
+            throw new BusinessException("产值报告不存在");
+        }
+        return report;
+    }
+
+    /**
+     * 更新产值报告
+     */
+    public void update(BizLaborOutputReport report) {
+        BizLaborOutputReport existing = outputReportMapper.selectById(report.getId());
+        if (existing == null) {
+            throw new BusinessException("产值报告不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可编辑");
+        }
+        outputReportMapper.updateById(report);
+    }
+
+    /**
+     * 删除产值报告
+     */
+    public void delete(Long id) {
+        BizLaborOutputReport existing = outputReportMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("产值报告不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        outputReportMapper.deleteById(id);
+    }
+
+    /**
      * 提交（回写合同累计结算）
      */
     @Transactional(rollbackFor = Exception.class)

@@ -11,6 +11,7 @@
     { "path": "pages/site/progress-feedback", "style": { "navigationBarTitleText": "进度反馈" } },
     { "path": "pages/site/quality-check", "style": { "navigationBarTitleText": "质量检查" } },
     { "path": "pages/site/safety-check", "style": { "navigationBarTitleText": "安全检查" } },
+    { "path": "pages/site/inspection-detail", "style": { "navigationBarTitleText": "检查方案详情" } },
     { "path": "pages/finance/invoice-apply", "style": { "navigationBarTitleText": "开票申请" } },
     { "path": "pages/finance/payment-received", "style": { "navigationBarTitleText": "回款登记" } },
     { "path": "pages/finance/payment-apply", "style": { "navigationBarTitleText": "付款申请" } },

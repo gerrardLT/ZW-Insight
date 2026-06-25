@@ -79,4 +79,32 @@ public class MaterialOutboundService {
             stockMapper.updateById(stock);
         }
     }
+
+    public BizMaterialOutbound getById(Long id) {
+        BizMaterialOutbound outbound = outboundMapper.selectById(id);
+        if (outbound == null) throw new BusinessException("出库单不存在");
+        return outbound;
+    }
+
+    public void update(BizMaterialOutbound outbound) {
+        BizMaterialOutbound existing = outboundMapper.selectById(outbound.getId());
+        if (existing == null) throw new BusinessException("出库单不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        outboundMapper.updateById(outbound);
+    }
+
+    public void delete(Long id) {
+        BizMaterialOutbound existing = outboundMapper.selectById(id);
+        if (existing == null) throw new BusinessException("出库单不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        outboundMapper.deleteById(id);
+    }
+
+    public void submit(Long id) {
+        BizMaterialOutbound outbound = outboundMapper.selectById(id);
+        if (outbound == null) throw new BusinessException("出库单不存在");
+        if (!"DRAFT".equals(outbound.getStatus())) throw new BusinessException("仅草稿状态可提交");
+        outbound.setStatus("APPROVED");
+        outboundMapper.updateById(outbound);
+    }
 }

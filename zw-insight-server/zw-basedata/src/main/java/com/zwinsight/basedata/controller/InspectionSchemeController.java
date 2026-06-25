@@ -27,6 +27,16 @@ public class InspectionSchemeController {
         return R.ok(schemeService.page(page, size, schemeName, schemeType, status));
     }
 
+    @GetMapping("/page")
+    public R<PageResult<BdInspectionScheme>> pageAlias(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String schemeName,
+            @RequestParam(required = false) String schemeType,
+            @RequestParam(required = false) Integer status) {
+        return page(page, size, schemeName, schemeType, status);
+    }
+
     @GetMapping("/{id}")
     public R<BdInspectionScheme> getById(@PathVariable Long id) {
         return R.ok(schemeService.getById(id));

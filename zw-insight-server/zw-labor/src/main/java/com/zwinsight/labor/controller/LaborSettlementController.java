@@ -18,6 +18,7 @@ public class LaborSettlementController {
     private final LaborSettlementService settlementService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizLaborSettlement>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -26,13 +27,32 @@ public class LaborSettlementController {
         return R.ok(settlementService.page(page, size, projectId, contractId));
     }
 
+    @GetMapping("/{id}")
+    public R<BizLaborSettlement> getById(@PathVariable Long id) {
+        return R.ok(settlementService.getById(id));
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody BizLaborSettlement settlement) {
         settlementService.save(settlement);
         return R.ok();
     }
 
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizLaborSettlement settlement) {
+        settlement.setId(id);
+        settlementService.update(settlement);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        settlementService.delete(id);
+        return R.ok();
+    }
+
     @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
         settlementService.submit(id);
         return R.ok();

@@ -67,4 +67,29 @@ public class PaymentReceivedService {
             }
         }
     }
+
+    /**
+     * 根据ID查询
+     */
+    public BizPaymentReceived getById(Long id) {
+        BizPaymentReceived record = paymentReceivedMapper.selectById(id);
+        if (record == null) {
+            throw new BusinessException("收款记录不存在");
+        }
+        return record;
+    }
+
+    /**
+     * 更新收款记录
+     */
+    public void update(BizPaymentReceived paymentReceived) {
+        paymentReceivedMapper.updateById(paymentReceived);
+    }
+
+    /**
+     * 删除收款记录
+     */
+    public void delete(Long id) {
+        paymentReceivedMapper.deleteById(id);
+    }
 }

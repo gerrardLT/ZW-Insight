@@ -5,6 +5,7 @@ import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.workflow.domain.WfApprovalRecord;
+import com.zwinsight.workflow.listener.ApprovalRejectEvent;
 import com.zwinsight.workflow.mapper.WfApprovalRecordMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,7 @@ public class ApprovalService {
     private final RuntimeService runtimeService;
     private final TaskService taskService;
     private final HistoryService historyService;
+    private final ApplicationEventPublisher eventPublisher;
     private final WfApprovalRecordMapper approvalRecordMapper;
 
     /**
@@ -140,6 +143,17 @@ public class ApprovalService {
         // 记录审批记录
         saveApprovalRecord(task, String.valueOf(userId), "REJECT", comment);
 
+        // 发布驳回事件，触发数据回滚
+        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+        String businessType = (String) processVariables.get("businessType");
+        Object businessIdObj = processVariables.get("businessId");
+        if (businessType != null && businessIdObj != null) {
+            Long businessId = businessIdObj instanceof Long
+                    ? (Long) businessIdObj : Long.valueOf(businessIdObj.toString());
+            eventPublisher.publishEvent(new ApprovalRejectEvent(
+                    this, task.getProcessInstanceId(), businessType, businessId, "REJECT"));
+        }
+
         log.info("任务退回至上一节点, taskId={}, targetActivity={}", taskId, targetActivityId);
     }
 
@@ -183,6 +197,17 @@ public class ApprovalService {
         // 记录审批记录
         saveApprovalRecord(task, String.valueOf(userId), "REJECT_TO_START", comment);
 
+        // 发布驳回事件，触发数据回滚
+        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+        String businessType = (String) processVariables.get("businessType");
+        Object businessIdObj = processVariables.get("businessId");
+        if (businessType != null && businessIdObj != null) {
+            Long businessId = businessIdObj instanceof Long
+                    ? (Long) businessIdObj : Long.valueOf(businessIdObj.toString());
+            eventPublisher.publishEvent(new ApprovalRejectEvent(
+                    this, task.getProcessInstanceId(), businessType, businessId, "REJECT"));
+        }
+
         log.info("任务退回至发起人, taskId={}, targetActivity={}", taskId, startActivityId);
     }
 
@@ -202,11 +227,24 @@ public class ApprovalService {
             taskService.addComment(taskId, task.getProcessInstanceId(), "【终止】" + comment);
         }
 
+        // 获取流程变量（终止前获取，终止后不可用）
+        Map<String, Object> processVariables = taskService.getVariables(task.getId());
+        String businessType = processVariables != null ? (String) processVariables.get("businessType") : null;
+        Object businessIdObj = processVariables != null ? processVariables.get("businessId") : null;
+
         // 删除流程实例（终止）
         runtimeService.deleteProcessInstance(task.getProcessInstanceId(), "终止：" + comment);
 
         // 记录审批记录
         saveApprovalRecord(task, String.valueOf(userId), "TERMINATE", comment);
+
+        // 发布撤回事件，触发数据回滚
+        if (businessType != null && businessIdObj != null) {
+            Long businessId = businessIdObj instanceof Long
+                    ? (Long) businessIdObj : Long.valueOf(businessIdObj.toString());
+            eventPublisher.publishEvent(new ApprovalRejectEvent(
+                    this, task.getProcessInstanceId(), businessType, businessId, "WITHDRAW"));
+        }
 
         log.info("流程已终止, taskId={}, processInstanceId={}", taskId, task.getProcessInstanceId());
     }

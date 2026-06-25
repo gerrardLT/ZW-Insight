@@ -55,6 +55,11 @@ minio:
   secret-key: minioadmin
   bucket: zw-insight
 
+# KKFileView 文件预览配置
+app:
+  kkfileview:
+    base-url: http://localhost:8012
+
 # JWT 配置
 jwt:
   secret: ZwInsight2024SecretKeyForJwtTokenGeneration
@@ -67,6 +72,14 @@ auth:
   lock-check-period: 300
   lock-max-attempts: 5
   lock-duration: 1800
+
+# 短信配置
+sms:
+  enabled: false
+  access-key-id: your-access-key-id
+  access-key-secret: your-access-key-secret
+  sign-name: ZW-Insight
+  template-code: SMS_000000
 
 # 日志配置
 logging:

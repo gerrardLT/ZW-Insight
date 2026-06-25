@@ -62,6 +62,18 @@ services:
     networks:
       - zw-insight-net
 
+  kkfileview:
+    image: keking/kkfileview:4.4.0-beta
+    container_name: zw-kkfileview
+    ports:
+      - "8012:8012"
+    environment:
+      - KK_CONTEXT_PATH=/
+      - OFFICE_HOME=/opt/libreoffice7.6
+    restart: unless-stopped
+    networks:
+      - zw-insight-net
+
 volumes:
   mysql_data:
   redis_data:

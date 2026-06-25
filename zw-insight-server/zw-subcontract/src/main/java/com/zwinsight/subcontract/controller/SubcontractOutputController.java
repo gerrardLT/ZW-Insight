@@ -18,6 +18,7 @@ public class SubcontractOutputController {
     private final SubcontractOutputService outputService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizSubcontractOutputReport>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -26,13 +27,32 @@ public class SubcontractOutputController {
         return R.ok(outputService.page(page, size, projectId, contractId));
     }
 
+    @GetMapping("/{id}")
+    public R<BizSubcontractOutputReport> getById(@PathVariable Long id) {
+        return R.ok(outputService.getById(id));
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody BizSubcontractOutputReport report) {
         outputService.save(report);
         return R.ok();
     }
 
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizSubcontractOutputReport report) {
+        report.setId(id);
+        outputService.update(report);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        outputService.delete(id);
+        return R.ok();
+    }
+
     @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
         outputService.submit(id);
         return R.ok();

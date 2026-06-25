@@ -46,6 +46,45 @@ public class LaborSettlementService {
     }
 
     /**
+     * 根据ID查询
+     */
+    public BizLaborSettlement getById(Long id) {
+        BizLaborSettlement settlement = settlementMapper.selectById(id);
+        if (settlement == null) {
+            throw new BusinessException("结算记录不存在");
+        }
+        return settlement;
+    }
+
+    /**
+     * 更新结算
+     */
+    public void update(BizLaborSettlement settlement) {
+        BizLaborSettlement existing = settlementMapper.selectById(settlement.getId());
+        if (existing == null) {
+            throw new BusinessException("结算记录不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可编辑");
+        }
+        settlementMapper.updateById(settlement);
+    }
+
+    /**
+     * 删除结算
+     */
+    public void delete(Long id) {
+        BizLaborSettlement existing = settlementMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("结算记录不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        settlementMapper.deleteById(id);
+    }
+
+    /**
      * 提交（回写合同累计结算）
      */
     @Transactional(rollbackFor = Exception.class)

@@ -30,6 +30,16 @@ public class SupplierController {
         return R.ok(supplierService.page(page, size, supplierName, supplierType, status));
     }
 
+    @GetMapping("/page")
+    public R<PageResult<BdSupplier>> pageAlias(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String supplierName,
+            @RequestParam(required = false) String supplierType,
+            @RequestParam(required = false) Integer status) {
+        return page(page, size, supplierName, supplierType, status);
+    }
+
     @GetMapping("/{id}")
     public R<BdSupplier> getById(@PathVariable Long id) {
         return R.ok(supplierService.getById(id));

@@ -118,4 +118,22 @@ public class RedisUtils {
     public Long getExpire(String key) {
         return redisTemplate.getExpire(key, TimeUnit.SECONDS);
     }
+
+    /**
+     * 获取过期时间（指定时间单位）
+     */
+    public Long getExpire(String key, TimeUnit timeUnit) {
+        return redisTemplate.getExpire(key, timeUnit);
+    }
+
+    /**
+     * 按模式匹配删除缓存（使用 SCAN 避免阻塞）
+     */
+    public Long deleteByPattern(String pattern) {
+        java.util.Set<String> keys = redisTemplate.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            return redisTemplate.delete(keys);
+        }
+        return 0L;
+    }
 }

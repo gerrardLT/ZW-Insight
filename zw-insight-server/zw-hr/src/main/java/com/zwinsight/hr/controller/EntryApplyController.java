@@ -18,11 +18,17 @@ public class EntryApplyController {
     private final EntryApplyService entryApplyService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizEntryApply>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String realName) {
         return R.ok(entryApplyService.page(page, size, realName));
+    }
+
+    @GetMapping("/{id}")
+    public R<BizEntryApply> getById(@PathVariable Long id) {
+        return R.ok(entryApplyService.getById(id));
     }
 
     @PostMapping
@@ -31,7 +37,21 @@ public class EntryApplyController {
         return R.ok();
     }
 
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizEntryApply apply) {
+        apply.setId(id);
+        entryApplyService.update(apply);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        entryApplyService.delete(id);
+        return R.ok();
+    }
+
     @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
         entryApplyService.submit(id);
         return R.ok();

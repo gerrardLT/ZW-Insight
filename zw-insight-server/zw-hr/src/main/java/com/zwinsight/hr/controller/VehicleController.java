@@ -26,6 +26,7 @@ public class VehicleController {
     // ===== 车辆信息 =====
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizVehicle>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,

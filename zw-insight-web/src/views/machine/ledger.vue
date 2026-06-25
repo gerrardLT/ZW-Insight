@@ -30,8 +30,8 @@
         <el-table-column prop="currentProject" label="当前项目" min-width="150" show-overflow-tooltip />
         <el-table-column label="状态" width="80" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'WORKING' ? 'success' : row.status === 'IDLE' ? 'info' : 'danger'" size="small">
-              {{ row.status === 'WORKING' ? '使用中' : row.status === 'IDLE' ? '闲置' : '维修' }}
+            <el-tag :type="row.status === 'IN_FIELD' ? 'success' : row.status === 'OUT_FIELD' ? 'info' : 'warning'" size="small">
+              {{ row.status === 'IN_FIELD' ? '在场' : row.status === 'OUT_FIELD' ? '已退场' : '已登记' }}
             </el-tag>
           </template>
         </el-table-column>

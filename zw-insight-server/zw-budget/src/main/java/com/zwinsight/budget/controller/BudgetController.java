@@ -25,6 +25,14 @@ public class BudgetController {
         return R.ok(budgetService.page(page, size, projectId));
     }
 
+    @GetMapping("/page")
+    public R<PageResult<BizBudget>> pageAlias(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long projectId) {
+        return page(page, size, projectId);
+    }
+
     @GetMapping("/{id}")
     public R<BizBudget> getById(@PathVariable Long id) {
         return R.ok(budgetService.getById(id));
@@ -40,6 +48,11 @@ public class BudgetController {
     public R<Void> submit(@PathVariable Long id) {
         budgetService.submit(id);
         return R.ok();
+    }
+
+    @PutMapping("/{id}/submit")
+    public R<Void> submitByPut(@PathVariable Long id) {
+        return submit(id);
     }
 
     @GetMapping("/project/{projectId}")

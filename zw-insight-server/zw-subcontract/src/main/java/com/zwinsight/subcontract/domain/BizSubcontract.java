@@ -22,6 +22,12 @@ public class BizSubcontract extends BaseEntity {
     /** 合同编号 */
     private String contractCode;
 
+    /** 合同名称 */
+    private String contractName;
+
+    /** 分包方名称 */
+    private String subcontractor;
+
     /** 供应商ID */
     private Long supplierId;
 
@@ -30,6 +36,9 @@ public class BizSubcontract extends BaseEntity {
 
     /** 签订日期 */
     private LocalDate signingDate;
+
+    /** 分包内容 */
+    private String content;
 
     /** 关联预算ID */
     private Long budgetId;

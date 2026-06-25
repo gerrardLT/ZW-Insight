@@ -1,7 +1,27 @@
 import request from '@/utils/request'
 
-export function login(data: { username: string; password: string; captcha?: string; captchaKey?: string; tenantCode?: string }) {
+interface PasswordLoginData {
+  username: string
+  password: string
+  captcha?: string
+  captchaKey?: string
+  tenantCode?: string
+  loginType?: 'PASSWORD'
+}
+
+interface SmsLoginData {
+  phone: string
+  smsCode: string
+  loginType: 'SMS'
+  tenantCode?: string
+}
+
+export function login(data: PasswordLoginData | SmsLoginData) {
   return request({ url: '/v1/auth/login', method: 'POST', data })
+}
+
+export function sendSmsCaptcha(phone: string) {
+  return request({ url: '/v1/captcha/sms', method: 'POST', data: { phone } })
 }
 
 export function logout() {

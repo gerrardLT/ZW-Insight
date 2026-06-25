@@ -106,7 +106,7 @@ public class SysUserService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void batchDelete(List<Long> ids) {
-        userMapper.deleteByIds(ids);
+        userMapper.deleteBatchIds(ids);
         userRoleMapper.delete(
                 new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getUserId, ids));
     }

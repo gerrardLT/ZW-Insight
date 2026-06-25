@@ -42,3 +42,20 @@ export function getOwnerPage(params?: any) {
 export function getCompanyList(params?: any) {
   return request.get('/v1/basedata/company/list', { params })
 }
+
+// ======================== 项目成员管理 ========================
+export function getProjectMembers(projectId: number, params?: any) {
+  return request.get(`/v1/project/${projectId}/member`, { params })
+}
+
+export function addProjectMember(projectId: number, data: any) {
+  return request.post(`/v1/project/${projectId}/member`, data)
+}
+
+export function removeProjectMember(projectId: number, userId: number) {
+  return request.delete(`/v1/project/${projectId}/member/${userId}`)
+}
+
+export function updateMemberRoles(projectId: number, userId: number, data: any) {
+  return request.put(`/v1/project/${projectId}/member/${userId}/roles`, data)
+}

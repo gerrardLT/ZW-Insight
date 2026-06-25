@@ -41,6 +41,26 @@ public class SubcontractSettlementService {
         settlementMapper.insert(settlement);
     }
 
+    public BizSubcontractSettlement getById(Long id) {
+        BizSubcontractSettlement settlement = settlementMapper.selectById(id);
+        if (settlement == null) throw new BusinessException("结算记录不存在");
+        return settlement;
+    }
+
+    public void update(BizSubcontractSettlement settlement) {
+        BizSubcontractSettlement existing = settlementMapper.selectById(settlement.getId());
+        if (existing == null) throw new BusinessException("结算记录不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        settlementMapper.updateById(settlement);
+    }
+
+    public void delete(Long id) {
+        BizSubcontractSettlement existing = settlementMapper.selectById(id);
+        if (existing == null) throw new BusinessException("结算记录不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        settlementMapper.deleteById(id);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizSubcontractSettlement settlement = settlementMapper.selectById(id);

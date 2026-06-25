@@ -84,7 +84,7 @@ public class SysDictService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void batchDelete(List<Long> ids) {
-        dictMapper.deleteByIds(ids);
+        dictMapper.deleteBatchIds(ids);
         dictItemMapper.delete(
                 new LambdaQueryWrapper<SysDictItem>().in(SysDictItem::getDictId, ids));
     }

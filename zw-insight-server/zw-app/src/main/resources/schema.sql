@@ -424,6 +424,29 @@ CREATE TABLE IF NOT EXISTS msg_user_shortcut (
     KEY idx_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户快捷入口表';
 
+-- 推送渠道配置表
+CREATE TABLE IF NOT EXISTS msg_push_config (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    business_type VARCHAR(50) NOT NULL COMMENT '业务类型编码',
+    business_type_name VARCHAR(100) NOT NULL COMMENT '业务类型名称',
+    enable_in_app TINYINT(1) DEFAULT 1 COMMENT '是否启用站内信（0-否 1-是）',
+    enable_sms TINYINT(1) DEFAULT 0 COMMENT '是否启用短信（0-否 1-是）',
+    enable_email TINYINT(1) DEFAULT 0 COMMENT '是否启用邮件（0-否 1-是）',
+    enable_app_push TINYINT(1) DEFAULT 0 COMMENT '是否启用APP推送（0-否 1-是）',
+    in_app_template_id BIGINT COMMENT '站内信模板ID',
+    sms_template_id BIGINT COMMENT '短信模板ID',
+    email_template_id BIGINT COMMENT '邮件模板ID',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_business_type_tenant (business_type, tenant_id),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='推送渠道配置表';
+
 -- ============ 基础数据模块 ============
 
 CREATE TABLE IF NOT EXISTS bd_material_category (
@@ -1021,6 +1044,7 @@ CREATE TABLE IF NOT EXISTS biz_inquiry (
     bid_mode VARCHAR(20) DEFAULT 'LOWEST' COMMENT '定标模式（LOWEST-最低价/COMPREHENSIVE-综合评审）',
     status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT/PUBLISHED/QUOTED/AWARDED/ANNOUNCED）',
     publish_time DATETIME COMMENT '发布时间',
+    deadline DATETIME DEFAULT NULL COMMENT '报价截止时间',
     tenant_id BIGINT COMMENT '租户ID',
     created_by BIGINT COMMENT '创建人ID',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -2580,3 +2604,71 @@ CREATE TABLE IF NOT EXISTS sys_audit_log (
     KEY idx_oper_time (oper_time),
     KEY idx_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='审计日志表';
+
+
+-- ============================================
+-- 流程催办模块建表脚本
+-- ============================================
+
+-- 催办配置表
+CREATE TABLE IF NOT EXISTS wf_urge_config (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    timeout_hours INT DEFAULT 24 COMMENT '催办超时时间（小时），超过此时间未处理则触发催办',
+    interval_hours INT DEFAULT 4 COMMENT '催办间隔（小时），两次催办之间的最小间隔',
+    max_urge_count INT DEFAULT 3 COMMENT '最大催办次数',
+    auto_urge_enabled INT DEFAULT 1 COMMENT '是否启用自动催办（0-禁用 1-启用）',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='催办配置表';
+
+-- 催办记录表
+CREATE TABLE IF NOT EXISTS wf_urge_record (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    process_instance_id VARCHAR(64) NOT NULL COMMENT '流程实例ID',
+    task_id VARCHAR(64) NOT NULL COMMENT '任务ID',
+    task_name VARCHAR(200) COMMENT '任务名称',
+    assignee VARCHAR(50) COMMENT '被催办人用户ID',
+    urge_by VARCHAR(50) COMMENT '催办人（SYSTEM-系统自动/用户ID-手动催办）',
+    urge_type VARCHAR(20) NOT NULL COMMENT '催办类型（AUTO-自动催办/MANUAL-手动催办）',
+    urge_message VARCHAR(500) COMMENT '催办消息内容',
+    urge_time DATETIME NOT NULL COMMENT '催办时间',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_task_id (task_id),
+    KEY idx_process_instance (process_instance_id),
+    KEY idx_assignee (assignee),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='催办记录表';
+
+-- 审批委托配置表
+CREATE TABLE IF NOT EXISTS wf_delegate_config (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    delegator_id BIGINT NOT NULL COMMENT '委托人用户ID',
+    delegate_id BIGINT NOT NULL COMMENT '代理人用户ID',
+    start_time DATETIME NOT NULL COMMENT '委托开始时间',
+    end_time DATETIME NOT NULL COMMENT '委托结束时间',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT '状态（ACTIVE-生效中 EXPIRED-已过期 CANCELLED-已取消）',
+    reason VARCHAR(500) COMMENT '委托原因/备注',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_delegator_id (delegator_id),
+    KEY idx_delegate_id (delegate_id),
+    KEY idx_status (status),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='审批委托配置表';

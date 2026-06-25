@@ -68,13 +68,13 @@ public class SysLogService {
      * 批量删除操作日志
      */
     public void deleteOperLogs(List<Long> ids) {
-        operLogMapper.deleteByIds(ids);
+        operLogMapper.deleteBatchIds(ids);
     }
 
     /**
      * 批量删除登录日志
      */
     public void deleteLoginLogs(List<Long> ids) {
-        loginLogMapper.deleteByIds(ids);
+        loginLogMapper.deleteBatchIds(ids);
     }
 }

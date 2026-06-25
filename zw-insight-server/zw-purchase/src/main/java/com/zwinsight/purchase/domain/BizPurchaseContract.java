@@ -27,6 +27,11 @@ public class BizPurchaseContract extends BaseEntity {
     private String contractCode;
 
     /**
+     * 合同名称
+     */
+    private String contractName;
+
+    /**
      * 甲方ID
      */
     private Long partyAId;
@@ -42,9 +47,14 @@ public class BizPurchaseContract extends BaseEntity {
     private Long partyBId;
 
     /**
-     * 乙方名称
+     * 乙方名称（供应商名称）
      */
     private String partyBName;
+
+    /**
+     * 供应商名称（前端展示别名）
+     */
+    private String supplierName;
 
     /**
      * 签订日期

@@ -10,10 +10,10 @@
         <el-form-item prop="password">
           <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password />
         </el-form-item>
-        <el-form-item prop="captcha">
+        <el-form-item prop="captchaCode">
           <div style="display: flex; gap: 12px; width: 100%">
-            <el-input v-model="loginForm.captcha" placeholder="验证码" prefix-icon="Key" style="flex: 1" />
-            <img :src="captchaUrl" @click="refreshCaptcha" class="captcha-img" alt="验证码" />
+            <el-input v-model="loginForm.captchaCode" placeholder="验证码" prefix-icon="Key" style="flex: 1" />
+            <img :src="captchaImage" @click="refreshCaptcha" class="captcha-img" alt="验证码" />
           </div>
         </el-form-item>
         <el-form-item>
@@ -30,6 +30,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { getImageCaptcha } from '@/api/captcha'
 import request from '@/utils/request'
 import type { FormInstance } from 'element-plus'
 
@@ -37,24 +38,29 @@ const router = useRouter()
 const userStore = useUserStore()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
-const captchaUrl = ref('')
-const captchaKey = ref('')
+const captchaImage = ref('')
+const captchaUuid = ref('')
 
 const loginForm = ref({
   username: '',
   password: '',
-  captcha: ''
+  captchaCode: ''
 })
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  captcha: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+  captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
 
-function refreshCaptcha() {
-  captchaKey.value = Date.now().toString()
-  captchaUrl.value = `/api/v1/auth/captcha?key=${captchaKey.value}`
+async function refreshCaptcha() {
+  try {
+    const res: any = await getImageCaptcha()
+    captchaUuid.value = res.data.uuid
+    captchaImage.value = res.data.imageBase64
+  } catch {
+    // 验证码获取失败时不阻断页面
+  }
 }
 
 async function handleLogin() {
@@ -64,15 +70,25 @@ async function handleLogin() {
     const res: any = await request.post('/v1/auth/login', {
       username: loginForm.value.username,
       password: loginForm.value.password,
-      captcha: loginForm.value.captcha,
-      captchaKey: captchaKey.value
+      captchaCode: loginForm.value.captchaCode,
+      captchaUuid: captchaUuid.value
     })
     userStore.setToken(res.data.token)
-    userStore.setUserInfo(res.data.userInfo)
+    userStore.setUserInfo({
+      userId: res.data.userId,
+      username: res.data.username,
+      realName: res.data.realName,
+      tenantId: res.data.tenantId,
+      tenantName: res.data.tenantName,
+      roles: res.data.roles
+    })
+    userStore.setPermissions(res.data.permissions || [])
     router.push('/')
+  } catch {
+    // 登录失败时自动刷新验证码
+    refreshCaptcha()
   } finally {
     loading.value = false
-    refreshCaptcha()
   }
 }
 

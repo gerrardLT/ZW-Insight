@@ -24,6 +24,10 @@
             <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-security</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-file</artifactId>
+        </dependency>
 
         <!-- Spring Boot Web -->
         <dependency>
@@ -47,6 +51,14 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
+        </dependency>
+
+        <!-- jqwik 属性测试框架 -->
+        <dependency>
+            <groupId>net.jqwik</groupId>
+            <artifactId>jqwik</artifactId>
+            <version>1.8.5</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

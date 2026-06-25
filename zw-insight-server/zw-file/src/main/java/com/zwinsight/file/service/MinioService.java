@@ -107,6 +107,34 @@ public class MinioService {
     }
 
     /**
+     * 上传文件（从 InputStream）
+     *
+     * @param objectName  对象名称
+     * @param inputStream 输入流
+     * @param size        文件大小
+     * @param contentType 内容类型
+     * @return 对象名称
+     */
+    public String upload(String objectName, InputStream inputStream, long size, String contentType) {
+        try {
+            ensureBucketExists(minioConfig.getBucket());
+
+            minioClient.putObject(PutObjectArgs.builder()
+                    .bucket(minioConfig.getBucket())
+                    .object(objectName)
+                    .stream(inputStream, size, -1)
+                    .contentType(contentType)
+                    .build());
+
+            log.info("文件上传成功: {}", objectName);
+            return objectName;
+        } catch (Exception e) {
+            log.error("文件上传失败", e);
+            throw new RuntimeException("文件上传失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 删除文件
      *
      * @param objectName 对象名称

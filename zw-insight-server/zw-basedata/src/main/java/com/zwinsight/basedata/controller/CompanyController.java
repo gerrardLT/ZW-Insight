@@ -26,6 +26,15 @@ public class CompanyController {
         return R.ok(companyService.page(page, size, companyName, status));
     }
 
+    @GetMapping("/page")
+    public R<PageResult<BdCompany>> pageAlias(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) Integer status) {
+        return page(page, size, companyName, status);
+    }
+
     @GetMapping("/{id}")
     public R<BdCompany> getById(@PathVariable Long id) {
         return R.ok(companyService.getById(id));

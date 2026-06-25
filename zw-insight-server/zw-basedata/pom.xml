@@ -24,6 +24,10 @@
             <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-security</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-file</artifactId>
+        </dependency>
 
         <!-- Spring Boot Web -->
         <dependency>

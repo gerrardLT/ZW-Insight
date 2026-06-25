@@ -1,5 +1,6 @@
 package com.zwinsight.material.controller;
 
+import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.material.domain.BizProjectMaterialStock;
 import com.zwinsight.material.service.ProjectMaterialStockService;
@@ -17,6 +18,14 @@ import java.util.List;
 public class StockController {
 
     private final ProjectMaterialStockService stockService;
+
+    @GetMapping("/page")
+    public R<PageResult<BizProjectMaterialStock>> page(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long projectId) {
+        return R.ok(stockService.page(page, size, projectId));
+    }
 
     @GetMapping("/{projectId}")
     public R<List<BizProjectMaterialStock>> getByProject(@PathVariable Long projectId) {

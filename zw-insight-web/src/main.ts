@@ -8,6 +8,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
+import { permissionDirective } from './utils/permission'
 import './styles/global.scss'
 
 const app = createApp(App)
@@ -27,5 +28,8 @@ app.use(ElementPlus, { locale: zhCn })
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
+
+// 注册全局权限指令
+app.directive('permission', permissionDirective)
 
 app.mount('#app')

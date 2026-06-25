@@ -2,6 +2,7 @@ package com.zwinsight.machine.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.common.exception.BusinessException;
@@ -65,6 +66,7 @@ public class MachineContractService {
         machineContractMapper.insert(contract);
     }
 
+    @BudgetCheck(category = "MACHINE")
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizMachineContract contract = machineContractMapper.selectById(id);
@@ -72,5 +74,25 @@ public class MachineContractService {
         if (!"DRAFT".equals(contract.getStatus())) throw new BusinessException("仅草稿状态可提交");
         contract.setStatus("EFFECTIVE");
         machineContractMapper.updateById(contract);
+    }
+
+    public BizMachineContract getById(Long id) {
+        BizMachineContract contract = machineContractMapper.selectById(id);
+        if (contract == null) throw new BusinessException("机械合同不存在");
+        return contract;
+    }
+
+    public void update(BizMachineContract contract) {
+        BizMachineContract existing = machineContractMapper.selectById(contract.getId());
+        if (existing == null) throw new BusinessException("机械合同不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        machineContractMapper.updateById(contract);
+    }
+
+    public void delete(Long id) {
+        BizMachineContract existing = machineContractMapper.selectById(id);
+        if (existing == null) throw new BusinessException("机械合同不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        machineContractMapper.deleteById(id);
     }
 }

@@ -5,6 +5,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.workflow.dto.*;
 import com.zwinsight.workflow.service.ApprovalService;
+import com.zwinsight.workflow.service.UrgeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 public class ApprovalController {
 
     private final ApprovalService approvalService;
+    private final UrgeService urgeService;
 
     /**
      * 发起流程
@@ -117,5 +119,23 @@ public class ApprovalController {
     public R<Void> batchApprove(@RequestBody BatchApproveRequest request) {
         approvalService.batchApprove(request.getTaskIds(), request.getComment());
         return R.ok();
+    }
+
+    /**
+     * 手动催办 - 发起人催办当前节点处理人
+     */
+    @PostMapping("/urge/{taskId}")
+    public R<Void> urgeTask(@PathVariable String taskId) {
+        Long userId = SecurityContextHolder.getUserId();
+        urgeService.manualUrge(taskId, String.valueOf(userId));
+        return R.ok();
+    }
+
+    /**
+     * 查询指定任务的催办次数
+     */
+    @GetMapping("/urge/count/{taskId}")
+    public R<Integer> getUrgeCount(@PathVariable String taskId) {
+        return R.ok(urgeService.getUrgeCount(taskId));
     }
 }

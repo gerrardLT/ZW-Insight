@@ -59,6 +59,34 @@ public class InquiryService {
     }
 
     /**
+     * 更新询价单
+     */
+    public void update(BizInquiry inquiry) {
+        BizInquiry existing = inquiryMapper.selectById(inquiry.getId());
+        if (existing == null) {
+            throw new BusinessException("询价单不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可编辑");
+        }
+        inquiryMapper.updateById(inquiry);
+    }
+
+    /**
+     * 删除询价单
+     */
+    public void delete(Long id) {
+        BizInquiry existing = inquiryMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("询价单不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        inquiryMapper.deleteById(id);
+    }
+
+    /**
      * 发布询价单（DRAFT→PUBLISHED）
      */
     @Transactional(rollbackFor = Exception.class)

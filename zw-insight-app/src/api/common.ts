@@ -43,10 +43,18 @@ export function saveConstructionLog(data: any) {
   return request({ url: '/v1/site/construction-log', method: 'POST', data })
 }
 export function saveProgressFeedback(data: any) {
-  return request({ url: '/v1/site/feedback', method: 'POST', data })
+  return request({ url: '/v1/site/schedule/feedback', method: 'POST', data })
 }
 export function saveInspection(data: any) {
   return request({ url: '/v1/site/inspection', method: 'POST', data })
+}
+
+export function getInspectionDetail(id: number) {
+  return request({ url: `/v1/site/inspection/${id}` })
+}
+
+export function submitInspectionResults(id: number, data: any) {
+  return request({ url: `/v1/site/inspection/${id}/results`, method: 'POST', data })
 }
 
 // 财务

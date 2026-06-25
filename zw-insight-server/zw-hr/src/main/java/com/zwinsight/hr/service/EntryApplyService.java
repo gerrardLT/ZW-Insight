@@ -48,6 +48,35 @@ public class EntryApplyService {
     }
 
     /**
+     * 根据ID查询
+     */
+    public BizEntryApply getById(Long id) {
+        BizEntryApply apply = entryApplyMapper.selectById(id);
+        if (apply == null) throw new BusinessException("入职申请不存在");
+        return apply;
+    }
+
+    /**
+     * 更新入职申请
+     */
+    public void update(BizEntryApply apply) {
+        BizEntryApply existing = entryApplyMapper.selectById(apply.getId());
+        if (existing == null) throw new BusinessException("入职申请不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        entryApplyMapper.updateById(apply);
+    }
+
+    /**
+     * 删除入职申请
+     */
+    public void delete(Long id) {
+        BizEntryApply existing = entryApplyMapper.selectById(id);
+        if (existing == null) throw new BusinessException("入职申请不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        entryApplyMapper.deleteById(id);
+    }
+
+    /**
      * 提交入职申请（审批通过→自动创建系统账号）
      */
     @Transactional(rollbackFor = Exception.class)

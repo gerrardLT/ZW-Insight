@@ -50,6 +50,45 @@ public class InvoiceApplyService {
     }
 
     /**
+     * 根据ID查询
+     */
+    public BizInvoiceApply getById(Long id) {
+        BizInvoiceApply invoiceApply = invoiceApplyMapper.selectById(id);
+        if (invoiceApply == null) {
+            throw new BusinessException("开票申请不存在");
+        }
+        return invoiceApply;
+    }
+
+    /**
+     * 更新开票申请
+     */
+    public void update(BizInvoiceApply invoiceApply) {
+        BizInvoiceApply existing = invoiceApplyMapper.selectById(invoiceApply.getId());
+        if (existing == null) {
+            throw new BusinessException("开票申请不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可编辑");
+        }
+        invoiceApplyMapper.updateById(invoiceApply);
+    }
+
+    /**
+     * 删除开票申请
+     */
+    public void delete(Long id) {
+        BizInvoiceApply existing = invoiceApplyMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("开票申请不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        invoiceApplyMapper.deleteById(id);
+    }
+
+    /**
      * 提交开票申请（校验invoiceAmount≤累计产值-已开票，审批通过回写合同cumulativeInvoiceAmount）
      */
     @Transactional(rollbackFor = Exception.class)

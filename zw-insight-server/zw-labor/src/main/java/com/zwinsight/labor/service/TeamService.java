@@ -3,6 +3,8 @@ package com.zwinsight.labor.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.reference.ReferenceCheck;
+import com.zwinsight.common.reference.ReferenceRelation;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.labor.domain.BizLaborRoster;
 import com.zwinsight.labor.domain.BizTeam;
@@ -53,14 +55,17 @@ public class TeamService {
     }
 
     /**
-     * 删除（被引用不可删）
+     * 删除（引用校验：花名册、用工单、工资单）
      */
+    @ReferenceCheck({
+            @ReferenceRelation(tableName = "biz_labor_roster", column = "team_id",
+                    displayName = "花名册", codeColumn = "roster_code"),
+            @ReferenceRelation(tableName = "biz_work_order", column = "team_id",
+                    displayName = "用工单", codeColumn = "order_code"),
+            @ReferenceRelation(tableName = "biz_labor_payroll", column = "team_id",
+                    displayName = "工资单", codeColumn = "payroll_code")
+    })
     public void delete(Long id) {
-        Long count = rosterMapper.selectCount(
-                new LambdaQueryWrapper<BizLaborRoster>().eq(BizLaborRoster::getTeamId, id));
-        if (count > 0) {
-            throw new BusinessException("该班组下有工人记录，不可删除");
-        }
         teamMapper.deleteById(id);
     }
 

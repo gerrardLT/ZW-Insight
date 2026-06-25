@@ -23,6 +23,11 @@ public class MaterialCategoryController {
         return R.ok(categoryService.listTree());
     }
 
+    @GetMapping("/tree")
+    public R<List<BdMaterialCategory>> tree() {
+        return list();
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody BdMaterialCategory category) {
         categoryService.save(category);

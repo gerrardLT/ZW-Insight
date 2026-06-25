@@ -36,6 +36,10 @@
             <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-workflow</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-file</artifactId>
+        </dependency>
 
         <!-- Spring Boot Web -->
         <dependency>

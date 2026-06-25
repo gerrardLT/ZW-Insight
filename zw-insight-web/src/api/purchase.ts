@@ -14,7 +14,7 @@ export function createPurchaseContract(data: any) {
 }
 
 export function updatePurchaseContract(data: any) {
-  return request.put('/v1/purchase/contract', data)
+  return request.put(`/v1/purchase/contract/${data.id}`, data)
 }
 
 export function deletePurchaseContract(id: number) {
@@ -39,7 +39,7 @@ export function createPurchaseSettlement(data: any) {
 }
 
 export function updatePurchaseSettlement(data: any) {
-  return request.put('/v1/purchase/settlement', data)
+  return request.put(`/v1/purchase/settlement/${data.id}`, data)
 }
 
 export function deletePurchaseSettlement(id: number) {
@@ -64,7 +64,7 @@ export function createInquiry(data: any) {
 }
 
 export function updateInquiry(data: any) {
-  return request.put('/v1/purchase/inquiry', data)
+  return request.put(`/v1/purchase/inquiry/${data.id}`, data)
 }
 
 export function deleteInquiry(id: number) {
@@ -80,8 +80,9 @@ export function getQuotationList(inquiryId: number) {
   return request.get(`/v1/purchase/inquiry/${inquiryId}/quotations`)
 }
 
+
 export function submitQuotation(data: any) {
-  return request.post('/v1/purchase/quotation', data)
+  return request.post('/v1/purchase/quotation/submit', data)
 }
 
 // ======================== 三方比价 - 定标 ========================

@@ -17,7 +17,7 @@ public class CompletionController {
 
     private final CompletionAcceptanceService acceptanceService;
 
-    @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizCompletionAcceptance>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,

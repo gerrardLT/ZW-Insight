@@ -11,8 +11,7 @@
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
             <el-option label="草稿" value="DRAFT" />
-            <el-option label="执行中" value="EXECUTING" />
-            <el-option label="已完工" value="COMPLETED" />
+            <el-option label="生效" value="EFFECTIVE" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -26,7 +25,7 @@
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="contractNo" label="合同编号" width="150" />
+        <el-table-column prop="contractCode" label="合同编号" width="150" />
         <el-table-column prop="contractName" label="合同名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="teamName" label="施工队伍" width="150" />
         <el-table-column prop="contractAmount" label="合同金额(元)" width="140" align="right">
@@ -36,8 +35,8 @@
         <el-table-column prop="endDate" label="结束日期" width="110" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'COMPLETED' ? 'success' : row.status === 'EXECUTING' ? 'warning' : 'info'" size="small">
-              {{ row.status === 'COMPLETED' ? '已完工' : row.status === 'EXECUTING' ? '执行中' : '草稿' }}
+            <el-tag :type="row.status === 'EFFECTIVE' ? 'success' : 'info'" size="small">
+              {{ row.status === 'EFFECTIVE' ? '生效' : '草稿' }}
             </el-tag>
           </template>
         </el-table-column>

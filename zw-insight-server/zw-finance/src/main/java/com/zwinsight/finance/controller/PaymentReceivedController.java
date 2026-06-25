@@ -18,6 +18,7 @@ public class PaymentReceivedController {
     private final PaymentReceivedService paymentReceivedService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizPaymentReceived>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -25,9 +26,27 @@ public class PaymentReceivedController {
         return R.ok(paymentReceivedService.page(page, size, projectId));
     }
 
+    @GetMapping("/{id}")
+    public R<BizPaymentReceived> getById(@PathVariable Long id) {
+        return R.ok(paymentReceivedService.getById(id));
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody BizPaymentReceived paymentReceived) {
         paymentReceivedService.save(paymentReceived);
+        return R.ok();
+    }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizPaymentReceived paymentReceived) {
+        paymentReceived.setId(id);
+        paymentReceivedService.update(paymentReceived);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        paymentReceivedService.delete(id);
         return R.ok();
     }
 }

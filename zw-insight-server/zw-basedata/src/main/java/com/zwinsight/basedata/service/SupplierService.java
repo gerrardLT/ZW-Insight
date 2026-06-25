@@ -9,6 +9,8 @@ import com.zwinsight.basedata.domain.BdSupplier;
 import com.zwinsight.basedata.dto.SupplierExcelDTO;
 import com.zwinsight.basedata.mapper.BdSupplierMapper;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.reference.ReferenceCheck;
+import com.zwinsight.common.reference.ReferenceRelation;
 import com.zwinsight.common.result.PageResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -72,8 +74,16 @@ public class SupplierService {
     }
 
     /**
-     * 删除供应商
+     * 删除供应商（引用校验：采购合同、入库单、询价）
      */
+    @ReferenceCheck({
+            @ReferenceRelation(tableName = "biz_purchase_contract", column = "supplier_id",
+                    displayName = "采购合同", codeColumn = "contract_code"),
+            @ReferenceRelation(tableName = "biz_material_inbound", column = "supplier_id",
+                    displayName = "入库单", codeColumn = "inbound_code"),
+            @ReferenceRelation(tableName = "biz_purchase_inquiry", column = "supplier_id",
+                    displayName = "询价单", codeColumn = "inquiry_code")
+    })
     public void delete(Long id) {
         supplierMapper.deleteById(id);
     }
@@ -83,7 +93,7 @@ public class SupplierService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void batchDelete(List<Long> ids) {
-        supplierMapper.deleteByIds(ids);
+        supplierMapper.deleteBatchIds(ids);
     }
 
     /**

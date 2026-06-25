@@ -39,6 +39,26 @@ public class TenderFeeService {
     }
 
     /**
+     * 更新费用
+     */
+    public void update(BizTenderFee fee) {
+        BizTenderFee existing = feeMapper.selectById(fee.getId());
+        if (existing == null) throw new BusinessException("投标费用不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        feeMapper.updateById(fee);
+    }
+
+    /**
+     * 删除费用
+     */
+    public void delete(Long id) {
+        BizTenderFee existing = feeMapper.selectById(id);
+        if (existing == null) throw new BusinessException("投标费用不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        feeMapper.deleteById(id);
+    }
+
+    /**
      * 确认付款（上传回单）
      */
     public void confirmPayment(Long id, String receiptFile) {

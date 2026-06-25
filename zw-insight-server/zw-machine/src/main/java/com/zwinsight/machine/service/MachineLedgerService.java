@@ -4,6 +4,8 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.reference.ReferenceCheck;
+import com.zwinsight.common.reference.ReferenceRelation;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.machine.domain.BizMachineEntry;
 import com.zwinsight.machine.domain.BizMachineLedger;
@@ -42,11 +44,18 @@ public class MachineLedgerService {
         ledgerMapper.updateById(ledger);
     }
 
+    /**
+     * 删除（引用校验：进出场、工作量、合同）
+     */
+    @ReferenceCheck({
+            @ReferenceRelation(tableName = "biz_machine_entry", column = "machine_id",
+                    displayName = "进出场记录", codeColumn = "entry_code"),
+            @ReferenceRelation(tableName = "biz_machine_work_log", column = "machine_id",
+                    displayName = "工作量记录", codeColumn = "work_log_code"),
+            @ReferenceRelation(tableName = "biz_machine_contract", column = "machine_id",
+                    displayName = "机械合同", codeColumn = "contract_code")
+    })
     public void delete(Long id) {
-        // 检查是否有进退场记录
-        Long count = entryMapper.selectCount(
-                new LambdaQueryWrapper<BizMachineEntry>().eq(BizMachineEntry::getMachineId, id));
-        if (count > 0) throw new BusinessException("该机械有进退场记录，不可删除");
         ledgerMapper.deleteById(id);
     }
 }

@@ -14,6 +14,17 @@ service.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // 分页参数映射：前端 pageNum/pageSize → 后端 page/size
+    if (config.params) {
+      if (config.params.pageNum !== undefined) {
+        config.params.page = config.params.pageNum
+        delete config.params.pageNum
+      }
+      if (config.params.pageSize !== undefined) {
+        config.params.size = config.params.pageSize
+        delete config.params.pageSize
+      }
+    }
     return config
   },
   (error) => Promise.reject(error)
@@ -34,7 +45,13 @@ service.interceptors.response.use(
     return res
   },
   (error) => {
-    const message = error.response?.data?.message || error.message || '网络异常'
+    // 引用校验异常（ReferenceExistsException）：不显示全局错误提示，交由业务层处理
+    const responseData = error.response?.data
+    if (error.response?.status === 400 && responseData?.data?.references) {
+      return Promise.reject(error)
+    }
+
+    const message = responseData?.message || error.message || '网络异常'
     ElMessage.error(message)
     if (error.response?.status === 401) {
       localStorage.removeItem('token')

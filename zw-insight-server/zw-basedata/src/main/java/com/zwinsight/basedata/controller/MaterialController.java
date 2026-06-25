@@ -31,6 +31,15 @@ public class MaterialController {
         return R.ok(materialService.page(page, size, materialName, categoryId));
     }
 
+    @GetMapping("/page")
+    public R<PageResult<BdMaterial>> pageAlias(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String materialName,
+            @RequestParam(required = false) Long categoryId) {
+        return page(page, size, materialName, categoryId);
+    }
+
     @GetMapping("/{id}")
     public R<BdMaterial> getById(@PathVariable Long id) {
         return R.ok(materialService.getById(id));

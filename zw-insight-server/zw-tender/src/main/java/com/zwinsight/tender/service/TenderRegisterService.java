@@ -60,4 +60,33 @@ public class TenderRegisterService {
         }
         return register;
     }
+
+    /**
+     * 更新投标登记
+     */
+    public void update(BizTenderRegister register) {
+        BizTenderRegister existing = registerMapper.selectById(register.getId());
+        if (existing == null) throw new BusinessException("投标登记不存在");
+        registerMapper.updateById(register);
+    }
+
+    /**
+     * 删除投标登记
+     */
+    public void delete(Long id) {
+        BizTenderRegister existing = registerMapper.selectById(id);
+        if (existing == null) throw new BusinessException("投标登记不存在");
+        if (!"REGISTERED".equals(existing.getStatus())) throw new BusinessException("仅报名状态可删除");
+        registerMapper.deleteById(id);
+    }
+
+    /**
+     * 提交审批
+     */
+    public void submit(Long id) {
+        BizTenderRegister register = registerMapper.selectById(id);
+        if (register == null) throw new BusinessException("投标登记不存在");
+        register.setStatus("SUBMITTED");
+        registerMapper.updateById(register);
+    }
 }

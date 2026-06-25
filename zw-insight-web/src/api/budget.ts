@@ -64,18 +64,18 @@ export function deleteBudgetConfig(id: number) {
 }
 
 // ======================== 二级科目 ========================
-export function getBudgetSubjectList(params: any) {
-  return request.get('/v1/budget/subject/list', { params })
+export function getBudgetSubcategoryList(costCategory: string) {
+  return request.get(`/v1/budget/subcategory/${costCategory}`)
 }
 
-export function createBudgetSubject(data: any) {
-  return request.post('/v1/budget/subject', data)
+export function createBudgetSubcategory(data: any) {
+  return request.post('/v1/budget/subcategory', data)
 }
 
-export function updateBudgetSubject(data: any) {
-  return request.put('/v1/budget/subject', data)
+export function updateBudgetSubcategory(id: number, data: any) {
+  return request.put(`/v1/budget/subcategory/${id}`, data)
 }
 
-export function deleteBudgetSubject(id: number) {
-  return request.delete(`/v1/budget/subject/${id}`)
+export function deleteBudgetSubcategory(id: number) {
+  return request.delete(`/v1/budget/subcategory/${id}`)
 }

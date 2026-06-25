@@ -20,6 +20,7 @@ public class WorkOrderController {
     private final WorkOrderService workOrderService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizWorkOrder>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -55,6 +56,7 @@ public class WorkOrderController {
     }
 
     @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
         workOrderService.submit(id);
         return R.ok();

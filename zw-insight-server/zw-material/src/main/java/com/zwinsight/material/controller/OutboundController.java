@@ -22,6 +22,7 @@ public class OutboundController {
     private final MaterialOutboundService outboundService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizMaterialOutbound>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -30,10 +31,36 @@ public class OutboundController {
         return R.ok(outboundService.page(page, size, projectId, outboundType));
     }
 
+    @GetMapping("/{id}")
+    public R<BizMaterialOutbound> getById(@PathVariable Long id) {
+        return R.ok(outboundService.getById(id));
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody Map<String, Object> body) {
         BizMaterialOutbound outbound = new BizMaterialOutbound();
         outboundService.save(outbound, List.of());
+        return R.ok();
+    }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        BizMaterialOutbound outbound = new BizMaterialOutbound();
+        outbound.setId(id);
+        outboundService.update(outbound);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        outboundService.delete(id);
+        return R.ok();
+    }
+
+    @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
+    public R<Void> submit(@PathVariable Long id) {
+        outboundService.submit(id);
         return R.ok();
     }
 }

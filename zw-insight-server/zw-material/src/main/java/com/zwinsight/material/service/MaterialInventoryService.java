@@ -56,4 +56,24 @@ public class MaterialInventoryService {
             }
         }
     }
+
+    public BizMaterialInventory getById(Long id) {
+        BizMaterialInventory inventory = inventoryMapper.selectById(id);
+        if (inventory == null) throw new BusinessException("盘点单不存在");
+        return inventory;
+    }
+
+    public void update(BizMaterialInventory inventory) {
+        BizMaterialInventory existing = inventoryMapper.selectById(inventory.getId());
+        if (existing == null) throw new BusinessException("盘点单不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        inventoryMapper.updateById(inventory);
+    }
+
+    public void delete(Long id) {
+        BizMaterialInventory existing = inventoryMapper.selectById(id);
+        if (existing == null) throw new BusinessException("盘点单不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        inventoryMapper.deleteById(id);
+    }
 }

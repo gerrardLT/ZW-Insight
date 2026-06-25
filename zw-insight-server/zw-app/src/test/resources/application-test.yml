@@ -1,0 +1,39 @@
+# 集成测试环境配置
+# Testcontainers 会动态覆盖 datasource 和 redis 连接信息（@DynamicPropertySource）
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # Testcontainers 动态注入 URL
+    url: jdbc:mysql://localhost:3306/zw_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: root
+    password: test
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # 关闭 Flowable 自动部署（集成测试中按需手动部署流程定义）
+  flowable:
+    database-schema-update: true
+    async-executor-activate: false
+
+  # 关闭 RabbitMQ（集成测试不依赖 MQ）
+  rabbitmq:
+    host: localhost
+    port: 5672
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# 日志级别
+logging:
+  level:
+    com.zwinsight: DEBUG
+    org.testcontainers: INFO

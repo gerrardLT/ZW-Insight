@@ -26,6 +26,10 @@
         </dependency>
         <dependency>
             <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-file</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-purchase</artifactId>
         </dependency>
         <dependency>

@@ -82,4 +82,43 @@ public class LaborPayrollService {
         payroll.setStatus("APPROVED");
         payrollMapper.updateById(payroll);
     }
+
+    /**
+     * 根据ID查询
+     */
+    public BizLaborPayroll getById(Long id) {
+        BizLaborPayroll payroll = payrollMapper.selectById(id);
+        if (payroll == null) {
+            throw new BusinessException("工资单不存在");
+        }
+        return payroll;
+    }
+
+    /**
+     * 更新工资单
+     */
+    public void update(BizLaborPayroll payroll) {
+        BizLaborPayroll existing = payrollMapper.selectById(payroll.getId());
+        if (existing == null) {
+            throw new BusinessException("工资单不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可编辑");
+        }
+        payrollMapper.updateById(payroll);
+    }
+
+    /**
+     * 删除工资单
+     */
+    public void delete(Long id) {
+        BizLaborPayroll existing = payrollMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("工资单不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        payrollMapper.deleteById(id);
+    }
 }

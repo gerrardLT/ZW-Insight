@@ -50,6 +50,45 @@ public class PurchaseSettlementService {
     }
 
     /**
+     * 根据ID查询
+     */
+    public BizPurchaseSettlement getById(Long id) {
+        BizPurchaseSettlement settlement = settlementMapper.selectById(id);
+        if (settlement == null) {
+            throw new BusinessException("采购结算不存在");
+        }
+        return settlement;
+    }
+
+    /**
+     * 更新采购结算
+     */
+    public void update(BizPurchaseSettlement settlement) {
+        BizPurchaseSettlement existing = settlementMapper.selectById(settlement.getId());
+        if (existing == null) {
+            throw new BusinessException("采购结算不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可编辑");
+        }
+        settlementMapper.updateById(settlement);
+    }
+
+    /**
+     * 删除采购结算
+     */
+    public void delete(Long id) {
+        BizPurchaseSettlement existing = settlementMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("采购结算不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        settlementMapper.deleteById(id);
+    }
+
+    /**
      * 提交审批（审批通过→回写采购合同累计结算）
      */
     @Transactional(rollbackFor = Exception.class)

@@ -22,6 +22,12 @@ public class BizLaborContract extends BaseEntity {
     /** 合同编号 */
     private String contractCode;
 
+    /** 合同名称 */
+    private String contractName;
+
+    /** 施工队伍名称 */
+    private String teamName;
+
     /** 甲方名称 */
     private String partyAName;
 
@@ -33,6 +39,12 @@ public class BizLaborContract extends BaseEntity {
 
     /** 签订日期 */
     private LocalDate signingDate;
+
+    /** 开始日期 */
+    private LocalDate startDate;
+
+    /** 结束日期 */
+    private LocalDate endDate;
 
     /** 关联预算ID */
     private Long budgetId;

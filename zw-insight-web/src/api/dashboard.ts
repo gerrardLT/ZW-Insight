@@ -1,21 +1,49 @@
 import request from '@/utils/request'
 
-// 获取看板统计数据
+// ======================== 公司概览 ========================
+export function getCompanyOverview() {
+  return request.get('/v1/dashboard/company-overview')
+}
+
+// ======================== 预算执行 ========================
+export function getBudgetExecution(params: any) {
+  return request.get('/v1/dashboard/budget-execution', { params })
+}
+
+// ======================== 应收款监控 ========================
+export function getReceivableMonitor() {
+  return request.get('/v1/dashboard/receivable-monitor')
+}
+
+// ======================== 供应商应付监控 ========================
+export function getSupplierPayableMonitor(params?: any) {
+  return request.get('/v1/dashboard/supplier-payable', { params })
+}
+
+// ======================== 投标分析 ========================
+export function getTenderAnalysis() {
+  return request.get('/v1/dashboard/tender-analysis')
+}
+
+// ======================== 库存分析 ========================
+export function getInventoryAnalysis() {
+  return request.get('/v1/dashboard/inventory-analysis')
+}
+
+// ======================== 进度甘特图 ========================
+export function getScheduleGantt(projectId: number) {
+  return request.get(`/v1/dashboard/schedule-gantt/${projectId}`)
+}
+
+// ======================== 兼容别名（页面引用） ========================
 export function getDashboardStats() {
-  return request.get('/v1/dashboard/stats')
+  return getCompanyOverview()
 }
 
-// 获取项目状态分布
 export function getProjectStatusDistribution() {
-  return request.get('/v1/dashboard/project-status')
+  return request.get('/v1/dashboard/company-overview')
 }
 
-// 获取收支对比数据
 export function getIncomeExpenseComparison() {
-  return request.get('/v1/dashboard/income-expense')
-}
-
-// 获取待办事项
-export function getTodoList() {
-  return request.get('/v1/dashboard/todo')
+  return request.get('/v1/dashboard/receivable-monitor')
 }

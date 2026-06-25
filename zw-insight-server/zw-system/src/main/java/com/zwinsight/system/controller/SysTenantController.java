@@ -3,6 +3,8 @@ package com.zwinsight.system.controller;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.security.domain.SysTenant;
+import com.zwinsight.system.dto.TenantCreateRequest;
+import com.zwinsight.system.dto.TenantModulesRequest;
 import com.zwinsight.system.dto.TenantRenewRequest;
 import com.zwinsight.system.service.SysTenantService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,8 @@ public class SysTenantController {
 
     private final SysTenantService tenantService;
 
+    // ============ 基础 CRUD ============
+
     @GetMapping
     public R<PageResult<SysTenant>> page(
             @RequestParam(defaultValue = "1") int page,
@@ -39,8 +43,8 @@ public class SysTenantController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody SysTenant tenant) {
-        tenantService.save(tenant);
+    public R<Void> create(@RequestBody TenantCreateRequest request) {
+        tenantService.createTenant(request);
         return R.ok();
     }
 
@@ -57,8 +61,48 @@ public class SysTenantController {
         return R.ok();
     }
 
+    // ============ 增强 API ============
+
+    /**
+     * 停用租户
+     */
+    @PostMapping("/{id}/disable")
+    public R<Void> disable(@PathVariable Long id) {
+        tenantService.disableTenant(id);
+        return R.ok();
+    }
+
+    /**
+     * 启用租户
+     */
+    @PostMapping("/{id}/enable")
+    public R<Void> enable(@PathVariable Long id) {
+        tenantService.enableTenant(id);
+        return R.ok();
+    }
+
+    /**
+     * 续期
+     */
+    @PostMapping("/{id}/renew")
+    public R<Void> renew(@PathVariable Long id, @RequestBody TenantRenewRequest request) {
+        tenantService.renewTenant(id, request.getDurationDays());
+        return R.ok();
+    }
+
+    /**
+     * 配置功能模块权限
+     */
+    @PutMapping("/{id}/modules")
+    public R<Void> updateModules(@PathVariable Long id, @RequestBody TenantModulesRequest request) {
+        tenantService.updateModules(id, request.getModules());
+        return R.ok();
+    }
+
+    // ============ 旧版兼容接口 ============
+
     @PostMapping("/renew")
-    public R<Void> renew(@RequestBody TenantRenewRequest request) {
+    public R<Void> renewLegacy(@RequestBody TenantRenewRequest request) {
         tenantService.renew(request.getTenantId(), request.getDurationDays());
         return R.ok();
     }

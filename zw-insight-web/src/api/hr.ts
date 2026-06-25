@@ -2,27 +2,27 @@ import request from '@/utils/request'
 
 // ======================== 入离职管理 ========================
 export function getHrEntryPage(params: any) {
-  return request.get('/v1/hr/entry/page', { params })
+  return request.get('/v1/hr/entry-apply/page', { params })
 }
 
 export function getHrEntryDetail(id: number) {
-  return request.get(`/v1/hr/entry/${id}`)
+  return request.get(`/v1/hr/entry-apply/${id}`)
 }
 
 export function createHrEntry(data: any) {
-  return request.post('/v1/hr/entry', data)
+  return request.post('/v1/hr/entry-apply', data)
 }
 
 export function updateHrEntry(data: any) {
-  return request.put('/v1/hr/entry', data)
+  return request.put(`/v1/hr/entry-apply/${data.id}`, data)
 }
 
 export function deleteHrEntry(id: number) {
-  return request.delete(`/v1/hr/entry/${id}`)
+  return request.delete(`/v1/hr/entry-apply/${id}`)
 }
 
 export function submitHrEntry(id: number) {
-  return request.put(`/v1/hr/entry/${id}/submit`)
+  return request.put(`/v1/hr/entry-apply/${id}/submit`)
 }
 
 // ======================== 转正 ========================
@@ -35,7 +35,7 @@ export function createHrRegular(data: any) {
 }
 
 export function updateHrRegular(data: any) {
-  return request.put('/v1/hr/regular', data)
+  return request.put(`/v1/hr/regular/${data.id}`, data)
 }
 
 export function deleteHrRegular(id: number) {
@@ -52,7 +52,7 @@ export function createHrTransfer(data: any) {
 }
 
 export function updateHrTransfer(data: any) {
-  return request.put('/v1/hr/transfer', data)
+  return request.put(`/v1/hr/transfer/${data.id}`, data)
 }
 
 export function deleteHrTransfer(id: number) {
@@ -69,7 +69,7 @@ export function createSealApply(data: any) {
 }
 
 export function updateSealApply(data: any) {
-  return request.put('/v1/hr/seal-apply', data)
+  return request.put(`/v1/hr/seal-apply/${data.id}`, data)
 }
 
 export function deleteSealApply(id: number) {
@@ -86,7 +86,7 @@ export function createOfficeSupply(data: any) {
 }
 
 export function updateOfficeSupply(data: any) {
-  return request.put('/v1/hr/office-supply', data)
+  return request.put(`/v1/hr/office-supply/${data.id}`, data)
 }
 
 export function deleteOfficeSupply(id: number) {
@@ -111,7 +111,7 @@ export function createVehicle(data: any) {
 }
 
 export function updateVehicle(data: any) {
-  return request.put('/v1/hr/vehicle', data)
+  return request.put(`/v1/hr/vehicle/${data.id}`, data)
 }
 
 export function deleteVehicle(id: number) {

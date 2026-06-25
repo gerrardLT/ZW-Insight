@@ -28,6 +28,10 @@
             <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-project</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-workflow</artifactId>
+        </dependency>
 
         <!-- Spring Boot Web -->
         <dependency>

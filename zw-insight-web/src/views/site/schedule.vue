@@ -48,12 +48,17 @@
         <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
       </div>
 
-      <!-- 甘特图占位区域 -->
+      <!-- 甘特图视图 -->
       <el-card shadow="never" style="margin-top: 16px">
         <template #header><span>甘特图视图</span></template>
-        <div class="gantt-placeholder">
-          <el-empty description="甘特图组件开发中，后续集成第三方甘特图库" />
-        </div>
+        <GanttChart
+          v-if="ganttProjectId"
+          ref="ganttRef"
+          :project-id="ganttProjectId"
+          :editable="true"
+          @task-updated="handleGanttTaskUpdated"
+        />
+        <el-empty v-else description="请先选择项目以查看甘特图" />
       </el-card>
     </el-card>
 
@@ -79,26 +84,30 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getSchedulePage, createSchedule, updateSchedule, deleteSchedule } from '@/api/site'
+import GanttChart from '@/components/GanttChart.vue'
 
 const formRef = ref<FormInstance>()
+const ganttRef = ref<InstanceType<typeof GanttChart>>()
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
+const ganttProjectId = ref<number>(0)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, projectName: '', taskName: '' })
 const formData = ref({ id: undefined as number | undefined, taskName: '', projectName: '', planStartDate: '', planEndDate: '', responsible: '', progress: 0 })
 const formRules = { taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }], planStartDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }], planEndDate: [{ required: true, message: '请选择完成日期', trigger: 'change' }] }
 
-async function loadData() { loading.value = true; try { const res: any = await getSchedulePage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
+async function loadData() { loading.value = true; try { const res: any = await getSchedulePage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0; /* 从列表中提取 projectId 用于甘特图 */ if (tableData.value.length > 0 && tableData.value[0].projectId) { ganttProjectId.value = tableData.value[0].projectId } } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, projectName: '', taskName: '' }; loadData() }
 function handleAdd() { isEdit.value = false; formData.value = { id: undefined, taskName: '', projectName: '', planStartDate: '', planEndDate: '', responsible: '', progress: 0 }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
-async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateSchedule(formData.value) : await createSchedule(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
-async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteSchedule(row.id); ElMessage.success('删除成功'); loadData() }
+async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateSchedule(formData.value) : await createSchedule(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData(); ganttRef.value?.refresh() } finally { submitLoading.value = false } }
+async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteSchedule(row.id); ElMessage.success('删除成功'); loadData(); ganttRef.value?.refresh() }
+function handleGanttTaskUpdated(_id: number) { loadData() }
 onMounted(() => { loadData() })
 </script>
 
@@ -106,5 +115,4 @@ onMounted(() => { loadData() })
 .schedule-container { padding: 16px; }
 .table-toolbar { margin-bottom: 16px; }
 .pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
-.gantt-placeholder { min-height: 200px; display: flex; align-items: center; justify-content: center; }
 </style>

@@ -14,7 +14,7 @@ export function createInvoiceApply(data: any) {
 }
 
 export function updateInvoiceApply(data: any) {
-  return request.put('/v1/finance/invoice-apply', data)
+  return request.put(`/v1/finance/invoice-apply/${data.id}`, data)
 }
 
 export function deleteInvoiceApply(id: number) {
@@ -39,7 +39,7 @@ export function createPaymentReceived(data: any) {
 }
 
 export function updatePaymentReceived(data: any) {
-  return request.put('/v1/finance/payment-received', data)
+  return request.put(`/v1/finance/payment-received/${data.id}`, data)
 }
 
 export function deletePaymentReceived(id: number) {
@@ -60,7 +60,7 @@ export function createPaymentApply(data: any) {
 }
 
 export function updatePaymentApply(data: any) {
-  return request.put('/v1/finance/payment-apply', data)
+  return request.put(`/v1/finance/payment-apply/${data.id}`, data)
 }
 
 export function deletePaymentApply(id: number) {

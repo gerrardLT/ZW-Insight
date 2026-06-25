@@ -26,6 +26,15 @@ public class OwnerController {
         return R.ok(ownerService.page(page, size, ownerName, status));
     }
 
+    @GetMapping("/page")
+    public R<PageResult<BdOwner>> pageAlias(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String ownerName,
+            @RequestParam(required = false) Integer status) {
+        return page(page, size, ownerName, status);
+    }
+
     @GetMapping("/{id}")
     public R<BdOwner> getById(@PathVariable Long id) {
         return R.ok(ownerService.getById(id));

@@ -20,7 +20,7 @@ public class ConstructionLogController {
 
     private final ConstructionLogService logService;
 
-    @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizConstructionLog>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,

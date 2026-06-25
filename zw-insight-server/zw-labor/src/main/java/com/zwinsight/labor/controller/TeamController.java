@@ -18,6 +18,7 @@ public class TeamController {
     private final TeamService teamService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizTeam>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,

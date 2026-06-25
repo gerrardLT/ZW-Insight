@@ -18,6 +18,7 @@ public class MachineUsageRecordController {
     private final MachineUsageRecordService usageRecordService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizMachineUsageRecord>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -29,6 +30,19 @@ public class MachineUsageRecordController {
     @PostMapping
     public R<Void> save(@RequestBody BizMachineUsageRecord record) {
         usageRecordService.save(record);
+        return R.ok();
+    }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizMachineUsageRecord record) {
+        record.setId(id);
+        usageRecordService.update(record);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        usageRecordService.delete(id);
         return R.ok();
     }
 }

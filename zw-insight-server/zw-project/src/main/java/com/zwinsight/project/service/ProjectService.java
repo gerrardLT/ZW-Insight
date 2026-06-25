@@ -3,6 +3,7 @@ package com.zwinsight.project.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.file.service.SerialNumberService;
@@ -24,6 +25,7 @@ public class ProjectService {
 
     private final BizProjectMapper projectMapper;
     private final SerialNumberService serialNumberService;
+    private final ProjectMemberService memberService;
 
     /**
      * 分页查询
@@ -84,6 +86,12 @@ public class ProjectService {
         }
 
         projectMapper.insert(project);
+
+        // 自动将创建人添加为项目经理
+        Long currentUserId = SecurityContextHolder.getUserId();
+        if (currentUserId != null) {
+            memberService.addCreatorAsProjectManager(project.getId(), currentUserId, null);
+        }
     }
 
     /**

@@ -22,14 +22,29 @@ public class BizMachineContract extends BaseEntity {
     /** 合同编号 */
     private String contractCode;
 
+    /** 合同名称 */
+    private String contractName;
+
     /** 供应商ID */
     private Long supplierId;
 
     /** 供应商名称 */
     private String supplierName;
 
+    /** 设备名称 */
+    private String machineName;
+
+    /** 租赁方式（月租/台班/包月） */
+    private String rentalType;
+
     /** 签订日期 */
     private LocalDate signingDate;
+
+    /** 开始日期 */
+    private LocalDate startDate;
+
+    /** 结束日期 */
+    private LocalDate endDate;
 
     /** 关联预算ID */
     private Long budgetId;

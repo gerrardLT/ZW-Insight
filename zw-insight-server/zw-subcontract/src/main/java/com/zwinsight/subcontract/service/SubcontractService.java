@@ -2,6 +2,7 @@ package com.zwinsight.subcontract.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.common.exception.BusinessException;
@@ -65,6 +66,7 @@ public class SubcontractService {
         subcontractMapper.insert(contract);
     }
 
+    @BudgetCheck(category = "SUBCONTRACT")
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizSubcontract contract = subcontractMapper.selectById(id);
@@ -72,5 +74,25 @@ public class SubcontractService {
         if (!"DRAFT".equals(contract.getStatus())) throw new BusinessException("仅草稿状态可提交");
         contract.setStatus("EFFECTIVE");
         subcontractMapper.updateById(contract);
+    }
+
+    public BizSubcontract getById(Long id) {
+        BizSubcontract contract = subcontractMapper.selectById(id);
+        if (contract == null) throw new BusinessException("分包合同不存在");
+        return contract;
+    }
+
+    public void update(BizSubcontract contract) {
+        BizSubcontract existing = subcontractMapper.selectById(contract.getId());
+        if (existing == null) throw new BusinessException("分包合同不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        subcontractMapper.updateById(contract);
+    }
+
+    public void delete(Long id) {
+        BizSubcontract existing = subcontractMapper.selectById(id);
+        if (existing == null) throw new BusinessException("分包合同不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        subcontractMapper.deleteById(id);
     }
 }

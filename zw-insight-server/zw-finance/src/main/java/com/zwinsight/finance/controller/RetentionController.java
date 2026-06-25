@@ -26,6 +26,7 @@ public class RetentionController {
      * 分页查询质保金
      */
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizRetentionMoney>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,

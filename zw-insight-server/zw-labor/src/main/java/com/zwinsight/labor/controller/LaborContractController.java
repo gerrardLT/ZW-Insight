@@ -18,11 +18,17 @@ public class LaborContractController {
     private final LaborContractService laborContractService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizLaborContract>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId) {
         return R.ok(laborContractService.page(page, size, projectId));
+    }
+
+    @GetMapping("/{id}")
+    public R<BizLaborContract> getById(@PathVariable Long id) {
+        return R.ok(laborContractService.getById(id));
     }
 
     @PostMapping
@@ -31,7 +37,21 @@ public class LaborContractController {
         return R.ok();
     }
 
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizLaborContract contract) {
+        contract.setId(id);
+        laborContractService.update(contract);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        laborContractService.delete(id);
+        return R.ok();
+    }
+
     @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
         laborContractService.submit(id);
         return R.ok();

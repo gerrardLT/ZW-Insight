@@ -14,7 +14,7 @@ export function createMaterialInbound(data: any) {
 }
 
 export function updateMaterialInbound(data: any) {
-  return request.put('/v1/material/inbound', data)
+  return request.put(`/v1/material/inbound/${data.id}`, data)
 }
 
 export function deleteMaterialInbound(id: number) {
@@ -39,7 +39,7 @@ export function createMaterialOutbound(data: any) {
 }
 
 export function updateMaterialOutbound(data: any) {
-  return request.put('/v1/material/outbound', data)
+  return request.put(`/v1/material/outbound/${data.id}`, data)
 }
 
 export function deleteMaterialOutbound(id: number) {
@@ -64,7 +64,7 @@ export function createMaterialTransfer(data: any) {
 }
 
 export function updateMaterialTransfer(data: any) {
-  return request.put('/v1/material/transfer', data)
+  return request.put(`/v1/material/transfer/${data.id}`, data)
 }
 
 export function deleteMaterialTransfer(id: number) {
@@ -77,19 +77,19 @@ export function submitMaterialTransfer(id: number) {
 
 // ======================== 盘点管理 ========================
 export function getMaterialCheckPage(params: any) {
-  return request.get('/v1/material/check/page', { params })
+  return request.get('/v1/material/inventory/page', { params })
 }
 
 export function createMaterialCheck(data: any) {
-  return request.post('/v1/material/check', data)
+  return request.post('/v1/material/inventory', data)
 }
 
 export function updateMaterialCheck(data: any) {
-  return request.put('/v1/material/check', data)
+  return request.put(`/v1/material/inventory/${data.id}`, data)
 }
 
 export function deleteMaterialCheck(id: number) {
-  return request.delete(`/v1/material/check/${id}`)
+  return request.delete(`/v1/material/inventory/${id}`)
 }
 
 // ======================== 库存查询 ========================

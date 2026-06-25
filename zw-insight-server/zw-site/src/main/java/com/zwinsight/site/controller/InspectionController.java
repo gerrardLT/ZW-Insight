@@ -20,7 +20,7 @@ public class InspectionController {
 
     private final InspectionService inspectionService;
 
-    @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizInspection>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,

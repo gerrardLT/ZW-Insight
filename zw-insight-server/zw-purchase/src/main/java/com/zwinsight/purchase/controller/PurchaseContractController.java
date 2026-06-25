@@ -21,6 +21,7 @@ public class PurchaseContractController {
     private final PurchaseContractService purchaseContractService;
 
     @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizPurchaseContract>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -48,8 +49,15 @@ public class PurchaseContractController {
     }
 
     @PostMapping("/{id}/submit")
+    @PutMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
         purchaseContractService.submit(id);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        purchaseContractService.delete(id);
         return R.ok();
     }
 

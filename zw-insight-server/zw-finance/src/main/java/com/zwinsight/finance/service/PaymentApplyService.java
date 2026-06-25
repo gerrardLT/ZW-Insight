@@ -2,6 +2,7 @@ package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
@@ -53,8 +54,48 @@ public class PaymentApplyService {
     }
 
     /**
+     * 根据ID查询
+     */
+    public BizPaymentApply getById(Long id) {
+        BizPaymentApply paymentApply = paymentApplyMapper.selectById(id);
+        if (paymentApply == null) {
+            throw new BusinessException("付款申请不存在");
+        }
+        return paymentApply;
+    }
+
+    /**
+     * 更新付款申请
+     */
+    public void update(BizPaymentApply paymentApply) {
+        BizPaymentApply existing = paymentApplyMapper.selectById(paymentApply.getId());
+        if (existing == null) {
+            throw new BusinessException("付款申请不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可编辑");
+        }
+        paymentApplyMapper.updateById(paymentApply);
+    }
+
+    /**
+     * 删除付款申请
+     */
+    public void delete(Long id) {
+        BizPaymentApply existing = paymentApplyMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("付款申请不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        paymentApplyMapper.deleteById(id);
+    }
+
+    /**
      * 提交付款申请（校验paymentAmount≤累计结算-已付，审批通过回写项目totalExpense+合同cumulativePaid）
      */
+    @BudgetCheck(category = "")
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizPaymentApply paymentApply = paymentApplyMapper.selectById(id);

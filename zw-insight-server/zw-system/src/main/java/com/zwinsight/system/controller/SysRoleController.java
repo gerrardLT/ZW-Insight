@@ -3,7 +3,9 @@ package com.zwinsight.system.controller;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.system.domain.SysRole;
+import com.zwinsight.system.domain.dto.DataScopeUpdateRequest;
 import com.zwinsight.system.service.SysRoleService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -55,6 +57,19 @@ public class SysRoleController {
     @PutMapping("/{id}/menus")
     public R<Void> assignMenus(@PathVariable Long id, @RequestBody List<Long> menuIds) {
         roleService.assignMenus(id, menuIds);
+        return R.ok();
+    }
+
+    /**
+     * 配置角色数据权限范围
+     * <p>
+     * 仅系统管理员可操作。dataScope 必须为合法的枚举值：
+     * ALL / DEPT_AND_CHILDREN / DEPT / PROJECT / SELF
+     */
+    @PutMapping("/{id}/data-scope")
+    public R<Void> updateDataScope(@PathVariable Long id,
+                                   @Valid @RequestBody DataScopeUpdateRequest request) {
+        roleService.updateDataScope(id, request.getDataScope());
         return R.ok();
     }
 }

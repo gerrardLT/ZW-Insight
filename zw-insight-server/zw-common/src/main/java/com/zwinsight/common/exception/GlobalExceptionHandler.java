@@ -1,5 +1,6 @@
 package com.zwinsight.common.exception;
 
+import com.zwinsight.common.reference.ReferenceExistsException;
 import com.zwinsight.common.result.R;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -22,6 +25,30 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * 引用存在异常 - 删除操作被引用校验拦截
+     */
+    @ExceptionHandler(ReferenceExistsException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public R<Map<String, Object>> handleReferenceExistsException(ReferenceExistsException e, HttpServletRequest request) {
+        log.warn("引用校验拦截删除 [{}]: {}", request.getRequestURI(), e.getMessage());
+        Map<String, Object> data = new HashMap<>();
+        data.put("entityName", e.getEntityName());
+        data.put("totalCount", e.getTotalCount());
+        data.put("references", e.getReferences());
+        return new R<>(400, e.getMessage(), data);
+    }
+
+    /**
+     * 数据权限异常 — 无法获取用户上下文或权限校验失败
+     */
+    @ExceptionHandler(DataPermissionException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public R<Void> handleDataPermissionException(DataPermissionException e, HttpServletRequest request) {
+        log.warn("数据权限异常 [{}]: {}", request.getRequestURI(), e.getMessage());
+        return R.fail(e.getCode(), e.getMessage());
+    }
 
     /**
      * 业务异常

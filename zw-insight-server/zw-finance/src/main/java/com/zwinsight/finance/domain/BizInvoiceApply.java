@@ -18,8 +18,14 @@ public class BizInvoiceApply extends BaseEntity {
     /** 项目ID */
     private Long projectId;
 
+    /** 项目名称（冗余展示字段） */
+    private String projectName;
+
     /** 合同ID */
     private Long contractId;
+
+    /** 申请日期 */
+    private String applyDate;
 
     /** 发票类型（SPECIAL/NORMAL） */
     private String invoiceType;

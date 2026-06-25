@@ -32,6 +32,16 @@ public class ProjectController {
         return R.ok(projectService.page(page, size, projectName, status, projectType));
     }
 
+    @GetMapping("/page")
+    public R<PageResult<BizProject>> pageAlias(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String projectType) {
+        return page(page, size, projectName, status, projectType);
+    }
+
     @GetMapping("/{id}")
     public R<BizProject> getById(@PathVariable Long id) {
         return R.ok(projectService.getById(id));
@@ -66,6 +76,11 @@ public class ProjectController {
     public R<Void> submit(@PathVariable Long id) {
         projectService.submit(id);
         return R.ok();
+    }
+
+    @PutMapping("/{id}/submit")
+    public R<Void> submitByPut(@PathVariable Long id) {
+        return submit(id);
     }
 
     @GetMapping("/{id}/members")
