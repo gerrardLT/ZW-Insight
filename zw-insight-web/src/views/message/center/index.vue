@@ -13,8 +13,15 @@
         <el-button type="primary" size="small" @click="handleMarkAllRead" :disabled="unreadCount === 0">全部已读</el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="title" label="消息标题" min-width="200" show-overflow-tooltip />
+      <el-table :data="tableData" v-loading="loading" border :row-class-name="rowClassName">
+        <el-table-column prop="title" label="消息标题" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-tag v-if="isRemoteLoginMsg(row)" type="danger" size="small" effect="dark" class="alert-tag">
+              安全提醒
+            </el-tag>
+            <span :class="{ 'alert-title': isRemoteLoginMsg(row) }">{{ row.title }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="source" label="来源" width="120" />
         <el-table-column prop="createTime" label="时间" width="170" />
         <el-table-column prop="isRead" label="状态" width="80" align="center">
@@ -24,9 +31,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleMarkRead(row)" :disabled="row.isRead">标记已读</el-button>
+            <el-button v-if="isRemoteLoginMsg(row)" link type="warning" @click="goToDevices">查看设备</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -40,8 +48,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getUnreadMessages, getAllMessages, markAsRead, markAllAsRead, getUnreadCount } from '@/api/message'
+
+const router = useRouter()
 
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -80,6 +91,24 @@ function handleTabChange() {
   loadData()
 }
 
+/**
+ * 判断是否为异地登录安全提醒消息。
+ * 异地登录通知由后端以 messageType=SECURITY、businessType=LOGIN_LOCATION 写入站内消息。
+ */
+function isRemoteLoginMsg(row: any): boolean {
+  return row?.businessType === 'LOGIN_LOCATION' || row?.messageType === 'SECURITY'
+}
+
+/** 异地登录提醒行高亮 */
+function rowClassName({ row }: { row: any }): string {
+  return isRemoteLoginMsg(row) ? 'alert-row' : ''
+}
+
+/** 跳转到登录设备管理页 */
+function goToDevices() {
+  router.push('/user/devices')
+}
+
 async function handleMarkRead(row: any) {
   await markAsRead(row.id)
   ElMessage.success('已标记为已读')
@@ -109,4 +138,7 @@ onMounted(() => {
 .card-header .el-tabs { flex: 1; }
 .tab-badge { margin-left: 6px; }
 .pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.alert-tag { margin-right: 6px; }
+.alert-title { color: var(--el-color-danger); font-weight: 600; }
+:deep(.alert-row) { background-color: var(--el-color-danger-light-9); }
 </style>

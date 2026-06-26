@@ -1,6 +1,7 @@
 {
   "pages": [
     { "path": "pages/login/index", "style": { "navigationBarTitleText": "登录", "navigationStyle": "custom" } },
+    { "path": "pages/login/forgot-password", "style": { "navigationBarTitleText": "找回密码", "navigationStyle": "custom" } },
     { "path": "pages/home/index", "style": { "navigationBarTitleText": "首页" } },
     { "path": "pages/workbench/index", "style": { "navigationBarTitleText": "工作台" } },
     { "path": "pages/approval/index", "style": { "navigationBarTitleText": "我的审批" } },
@@ -18,7 +19,8 @@
     { "path": "pages/finance/reimbursement", "style": { "navigationBarTitleText": "项目报销" } },
     { "path": "pages/project/archive", "style": { "navigationBarTitleText": "项目档案" } },
     { "path": "pages/mine/index", "style": { "navigationBarTitleText": "我的" } },
-    { "path": "pages/mine/password", "style": { "navigationBarTitleText": "修改密码" } }
+    { "path": "pages/mine/password", "style": { "navigationBarTitleText": "修改密码" } },
+    { "path": "pages/mine/shortcut-edit", "style": { "navigationBarTitleText": "编辑快捷入口" } }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",

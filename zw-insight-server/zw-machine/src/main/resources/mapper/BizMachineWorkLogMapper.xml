@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwinsight.machine.mapper.BizMachineWorkLogMapper">
+
+    <!-- 批量更新工作日志的结算状态 -->
+    <update id="batchUpdateSettlementStatus">
+        UPDATE biz_machine_work_log
+        SET settlement_status = #{status}
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+</mapper>

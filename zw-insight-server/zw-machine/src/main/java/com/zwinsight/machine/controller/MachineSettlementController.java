@@ -23,9 +23,9 @@ public class MachineSettlementController {
      * 创建结算单
      */
     @PostMapping
-    public R<Long> createSettlement(@Valid @RequestBody MachineSettlementCreateRequest request) {
-        Long id = machineWorkSettlementService.createSettlement(request);
-        return R.ok(id);
+    public R<MachineSettlementCreateResult> createSettlement(@Valid @RequestBody MachineSettlementCreateRequest request) {
+        MachineSettlementCreateResult result = machineWorkSettlementService.createSettlement(request);
+        return R.ok(result);
     }
 
     /**

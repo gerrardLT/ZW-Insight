@@ -41,6 +41,12 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
+        <!-- Spring Boot Actuator + Micrometer（健康监控指标） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- EasyExcel -->
         <dependency>
             <groupId>com.alibaba</groupId>

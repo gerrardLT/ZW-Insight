@@ -17,7 +17,6 @@ public class LaborSettlementController {
 
     private final LaborSettlementService settlementService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizLaborSettlement>> page(
             @RequestParam(defaultValue = "1") int page,

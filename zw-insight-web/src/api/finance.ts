@@ -25,6 +25,16 @@ export function submitInvoiceApply(id: number) {
   return request.put(`/v1/finance/invoice-apply/${id}/submit`)
 }
 
+// ======================== 收票登记 ========================
+// 后端 InvoiceReceivedController 仅提供分页查询(GET 根路径)与新增(POST)两个端点
+export function getInvoiceReceivedPage(params: any) {
+  return request.get('/v1/finance/invoice-received', { params })
+}
+
+export function createInvoiceReceived(data: any) {
+  return request.post('/v1/finance/invoice-received', data)
+}
+
 // ======================== 回款登记 ========================
 export function getPaymentReceivedPage(params: any) {
   return request.get('/v1/finance/payment-received/page', { params })

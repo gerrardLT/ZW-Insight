@@ -133,4 +133,104 @@ public class SupplierQuotationService {
         Page<BizQuotation> result = quotationMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);
     }
+
+    /**
+     * 公开报价提交（免登录场景）
+     * <p>
+     * 与 submitQuotation 不同，公开询价不需要供应商被预先邀请，
+     * 而是自动将供应商关联到询价单中。
+     *
+     * @param supplierId   供应商ID
+     * @param supplierName 供应商名称
+     * @param inquiryId    询价单ID
+     * @param details      报价明细列表
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void submitPublicQuotation(Long supplierId, String supplierName, Long inquiryId, List<BizQuotationDetail> details) {
+        // 1. 校验询价单存在
+        BizInquiry inquiry = inquiryMapper.selectById(inquiryId);
+        if (inquiry == null) {
+            throw new BusinessException("询价单不存在");
+        }
+
+        // 2. 校验询价单是公开询价
+        if (!"PUBLIC".equals(inquiry.getInviteMode())) {
+            throw new BusinessException("该询价单非公开询价");
+        }
+
+        // 3. 校验询价单状态允许报价
+        if (!"PUBLISHED".equals(inquiry.getStatus()) && !"OPEN".equals(inquiry.getStatus())
+                && !"QUOTED".equals(inquiry.getStatus())) {
+            throw new BusinessException("当前询价单状态不允许报价");
+        }
+
+        // 4. 校验截止时间
+        if (inquiry.getDeadline() != null) {
+            if (LocalDateTime.now().isAfter(inquiry.getDeadline())) {
+                throw new BusinessException("报价已截止");
+            }
+        } else if (inquiry.getPublishTime() != null) {
+            LocalDateTime fallbackDeadline = inquiry.getPublishTime().plusDays(7);
+            if (LocalDateTime.now().isAfter(fallbackDeadline)) {
+                throw new BusinessException("报价已截止");
+            }
+        }
+
+        // 5. 校验是否重复报价
+        LambdaQueryWrapper<BizQuotation> dupWrapper = new LambdaQueryWrapper<>();
+        dupWrapper.eq(BizQuotation::getInquiryId, inquiryId)
+                .eq(BizQuotation::getSupplierId, supplierId)
+                .eq(BizQuotation::getStatus, "SUBMITTED");
+        Long dupCount = quotationMapper.selectCount(dupWrapper);
+        if (dupCount > 0) {
+            throw new BusinessException("您已对该询价提交过报价，不可重复提交");
+        }
+
+        // 6. 自动关联供应商到询价（公开询价不需预先邀请）
+        LambdaQueryWrapper<BizInquirySupplier> supplierWrapper = new LambdaQueryWrapper<>();
+        supplierWrapper.eq(BizInquirySupplier::getSupplierId, supplierId)
+                .eq(BizInquirySupplier::getInquiryId, inquiryId);
+        Long supplierCount = inquirySupplierMapper.selectCount(supplierWrapper);
+        if (supplierCount == 0) {
+            BizInquirySupplier inquirySupplier = new BizInquirySupplier();
+            inquirySupplier.setInquiryId(inquiryId);
+            inquirySupplier.setSupplierId(supplierId);
+            inquirySupplier.setSupplierName(supplierName);
+            inquirySupplierMapper.insert(inquirySupplier);
+        }
+
+        // 7. 计算报价总额
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (BizQuotationDetail detail : details) {
+            if (detail.getTotalPrice() != null) {
+                totalAmount = totalAmount.add(detail.getTotalPrice());
+            } else if (detail.getUnitPrice() != null) {
+                totalAmount = totalAmount.add(detail.getUnitPrice());
+            }
+        }
+
+        // 8. 保存报价主表
+        BizQuotation quotation = new BizQuotation();
+        quotation.setInquiryId(inquiryId);
+        quotation.setSupplierId(supplierId);
+        quotation.setSupplierName(supplierName);
+        quotation.setTotalAmount(totalAmount);
+        quotation.setStatus("SUBMITTED");
+        quotation.setSubmitTime(LocalDateTime.now());
+        quotationMapper.insert(quotation);
+
+        // 9. 保存报价明细
+        for (BizQuotationDetail detail : details) {
+            detail.setQuotationId(quotation.getId());
+            quotationDetailMapper.insert(detail);
+        }
+
+        // 10. 更新询价单状态为 QUOTED
+        if ("PUBLISHED".equals(inquiry.getStatus()) || "OPEN".equals(inquiry.getStatus())) {
+            inquiry.setStatus("QUOTED");
+            inquiryMapper.updateById(inquiry);
+        }
+
+        log.info("公开报价提交成功，供应商[{}], 询价单ID: {}, 报价总额: {}", supplierName, inquiryId, totalAmount);
+    }
 }

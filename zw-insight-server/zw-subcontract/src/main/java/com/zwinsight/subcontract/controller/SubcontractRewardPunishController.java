@@ -17,7 +17,6 @@ public class SubcontractRewardPunishController {
 
     private final SubcontractRewardPunishService rewardPunishService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizSubcontractRewardPunish>> page(
             @RequestParam(defaultValue = "1") int page,

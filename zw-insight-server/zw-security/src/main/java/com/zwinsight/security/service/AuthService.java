@@ -6,10 +6,12 @@ import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.security.domain.SysTenant;
 import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.dto.CaptchaVO;
+import com.zwinsight.security.dto.DeviceInfo;
 import com.zwinsight.security.dto.LoginRequest;
 import com.zwinsight.security.dto.LoginResponse;
 import com.zwinsight.security.mapper.SysTenantMapper;
 import com.zwinsight.security.mapper.SysUserMapper;
+import com.zwinsight.security.util.DeviceInfoResolver;
 import com.zwinsight.security.util.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,8 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final CaptchaService captchaService;
     private final RedisUtils redisUtils;
+    private final DeviceManagerService deviceManagerService;
+    private final LoginLocationService loginLocationService;
 
     private static final BCryptPasswordEncoder ENCODER = new BCryptPasswordEncoder();
     private static final String TOKEN_PREFIX = "token:";
@@ -45,31 +49,39 @@ public class AuthService {
     /**
      * 统一登录方法，支持密码登录和短信验证码登录
      *
-     * @param request  登录请求
-     * @param clientIp 客户端 IP 地址
+     * @param request    登录请求
+     * @param clientIp   客户端 IP 地址
+     * @param deviceInfo 登录设备信息（用于设备记录 / 异地检测），可为空
      * @return 登录响应（包含 Token 和用户信息）
      */
-    public LoginResponse login(LoginRequest request, String clientIp) {
+    public LoginResponse login(LoginRequest request, String clientIp, DeviceInfo deviceInfo) {
         String loginType = request.getEffectiveLoginType();
 
         if ("SMS".equals(loginType)) {
-            return loginBySms(request);
+            return loginBySms(request, clientIp, deviceInfo);
         } else {
-            return loginByPassword(request, clientIp);
+            return loginByPassword(request, clientIp, deviceInfo);
         }
+    }
+
+    /**
+     * 兼容仅带 clientIp 的调用（无显式设备信息）。
+     */
+    public LoginResponse login(LoginRequest request, String clientIp) {
+        return login(request, clientIp, null);
     }
 
     /**
      * 兼容旧版无 clientIp 参数的调用
      */
     public LoginResponse login(LoginRequest request) {
-        return login(request, null);
+        return login(request, null, null);
     }
 
     /**
      * 短信验证码登录
      */
-    private LoginResponse loginBySms(LoginRequest request) {
+    private LoginResponse loginBySms(LoginRequest request, String clientIp, DeviceInfo deviceInfo) {
         String phone = request.getPhone();
         String smsCode = request.getSmsCode();
 
@@ -105,14 +117,14 @@ public class AuthService {
         Long tenantId = user.getTenantId();
         SysTenant tenant = checkTenantExpiry(tenantId);
 
-        // 6. 生成 Token 和响应
-        return buildLoginResponse(user, tenant);
+        // 6. 生成 Token 和响应（含设备记录 + 异地检测）
+        return buildLoginResponse(user, tenant, clientIp, deviceInfo);
     }
 
     /**
      * 密码登录（含图形验证码校验和 IP 锁定）
      */
-    private LoginResponse loginByPassword(LoginRequest request, String clientIp) {
+    private LoginResponse loginByPassword(LoginRequest request, String clientIp, DeviceInfo deviceInfo) {
         // 1. 检查 IP 锁定
         captchaService.checkIpLock(clientIp);
 
@@ -186,8 +198,8 @@ public class AuthService {
         Long tenantId = user.getTenantId();
         SysTenant tenant = checkTenantExpiry(tenantId);
 
-        // 9. 生成 Token 和响应
-        LoginResponse response = buildLoginResponse(user, tenant);
+        // 9. 生成 Token 和响应（含设备记录 + 异地检测）
+        LoginResponse response = buildLoginResponse(user, tenant, clientIp, deviceInfo);
 
         // 10. 清除失败计数
         redisUtils.delete(failKey);
@@ -257,7 +269,7 @@ public class AuthService {
         return tenant;
     }
 
-    private LoginResponse buildLoginResponse(SysUser user, SysTenant tenant) {
+    private LoginResponse buildLoginResponse(SysUser user, SysTenant tenant, String clientIp, DeviceInfo deviceInfo) {
         Long tenantId = user.getTenantId();
         String token = jwtUtils.generateToken(user.getId(), tenantId, user.getUsername());
         redisUtils.set(TOKEN_PREFIX + token, user.getId().toString(), jwtUtils.getExpiration(), TimeUnit.MILLISECONDS);
@@ -275,7 +287,31 @@ public class AuthService {
         response.setRoles(roles);
         response.setPermissions(permissions);
 
+        // 设备记录 + 异地登录检测（安全增强，失败不阻断登录主流程）
+        recordDeviceAndDetectLocation(user.getId(), clientIp, deviceInfo, token);
+
         return response;
+    }
+
+    /**
+     * 记录登录设备并进行异地登录检测。
+     *
+     * <p>顺序约定（见 {@link LoginLocationService#detectAndNotify}）：必须先调用
+     * {@code detectAndNotify}，再调用 {@code recordLogin}，以保证"上次登录地"查询命中的是
+     * 上一次登录记录而非本次。整个过程包裹在 try-catch 中，设备记录/检测失败仅记录日志，
+     * 不影响登录主流程。</p>
+     */
+    private void recordDeviceAndDetectLocation(Long userId, String clientIp, DeviceInfo deviceInfo, String token) {
+        try {
+            String deviceDesc = DeviceInfoResolver.describe(deviceInfo);
+            // 1. 异地登录检测（必须在 recordLogin 之前）
+            loginLocationService.detectAndNotify(userId, clientIp, deviceDesc);
+            // 2. 记录本次登录设备（含归属地）
+            String location = loginLocationService.resolveLocation(clientIp);
+            deviceManagerService.recordLogin(userId, deviceInfo, token, clientIp, location);
+        } catch (Exception e) {
+            log.warn("[LOGIN] 登录设备记录/异地检测异常: userId={}, ip={}", userId, clientIp, e);
+        }
     }
 
     private void incrementFailCount(String key) {

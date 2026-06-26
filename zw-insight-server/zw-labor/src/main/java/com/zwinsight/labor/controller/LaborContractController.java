@@ -17,7 +17,6 @@ public class LaborContractController {
 
     private final LaborContractService laborContractService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizLaborContract>> page(
             @RequestParam(defaultValue = "1") int page,

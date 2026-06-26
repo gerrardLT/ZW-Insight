@@ -92,6 +92,9 @@
         <el-form-item label="开票金额" prop="invoiceAmount">
           <el-input-number v-model="formData.invoiceAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
+        <el-form-item label="税率">
+          <TaxRateSelector v-model="formData.taxRate" />
+        </el-form-item>
         <el-form-item label="发票类型">
           <el-select v-model="formData.invoiceType" style="width: 100%">
             <el-option label="增值税专用发票" value="增值税专用发票" />
@@ -119,6 +122,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getInvoiceApplyPage, createInvoiceApply, deleteInvoiceApply, submitInvoiceApply } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import TaxRateSelector from '@/components/TaxRateSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -138,6 +142,7 @@ const queryParams = ref({
 const formData = ref({
   projectId: undefined as number | undefined,
   invoiceAmount: 0,
+  taxRate: undefined as number | undefined,
   invoiceType: '增值税专用发票',
   applyDate: '',
   remark: ''
@@ -180,7 +185,7 @@ function handleReset() {
 }
 
 function handleAdd() {
-  formData.value = { projectId: undefined, invoiceAmount: 0, invoiceType: '增值税专用发票', applyDate: '', remark: '' }
+  formData.value = { projectId: undefined, invoiceAmount: 0, taxRate: undefined, invoiceType: '增值税专用发票', applyDate: '', remark: '' }
   dialogVisible.value = true
 }
 

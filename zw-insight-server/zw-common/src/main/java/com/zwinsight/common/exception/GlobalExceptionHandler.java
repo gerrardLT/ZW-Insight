@@ -5,6 +5,7 @@ import com.zwinsight.common.result.R;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -48,6 +49,16 @@ public class GlobalExceptionHandler {
     public R<Void> handleDataPermissionException(DataPermissionException e, HttpServletRequest request) {
         log.warn("数据权限异常 [{}]: {}", request.getRequestURI(), e.getMessage());
         return R.fail(e.getCode(), e.getMessage());
+    }
+
+    /**
+     * 操作二次确认异常 — 返回真实 HTTP 状态码（449 需要二次确认 / 403 密码错误 / 423 临时锁定），
+     * 以便前端直接依据 HTTP 状态码区分二次确认场景（449 触发密码输入对话框）。
+     */
+    @ExceptionHandler(SecondaryConfirmException.class)
+    public ResponseEntity<R<Void>> handleSecondaryConfirmException(SecondaryConfirmException e, HttpServletRequest request) {
+        log.warn("二次确认拦截 [{}] status={}: {}", request.getRequestURI(), e.getStatus(), e.getMessage());
+        return ResponseEntity.status(e.getStatus()).body(R.fail(e.getStatus(), e.getMessage()));
     }
 
     /**

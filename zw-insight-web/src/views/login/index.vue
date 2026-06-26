@@ -21,6 +21,9 @@
             登 录
           </el-button>
         </el-form-item>
+        <div class="login-extra">
+          <el-link type="primary" :underline="false" @click="goForgotPassword">忘记密码？</el-link>
+        </div>
       </el-form>
     </el-card>
   </div>
@@ -95,6 +98,10 @@ async function handleLogin() {
 onMounted(() => {
   refreshCaptcha()
 })
+
+function goForgotPassword() {
+  router.push('/forgot-password')
+}
 </script>
 
 <style scoped>
@@ -126,5 +133,11 @@ onMounted(() => {
   cursor: pointer;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
+}
+.login-extra {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
 }
 </style>

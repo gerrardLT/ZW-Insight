@@ -1,6 +1,8 @@
 package com.zwinsight.purchase.portal.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.zwinsight.common.desensitize.Desensitize;
+import com.zwinsight.common.desensitize.DesensitizeType;
 import lombok.Data;
 
 import java.io.Serial;
@@ -31,6 +33,7 @@ public class SysSupplierAccount implements Serializable {
     /**
      * 手机号
      */
+    @Desensitize(type = DesensitizeType.PHONE)
     private String phone;
 
     /**

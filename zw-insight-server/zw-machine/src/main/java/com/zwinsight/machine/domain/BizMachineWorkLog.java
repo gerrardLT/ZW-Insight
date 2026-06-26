@@ -36,4 +36,7 @@ public class BizMachineWorkLog extends BaseEntity {
 
     /** 状态（DRAFT-草稿/SETTLED-已结算） */
     private String status;
+
+    /** 结算状态（UNSETTLED-未结算/SETTLED-已结算） */
+    private String settlementStatus;
 }

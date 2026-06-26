@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * 收票登记实体
@@ -32,6 +33,12 @@ public class BizInvoiceReceived extends BaseEntity {
 
     /** 发票金额 */
     private BigDecimal invoiceAmount;
+
+    /** 税率(%)，引用税率字典或手动输入 */
+    private BigDecimal taxRate;
+
+    /** 收票日期（业务日期，用于封账校验） */
+    private LocalDate invoiceDate;
 
     /** 状态（APPROVED） */
     private String status;

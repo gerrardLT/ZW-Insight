@@ -2,6 +2,7 @@ package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.finance.annotation.FinanceLockCheck;
 import com.zwinsight.finance.domain.BizPaymentReceived;
 import com.zwinsight.finance.service.PaymentReceivedService;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,6 @@ public class PaymentReceivedController {
 
     private final PaymentReceivedService paymentReceivedService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizPaymentReceived>> page(
             @RequestParam(defaultValue = "1") int page,
@@ -32,12 +32,14 @@ public class PaymentReceivedController {
     }
 
     @PostMapping
+    @FinanceLockCheck(dateField = "receiveDate", operation = "新增")
     public R<Void> save(@RequestBody BizPaymentReceived paymentReceived) {
         paymentReceivedService.save(paymentReceived);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @FinanceLockCheck(dateField = "receiveDate", operation = "编辑")
     public R<Void> update(@PathVariable Long id, @RequestBody BizPaymentReceived paymentReceived) {
         paymentReceived.setId(id);
         paymentReceivedService.update(paymentReceived);

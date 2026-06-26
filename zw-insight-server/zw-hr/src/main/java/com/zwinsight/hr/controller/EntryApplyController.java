@@ -17,7 +17,6 @@ public class EntryApplyController {
 
     private final EntryApplyService entryApplyService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizEntryApply>> page(
             @RequestParam(defaultValue = "1") int page,

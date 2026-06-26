@@ -21,7 +21,6 @@ public class TransferController {
 
     private final MaterialTransferService transferService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMaterialTransfer>> page(
             @RequestParam(defaultValue = "1") int page,

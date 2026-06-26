@@ -17,7 +17,6 @@ public class LaborOutputReportController {
 
     private final LaborOutputReportService outputReportService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizLaborOutputReport>> page(
             @RequestParam(defaultValue = "1") int page,

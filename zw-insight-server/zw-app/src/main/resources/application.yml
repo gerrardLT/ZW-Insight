@@ -28,3 +28,26 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+# Spring Boot Actuator 监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+# 系统健康监控配置
+monitor:
+  # 磁盘统计路径（文件系统根路径）
+  disk-path: /
+  # 阈值告警配置（百分比）：超过阈值记录 WARN 日志
+  threshold:
+    cpu: 90
+    memory: 85
+    disk: 90

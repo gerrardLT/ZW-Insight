@@ -60,6 +60,8 @@
         <easyexcel.version>3.3.4</easyexcel.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.32</lombok.version>
+        <jqwik.version>1.9.1</jqwik.version>
+        <ip2region.version>2.7.0</ip2region.version>
     </properties>
 
     <dependencyManagement>
@@ -281,6 +283,21 @@
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct-processor</artifactId>
                 <version>${mapstruct.version}</version>
+            </dependency>
+
+            <!-- jqwik 属性测试 -->
+            <dependency>
+                <groupId>net.jqwik</groupId>
+                <artifactId>jqwik</artifactId>
+                <version>${jqwik.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- ip2region 本地 IP 归属地库（离线，避免依赖外部 API） -->
+            <dependency>
+                <groupId>org.lionsoul</groupId>
+                <artifactId>ip2region</artifactId>
+                <version>${ip2region.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -19,7 +19,6 @@ public class WorkOrderController {
 
     private final WorkOrderService workOrderService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizWorkOrder>> page(
             @RequestParam(defaultValue = "1") int page,

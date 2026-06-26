@@ -1,5 +1,6 @@
 <template>
   <view class="form-page">
+    <OfflineBanner />
     <!-- 项目选择 -->
     <view class="form-section">
       <view class="form-item" @click="showProjectPicker = true">
@@ -61,7 +62,7 @@
           <view class="picker-item" v-for="p in projects" :key="p.id" @click="selectProject(p)">
             <text>{{ p.projectName }}</text>
           </view>
-          <view class="empty" v-if="!projects.length"><text>暂无项目</text></view>
+          <view class="empty" v-if="!projects.length"><text>{{ projectEmptyTip }}</text></view>
         </scroll-view>
       </view>
     </view>
@@ -70,11 +71,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getProjectList, saveMaterialOutbound } from '@/api/common'
+import { saveMaterialOutbound } from '@/api/common'
+import OfflineBanner from '@/components/OfflineBanner.vue'
+import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
 const projects = ref<any[]>([])
+const projectEmptyTip = ref('暂无项目')
 
 const form = ref({
   projectId: null as number | null,
@@ -90,10 +94,10 @@ const form = ref({
 })
 
 onMounted(async () => {
-  try {
-    const res: any = await getProjectList({ page: 1, size: 100 })
-    projects.value = res.data?.records || []
-  } catch {}
+  // 在线优先 + 离线回退缓存（需求 4.2、4.8）
+  const res = await loadProjectList({ page: 1, size: 100 })
+  projects.value = res.records
+  projectEmptyTip.value = res.empty && res.fromCache ? NO_OFFLINE_DATA_TIP : '暂无项目'
 })
 
 function selectProject(p: any) {

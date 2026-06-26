@@ -1,6 +1,9 @@
 package com.zwinsight.archive.controller;
 
 import com.zwinsight.archive.service.ArchiveService;
+import com.zwinsight.archive.vo.OfficeSupplyArchiveVO;
+import com.zwinsight.archive.vo.OtherContractArchiveVO;
+import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -96,5 +99,38 @@ public class ArchiveController {
     @GetMapping("/vehicle/{vehicleId}")
     public R<Map<String, Object>> getVehicleArchive(@PathVariable Long vehicleId) {
         return R.ok(archiveService.getVehicleArchive(vehicleId));
+    }
+
+    /**
+     * 其它收入合同档案列表
+     */
+    @GetMapping("/other-income-contract")
+    public R<PageResult<OtherContractArchiveVO>> otherIncomeContractArchive(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword) {
+        return R.ok(archiveService.pageOtherContractArchive("OTHER_INCOME", page, size, keyword));
+    }
+
+    /**
+     * 其它支出合同档案列表
+     */
+    @GetMapping("/other-expense-contract")
+    public R<PageResult<OtherContractArchiveVO>> otherExpenseContractArchive(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword) {
+        return R.ok(archiveService.pageOtherContractArchive("OTHER_EXPENSE", page, size, keyword));
+    }
+
+    /**
+     * 办公用品档案列表
+     */
+    @GetMapping("/office-supply")
+    public R<PageResult<OfficeSupplyArchiveVO>> officeSupplyArchive(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword) {
+        return R.ok(archiveService.pageOfficeSupplyArchive(page, size, keyword));
     }
 }

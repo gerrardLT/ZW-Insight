@@ -17,7 +17,6 @@ public class PurchaseSettlementController {
 
     private final PurchaseSettlementService purchaseSettlementService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizPurchaseSettlement>> page(
             @RequestParam(defaultValue = "1") int page,

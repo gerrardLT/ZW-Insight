@@ -11,6 +11,12 @@ const constantRoutes: RouteRecordRaw[] = [
     meta: { title: '登录', hidden: true }
   },
   {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('@/views/login/forgot-password.vue'),
+    meta: { title: '找回密码', hidden: true }
+  },
+  {
     path: '/',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/dashboard',
@@ -20,6 +26,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
         meta: { title: '首页', icon: 'HomeFilled' }
+      },
+      {
+        path: 'project-dashboard',
+        name: 'ProjectDashboard',
+        component: () => import('@/views/dashboard/project-dashboard.vue'),
+        meta: { title: '项目看板', icon: 'DataAnalysis' }
       }
     ]
   },
@@ -79,10 +91,55 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '模板管理', icon: 'Files' }
       },
       {
+        path: 'print-template',
+        name: 'PrintTemplateManage',
+        component: () => import('@/views/system/print-template/index.vue'),
+        meta: { title: '打印模板', icon: 'Printer' }
+      },
+      {
         path: 'log',
         name: 'LogManage',
         component: () => import('@/views/system/log/index.vue'),
         meta: { title: '日志管理', icon: 'Document' }
+      },
+      {
+        path: 'serial-number',
+        name: 'SerialNumberManage',
+        component: () => import('@/views/system/serial-number/index.vue'),
+        meta: { title: '编号规则管理', icon: 'Odometer' }
+      },
+      {
+        path: 'backup',
+        name: 'BackupManage',
+        component: () => import('@/views/system/backup/index.vue'),
+        meta: { title: '数据备份', icon: 'FolderChecked' }
+      },
+      {
+        path: 'version',
+        name: 'VersionManage',
+        component: () => import('@/views/system/version/index.vue'),
+        meta: { title: '版本管理', icon: 'Tickets' }
+      },
+      {
+        path: 'monitor',
+        name: 'SystemMonitor',
+        component: () => import('@/views/system/monitor/index.vue'),
+        meta: { title: '系统监控', icon: 'Monitor' }
+      }
+    ]
+  },
+  // 个人中心
+  {
+    path: '/user',
+    component: () => import('@/layouts/DefaultLayout.vue'),
+    redirect: '/user/devices',
+    meta: { title: '个人中心', icon: 'User', hidden: true },
+    children: [
+      {
+        path: 'devices',
+        name: 'UserDevices',
+        component: () => import('@/views/user/devices.vue'),
+        meta: { title: '登录设备', icon: 'Monitor' }
       }
     ]
   },
@@ -166,6 +223,12 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '开票申请', icon: 'Ticket' }
       },
       {
+        path: 'invoice-received',
+        name: 'InvoiceReceived',
+        component: () => import('@/views/finance/invoice-received.vue'),
+        meta: { title: '收票登记', icon: 'Tickets' }
+      },
+      {
         path: 'payment-received',
         name: 'PaymentReceived',
         component: () => import('@/views/finance/payment-received.vue'),
@@ -182,6 +245,18 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'SettlementList',
         component: () => import('@/views/finance/settlement/index.vue'),
         meta: { title: '项目最终结算', icon: 'Money' }
+      },
+      {
+        path: 'finance-lock',
+        name: 'FinanceLock',
+        component: () => import('@/views/finance/finance-lock/index.vue'),
+        meta: { title: '财务封账', icon: 'Lock' }
+      },
+      {
+        path: 'tax-rate',
+        name: 'TaxRate',
+        component: () => import('@/views/finance/tax-rate/index.vue'),
+        meta: { title: '税率管理', icon: 'Histogram' }
       },
       {
         path: 'settlement/:id',
@@ -487,6 +562,12 @@ const constantRoutes: RouteRecordRaw[] = [
     meta: { title: '行政人事', icon: 'School' },
     children: [
       {
+        path: 'statistics',
+        name: 'HrStatistics',
+        component: () => import('@/views/hr/statistics.vue'),
+        meta: { title: '人事统计', icon: 'DataAnalysis' }
+      },
+      {
         path: 'entry',
         name: 'HrEntry',
         component: () => import('@/views/hr/entry.vue'),
@@ -669,7 +750,7 @@ const router = createRouter({
 })
 
 /** 不需要登录即可访问的白名单路径 */
-const whiteList = ['/login', '/403', '/404']
+const whiteList = ['/login', '/forgot-password', '/403', '/404']
 
 // 路由守卫
 router.beforeEach((to, _from, next) => {

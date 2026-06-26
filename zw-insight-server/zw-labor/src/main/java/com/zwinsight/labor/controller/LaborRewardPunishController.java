@@ -17,7 +17,6 @@ public class LaborRewardPunishController {
 
     private final LaborRewardPunishService rewardPunishService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizLaborRewardPunish>> page(
             @RequestParam(defaultValue = "1") int page,

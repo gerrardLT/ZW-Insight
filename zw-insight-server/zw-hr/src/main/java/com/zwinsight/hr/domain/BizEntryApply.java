@@ -1,6 +1,8 @@
 package com.zwinsight.hr.domain;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.zwinsight.common.desensitize.Desensitize;
+import com.zwinsight.common.desensitize.DesensitizeType;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -28,9 +30,11 @@ public class BizEntryApply extends BaseEntity {
     private LocalDate birthDate;
 
     /** 身份证号 */
+    @Desensitize(type = DesensitizeType.ID_CARD)
     private String idCard;
 
     /** 手机号 */
+    @Desensitize(type = DesensitizeType.PHONE)
     private String phone;
 
     /** 入职日期 */

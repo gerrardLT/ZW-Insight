@@ -2,6 +2,7 @@ package com.zwinsight.integration;
 
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.machine.dto.MachineSettlementCreateRequest;
+import com.zwinsight.machine.dto.MachineSettlementCreateResult;
 import com.zwinsight.machine.service.MachineWorkSettlementService;
 import com.zwinsight.workflow.listener.ProcessCompleteListener.ApprovalCompleteEvent;
 import org.junit.jupiter.api.*;
@@ -74,7 +75,7 @@ class MachineSettlementIntegrationTest extends BaseIntegrationTest {
         request.setPeriodStart(LocalDate.of(2025, 1, 1));
         request.setPeriodEnd(LocalDate.of(2025, 1, 31));
 
-        Long settlementId = settlementService.createSettlement(request);
+        Long settlementId = settlementService.createSettlement(request).getSettlementId();
         assertThat(settlementId).isNotNull();
 
         // 验证结算单已持久化

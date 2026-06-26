@@ -1,6 +1,8 @@
 package com.zwinsight.basedata.domain;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.zwinsight.common.desensitize.Desensitize;
+import com.zwinsight.common.desensitize.DesensitizeType;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -31,11 +33,13 @@ public class BdOwner extends BaseEntity {
     /**
      * 联系电话
      */
+    @Desensitize(type = DesensitizeType.PHONE)
     private String contactPhone;
 
     /**
      * 地址
      */
+    @Desensitize(type = DesensitizeType.ADDRESS)
     private String address;
 
     /**

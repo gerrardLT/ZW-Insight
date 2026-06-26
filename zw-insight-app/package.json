@@ -7,7 +7,9 @@
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:mp-weixin": "uni build -p mp-weixin",
     "dev:app": "uni -p app",
-    "build:app": "uni build -p app"
+    "build:app": "uni build -p app",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4010120240507001",
@@ -24,7 +26,10 @@
     "@dcloudio/uni-cli-shared": "3.0.0-4010120240507001",
     "@dcloudio/uni-stacktracey": "3.0.0-4010120240507001",
     "@dcloudio/vite-plugin-uni": "3.0.0-4010120240507001",
+    "@types/node": "^20.11.30",
+    "fast-check": "3.23.2",
     "typescript": "^5.4.5",
-    "vite": "^5.2.8"
+    "vite": "^5.2.8",
+    "vitest": "2.1.9"
   }
 }

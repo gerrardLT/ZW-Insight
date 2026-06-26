@@ -1,6 +1,8 @@
 package com.zwinsight.labor.domain;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.zwinsight.common.desensitize.Desensitize;
+import com.zwinsight.common.desensitize.DesensitizeType;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,9 +25,11 @@ public class BizLaborRoster extends BaseEntity {
     private String workerName;
 
     /** 身份证号 */
+    @Desensitize(type = DesensitizeType.ID_CARD)
     private String idCard;
 
     /** 联系电话 */
+    @Desensitize(type = DesensitizeType.PHONE)
     private String phone;
 
     /** 用工类型（FIXED-固定/TEMPORARY-临时） */

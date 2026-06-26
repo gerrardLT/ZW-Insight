@@ -1,5 +1,6 @@
 <template>
   <view class="form-page">
+    <OfflineBanner />
     <!-- 项目选择 -->
     <view class="form-section">
       <view class="form-item" @click="showProjectPicker = true">
@@ -49,6 +50,24 @@
 
     <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交日志</button>
 
+    <!-- 现场照片（拍照自动合成水印：时间/GPS/人员/项目）—— 需求 6.1 -->
+    <view class="form-section">
+      <view class="section-title">现场照片</view>
+      <button class="upload-btn" :loading="composing" @click="takePhoto">📷 拍照（自动水印）</button>
+      <view class="image-list" v-if="photos.length">
+        <view class="image-item" v-for="(img, idx) in photos" :key="idx">
+          <image :src="img" mode="aspectFill" class="thumb" @click="previewPhoto(idx)" />
+          <text class="remove" @click="removePhoto(idx)">×</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 水印合成离屏画布（隐藏，供 watermarkCompositor 使用） -->
+    <canvas
+      canvas-id="watermarkCanvas"
+      :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px', position: 'fixed', left: '-9999px', top: '0' }"
+    ></canvas>
+
     <!-- 项目选择弹窗 -->
     <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
       <view class="picker-content" @click.stop>
@@ -61,6 +80,7 @@
           <view class="picker-item" v-for="p in projects" :key="p.id" @click="selectProject(p)">
             <text>{{ p.projectName }}</text>
           </view>
+          <view class="empty" v-if="!projects.length"><text>{{ projectEmptyTip }}</text></view>
         </scroll-view>
       </view>
     </view>
@@ -69,11 +89,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getProjectList, saveConstructionLog } from '@/api/common'
+import { saveConstructionLog } from '@/api/common'
+import OfflineBanner from '@/components/OfflineBanner.vue'
+import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
+import { watermarkCompositor } from '@/utils/watermarkCompositor'
+import { useUserStore } from '@/stores/user'
 
 const submitting = ref(false)
+const composing = ref(false)
 const showProjectPicker = ref(false)
 const projects = ref<any[]>([])
+const projectEmptyTip = ref('暂无项目')
+const photos = ref<string[]>([])
+const canvasSize = ref({ width: 1, height: 1 })
+
+const userStore = useUserStore()
 
 const form = ref({
   projectId: null as number | null,
@@ -91,16 +121,82 @@ const form = ref({
 onMounted(async () => {
   const now = new Date()
   form.value.logDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  try {
-    const res: any = await getProjectList({ page: 1, size: 100 })
-    projects.value = res.data?.records || []
-  } catch {}
+  // 在线优先 + 离线回退缓存（需求 4.2、4.8）
+  const res = await loadProjectList({ page: 1, size: 100 })
+  projects.value = res.records
+  projectEmptyTip.value = res.empty && res.fromCache ? NO_OFFLINE_DATA_TIP : '暂无项目'
 })
 
 function selectProject(p: any) {
   form.value.projectId = p.id
   form.value.projectName = p.projectName
   showProjectPicker.value = false
+}
+
+/** 获取当前 GPS 坐标（失败返回 null，由水印合成器显示「定位未获取」） */
+function getGps(): Promise<{ lat: number | null; lng: number | null }> {
+  return new Promise((resolve) => {
+    uni.getLocation({
+      type: 'gcj02',
+      success: (res) => resolve({ lat: res.latitude, lng: res.longitude }),
+      fail: () => resolve({ lat: null, lng: null })
+    })
+  })
+}
+
+/** 拍照并合成水印（需求 6.1、6.6） */
+async function takePhoto() {
+  // 未选择项目时阻止拍照（需求 6.6）
+  if (!form.value.projectId) {
+    uni.showToast({ title: '请先选择项目', icon: 'none' })
+    return
+  }
+  uni.chooseImage({
+    count: 1,
+    sourceType: ['camera'],
+    success: async (res) => {
+      const tempPath = res.tempFilePaths[0]
+      if (!tempPath) return
+      composing.value = true
+      try {
+        // 画布尺寸需匹配原图，先取图片信息
+        const info = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+          uni.getImageInfo({ src: tempPath, success: (r) => resolve({ width: r.width, height: r.height }), fail: reject })
+        })
+        canvasSize.value = { width: info.width, height: info.height }
+        // 等待画布尺寸生效
+        await new Promise((r) => setTimeout(r, 50))
+
+        const gps = await getGps()
+        const userName =
+          userStore.userInfo?.realName || userStore.userInfo?.name || userStore.userInfo?.nickName || ''
+        const watermarked = await watermarkCompositor.compose(
+          tempPath,
+          {
+            time: '',
+            gpsLat: gps.lat,
+            gpsLng: gps.lng,
+            userName,
+            projectName: form.value.projectName
+          },
+          'watermarkCanvas'
+        )
+        photos.value.push(watermarked)
+      } catch (e) {
+        uni.showToast({ title: '水印合成失败', icon: 'none' })
+      } finally {
+        composing.value = false
+      }
+    }
+  })
+}
+
+function previewPhoto(idx: number) {
+  uni.previewImage({ urls: photos.value, current: idx })
+}
+
+function removePhoto(idx: number) {
+  photos.value.splice(idx, 1)
 }
 
 async function handleSubmit() {
@@ -121,7 +217,8 @@ async function handleSubmit() {
       tomorrowPlan: form.value.tomorrowPlan,
       attendanceCount: Number(form.value.attendanceCount) || 0,
       safetyStatus: form.value.safetyStatus,
-      remark: form.value.remark
+      remark: form.value.remark,
+      photos: photos.value
     })
     uni.showToast({ title: '提交成功', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)
@@ -150,4 +247,11 @@ async function handleSubmit() {
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
 .picker-item { padding: 24rpx 32rpx; border-bottom: 1rpx solid #f5f5f5; font-size: 28rpx; }
+.section-title { font-size: 28rpx; font-weight: bold; color: #303133; padding: 24rpx 0 16rpx; }
+.upload-btn { width: 100%; height: 80rpx; line-height: 80rpx; background: #ecf5ff; color: #409eff; font-size: 28rpx; border-radius: 8rpx; border: 1rpx dashed #409eff; margin-bottom: 16rpx; }
+.image-list { display: flex; flex-wrap: wrap; gap: 16rpx; padding-bottom: 16rpx; }
+.image-item { position: relative; width: 160rpx; height: 160rpx; }
+.thumb { width: 160rpx; height: 160rpx; border-radius: 8rpx; }
+.remove { position: absolute; top: -12rpx; right: -12rpx; width: 36rpx; height: 36rpx; line-height: 32rpx; text-align: center; background: #f56c6c; color: #fff; border-radius: 50%; font-size: 28rpx; }
+.empty { text-align: center; padding: 40rpx; color: #c0c4cc; }
 </style>

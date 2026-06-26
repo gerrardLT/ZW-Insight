@@ -17,7 +17,6 @@ public class MachineLedgerController {
 
     private final MachineLedgerService ledgerService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMachineLedger>> page(
             @RequestParam(defaultValue = "1") int page,

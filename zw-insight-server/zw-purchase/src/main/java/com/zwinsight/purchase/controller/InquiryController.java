@@ -21,7 +21,6 @@ public class InquiryController {
     private final QuotationService quotationService;
     private final BidRankingService bidRankingService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizInquiry>> page(
             @RequestParam(defaultValue = "1") int page,

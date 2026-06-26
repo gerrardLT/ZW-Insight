@@ -50,14 +50,20 @@
 
       <!-- 甘特图视图 -->
       <el-card shadow="never" style="margin-top: 16px">
-        <template #header><span>甘特图视图</span></template>
+        <template #header>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span>甘特图视图</span>
+            <ProjectSelector v-model="ganttProjectId" placeholder="选择项目" width="240px" />
+          </div>
+        </template>
         <GanttChart
-          v-if="ganttProjectId"
+          v-if="ganttProjectId && ganttHasData"
           ref="ganttRef"
           :project-id="ganttProjectId"
           :editable="true"
           @task-updated="handleGanttTaskUpdated"
         />
+        <el-empty v-else-if="ganttProjectId && !ganttHasData" description="暂无进度计划数据" />
         <el-empty v-else description="请先选择项目以查看甘特图" />
       </el-card>
     </el-card>
@@ -80,11 +86,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getSchedulePage, createSchedule, updateSchedule, deleteSchedule } from '@/api/site'
+import { getSchedulePage, getSchedulePlanTree, createSchedule, updateSchedule, deleteSchedule } from '@/api/site'
 import GanttChart from '@/components/GanttChart.vue'
+import ProjectSelector from '@/components/ProjectSelector.vue'
 
 const formRef = ref<FormInstance>()
 const ganttRef = ref<InstanceType<typeof GanttChart>>()
@@ -94,13 +101,14 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
-const ganttProjectId = ref<number>(0)
+const ganttProjectId = ref<number | undefined>(undefined)
+const ganttHasData = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, projectName: '', taskName: '' })
 const formData = ref({ id: undefined as number | undefined, taskName: '', projectName: '', planStartDate: '', planEndDate: '', responsible: '', progress: 0 })
 const formRules = { taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }], planStartDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }], planEndDate: [{ required: true, message: '请选择完成日期', trigger: 'change' }] }
 
-async function loadData() { loading.value = true; try { const res: any = await getSchedulePage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0; /* 从列表中提取 projectId 用于甘特图 */ if (tableData.value.length > 0 && tableData.value[0].projectId) { ganttProjectId.value = tableData.value[0].projectId } } finally { loading.value = false } }
+async function loadData() { loading.value = true; try { const res: any = await getSchedulePage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, projectName: '', taskName: '' }; loadData() }
 function handleAdd() { isEdit.value = false; formData.value = { id: undefined, taskName: '', projectName: '', planStartDate: '', planEndDate: '', responsible: '', progress: 0 }; dialogVisible.value = true }
@@ -108,6 +116,22 @@ function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateSchedule(formData.value) : await createSchedule(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData(); ganttRef.value?.refresh() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteSchedule(row.id); ElMessage.success('删除成功'); loadData(); ganttRef.value?.refresh() }
 function handleGanttTaskUpdated(_id: number) { loadData() }
+
+/** 监听甘特图项目选择变化，查询数据并设置 ganttHasData */
+watch(ganttProjectId, async (newId) => {
+  if (!newId) {
+    ganttHasData.value = false
+    return
+  }
+  try {
+    const res: any = await getSchedulePlanTree(newId)
+    const data = res.data || []
+    ganttHasData.value = data.length > 0
+  } catch {
+    ganttHasData.value = false
+  }
+})
+
 onMounted(() => { loadData() })
 </script>
 

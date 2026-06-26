@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * 项目报销实体
@@ -20,6 +21,9 @@ public class BizProjectReimbursement extends BaseEntity {
 
     /** 报销总金额 */
     private BigDecimal totalAmount;
+
+    /** 报销日期（业务日期，用于封账校验） */
+    private LocalDate reimbursementDate;
 
     /** 是否冲抵备用金（0-否 1-是） */
     private Integer offsetReserve;

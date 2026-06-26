@@ -39,6 +39,11 @@ public class MsgUserShortcut extends BaseEntity {
     private String menuIcon;
 
     /**
+     * 关联可选快捷功能ID（msg_available_shortcut.id）
+     */
+    private Long shortcutId;
+
+    /**
      * 排序号
      */
     private Integer sortOrder;

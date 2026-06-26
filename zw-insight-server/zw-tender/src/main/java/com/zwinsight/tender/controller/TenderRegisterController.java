@@ -17,7 +17,6 @@ public class TenderRegisterController {
 
     private final TenderRegisterService registerService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizTenderRegister>> page(
             @RequestParam(defaultValue = "1") int page,

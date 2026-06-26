@@ -20,7 +20,6 @@ public class InventoryController {
 
     private final MaterialInventoryService inventoryService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMaterialInventory>> page(
             @RequestParam(defaultValue = "1") int page,

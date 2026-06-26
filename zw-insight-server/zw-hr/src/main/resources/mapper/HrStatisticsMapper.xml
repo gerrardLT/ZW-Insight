@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwinsight.hr.mapper.HrStatisticsMapper">
+
+    <!-- 在职总人数 -->
+    <select id="countActiveUsers" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_user
+        WHERE status = 1
+          AND deleted = 0
+          AND tenant_id = #{tenantId}
+    </select>
+
+    <!-- 本月入职人数（基于入职申请审批通过） -->
+    <select id="countMonthlyEntry" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM biz_entry_apply
+        WHERE status = 'APPROVED'
+          AND deleted = 0
+          AND tenant_id = #{tenantId}
+          AND DATE_FORMAT(entry_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+    </select>
+
+    <!-- 本月离职人数（基于离职申请审批通过） -->
+    <select id="countMonthlyResign" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM biz_resign_apply
+        WHERE status = 'APPROVED'
+          AND deleted = 0
+          AND tenant_id = #{tenantId}
+          AND DATE_FORMAT(resign_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+    </select>
+
+    <!-- 按部门统计人数 -->
+    <select id="statByDept" resultType="com.zwinsight.hr.domain.vo.HrStatisticsVO$DeptStatItem">
+        SELECT
+            u.org_id AS deptId,
+            COALESCE(o.org_name, '未分配') AS deptName,
+            COUNT(*) AS count
+        FROM sys_user u
+        LEFT JOIN sys_org o ON u.org_id = o.id AND o.deleted = 0
+        WHERE u.status = 1
+          AND u.deleted = 0
+          AND u.tenant_id = #{tenantId}
+        GROUP BY u.org_id, o.org_name
+        ORDER BY count DESC
+    </select>
+
+    <!-- 按岗位统计人数 -->
+    <select id="statByPost" resultType="com.zwinsight.hr.domain.vo.HrStatisticsVO$PostStatItem">
+        SELECT
+            u.post_id AS postId,
+            COALESCE(p.post_name, '未分配') AS postName,
+            COUNT(*) AS count
+        FROM sys_user u
+        LEFT JOIN sys_post p ON u.post_id = p.id AND p.deleted = 0
+        WHERE u.status = 1
+          AND u.deleted = 0
+          AND u.tenant_id = #{tenantId}
+        GROUP BY u.post_id, p.post_name
+        ORDER BY count DESC
+    </select>
+
+    <!-- 按工龄段统计人数（使用 TIMESTAMPDIFF 基于 created_at 计算工龄） -->
+    <select id="statBySeniority" resultType="com.zwinsight.hr.domain.vo.HrStatisticsVO$SeniorityStatItem">
+        SELECT
+            CASE
+                WHEN TIMESTAMPDIFF(YEAR, u.created_at, CURDATE()) &lt; 1 THEN '0-1年'
+                WHEN TIMESTAMPDIFF(YEAR, u.created_at, CURDATE()) &lt; 3 THEN '1-3年'
+                WHEN TIMESTAMPDIFF(YEAR, u.created_at, CURDATE()) &lt; 5 THEN '3-5年'
+                ELSE '5年以上'
+            END AS `range`,
+            COUNT(*) AS count
+        FROM sys_user u
+        WHERE u.status = 1
+          AND u.deleted = 0
+          AND u.tenant_id = #{tenantId}
+        GROUP BY `range`
+        ORDER BY FIELD(`range`, '0-1年', '1-3年', '3-5年', '5年以上')
+    </select>
+
+    <!-- 近12个月入职趋势 -->
+    <select id="statEntryTrend" resultType="com.zwinsight.hr.domain.vo.HrStatisticsVO$TrendStatItem">
+        SELECT
+            DATE_FORMAT(entry_date, '%Y-%m') AS month,
+            COUNT(*) AS entryCount,
+            0 AS resignCount
+        FROM biz_entry_apply
+        WHERE status = 'APPROVED'
+          AND deleted = 0
+          AND tenant_id = #{tenantId}
+          AND entry_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+        GROUP BY DATE_FORMAT(entry_date, '%Y-%m')
+        ORDER BY month ASC
+    </select>
+
+    <!-- 近12个月离职趋势 -->
+    <select id="statResignTrend" resultType="com.zwinsight.hr.domain.vo.HrStatisticsVO$TrendStatItem">
+        SELECT
+            DATE_FORMAT(resign_date, '%Y-%m') AS month,
+            0 AS entryCount,
+            COUNT(*) AS resignCount
+        FROM biz_resign_apply
+        WHERE status = 'APPROVED'
+          AND deleted = 0
+          AND tenant_id = #{tenantId}
+          AND resign_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+        GROUP BY DATE_FORMAT(resign_date, '%Y-%m')
+        ORDER BY month ASC
+    </select>
+
+</mapper>

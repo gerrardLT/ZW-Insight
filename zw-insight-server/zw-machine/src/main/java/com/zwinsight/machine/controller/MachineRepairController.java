@@ -19,7 +19,6 @@ public class MachineRepairController {
 
     private final MachineRepairService repairService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMachineRepair>> page(
             @RequestParam(defaultValue = "1") int page,

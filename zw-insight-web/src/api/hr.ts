@@ -1,5 +1,10 @@
 import request from '@/utils/request'
 
+// ======================== 人事统计 ========================
+export function getHrStatisticsOverview() {
+  return request.get('/v1/hr/statistics/overview')
+}
+
 // ======================== 入离职管理 ========================
 export function getHrEntryPage(params: any) {
   return request.get('/v1/hr/entry-apply/page', { params })

@@ -65,4 +65,19 @@ public class SupplierBlacklistService {
                         .eq(BizSupplierBlacklist::getStatus, 1));
         return count > 0;
     }
+
+    /**
+     * 获取供应商黑名单原因
+     *
+     * @param supplierId 供应商ID
+     * @return 黑名单原因，如果未找到则返回"未知原因"
+     */
+    public String getBlacklistReason(Long supplierId) {
+        BizSupplierBlacklist record = blacklistMapper.selectOne(
+                new LambdaQueryWrapper<BizSupplierBlacklist>()
+                        .eq(BizSupplierBlacklist::getSupplierId, supplierId)
+                        .eq(BizSupplierBlacklist::getStatus, 1)
+                        .last("LIMIT 1"));
+        return record != null ? record.getReason() : "未知原因";
+    }
 }

@@ -62,10 +62,10 @@ public class MachineWorkSettlementService {
 
     /**
      * 创建结算单
-     * <p>包含：周期重叠校验 + 无工作量校验 + 费用自动计算 + 编号自动生成</p>
+     * <p>包含：周期重叠校验 + 排除已结算日志 + 无工作量校验 + 费用自动计算 + 编号自动生成</p>
      */
     @Transactional(rollbackFor = Exception.class)
-    public Long createSettlement(MachineSettlementCreateRequest request) {
+    public MachineSettlementCreateResult createSettlement(MachineSettlementCreateRequest request) {
         Long projectId = request.getProjectId();
         LocalDate periodStart = request.getPeriodStart();
         LocalDate periodEnd = request.getPeriodEnd();
@@ -81,15 +81,29 @@ public class MachineWorkSettlementService {
             throw new BusinessException("该项目在选定周期内已存在结算单，结算周期不能重叠");
         }
 
-        // 3. 查询周期内的工作日志
-        LambdaQueryWrapper<BizMachineWorkLog> logWrapper = new LambdaQueryWrapper<>();
-        logWrapper.eq(BizMachineWorkLog::getProjectId, projectId)
+        // 3. 查询周期内所有工作日志（含已结算的，用于标注排除信息）
+        LambdaQueryWrapper<BizMachineWorkLog> allLogWrapper = new LambdaQueryWrapper<>();
+        allLogWrapper.eq(BizMachineWorkLog::getProjectId, projectId)
                 .ge(BizMachineWorkLog::getWorkDate, periodStart)
                 .le(BizMachineWorkLog::getWorkDate, periodEnd);
-        List<BizMachineWorkLog> workLogs = workLogMapper.selectList(logWrapper);
+        List<BizMachineWorkLog> allWorkLogs = workLogMapper.selectList(allLogWrapper);
+
+        // 4. 排除已结算的工作日志（settlementStatus == "SETTLED"）
+        List<BizMachineWorkLog> excludedLogs = allWorkLogs.stream()
+                .filter(log -> "SETTLED".equals(log.getSettlementStatus()))
+                .collect(Collectors.toList());
+        List<BizMachineWorkLog> workLogs = allWorkLogs.stream()
+                .filter(log -> !"SETTLED".equals(log.getSettlementStatus()))
+                .collect(Collectors.toList());
+
+        if (!excludedLogs.isEmpty()) {
+            log.info("创建结算单时排除已结算工作日志, projectId={}, excludedCount={}, excludedIds={}",
+                    projectId, excludedLogs.size(),
+                    excludedLogs.stream().map(BizMachineWorkLog::getId).collect(Collectors.toList()));
+        }
 
         if (workLogs.isEmpty()) {
-            throw new BusinessException("该周期内无可结算的工作量记录");
+            throw new BusinessException("该周期内无可结算的工作量记录（已结算的记录已被排除）");
         }
 
         // 4. 按机械（machineId）分组计算费用
@@ -200,7 +214,11 @@ public class MachineWorkSettlementService {
         settlement.setTotalAmount(totalAmount.setScale(2, RoundingMode.HALF_UP));
         settlementMapper.updateById(settlement);
 
-        return settlement.getId();
+        // 10. 构建返回结果，包含被排除的已结算日志信息
+        List<Long> excludedIds = excludedLogs.stream()
+                .map(BizMachineWorkLog::getId)
+                .collect(Collectors.toList());
+        return new MachineSettlementCreateResult(settlement.getId(), excludedLogs.size(), excludedIds);
     }
 
     /**
@@ -232,7 +250,7 @@ public class MachineWorkSettlementService {
 
     /**
      * 审批通过回调 —— 通过 Spring Event 监听
-     * 累加合同已结算金额
+     * 累加合同已结算金额，并回写工作日志结算状态
      */
     @EventListener
     @Transactional(rollbackFor = Exception.class)
@@ -254,6 +272,22 @@ public class MachineWorkSettlementService {
         // 更新状态为已审批
         settlement.setStatus(2);
         settlementMapper.updateById(settlement);
+
+        // 回写工作日志的结算状态为"已结算"
+        LambdaQueryWrapper<BizMachineWorkSettlementDetail> detailWrapper = new LambdaQueryWrapper<>();
+        detailWrapper.eq(BizMachineWorkSettlementDetail::getSettlementId, settlementId);
+        List<BizMachineWorkSettlementDetail> details = detailMapper.selectList(detailWrapper);
+
+        List<Long> allWorkLogIds = details.stream()
+                .filter(d -> d.getWorkLogIds() != null)
+                .flatMap(d -> d.getWorkLogIds().stream())
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (!allWorkLogIds.isEmpty()) {
+            workLogMapper.batchUpdateSettlementStatus(allWorkLogIds, "SETTLED");
+            log.info("回写工作日志结算状态, settlementId={}, workLogCount={}", settlementId, allWorkLogIds.size());
+        }
 
         // 累加合同已结算金额 —— 查找该项目关联的生效合同
         LambdaQueryWrapper<BizMachineContract> contractWrapper = new LambdaQueryWrapper<>();

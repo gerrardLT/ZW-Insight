@@ -2,6 +2,7 @@ package com.zwinsight.subcontract.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.basedata.annotation.BlacklistCheck;
 import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
@@ -34,6 +35,7 @@ public class SubcontractService {
         return PageResult.of(subcontractMapper.selectPage(pageParam, wrapper));
     }
 
+    @BlacklistCheck
     @Transactional(rollbackFor = Exception.class)
     public void save(BizSubcontract contract) {
         // 预算控制：SUBCONTRACT
@@ -82,6 +84,7 @@ public class SubcontractService {
         return contract;
     }
 
+    @BlacklistCheck
     public void update(BizSubcontract contract) {
         BizSubcontract existing = subcontractMapper.selectById(contract.getId());
         if (existing == null) throw new BusinessException("分包合同不存在");

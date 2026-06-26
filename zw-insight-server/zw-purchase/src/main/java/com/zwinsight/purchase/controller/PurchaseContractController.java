@@ -20,7 +20,6 @@ public class PurchaseContractController {
 
     private final PurchaseContractService purchaseContractService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizPurchaseContract>> page(
             @RequestParam(defaultValue = "1") int page,

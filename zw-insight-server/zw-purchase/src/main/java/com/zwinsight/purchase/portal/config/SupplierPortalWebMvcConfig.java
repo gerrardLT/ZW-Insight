@@ -23,7 +23,8 @@ public class SupplierPortalWebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(supplierPortalInterceptor)
                 .addPathPatterns("/api/v1/supplier-portal/**")
                 .excludePathPatterns(
-                        "/api/v1/supplier-portal/auth/**"
+                        "/api/v1/supplier-portal/auth/**",
+                        "/api/v1/supplier-portal/public/**"
                 );
     }
 }

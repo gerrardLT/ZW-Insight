@@ -17,7 +17,6 @@ public class MachineOilRecordController {
 
     private final MachineOilRecordService oilRecordService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMachineOilRecord>> page(
             @RequestParam(defaultValue = "1") int page,

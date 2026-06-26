@@ -184,8 +184,7 @@ public class CaptchaService {
      * @param inputCode 用户输入的验证码
      * @return 校验是否通过
      */
-    public boolean verifySmsCode(String phone, String inputCode) {
-        if (phone == null || inputCode == null) {
+    public boolean verifySmsCode(String phone, String inputCode) {        if (phone == null || inputCode == null) {
             return false;
         }
         String smsKey = SMS_KEY_PREFIX + phone;
@@ -197,6 +196,28 @@ public class CaptchaService {
             return false;
         }
         // 精确匹配（数字验证码不忽略大小写）
+        return cached.toString().equals(inputCode);
+    }
+
+    /**
+     * 校验短信验证码（非消费式 / peek）
+     * <p>
+     * 仅读取并比对，不删除 Redis 中的验证码。用于"先校验后重置"的分步流程：
+     * 校验码步骤使用本方法保证验证码仍可在重置密码步骤被最终消费，
+     * 避免一次性删除导致后续重置无法再次校验。
+     *
+     * @param phone     手机号
+     * @param inputCode 用户输入的验证码
+     * @return 校验是否通过
+     */
+    public boolean peekSmsCode(String phone, String inputCode) {
+        if (phone == null || inputCode == null) {
+            return false;
+        }
+        Object cached = redisUtils.get(SMS_KEY_PREFIX + phone);
+        if (cached == null) {
+            return false;
+        }
         return cached.toString().equals(inputCode);
     }
 

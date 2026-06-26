@@ -3,11 +3,13 @@ package com.zwinsight.security.controller;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.result.R;
 import com.zwinsight.security.dto.CaptchaVO;
+import com.zwinsight.security.dto.DeviceInfo;
 import com.zwinsight.security.dto.LoginRequest;
 import com.zwinsight.security.dto.LoginResponse;
 import com.zwinsight.security.service.AuthService;
 import com.zwinsight.security.service.AuthService.CaptchaVerifyException;
 import com.zwinsight.security.service.CaptchaService;
+import com.zwinsight.security.util.DeviceInfoResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -30,8 +32,9 @@ public class AuthController {
     @PostMapping("/login")
     public R<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String clientIp = getClientIp(httpRequest);
+        DeviceInfo deviceInfo = DeviceInfoResolver.resolve(httpRequest, clientIp);
         try {
-            LoginResponse response = authService.login(request, clientIp);
+            LoginResponse response = authService.login(request, clientIp, deviceInfo);
             return R.ok(response);
         } catch (CaptchaVerifyException e) {
             // R4.3: 验证码校验失败时返回新验证码

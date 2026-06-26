@@ -3,6 +3,7 @@ package com.zwinsight.purchase.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.basedata.annotation.BlacklistCheck;
 import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.budget.service.BudgetControlService;
 import com.zwinsight.common.exception.BusinessException;
@@ -60,8 +61,9 @@ public class PurchaseContractService {
     }
 
     /**
-     * 新增采购合同（自动编号 + 预算校验）
+     * 新增采购合同（自动编号 + 预算校验 + 黑名单拦截）
      */
+    @BlacklistCheck
     @Transactional(rollbackFor = Exception.class)
     public void save(BizPurchaseContract contract) {
         // 自动生成合同编号
@@ -92,6 +94,7 @@ public class PurchaseContractService {
     /**
      * 更新采购合同
      */
+    @BlacklistCheck
     public void update(BizPurchaseContract contract) {
         BizPurchaseContract existing = purchaseContractMapper.selectById(contract.getId());
         if (existing == null) {

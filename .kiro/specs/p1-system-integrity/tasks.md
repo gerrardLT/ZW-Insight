@@ -1,8 +1,8 @@
-# Implementation Plan: P1 系统完整度增强
+﻿# Implementation Plan: P1 绯荤粺瀹屾暣搴﹀寮?
 
 ## Overview
 
-本实现计划覆盖 ZW-Insight 工程项目管理系统 P1 优先级的 8 个系统完整度增强功能的全部开发任务。任务按依赖关系分为 5 波次执行，从数据库 Schema 到后端服务到前端页面再到测试验证。
+鏈疄鐜拌鍒掕鐩?ZW-Insight 宸ョ▼椤圭洰绠＄悊绯荤粺 P1 浼樺厛绾х殑 8 涓郴缁熷畬鏁村害澧炲己鍔熻兘鐨勫叏閮ㄥ紑鍙戜换鍔°€備换鍔℃寜渚濊禆鍏崇郴鍒嗕负 5 娉㈡鎵ц锛屼粠鏁版嵁搴?Schema 鍒板悗绔湇鍔″埌鍓嶇椤甸潰鍐嶅埌娴嬭瘯楠岃瘉銆?
 
 ## Task Dependency Graph
 
@@ -10,23 +10,23 @@
 {
   "waves": [
     {
-      "name": "Wave 1: 基础设施",
+      "name": "Wave 1: 鍩虹璁炬柦",
       "tasks": [1]
     },
     {
-      "name": "Wave 2: 核心后端服务",
+      "name": "Wave 2: 鏍稿績鍚庣鏈嶅姟",
       "tasks": [2, 3, 5, 6, 7, 8, 9, 10]
     },
     {
-      "name": "Wave 3: API 层",
+      "name": "Wave 3: API 灞?,
       "tasks": [4]
     },
     {
-      "name": "Wave 4: 前端页面",
+      "name": "Wave 4: 鍓嶇椤甸潰",
       "tasks": [11, 12, 13, 14, 15, 16, 17, 18]
     },
     {
-      "name": "Wave 5: 测试验证",
+      "name": "Wave 5: 娴嬭瘯楠岃瘉",
       "tasks": [19, 20]
     }
   ]
@@ -35,343 +35,343 @@
 
 ## Tasks
 
-- [ ] 1. 数据库 Schema 迁移
+- [x] 1. 鏁版嵁搴?Schema 杩佺Щ
   - Requirements: R1, R3, R4, R5, R6, R7, R8
   - Dependencies: None
-  - Description: 创建全部新增数据表和字段变更的 SQL 迁移脚本
+  - Description: 鍒涘缓鍏ㄩ儴鏂板鏁版嵁琛ㄥ拰瀛楁鍙樻洿鐨?SQL 杩佺Щ鑴氭湰
   - Sub-tasks:
-    1. [ ] 创建迁移脚本 `V2026_07__p1_system_integrity.sql`
-    2. [ ] ALTER `sys_role` 表新增 `data_scope` 字段（默认 SELF）
-    3. [ ] CREATE TABLE `sys_user_project`（含唯一索引 uk_user_project）
-    4. [ ] CREATE TABLE `biz_project_member`（含唯一索引 uk_project_user）
-    5. [ ] CREATE TABLE `sys_config`（含唯一索引 uk_config_key）
-    6. [ ] CREATE TABLE `sys_config_change_log`
-    7. [ ] CREATE TABLE `biz_machine_work_settlement`（含唯一索引 uk_settlement_code）
-    8. [ ] CREATE TABLE `biz_machine_work_settlement_detail`
-    9. [ ] CREATE TABLE `biz_approval_snapshot`
-    10. [ ] CREATE TABLE `biz_approval_rollback_log`
-    11. [ ] ALTER `sys_tenant` 表新增 user_type, start_date, end_date, max_users, modules 字段
-    12. [ ] INSERT 初始化系统配置数据（安全/审批/文件/通知设置默认参数）
-    13. [ ] 在开发环境执行迁移脚本并验证表结构正确
+    1. [x] 鍒涘缓杩佺Щ鑴氭湰 `V2026_07__p1_system_integrity.sql`
+    2. [x] ALTER `sys_role` 琛ㄦ柊澧?`data_scope` 瀛楁锛堥粯璁?SELF锛?
+    3. [x] CREATE TABLE `sys_user_project`锛堝惈鍞竴绱㈠紩 uk_user_project锛?
+    4. [x] CREATE TABLE `biz_project_member`锛堝惈鍞竴绱㈠紩 uk_project_user锛?
+    5. [x] CREATE TABLE `sys_config`锛堝惈鍞竴绱㈠紩 uk_config_key锛?
+    6. [x] CREATE TABLE `sys_config_change_log`
+    7. [x] CREATE TABLE `biz_machine_work_settlement`锛堝惈鍞竴绱㈠紩 uk_settlement_code锛?
+    8. [x] CREATE TABLE `biz_machine_work_settlement_detail`
+    9. [x] CREATE TABLE `biz_approval_snapshot`
+    10. [x] CREATE TABLE `biz_approval_rollback_log`
+    11. [x] ALTER `sys_tenant` 琛ㄦ柊澧?user_type, start_date, end_date, max_users, modules 瀛楁
+    12. [x] INSERT 鍒濆鍖栫郴缁熼厤缃暟鎹紙瀹夊叏/瀹℃壒/鏂囦欢/閫氱煡璁剧疆榛樿鍙傛暟锛?
+    13. [x] 鍦ㄥ紑鍙戠幆澧冩墽琛岃縼绉昏剼鏈苟楠岃瘉琛ㄧ粨鏋勬纭?
 
-- [ ] 2. 数据权限拦截器
+- [x] 2. 鏁版嵁鏉冮檺鎷︽埅鍣?
   - Requirements: R1 (AC 1-10)
   - Dependencies: Task 1, Task 3
-  - Description: 实现 MyBatis-Plus DataPermissionInnerInterceptor，根据角色数据范围自动追加 SQL 过滤条件
+  - Description: 瀹炵幇 MyBatis-Plus DataPermissionInnerInterceptor锛屾牴鎹鑹叉暟鎹寖鍥磋嚜鍔ㄨ拷鍔?SQL 杩囨护鏉′欢
   - Sub-tasks:
-    1. [ ] 创建 `DataScopeEnum` 枚举（ALL/DEPT_AND_CHILDREN/DEPT/PROJECT/SELF）含优先级属性
-    2. [ ] 在 `zw-common` 模块创建 `@DataPermission` + `@DataColumn` 注解
-    3. [ ] 实现 `ZwDataPermissionHandler`（MyBatis-Plus 数据权限处理接口）
-    4. [ ] 实现 `getEffectiveScope()`：多角色取最大数据范围
-    5. [ ] 实现 `buildSelfCondition()`：WHERE created_by = #{userId}
-    6. [ ] 实现 `buildProjectCondition()`：WHERE project_id IN (用户参与项目ID)
-    7. [ ] 实现 `buildDeptCondition()`：WHERE dept_id = #{userDeptId}
-    8. [ ] 实现 `buildDeptAndChildrenCondition()`：WHERE dept_id IN (部门及子部门)
-    9. [ ] 在 `MybatisPlusConfig` 中注册拦截器（TenantLine 之后、Pagination 之前）
-    10. [ ] 在关键 Mapper 方法上添加 `@DataPermission` 注解
-    11. [ ] 验证数据权限配置变更后实时生效（无缓存）
+    1. [x] 鍒涘缓 `DataScopeEnum` 鏋氫妇锛圓LL/DEPT_AND_CHILDREN/DEPT/PROJECT/SELF锛夊惈浼樺厛绾у睘鎬?
+    2. [x] 鍦?`zw-common` 妯″潡鍒涘缓 `@DataPermission` + `@DataColumn` 娉ㄨВ
+    3. [x] 瀹炵幇 `ZwDataPermissionHandler`锛圡yBatis-Plus 鏁版嵁鏉冮檺澶勭悊鎺ュ彛锛?
+    4. [x] 瀹炵幇 `getEffectiveScope()`锛氬瑙掕壊鍙栨渶澶ф暟鎹寖鍥?
+    5. [x] 瀹炵幇 `buildSelfCondition()`锛歐HERE created_by = #{userId}
+    6. [x] 瀹炵幇 `buildProjectCondition()`锛歐HERE project_id IN (鐢ㄦ埛鍙備笌椤圭洰ID)
+    7. [x] 瀹炵幇 `buildDeptCondition()`锛歐HERE dept_id = #{userDeptId}
+    8. [x] 瀹炵幇 `buildDeptAndChildrenCondition()`锛歐HERE dept_id IN (閮ㄩ棬鍙婂瓙閮ㄩ棬)
+    9. [x] 鍦?`MybatisPlusConfig` 涓敞鍐屾嫤鎴櫒锛圱enantLine 涔嬪悗銆丳agination 涔嬪墠锛?
+    10. [x] 鍦ㄥ叧閿?Mapper 鏂规硶涓婃坊鍔?`@DataPermission` 娉ㄨВ
+    11. [x] 楠岃瘉鏁版嵁鏉冮檺閰嶇疆鍙樻洿鍚庡疄鏃剁敓鏁堬紙鏃犵紦瀛橈級
 
-- [ ] 3. 项目成员管理后端
+- [x] 3. 椤圭洰鎴愬憳绠＄悊鍚庣
   - Requirements: R3 (AC 1-9)
   - Dependencies: Task 1
-  - Description: 实现项目成员 CRUD、角色分配、唯一性校验和离职联动逻辑
+  - Description: 瀹炵幇椤圭洰鎴愬憳 CRUD銆佽鑹插垎閰嶃€佸敮涓€鎬ф牎楠屽拰绂昏亴鑱斿姩閫昏緫
   - Sub-tasks:
-    1. [ ] 创建 `ProjectRoleEnum` 枚举（7种项目角色）
-    2. [ ] 创建 `BizProjectMember` 实体类（继承 BaseEntity）
-    3. [ ] 创建 `BizProjectMemberMapper` 接口 + XML
-    4. [ ] 实现 `addMember()`：含唯一性校验（同项目同用户不可重复）
-    5. [ ] 实现 `removeMember()`：含唯一项目经理保护校验
-    6. [ ] 实现 `updateRoles()`：更新项目角色列表
-    7. [ ] 实现 `listMembers()`：分页查询 + 按角色筛选
-    8. [ ] 实现 `getUserProjectIds()`：供数据权限模块使用
-    9. [ ] 实现 `deactivateByUserId()`：用户停用时标记所有成员为已失效
-    10. [ ] 创建 `ProjectMemberController`（REST API）
-    11. [ ] 在项目创建流程中自动将创建人添加为项目经理
-    12. [ ] 同步维护 `sys_user_project` 表数据
+    1. [x] 鍒涘缓 `ProjectRoleEnum` 鏋氫妇锛?绉嶉」鐩鑹诧級
+    2. [x] 鍒涘缓 `BizProjectMember` 瀹炰綋绫伙紙缁ф壙 BaseEntity锛?
+    3. [x] 鍒涘缓 `BizProjectMemberMapper` 鎺ュ彛 + XML
+    4. [x] 瀹炵幇 `addMember()`锛氬惈鍞竴鎬ф牎楠岋紙鍚岄」鐩悓鐢ㄦ埛涓嶅彲閲嶅锛?
+    5. [x] 瀹炵幇 `removeMember()`锛氬惈鍞竴椤圭洰缁忕悊淇濇姢鏍￠獙
+    6. [x] 瀹炵幇 `updateRoles()`锛氭洿鏂伴」鐩鑹插垪琛?
+    7. [x] 瀹炵幇 `listMembers()`锛氬垎椤垫煡璇?+ 鎸夎鑹茬瓫閫?
+    8. [x] 瀹炵幇 `getUserProjectIds()`锛氫緵鏁版嵁鏉冮檺妯″潡浣跨敤
+    9. [x] 瀹炵幇 `deactivateByUserId()`锛氱敤鎴峰仠鐢ㄦ椂鏍囪鎵€鏈夋垚鍛樹负宸插け鏁?
+    10. [x] 鍒涘缓 `ProjectMemberController`锛圧EST API锛?
+    11. [x] 鍦ㄩ」鐩垱寤烘祦绋嬩腑鑷姩灏嗗垱寤轰汉娣诲姞涓洪」鐩粡鐞?
+    12. [x] 鍚屾缁存姢 `sys_user_project` 琛ㄦ暟鎹?
 
-- [ ] 4. 数据权限配置 API
+- [x] 4. 鏁版嵁鏉冮檺閰嶇疆 API
   - Requirements: R1 (AC 2)
   - Dependencies: Task 2
-  - Description: 提供角色数据范围配置 REST API，允许管理员为角色设置数据权限级别
+  - Description: 鎻愪緵瑙掕壊鏁版嵁鑼冨洿閰嶇疆 REST API锛屽厑璁哥鐞嗗憳涓鸿鑹茶缃暟鎹潈闄愮骇鍒?
   - Sub-tasks:
-    1. [ ] 在 `SysRole` 实体类新增 `dataScope` 字段
-    2. [ ] 创建 `DataScopeUpdateRequest` DTO
-    3. [ ] 在 `SysRoleService` 新增 `updateDataScope()` 方法
-    4. [ ] 在 `SysRoleController` 新增 `PUT /api/v1/system/role/{id}/data-scope`
-    5. [ ] 添加权限校验：仅系统管理员可配置
-    6. [ ] 单元测试：不合法 dataScope 值被拒绝
+    1. [x] 鍦?`SysRole` 瀹炰綋绫绘柊澧?`dataScope` 瀛楁
+    2. [x] 鍒涘缓 `DataScopeUpdateRequest` DTO
+    3. [x] 鍦?`SysRoleService` 鏂板 `updateDataScope()` 鏂规硶
+    4. [x] 鍦?`SysRoleController` 鏂板 `PUT /api/v1/system/role/{id}/data-scope`
+    5. [x] 娣诲姞鏉冮檺鏍￠獙锛氫粎绯荤粺绠＄悊鍛樺彲閰嶇疆
+    6. [x] 鍗曞厓娴嬭瘯锛氫笉鍚堟硶 dataScope 鍊艰鎷掔粷
 
-- [ ] 5. 引用校验注解 + AOP
+- [x] 5. 寮曠敤鏍￠獙娉ㄨВ + AOP
   - Requirements: R6 (AC 1-9)
   - Dependencies: Task 1
-  - Description: 实现 @ReferenceCheck 注解和 AOP 切面，在删除操作前自动校验引用关系
+  - Description: 瀹炵幇 @ReferenceCheck 娉ㄨВ鍜?AOP 鍒囬潰锛屽湪鍒犻櫎鎿嶄綔鍓嶈嚜鍔ㄦ牎楠屽紩鐢ㄥ叧绯?
   - Sub-tasks:
-    1. [ ] 在 `zw-common` 创建 `@ReferenceCheck` 和 `@ReferenceRelation` 注解
-    2. [ ] 创建 `ReferenceInfoVO` 和 `ReferenceExistsException`
-    3. [ ] 实现 `ReferenceCheckAspect` AOP 切面（@Before 拦截）
-    4. [ ] 实现 `extractEntityId()` 从方法参数提取实体 ID
-    5. [ ] 实现引用计数查询（参数化 SQL 防注入）
-    6. [ ] 实现引用详情查询（最多前 10 条）
-    7. [ ] 异常处理：DB 查询异常时阻止删除并记录 ERROR 日志
-    8. [ ] 人员证件删除添加 @ReferenceCheck（投标报名、投标任务）
-    9. [ ] 班组删除添加 @ReferenceCheck（花名册、用工单、工资单）
-    10. [ ] 机械台账删除添加 @ReferenceCheck（进出场、工作量、合同）
-    11. [ ] 公司证件删除添加 @ReferenceCheck（投标报名）
-    12. [ ] 供应商删除添加 @ReferenceCheck（采购合同、入库单、询价）
-    13. [ ] 材料字典删除添加 @ReferenceCheck（合同明细、入库明细、库存）
-    14. [ ] 全局异常处理器注册 ReferenceExistsException 响应
+    1. [x] 鍦?`zw-common` 鍒涘缓 `@ReferenceCheck` 鍜?`@ReferenceRelation` 娉ㄨВ
+    2. [x] 鍒涘缓 `ReferenceInfoVO` 鍜?`ReferenceExistsException`
+    3. [x] 瀹炵幇 `ReferenceCheckAspect` AOP 鍒囬潰锛園Before 鎷︽埅锛?
+    4. [x] 瀹炵幇 `extractEntityId()` 浠庢柟娉曞弬鏁版彁鍙栧疄浣?ID
+    5. [x] 瀹炵幇寮曠敤璁℃暟鏌ヨ锛堝弬鏁板寲 SQL 闃叉敞鍏ワ級
+    6. [x] 瀹炵幇寮曠敤璇︽儏鏌ヨ锛堟渶澶氬墠 10 鏉★級
+    7. [x] 寮傚父澶勭悊锛欴B 鏌ヨ寮傚父鏃堕樆姝㈠垹闄ゅ苟璁板綍 ERROR 鏃ュ織
+    8. [x] 浜哄憳璇佷欢鍒犻櫎娣诲姞 @ReferenceCheck锛堟姇鏍囨姤鍚嶃€佹姇鏍囦换鍔★級
+    9. [x] 鐝粍鍒犻櫎娣诲姞 @ReferenceCheck锛堣姳鍚嶅唽銆佺敤宸ュ崟銆佸伐璧勫崟锛?
+    10. [x] 鏈烘鍙拌处鍒犻櫎娣诲姞 @ReferenceCheck锛堣繘鍑哄満銆佸伐浣滈噺銆佸悎鍚岋級
+    11. [x] 鍏徃璇佷欢鍒犻櫎娣诲姞 @ReferenceCheck锛堟姇鏍囨姤鍚嶏級
+    12. [x] 渚涘簲鍟嗗垹闄ゆ坊鍔?@ReferenceCheck锛堥噰璐悎鍚屻€佸叆搴撳崟銆佽浠凤級
+    13. [x] 鏉愭枡瀛楀吀鍒犻櫎娣诲姞 @ReferenceCheck锛堝悎鍚屾槑缁嗐€佸叆搴撴槑缁嗐€佸簱瀛橈級
+    14. [x] 鍏ㄥ眬寮傚父澶勭悊鍣ㄦ敞鍐?ReferenceExistsException 鍝嶅簲
 
-- [ ] 6. 系统设置后端
+- [x] 6. 绯荤粺璁剧疆鍚庣
   - Requirements: R5 (AC 1-10)
   - Dependencies: Task 1
-  - Description: 实现系统参数 CRUD、值范围校验、Redis 缓存和变更日志
+  - Description: 瀹炵幇绯荤粺鍙傛暟 CRUD銆佸€艰寖鍥存牎楠屻€丷edis 缂撳瓨鍜屽彉鏇存棩蹇?
   - Sub-tasks:
-    1. [ ] 创建 `SysConfig` 实体类 + Mapper
-    2. [ ] 创建 `SysConfigChangeLog` 实体类 + Mapper
-    3. [ ] 实现 `listByGroup()`：按分组查询配置
-    4. [ ] 实现 `updateConfig()`：含值范围校验逻辑
-    5. [ ] 实现参数值范围校验器：解析 value_range 格式并按 value_type 校验
-    6. [ ] 实现 `batchUpdate()`：批量更新
-    7. [ ] 实现 `resetToDefault()`：恢复默认值
-    8. [ ] 实现 `getConfigValue()`：Redis 缓存读取（key: sys:config:{key}，过期 1h）
-    9. [ ] 实现缓存清除：更新后删除对应 Redis key
-    10. [ ] 实现变更日志记录：自动写入 sys_config_change_log
-    11. [ ] 创建 `SystemConfigController`（REST API）
-    12. [ ] 权限校验：仅系统管理员可修改
+    1. [x] 鍒涘缓 `SysConfig` 瀹炰綋绫?+ Mapper
+    2. [x] 鍒涘缓 `SysConfigChangeLog` 瀹炰綋绫?+ Mapper
+    3. [x] 瀹炵幇 `listByGroup()`锛氭寜鍒嗙粍鏌ヨ閰嶇疆
+    4. [x] 瀹炵幇 `updateConfig()`锛氬惈鍊艰寖鍥存牎楠岄€昏緫
+    5. [x] 瀹炵幇鍙傛暟鍊艰寖鍥存牎楠屽櫒锛氳В鏋?value_range 鏍煎紡骞舵寜 value_type 鏍￠獙
+    6. [x] 瀹炵幇 `batchUpdate()`锛氭壒閲忔洿鏂?
+    7. [x] 瀹炵幇 `resetToDefault()`锛氭仮澶嶉粯璁ゅ€?
+    8. [x] 瀹炵幇 `getConfigValue()`锛歊edis 缂撳瓨璇诲彇锛坘ey: sys:config:{key}锛岃繃鏈?1h锛?
+    9. [x] 瀹炵幇缂撳瓨娓呴櫎锛氭洿鏂板悗鍒犻櫎瀵瑰簲 Redis key
+    10. [x] 瀹炵幇鍙樻洿鏃ュ織璁板綍锛氳嚜鍔ㄥ啓鍏?sys_config_change_log
+    11. [x] 鍒涘缓 `SystemConfigController`锛圧EST API锛?
+    12. [x] 鏉冮檺鏍￠獙锛氫粎绯荤粺绠＄悊鍛樺彲淇敼
 
-- [ ] 7. 薪资统计后端
+- [x] 7. 钖祫缁熻鍚庣
   - Requirements: R2 (AC 1-9)
   - Dependencies: Task 1
-  - Description: 实现劳务薪资按班组/个人维度统计汇总、同比环比计算和 Excel 导出
+  - Description: 瀹炵幇鍔冲姟钖祫鎸夌彮缁?涓汉缁村害缁熻姹囨€汇€佸悓姣旂幆姣旇绠楀拰 Excel 瀵煎嚭
   - Sub-tasks:
-    1. [ ] 创建 VO 类：SalaryStatsSummary, TeamSalaryVO, SalaryDetailVO, SalaryCompareVO
-    2. [ ] 创建 `SalaryStatisticsQuery` 查询 DTO
-    3. [ ] 实现 `getStatsByTeam()`：按班组分组汇总已审批工资单
-    4. [ ] 实现 `getTeamDetail()`：班组内工人明细（出勤、加班、应发、扣款、实发）
-    5. [ ] 实现 `generateMonthlyReport()`：汇总报表数据
-    6. [ ] 实现 `getCompareData()`：同比/环比变化率（精确小数点后1位）
-    7. [ ] 实现 `exportReport()`：EasyExcel 多 Sheet 导出
-    8. [ ] 实现自有劳务和零星用工分类统计
-    9. [ ] 空数据处理：无审批数据时返回提示
-    10. [ ] 金额计算使用 BigDecimal（scale=2, ROUND_HALF_UP）
-    11. [ ] 创建 `SalaryStatisticsController`（REST API）
-    12. [ ] 从已审批用工单中关联出勤和加班数据
+    1. [x] 鍒涘缓 VO 绫伙細SalaryStatsSummary, TeamSalaryVO, SalaryDetailVO, SalaryCompareVO
+    2. [x] 鍒涘缓 `SalaryStatisticsQuery` 鏌ヨ DTO
+    3. [x] 瀹炵幇 `getStatsByTeam()`锛氭寜鐝粍鍒嗙粍姹囨€诲凡瀹℃壒宸ヨ祫鍗?
+    4. [x] 瀹炵幇 `getTeamDetail()`锛氱彮缁勫唴宸ヤ汉鏄庣粏锛堝嚭鍕ゃ€佸姞鐝€佸簲鍙戙€佹墸娆俱€佸疄鍙戯級
+    5. [x] 瀹炵幇 `generateMonthlyReport()`锛氭眹鎬绘姤琛ㄦ暟鎹?
+    6. [x] 瀹炵幇 `getCompareData()`锛氬悓姣?鐜瘮鍙樺寲鐜囷紙绮剧‘灏忔暟鐐瑰悗1浣嶏級
+    7. [x] 瀹炵幇 `exportReport()`锛欵asyExcel 澶?Sheet 瀵煎嚭
+    8. [x] 瀹炵幇鑷湁鍔冲姟鍜岄浂鏄熺敤宸ュ垎绫荤粺璁?
+    9. [x] 绌烘暟鎹鐞嗭細鏃犲鎵规暟鎹椂杩斿洖鎻愮ず
+    10. [x] 閲戦璁＄畻浣跨敤 BigDecimal锛坰cale=2, ROUND_HALF_UP锛?
+    11. [x] 鍒涘缓 `SalaryStatisticsController`锛圧EST API锛?
+    12. [x] 浠庡凡瀹℃壒鐢ㄥ伐鍗曚腑鍏宠仈鍑哄嫟鍜屽姞鐝暟鎹?
 
-- [ ] 8. 机械工作量结算后端
+- [x] 8. 鏈烘宸ヤ綔閲忕粨绠楀悗绔?
   - Requirements: R4 (AC 1-9)
   - Dependencies: Task 1
-  - Description: 实现机械结算单创建、费用计算、审批流程集成和 Excel 导出
+  - Description: 瀹炵幇鏈烘缁撶畻鍗曞垱寤恒€佽垂鐢ㄨ绠椼€佸鎵规祦绋嬮泦鎴愬拰 Excel 瀵煎嚭
   - Sub-tasks:
-    1. [ ] 创建 `BizMachineWorkSettlement` 实体类（继承 BaseEntity）
-    2. [ ] 创建 `BizMachineWorkSettlementDetail` 实体类
-    3. [ ] 创建 Mapper 接口 + XML
-    4. [ ] 创建 VO/DTO：CreateRequest, SettlementVO, SummaryVO
-    5. [ ] 实现 `createSettlement()`：周期重叠校验 + 无工作量校验
-    6. [ ] 实现周期重叠检测：start1 <= end2 AND start2 <= end1
-    7. [ ] 实现费用计算：台班计价 vs 工作量计价（BigDecimal scale=2）
-    8. [ ] 实现结算单编号自动生成
-    9. [ ] 实现 `submitForApproval()`：启动 Flowable 审批
-    10. [ ] 实现 `onApproved()`：审批通过回调，累加合同已结算金额
-    11. [ ] 实现 `getProjectSummary()`：项目费用总览
-    12. [ ] 实现 `exportSettlement()`：EasyExcel 导出
-    13. [ ] 创建 `MachineSettlementController`（REST API）
-    14. [ ] 注册 Flowable 机械结算审批流程定义
+    1. [x] 鍒涘缓 `BizMachineWorkSettlement` 瀹炰綋绫伙紙缁ф壙 BaseEntity锛?
+    2. [x] 鍒涘缓 `BizMachineWorkSettlementDetail` 瀹炰綋绫?
+    3. [x] 鍒涘缓 Mapper 鎺ュ彛 + XML
+    4. [x] 鍒涘缓 VO/DTO锛欳reateRequest, SettlementVO, SummaryVO
+    5. [x] 瀹炵幇 `createSettlement()`锛氬懆鏈熼噸鍙犳牎楠?+ 鏃犲伐浣滈噺鏍￠獙
+    6. [x] 瀹炵幇鍛ㄦ湡閲嶅彔妫€娴嬶細start1 <= end2 AND start2 <= end1
+    7. [x] 瀹炵幇璐圭敤璁＄畻锛氬彴鐝浠?vs 宸ヤ綔閲忚浠凤紙BigDecimal scale=2锛?
+    8. [x] 瀹炵幇缁撶畻鍗曠紪鍙疯嚜鍔ㄧ敓鎴?
+    9. [x] 瀹炵幇 `submitForApproval()`锛氬惎鍔?Flowable 瀹℃壒
+    10. [x] 瀹炵幇 `onApproved()`锛氬鎵归€氳繃鍥炶皟锛岀疮鍔犲悎鍚屽凡缁撶畻閲戦
+    11. [x] 瀹炵幇 `getProjectSummary()`锛氶」鐩垂鐢ㄦ€昏
+    12. [x] 瀹炵幇 `exportSettlement()`锛欵asyExcel 瀵煎嚭
+    13. [x] 鍒涘缓 `MachineSettlementController`锛圧EST API锛?
+    14. [x] 娉ㄥ唽 Flowable 鏈烘缁撶畻瀹℃壒娴佺▼瀹氫箟
 
-- [ ] 9. SaaS 多租户管理增强
+- [x] 9. SaaS 澶氱鎴风鐞嗗寮?
   - Requirements: R7 (AC 1-10)
   - Dependencies: Task 1
-  - Description: 增强租户管理，实现用户类型、续期、停用、功能模块权限和到期自动检查
+  - Description: 澧炲己绉熸埛绠＄悊锛屽疄鐜扮敤鎴风被鍨嬨€佺画鏈熴€佸仠鐢ㄣ€佸姛鑳芥ā鍧楁潈闄愬拰鍒版湡鑷姩妫€鏌?
   - Sub-tasks:
-    1. [ ] 扩展 `SysTenant` 实体类新增字段
-    2. [ ] 创建 `TenantUserTypeEnum` 和 `TenantStatusEnum`
-    3. [ ] 实现 `createTenant()`：自动生成编码 + 初始化管理员 + 设置默认有效期
-    4. [ ] 实现 `disableTenant()`：更新状态 + 清除 Redis Token
-    5. [ ] 实现 `enableTenant()`：恢复正常状态
-    6. [ ] 实现 `renewTenant()`：续期天数校验（1-1095）+ 有效期累加
-    7. [ ] 实现 `updateModules()`：配置功能模块权限
-    8. [ ] 实现 `checkUserLimit()`：活跃用户数上限校验
-    9. [ ] 实现模块权限拦截器：未授权模块 API 返回 403
-    10. [ ] 实现定时任务 `checkExpiredTenants()`：每天凌晨检查到期
-    11. [ ] 实现定时任务 `sendRenewalReminders()`：到期前 15/7 天提醒
-    12. [ ] 登录拦截器增加租户状态校验
-    13. [ ] 增强 `TenantController` 新增 API 接口
+    1. [x] 鎵╁睍 `SysTenant` 瀹炰綋绫绘柊澧炲瓧娈?
+    2. [x] 鍒涘缓 `TenantUserTypeEnum` 鍜?`TenantStatusEnum`
+    3. [x] 瀹炵幇 `createTenant()`锛氳嚜鍔ㄧ敓鎴愮紪鐮?+ 鍒濆鍖栫鐞嗗憳 + 璁剧疆榛樿鏈夋晥鏈?
+    4. [x] 瀹炵幇 `disableTenant()`锛氭洿鏂扮姸鎬?+ 娓呴櫎 Redis Token
+    5. [x] 瀹炵幇 `enableTenant()`锛氭仮澶嶆甯哥姸鎬?
+    6. [x] 瀹炵幇 `renewTenant()`锛氱画鏈熷ぉ鏁版牎楠岋紙1-1095锛? 鏈夋晥鏈熺疮鍔?
+    7. [x] 瀹炵幇 `updateModules()`锛氶厤缃姛鑳芥ā鍧楁潈闄?
+    8. [x] 瀹炵幇 `checkUserLimit()`锛氭椿璺冪敤鎴锋暟涓婇檺鏍￠獙
+    9. [x] 瀹炵幇妯″潡鏉冮檺鎷︽埅鍣細鏈巿鏉冩ā鍧?API 杩斿洖 403
+    10. [x] 瀹炵幇瀹氭椂浠诲姟 `checkExpiredTenants()`锛氭瘡澶╁噷鏅ㄦ鏌ュ埌鏈?
+    11. [x] 瀹炵幇瀹氭椂浠诲姟 `sendRenewalReminders()`锛氬埌鏈熷墠 15/7 澶╂彁閱?
+    12. [x] 鐧诲綍鎷︽埅鍣ㄥ鍔犵鎴风姸鎬佹牎楠?
+    13. [x] 澧炲己 `TenantController` 鏂板 API 鎺ュ彛
 
-- [ ] 10. 审批数据回滚
+- [x] 10. 瀹℃壒鏁版嵁鍥炴粴
   - Requirements: R8 (AC 1-10)
   - Dependencies: Task 1
-  - Description: 实现审批驳回/撤回时自动数据回滚，含快照记录、策略模式和乐观锁重试
+  - Description: 瀹炵幇瀹℃壒椹冲洖/鎾ゅ洖鏃惰嚜鍔ㄦ暟鎹洖婊氾紝鍚揩鐓ц褰曘€佺瓥鐣ユā寮忓拰涔愯閿侀噸璇?
   - Sub-tasks:
-    1. [ ] 创建 `BizApprovalSnapshot` 实体类 + Mapper
-    2. [ ] 创建 `BizApprovalRollbackLog` 实体类 + Mapper
-    3. [ ] 定义 `RollbackStrategy` 接口
-    4. [ ] 实现 `RollbackStrategyRegistry` 自动注册
-    5. [ ] 实现 `saveSnapshot()`：审批提交时记录快照
-    6. [ ] 各业务审批提交入口调用 saveSnapshot
-    7. [ ] 实现 `executeRollback()`：策略查找 → 冲突检测 → 事务回滚 → 日志
-    8. [ ] 实现冲突检测：快照值 vs 当前值不一致标记冲突
-    9. [ ] 实现乐观锁重试（最多 3 次）
-    10. [ ] 实现 6 种业务回滚策略
-    11. [ ] 集成 Flowable TaskListener：驳回/撤回 → Spring Event → 回滚
-    12. [ ] 实现超时检测（>5s 标记失败 + 通知管理员）
-    13. [ ] 实现回滚记录查询接口
-    14. [ ] 实现冲突确认接口
-    15. [ ] 创建 `ApprovalRollbackController`（REST API）
+    1. [x] 鍒涘缓 `BizApprovalSnapshot` 瀹炰綋绫?+ Mapper
+    2. [x] 鍒涘缓 `BizApprovalRollbackLog` 瀹炰綋绫?+ Mapper
+    3. [x] 瀹氫箟 `RollbackStrategy` 鎺ュ彛
+    4. [x] 瀹炵幇 `RollbackStrategyRegistry` 鑷姩娉ㄥ唽
+    5. [x] 瀹炵幇 `saveSnapshot()`锛氬鎵规彁浜ゆ椂璁板綍蹇収
+    6. [x] 鍚勪笟鍔″鎵规彁浜ゅ叆鍙ｈ皟鐢?saveSnapshot
+    7. [x] 瀹炵幇 `executeRollback()`锛氱瓥鐣ユ煡鎵?鈫?鍐茬獊妫€娴?鈫?浜嬪姟鍥炴粴 鈫?鏃ュ織
+    8. [x] 瀹炵幇鍐茬獊妫€娴嬶細蹇収鍊?vs 褰撳墠鍊间笉涓€鑷存爣璁板啿绐?
+    9. [x] 瀹炵幇涔愯閿侀噸璇曪紙鏈€澶?3 娆★級
+    10. [x] 瀹炵幇 6 绉嶄笟鍔″洖婊氱瓥鐣?
+    11. [x] 闆嗘垚 Flowable TaskListener锛氶┏鍥?鎾ゅ洖 鈫?Spring Event 鈫?鍥炴粴
+    12. [x] 瀹炵幇瓒呮椂妫€娴嬶紙>5s 鏍囪澶辫触 + 閫氱煡绠＄悊鍛橈級
+    13. [x] 瀹炵幇鍥炴粴璁板綍鏌ヨ鎺ュ彛
+    14. [x] 瀹炵幇鍐茬獊纭鎺ュ彛
+    15. [x] 鍒涘缓 `ApprovalRollbackController`锛圧EST API锛?
 
-- [ ] 11. 项目成员管理前端
+- [x] 11. 椤圭洰鎴愬憳绠＄悊鍓嶇
   - Requirements: R3 (AC 3, 8)
   - Dependencies: Task 3
-  - Description: 实现项目详情页"项目团队"标签页，含成员列表和角色管理操作
+  - Description: 瀹炵幇椤圭洰璇︽儏椤?椤圭洰鍥㈤槦"鏍囩椤碉紝鍚垚鍛樺垪琛ㄥ拰瑙掕壊绠＄悊鎿嶄綔
   - Sub-tasks:
-    1. [ ] 创建 `src/views/project/components/ProjectMember.vue`
-    2. [ ] 实现成员列表表格（姓名、部门、角色标签、加入时间、操作列）
-    3. [ ] 实现按角色筛选下拉框
-    4. [ ] 实现"添加成员"弹窗：用户远程搜索 + 角色多选
-    5. [ ] 实现"移除成员"确认弹窗 + 错误提示
-    6. [ ] 实现"变更角色"弹窗
-    7. [ ] 在项目详情页添加"项目团队"标签页
-    8. [ ] API 层封装（src/api/project.ts）
-    9. [ ] 错误响应 Toast 提示处理
+    1. [x] 鍒涘缓 `src/views/project/components/ProjectMember.vue`
+    2. [x] 瀹炵幇鎴愬憳鍒楄〃琛ㄦ牸锛堝鍚嶃€侀儴闂ㄣ€佽鑹叉爣绛俱€佸姞鍏ユ椂闂淬€佹搷浣滃垪锛?
+    3. [x] 瀹炵幇鎸夎鑹茬瓫閫変笅鎷夋
+    4. [x] 瀹炵幇"娣诲姞鎴愬憳"寮圭獥锛氱敤鎴疯繙绋嬫悳绱?+ 瑙掕壊澶氶€?
+    5. [x] 瀹炵幇"绉婚櫎鎴愬憳"纭寮圭獥 + 閿欒鎻愮ず
+    6. [x] 瀹炵幇"鍙樻洿瑙掕壊"寮圭獥
+    7. [x] 鍦ㄩ」鐩鎯呴〉娣诲姞"椤圭洰鍥㈤槦"鏍囩椤?
+    8. [x] API 灞傚皝瑁咃紙src/api/project.ts锛?
+    9. [x] 閿欒鍝嶅簲 Toast 鎻愮ず澶勭悊
 
-- [ ] 12. 数据权限配置前端
+- [x] 12. 鏁版嵁鏉冮檺閰嶇疆鍓嶇
   - Requirements: R1 (AC 2)
   - Dependencies: Task 4
-  - Description: 角色管理页面增加数据权限配置界面
+  - Description: 瑙掕壊绠＄悊椤甸潰澧炲姞鏁版嵁鏉冮檺閰嶇疆鐣岄潰
   - Sub-tasks:
-    1. [ ] 角色编辑页增加"数据权限"配置区域
-    2. [ ] 实现数据范围下拉选择器
-    3. [ ] 调用 PUT /api/v1/system/role/{id}/data-scope
-    4. [ ] 角色列表展示数据范围标签
-    5. [ ] API 层封装
+    1. [x] 瑙掕壊缂栬緫椤靛鍔?鏁版嵁鏉冮檺"閰嶇疆鍖哄煙
+    2. [x] 瀹炵幇鏁版嵁鑼冨洿涓嬫媺閫夋嫨鍣?
+    3. [x] 璋冪敤 PUT /api/v1/system/role/{id}/data-scope
+    4. [x] 瑙掕壊鍒楄〃灞曠ず鏁版嵁鑼冨洿鏍囩
+    5. [x] API 灞傚皝瑁?
 
-- [ ] 13. 系统设置前端
+- [x] 13. 绯荤粺璁剧疆鍓嶇
   - Requirements: R5 (AC 2)
   - Dependencies: Task 6
-  - Description: 实现系统设置页面，按分组标签页展示并动态渲染输入控件
+  - Description: 瀹炵幇绯荤粺璁剧疆椤甸潰锛屾寜鍒嗙粍鏍囩椤靛睍绀哄苟鍔ㄦ€佹覆鏌撹緭鍏ユ帶浠?
   - Sub-tasks:
-    1. [ ] 创建 `src/views/system/config/index.vue`
-    2. [ ] 实现标签页切换（安全/审批/文件/通知设置）
-    3. [ ] 动态表单渲染：按 value_type 渲染控件
-    4. [ ] 实现值范围提示
-    5. [ ] 实现保存 + 校验失败提示
-    6. [ ] 实现"恢复默认值"按钮
-    7. [ ] API 层封装（src/api/system.ts）
-    8. [ ] 注册路由 + 菜单项
+    1. [x] 鍒涘缓 `src/views/system/config/index.vue`
+    2. [x] 瀹炵幇鏍囩椤靛垏鎹紙瀹夊叏/瀹℃壒/鏂囦欢/閫氱煡璁剧疆锛?
+    3. [x] 鍔ㄦ€佽〃鍗曟覆鏌擄細鎸?value_type 娓叉煋鎺т欢
+    4. [x] 瀹炵幇鍊艰寖鍥存彁绀?
+    5. [x] 瀹炵幇淇濆瓨 + 鏍￠獙澶辫触鎻愮ず
+    6. [x] 瀹炵幇"鎭㈠榛樿鍊?鎸夐挳
+    7. [x] API 灞傚皝瑁咃紙src/api/system.ts锛?
+    8. [x] 娉ㄥ唽璺敱 + 鑿滃崟椤?
 
-- [ ] 14. 薪资统计前端
+- [x] 14. 钖祫缁熻鍓嶇
   - Requirements: R2 (AC 1-9)
   - Dependencies: Task 7
-  - Description: 实现薪资统计页面，含筛选、班组汇总、同比环比和 Excel 导出
+  - Description: 瀹炵幇钖祫缁熻椤甸潰锛屽惈绛涢€夈€佺彮缁勬眹鎬汇€佸悓姣旂幆姣斿拰 Excel 瀵煎嚭
   - Sub-tasks:
-    1. [ ] 创建 `src/views/labor/salary/stats.vue`
-    2. [ ] 实现筛选栏：项目（必选）+ 月份（必选）+ 班组 + 工人姓名
-    3. [ ] 实现班组汇总表格
-    4. [ ] 实现班组明细展开
-    5. [ ] 实现同比环比数据卡片
-    6. [ ] 实现自有劳务/零星用工分类 Tab
-    7. [ ] 实现 Excel 导出按钮
-    8. [ ] 空数据状态展示
-    9. [ ] API 层封装（src/api/labor.ts）
-    10. [ ] 注册路由 + 菜单项
+    1. [x] 鍒涘缓 `src/views/labor/salary/stats.vue`
+    2. [x] 瀹炵幇绛涢€夋爮锛氶」鐩紙蹇呴€夛級+ 鏈堜唤锛堝繀閫夛級+ 鐝粍 + 宸ヤ汉濮撳悕
+    3. [x] 瀹炵幇鐝粍姹囨€昏〃鏍?
+    4. [x] 瀹炵幇鐝粍鏄庣粏灞曞紑
+    5. [x] 瀹炵幇鍚屾瘮鐜瘮鏁版嵁鍗＄墖
+    6. [x] 瀹炵幇鑷湁鍔冲姟/闆舵槦鐢ㄥ伐鍒嗙被 Tab
+    7. [x] 瀹炵幇 Excel 瀵煎嚭鎸夐挳
+    8. [x] 绌烘暟鎹姸鎬佸睍绀?
+    9. [x] API 灞傚皝瑁咃紙src/api/labor.ts锛?
+    10. [x] 娉ㄥ唽璺敱 + 鑿滃崟椤?
 
-- [ ] 15. 机械结算前端
+- [x] 15. 鏈烘缁撶畻鍓嶇
   - Requirements: R4 (AC 1-9)
   - Dependencies: Task 8
-  - Description: 实现机械结算管理页面，含创建、审批提交、费用总览和导出
+  - Description: 瀹炵幇鏈烘缁撶畻绠＄悊椤甸潰锛屽惈鍒涘缓銆佸鎵规彁浜ゃ€佽垂鐢ㄦ€昏鍜屽鍑?
   - Sub-tasks:
-    1. [ ] 创建 `src/views/machine/settlement/index.vue` 列表页
-    2. [ ] 实现结算单列表表格
-    3. [ ] 创建 `src/views/machine/settlement/create.vue` 创建页
-    4. [ ] 实现创建表单：项目 + 周期选择
-    5. [ ] 实现机械明细预览
-    6. [ ] 实现提交审批 + 状态展示
-    7. [ ] 创建详情页面
-    8. [ ] 实现项目费用总览卡片
-    9. [ ] 实现 Excel 导出
-    10. [ ] API 层封装（src/api/machine.ts）
-    11. [ ] 注册路由 + 菜单项
+    1. [x] 鍒涘缓 `src/views/machine/settlement/index.vue` 鍒楄〃椤?
+    2. [x] 瀹炵幇缁撶畻鍗曞垪琛ㄨ〃鏍?
+    3. [x] 鍒涘缓 `src/views/machine/settlement/create.vue` 鍒涘缓椤?
+    4. [x] 瀹炵幇鍒涘缓琛ㄥ崟锛氶」鐩?+ 鍛ㄦ湡閫夋嫨
+    5. [x] 瀹炵幇鏈烘鏄庣粏棰勮
+    6. [x] 瀹炵幇鎻愪氦瀹℃壒 + 鐘舵€佸睍绀?
+    7. [x] 鍒涘缓璇︽儏椤甸潰
+    8. [x] 瀹炵幇椤圭洰璐圭敤鎬昏鍗＄墖
+    9. [x] 瀹炵幇 Excel 瀵煎嚭
+    10. [x] API 灞傚皝瑁咃紙src/api/machine.ts锛?
+    11. [x] 娉ㄥ唽璺敱 + 鑿滃崟椤?
 
-- [ ] 16. 租户管理前端增强
+- [x] 16. 绉熸埛绠＄悊鍓嶇澧炲己
   - Requirements: R7 (AC 9)
   - Dependencies: Task 9
-  - Description: 增强租户管理页面，新增停用/启用/续期和功能模块配置
+  - Description: 澧炲己绉熸埛绠＄悊椤甸潰锛屾柊澧炲仠鐢?鍚敤/缁湡鍜屽姛鑳芥ā鍧楅厤缃?
   - Sub-tasks:
-    1. [ ] 增强列表表格：用户类型、有效期、使用量列
-    2. [ ] 实现状态和类型筛选
-    3. [ ] 实现"停用"/"启用"操作按钮
-    4. [ ] 实现"续期"弹窗（天数输入 1-1095）
-    5. [ ] 实现"功能模块配置"弹窗（模块多选）
-    6. [ ] 增强创建表单：用户类型 + 有效期 + 上限
-    7. [ ] API 层封装
+    1. [x] 澧炲己鍒楄〃琛ㄦ牸锛氱敤鎴风被鍨嬨€佹湁鏁堟湡銆佷娇鐢ㄩ噺鍒?
+    2. [x] 瀹炵幇鐘舵€佸拰绫诲瀷绛涢€?
+    3. [x] 瀹炵幇"鍋滅敤"/"鍚敤"鎿嶄綔鎸夐挳
+    4. [x] 瀹炵幇"缁湡"寮圭獥锛堝ぉ鏁拌緭鍏?1-1095锛?
+    5. [x] 瀹炵幇"鍔熻兘妯″潡閰嶇疆"寮圭獥锛堟ā鍧楀閫夛級
+    6. [x] 澧炲己鍒涘缓琛ㄥ崟锛氱敤鎴风被鍨?+ 鏈夋晥鏈?+ 涓婇檺
+    7. [x] API 灞傚皝瑁?
 
-- [ ] 17. 审批回滚前端
+- [x] 17. 瀹℃壒鍥炴粴鍓嶇
   - Requirements: R8 (AC 9, 10)
   - Dependencies: Task 10
-  - Description: 实现回滚记录查询页面和审批详情页回滚状态展示
+  - Description: 瀹炵幇鍥炴粴璁板綍鏌ヨ椤甸潰鍜屽鎵硅鎯呴〉鍥炴粴鐘舵€佸睍绀?
   - Sub-tasks:
-    1. [ ] 创建 `src/views/workflow/rollback/index.vue`
-    2. [ ] 实现回滚记录表格
-    3. [ ] 实现筛选栏：项目 + 业务类型 + 时间范围 + 状态
-    4. [ ] 实现冲突确认操作弹窗
-    5. [ ] 审批详情页增加回滚信息区域
-    6. [ ] 冲突处理指引文案
-    7. [ ] API 层封装（src/api/workflow.ts）
-    8. [ ] 注册路由 + 菜单项
+    1. [x] 鍒涘缓 `src/views/workflow/rollback/index.vue`
+    2. [x] 瀹炵幇鍥炴粴璁板綍琛ㄦ牸
+    3. [x] 瀹炵幇绛涢€夋爮锛氶」鐩?+ 涓氬姟绫诲瀷 + 鏃堕棿鑼冨洿 + 鐘舵€?
+    4. [x] 瀹炵幇鍐茬獊纭鎿嶄綔寮圭獥
+    5. [x] 瀹℃壒璇︽儏椤靛鍔犲洖婊氫俊鎭尯鍩?
+    6. [x] 鍐茬獊澶勭悊鎸囧紩鏂囨
+    7. [x] API 灞傚皝瑁咃紙src/api/workflow.ts锛?
+    8. [x] 娉ㄥ唽璺敱 + 鑿滃崟椤?
 
-- [ ] 18. 引用校验前端集成
+- [x] 18. 寮曠敤鏍￠獙鍓嶇闆嗘垚
   - Requirements: R6 (AC 8)
   - Dependencies: Task 5
-  - Description: 在删除确认弹窗中集成引用校验结果，有引用时禁用确认按钮
+  - Description: 鍦ㄥ垹闄ょ‘璁ゅ脊绐椾腑闆嗘垚寮曠敤鏍￠獙缁撴灉锛屾湁寮曠敤鏃剁鐢ㄧ‘璁ゆ寜閽?
   - Sub-tasks:
-    1. [ ] 创建通用组件 `src/components/ReferenceCheckDialog.vue`
-    2. [ ] 实现引用校验结果展示列表
-    3. [ ] 有引用时禁用"确认删除"按钮
-    4. [ ] 无引用时正常删除流程
-    5. [ ] 在证件/班组/台账/供应商/材料字典删除中集成
-    6. [ ] 统一解析 ReferenceExistsException 响应
+    1. [x] 鍒涘缓閫氱敤缁勪欢 `src/components/ReferenceCheckDialog.vue`
+    2. [x] 瀹炵幇寮曠敤鏍￠獙缁撴灉灞曠ず鍒楄〃
+    3. [x] 鏈夊紩鐢ㄦ椂绂佺敤"纭鍒犻櫎"鎸夐挳
+    4. [x] 鏃犲紩鐢ㄦ椂姝ｅ父鍒犻櫎娴佺▼
+    5. [x] 鍦ㄨ瘉浠?鐝粍/鍙拌处/渚涘簲鍟?鏉愭枡瀛楀吀鍒犻櫎涓泦鎴?
+    6. [x] 缁熶竴瑙ｆ瀽 ReferenceExistsException 鍝嶅簲
 
-- [ ] 19. Property-Based Tests
-  - Requirements: R1-R8（正确性属性 1-20）
+- [x] 19. Property-Based Tests
+  - Requirements: R1-R8锛堟纭€у睘鎬?1-20锛?
   - Dependencies: Task 2, Task 3, Task 5, Task 6, Task 7, Task 8, Task 9, Task 10
-  - Description: 使用 jqwik 框架编写属性测试，验证核心业务逻辑的正确性属性
+  - Description: 浣跨敤 jqwik 妗嗘灦缂栧啓灞炴€ф祴璇曪紝楠岃瘉鏍稿績涓氬姟閫昏緫鐨勬纭€у睘鎬?
   - Sub-tasks:
-    1. [ ] 添加 jqwik 依赖到 pom.xml（net.jqwik:jqwik:1.8.x）
-    2. [ ] Property 1：DataPermissionHandler SQL 过滤条件正确性
-    3. [ ] Property 2：多角色数据范围优先级计算
-    4. [ ] Property 3：薪资汇总聚合精度
-    5. [ ] Property 5：同比环比变化率公式
-    6. [ ] Property 9：机械费用计算公式正确性
-    7. [ ] Property 10：结算周期重叠检测
-    8. [ ] Property 12：系统参数值范围校验
-    9. [ ] Property 14：引用校验决策逻辑
-    10. [ ] Property 15：租户续期日期计算
-    11. [ ] Property 18：快照-回滚 Round Trip
-    12. [ ] Property 19：回滚冲突检测
-    13. [ ] Property 20：乐观锁重试机制
-    14. [ ] 确保每个属性测试至少 100 次迭代 + @Tag 标注
+    1. [x] 娣诲姞 jqwik 渚濊禆鍒?pom.xml锛坣et.jqwik:jqwik:1.8.x锛?
+    2. [x] Property 1锛欴ataPermissionHandler SQL 杩囨护鏉′欢姝ｇ‘鎬?
+    3. [x] Property 2锛氬瑙掕壊鏁版嵁鑼冨洿浼樺厛绾ц绠?
+    4. [x] Property 3锛氳柂璧勬眹鎬昏仛鍚堢簿搴?
+    5. [x] Property 5锛氬悓姣旂幆姣斿彉鍖栫巼鍏紡
+    6. [x] Property 9锛氭満姊拌垂鐢ㄨ绠楀叕寮忔纭€?
+    7. [x] Property 10锛氱粨绠楀懆鏈熼噸鍙犳娴?
+    8. [x] Property 12锛氱郴缁熷弬鏁板€艰寖鍥存牎楠?
+    9. [x] Property 14锛氬紩鐢ㄦ牎楠屽喅绛栭€昏緫
+    10. [x] Property 15锛氱鎴风画鏈熸棩鏈熻绠?
+    11. [x] Property 18锛氬揩鐓?鍥炴粴 Round Trip
+    12. [x] Property 19锛氬洖婊氬啿绐佹娴?
+    13. [x] Property 20锛氫箰瑙傞攣閲嶈瘯鏈哄埗
+    14. [x] 纭繚姣忎釜灞炴€ф祴璇曡嚦灏?100 娆¤凯浠?+ @Tag 鏍囨敞
 
-- [ ] 20. 集成测试
+- [x] 20. 闆嗘垚娴嬭瘯
   - Requirements: R1-R8
   - Dependencies: Task 19
-  - Description: Spring Boot Test 集成测试，验证服务间协作和端到端业务流程
+  - Description: Spring Boot Test 闆嗘垚娴嬭瘯锛岄獙璇佹湇鍔￠棿鍗忎綔鍜岀鍒扮涓氬姟娴佺▼
   - Sub-tasks:
-    1. [ ] 搭建集成测试基础设施（@SpringBootTest + Testcontainers）
-    2. [ ] 数据权限拦截器 SQL 拼接 + 查询结果验证
-    3. [ ] 项目成员添加 → 数据权限 PROJECT 范围联动
-    4. [ ] 系统配置更新 → Redis 缓存清除 → 读取最新值
-    5. [ ] 机械结算 → Flowable 审批 → 回调 → 金额累加
-    6. [ ] 审批快照 → 驳回事件 → 回滚 → 数据恢复
-    7. [ ] 回滚乐观锁冲突 → 重试机制
-    8. [ ] 租户停用 → Token 清除 → 登录拒绝
-    9. [ ] 租户到期 → 状态更新 → 登录拒绝
-    10. [ ] 引用校验阻止删除 + 无引用正常删除
-    11. [ ] 薪资统计汇总 + Excel 导出验证
-    12. [ ] 运行全部测试并确保通过
+    1. [x] 鎼缓闆嗘垚娴嬭瘯鍩虹璁炬柦锛園SpringBootTest + Testcontainers锛?
+    2. [x] 鏁版嵁鏉冮檺鎷︽埅鍣?SQL 鎷兼帴 + 鏌ヨ缁撴灉楠岃瘉
+    3. [x] 椤圭洰鎴愬憳娣诲姞 鈫?鏁版嵁鏉冮檺 PROJECT 鑼冨洿鑱斿姩
+    4. [x] 绯荤粺閰嶇疆鏇存柊 鈫?Redis 缂撳瓨娓呴櫎 鈫?璇诲彇鏈€鏂板€?
+    5. [x] 鏈烘缁撶畻 鈫?Flowable 瀹℃壒 鈫?鍥炶皟 鈫?閲戦绱姞
+    6. [x] 瀹℃壒蹇収 鈫?椹冲洖浜嬩欢 鈫?鍥炴粴 鈫?鏁版嵁鎭㈠
+    7. [x] 鍥炴粴涔愯閿佸啿绐?鈫?閲嶈瘯鏈哄埗
+    8. [x] 绉熸埛鍋滅敤 鈫?Token 娓呴櫎 鈫?鐧诲綍鎷掔粷
+    9. [x] 绉熸埛鍒版湡 鈫?鐘舵€佹洿鏂?鈫?鐧诲綍鎷掔粷
+    10. [x] 寮曠敤鏍￠獙闃绘鍒犻櫎 + 鏃犲紩鐢ㄦ甯稿垹闄?
+    11. [x] 钖祫缁熻姹囨€?+ Excel 瀵煎嚭楠岃瘉
+    12. [x] 杩愯鍏ㄩ儴娴嬭瘯骞剁‘淇濋€氳繃
 
 ## Notes
 
-- Wave 2 中的 Task 2 依赖 Task 3（项目成员管理提供 getUserProjectIds 给数据权限的 PROJECT 范围），其余 Wave 2 任务仅依赖 Task 1
-- Wave 3 的 Task 4 依赖 Task 2（数据权限拦截器就绪后再提供配置 API）
-- 前端任务（Wave 4）各自独立，仅依赖对应的后端任务
-- 测试任务（Wave 5）依赖全部后端任务完成
-- 所有金额字段使用 BigDecimal，禁止 float/double
-- Redis key 统一前缀：`sys:config:`, `token:tenant:`
+- Wave 2 涓殑 Task 2 渚濊禆 Task 3锛堥」鐩垚鍛樼鐞嗘彁渚?getUserProjectIds 缁欐暟鎹潈闄愮殑 PROJECT 鑼冨洿锛夛紝鍏朵綑 Wave 2 浠诲姟浠呬緷璧?Task 1
+- Wave 3 鐨?Task 4 渚濊禆 Task 2锛堟暟鎹潈闄愭嫤鎴櫒灏辩华鍚庡啀鎻愪緵閰嶇疆 API锛?
+- 鍓嶇浠诲姟锛圵ave 4锛夊悇鑷嫭绔嬶紝浠呬緷璧栧搴旂殑鍚庣浠诲姟
+- 娴嬭瘯浠诲姟锛圵ave 5锛変緷璧栧叏閮ㄥ悗绔换鍔″畬鎴?
+- 鎵€鏈夐噾棰濆瓧娈典娇鐢?BigDecimal锛岀姝?float/double
+- Redis key 缁熶竴鍓嶇紑锛歚sys:config:`, `token:tenant:`

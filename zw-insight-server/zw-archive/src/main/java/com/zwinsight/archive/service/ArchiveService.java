@@ -1,13 +1,22 @@
 package com.zwinsight.archive.service;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.archive.domain.BizOfficeSupply;
+import com.zwinsight.archive.mapper.BizOfficeSupplyMapper;
+import com.zwinsight.archive.vo.OfficeSupplyArchiveVO;
+import com.zwinsight.archive.vo.OtherContractArchiveVO;
 import com.zwinsight.basedata.domain.BdSupplier;
 import com.zwinsight.basedata.mapper.BdSupplierMapper;
 import com.zwinsight.budget.domain.BizBudget;
 import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BizBudgetMapper;
+import com.zwinsight.common.result.PageResult;
+import com.zwinsight.contract.domain.BizExpenseContract;
 import com.zwinsight.contract.domain.BizConstructionContract;
+import com.zwinsight.contract.mapper.BizExpenseContractMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.domain.BizPaymentReceived;
@@ -58,6 +67,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 统一档案查询服务
@@ -92,6 +102,8 @@ public class ArchiveService {
     private final BizVehicleMapper vehicleMapper;
     private final BizVehicleApplyMapper vehicleApplyMapper;
     private final BizVehicleMaintenanceMapper vehicleMaintenanceMapper;
+    private final BizExpenseContractMapper expenseContractMapper;
+    private final BizOfficeSupplyMapper officeSupplyMapper;
 
     /**
      * 项目档案（项目信息+成员+合同+资金+施工过程+成本+分包+投标+保证金）
@@ -401,5 +413,104 @@ public class ArchiveService {
         archive.put("maintenances", maintenances);
 
         return archive;
+    }
+
+    /**
+     * 其它合同档案分页查询（其它收入合同/其它支出合同）
+     * <p>
+     * 查询 biz_expense_contract 表中 contract_category = type 的记录，
+     * 支持按合同编号或合同名称模糊搜索。
+     * </p>
+     *
+     * @param type    合同分类（OTHER_INCOME 或 OTHER_EXPENSE）
+     * @param page    页码
+     * @param size    每页大小
+     * @param keyword 搜索关键字（模糊匹配合同编号/合同名称）
+     * @return 分页结果
+     */
+    public PageResult<OtherContractArchiveVO> pageOtherContractArchive(String type, int page, int size, String keyword) {
+        Page<BizExpenseContract> pageParam = new Page<>(page, size);
+
+        LambdaQueryWrapper<BizExpenseContract> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BizExpenseContract::getContractCategory, type)
+                .and(StrUtil.isNotBlank(keyword), w -> w
+                        .like(BizExpenseContract::getContractCode, keyword)
+                        .or()
+                        .like(BizExpenseContract::getContractName, keyword))
+                .orderByDesc(BizExpenseContract::getCreatedAt);
+
+        Page<BizExpenseContract> resultPage = expenseContractMapper.selectPage(pageParam, wrapper);
+
+        // 批量查询关联项目名称
+        List<Long> projectIds = resultPage.getRecords().stream()
+                .map(BizExpenseContract::getProjectId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, String> projectNameMap = new HashMap<>();
+        if (!projectIds.isEmpty()) {
+            List<BizProject> projects = projectMapper.selectBatchIds(projectIds);
+            for (BizProject p : projects) {
+                projectNameMap.put(p.getId(), p.getProjectName());
+            }
+        }
+
+        // 转换为VO
+        List<OtherContractArchiveVO> voList = resultPage.getRecords().stream()
+                .map(contract -> {
+                    OtherContractArchiveVO vo = new OtherContractArchiveVO();
+                    vo.setId(contract.getId());
+                    vo.setContractCode(contract.getContractCode());
+                    vo.setContractName(contract.getContractName());
+                    vo.setContractAmount(contract.getContractAmount());
+                    vo.setSigningDate(contract.getSigningDate());
+                    vo.setStatus(contract.getStatus());
+                    vo.setProjectId(contract.getProjectId());
+                    vo.setProjectName(projectNameMap.get(contract.getProjectId()));
+                    return vo;
+                })
+                .collect(Collectors.toList());
+
+        return new PageResult<>(voList, resultPage.getTotal(), resultPage.getCurrent(),
+                resultPage.getSize(), resultPage.getPages());
+    }
+
+    /**
+     * 办公用品档案分页查询
+     * <p>
+     * 查询 biz_office_supply 表，支持按用品名称模糊搜索。
+     * </p>
+     *
+     * @param page    页码
+     * @param size    每页大小
+     * @param keyword 搜索关键字（模糊匹配用品名称）
+     * @return 分页结果
+     */
+    public PageResult<OfficeSupplyArchiveVO> pageOfficeSupplyArchive(int page, int size, String keyword) {
+        Page<BizOfficeSupply> pageParam = new Page<>(page, size);
+
+        LambdaQueryWrapper<BizOfficeSupply> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StrUtil.isNotBlank(keyword), BizOfficeSupply::getSupplyName, keyword)
+                .orderByDesc(BizOfficeSupply::getCreatedAt);
+
+        Page<BizOfficeSupply> resultPage = officeSupplyMapper.selectPage(pageParam, wrapper);
+
+        // 转换为VO
+        List<OfficeSupplyArchiveVO> voList = resultPage.getRecords().stream()
+                .map(supply -> {
+                    OfficeSupplyArchiveVO vo = new OfficeSupplyArchiveVO();
+                    vo.setId(supply.getId());
+                    vo.setSupplyName(supply.getSupplyName());
+                    vo.setCurrentStock(supply.getCurrentStock());
+                    vo.setTotalInbound(supply.getTotalInbound());
+                    vo.setTotalIssued(supply.getTotalIssued());
+                    vo.setLastInboundDate(supply.getLastInboundDate());
+                    return vo;
+                })
+                .collect(Collectors.toList());
+
+        return new PageResult<>(voList, resultPage.getTotal(), resultPage.getCurrent(),
+                resultPage.getSize(), resultPage.getPages());
     }
 }

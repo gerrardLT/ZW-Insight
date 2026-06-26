@@ -57,12 +57,19 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitContract(row)">提交</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
+            <PrintButton
+              link
+              :show-icon="false"
+              business-type="CONTRACT"
+              :business-data-id="row.id"
+              :variables="row"
+            />
           </template>
         </el-table-column>
       </el-table>
@@ -89,6 +96,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getContractPage, deleteContract, submitContract } from '@/api/contract'
 import { getProjectList } from '@/api/project'
+import PrintButton from '@/components/PrintButton.vue'
 
 const router = useRouter()
 const loading = ref(false)

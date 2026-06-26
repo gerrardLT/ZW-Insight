@@ -21,7 +21,6 @@ public class OutboundController {
 
     private final MaterialOutboundService outboundService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMaterialOutbound>> page(
             @RequestParam(defaultValue = "1") int page,

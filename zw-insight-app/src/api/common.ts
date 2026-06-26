@@ -22,6 +22,12 @@ export function getProjectList(params?: any) {
   return request({ url: '/v1/project', data: params })
 }
 
+// 材料字典（基础数据）
+// 后端真实接口：GET /api/v1/basedata/material（MaterialController#page）
+export function getMaterialDict(params?: { page?: number; size?: number; materialName?: string; categoryId?: number }) {
+  return request({ url: '/v1/basedata/material', data: params })
+}
+
 // 消息
 export function getUnreadCount() {
   return request({ url: '/v1/message/msg/unread-count' })

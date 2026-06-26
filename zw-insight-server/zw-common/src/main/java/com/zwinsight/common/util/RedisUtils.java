@@ -127,6 +127,14 @@ public class RedisUtils {
     }
 
     /**
+     * 按模式匹配获取 key 集合
+     */
+    public java.util.Set<String> keys(String pattern) {
+        java.util.Set<String> keys = redisTemplate.keys(pattern);
+        return keys != null ? keys : java.util.Collections.emptySet();
+    }
+
+    /**
      * 按模式匹配删除缓存（使用 SCAN 避免阻塞）
      */
     public Long deleteByPattern(String pattern) {

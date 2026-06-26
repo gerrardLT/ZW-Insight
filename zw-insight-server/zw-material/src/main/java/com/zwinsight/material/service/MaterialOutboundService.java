@@ -7,14 +7,17 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.material.domain.BizMaterialOutbound;
 import com.zwinsight.material.domain.BizMaterialOutboundDetail;
 import com.zwinsight.material.domain.BizProjectMaterialStock;
+import com.zwinsight.material.event.MaterialReturnCreatedEvent;
 import com.zwinsight.material.mapper.BizMaterialOutboundDetailMapper;
 import com.zwinsight.material.mapper.BizMaterialOutboundMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -27,6 +30,7 @@ public class MaterialOutboundService {
     private final BizMaterialOutboundMapper outboundMapper;
     private final BizMaterialOutboundDetailMapper outboundDetailMapper;
     private final BizProjectMaterialStockMapper stockMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 分页查询
@@ -78,6 +82,39 @@ public class MaterialOutboundService {
             }
             stockMapper.updateById(stock);
         }
+
+        // 退货出库且关联了采购合同时，发布退货事件以触发退款申请生成
+        if ("RETURN".equals(outbound.getOutboundType()) && outbound.getContractId() != null) {
+            publishReturnEvent(outbound, details);
+        }
+    }
+
+    /**
+     * 发布退货出库事件
+     */
+    private void publishReturnEvent(BizMaterialOutbound outbound, List<BizMaterialOutboundDetail> details) {
+        List<MaterialReturnCreatedEvent.OutboundDetailItem> eventDetails = new ArrayList<>();
+        for (BizMaterialOutboundDetail detail : details) {
+            // unitPrice 作为入库单价使用（退货时按入库价计算退款）
+            BigDecimal inboundUnitPrice = detail.getUnitPrice() != null
+                    ? detail.getUnitPrice() : BigDecimal.ZERO;
+            eventDetails.add(new MaterialReturnCreatedEvent.OutboundDetailItem(
+                    detail.getMaterialName(),
+                    detail.getSpecification(),
+                    detail.getUnit(),
+                    detail.getQuantity(),
+                    inboundUnitPrice
+            ));
+        }
+
+        MaterialReturnCreatedEvent event = new MaterialReturnCreatedEvent(
+                this,
+                outbound.getId(),
+                outbound.getContractId(),
+                outbound.getProjectId(),
+                eventDetails
+        );
+        eventPublisher.publishEvent(event);
     }
 
     public BizMaterialOutbound getById(Long id) {

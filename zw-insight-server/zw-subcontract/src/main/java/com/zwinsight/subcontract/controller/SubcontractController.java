@@ -17,7 +17,6 @@ public class SubcontractController {
 
     private final SubcontractService subcontractService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizSubcontract>> page(
             @RequestParam(defaultValue = "1") int page,

@@ -2,6 +2,7 @@ package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.finance.annotation.FinanceLockCheck;
 import com.zwinsight.finance.domain.BizInvoiceApply;
 import com.zwinsight.finance.service.InvoiceApplyService;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,6 @@ public class InvoiceApplyController {
 
     private final InvoiceApplyService invoiceApplyService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizInvoiceApply>> page(
             @RequestParam(defaultValue = "1") int page,
@@ -33,12 +33,14 @@ public class InvoiceApplyController {
     }
 
     @PostMapping
+    @FinanceLockCheck(dateField = "applyDate", operation = "新增")
     public R<Void> save(@RequestBody BizInvoiceApply invoiceApply) {
         invoiceApplyService.save(invoiceApply);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @FinanceLockCheck(dateField = "applyDate", operation = "编辑")
     public R<Void> update(@PathVariable Long id, @RequestBody BizInvoiceApply invoiceApply) {
         invoiceApply.setId(id);
         invoiceApplyService.update(invoiceApply);

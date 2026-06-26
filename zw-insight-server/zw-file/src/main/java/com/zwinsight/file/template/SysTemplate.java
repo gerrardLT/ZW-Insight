@@ -42,4 +42,19 @@ public class SysTemplate extends BaseEntity {
      * 是否默认模板（0-否 1-是）
      */
     private Integer isDefault;
+
+    /**
+     * 渲染引擎：SIMPLE(占位符) / THYMELEAF
+     */
+    private String engineType;
+
+    /**
+     * 关联业务类型：CONTRACT / BUDGET / MATERIAL 等
+     */
+    private String businessType;
+
+    /**
+     * 数据查询配置 JSON（数据源 SQL 或服务方法）
+     */
+    private String dataQueryConfig;
 }

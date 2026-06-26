@@ -19,7 +19,6 @@ public class TenderFeeController {
 
     private final TenderFeeService feeService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizTenderFee>> page(
             @RequestParam(defaultValue = "1") int page,

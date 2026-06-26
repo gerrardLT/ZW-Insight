@@ -173,6 +173,10 @@ import {
   updateUserStatus, batchUpdateUserStatus, assignUserRoles, resetUserPassword,
   getOrgTree, getRoleList, getPostList
 } from '@/api/system'
+import { useUserStore } from '@/stores/user'
+import { filterBatchIds } from '@/utils/batch-status'
+
+const userStore = useUserStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -298,8 +302,17 @@ async function handleDelete(row: any) {
 
 async function handleBatchStatus(status: number) {
   const action = status === 1 ? '启用' : '停用'
-  await ElMessageBox.confirm(`确定要批量${action}选中用户吗？`, '提示', { type: 'warning' })
-  await batchUpdateUserStatus(selectedIds.value, status)
+  const currentId = userStore.userInfo?.id
+
+  // 排除当前登录用户
+  const filteredIds = filterBatchIds(selectedIds.value, currentId)
+  if (filteredIds.length === 0) {
+    ElMessage.warning('不能对自己执行此操作')
+    return
+  }
+
+  await ElMessageBox.confirm(`确认${action}选中的 ${filteredIds.length} 个用户？`, '提示', { type: 'warning' })
+  await batchUpdateUserStatus(filteredIds, status)
   ElMessage.success(`批量${action}成功`)
   loadData()
 }

@@ -19,7 +19,6 @@ public class MachineEntryController {
 
     private final MachineEntryService entryService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMachineEntry>> page(
             @RequestParam(defaultValue = "1") int page,

@@ -2,6 +2,8 @@ package com.zwinsight.security.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.zwinsight.common.desensitize.Desensitize;
+import com.zwinsight.common.desensitize.DesensitizeType;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -17,7 +19,11 @@ public class SysTenant implements Serializable {
     private String tenantCode;
     private String tenantName;
     private String contactName;
+
+    @Desensitize(type = DesensitizeType.PHONE)
     private String contactPhone;
+
+    @Desensitize(type = DesensitizeType.ADDRESS)
     private String address;
     private Long tenantTypeId;
 

@@ -2,6 +2,7 @@ package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.finance.annotation.FinanceLockCheck;
 import com.zwinsight.finance.domain.BizOtherPayment;
 import com.zwinsight.finance.service.OtherPaymentService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class OtherPaymentController {
     }
 
     @PostMapping
+    @FinanceLockCheck(dateField = "paymentDate", operation = "新增")
     public R<Void> save(@RequestBody BizOtherPayment otherPayment) {
         otherPaymentService.save(otherPayment);
         return R.ok();

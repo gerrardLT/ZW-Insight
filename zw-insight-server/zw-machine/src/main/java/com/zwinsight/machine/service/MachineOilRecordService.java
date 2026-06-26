@@ -37,4 +37,8 @@ public class MachineOilRecordService {
         if (!"IN_FIELD".equals(ledger.getStatus())) throw new BusinessException("仅在场机械可记录加油");
         oilRecordMapper.insert(record);
     }
+
+    public void delete(Long id) {
+        oilRecordMapper.deleteById(id);
+    }
 }

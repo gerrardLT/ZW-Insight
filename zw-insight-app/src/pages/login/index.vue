@@ -49,6 +49,11 @@
         </view>
         <button class="login-btn" :loading="loading" @click="handleSmsLogin">登 录</button>
       </view>
+
+      <!-- 忘记密码入口 -->
+      <view class="login-extra">
+        <text class="forgot-link" @click="goForgotPassword">忘记密码？</text>
+      </view>
     </view>
   </view>
 </template>
@@ -94,6 +99,11 @@ function isValidPhone(phone: string): boolean {
   return /^1[3-9]\d{9}$/.test(phone)
 }
 
+// 跳转忘记密码页
+function goForgotPassword() {
+  uni.navigateTo({ url: '/pages/login/forgot-password' })
+}
+
 // 发送短信验证码
 async function handleSendSms() {
   const phone = smsForm.value.phone.trim()
@@ -137,8 +147,7 @@ async function handlePasswordLogin() {
 }
 
 // 短信验证码登录
-async function handleSmsLogin() {
-  const phone = smsForm.value.phone.trim()
+async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   const smsCode = smsForm.value.smsCode.trim()
   if (!phone) {
     uni.showToast({ title: '请输入手机号', icon: 'none' })
@@ -281,5 +290,13 @@ async function handleSmsLogin() {
   border-radius: 8rpx;
   margin-top: 40rpx;
   border: none;
+}
+.login-extra {
+  text-align: center;
+  margin-top: 24rpx;
+}
+.forgot-link {
+  font-size: 26rpx;
+  color: #409eff;
 }
 </style>

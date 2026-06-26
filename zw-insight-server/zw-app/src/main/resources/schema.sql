@@ -1973,6 +1973,7 @@ CREATE TABLE IF NOT EXISTS biz_invoice_received (
     supplier_id BIGINT COMMENT '供应商ID',
     supplier_name VARCHAR(200) COMMENT '供应商名称',
     invoice_amount DECIMAL(18,2) NOT NULL COMMENT '发票金额',
+    invoice_date DATE COMMENT '收票日期（业务日期，用于封账校验）',
     status VARCHAR(20) DEFAULT 'APPROVED' COMMENT '状态（APPROVED）',
     tenant_id BIGINT COMMENT '租户ID',
     created_by BIGINT COMMENT '创建人ID',
@@ -2033,6 +2034,7 @@ CREATE TABLE IF NOT EXISTS biz_project_reimbursement (
     id BIGINT NOT NULL COMMENT '主键ID',
     project_id BIGINT NOT NULL COMMENT '项目ID',
     total_amount DECIMAL(18,2) NOT NULL COMMENT '报销总金额',
+    reimbursement_date DATE COMMENT '报销日期（业务日期，用于封账校验）',
     offset_reserve INT DEFAULT 0 COMMENT '是否冲抵备用金（0-否 1-是）',
     reserve_apply_id BIGINT COMMENT '备用金申请ID',
     offset_amount DECIMAL(18,2) COMMENT '冲抵金额',
@@ -2106,6 +2108,7 @@ CREATE TABLE IF NOT EXISTS biz_reserve_fund_return (
 CREATE TABLE IF NOT EXISTS biz_personal_reimbursement (
     id BIGINT NOT NULL COMMENT '主键ID',
     total_amount DECIMAL(18,2) NOT NULL COMMENT '报销总金额',
+    reimbursement_date DATE COMMENT '报销日期（业务日期，用于封账校验）',
     remark VARCHAR(500) COMMENT '备注',
     status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT/APPROVED）',
     workflow_instance_id VARCHAR(100) COMMENT '流程实例ID',

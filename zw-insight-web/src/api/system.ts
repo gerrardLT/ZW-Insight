@@ -51,7 +51,7 @@ export function updateUserStatus(id: number, status: number) {
 }
 
 export function batchUpdateUserStatus(ids: number[], status: number) {
-  return request.put('/v1/system/user/batch-status', { ids, status })
+  return request.put('/v1/system/user/status', { ids, status })
 }
 
 export function assignUserRoles(userId: number, roleIds: number[]) {

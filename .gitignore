@@ -101,3 +101,7 @@ coverage/
 *.temp
 *.pid
 *.seed
+
+# jqwik 属性测试运行缓存
+.jqwik-database
+**/.jqwik-database

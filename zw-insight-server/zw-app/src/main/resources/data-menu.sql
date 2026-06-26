@@ -25,16 +25,34 @@ INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon
 (18, '基础数据',   'DIR',  0, '/basedata',     NULL,                       'Grid',           17, 1, 0);
 
 -- ============================================================
+-- 一级菜单：项目看板（独立项目维度数据看板，P2 新增）
+-- 路由 children 挂载于根布局，path 为 /project-dashboard
+-- ============================================================
+INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
+(19, '项目看板', 'MENU', 0, '/project-dashboard', 'views/dashboard/project-dashboard', 'DataAnalysis', 2, 1, 0);
+
+-- ============================================================
 -- 二级菜单：系统管理 (parent_id=2)
 -- ============================================================
 INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
-(201, '机构管理', 'MENU', 2, 'org',   'views/system/org/index',   'OfficeBuilding', 1, 1, 0),
-(202, '人员管理', 'MENU', 2, 'user',  'views/system/user/index',  'User',           2, 1, 0),
-(203, '角色管理', 'MENU', 2, 'role',  'views/system/role/index',  'UserFilled',     3, 1, 0),
-(204, '菜单管理', 'MENU', 2, 'menu',  'views/system/menu/index',  'Menu',           4, 1, 0),
-(205, '数据字典', 'MENU', 2, 'dict',  'views/system/dict/index',  'Collection',     5, 1, 0),
-(206, '岗位管理', 'MENU', 2, 'post',  'views/system/post/index',  'Stamp',          6, 1, 0),
-(207, '日志管理', 'MENU', 2, 'log',   'views/system/log/index',   'Document',       7, 1, 0);
+(201, '机构管理',     'MENU', 2, 'org',           'views/system/org/index',           'OfficeBuilding', 1, 1, 0),
+(202, '人员管理',     'MENU', 2, 'user',          'views/system/user/index',          'User',           2, 1, 0),
+(203, '角色管理',     'MENU', 2, 'role',          'views/system/role/index',          'UserFilled',     3, 1, 0),
+(204, '菜单管理',     'MENU', 2, 'menu',          'views/system/menu/index',          'Menu',           4, 1, 0),
+(205, '数据字典',     'MENU', 2, 'dict',          'views/system/dict/index',          'Collection',     5, 1, 0),
+(206, '岗位管理',     'MENU', 2, 'post',          'views/system/post/index',          'Stamp',          6, 1, 0),
+(207, '日志管理',     'MENU', 2, 'log',           'views/system/log/index',           'Document',       7, 1, 0),
+(208, '编号规则管理', 'MENU', 2, 'serial-number', 'views/system/serial-number/index', 'Odometer',       8, 1, 0);
+
+-- 打印模板管理（p2-advanced 需求3.1 新增，parent_id=2）
+INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
+(209, '打印模板', 'MENU', 2, 'print-template', 'views/system/print-template/index', 'Printer', 9, 1, 0);
+
+-- 数据运维（p2-advanced 需求11.4/12.2/13.3 新增，parent_id=2）
+INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden, permission) VALUES
+(210, '数据备份', 'MENU', 2, 'backup',  'views/system/backup/index',  'FolderChecked', 10, 1, 0, 'system:backup:list'),
+(211, '版本管理', 'MENU', 2, 'version', 'views/system/version/index', 'Tickets',       11, 1, 0, 'system:version:list'),
+(212, '系统监控', 'MENU', 2, 'monitor', 'views/system/monitor/index', 'Monitor',       12, 1, 0, 'system:monitor:view');
 
 -- ============================================================
 -- 二级菜单：项目管理 (parent_id=3)
@@ -60,6 +78,15 @@ INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon
 (502, '回款登记', 'MENU', 5, 'payment-received', 'views/finance/payment-received', 'WalletFilled',2, 1, 0),
 (503, '付款申请', 'MENU', 5, 'payment-apply',    'views/finance/payment-apply',    'CreditCard',  3, 1, 0),
 (504, '项目最终结算', 'MENU', 5, 'settlement', 'views/finance/settlement/index', 'Money', 7, 1, 0);
+
+-- 财务封账与税率管理（P2 新增，parent_id=5）
+INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
+(505, '财务封账', 'MENU', 5, 'finance-lock', 'views/finance/finance-lock/index', 'Lock',      5, 1, 0),
+(506, '税率管理', 'MENU', 5, 'tax-rate',     'views/finance/tax-rate/index',     'Histogram', 6, 1, 0);
+
+-- 收票登记（p2-business-enhance 需求6.2 新增，parent_id=5）
+INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
+(507, '收票登记', 'MENU', 5, 'invoice-received', 'views/finance/invoice-received', 'Tickets', 4, 1, 0);
 
 -- ============================================================
 -- 二级菜单：预算管理 (parent_id=6)
@@ -184,7 +211,7 @@ INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES
 (1, 1, 1), (2, 1, 2), (3, 1, 3), (4, 1, 4), (5, 1, 5), (6, 1, 6), (7, 1, 7), (8, 1, 8),
 (9, 1, 9), (10, 1, 10), (11, 1, 11), (12, 1, 12), (13, 1, 13), (14, 1, 14), (15, 1, 15),
 (16, 1, 16), (17, 1, 17), (18, 1, 18),
-(19, 1, 201), (20, 1, 202), (21, 1, 203), (22, 1, 204), (23, 1, 205), (24, 1, 206), (25, 1, 207),
+(19, 1, 201), (20, 1, 202), (21, 1, 203), (22, 1, 204), (23, 1, 205), (24, 1, 206), (25, 1, 207), (83, 1, 208),
 (26, 1, 301), (27, 1, 302), (28, 1, 303),
 (29, 1, 401), (30, 1, 402), (31, 1, 403),
 (32, 1, 501), (33, 1, 502), (34, 1, 503), (80, 1, 504),
@@ -200,7 +227,12 @@ INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES
 (64, 1, 1501),
 (65, 1, 1601), (66, 1, 1602), (67, 1, 1603), (68, 1, 1604),
 (69, 1, 1701), (70, 1, 1702), (71, 1, 1703), (72, 1, 1704),
-(73, 1, 1801), (74, 1, 1802), (75, 1, 1803), (76, 1, 1804), (77, 1, 1805), (78, 1, 1806), (79, 1, 1807);
+(73, 1, 1801), (74, 1, 1802), (75, 1, 1803), (76, 1, 1804), (77, 1, 1805), (78, 1, 1806), (79, 1, 1807),
+(84, 1, 19), (85, 1, 505), (86, 1, 506), (87, 1, 507), (88, 1, 209);
+
+-- 数据运维菜单授权超级管理员（p2-advanced 需求11.4/12.2/13.3）
+INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES
+(89, 1, 210), (90, 1, 211), (91, 1, 212);
 
 -- 默认管理员账号（密码BCrypt加密后的123456）
 INSERT INTO sys_user (id, username, password, real_name, phone, org_id, status, tenant_id, created_at) VALUES

@@ -18,7 +18,6 @@ public class LaborRosterController {
 
     private final LaborRosterService rosterService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizLaborRoster>> page(
             @RequestParam(defaultValue = "1") int page,

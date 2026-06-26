@@ -17,7 +17,6 @@ public class MachineWorkLogController {
 
     private final MachineWorkLogService workLogService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMachineWorkLog>> page(
             @RequestParam(defaultValue = "1") int page,

@@ -17,7 +17,6 @@ public class LaborPayrollController {
 
     private final LaborPayrollService payrollService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizLaborPayroll>> page(
             @RequestParam(defaultValue = "1") int page,

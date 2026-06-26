@@ -33,6 +33,9 @@ public class BizInvoiceApply extends BaseEntity {
     /** 开票金额 */
     private BigDecimal invoiceAmount;
 
+    /** 税率(%)，引用税率字典或手动输入 */
+    private BigDecimal taxRate;
+
     /** 发票抬头 */
     private String invoiceTitle;
 

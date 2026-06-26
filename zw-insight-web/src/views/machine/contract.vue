@@ -29,9 +29,17 @@
         <el-table-column prop="rentalType" label="租赁方式" width="100" align="center" />
         <el-table-column prop="startDate" label="开始日期" width="110" />
         <el-table-column prop="endDate" label="结束日期" width="110" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <PrintButton
+              link
+              :show-icon="false"
+              business-type="MACHINE"
+              text="打印"
+              :business-data-id="row.id"
+              :variables="buildPrintVariables(row)"
+            />
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -65,6 +73,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getMachineContractPage, createMachineContract, updateMachineContract, deleteMachineContract } from '@/api/machine'
+import PrintButton from '@/components/PrintButton.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -85,6 +94,19 @@ function handleAdd() { isEdit.value = false; formData.value = { id: undefined, c
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateMachineContract(formData.value) : await createMachineContract(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteMachineContract(row.id); ElMessage.success('删除成功'); loadData() }
+/** 构造打印渲染所需的业务变量（与机械合同打印模板占位符对应） */
+function buildPrintVariables(row: any) {
+  return {
+    contractCode: row.contractCode ?? '',
+    contractName: row.contractName ?? '',
+    supplierName: row.supplierName ?? '',
+    machineName: row.machineName ?? '',
+    contractAmount: row.contractAmount ?? 0,
+    rentalType: row.rentalType ?? '',
+    startDate: row.startDate ?? '',
+    endDate: row.endDate ?? ''
+  }
+}
 onMounted(() => { loadData() })
 </script>
 

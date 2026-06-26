@@ -1,351 +1,351 @@
-# Implementation Plan: P0 核心功能
+﻿# Implementation Plan: P0 鏍稿績鍔熻兘
 
 ## Overview
 
-基于 ZW-Insight 工程项目管理系统 P0 优先级 7 个核心缺失功能的实现计划。实现采用 Spring Boot 3.2 后端 + Vue 3 前端 + uni-app 移动端的技术栈，按功能模块分组，每个模块内按"数据层 → 服务层 → 控制层 → 前端"的顺序递进实现。
+鍩轰簬 ZW-Insight 宸ョ▼椤圭洰绠＄悊绯荤粺 P0 浼樺厛绾?7 涓牳蹇冪己澶卞姛鑳界殑瀹炵幇璁″垝銆傚疄鐜伴噰鐢?Spring Boot 3.2 鍚庣 + Vue 3 鍓嶇 + uni-app 绉诲姩绔殑鎶€鏈爤锛屾寜鍔熻兘妯″潡鍒嗙粍锛屾瘡涓ā鍧楀唴鎸?鏁版嵁灞?鈫?鏈嶅姟灞?鈫?鎺у埗灞?鈫?鍓嶇"鐨勯『搴忛€掕繘瀹炵幇銆?
 
 ## Tasks
 
-- [x] 1. 数据库迁移脚本与基础设施准备
-  - [x] 1.1 创建全部新增表的数据库迁移脚本
-    - 在 `zw-insight-server/sql/` 目录下创建迁移 SQL 文件
-    - 包含表：`biz_boq_item`、`biz_budget_change`、`biz_budget_change_detail`、`biz_project_settlement`、`biz_settlement_contract_detail`、`sys_budget_control_config`、`biz_retention_warning_log`、`biz_inspection_detail`
-    - 包含 `biz_inspection` 表的 ALTER 语句（增加 `scheme_snapshot` 字段）
-    - 包含 `sys_budget_control_config` 系统默认记录的 INSERT（BLOCK, 80%）
+- [x] 1. 鏁版嵁搴撹縼绉昏剼鏈笌鍩虹璁炬柦鍑嗗
+  - [x] 1.1 鍒涘缓鍏ㄩ儴鏂板琛ㄧ殑鏁版嵁搴撹縼绉昏剼鏈?
+    - 鍦?`zw-insight-server/sql/` 鐩綍涓嬪垱寤鸿縼绉?SQL 鏂囦欢
+    - 鍖呭惈琛細`biz_boq_item`銆乣biz_budget_change`銆乣biz_budget_change_detail`銆乣biz_project_settlement`銆乣biz_settlement_contract_detail`銆乣sys_budget_control_config`銆乣biz_retention_warning_log`銆乣biz_inspection_detail`
+    - 鍖呭惈 `biz_inspection` 琛ㄧ殑 ALTER 璇彞锛堝鍔?`scheme_snapshot` 瀛楁锛?
+    - 鍖呭惈 `sys_budget_control_config` 绯荤粺榛樿璁板綍鐨?INSERT锛圔LOCK, 80%锛?
     - _Requirements: 1, 2, 3, 5, 6, 7_
 
-  - [x] 1.2 创建各模块的 MyBatis-Plus Entity 和 Mapper 接口
-    - `zw-contract` 模块：`BoqItem` entity + `BoqItemMapper`
-    - `zw-budget` 模块：`BudgetChange`、`BudgetChangeDetail` entity + Mapper；`BudgetControlConfig` entity + Mapper
-    - `zw-finance` 模块：`ProjectSettlement`、`SettlementContractDetail` entity + Mapper；`RetentionWarningLog` entity + Mapper
-    - `zw-site` 模块：`InspectionDetail` entity + Mapper
-    - 所有 Entity 须包含 `@TableLogic` 逻辑删除字段和 `tenant_id`
+  - [x] 1.2 鍒涘缓鍚勬ā鍧楃殑 MyBatis-Plus Entity 鍜?Mapper 鎺ュ彛
+    - `zw-contract` 妯″潡锛歚BoqItem` entity + `BoqItemMapper`
+    - `zw-budget` 妯″潡锛歚BudgetChange`銆乣BudgetChangeDetail` entity + Mapper锛沗BudgetControlConfig` entity + Mapper
+    - `zw-finance` 妯″潡锛歚ProjectSettlement`銆乣SettlementContractDetail` entity + Mapper锛沗RetentionWarningLog` entity + Mapper
+    - `zw-site` 妯″潡锛歚InspectionDetail` entity + Mapper
+    - 鎵€鏈?Entity 椤诲寘鍚?`@TableLogic` 閫昏緫鍒犻櫎瀛楁鍜?`tenant_id`
     - _Requirements: 1, 2, 3, 5, 6, 7_
 
-- [ ] 2. 工程量清单上传（BOQ）— 后端 zw-contract
-  - [x] 2.1 实现 BoqService 核心逻辑
-    - 创建 `BoqService` 类，实现 `uploadBoq(Long contractId, MultipartFile file)` 方法
-    - 实现合同状态校验（仅 EFFECTIVE/CHANGING 允许）
-    - 实现产值上报引用检查（有引用则拒绝覆盖）
-    - 实现文件大小校验（≤20MB）
-    - 调用 MinIO FileStorageService 存储原始文件
+- [x] 2. 宸ョ▼閲忔竻鍗曚笂浼狅紙BOQ锛夆€?鍚庣 zw-contract
+  - [x] 2.1 瀹炵幇 BoqService 鏍稿績閫昏緫
+    - 鍒涘缓 `BoqService` 绫伙紝瀹炵幇 `uploadBoq(Long contractId, MultipartFile file)` 鏂规硶
+    - 瀹炵幇鍚堝悓鐘舵€佹牎楠岋紙浠?EFFECTIVE/CHANGING 鍏佽锛?
+    - 瀹炵幇浜у€间笂鎶ュ紩鐢ㄦ鏌ワ紙鏈夊紩鐢ㄥ垯鎷掔粷瑕嗙洊锛?
+    - 瀹炵幇鏂囦欢澶у皬鏍￠獙锛堚墹20MB锛?
+    - 璋冪敤 MinIO FileStorageService 瀛樺偍鍘熷鏂囦欢
     - _Requirements: 1.1, 1.5, 1.6, 1.9_
 
-  - [x] 2.2 实现 EasyExcel 解析与层级构建
-    - 创建 `BoqExcelRow` DTO（EasyExcel @ExcelProperty 注解映射列）
-    - 创建 `BoqReadListener` 实现行校验（必填字段、条目上限 5000、错误最多 100 条）
-    - 实现 `buildHierarchy` 方法，按项目编码的 "." 分隔规则构建父子层级（最多 4 级）
-    - 实现批量插入（删旧+插新）和合计金额计算回写合同
+  - [x] 2.2 瀹炵幇 EasyExcel 瑙ｆ瀽涓庡眰绾ф瀯寤?
+    - 鍒涘缓 `BoqExcelRow` DTO锛圗asyExcel @ExcelProperty 娉ㄨВ鏄犲皠鍒楋級
+    - 鍒涘缓 `BoqReadListener` 瀹炵幇琛屾牎楠岋紙蹇呭～瀛楁銆佹潯鐩笂闄?5000銆侀敊璇渶澶?100 鏉★級
+    - 瀹炵幇 `buildHierarchy` 鏂规硶锛屾寜椤圭洰缂栫爜鐨?"." 鍒嗛殧瑙勫垯鏋勫缓鐖跺瓙灞傜骇锛堟渶澶?4 绾э級
+    - 瀹炵幇鎵归噺鎻掑叆锛堝垹鏃?鎻掓柊锛夊拰鍚堣閲戦璁＄畻鍥炲啓鍚堝悓
     - _Requirements: 1.2, 1.3, 1.4, 1.8_
 
-  - [ ]* 2.3 编写属性测试：BOQ 层级一致性（Property P1）
-    - **Property P1: BOQ 层级一致性**
-    - 生成随机合法编码列表，验证 buildHierarchy 输出中所有 level > 1 的条目其 parent_id 指向存在且 parent.level == current.level - 1
+  - [x]* 2.3 缂栧啓灞炴€ф祴璇曪細BOQ 灞傜骇涓€鑷存€э紙Property P1锛?
+    - **Property P1: BOQ 灞傜骇涓€鑷存€?*
+    - 鐢熸垚闅忔満鍚堟硶缂栫爜鍒楄〃锛岄獙璇?buildHierarchy 杈撳嚭涓墍鏈?level > 1 鐨勬潯鐩叾 parent_id 鎸囧悜瀛樺湪涓?parent.level == current.level - 1
     - **Validates: Requirements 1.4**
 
-  - [~] 2.4 实现 BoqController REST 接口
-    - POST `/api/v1/contracts/{contractId}/boq/upload` — 上传并解析 BOQ
-    - GET `/api/v1/contracts/{contractId}/boq` — 查询清单树形结构
-    - GET `/api/v1/contracts/{contractId}/boq/flat` — 查询清单平铺列表（供产值上报使用）
-    - DELETE `/api/v1/contracts/{contractId}/boq` — 清除清单数据
+  - [x] 2.4 瀹炵幇 BoqController REST 鎺ュ彛
+    - POST `/api/v1/contracts/{contractId}/boq/upload` 鈥?涓婁紶骞惰В鏋?BOQ
+    - GET `/api/v1/contracts/{contractId}/boq` 鈥?鏌ヨ娓呭崟鏍戝舰缁撴瀯
+    - GET `/api/v1/contracts/{contractId}/boq/flat` 鈥?鏌ヨ娓呭崟骞抽摵鍒楄〃锛堜緵浜у€间笂鎶ヤ娇鐢級
+    - DELETE `/api/v1/contracts/{contractId}/boq` 鈥?娓呴櫎娓呭崟鏁版嵁
     - _Requirements: 1.1, 1.7_
 
-  - [ ]* 2.5 编写 BoqService 单元测试
-    - 测试状态校验拒绝逻辑
-    - 测试引用检查拒绝覆盖
-    - 测试解析错误返回行号
-    - 测试合计金额计算精度
+  - [x]* 2.5 缂栧啓 BoqService 鍗曞厓娴嬭瘯
+    - 娴嬭瘯鐘舵€佹牎楠屾嫆缁濋€昏緫
+    - 娴嬭瘯寮曠敤妫€鏌ユ嫆缁濊鐩?
+    - 娴嬭瘯瑙ｆ瀽閿欒杩斿洖琛屽彿
+    - 娴嬭瘯鍚堣閲戦璁＄畻绮惧害
     - _Requirements: 1.1, 1.2, 1.3, 1.5, 1.8, 1.9_
 
-- [ ] 3. 目标成本变更 — 后端 zw-budget
-  - [x] 3.1 实现 BudgetChangeService 核心逻辑
-    - 创建 `BudgetChangeService`，实现 CRUD 操作
-    - 实现 `validateBeforeSubmit` 预算余额校验（调减时：调整后金额 ≥ 已占用预算）
-    - 实现 `calculateOccupiedBudget`（已签合同金额 + 已付无合同费用）
-    - 创建 `BudgetChangeDTO` 和 `BudgetChangeDetailDTO` 请求对象
+- [x] 3. 鐩爣鎴愭湰鍙樻洿 鈥?鍚庣 zw-budget
+  - [x] 3.1 瀹炵幇 BudgetChangeService 鏍稿績閫昏緫
+    - 鍒涘缓 `BudgetChangeService`锛屽疄鐜?CRUD 鎿嶄綔
+    - 瀹炵幇 `validateBeforeSubmit` 棰勭畻浣欓鏍￠獙锛堣皟鍑忔椂锛氳皟鏁村悗閲戦 鈮?宸插崰鐢ㄩ绠楋級
+    - 瀹炵幇 `calculateOccupiedBudget`锛堝凡绛惧悎鍚岄噾棰?+ 宸蹭粯鏃犲悎鍚岃垂鐢級
+    - 鍒涘缓 `BudgetChangeDTO` 鍜?`BudgetChangeDetailDTO` 璇锋眰瀵硅薄
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [x] 3.2 实现审批流程集成与回调
-    - 实现 `submit(Long changeId)` 提交审批，调用 Flowable ApprovalService 启动流程
-    - 实现 `onApproved(Long changeId)` 审批通过回调：逐科目回写预算明细 + 更新项目预算总额
-    - 实现 `onRejected(Long changeId)` 审批驳回回调：更新状态为 REJECTED
-    - 实现 `withdraw(Long changeId)` 撤回操作：更新状态为 WITHDRAWN
-    - 注册 Flowable 审批回调监听器
+  - [x] 3.2 瀹炵幇瀹℃壒娴佺▼闆嗘垚涓庡洖璋?
+    - 瀹炵幇 `submit(Long changeId)` 鎻愪氦瀹℃壒锛岃皟鐢?Flowable ApprovalService 鍚姩娴佺▼
+    - 瀹炵幇 `onApproved(Long changeId)` 瀹℃壒閫氳繃鍥炶皟锛氶€愮鐩洖鍐欓绠楁槑缁?+ 鏇存柊椤圭洰棰勭畻鎬婚
+    - 瀹炵幇 `onRejected(Long changeId)` 瀹℃壒椹冲洖鍥炶皟锛氭洿鏂扮姸鎬佷负 REJECTED
+    - 瀹炵幇 `withdraw(Long changeId)` 鎾ゅ洖鎿嶄綔锛氭洿鏂扮姸鎬佷负 WITHDRAWN
+    - 娉ㄥ唽 Flowable 瀹℃壒鍥炶皟鐩戝惉鍣?
     - _Requirements: 2.4, 2.5, 2.6, 2.7, 2.8_
 
-  - [ ]* 3.3 编写属性测试：预算变更金额守恒（Property P2）
-    - **Property P2: 预算变更金额守恒**
-    - 生成随机变更明细列表，验证 SUM(details.adjustAmount) == change.totalAdjustAmount 且审批通过后各明细回写累加总和等于变更单总调整额
+  - [x]* 3.3 缂栧啓灞炴€ф祴璇曪細棰勭畻鍙樻洿閲戦瀹堟亽锛圥roperty P2锛?
+    - **Property P2: 棰勭畻鍙樻洿閲戦瀹堟亽**
+    - 鐢熸垚闅忔満鍙樻洿鏄庣粏鍒楄〃锛岄獙璇?SUM(details.adjustAmount) == change.totalAdjustAmount 涓斿鎵归€氳繃鍚庡悇鏄庣粏鍥炲啓绱姞鎬诲拰绛変簬鍙樻洿鍗曟€昏皟鏁撮
     - **Validates: Requirements 2.2, 2.5**
 
-  - [~] 3.4 实现 BudgetChangeController REST 接口
-    - 完整 CRUD + submit + withdraw 接口
-    - 变更轨迹查询接口（按项目查询全部变更记录及审批结果）
+  - [x] 3.4 瀹炵幇 BudgetChangeController REST 鎺ュ彛
+    - 瀹屾暣 CRUD + submit + withdraw 鎺ュ彛
+    - 鍙樻洿杞ㄨ抗鏌ヨ鎺ュ彛锛堟寜椤圭洰鏌ヨ鍏ㄩ儴鍙樻洿璁板綍鍙婂鎵圭粨鏋滐級
     - _Requirements: 2.1, 2.9_
 
-  - [ ]* 3.5 编写 BudgetChangeService 单元测试
-    - 测试调减时余额不足拒绝
-    - 测试审批通过后金额回写正确性
-    - 测试撤回/驳回不修改原预算
+  - [x]* 3.5 缂栧啓 BudgetChangeService 鍗曞厓娴嬭瘯
+    - 娴嬭瘯璋冨噺鏃朵綑棰濅笉瓒虫嫆缁?
+    - 娴嬭瘯瀹℃壒閫氳繃鍚庨噾棰濆洖鍐欐纭€?
+    - 娴嬭瘯鎾ゅ洖/椹冲洖涓嶄慨鏀瑰師棰勭畻
     - _Requirements: 2.3, 2.5, 2.6, 2.7, 2.8_
 
-- [~] 4. Checkpoint — 确保合同与预算模块编译通过
+- [x] 4. Checkpoint 鈥?纭繚鍚堝悓涓庨绠楁ā鍧楃紪璇戦€氳繃
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. 项目最终结算 — 后端 zw-finance
-  - [~] 5.1 实现 ProjectSettlementService 数据汇总逻辑
-    - 创建 `ProjectSettlementService`
-    - 实现项目状态校验（仅 COMPLETED 允许）和重复结算单校验
-    - 实现收入汇总：施工合同总额、累计产值、累计收款、累计开票
-    - 实现支出汇总：分包/劳务/材料/机械结算总额 + 累计付款
-    - 实现利润计算（精确到分）和利润率计算（精确到小数点后 2 位）
-    - 生成关联合同明细并标注未结清合同
+- [x] 5. 椤圭洰鏈€缁堢粨绠?鈥?鍚庣 zw-finance
+  - [x] 5.1 瀹炵幇 ProjectSettlementService 鏁版嵁姹囨€婚€昏緫
+    - 鍒涘缓 `ProjectSettlementService`
+    - 瀹炵幇椤圭洰鐘舵€佹牎楠岋紙浠?COMPLETED 鍏佽锛夊拰閲嶅缁撶畻鍗曟牎楠?
+    - 瀹炵幇鏀跺叆姹囨€伙細鏂藉伐鍚堝悓鎬婚銆佺疮璁′骇鍊笺€佺疮璁℃敹娆俱€佺疮璁″紑绁?
+    - 瀹炵幇鏀嚭姹囨€伙細鍒嗗寘/鍔冲姟/鏉愭枡/鏈烘缁撶畻鎬婚 + 绱浠樻
+    - 瀹炵幇鍒╂鼎璁＄畻锛堢簿纭埌鍒嗭級鍜屽埄娑︾巼璁＄畻锛堢簿纭埌灏忔暟鐐瑰悗 2 浣嶏級
+    - 鐢熸垚鍏宠仈鍚堝悓鏄庣粏骞舵爣娉ㄦ湭缁撴竻鍚堝悓
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.7_
 
-  - [~] 5.2 实现结算审批流程与项目状态流转
-    - 实现 `submit` 提交审批，启动 Flowable 结算审批流程
-    - 实现 `onApproved` 回调：更新结算单状态 + 项目状态更新为 CLOSED
-    - 实现 `onRejected` 回调：结算单状态更新为 REJECTED，项目状态不变
+  - [x] 5.2 瀹炵幇缁撶畻瀹℃壒娴佺▼涓庨」鐩姸鎬佹祦杞?
+    - 瀹炵幇 `submit` 鎻愪氦瀹℃壒锛屽惎鍔?Flowable 缁撶畻瀹℃壒娴佺▼
+    - 瀹炵幇 `onApproved` 鍥炶皟锛氭洿鏂扮粨绠楀崟鐘舵€?+ 椤圭洰鐘舵€佹洿鏂颁负 CLOSED
+    - 瀹炵幇 `onRejected` 鍥炶皟锛氱粨绠楀崟鐘舵€佹洿鏂颁负 REJECTED锛岄」鐩姸鎬佷笉鍙?
     - _Requirements: 3.5, 3.6_
 
-  - [ ]* 5.3 编写属性测试：结算利润计算正确性（Property P3）
-    - **Property P3: 结算利润计算正确性**
-    - 生成随机收支数据，验证 profit == totalIncome - totalExpenditure 且 profitRate == profit / totalIncome * 100（totalIncome > 0 时）
+  - [x]* 5.3 缂栧啓灞炴€ф祴璇曪細缁撶畻鍒╂鼎璁＄畻姝ｇ‘鎬э紙Property P3锛?
+    - **Property P3: 缁撶畻鍒╂鼎璁＄畻姝ｇ‘鎬?*
+    - 鐢熸垚闅忔満鏀舵敮鏁版嵁锛岄獙璇?profit == totalIncome - totalExpenditure 涓?profitRate == profit / totalIncome * 100锛坱otalIncome > 0 鏃讹級
     - **Validates: Requirements 3.4**
 
-  - [~] 5.4 实现结算报告 Excel 导出
-    - 使用 EasyExcel 导出收支汇总表 + 各合同结算明细
-    - 实现 ExcelWriter 多 Sheet 写入（收支汇总 Sheet + 合同明细 Sheet）
+  - [x] 5.4 瀹炵幇缁撶畻鎶ュ憡 Excel 瀵煎嚭
+    - 浣跨敤 EasyExcel 瀵煎嚭鏀舵敮姹囨€昏〃 + 鍚勫悎鍚岀粨绠楁槑缁?
+    - 瀹炵幇 ExcelWriter 澶?Sheet 鍐欏叆锛堟敹鏀眹鎬?Sheet + 鍚堝悓鏄庣粏 Sheet锛?
     - _Requirements: 3.8_
 
-  - [~] 5.5 实现 ProjectSettlementController REST 接口
-    - POST 创建结算单、GET 详情、PUT 编辑、POST 提交审批、POST 导出 Excel
-    - GET 未结清合同列表
+  - [x] 5.5 瀹炵幇 ProjectSettlementController REST 鎺ュ彛
+    - POST 鍒涘缓缁撶畻鍗曘€丟ET 璇︽儏銆丳UT 缂栬緫銆丳OST 鎻愪氦瀹℃壒銆丳OST 瀵煎嚭 Excel
+    - GET 鏈粨娓呭悎鍚屽垪琛?
     - _Requirements: 3.1, 3.5, 3.7, 3.8_
 
-  - [ ]* 5.6 编写 ProjectSettlementService 单元测试
-    - 测试非竣工项目拒绝创建
-    - 测试重复结算单拒绝
-    - 测试审批通过后项目状态变为 CLOSED
+  - [x]* 5.6 缂栧啓 ProjectSettlementService 鍗曞厓娴嬭瘯
+    - 娴嬭瘯闈炵宸ラ」鐩嫆缁濆垱寤?
+    - 娴嬭瘯閲嶅缁撶畻鍗曟嫆缁?
+    - 娴嬭瘯瀹℃壒閫氳繃鍚庨」鐩姸鎬佸彉涓?CLOSED
     - _Requirements: 3.1, 3.2, 3.5, 3.6_
 
-- [ ] 6. 验证码登录 — 后端 zw-security
-  - [x] 6.1 实现 CaptchaService 图形验证码
-    - 使用 Hutool CaptchaUtil 生成 4 位字母数字混合图形验证码
-    - Redis 存储：key=`captcha:{uuid}`，value=code，TTL=300s
-    - 实现 `generateImageCaptcha()` 返回 Base64 图片 + UUID
-    - 实现 `verifyImageCaptcha(uuid, inputCode)` 大小写不敏感比对 + 校验后立即删除
+- [x] 6. 楠岃瘉鐮佺櫥褰?鈥?鍚庣 zw-security
+  - [x] 6.1 瀹炵幇 CaptchaService 鍥惧舰楠岃瘉鐮?
+    - 浣跨敤 Hutool CaptchaUtil 鐢熸垚 4 浣嶅瓧姣嶆暟瀛楁贩鍚堝浘褰㈤獙璇佺爜
+    - Redis 瀛樺偍锛歬ey=`captcha:{uuid}`锛寁alue=code锛孴TL=300s
+    - 瀹炵幇 `generateImageCaptcha()` 杩斿洖 Base64 鍥剧墖 + UUID
+    - 瀹炵幇 `verifyImageCaptcha(uuid, inputCode)` 澶у皬鍐欎笉鏁忔劅姣斿 + 鏍￠獙鍚庣珛鍗冲垹闄?
     - _Requirements: 4.1, 4.2, 4.4, 4.5_
 
-  - [x] 6.2 实现 CaptchaService 短信验证码与频率限制
-    - 手机号格式校验（`^1[3-9]\\d{9}$`）
-    - Redis 频率限制：`sms:freq:{phone}` TTL=60s（60 秒内仅 1 次）
-    - Redis 日限额：`sms:daily:{phone}` INCR + 当天剩余秒数 EXPIRE（每日≤10 次）
-    - 对接阿里云短信 SDK 2.0.24 发送 6 位数字验证码
+  - [x] 6.2 瀹炵幇 CaptchaService 鐭俊楠岃瘉鐮佷笌棰戠巼闄愬埗
+    - 鎵嬫満鍙锋牸寮忔牎楠岋紙`^1[3-9]\\d{9}$`锛?
+    - Redis 棰戠巼闄愬埗锛歚sms:freq:{phone}` TTL=60s锛?0 绉掑唴浠?1 娆★級
+    - Redis 鏃ラ檺棰濓細`sms:daily:{phone}` INCR + 褰撳ぉ鍓╀綑绉掓暟 EXPIRE锛堟瘡鏃モ墹10 娆★級
+    - 瀵规帴闃块噷浜戠煭淇?SDK 2.0.24 鍙戦€?6 浣嶆暟瀛楅獙璇佺爜
     - _Requirements: 4.6, 4.7, 4.9, 4.10_
 
-  - [x] 6.3 实现 IP 锁定机制
-    - Redis 计数：`login:ip:fail:{ip}` INCR + EXPIRE 300s（5 分钟窗口）
-    - 连续 5 次失败后设置锁定：`login:ip:lock:{ip}` TTL=900s（15 分钟）
-    - 实现 `checkIpLock(clientIp)` 和 `recordIpFailure(clientIp)`
+  - [x] 6.3 瀹炵幇 IP 閿佸畾鏈哄埗
+    - Redis 璁℃暟锛歚login:ip:fail:{ip}` INCR + EXPIRE 300s锛? 鍒嗛挓绐楀彛锛?
+    - 杩炵画 5 娆″け璐ュ悗璁剧疆閿佸畾锛歚login:ip:lock:{ip}` TTL=900s锛?5 鍒嗛挓锛?
+    - 瀹炵幇 `checkIpLock(clientIp)` 鍜?`recordIpFailure(clientIp)`
     - _Requirements: 4.8_
 
-  - [ ]* 6.4 编写属性测试：验证码一次性使用（Property P4）
-    - **Property P4: 验证码一次性使用**
-    - 生成随机验证码并存入 Redis，首次校验成功后，使用相同 uuid+code 再次校验必定返回失败
+  - [x]* 6.4 缂栧啓灞炴€ф祴璇曪細楠岃瘉鐮佷竴娆℃€т娇鐢紙Property P4锛?
+    - **Property P4: 楠岃瘉鐮佷竴娆℃€т娇鐢?*
+    - 鐢熸垚闅忔満楠岃瘉鐮佸苟瀛樺叆 Redis锛岄娆℃牎楠屾垚鍔熷悗锛屼娇鐢ㄧ浉鍚?uuid+code 鍐嶆鏍￠獙蹇呭畾杩斿洖澶辫触
     - **Validates: Requirements 4.5**
 
-  - [~] 6.5 实现 CaptchaController 和登录流程集成
-    - GET `/api/v1/captcha/image` — 生成图形验证码
-    - POST `/api/v1/captcha/sms` — 发送短信验证码
-    - 修改现有 `AuthController` 登录接口，增加验证码校验逻辑和 IP 锁定检查
-    - 扩展 `LoginDTO` 增加 `captchaCode`、`captchaUuid`、`phone`、`smsCode`、`loginType` 字段
+  - [x] 6.5 瀹炵幇 CaptchaController 鍜岀櫥褰曟祦绋嬮泦鎴?
+    - GET `/api/v1/captcha/image` 鈥?鐢熸垚鍥惧舰楠岃瘉鐮?
+    - POST `/api/v1/captcha/sms` 鈥?鍙戦€佺煭淇￠獙璇佺爜
+    - 淇敼鐜版湁 `AuthController` 鐧诲綍鎺ュ彛锛屽鍔犻獙璇佺爜鏍￠獙閫昏緫鍜?IP 閿佸畾妫€鏌?
+    - 鎵╁睍 `LoginDTO` 澧炲姞 `captchaCode`銆乣captchaUuid`銆乣phone`銆乣smsCode`銆乣loginType` 瀛楁
     - _Requirements: 4.1, 4.2, 4.3, 4.6_
 
-  - [ ]* 6.6 编写 CaptchaService 单元测试
-    - 测试验证码过期场景
-    - 测试短信频率限制拒绝
-    - 测试 IP 锁定触发与解除
+  - [x]* 6.6 缂栧啓 CaptchaService 鍗曞厓娴嬭瘯
+    - 娴嬭瘯楠岃瘉鐮佽繃鏈熷満鏅?
+    - 娴嬭瘯鐭俊棰戠巼闄愬埗鎷掔粷
+    - 娴嬭瘯 IP 閿佸畾瑙﹀彂涓庤В闄?
     - _Requirements: 4.4, 4.7, 4.8, 4.10_
 
-- [~] 7. Checkpoint — 确保安全模块与财务模块编译通过
+- [x] 7. Checkpoint 鈥?纭繚瀹夊叏妯″潡涓庤储鍔℃ā鍧楃紪璇戦€氳繃
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. 质保金预警定时任务 — 后端 zw-finance
-  - [~] 8.1 实现 RetentionWarningTask 定时任务核心逻辑
-    - 创建 `RetentionWarningTask`，使用 `@Scheduled(cron = "0 0 8 * * ?")` 每日 08:00 执行
-    - 查询 status='UNRETURNED' 且到期日在未来 30 天内或已过期的质保金记录
-    - 实现分级逻辑：30~8 天=UPCOMING，7~1 天=URGENT，已过期=OVERDUE
-    - 逾期超 180 天标记 LONG_OVERDUE 并停止催办
+- [x] 8. 璐ㄤ繚閲戦璀﹀畾鏃朵换鍔?鈥?鍚庣 zw-finance
+  - [x] 8.1 瀹炵幇 RetentionWarningTask 瀹氭椂浠诲姟鏍稿績閫昏緫
+    - 鍒涘缓 `RetentionWarningTask`锛屼娇鐢?`@Scheduled(cron = "0 0 8 * * ?")` 姣忔棩 08:00 鎵ц
+    - 鏌ヨ status='UNRETURNED' 涓斿埌鏈熸棩鍦ㄦ湭鏉?30 澶╁唴鎴栧凡杩囨湡鐨勮川淇濋噾璁板綍
+    - 瀹炵幇鍒嗙骇閫昏緫锛?0~8 澶?UPCOMING锛?~1 澶?URGENT锛屽凡杩囨湡=OVERDUE
+    - 閫炬湡瓒?180 澶╂爣璁?LONG_OVERDUE 骞跺仠姝㈠偓鍔?
     - _Requirements: 5.1, 5.2, 5.4, 5.5_
 
-  - [~] 8.2 实现通知去重与催办机制
-    - Redis Set 去重：key=`retention:warned:{retentionId}:{level}`（非逾期同级别只发一次）
-    - 逾期催办频率控制：key=`retention:overdue:last:{retentionId}`（每 3 天一次）
-    - 调用 MessageService 发送站内信（项目负责人 + 财务人员）
-    - 通知内容含：项目名称、合同名称、质保金金额、到期日期、预警级别
+  - [x] 8.2 瀹炵幇閫氱煡鍘婚噸涓庡偓鍔炴満鍒?
+    - Redis Set 鍘婚噸锛歬ey=`retention:warned:{retentionId}:{level}`锛堥潪閫炬湡鍚岀骇鍒彧鍙戜竴娆★級
+    - 閫炬湡鍌姙棰戠巼鎺у埗锛歬ey=`retention:overdue:last:{retentionId}`锛堟瘡 3 澶╀竴娆★級
+    - 璋冪敤 MessageService 鍙戦€佺珯鍐呬俊锛堥」鐩礋璐ｄ汉 + 璐㈠姟浜哄憳锛?
+    - 閫氱煡鍐呭鍚細椤圭洰鍚嶇О銆佸悎鍚屽悕绉般€佽川淇濋噾閲戦銆佸埌鏈熸棩鏈熴€侀璀︾骇鍒?
     - _Requirements: 5.3, 5.5, 5.6_
 
-  - [~] 8.3 实现失败重试与状态清除
-    - 记录 `biz_retention_warning_log` 通知日志
-    - 失败记录在下次任务执行时重试（最多 3 次），3 次仍失败标记 PERMANENTLY_FAILED
-    - 实现 `onRetentionReturned(Long retentionId)` 质保金退还时清除去重记录
+  - [x] 8.3 瀹炵幇澶辫触閲嶈瘯涓庣姸鎬佹竻闄?
+    - 璁板綍 `biz_retention_warning_log` 閫氱煡鏃ュ織
+    - 澶辫触璁板綍鍦ㄤ笅娆′换鍔℃墽琛屾椂閲嶈瘯锛堟渶澶?3 娆★級锛? 娆′粛澶辫触鏍囪 PERMANENTLY_FAILED
+    - 瀹炵幇 `onRetentionReturned(Long retentionId)` 璐ㄤ繚閲戦€€杩樻椂娓呴櫎鍘婚噸璁板綍
     - _Requirements: 5.7, 5.8_
 
-  - [ ]* 8.4 编写属性测试：质保金通知去重（Property P7）
-    - **Property P7: 质保金通知去重**
-    - 模拟同一质保金记录连续两次执行预警任务（级别不变），验证第二次不产生新的通知发送调用
+  - [x]* 8.4 缂栧啓灞炴€ф祴璇曪細璐ㄤ繚閲戦€氱煡鍘婚噸锛圥roperty P7锛?
+    - **Property P7: 璐ㄤ繚閲戦€氱煡鍘婚噸**
+    - 妯℃嫙鍚屼竴璐ㄤ繚閲戣褰曡繛缁袱娆℃墽琛岄璀︿换鍔★紙绾у埆涓嶅彉锛夛紝楠岃瘉绗簩娆′笉浜х敓鏂扮殑閫氱煡鍙戦€佽皟鐢?
     - **Validates: Requirements 5.6**
 
-  - [ ]* 8.5 编写 RetentionWarningTask 单元测试
-    - 测试分级逻辑正确性（30天/7天/逾期 边界）
-    - 测试逾期超 180 天停止催办
-    - 测试重试次数上限
+  - [x]* 8.5 缂栧啓 RetentionWarningTask 鍗曞厓娴嬭瘯
+    - 娴嬭瘯鍒嗙骇閫昏緫姝ｇ‘鎬э紙30澶?7澶?閫炬湡 杈圭晫锛?
+    - 娴嬭瘯閫炬湡瓒?180 澶╁仠姝㈠偓鍔?
+    - 娴嬭瘯閲嶈瘯娆℃暟涓婇檺
     - _Requirements: 5.1, 5.4, 5.5, 5.8_
 
-- [ ] 9. 预算控制配置页面 — 后端 zw-budget
-  - [x] 9.1 实现 BudgetControlConfigService CRUD
-    - 创建 `BudgetControlConfigService`，实现配置的增删改查
-    - 实现 `getEffectiveConfig(Long projectId)` 优先项目级配置 → 回落系统默认 → 异常时硬编码 BLOCK
-    - 创建 `BudgetControlConfigDTO` 含 projectId、controlMode（WARN_ONLY/BLOCK/EXEMPT）、warningThreshold（50-99）
-    - 删除项目级配置后回落为默认规则
+- [x] 9. 棰勭畻鎺у埗閰嶇疆椤甸潰 鈥?鍚庣 zw-budget
+  - [x] 9.1 瀹炵幇 BudgetControlConfigService CRUD
+    - 鍒涘缓 `BudgetControlConfigService`锛屽疄鐜伴厤缃殑澧炲垹鏀规煡
+    - 瀹炵幇 `getEffectiveConfig(Long projectId)` 浼樺厛椤圭洰绾ч厤缃?鈫?鍥炶惤绯荤粺榛樿 鈫?寮傚父鏃剁‖缂栫爜 BLOCK
+    - 鍒涘缓 `BudgetControlConfigDTO` 鍚?projectId銆乧ontrolMode锛圵ARN_ONLY/BLOCK/EXEMPT锛夈€亀arningThreshold锛?0-99锛?
+    - 鍒犻櫎椤圭洰绾ч厤缃悗鍥炶惤涓洪粯璁よ鍒?
     - _Requirements: 6.1, 6.4, 6.7, 6.8, 6.9_
 
-  - [x] 9.2 实现预算执行率计算与拦截逻辑
-    - 实现 `checkBudget(Long projectId, String costCategory, BigDecimal newAmount)` 方法
-    - 计算执行率 = 已发生额 / 预算额 * 100%
-    - BLOCK 模式超 100% 抛异常阻止提交；WARN_ONLY 超 100% 返回警告标识；EXEMPT 直接放行
-    - 达到预警阈值时通过 MessageService 发送站内信
+  - [x] 9.2 瀹炵幇棰勭畻鎵ц鐜囪绠椾笌鎷︽埅閫昏緫
+    - 瀹炵幇 `checkBudget(Long projectId, String costCategory, BigDecimal newAmount)` 鏂规硶
+    - 璁＄畻鎵ц鐜?= 宸插彂鐢熼 / 棰勭畻棰?* 100%
+    - BLOCK 妯″紡瓒?100% 鎶涘紓甯搁樆姝㈡彁浜わ紱WARN_ONLY 瓒?100% 杩斿洖璀﹀憡鏍囪瘑锛汦XEMPT 鐩存帴鏀捐
+    - 杈惧埌棰勮闃堝€兼椂閫氳繃 MessageService 鍙戦€佺珯鍐呬俊
     - _Requirements: 6.3, 6.5, 6.6_
 
-  - [~] 9.3 改造 BudgetControlAspect 切面
-    - 替换现有硬编码"禁止提交"逻辑为配置驱动
-    - 创建 `@BudgetCheck` 注解和 `BudgetControlAspect` AOP 切面
-    - 实现 `BudgetCheckResult`（PASS/WARN/BLOCK）和 `BudgetWarningContext` 线程变量
-    - 在业务单据提交方法上添加 `@BudgetCheck` 注解（采购合同/劳务合同/机械合同/其他付款）
+  - [x] 9.3 鏀归€?BudgetControlAspect 鍒囬潰
+    - 鏇挎崲鐜版湁纭紪鐮?绂佹鎻愪氦"閫昏緫涓洪厤缃┍鍔?
+    - 鍒涘缓 `@BudgetCheck` 娉ㄨВ鍜?`BudgetControlAspect` AOP 鍒囬潰
+    - 瀹炵幇 `BudgetCheckResult`锛圥ASS/WARN/BLOCK锛夊拰 `BudgetWarningContext` 绾跨▼鍙橀噺
+    - 鍦ㄤ笟鍔″崟鎹彁浜ゆ柟娉曚笂娣诲姞 `@BudgetCheck` 娉ㄨВ锛堥噰璐悎鍚?鍔冲姟鍚堝悓/鏈烘鍚堝悓/鍏朵粬浠樻锛?
     - _Requirements: 6.5, 6.7_
 
-  - [ ]* 9.4 编写属性测试：预算控制配置单调性（Property P5）
-    - **Property P5: 预算控制配置单调性**
-    - 创建项目级配置后删除，验证 `getEffectiveConfig` 返回值回落为系统默认（BLOCK, 80%）
+  - [x]* 9.4 缂栧啓灞炴€ф祴璇曪細棰勭畻鎺у埗閰嶇疆鍗曡皟鎬э紙Property P5锛?
+    - **Property P5: 棰勭畻鎺у埗閰嶇疆鍗曡皟鎬?*
+    - 鍒涘缓椤圭洰绾ч厤缃悗鍒犻櫎锛岄獙璇?`getEffectiveConfig` 杩斿洖鍊煎洖钀戒负绯荤粺榛樿锛圔LOCK, 80%锛?
     - **Validates: Requirements 6.4, 6.9**
 
-  - [~] 9.5 实现 BudgetControlConfigController REST 接口
-    - 完整 CRUD 接口 + 按项目获取生效配置接口
-    - 列表支持按项目名称筛选
+  - [x] 9.5 瀹炵幇 BudgetControlConfigController REST 鎺ュ彛
+    - 瀹屾暣 CRUD 鎺ュ彛 + 鎸夐」鐩幏鍙栫敓鏁堥厤缃帴鍙?
+    - 鍒楄〃鏀寔鎸夐」鐩悕绉扮瓫閫?
     - _Requirements: 6.1, 6.2_
 
-  - [ ]* 9.6 编写 BudgetControlConfigService 单元测试
-    - 测试三种模式校验行为
-    - 测试配置异常回落默认值
-    - 测试预警阈值通知触发
+  - [x]* 9.6 缂栧啓 BudgetControlConfigService 鍗曞厓娴嬭瘯
+    - 娴嬭瘯涓夌妯″紡鏍￠獙琛屼负
+    - 娴嬭瘯閰嶇疆寮傚父鍥炶惤榛樿鍊?
+    - 娴嬭瘯棰勮闃堝€奸€氱煡瑙﹀彂
     - _Requirements: 6.3, 6.5, 6.6, 6.8_
 
-- [ ] 10. 检查方案关联 — 后端 zw-site
-  - [~] 10.1 实现 InspectionSchemeService 方案关联逻辑
-    - 创建 `InspectionSchemeService`
-    - 实现 `listSchemes(String inspectionType, int page, int size)` 按类型筛选已启用方案（每页≤50）
-    - 实现 `applyScheme(Long inspectionId, Long schemeId)` 关联方案并生成快照
-    - 快照为 JSON 格式含 schemeId、schemeName、items（itemName + checkStandard + checkMethod）
-    - 清除旧检查明细 → 填充新方案检查项 → 更新 scheme_id 和 scheme_snapshot
+- [x] 10. 妫€鏌ユ柟妗堝叧鑱?鈥?鍚庣 zw-site
+  - [x] 10.1 瀹炵幇 InspectionSchemeService 鏂规鍏宠仈閫昏緫
+    - 鍒涘缓 `InspectionSchemeService`
+    - 瀹炵幇 `listSchemes(String inspectionType, int page, int size)` 鎸夌被鍨嬬瓫閫夊凡鍚敤鏂规锛堟瘡椤碘墹50锛?
+    - 瀹炵幇 `applyScheme(Long inspectionId, Long schemeId)` 鍏宠仈鏂规骞剁敓鎴愬揩鐓?
+    - 蹇収涓?JSON 鏍煎紡鍚?schemeId銆乻chemeName銆乮tems锛坕temName + checkStandard + checkMethod锛?
+    - 娓呴櫎鏃ф鏌ユ槑缁?鈫?濉厖鏂版柟妗堟鏌ラ」 鈫?鏇存柊 scheme_id 鍜?scheme_snapshot
     - _Requirements: 7.1, 7.2, 7.4, 7.7_
 
-  - [~] 10.2 实现检查明细编辑与手动填写
-    - 允许编辑已填充的检查项（修改检查标准/删除不适用项，不可新增方案外检查项）
-    - 未选择方案时允许手动填写检查项（≤100 条，项目名称≤200 字符，检查标准≤500 字符）
+  - [x] 10.2 瀹炵幇妫€鏌ユ槑缁嗙紪杈戜笌鎵嬪姩濉啓
+    - 鍏佽缂栬緫宸插～鍏呯殑妫€鏌ラ」锛堜慨鏀规鏌ユ爣鍑?鍒犻櫎涓嶉€傜敤椤癸紝涓嶅彲鏂板鏂规澶栨鏌ラ」锛?
+    - 鏈€夋嫨鏂规鏃跺厑璁告墜鍔ㄥ～鍐欐鏌ラ」锛堚墹100 鏉★紝椤圭洰鍚嶇О鈮?00 瀛楃锛屾鏌ユ爣鍑嗏墹500 瀛楃锛?
     - _Requirements: 7.3, 7.8_
 
-  - [ ]* 10.3 编写属性测试：方案快照不可变性（Property P6）
-    - **Property P6: 方案快照不可变性**
-    - 创建检查记录并关联方案，修改原方案源数据后重新读取检查记录，验证 scheme_snapshot JSON 内容与创建时一致
+  - [x]* 10.3 缂栧啓灞炴€ф祴璇曪細鏂规蹇収涓嶅彲鍙樻€э紙Property P6锛?
+    - **Property P6: 鏂规蹇収涓嶅彲鍙樻€?*
+    - 鍒涘缓妫€鏌ヨ褰曞苟鍏宠仈鏂规锛屼慨鏀瑰師鏂规婧愭暟鎹悗閲嶆柊璇诲彇妫€鏌ヨ褰曪紝楠岃瘉 scheme_snapshot JSON 鍐呭涓庡垱寤烘椂涓€鑷?
     - **Validates: Requirements 7.7**
 
-  - [~] 10.4 实现 InspectionSchemeController REST 接口
-    - GET `/api/v1/inspection-schemes` — 方案列表（按 inspectionType 筛选）
-    - GET `/api/v1/inspection-schemes/{id}/items` — 方案检查项列表
-    - POST `/api/v1/inspections/{id}/apply-scheme` — 关联方案到检查记录
+  - [x] 10.4 瀹炵幇 InspectionSchemeController REST 鎺ュ彛
+    - GET `/api/v1/inspection-schemes` 鈥?鏂规鍒楄〃锛堟寜 inspectionType 绛涢€夛級
+    - GET `/api/v1/inspection-schemes/{id}/items` 鈥?鏂规妫€鏌ラ」鍒楄〃
+    - POST `/api/v1/inspections/{id}/apply-scheme` 鈥?鍏宠仈鏂规鍒版鏌ヨ褰?
     - _Requirements: 7.1, 7.2_
 
-  - [ ]* 10.5 编写 InspectionSchemeService 单元测试
-    - 测试方案关联后检查明细正确填充
-    - 测试重新选择方案清除旧数据
-    - 测试手动填写限制校验
+  - [x]* 10.5 缂栧啓 InspectionSchemeService 鍗曞厓娴嬭瘯
+    - 娴嬭瘯鏂规鍏宠仈鍚庢鏌ユ槑缁嗘纭～鍏?
+    - 娴嬭瘯閲嶆柊閫夋嫨鏂规娓呴櫎鏃ф暟鎹?
+    - 娴嬭瘯鎵嬪姩濉啓闄愬埗鏍￠獙
     - _Requirements: 7.2, 7.3, 7.4, 7.8_
 
-- [~] 11. Checkpoint — 确保全部后端模块编译通过、单元测试通过
+- [x] 11. Checkpoint 鈥?纭繚鍏ㄩ儴鍚庣妯″潡缂栬瘧閫氳繃銆佸崟鍏冩祴璇曢€氳繃
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. PC 前端 — 工程量清单上传页面
-  - [~] 12.1 实现 BOQ 上传前端组件
-    - 创建 `src/api/boq.ts` API 文件（uploadBoq、getBoqTree、deleteBoq）
-    - 创建 `views/contract/boq-upload.vue` 页面组件
-    - 实现 Excel 文件拖拽/点击上传（Element Plus Upload 组件，限制 .xlsx、20MB）
-    - 上传成功后展示清单树形表格（ElTable + 树形展开）
-    - 展示合计金额、条目数、层级数
+- [x] 12. PC 鍓嶇 鈥?宸ョ▼閲忔竻鍗曚笂浼犻〉闈?
+  - [x] 12.1 瀹炵幇 BOQ 涓婁紶鍓嶇缁勪欢
+    - 鍒涘缓 `src/api/boq.ts` API 鏂囦欢锛坲ploadBoq銆乬etBoqTree銆乨eleteBoq锛?
+    - 鍒涘缓 `views/contract/boq-upload.vue` 椤甸潰缁勪欢
+    - 瀹炵幇 Excel 鏂囦欢鎷栨嫿/鐐瑰嚮涓婁紶锛圗lement Plus Upload 缁勪欢锛岄檺鍒?.xlsx銆?0MB锛?
+    - 涓婁紶鎴愬姛鍚庡睍绀烘竻鍗曟爲褰㈣〃鏍硷紙ElTable + 鏍戝舰灞曞紑锛?
+    - 灞曠ず鍚堣閲戦銆佹潯鐩暟銆佸眰绾ф暟
     - _Requirements: 1.1, 1.2, 1.7_
 
-- [ ] 13. PC 前端 — 目标成本变更页面
-  - [~] 13.1 实现目标成本变更列表与表单页面
-    - 创建 `src/api/budget-change.ts` API 文件
-    - 创建 `views/budget/change/index.vue` 变更单列表页（分页+状态筛选）
-    - 创建 `views/budget/change/form.vue` 变更单新建/编辑表单
-    - 表单含：变更原因（必填）、变更明细表格（动态增行：科目名称、原金额、调整金额、调整后金额自动计算）
-    - 提交/撤回操作按钮（根据状态显隐）
+- [x] 13. PC 鍓嶇 鈥?鐩爣鎴愭湰鍙樻洿椤甸潰
+  - [x] 13.1 瀹炵幇鐩爣鎴愭湰鍙樻洿鍒楄〃涓庤〃鍗曢〉闈?
+    - 鍒涘缓 `src/api/budget-change.ts` API 鏂囦欢
+    - 鍒涘缓 `views/budget/change/index.vue` 鍙樻洿鍗曞垪琛ㄩ〉锛堝垎椤?鐘舵€佺瓫閫夛級
+    - 鍒涘缓 `views/budget/change/form.vue` 鍙樻洿鍗曟柊寤?缂栬緫琛ㄥ崟
+    - 琛ㄥ崟鍚細鍙樻洿鍘熷洜锛堝繀濉級銆佸彉鏇存槑缁嗚〃鏍硷紙鍔ㄦ€佸琛岋細绉戠洰鍚嶇О銆佸師閲戦銆佽皟鏁撮噾棰濄€佽皟鏁村悗閲戦鑷姩璁＄畻锛?
+    - 鎻愪氦/鎾ゅ洖鎿嶄綔鎸夐挳锛堟牴鎹姸鎬佹樉闅愶級
     - _Requirements: 2.1, 2.2, 2.9_
 
-- [ ] 14. PC 前端 — 项目最终结算页面
-  - [~] 14.1 实现项目最终结算列表与详情页面
-    - 创建 `src/api/settlement.ts` API 文件
-    - 创建 `views/finance/settlement/index.vue` 结算单列表页
-    - 创建 `views/finance/settlement/detail.vue` 结算单详情页
-    - 详情页展示：收支汇总卡片、利润/利润率、合同明细表格、未结清合同标注
-    - 实现 Excel 导出按钮（Blob 下载）
+- [x] 14. PC 鍓嶇 鈥?椤圭洰鏈€缁堢粨绠楅〉闈?
+  - [x] 14.1 瀹炵幇椤圭洰鏈€缁堢粨绠楀垪琛ㄤ笌璇︽儏椤甸潰
+    - 鍒涘缓 `src/api/settlement.ts` API 鏂囦欢
+    - 鍒涘缓 `views/finance/settlement/index.vue` 缁撶畻鍗曞垪琛ㄩ〉
+    - 鍒涘缓 `views/finance/settlement/detail.vue` 缁撶畻鍗曡鎯呴〉
+    - 璇︽儏椤靛睍绀猴細鏀舵敮姹囨€诲崱鐗囥€佸埄娑?鍒╂鼎鐜囥€佸悎鍚屾槑缁嗚〃鏍笺€佹湭缁撴竻鍚堝悓鏍囨敞
+    - 瀹炵幇 Excel 瀵煎嚭鎸夐挳锛圔lob 涓嬭浇锛?
     - _Requirements: 3.3, 3.4, 3.7, 3.8_
 
-- [ ] 15. PC 前端 — 验证码登录改造
-  - [~] 15.1 改造登录页增加验证码
-    - 创建 `src/api/captcha.ts` API 文件
-    - 修改 `views/login/index.vue`，增加图形验证码输入行（输入框 + 验证码图片，点击刷新）
-    - 登录表单增加 captchaCode 和 captchaUuid 字段
-    - 验证码校验失败时自动刷新图片
+- [x] 15. PC 鍓嶇 鈥?楠岃瘉鐮佺櫥褰曟敼閫?
+  - [x] 15.1 鏀归€犵櫥褰曢〉澧炲姞楠岃瘉鐮?
+    - 鍒涘缓 `src/api/captcha.ts` API 鏂囦欢
+    - 淇敼 `views/login/index.vue`锛屽鍔犲浘褰㈤獙璇佺爜杈撳叆琛岋紙杈撳叆妗?+ 楠岃瘉鐮佸浘鐗囷紝鐐瑰嚮鍒锋柊锛?
+    - 鐧诲綍琛ㄥ崟澧炲姞 captchaCode 鍜?captchaUuid 瀛楁
+    - 楠岃瘉鐮佹牎楠屽け璐ユ椂鑷姩鍒锋柊鍥剧墖
     - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 16. PC 前端 — 预算控制配置页面
-  - [~] 16.1 实现预算控制配置 CRUD 页面
-    - 创建 `src/api/budget-control-config.ts` API 文件
-    - 创建 `views/budget/control-config/index.vue` 配置列表页（表格+筛选+弹窗表单）
-    - 表单字段：项目选择器、控制模式下拉（仅提醒/禁止提交/免控）、预警阈值滑块（50-99%）
-    - 列表展示：项目名称、控制模式、预警阈值、操作按钮
+- [x] 16. PC 鍓嶇 鈥?棰勭畻鎺у埗閰嶇疆椤甸潰
+  - [x] 16.1 瀹炵幇棰勭畻鎺у埗閰嶇疆 CRUD 椤甸潰
+    - 鍒涘缓 `src/api/budget-control-config.ts` API 鏂囦欢
+    - 鍒涘缓 `views/budget/control-config/index.vue` 閰嶇疆鍒楄〃椤碉紙琛ㄦ牸+绛涢€?寮圭獥琛ㄥ崟锛?
+    - 琛ㄥ崟瀛楁锛氶」鐩€夋嫨鍣ㄣ€佹帶鍒舵ā寮忎笅鎷夛紙浠呮彁閱?绂佹鎻愪氦/鍏嶆帶锛夈€侀璀﹂槇鍊兼粦鍧楋紙50-99%锛?
+    - 鍒楄〃灞曠ず锛氶」鐩悕绉般€佹帶鍒舵ā寮忋€侀璀﹂槇鍊笺€佹搷浣滄寜閽?
     - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 17. PC 前端 — 检查方案关联
-  - [~] 17.1 改造检查表单增加方案选择功能
-    - 修改 `views/site/inspection/form.vue` 检查表单页面
-    - 增加方案选择下拉/弹窗组件（按检查类型筛选已启用方案）
-    - 选择方案后自动填充检查明细表格
-    - 支持编辑检查项（修改标准/删除，不可新增方案外项）
-    - 检查详情页从 scheme_snapshot 展示方案内容
+- [x] 17. PC 鍓嶇 鈥?妫€鏌ユ柟妗堝叧鑱?
+  - [x] 17.1 鏀归€犳鏌ヨ〃鍗曞鍔犳柟妗堥€夋嫨鍔熻兘
+    - 淇敼 `views/site/inspection/form.vue` 妫€鏌ヨ〃鍗曢〉闈?
+    - 澧炲姞鏂规閫夋嫨涓嬫媺/寮圭獥缁勪欢锛堟寜妫€鏌ョ被鍨嬬瓫閫夊凡鍚敤鏂规锛?
+    - 閫夋嫨鏂规鍚庤嚜鍔ㄥ～鍏呮鏌ユ槑缁嗚〃鏍?
+    - 鏀寔缂栬緫妫€鏌ラ」锛堜慨鏀规爣鍑?鍒犻櫎锛屼笉鍙柊澧炴柟妗堝椤癸級
+    - 妫€鏌ヨ鎯呴〉浠?scheme_snapshot 灞曠ず鏂规鍐呭
     - _Requirements: 7.1, 7.2, 7.3, 7.5_
 
-- [ ] 18. 移动端 — 验证码登录与检查方案
-  - [~] 18.1 实现移动端短信验证码登录
-    - 修改 `zw-insight-app/src/pages/login/index.vue` 增加"短信验证码登录"Tab
-    - 实现手机号输入 + 发送验证码按钮（60s 倒计时）+ 验证码输入
-    - 调用 `/api/v1/captcha/sms` 和登录接口（loginType=SMS）
+- [x] 18. 绉诲姩绔?鈥?楠岃瘉鐮佺櫥褰曚笌妫€鏌ユ柟妗?
+  - [x] 18.1 瀹炵幇绉诲姩绔煭淇￠獙璇佺爜鐧诲綍
+    - 淇敼 `zw-insight-app/src/pages/login/index.vue` 澧炲姞"鐭俊楠岃瘉鐮佺櫥褰?Tab
+    - 瀹炵幇鎵嬫満鍙疯緭鍏?+ 鍙戦€侀獙璇佺爜鎸夐挳锛?0s 鍊掕鏃讹級+ 楠岃瘉鐮佽緭鍏?
+    - 璋冪敤 `/api/v1/captcha/sms` 鍜岀櫥褰曟帴鍙ｏ紙loginType=SMS锛?
     - _Requirements: 4.6, 4.7_
 
-  - [~] 18.2 实现移动端检查方案展示与结果标记
-    - 修改移动端检查页面，展示方案快照中的检查项逐项列表
-    - 每项支持标记检查结果（合格/不合格/未检查）单选
+  - [x] 18.2 瀹炵幇绉诲姩绔鏌ユ柟妗堝睍绀轰笌缁撴灉鏍囪
+    - 淇敼绉诲姩绔鏌ラ〉闈紝灞曠ず鏂规蹇収涓殑妫€鏌ラ」閫愰」鍒楄〃
+    - 姣忛」鏀寔鏍囪妫€鏌ョ粨鏋滐紙鍚堟牸/涓嶅悎鏍?鏈鏌ワ級鍗曢€?
     - _Requirements: 7.6_
 
-- [ ] 19. 路由与菜单配置
-  - [~] 19.1 配置前端路由和后端菜单数据
-    - PC 端 `router/index.ts` 增加新页面路由（目标成本变更、项目最终结算、预算控制配置）
-    - 修改 `data-menu.sql` 插入对应菜单记录和权限标识
+- [x] 19. 璺敱涓庤彍鍗曢厤缃?
+  - [x] 19.1 閰嶇疆鍓嶇璺敱鍜屽悗绔彍鍗曟暟鎹?
+    - PC 绔?`router/index.ts` 澧炲姞鏂伴〉闈㈣矾鐢憋紙鐩爣鎴愭湰鍙樻洿銆侀」鐩渶缁堢粨绠椼€侀绠楁帶鍒堕厤缃級
+    - 淇敼 `data-menu.sql` 鎻掑叆瀵瑰簲鑿滃崟璁板綍鍜屾潈闄愭爣璇?
     - _Requirements: 2.1, 3.1, 6.2_
 
-- [~] 20. Final Checkpoint — 全部功能集成验证
+- [x] 20. Final Checkpoint 鈥?鍏ㄩ儴鍔熻兘闆嗘垚楠岃瘉
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
@@ -355,9 +355,9 @@
 - Checkpoints ensure incremental validation
 - Property tests validate universal correctness properties from design document Section 10
 - Unit tests validate specific examples and edge cases
-- 后端实现按模块分组：zw-contract → zw-budget → zw-finance → zw-security → zw-site
-- 前端实现在全部后端接口完成后进行，确保接口可联调
-- Flowable 审批流程定义（BPMN XML）由现有审批框架自动生成，无需单独任务
+- 鍚庣瀹炵幇鎸夋ā鍧楀垎缁勶細zw-contract 鈫?zw-budget 鈫?zw-finance 鈫?zw-security 鈫?zw-site
+- 鍓嶇瀹炵幇鍦ㄥ叏閮ㄥ悗绔帴鍙ｅ畬鎴愬悗杩涜锛岀‘淇濇帴鍙ｅ彲鑱旇皟
+- Flowable 瀹℃壒娴佺▼瀹氫箟锛圔PMN XML锛夌敱鐜版湁瀹℃壒妗嗘灦鑷姩鐢熸垚锛屾棤闇€鍗曠嫭浠诲姟
 
 ## Task Dependency Graph
 

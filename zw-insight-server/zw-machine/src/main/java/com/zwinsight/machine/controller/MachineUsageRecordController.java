@@ -17,7 +17,6 @@ public class MachineUsageRecordController {
 
     private final MachineUsageRecordService usageRecordService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMachineUsageRecord>> page(
             @RequestParam(defaultValue = "1") int page,

@@ -1,5 +1,6 @@
 <template>
   <view class="home-page">
+    <OfflineBanner />
     <!-- 顶部卡片 -->
     <view class="stat-cards">
       <view class="stat-card">
@@ -22,33 +23,24 @@
 
     <!-- 快捷功能 -->
     <view class="section">
-      <view class="section-title">常用功能</view>
-      <view class="shortcut-grid">
-        <view class="shortcut-item" @click="navigateTo('/pages/material/inbound')">
-          <text class="shortcut-icon">📦</text><text>材料入库</text>
-        </view>
-        <view class="shortcut-item" @click="navigateTo('/pages/material/outbound')">
-          <text class="shortcut-icon">📤</text><text>材料出库</text>
-        </view>
-        <view class="shortcut-item" @click="navigateTo('/pages/site/construction-log')">
-          <text class="shortcut-icon">📝</text><text>施工日志</text>
-        </view>
-        <view class="shortcut-item" @click="navigateTo('/pages/site/progress-feedback')">
-          <text class="shortcut-icon">📊</text><text>进度反馈</text>
-        </view>
-        <view class="shortcut-item" @click="navigateTo('/pages/site/quality-check')">
-          <text class="shortcut-icon">✅</text><text>质量检查</text>
-        </view>
-        <view class="shortcut-item" @click="navigateTo('/pages/site/safety-check')">
-          <text class="shortcut-icon">🛡️</text><text>安全检查</text>
-        </view>
-        <view class="shortcut-item" @click="navigateTo('/pages/finance/invoice-apply')">
-          <text class="shortcut-icon">🧾</text><text>开票申请</text>
-        </view>
-        <view class="shortcut-item" @click="navigateTo('/pages/finance/reimbursement')">
-          <text class="shortcut-icon">💰</text><text>项目报销</text>
+      <view class="section-header">
+        <text class="section-title">常用功能</text>
+        <view class="edit-entry" @click="goShortcutEdit">
+          <text class="edit-icon">✎</text><text class="edit-text">编辑</text>
         </view>
       </view>
+      <view class="shortcut-grid" v-if="shortcuts.length">
+        <view
+          class="shortcut-item"
+          v-for="item in shortcuts"
+          :key="item.shortcutId"
+          @click="navigateTo(item.menuPath)"
+        >
+          <text class="shortcut-icon">{{ item.menuIcon || '📌' }}</text>
+          <text>{{ item.menuName }}</text>
+        </view>
+      </view>
+      <view class="empty" v-else><text>暂无快捷入口，点击右上角“编辑”添加</text></view>
     </view>
 
     <!-- 消息提醒 -->
@@ -69,10 +61,13 @@
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getCompanyOverview, getUnreadCount, getUnreadMessages } from '@/api/common'
+import { getUserShortcuts, type UserShortcutConfig } from '@/api/shortcut'
+import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const overview = ref<any>({})
 const unreadCount = ref(0)
 const messages = ref<any[]>([])
+const shortcuts = ref<UserShortcutConfig[]>([])
 
 function formatWan(val: number) {
   if (!val) return '0'
@@ -81,6 +76,21 @@ function formatWan(val: number) {
 
 function navigateTo(url: string) {
   uni.navigateTo({ url })
+}
+
+function goShortcutEdit() {
+  uni.navigateTo({ url: '/pages/mine/shortcut-edit' })
+}
+
+// 加载用户个性化快捷入口（未配置时后端返回系统默认项，≤4 项）
+async function loadShortcuts() {
+  try {
+    const res: any = await getUserShortcuts()
+    const list: UserShortcutConfig[] = res?.data || []
+    shortcuts.value = [...list].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  } catch {
+    uni.showToast({ title: '快捷入口加载失败', icon: 'none' })
+  }
 }
 
 async function loadData() {
@@ -96,6 +106,8 @@ async function loadData() {
     const res3: any = await getUnreadMessages({ page: 1, size: 5 })
     messages.value = res3.data?.records || []
   } catch {}
+  // 从编辑页返回时通过 onShow 重新加载，保证编辑结果即时生效
+  await loadShortcuts()
 }
 
 onShow(() => { loadData() })
@@ -110,6 +122,11 @@ onMounted(() => { loadData() })
 .stat-label { font-size: 24rpx; color: #909399; margin-top: 8rpx; display: block; }
 .section { background: #fff; border-radius: 12rpx; padding: 24rpx; margin-bottom: 24rpx; }
 .section-title { font-size: 30rpx; font-weight: bold; color: #303133; margin-bottom: 20rpx; position: relative; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.section-header .section-title { margin-bottom: 0; }
+.edit-entry { display: flex; align-items: center; color: #409eff; font-size: 24rpx; }
+.edit-icon { font-size: 26rpx; margin-right: 6rpx; }
+.edit-text { font-size: 24rpx; }
 .badge { background: #f56c6c; color: #fff; font-size: 22rpx; padding: 2rpx 12rpx; border-radius: 20rpx; margin-left: 12rpx; font-weight: normal; }
 .shortcut-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20rpx; }
 .shortcut-item { display: flex; flex-direction: column; align-items: center; padding: 16rpx 0; font-size: 24rpx; color: #606266; }

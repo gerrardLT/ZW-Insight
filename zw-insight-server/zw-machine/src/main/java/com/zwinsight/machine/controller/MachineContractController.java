@@ -17,7 +17,6 @@ public class MachineContractController {
 
     private final MachineContractService contractService;
 
-    @GetMapping
     @GetMapping("/page")
     public R<PageResult<BizMachineContract>> page(
             @RequestParam(defaultValue = "1") int page,
