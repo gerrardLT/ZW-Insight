@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/v1/system/version")
+@RequestMapping("/api/v1/system/version")
 @RequiredArgsConstructor
 public class VersionController {
 

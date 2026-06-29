@@ -17,7 +17,7 @@ import java.util.List;
  * </p>
  */
 @RestController
-@RequestMapping("/v1/system/config")
+@RequestMapping("/api/v1/system/config")
 @RequiredArgsConstructor
 public class SystemConfigController {
 

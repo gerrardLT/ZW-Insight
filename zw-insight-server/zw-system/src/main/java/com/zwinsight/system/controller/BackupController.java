@@ -31,7 +31,7 @@ import java.nio.charset.StandardCharsets;
  */
 @Slf4j
 @RestController
-@RequestMapping("/v1/system/backup")
+@RequestMapping("/api/v1/system/backup")
 @RequiredArgsConstructor
 public class BackupController {
 

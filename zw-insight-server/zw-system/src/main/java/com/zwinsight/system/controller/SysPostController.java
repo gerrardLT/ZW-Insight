@@ -13,7 +13,7 @@ import java.util.List;
  * 岗位管理接口
  */
 @RestController
-@RequestMapping("/v1/system/post")
+@RequestMapping("/api/v1/system/post")
 @RequiredArgsConstructor
 public class SysPostController {
 

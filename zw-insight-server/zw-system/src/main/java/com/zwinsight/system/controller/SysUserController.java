@@ -17,7 +17,7 @@ import java.util.Map;
  * 人员管理接口
  */
 @RestController
-@RequestMapping("/v1/system/user")
+@RequestMapping("/api/v1/system/user")
 @RequiredArgsConstructor
 public class SysUserController {
 

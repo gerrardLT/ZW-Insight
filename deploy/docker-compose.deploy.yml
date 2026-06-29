@@ -71,6 +71,9 @@ services:
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
+      # context-path 置空，使后端直接服务于控制器映射的 /api/v1/...，与前端 baseURL(/api)+/v1 对齐
+      # （原 dev 配置 server.servlet.context-path=/api 会与控制器的 /api/v1 叠加成 /api/api/v1）
+      SERVER_SERVLET_CONTEXT_PATH: /
       # 覆盖 dev 配置里的连接地址，指向本编排内的服务名
       SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/zw_insight?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: root

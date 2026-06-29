@@ -12,7 +12,7 @@ import java.util.List;
  * 字典值管理接口
  */
 @RestController
-@RequestMapping("/v1/system/dict-item")
+@RequestMapping("/api/v1/system/dict-item")
 @RequiredArgsConstructor
 public class SysDictItemController {
 

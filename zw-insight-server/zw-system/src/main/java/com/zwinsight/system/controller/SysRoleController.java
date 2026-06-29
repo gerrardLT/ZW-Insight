@@ -15,7 +15,7 @@ import java.util.List;
  * 角色管理接口
  */
 @RestController
-@RequestMapping("/v1/system/role")
+@RequestMapping("/api/v1/system/role")
 @RequiredArgsConstructor
 public class SysRoleController {
 

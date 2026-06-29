@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @RestController
-@RequestMapping("/v1/system/monitor")
+@RequestMapping("/api/v1/system/monitor")
 @RequiredArgsConstructor
 public class HealthMonitorController {
 

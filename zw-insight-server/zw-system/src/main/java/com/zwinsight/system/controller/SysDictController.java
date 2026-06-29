@@ -14,7 +14,7 @@ import java.util.List;
  * 数据字典接口
  */
 @RestController
-@RequestMapping("/v1/system/dict")
+@RequestMapping("/api/v1/system/dict")
 @RequiredArgsConstructor
 public class SysDictController {
 

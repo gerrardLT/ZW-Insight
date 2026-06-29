@@ -14,7 +14,7 @@ import java.util.List;
  * 日志管理接口
  */
 @RestController
-@RequestMapping("/v1/system/log")
+@RequestMapping("/api/v1/system/log")
 @RequiredArgsConstructor
 public class SysLogController {
 

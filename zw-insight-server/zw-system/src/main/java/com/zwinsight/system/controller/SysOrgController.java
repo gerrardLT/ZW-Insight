@@ -12,7 +12,7 @@ import java.util.List;
  * 机构管理接口
  */
 @RestController
-@RequestMapping("/v1/system/org")
+@RequestMapping("/api/v1/system/org")
 @RequiredArgsConstructor
 public class SysOrgController {
 

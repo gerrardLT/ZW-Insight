@@ -13,7 +13,7 @@ import java.util.List;
  * 菜单管理接口
  */
 @RestController
-@RequestMapping("/v1/system/menu")
+@RequestMapping("/api/v1/system/menu")
 @RequiredArgsConstructor
 public class SysMenuController {
 
