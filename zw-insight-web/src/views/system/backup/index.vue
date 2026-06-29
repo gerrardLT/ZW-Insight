@@ -54,7 +54,7 @@
               link
               type="primary"
               :disabled="row.status !== 'SUCCESS' || !row.storagePath"
-              @click="handleDownload(row)"
+              @click="handleDownload(row as SysBackupRecord)"
             >
               下载
             </el-button>
@@ -63,11 +63,11 @@
               type="warning"
               :disabled="row.status !== 'SUCCESS' || !row.storagePath"
               :loading="restoringId === row.id"
-              @click="handleRestore(row)"
+              @click="handleRestore(row as SysBackupRecord)"
             >
               恢复
             </el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button link type="danger" @click="handleDelete(row as SysBackupRecord)">删除</el-button>
           </template>
         </el-table-column>
         <template #empty>

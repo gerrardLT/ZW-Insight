@@ -101,12 +101,12 @@ const statusMap: Record<string, string> = {
   WITHDRAWN: '已撤回'
 }
 
-const statusTagTypeMap: Record<string, string> = {
+const statusTagTypeMap: Record<string, 'success' | 'primary' | 'warning' | 'info' | 'danger'> = {
   DRAFT: 'info',
   SUBMITTED: 'warning',
   APPROVED: 'success',
   REJECTED: 'danger',
-  WITHDRAWN: ''
+  WITHDRAWN: 'info'
 }
 
 function statusLabel(status: string) {

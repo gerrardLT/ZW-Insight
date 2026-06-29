@@ -97,6 +97,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { TabPaneName } from 'element-plus'
 import {
   getConfigByGroup,
   batchUpdateConfig,
@@ -174,8 +175,8 @@ function getNumberMax(item: SysConfigItem): number | undefined {
 }
 
 /** 标签页切换 */
-function handleTabChange(tab: string) {
-  loadGroupConfig(tab)
+function handleTabChange(name: TabPaneName) {
+  loadGroupConfig(String(name))
 }
 
 /** 保存配置 */

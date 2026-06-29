@@ -34,7 +34,7 @@
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 'WON' ? 'success' : row.status === 'LOST' ? 'danger' : row.status === 'SUBMITTED' ? 'warning' : 'info'" size="small">
-              {{ { REGISTERING: '报名中', SUBMITTED: '已投标', WON: '中标', LOST: '未中标' }[row.status] || row.status }}
+              {{ statusLabelMap[row.status] || row.status }}
             </el-tag>
           </template>
         </el-table-column>
@@ -77,6 +77,7 @@ import { getTenderRegisterPage, createTenderRegister, updateTenderRegister, dele
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const tableData = ref<any[]>([])
+const statusLabelMap: Record<string, string> = { REGISTERING: '报名中', SUBMITTED: '已投标', WON: '中标', LOST: '未中标' }
 const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)

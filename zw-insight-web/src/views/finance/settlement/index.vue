@@ -148,8 +148,8 @@ function formatMoney(val: number) {
   return val.toLocaleString('zh-CN', { minimumFractionDigits: 2 })
 }
 
-function getStatusType(status: string) {
-  const map: Record<string, string> = {
+function getStatusType(status: string): 'success' | 'primary' | 'warning' | 'info' | 'danger' {
+  const map: Record<string, 'success' | 'primary' | 'warning' | 'info' | 'danger'> = {
     DRAFT: 'info',
     SUBMITTED: 'warning',
     APPROVED: 'success',

@@ -125,7 +125,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { FormInstance } from 'element-plus'
+import type { FormInstance, CheckboxValueType } from 'element-plus'
 import { getRoleList, createRole, updateRole, deleteRole, getRoleMenuIds, assignRoleMenus, getMenuTree, updateRoleDataScope } from '@/api/system'
 
 const dataScopeOptions = [
@@ -208,7 +208,7 @@ function updateCheckAllState() {
   isIndeterminate.value = checkedKeys.length > 0 && checkedKeys.length < allKeys.length
 }
 
-function handleCheckAll(val: boolean) {
+function handleCheckAll(val: CheckboxValueType) {
   if (val) {
     menuTreeRef.value?.setCheckedKeys(getAllMenuKeys(menuTree.value))
   } else {

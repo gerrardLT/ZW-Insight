@@ -159,8 +159,8 @@ function formatMoney(val: number) {
   return val.toLocaleString('zh-CN', { minimumFractionDigits: 2 })
 }
 
-function getStatusType(status: string) {
-  const map: Record<string, string> = {
+function getStatusType(status: string): 'success' | 'primary' | 'warning' | 'info' | 'danger' {
+  const map: Record<string, 'success' | 'primary' | 'warning' | 'info' | 'danger'> = {
     DRAFT: 'info',
     SUBMITTED: 'warning',
     APPROVED: 'success',
@@ -190,15 +190,15 @@ function getContractTypeLabel(type: string) {
   return map[type] || type
 }
 
-function getContractTypeTag(type: string) {
-  const map: Record<string, string> = {
-    SUBCONTRACT: '',
+function getContractTypeTag(type: string): 'success' | 'primary' | 'warning' | 'info' | 'danger' {
+  const map: Record<string, 'success' | 'primary' | 'warning' | 'info' | 'danger'> = {
+    SUBCONTRACT: 'info',
     LABOR: 'success',
     MATERIAL: 'warning',
     MACHINE: 'info',
     OTHER: 'danger'
   }
-  return map[type] || ''
+  return map[type] || 'info'
 }
 
 function getRowClassName({ row }: { row: any }) {

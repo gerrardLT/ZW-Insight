@@ -21,7 +21,7 @@
         <el-table-column prop="lockTime" label="操作时间" width="180" align="center" />
         <el-table-column v-if="canOperate" label="操作" width="120" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'LOCKED'" link type="primary" @click="handleUnlock(row)">解封</el-button>
+            <el-button v-if="row.status === 'LOCKED'" link type="primary" @click="handleUnlock(row as FinanceLockDTO)">解封</el-button>
             <span v-else>-</span>
           </template>
         </el-table-column>

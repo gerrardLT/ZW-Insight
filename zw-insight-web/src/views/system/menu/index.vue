@@ -62,7 +62,7 @@
           <el-tree-select
             v-model="formData.parentId"
             :data="menuTreeForSelect"
-            :props="{ label: 'menuName', value: 'id', children: 'children' }"
+            :props="menuTreeSelectProps"
             placeholder="顶级菜单"
             check-strictly
             clearable
@@ -125,6 +125,7 @@ const formRef = ref<FormInstance>()
 const loading = ref(false)
 const menuTree = ref<any[]>([])
 const menuTreeForSelect = ref<any[]>([])
+const menuTreeSelectProps = { label: 'menuName', value: 'id', children: 'children' }
 const isExpandAll = ref(true)
 const refreshTable = ref(true)
 const dialogVisible = ref(false)

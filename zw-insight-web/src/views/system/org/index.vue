@@ -76,7 +76,7 @@
           <el-tree-select
             v-model="formData.parentId"
             :data="orgTree"
-            :props="{ label: 'orgName', value: 'id', children: 'children' }"
+            :props="orgTreeSelectProps"
             placeholder="请选择上级机构"
             check-strictly
             clearable
@@ -117,6 +117,7 @@ const treeRef = ref()
 const formRef = ref<FormInstance>()
 const filterText = ref('')
 const orgTree = ref<any[]>([])
+const orgTreeSelectProps = { label: 'orgName', value: 'id', children: 'children' }
 const currentOrg = ref<any>(null)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')

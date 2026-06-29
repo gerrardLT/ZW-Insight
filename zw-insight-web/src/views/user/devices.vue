@@ -51,7 +51,7 @@
                   link
                   type="danger"
                   :disabled="row.status !== 1"
-                  @click="handleRevoke(row)"
+                  @click="handleRevoke(row as LoginDevice)"
                 >
                   远程注销
                 </el-button>

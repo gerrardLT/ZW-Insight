@@ -19,7 +19,7 @@
           <el-tree-select
             v-model="queryParams.orgId"
             :data="orgTree"
-            :props="{ label: 'orgName', value: 'id', children: 'children' }"
+            :props="orgTreeSelectProps"
             placeholder="请选择机构"
             check-strictly
             clearable
@@ -123,7 +123,7 @@
               <el-tree-select
                 v-model="formData.orgId"
                 :data="orgTree"
-                :props="{ label: 'orgName', value: 'id', children: 'children' }"
+                :props="orgTreeSelectProps"
                 placeholder="请选择机构"
                 check-strictly
                 clearable
@@ -184,6 +184,7 @@ const tableData = ref<any[]>([])
 const total = ref(0)
 const selectedIds = ref<number[]>([])
 const orgTree = ref<any[]>([])
+const orgTreeSelectProps = { label: 'orgName', value: 'id', children: 'children' }
 const roleList = ref<any[]>([])
 const postList = ref<any[]>([])
 const dialogVisible = ref(false)

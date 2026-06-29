@@ -147,11 +147,14 @@ class PublicInquiryFilterPropertyTest {
             @ForAll("inquiryRecordList") List<InquiryRecord> allInquiries) {
 
         List<InquiryRecord> filtered = filterPublicInquiries(allInquiries);
-        Set<Long> filteredIds = filtered.stream().map(InquiryRecord::id).collect(Collectors.toSet());
 
         for (InquiryRecord record : allInquiries) {
             if (!isPublicVisible(record)) {
-                assert !filteredIds.contains(record.id())
+                // 按整条记录（全字段相等）判断，而非按 id：
+                // 列表中 id 可能重复，若用 id 集合判断，会把「另一条同 id 的可见记录」
+                // 误判为本条不可见记录被包含。不可见记录与可见记录 status 必不同，
+                // 故 record 级别的 contains 永不会为不可见记录返回 true。
+                assert !filtered.contains(record)
                         : String.format("不满足条件的记录出现在结果中: id=%d, inviteMode=%s, status=%s",
                         record.id(), record.inviteMode(), record.status());
             }
@@ -169,11 +172,11 @@ class PublicInquiryFilterPropertyTest {
             @ForAll("inquiryRecordList") List<InquiryRecord> allInquiries) {
 
         List<InquiryRecord> filtered = filterPublicInquiries(allInquiries);
-        Set<Long> filteredIds = filtered.stream().map(InquiryRecord::id).collect(Collectors.toSet());
 
         for (InquiryRecord record : allInquiries) {
             if (isPublicVisible(record)) {
-                assert filteredIds.contains(record.id())
+                // 同上：按整条记录判断包含关系，避免 id 重复造成的误判。
+                assert filtered.contains(record)
                         : String.format("满足条件的记录未出现在结果中: id=%d, inviteMode=%s, status=%s",
                         record.id(), record.inviteMode(), record.status());
             }

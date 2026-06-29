@@ -166,7 +166,7 @@ const moduleOptions = [
   { label: '项目', value: 'project' }
 ]
 
-const typeTagMap: Record<string, { label: string; type: string }> = {
+const typeTagMap: Record<string, { label: string; type: 'success' | 'primary' | 'warning' | 'info' | 'danger' }> = {
   IMPORT: { label: '导入', type: 'primary' },
   EXPORT: { label: '导出', type: 'success' },
   PRINT: { label: '打印', type: 'warning' }

@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { FormInstance } from 'element-plus'
+import type { FormInstance, TabPaneName } from 'element-plus'
 import { getArchivePage, createArchive, updateArchive, deleteArchive } from '@/api/archive'
 
 const formRef = ref<FormInstance>()
@@ -84,7 +84,7 @@ const queryParams = ref({ pageNum: 1, pageSize: 10, archiveName: '', archiveDate
 const formData = ref({ id: undefined as number | undefined, archiveName: '', category: 'CONTRACT', projectName: '', archiveDate: '', keeper: '', location: '', remark: '' })
 const formRules = { archiveName: [{ required: true, message: '请输入档案名称', trigger: 'blur' }] }
 
-function handleTabChange(tab: string) { queryParams.value.category = tab; queryParams.value.pageNum = 1; loadData() }
+function handleTabChange(name: TabPaneName) { const tab = String(name); queryParams.value.category = tab; queryParams.value.pageNum = 1; loadData() }
 async function loadData() { loading.value = true; try { const res: any = await getArchivePage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, archiveName: '', archiveDate: '', category: activeTab.value }; loadData() }

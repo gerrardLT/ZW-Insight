@@ -27,7 +27,7 @@
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDetail(row)">查看日志</el-button>
+            <el-button link type="primary" @click="openDetail(row as SysVersion)">查看日志</el-button>
           </template>
         </el-table-column>
         <template #empty>

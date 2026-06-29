@@ -143,8 +143,8 @@ function controlModeLabel(mode: string): string {
   return map[mode] || mode
 }
 
-function controlModeTagType(mode: string): string {
-  const map: Record<string, string> = {
+function controlModeTagType(mode: string): 'success' | 'primary' | 'warning' | 'info' | 'danger' {
+  const map: Record<string, 'success' | 'primary' | 'warning' | 'info' | 'danger'> = {
     WARN_ONLY: 'warning',
     BLOCK: 'danger',
     EXEMPT: 'success'

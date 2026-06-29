@@ -126,7 +126,7 @@
                   :total="row._detailTotal"
                   layout="total, prev, pager, next"
                   small
-                  @current-change="(page: number) => loadTeamDetail(row, page)"
+                  @current-change="(page: number) => loadTeamDetail(row as TeamSalaryVO, page)"
                 />
               </div>
             </div>
@@ -137,7 +137,7 @@
         <el-table-column prop="headCount" label="人数" width="80" align="center" />
         <el-table-column label="类型" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.orderType === 'FIXED' ? '' : 'warning'" size="small">
+            <el-tag :type="row.orderType === 'FIXED' ? 'primary' : 'warning'" size="small">
               {{ row.orderType === 'FIXED' ? '自有劳务' : '零星用工' }}
             </el-tag>
           </template>
@@ -211,7 +211,7 @@ interface SalaryCompareVO {
 const loading = ref(false)
 const searched = ref(false)
 const activeTab = ref('ALL')
-const expandedRows = ref<number[]>([])
+const expandedRows = ref<string[]>([])
 
 const queryParams = ref({
   projectId: undefined as number | undefined,
@@ -305,12 +305,15 @@ function handleTabChange() {
   expandedRows.value = []
 }
 
-async function handleExpandChange(row: TeamSalaryVO, expanded: boolean) {
+async function handleExpandChange(row: TeamSalaryVO, expandedState: boolean | TeamSalaryVO[]) {
+  const expanded = typeof expandedState === 'boolean'
+    ? expandedState
+    : expandedState.some(r => r.teamId === row.teamId)
   if (!expanded) {
-    expandedRows.value = expandedRows.value.filter(id => id !== row.teamId)
+    expandedRows.value = expandedRows.value.filter(id => id !== String(row.teamId))
     return
   }
-  expandedRows.value.push(row.teamId)
+  expandedRows.value.push(String(row.teamId))
   await loadTeamDetail(row, 1)
 }
 

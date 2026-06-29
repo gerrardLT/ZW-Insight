@@ -83,7 +83,7 @@
                     :precision="2"
                     :controls="false"
                     style="width: 100%"
-                    @change="calcAdjustedAmount(row)"
+                    @change="calcAdjustedAmount(row as DetailRow)"
                   />
                   <span v-else>{{ row.originalAmount?.toLocaleString() }}</span>
                 </template>
@@ -96,7 +96,7 @@
                     :precision="2"
                     :controls="false"
                     style="width: 100%"
-                    @change="calcAdjustedAmount(row)"
+                    @change="calcAdjustedAmount(row as DetailRow)"
                   />
                   <span v-else :class="{ 'text-danger': row.adjustAmount < 0, 'text-success': row.adjustAmount > 0 }">
                     {{ row.adjustAmount?.toLocaleString() }}

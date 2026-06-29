@@ -185,11 +185,11 @@ import {
 } from '@/api/platform'
 
 // ==================== 常量 ====================
-type TagType = '' | 'success' | 'warning' | 'info' | 'danger'
+type TagType = 'success' | 'primary' | 'warning' | 'info' | 'danger'
 
 const userTypeTagMap: Record<string, TagType> = {
   TRIAL: 'info',
-  STANDARD: '',
+  STANDARD: 'primary',
   ENTERPRISE: 'success'
 }
 

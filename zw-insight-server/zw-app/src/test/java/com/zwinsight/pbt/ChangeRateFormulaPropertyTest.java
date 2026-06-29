@@ -67,7 +67,10 @@ class ChangeRateFormulaPropertyTest {
     @Property(tries = 100)
     void changeRate_positiveWhenCurrentGreater(
             @ForAll("previousValues") BigDecimal previous) {
-        BigDecimal current = previous.add(BigDecimal.ONE); // current > previous
+        // current 明显大于 previous（翻倍），确保变化率四舍五入到 1 位小数后仍为正。
+        // 注意：若仅 previous + 1，当 previous 很大时（如 100000）变化率约 0.001%，
+        // setScale(1, HALF_UP) 会舍入为 0.0，导致 “>0” 不成立——那是舍入而非逻辑问题。
+        BigDecimal current = previous.add(previous); // current = 2 * previous > previous
         BigDecimal rate = calculateChangeRate(current, previous);
         Assertions.assertThat(rate).isGreaterThan(BigDecimal.ZERO);
     }

@@ -71,7 +71,7 @@
           <el-tree-select
             v-model="formData.parentId"
             :data="typeTree"
-            :props="{ label: 'typeName', value: 'id', children: 'children' }"
+            :props="typeTreeSelectProps"
             placeholder="请选择上级类型（空为顶级）"
             check-strictly
             clearable
@@ -118,6 +118,7 @@ const treeRef = ref()
 const formRef = ref<FormInstance>()
 const filterText = ref('')
 const typeTree = ref<any[]>([])
+const typeTreeSelectProps = { label: 'typeName', value: 'id', children: 'children' }
 const currentNode = ref<any>(null)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')

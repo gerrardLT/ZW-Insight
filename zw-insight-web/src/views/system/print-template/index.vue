@@ -42,9 +42,9 @@
         <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
-            <el-button link type="success" :loading="previewLoadingId === row.id" @click="handlePreview(row)">预览</el-button>
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button link type="success" :loading="previewLoadingId === row.id" @click="handlePreview(row as PrintTemplate)">预览</el-button>
+            <el-button link type="primary" @click="handleEdit(row as PrintTemplate)">编辑</el-button>
+            <el-button link type="danger" @click="handleDelete(row as PrintTemplate)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
