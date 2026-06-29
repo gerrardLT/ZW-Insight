@@ -1,0 +1,99 @@
+# ZW-Insight 联调部署编排（独立网络，互不干扰服务器上的其他容器）
+# 仅后端对公网暴露 18080；MySQL/Redis/MinIO/RabbitMQ 仅在内网，不映射公网端口。
+# 各容器设内存硬限制，避免在共享服务器上挤占其他服务。
+name: zwinsight-debug
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: zwi-mysql
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: zwinsight123
+      MYSQL_DATABASE: zw_insight
+      TZ: Asia/Shanghai
+    volumes:
+      - zwi_mysql:/var/lib/mysql
+    mem_limit: 900m
+    networks: [zwi-net]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pzwinsight123"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7
+    container_name: zwi-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - zwi_redis:/data
+    mem_limit: 256m
+    networks: [zwi-net]
+
+  minio:
+    image: minio/minio
+    container_name: zwi-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - zwi_minio:/data
+    mem_limit: 384m
+    networks: [zwi-net]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: zwi-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - zwi_rabbitmq:/var/lib/rabbitmq
+    mem_limit: 512m
+    networks: [zwi-net]
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zwinsight-backend:debug
+    container_name: zwi-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: dev
+      # 覆盖 dev 配置里的连接地址，指向本编排内的服务名
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/zw_insight?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: zwinsight123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: "5672"
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      # minio.access-key/secret-key 在 dev 配置里已是 minioadmin，与本编排一致，无需覆盖；仅改 endpoint 指向服务名
+      MINIO_ENDPOINT: "http://minio:9000"
+    ports:
+      - "18080:8080"   # 仅此端口对公网；前端联调连这里
+    mem_limit: 1200m
+    networks: [zwi-net]
+
+volumes:
+  zwi_mysql:
+  zwi_redis:
+  zwi_minio:
+  zwi_rabbitmq:
+
+networks:
+  zwi-net:
+    driver: bridge

@@ -6,6 +6,8 @@ import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
 import org.flowable.engine.RuntimeService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.flowable.engine.delegate.event.impl.FlowableProcessTerminatedEventImpl;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,7 +28,9 @@ import java.util.Map;
 public class ProcessCompleteListener implements FlowableEventListener {
 
     private final ApplicationEventPublisher eventPublisher;
-    private final RuntimeService runtimeService;
+    @Lazy
+    @Autowired
+    private RuntimeService runtimeService;
 
     @Override
     public void onEvent(FlowableEvent event) {

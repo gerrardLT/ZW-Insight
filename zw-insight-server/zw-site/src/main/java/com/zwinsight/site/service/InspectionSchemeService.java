@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * 负责方案列表查询、方案关联检查记录、生成方案快照
  */
 @Slf4j
-@Service
+@Service("siteInspectionSchemeService")
 @RequiredArgsConstructor
 public class InspectionSchemeService {
 

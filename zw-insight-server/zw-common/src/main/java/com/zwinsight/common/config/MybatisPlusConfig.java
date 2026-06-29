@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerIntercept
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import com.zwinsight.common.datapermission.DataPermissionDataProvider;
 import com.zwinsight.common.datapermission.DataPermissionInnerInterceptor;
+import org.springframework.context.annotation.Lazy;
 import com.zwinsight.common.datapermission.ZwDataPermissionHandler;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.LongValue;
@@ -26,6 +27,7 @@ import java.time.LocalDateTime;
 public class MybatisPlusConfig {
 
     @Autowired(required = false)
+    @Lazy
     private DataPermissionDataProvider dataPermissionDataProvider;
 
     /**

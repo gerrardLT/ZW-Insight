@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 /**
  * 检查方案服务
  */
-@Service
+@Service("basedataInspectionSchemeService")
 @RequiredArgsConstructor
 public class InspectionSchemeService {
 

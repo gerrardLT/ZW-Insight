@@ -7,6 +7,8 @@ import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
 import org.flowable.engine.TaskService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.flowable.engine.delegate.event.impl.FlowableEntityEventImpl;
 import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 import org.springframework.stereotype.Component;
@@ -24,7 +26,9 @@ import org.springframework.stereotype.Component;
 public class DelegateTaskAssignListener implements FlowableEventListener {
 
     private final DelegateService delegateService;
-    private final TaskService taskService;
+    @Lazy
+    @Autowired
+    private TaskService taskService;
 
     @Override
     public void onEvent(FlowableEvent event) {

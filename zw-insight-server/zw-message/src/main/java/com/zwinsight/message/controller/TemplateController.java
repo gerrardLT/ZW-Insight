@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 消息模板接口
  */
-@RestController
+@RestController("messageTemplateController")
 @RequestMapping("/api/v1/message/template")
 @RequiredArgsConstructor
 public class TemplateController {

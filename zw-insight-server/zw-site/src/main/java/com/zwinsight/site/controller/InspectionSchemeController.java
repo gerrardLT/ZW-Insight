@@ -21,7 +21,7 @@ import java.util.Map;
  * 检查方案接口
  * 提供方案列表查询、方案检查项查询、关联方案到检查记录
  */
-@RestController
+@RestController("siteInspectionSchemeController")
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class InspectionSchemeController {

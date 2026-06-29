@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 检查方案接口
  */
-@RestController
+@RestController("basedataInspectionSchemeController")
 @RequestMapping("/api/v1/basedata/inspection-scheme")
 @RequiredArgsConstructor
 public class InspectionSchemeController {

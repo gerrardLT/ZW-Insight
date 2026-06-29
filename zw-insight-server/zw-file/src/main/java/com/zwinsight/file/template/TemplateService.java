@@ -13,7 +13,7 @@ import java.util.Map;
  * 模板管理服务
  */
 @Slf4j
-@Service
+@Service("fileTemplateService")
 @RequiredArgsConstructor
 public class TemplateService {
 

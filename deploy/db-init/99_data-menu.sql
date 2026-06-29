@@ -203,8 +203,8 @@ INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon
 -- ============================================================
 -- 超级管理员角色
 -- ============================================================
-INSERT INTO sys_role (id, role_name, role_code, status, tenant_id, created_at) VALUES
-(1, '超级管理员', 'SUPER_ADMIN', 1, NULL, NOW());
+INSERT INTO sys_role (id, role_name, role_code, sort_order, status, tenant_id, created_at) VALUES
+(1, '超级管理员', 'SUPER_ADMIN', 1, 1, NULL, NOW());
 
 -- 超级管理员关联所有菜单
 INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES

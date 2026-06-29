@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 /**
  * 消息模板服务
  */
-@Service
+@Service("messageTemplateService")
 @RequiredArgsConstructor
 public class TemplateService {
 

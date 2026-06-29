@@ -105,3 +105,10 @@ coverage/
 # jqwik 属性测试运行缓存
 .jqwik-database
 **/.jqwik-database
+
+# SSH 私钥 / 凭证（严禁提交）
+keys/
+*.pem
+
+# 部署用的大体积可启动 jar（本地构建产物，不入库）
+deploy/zw-insight-app.jar

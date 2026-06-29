@@ -10,7 +10,7 @@ import java.util.Map;
 /**
  * 模板管理接口
  */
-@RestController
+@RestController("fileTemplateController")
 @RequestMapping("/api/v1/file/template")
 @RequiredArgsConstructor
 public class TemplateController {
