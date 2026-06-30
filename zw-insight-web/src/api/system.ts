@@ -1,8 +1,9 @@
 import request from '@/utils/request'
 
 // ======================== 机构管理 ========================
+// 后端：列表在根 GET /org（机构为树），更新为 PUT /org/{id}
 export function getOrgTree(params?: any) {
-  return request.get('/v1/system/org/tree', { params })
+  return request.get('/v1/system/org', { params })
 }
 
 export function getOrgDetail(id: number) {
@@ -14,7 +15,7 @@ export function createOrg(data: any) {
 }
 
 export function updateOrg(data: any) {
-  return request.put('/v1/system/org', data)
+  return request.put(`/v1/system/org/${data.id}`, data)
 }
 
 export function deleteOrg(id: number) {
@@ -26,8 +27,9 @@ export function updateOrgStatus(id: number, status: number) {
 }
 
 // ======================== 用户管理 ========================
+// 后端：分页/列表在根 GET /user，更新为 PUT /user/{id}
 export function getUserPage(params: any) {
-  return request.get('/v1/system/user/page', { params })
+  return request.get('/v1/system/user', { params })
 }
 
 export function getUserDetail(id: number) {
@@ -39,7 +41,7 @@ export function createUser(data: any) {
 }
 
 export function updateUser(data: any) {
-  return request.put('/v1/system/user', data)
+  return request.put(`/v1/system/user/${data.id}`, data)
 }
 
 export function deleteUser(id: number) {
@@ -47,7 +49,8 @@ export function deleteUser(id: number) {
 }
 
 export function updateUserStatus(id: number, status: number) {
-  return request.put(`/v1/system/user/${id}/status`, { status })
+  // 后端无 PUT /{id}/status，使用批量状态更新接口（PUT /status）传单个 id 实现
+  return request.put('/v1/system/user/status', { ids: [id], status })
 }
 
 export function batchUpdateUserStatus(ids: number[], status: number) {
@@ -63,12 +66,13 @@ export function resetUserPassword(id: number) {
 }
 
 // ======================== 角色管理 ========================
+// 后端：列表/分页在根 GET /role，更新为 PUT /role/{id}
 export function getRoleList(params?: any) {
-  return request.get('/v1/system/role/list', { params })
+  return request.get('/v1/system/role', { params })
 }
 
 export function getRolePage(params: any) {
-  return request.get('/v1/system/role/page', { params })
+  return request.get('/v1/system/role', { params })
 }
 
 export function getRoleDetail(id: number) {
@@ -80,7 +84,7 @@ export function createRole(data: any) {
 }
 
 export function updateRole(data: any) {
-  return request.put('/v1/system/role', data)
+  return request.put(`/v1/system/role/${data.id}`, data)
 }
 
 export function deleteRole(id: number) {
@@ -100,8 +104,9 @@ export function updateRoleDataScope(roleId: number, dataScope: string) {
 }
 
 // ======================== 菜单管理 ========================
+// 后端：列表/树在根 GET /menu，更新为 PUT /menu/{id}
 export function getMenuTree(params?: any) {
-  return request.get('/v1/system/menu/tree', { params })
+  return request.get('/v1/system/menu', { params })
 }
 
 export function getMenuDetail(id: number) {
@@ -113,7 +118,7 @@ export function createMenu(data: any) {
 }
 
 export function updateMenu(data: any) {
-  return request.put('/v1/system/menu', data)
+  return request.put(`/v1/system/menu/${data.id}`, data)
 }
 
 export function deleteMenu(id: number) {
@@ -121,12 +126,13 @@ export function deleteMenu(id: number) {
 }
 
 // ======================== 数据字典 ========================
+// 后端：列表/分页在根 GET /dict，更新为 PUT /dict/{id}
 export function getDictList(params?: any) {
-  return request.get('/v1/system/dict/list', { params })
+  return request.get('/v1/system/dict', { params })
 }
 
 export function getDictPage(params: any) {
-  return request.get('/v1/system/dict/page', { params })
+  return request.get('/v1/system/dict', { params })
 }
 
 export function createDict(data: any) {
@@ -134,20 +140,20 @@ export function createDict(data: any) {
 }
 
 export function updateDict(data: any) {
-  return request.put('/v1/system/dict', data)
+  return request.put(`/v1/system/dict/${data.id}`, data)
 }
 
 export function deleteDict(id: number) {
   return request.delete(`/v1/system/dict/${id}`)
 }
 
-// 字典项
+// 字典项（独立控制器 /dict-item；按字典ID查询为 GET /dict-item/{dictId}）
 export function getDictItemTree(dictId: number) {
-  return request.get(`/v1/system/dict/${dictId}/items/tree`)
+  return request.get(`/v1/system/dict-item/${dictId}`)
 }
 
 export function getDictItemList(dictId: number) {
-  return request.get(`/v1/system/dict/${dictId}/items`)
+  return request.get(`/v1/system/dict-item/${dictId}`)
 }
 
 export function createDictItem(data: any) {
@@ -155,7 +161,7 @@ export function createDictItem(data: any) {
 }
 
 export function updateDictItem(data: any) {
-  return request.put('/v1/system/dict-item', data)
+  return request.put(`/v1/system/dict-item/${data.id}`, data)
 }
 
 export function deleteDictItem(id: number) {
@@ -168,12 +174,13 @@ export function getDictItemsByCode(dictCode: string) {
 }
 
 // ======================== 岗位管理 ========================
+// 后端：列表/分页在根 GET /post，更新为 PUT /post/{id}
 export function getPostList(params?: any) {
-  return request.get('/v1/system/post/list', { params })
+  return request.get('/v1/system/post', { params })
 }
 
 export function getPostPage(params: any) {
-  return request.get('/v1/system/post/page', { params })
+  return request.get('/v1/system/post', { params })
 }
 
 export function getPostDetail(id: number) {
@@ -185,7 +192,7 @@ export function createPost(data: any) {
 }
 
 export function updatePost(data: any) {
-  return request.put('/v1/system/post', data)
+  return request.put(`/v1/system/post/${data.id}`, data)
 }
 
 export function deletePost(id: number) {
@@ -197,16 +204,18 @@ export function updatePostStatus(id: number, status: number) {
 }
 
 // ======================== 日志管理 ========================
+// 后端：操作日志 GET /log/oper，登录日志 GET /log/login
 export function getOperLogPage(params: any) {
-  return request.get('/v1/system/log/oper/page', { params })
+  return request.get('/v1/system/log/oper', { params })
 }
 
 export function getLoginLogPage(params: any) {
-  return request.get('/v1/system/log/login/page', { params })
+  return request.get('/v1/system/log/login', { params })
 }
 
 export function getExceptionLogPage(params: any) {
-  return request.get('/v1/system/log/exception/page', { params })
+  // 后端暂无独立异常日志接口，复用操作日志查询
+  return request.get('/v1/system/log/oper', { params })
 }
 
 // ======================== 系统设置 ========================
