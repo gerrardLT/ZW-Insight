@@ -141,7 +141,7 @@ export function getMachineRepairPage(params: any) {
 }
 
 export function createMachineRepair(data: any) {
-  return request.post('/v1/machine/repair', data)
+  return request.post('/v1/machine/repair/report', data)
 }
 
 export function updateMachineRepair(data: any) {
