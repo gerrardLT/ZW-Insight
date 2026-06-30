@@ -64,7 +64,7 @@ export function deleteSubcontractSettlement(id: number) {
 }
 
 export function submitSubcontractSettlement(id: number) {
-  return request.put(`/v1/subcontract/settlement/${id}/submit`)
+  return request.post(`/v1/subcontract/settlement/${id}/submit`)
 }
 
 // ======================== 奖惩 ========================
