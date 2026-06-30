@@ -18,7 +18,7 @@ export function createProject(data: any) {
 }
 
 export function updateProject(data: any) {
-  return request.put('/v1/project', data)
+  return request.put(`/v1/project/${data.id}`, data)
 }
 
 export function deleteProject(id: number) {
