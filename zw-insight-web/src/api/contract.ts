@@ -14,7 +14,7 @@ export function createContract(data: any) {
 }
 
 export function updateContract(data: any) {
-  return request.put('/v1/contract', data)
+  return request.put(`/v1/contract/${data.id}`, data)
 }
 
 export function deleteContract(id: number) {
@@ -36,7 +36,7 @@ export function saveContractDetails(contractId: number, items: any[]) {
 
 // ======================== 变更签证 ========================
 export function getChangeVisaPage(params: any) {
-  return request.get('/v1/contract/change-visa/page', { params })
+  return request.get('/v1/contract/change-visa', { params })
 }
 
 export function createChangeVisa(data: any) {
@@ -70,7 +70,7 @@ export function deleteOtherContract(id: number) {
 
 // ======================== 工程量清单 ========================
 export function getQuantityListPage(params: any) {
-  return request.get('/v1/contract/quantity/page', { params })
+  return request.get('/v1/contract/quantity', { params })
 }
 
 export function createQuantityList(data: any) {
@@ -93,7 +93,7 @@ export function importQuantityList(data: FormData) {
 
 // ======================== 竣工结算 ========================
 export function getFinalSettlementPage(params: any) {
-  return request.get('/v1/contract/settlement/page', { params })
+  return request.get('/v1/contract/settlement', { params })
 }
 
 export function createFinalSettlement(data: any) {
@@ -106,7 +106,7 @@ export function submitFinalSettlement(id: number) {
 
 // ======================== 产值报告 ========================
 export function getOutputReportPage(params: any) {
-  return request.get('/v1/contract/output/page', { params })
+  return request.get('/v1/contract/output', { params })
 }
 
 export function createOutputReport(data: any) {
