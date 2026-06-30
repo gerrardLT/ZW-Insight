@@ -43,6 +43,12 @@ public class OfficeSupplyController {
         return R.ok();
     }
 
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        supplyService.delete(id);
+        return R.ok();
+    }
+
     // ===== 出入库 =====
 
     @GetMapping("/in-out")

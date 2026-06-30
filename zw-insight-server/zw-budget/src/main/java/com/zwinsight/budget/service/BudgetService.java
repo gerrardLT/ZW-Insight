@@ -115,6 +115,34 @@ public class BudgetService {
     }
 
     /**
+     * 更新预算
+     */
+    public void update(BizBudget budget) {
+        BizBudget existing = budgetMapper.selectById(budget.getId());
+        if (existing == null) {
+            throw new BusinessException("预算不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可编辑");
+        }
+        budgetMapper.updateById(budget);
+    }
+
+    /**
+     * 删除预算
+     */
+    public void delete(Long id) {
+        BizBudget existing = budgetMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("预算不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        budgetMapper.deleteById(id);
+    }
+
+    /**
      * 计算预算明细合计
      */
     private BigDecimal calculateTotalAmount(Long budgetId) {

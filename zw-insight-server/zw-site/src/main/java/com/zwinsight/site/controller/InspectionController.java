@@ -35,6 +35,25 @@ public class InspectionController {
         return R.ok();
     }
 
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizInspection inspection) {
+        inspection.setId(id);
+        inspectionService.update(inspection);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        inspectionService.delete(id);
+        return R.ok();
+    }
+
+    @PostMapping("/{id}/results")
+    public R<Void> submitResults(@PathVariable Long id, @RequestBody Map<String, Object> results) {
+        inspectionService.submitResults(id, results);
+        return R.ok();
+    }
+
     @PostMapping("/{id}/assign")
     public R<Void> assignRectification(@PathVariable Long id, @RequestBody Map<String, Object> params) {
         Long responsiblePersonId = Long.valueOf(params.get("responsiblePersonId").toString());

@@ -33,4 +33,10 @@ public class BudgetConfigController {
         budgetConfigService.update(config);
         return R.ok();
     }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        budgetConfigService.delete(id);
+        return R.ok();
+    }
 }

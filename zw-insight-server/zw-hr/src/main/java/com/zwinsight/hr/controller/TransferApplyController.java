@@ -35,4 +35,17 @@ public class TransferApplyController {
         transferApplyService.submit(id);
         return R.ok();
     }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizTransferApply apply) {
+        apply.setId(id);
+        transferApplyService.update(apply);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        transferApplyService.delete(id);
+        return R.ok();
+    }
 }

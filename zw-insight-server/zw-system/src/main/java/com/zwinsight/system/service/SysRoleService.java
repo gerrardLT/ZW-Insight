@@ -99,6 +99,16 @@ public class SysRoleService {
     }
 
     /**
+     * 获取角色已分配的菜单ID列表
+     */
+    public List<Long> getMenuIds(Long roleId) {
+        LambdaQueryWrapper<SysRoleMenu> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysRoleMenu::getRoleId, roleId);
+        List<SysRoleMenu> roleMenus = roleMenuMapper.selectList(wrapper);
+        return roleMenus.stream().map(SysRoleMenu::getMenuId).toList();
+    }
+
+    /**
      * 更新角色数据权限范围
      * <p>
      * 仅系统管理员（roleCode=ADMIN）可配置

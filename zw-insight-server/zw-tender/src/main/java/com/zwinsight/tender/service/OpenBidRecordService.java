@@ -63,4 +63,18 @@ public class OpenBidRecordService {
                 .last("LIMIT 1");
         return openBidRecordMapper.selectOne(wrapper);
     }
+
+    /**
+     * 更新开标记录
+     */
+    public void update(BizOpenBidRecord record) {
+        openBidRecordMapper.updateById(record);
+    }
+
+    /**
+     * 删除开标记录
+     */
+    public void delete(Long id) {
+        openBidRecordMapper.deleteById(id);
+    }
 }

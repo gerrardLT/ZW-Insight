@@ -42,6 +42,19 @@ public class DepositController {
         return R.ok();
     }
 
+    @PutMapping("/apply/{id}")
+    public R<Void> updateApply(@PathVariable Long id, @RequestBody BizDepositApply apply) {
+        apply.setId(id);
+        applyService.update(apply);
+        return R.ok();
+    }
+
+    @DeleteMapping("/apply/{id}")
+    public R<Void> deleteApply(@PathVariable Long id) {
+        applyService.delete(id);
+        return R.ok();
+    }
+
     // ===== 保证金退还 =====
 
     @GetMapping("/return")
@@ -55,6 +68,19 @@ public class DepositController {
     @PostMapping("/return")
     public R<Void> saveReturn(@RequestBody BizDepositReturn depositReturn) {
         returnService.save(depositReturn);
+        return R.ok();
+    }
+
+    @PutMapping("/return/{id}")
+    public R<Void> updateReturn(@PathVariable Long id, @RequestBody BizDepositReturn depositReturn) {
+        depositReturn.setId(id);
+        returnService.update(depositReturn);
+        return R.ok();
+    }
+
+    @DeleteMapping("/return/{id}")
+    public R<Void> deleteReturn(@PathVariable Long id) {
+        returnService.delete(id);
         return R.ok();
     }
 }

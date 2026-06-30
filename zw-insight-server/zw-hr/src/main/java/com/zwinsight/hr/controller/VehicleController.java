@@ -46,6 +46,12 @@ public class VehicleController {
         return R.ok();
     }
 
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        vehicleService.delete(id);
+        return R.ok();
+    }
+
     // ===== 车辆申请 =====
 
     @GetMapping("/apply")

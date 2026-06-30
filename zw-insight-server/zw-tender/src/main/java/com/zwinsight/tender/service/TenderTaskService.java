@@ -49,4 +49,18 @@ public class TenderTaskService {
         task.setStatus("COMPLETED");
         taskMapper.updateById(task);
     }
+
+    /**
+     * 更新任务
+     */
+    public void update(BizTenderTask task) {
+        taskMapper.updateById(task);
+    }
+
+    /**
+     * 删除任务
+     */
+    public void delete(Long id) {
+        taskMapper.deleteById(id);
+    }
 }

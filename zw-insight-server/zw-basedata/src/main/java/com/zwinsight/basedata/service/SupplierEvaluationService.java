@@ -71,4 +71,18 @@ public class SupplierEvaluationService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return sum.divide(BigDecimal.valueOf(evaluations.size()), 2, RoundingMode.HALF_UP);
     }
+
+    /**
+     * 更新评价
+     */
+    public void update(BizSupplierEvaluation evaluation) {
+        evaluationMapper.updateById(evaluation);
+    }
+
+    /**
+     * 删除评价
+     */
+    public void delete(Long id) {
+        evaluationMapper.deleteById(id);
+    }
 }

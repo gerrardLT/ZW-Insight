@@ -74,4 +74,16 @@ public class SysPostService {
     public void batchDelete(List<Long> ids) {
         postMapper.deleteBatchIds(ids);
     }
+
+    /**
+     * 岗位启用/停用
+     */
+    public void updateStatus(Long id, Integer status) {
+        SysPost post = postMapper.selectById(id);
+        if (post == null) {
+            throw new BusinessException("岗位不存在");
+        }
+        post.setStatus(status);
+        postMapper.updateById(post);
+    }
 }

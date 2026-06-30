@@ -47,6 +47,24 @@ public class TransferApplyService {
     }
 
     /**
+     * 更新调动申请
+     */
+    public void update(BizTransferApply apply) {
+        transferApplyMapper.updateById(apply);
+    }
+
+    /**
+     * 删除调动申请
+     */
+    public void delete(Long id) {
+        BizTransferApply apply = transferApplyMapper.selectById(id);
+        if (apply != null && !"DRAFT".equals(apply.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        transferApplyMapper.deleteById(id);
+    }
+
+    /**
      * 提交调动申请（审批→更新员工orgId/postId）
      */
     @Transactional(rollbackFor = Exception.class)

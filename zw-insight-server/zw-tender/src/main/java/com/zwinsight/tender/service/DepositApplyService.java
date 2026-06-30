@@ -45,6 +45,24 @@ public class DepositApplyService {
     }
 
     /**
+     * 更新保证金申请
+     */
+    public void update(BizDepositApply apply) {
+        depositApplyMapper.updateById(apply);
+    }
+
+    /**
+     * 删除保证金申请
+     */
+    public void delete(Long id) {
+        BizDepositApply apply = depositApplyMapper.selectById(id);
+        if (apply != null && !"DRAFT".equals(apply.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        depositApplyMapper.deleteById(id);
+    }
+
+    /**
      * 提交保证金申请（审批→确认付款）
      */
     @Transactional(rollbackFor = Exception.class)

@@ -35,4 +35,17 @@ public class RegularApplyController {
         regularApplyService.submit(id);
         return R.ok();
     }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizRegularApply apply) {
+        apply.setId(id);
+        regularApplyService.update(apply);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        regularApplyService.delete(id);
+        return R.ok();
+    }
 }

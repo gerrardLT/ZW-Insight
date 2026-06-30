@@ -59,4 +59,17 @@ public class BudgetController {
     public R<BizBudget> getByProject(@PathVariable Long projectId) {
         return R.ok(budgetService.getByProject(projectId));
     }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizBudget budget) {
+        budget.setId(id);
+        budgetService.update(budget);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        budgetService.delete(id);
+        return R.ok();
+    }
 }

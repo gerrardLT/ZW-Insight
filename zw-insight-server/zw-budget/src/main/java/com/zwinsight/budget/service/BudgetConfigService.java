@@ -53,4 +53,11 @@ public class BudgetConfigService {
         }
         budgetConfigMapper.updateById(config);
     }
+
+    /**
+     * 删除配置
+     */
+    public void delete(Long id) {
+        budgetConfigMapper.deleteById(id);
+    }
 }

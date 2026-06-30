@@ -51,4 +51,11 @@ public class VehicleService {
         }
         vehicleMapper.updateById(vehicle);
     }
+
+    /**
+     * 删除车辆
+     */
+    public void delete(Long id) {
+        vehicleMapper.deleteById(id);
+    }
 }

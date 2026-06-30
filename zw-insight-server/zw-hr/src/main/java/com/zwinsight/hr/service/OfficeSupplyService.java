@@ -51,4 +51,11 @@ public class OfficeSupplyService {
         }
         supplyMapper.updateById(supply);
     }
+
+    /**
+     * 删除办公用品
+     */
+    public void delete(Long id) {
+        supplyMapper.deleteById(id);
+    }
 }

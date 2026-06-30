@@ -52,6 +52,12 @@ public class SysPostController {
         return R.ok();
     }
 
+    @PutMapping("/{id}/status")
+    public R<Void> updateStatus(@PathVariable Long id, @RequestBody SysPost post) {
+        postService.updateStatus(id, post.getStatus());
+        return R.ok();
+    }
+
     @DeleteMapping("/batch")
     public R<Void> batchDelete(@RequestBody List<Long> ids) {
         postService.batchDelete(ids);

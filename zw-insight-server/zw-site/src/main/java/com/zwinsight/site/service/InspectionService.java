@@ -45,6 +45,40 @@ public class InspectionService {
     }
 
     /**
+     * 更新检查记录
+     */
+    public void update(BizInspection inspection) {
+        inspectionMapper.updateById(inspection);
+    }
+
+    /**
+     * 删除检查记录
+     */
+    public void delete(Long id) {
+        inspectionMapper.deleteById(id);
+    }
+
+    /**
+     * 提交巡检结果
+     */
+    public void submitResults(Long id, java.util.Map<String, Object> results) {
+        BizInspection inspection = inspectionMapper.selectById(id);
+        if (inspection == null) {
+            throw new BusinessException("检查记录不存在");
+        }
+        if (results.containsKey("hasProblem")) {
+            inspection.setHasProblem(Integer.valueOf(results.get("hasProblem").toString()));
+        }
+        if (results.containsKey("problemDescription")) {
+            inspection.setProblemDescription(results.get("problemDescription").toString());
+        }
+        if (results.containsKey("inspectionContent")) {
+            inspection.setInspectionContent(results.get("inspectionContent").toString());
+        }
+        inspectionMapper.updateById(inspection);
+    }
+
+    /**
      * 指派整改（设置责任人和整改期限）
      */
     public void assignRectification(Long id, Long responsiblePersonId, LocalDate deadline) {

@@ -140,6 +140,39 @@ public class ConstructionContractService {
     }
 
     /**
+     * 删除合同
+     */
+    public void delete(Long id) {
+        BizConstructionContract contract = contractMapper.selectById(id);
+        if (contract == null) {
+            throw new BusinessException("合同不存在");
+        }
+        if (!"DRAFT".equals(contract.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        contractMapper.deleteById(id);
+    }
+
+    /**
+     * 保存合同明细（先删后增）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void saveDetails(Long contractId, List<BizContractDetail> details) {
+        // 删除原有明细
+        detailMapper.delete(
+                new LambdaQueryWrapper<BizContractDetail>().eq(BizContractDetail::getContractId, contractId));
+        // 批量插入新明细
+        if (details != null && !details.isEmpty()) {
+            int sortOrder = 1;
+            for (BizContractDetail detail : details) {
+                detail.setContractId(contractId);
+                detail.setSortOrder(sortOrder++);
+                detailMapper.insert(detail);
+            }
+        }
+    }
+
+    /**
      * 税金计算
      * amountWithoutTax = contractAmount / (1 + taxRate/100)
      * taxAmount = contractAmount - amountWithoutTax

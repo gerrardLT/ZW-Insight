@@ -35,4 +35,17 @@ public class SealApplyController {
         sealApplyService.submit(id);
         return R.ok();
     }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizSealApply apply) {
+        apply.setId(id);
+        sealApplyService.update(apply);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        sealApplyService.delete(id);
+        return R.ok();
+    }
 }

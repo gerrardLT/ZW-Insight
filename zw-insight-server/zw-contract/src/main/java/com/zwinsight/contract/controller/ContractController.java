@@ -71,4 +71,16 @@ public class ContractController {
     public R<List<BizContractDetail>> getDetails(@PathVariable Long id) {
         return R.ok(contractService.getDetails(id));
     }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        contractService.delete(id);
+        return R.ok();
+    }
+
+    @PostMapping("/{id}/details")
+    public R<Void> saveDetails(@PathVariable Long id, @RequestBody List<BizContractDetail> details) {
+        contractService.saveDetails(id, details);
+        return R.ok();
+    }
 }

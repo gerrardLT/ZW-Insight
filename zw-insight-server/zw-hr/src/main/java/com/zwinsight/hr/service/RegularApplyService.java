@@ -44,6 +44,24 @@ public class RegularApplyService {
     }
 
     /**
+     * 更新转正申请
+     */
+    public void update(BizRegularApply apply) {
+        regularApplyMapper.updateById(apply);
+    }
+
+    /**
+     * 删除转正申请
+     */
+    public void delete(Long id) {
+        BizRegularApply apply = regularApplyMapper.selectById(id);
+        if (apply != null && !"DRAFT".equals(apply.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        regularApplyMapper.deleteById(id);
+    }
+
+    /**
      * 提交转正申请（审批→更新员工档案）
      */
     @Transactional(rollbackFor = Exception.class)

@@ -34,4 +34,17 @@ public class TenderTaskController {
         taskService.complete(id);
         return R.ok();
     }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizTenderTask task) {
+        task.setId(id);
+        taskService.update(task);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        taskService.delete(id);
+        return R.ok();
+    }
 }

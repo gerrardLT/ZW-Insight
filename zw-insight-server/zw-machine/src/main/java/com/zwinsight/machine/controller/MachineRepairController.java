@@ -50,4 +50,17 @@ public class MachineRepairController {
     public R<List<BizMachineRepair>> getHistory(@PathVariable Long machineId) {
         return R.ok(repairService.getHistory(machineId));
     }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizMachineRepair repair) {
+        repair.setId(id);
+        repairService.update(repair);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        repairService.delete(id);
+        return R.ok();
+    }
 }

@@ -26,4 +26,17 @@ public class OpenBidRecordController {
     public R<BizOpenBidRecord> getByRegister(@PathVariable Long registerId) {
         return R.ok(openBidRecordService.getByRegister(registerId));
     }
+
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizOpenBidRecord record) {
+        record.setId(id);
+        openBidRecordService.update(record);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        openBidRecordService.delete(id);
+        return R.ok();
+    }
 }

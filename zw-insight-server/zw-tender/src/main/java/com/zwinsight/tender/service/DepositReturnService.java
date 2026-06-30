@@ -35,4 +35,18 @@ public class DepositReturnService {
     public void save(BizDepositReturn depositReturn) {
         returnMapper.insert(depositReturn);
     }
+
+    /**
+     * 更新退还记录
+     */
+    public void update(BizDepositReturn depositReturn) {
+        returnMapper.updateById(depositReturn);
+    }
+
+    /**
+     * 删除退还记录
+     */
+    public void delete(Long id) {
+        returnMapper.deleteById(id);
+    }
 }

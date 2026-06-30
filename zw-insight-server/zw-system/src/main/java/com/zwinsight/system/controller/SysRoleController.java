@@ -54,6 +54,11 @@ public class SysRoleController {
         return R.ok();
     }
 
+    @GetMapping("/{id}/menus")
+    public R<List<Long>> getMenuIds(@PathVariable Long id) {
+        return R.ok(roleService.getMenuIds(id));
+    }
+
     @PutMapping("/{id}/menus")
     public R<Void> assignMenus(@PathVariable Long id, @RequestBody List<Long> menuIds) {
         roleService.assignMenus(id, menuIds);

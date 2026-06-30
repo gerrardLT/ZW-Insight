@@ -46,4 +46,23 @@ public class SupplierEvaluationController {
     public R<BigDecimal> getAvgScore(@PathVariable Long supplierId) {
         return R.ok(evaluationService.getAvgScore(supplierId));
     }
+
+    /**
+     * 更新评价
+     */
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizSupplierEvaluation evaluation) {
+        evaluation.setId(id);
+        evaluationService.update(evaluation);
+        return R.ok();
+    }
+
+    /**
+     * 删除评价
+     */
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        evaluationService.delete(id);
+        return R.ok();
+    }
 }

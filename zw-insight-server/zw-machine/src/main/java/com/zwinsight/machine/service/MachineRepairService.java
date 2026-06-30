@@ -63,4 +63,18 @@ public class MachineRepairService {
                 .orderByDesc(BizMachineRepair::getReportDate);
         return repairMapper.selectList(wrapper);
     }
+
+    /**
+     * 更新维修记录
+     */
+    public void update(BizMachineRepair repair) {
+        repairMapper.updateById(repair);
+    }
+
+    /**
+     * 删除维修记录
+     */
+    public void delete(Long id) {
+        repairMapper.deleteById(id);
+    }
 }

@@ -44,6 +44,24 @@ public class SealApplyService {
     }
 
     /**
+     * 更新用印申请
+     */
+    public void update(BizSealApply apply) {
+        sealApplyMapper.updateById(apply);
+    }
+
+    /**
+     * 删除用印申请
+     */
+    public void delete(Long id) {
+        BizSealApply apply = sealApplyMapper.selectById(id);
+        if (apply != null && !"DRAFT".equals(apply.getStatus())) {
+            throw new BusinessException("仅草稿状态可删除");
+        }
+        sealApplyMapper.deleteById(id);
+    }
+
+    /**
      * 提交用印申请
      */
     @Transactional(rollbackFor = Exception.class)
