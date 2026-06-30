@@ -93,7 +93,7 @@ function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, certNam
 function handleAdd() { isEdit.value = false; formData.value = { id: undefined, certName: '', certNo: '', holderName: '', issueDate: '', expiryDate: '', issueOrgan: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateCertificate(formData.value) : await createCertificate(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
-async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteCertificate(row.id); ElMessage.success('删除成功'); loadData() }
+async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteCertificate(row.type || 'person', row.id); ElMessage.success('删除成功'); loadData() }
 onMounted(() => { loadData() })
 </script>
 

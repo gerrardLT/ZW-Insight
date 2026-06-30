@@ -111,22 +111,23 @@ export function deleteTenderRefund(id: number) {
 }
 
 // ======================== 证件管理 ========================
-export function getCertificatePage(params: any) {
-  return request.get('/v1/tender/certificate/page', { params })
-}
+// 后端按 person/company 子路径拆分，前端统一通过 type 参数路由到对应接口
 
-export function getCertificateDetail(id: number) {
-  return request.get(`/v1/tender/certificate/${id}`)
+export function getCertificatePage(params: any) {
+  const type = params.type || 'person'
+  return request.get(`/v1/tender/certificate/${type}`, { params })
 }
 
 export function createCertificate(data: any) {
-  return request.post('/v1/tender/certificate', data)
+  const type = data.type || 'person'
+  return request.post(`/v1/tender/certificate/${type}`, data)
 }
 
 export function updateCertificate(data: any) {
-  return request.put(`/v1/tender/certificate/${data.type}/${data.id}`, data)
+  const type = data.type || 'person'
+  return request.put(`/v1/tender/certificate/${type}/${data.id}`, data)
 }
 
-export function deleteCertificate(id: number) {
-  return request.delete(`/v1/tender/certificate/${id}`)
+export function deleteCertificate(type: string, id: number) {
+  return request.delete(`/v1/tender/certificate/${type}/${id}`)
 }
