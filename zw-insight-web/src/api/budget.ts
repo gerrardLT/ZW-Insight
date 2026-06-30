@@ -35,7 +35,7 @@ export function createBudgetChange(data: any) {
 }
 
 export function updateBudgetChange(data: any) {
-  return request.put('/v1/budget/change', data)
+  return request.put(`/v1/budget/change/${data.id}`, data)
 }
 
 export function deleteBudgetChange(id: number) {
@@ -43,7 +43,7 @@ export function deleteBudgetChange(id: number) {
 }
 
 export function submitBudgetChange(id: number) {
-  return request.put(`/v1/budget/change/${id}/submit`)
+  return request.post(`/v1/budget/change/${id}/submit`)
 }
 
 // ======================== 预算配置 ========================
@@ -56,7 +56,7 @@ export function saveBudgetConfig(data: any) {
 }
 
 export function updateBudgetConfig(data: any) {
-  return request.put('/v1/budget/config', data)
+  return request.put(`/v1/budget/config/${data.id}`, data)
 }
 
 export function deleteBudgetConfig(id: number) {
