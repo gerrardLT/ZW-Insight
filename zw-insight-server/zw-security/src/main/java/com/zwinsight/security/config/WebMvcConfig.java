@@ -18,6 +18,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/v1/auth/login",
                         "/api/v1/auth/captcha",
+                        // 新版图形验证码 / 短信验证码接口（CaptchaController），登录前必须免登录可达
+                        "/api/v1/captcha/**",
                         // 忘记密码全流程（发送验证码/校验验证码/重置密码）必须免登录可达
                         "/api/v1/auth/password-reset/**",
                         "/api/v1/public/**",

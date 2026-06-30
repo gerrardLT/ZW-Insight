@@ -27,7 +27,9 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        // 远程联调：指向服务器上 Docker 运行的后端（18080→容器8080，context-path=/）
+        // 前端 baseURL=/api + /v1/... 经此代理转发为 http://129.204.3.200:18080/api/v1/...，与后端路由一致
+        target: 'http://129.204.3.200:18080',
         changeOrigin: true
       }
     }

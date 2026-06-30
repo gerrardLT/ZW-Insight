@@ -15,52 +15,32 @@
           text-color="#ffffffa6"
           active-text-color="#ffffff"
         >
-          <el-menu-item index="/dashboard">
-            <el-icon><HomeFilled /></el-icon>
-            <span>首页</span>
-          </el-menu-item>
+          <template v-for="route in menuRoutes" :key="route.path">
+            <!-- 单层菜单（无可见子项或只有自身） -->
+            <el-menu-item
+              v-if="route.singleChild"
+              :index="route.singleChild.fullPath"
+            >
+              <el-icon v-if="route.singleChild.icon"><component :is="route.singleChild.icon" /></el-icon>
+              <span>{{ route.singleChild.title }}</span>
+            </el-menu-item>
 
-          <!-- 项目管理 -->
-          <el-sub-menu index="/project">
-            <template #title>
-              <el-icon><Briefcase /></el-icon>
-              <span>项目管理</span>
-            </template>
-            <el-menu-item index="/project/list">项目报备</el-menu-item>
-          </el-sub-menu>
-
-          <!-- 合同管理 -->
-          <el-sub-menu index="/contract">
-            <template #title>
-              <el-icon><Notebook /></el-icon>
-              <span>合同管理</span>
-            </template>
-            <el-menu-item index="/contract/list">施工合同</el-menu-item>
-          </el-sub-menu>
-
-          <!-- 财务管理 -->
-          <el-sub-menu index="/finance">
-            <template #title>
-              <el-icon><Money /></el-icon>
-              <span>财务管理</span>
-            </template>
-            <el-menu-item index="/finance/invoice-apply">开票申请</el-menu-item>
-            <el-menu-item index="/finance/payment-received">回款登记</el-menu-item>
-            <el-menu-item index="/finance/payment-apply">付款申请</el-menu-item>
-          </el-sub-menu>
-
-          <!-- 系统管理 -->
-          <el-sub-menu index="/system">
-            <template #title>
-              <el-icon><Setting /></el-icon>
-              <span>系统管理</span>
-            </template>
-            <el-menu-item index="/system/org">机构管理</el-menu-item>
-            <el-menu-item index="/system/user">人员管理</el-menu-item>
-            <el-menu-item index="/system/role">角色管理</el-menu-item>
-            <el-menu-item index="/system/menu">菜单管理</el-menu-item>
-            <el-menu-item index="/system/dict">数据字典</el-menu-item>
-          </el-sub-menu>
+            <!-- 多层目录 -->
+            <el-sub-menu v-else :index="route.path">
+              <template #title>
+                <el-icon v-if="route.icon"><component :is="route.icon" /></el-icon>
+                <span>{{ route.title }}</span>
+              </template>
+              <el-menu-item
+                v-for="child in route.children"
+                :key="child.fullPath"
+                :index="child.fullPath"
+              >
+                <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
+                <span>{{ child.title }}</span>
+              </el-menu-item>
+            </el-sub-menu>
+          </template>
         </el-menu>
       </el-scrollbar>
     </el-aside>
@@ -98,13 +78,71 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const userStore = useUserStore()
 const isCollapse = ref(false)
+
+/** 规范化拼接父子路径 */
+function joinPath(parent: string, child: string): string {
+  if (child.startsWith('/')) return child
+  return (parent.endsWith('/') ? parent.slice(0, -1) : parent) + '/' + child
+}
+
+/**
+ * 侧边栏菜单：基于路由表(constantRoutes)动态生成，
+ * 自动列出所有挂在布局下的模块及其可见子菜单（尊重 meta.hidden / title / icon）。
+ */
+const menuRoutes = computed(() => {
+  const roots = router.options.routes as RouteRecordRaw[]
+  const groups: any[] = []
+
+  for (const r of roots) {
+    // 仅处理挂载了子路由的布局型路由；跳过登录/错误页/通配等
+    if (!r.children || r.children.length === 0) continue
+    if (r.meta?.hidden) continue
+
+    const visibleChildren = r.children
+      .filter((c) => !c.meta?.hidden && c.meta?.title)
+      .map((c) => ({
+        fullPath: joinPath(r.path, c.path),
+        title: c.meta?.title as string,
+        icon: c.meta?.icon as string | undefined
+      }))
+
+    if (visibleChildren.length === 0) continue
+
+    // 根路由 '/'（首页/看板等)：没有自身 title，直接铺平为单层菜单项
+    const groupTitle = r.meta?.title as string | undefined
+    if (!groupTitle) {
+      for (const c of visibleChildren) {
+        groups.push({ path: c.fullPath, singleChild: c })
+      }
+      continue
+    }
+
+    // 普通模块目录
+    if (visibleChildren.length === 1) {
+      // 只有一个可见子项时，折叠为单层菜单，显示模块名
+      groups.push({
+        path: r.path,
+        singleChild: { ...visibleChildren[0], title: groupTitle, icon: r.meta?.icon }
+      })
+    } else {
+      groups.push({
+        path: r.path,
+        title: groupTitle,
+        icon: r.meta?.icon as string | undefined,
+        children: visibleChildren
+      })
+    }
+  }
+  return groups
+})
 
 function handleLogout() {
   userStore.logout()
