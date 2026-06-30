@@ -14,7 +14,7 @@ export function createMaterialDict(data: any) {
 }
 
 export function updateMaterialDict(data: any) {
-  return request.put('/v1/basedata/material', data)
+  return request.put(`/v1/basedata/material/${data.id}`, data)
 }
 
 export function deleteMaterialDict(id: number) {
@@ -31,7 +31,7 @@ export function createMaterialCategory(data: any) {
 }
 
 export function updateMaterialCategory(data: any) {
-  return request.put('/v1/basedata/material-category', data)
+  return request.put(`/v1/basedata/material-category/${data.id}`, data)
 }
 
 export function deleteMaterialCategory(id: number) {
@@ -52,7 +52,7 @@ export function createSupplier(data: any) {
 }
 
 export function updateSupplier(data: any) {
-  return request.put('/v1/basedata/supplier', data)
+  return request.put(`/v1/basedata/supplier/${data.id}`, data)
 }
 
 export function deleteSupplier(id: number) {
@@ -73,7 +73,7 @@ export function createOwner(data: any) {
 }
 
 export function updateOwner(data: any) {
-  return request.put('/v1/basedata/owner', data)
+  return request.put(`/v1/basedata/owner/${data.id}`, data)
 }
 
 export function deleteOwner(id: number) {
@@ -94,7 +94,7 @@ export function createCompany(data: any) {
 }
 
 export function updateCompany(data: any) {
-  return request.put('/v1/basedata/company', data)
+  return request.put(`/v1/basedata/company/${data.id}`, data)
 }
 
 export function deleteCompany(id: number) {
@@ -111,7 +111,7 @@ export function createInspectionScheme(data: any) {
 }
 
 export function updateInspectionScheme(data: any) {
-  return request.put('/v1/basedata/inspection-scheme', data)
+  return request.put(`/v1/basedata/inspection-scheme/${data.id}`, data)
 }
 
 export function deleteInspectionScheme(id: number) {
@@ -120,7 +120,7 @@ export function deleteInspectionScheme(id: number) {
 
 // ======================== 供应商评价 ========================
 export function getSupplierEvaluationPage(params: any) {
-  return request.get('/v1/basedata/supplier-evaluation/page', { params })
+  return request.get('/v1/basedata/supplier-evaluation', { params })
 }
 
 export function createSupplierEvaluation(data: any) {
@@ -137,7 +137,7 @@ export function deleteSupplierEvaluation(id: number) {
 
 // ======================== 供应商黑名单 ========================
 export function getSupplierBlacklistPage(params: any) {
-  return request.get('/v1/basedata/supplier-blacklist/page', { params })
+  return request.get('/v1/basedata/supplier-blacklist', { params })
 }
 
 export function createSupplierBlacklist(data: any) {
