@@ -7,7 +7,7 @@ export function getSchedulePage(params: any) {
 
 /** 获取项目进度计划树形数据（甘特图用） */
 export function getSchedulePlanTree(projectId: number) {
-  return request.get('/v1/site/schedule/plan', { params: { projectId } })
+  return request.get(`/v1/site/schedule/plan/${projectId}`)
 }
 
 /** 更新进度计划日期（甘特图拖拽后保存） */
@@ -28,7 +28,7 @@ export function updateSchedule(data: any) {
 }
 
 export function deleteSchedule(id: number) {
-  return request.delete(`/v1/site/schedule/${id}`)
+  return request.delete(`/v1/site/schedule/plan/${id}`)
 }
 
 // ======================== 进度反馈 ========================
