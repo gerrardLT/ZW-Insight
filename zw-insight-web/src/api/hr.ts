@@ -32,11 +32,11 @@ export function submitHrEntry(id: number) {
 
 // ======================== 转正 ========================
 export function getHrRegularPage(params: any) {
-  return request.get('/v1/hr/regular/page', { params })
+  return request.get('/v1/hr/regular-apply', { params })
 }
 
 export function createHrRegular(data: any) {
-  return request.post('/v1/hr/regular', data)
+  return request.post('/v1/hr/regular-apply', data)
 }
 
 export function updateHrRegular(data: any) {
@@ -49,11 +49,11 @@ export function deleteHrRegular(id: number) {
 
 // ======================== 调转 ========================
 export function getHrTransferPage(params: any) {
-  return request.get('/v1/hr/transfer/page', { params })
+  return request.get('/v1/hr/transfer-apply', { params })
 }
 
 export function createHrTransfer(data: any) {
-  return request.post('/v1/hr/transfer', data)
+  return request.post('/v1/hr/transfer-apply', data)
 }
 
 export function updateHrTransfer(data: any) {
@@ -66,7 +66,7 @@ export function deleteHrTransfer(id: number) {
 
 // ======================== 用章申请 ========================
 export function getSealApplyPage(params: any) {
-  return request.get('/v1/hr/seal-apply/page', { params })
+  return request.get('/v1/hr/seal-apply', { params })
 }
 
 export function createSealApply(data: any) {
@@ -99,7 +99,7 @@ export function deleteOfficeSupply(id: number) {
 }
 
 export function submitOfficeSupply(id: number) {
-  return request.put(`/v1/hr/office-supply/${id}/submit`)
+  return request.post(`/v1/hr/office-supply/in-out/${id}/submit`)
 }
 
 // ======================== 车辆管理 ========================
