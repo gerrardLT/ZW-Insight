@@ -69,11 +69,11 @@ export function createTenderDeposit(data: any) {
 }
 
 export function updateTenderDeposit(data: any) {
-  return request.put(`/v1/tender/deposit/${data.id}`, data)
+  return request.put(`/v1/tender/deposit/apply/${data.id}`, data)
 }
 
 export function deleteTenderDeposit(id: number) {
-  return request.delete(`/v1/tender/deposit/${id}`)
+  return request.delete(`/v1/tender/deposit/apply/${id}`)
 }
 
 // ======================== 开标记录 ========================

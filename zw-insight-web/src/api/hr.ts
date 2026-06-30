@@ -40,11 +40,11 @@ export function createHrRegular(data: any) {
 }
 
 export function updateHrRegular(data: any) {
-  return request.put(`/v1/hr/regular/${data.id}`, data)
+  return request.put(`/v1/hr/regular-apply/${data.id}`, data)
 }
 
 export function deleteHrRegular(id: number) {
-  return request.delete(`/v1/hr/regular/${id}`)
+  return request.delete(`/v1/hr/regular-apply/${id}`)
 }
 
 // ======================== 调转 ========================
@@ -57,11 +57,11 @@ export function createHrTransfer(data: any) {
 }
 
 export function updateHrTransfer(data: any) {
-  return request.put(`/v1/hr/transfer/${data.id}`, data)
+  return request.put(`/v1/hr/transfer-apply/${data.id}`, data)
 }
 
 export function deleteHrTransfer(id: number) {
-  return request.delete(`/v1/hr/transfer/${id}`)
+  return request.delete(`/v1/hr/transfer-apply/${id}`)
 }
 
 // ======================== 用章申请 ========================

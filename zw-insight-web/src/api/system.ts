@@ -96,7 +96,7 @@ export function getRoleMenuIds(roleId: number) {
 }
 
 export function assignRoleMenus(roleId: number, menuIds: number[]) {
-  return request.put(`/v1/system/role/${roleId}/menus`, { menuIds })
+  return request.put(`/v1/system/role/${roleId}/menus`, menuIds)
 }
 
 export function updateRoleDataScope(roleId: number, dataScope: string) {

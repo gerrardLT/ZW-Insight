@@ -31,7 +31,7 @@ export function getContractDetails(contractId: number) {
 }
 
 export function saveContractDetails(contractId: number, items: any[]) {
-  return request.post(`/v1/contract/${contractId}/details`, { items })
+  return request.post(`/v1/contract/${contractId}/details`, items)
 }
 
 // ======================== 变更签证 ========================

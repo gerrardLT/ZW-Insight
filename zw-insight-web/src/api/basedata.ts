@@ -128,7 +128,7 @@ export function createSupplierEvaluation(data: any) {
 }
 
 export function updateSupplierEvaluation(data: any) {
-  return request.put('/v1/basedata/supplier-evaluation', data)
+  return request.put(`/v1/basedata/supplier-evaluation/${data.id}`, data)
 }
 
 export function deleteSupplierEvaluation(id: number) {

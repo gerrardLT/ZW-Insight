@@ -14,7 +14,7 @@ export function createBudget(data: any) {
 }
 
 export function updateBudget(data: any) {
-  return request.put('/v1/budget', data)
+  return request.put(`/v1/budget/${data.id}`, data)
 }
 
 export function deleteBudget(id: number) {
