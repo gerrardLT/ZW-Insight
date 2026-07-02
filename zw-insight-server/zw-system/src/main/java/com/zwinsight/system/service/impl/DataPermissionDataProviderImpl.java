@@ -9,7 +9,7 @@ import com.zwinsight.system.domain.SysRole;
 import com.zwinsight.system.domain.SysUserRole;
 import com.zwinsight.system.mapper.SysOrgMapper;
 import com.zwinsight.system.mapper.SysRoleMapper;
-import com.zwinsight.system.mapper.SysUserProjectMapper;
+import com.zwinsight.system.mapper.DataPermUserProjectMapper;
 import com.zwinsight.system.mapper.SysUserRoleMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +36,7 @@ public class DataPermissionDataProviderImpl implements DataPermissionDataProvide
     private final SysRoleMapper roleMapper;
     private final SysUserMapper userMapper;
     private final SysOrgMapper orgMapper;
-    private final SysUserProjectMapper userProjectMapper;
+    private final DataPermUserProjectMapper userProjectMapper;
 
     @Override
     public List<String> getUserDataScopes(Long userId) {

@@ -8,7 +8,7 @@ import com.zwinsight.system.domain.SysRole;
 import com.zwinsight.system.domain.SysUserRole;
 import com.zwinsight.system.mapper.SysOrgMapper;
 import com.zwinsight.system.mapper.SysRoleMapper;
-import com.zwinsight.system.mapper.SysUserProjectMapper;
+import com.zwinsight.system.mapper.DataPermUserProjectMapper;
 import com.zwinsight.system.mapper.SysUserRoleMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -54,7 +54,7 @@ class DataPermissionDataProviderImplTest {
     private SysOrgMapper orgMapper;
 
     @Mock
-    private SysUserProjectMapper userProjectMapper;
+    private DataPermUserProjectMapper userProjectMapper;
 
     @InjectMocks
     private DataPermissionDataProviderImpl dataProvider;
@@ -174,7 +174,7 @@ class DataPermissionDataProviderImplTest {
     class GetUserProjectIdsTest {
 
         @Test
-        @DisplayName("应通过 SysUserProjectMapper 查询用户项目ID列表")
+        @DisplayName("应通过 DataPermUserProjectMapper 查询用户项目ID列表")
         void shouldReturnProjectIdsFromMapper() {
             Long userId = 100L;
             List<Long> expected = Arrays.asList(1001L, 1002L, 1003L);

@@ -1,0 +1,33 @@
+# 排除大目录，加速 Docker build context 传输
+node_modules/
+**/node_modules/
+.git/
+.kiro/
+target/
+**/target/
+dist/
+**/dist/
+test-results/
+e2e/test-results/
+
+# IDE
+.idea/
+.vscode/
+
+# 文档（非构建必需）
+docs/
+*.md
+!README.md
+
+# 审计工具（非部署必需）
+tools/
+audit-reports/
+
+# 移动端（独立构建）
+zw-insight-app/
+zw-supplier-portal/
+
+# 测试
+**/test/
+**/tests/
+playwright.config.ts

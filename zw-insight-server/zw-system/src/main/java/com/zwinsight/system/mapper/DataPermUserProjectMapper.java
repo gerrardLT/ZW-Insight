@@ -13,7 +13,7 @@ import java.util.List;
  * </p>
  */
 @Mapper
-public interface SysUserProjectMapper {
+public interface DataPermUserProjectMapper {
 
     /**
      * 查询用户参与的所有项目ID列表

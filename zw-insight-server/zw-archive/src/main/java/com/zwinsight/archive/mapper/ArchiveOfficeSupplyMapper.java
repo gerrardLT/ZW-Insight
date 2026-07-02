@@ -5,5 +5,5 @@ import com.zwinsight.archive.domain.BizOfficeSupply;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface BizOfficeSupplyMapper extends BaseMapper<BizOfficeSupply> {
+public interface ArchiveOfficeSupplyMapper extends BaseMapper<BizOfficeSupply> {
 }

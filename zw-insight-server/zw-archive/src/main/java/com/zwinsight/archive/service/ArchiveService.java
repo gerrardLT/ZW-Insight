@@ -4,7 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.archive.domain.BizOfficeSupply;
-import com.zwinsight.archive.mapper.BizOfficeSupplyMapper;
+import com.zwinsight.archive.mapper.ArchiveOfficeSupplyMapper;
 import com.zwinsight.archive.vo.OfficeSupplyArchiveVO;
 import com.zwinsight.archive.vo.OtherContractArchiveVO;
 import com.zwinsight.basedata.domain.BdSupplier;
@@ -103,7 +103,7 @@ public class ArchiveService {
     private final BizVehicleApplyMapper vehicleApplyMapper;
     private final BizVehicleMaintenanceMapper vehicleMaintenanceMapper;
     private final BizExpenseContractMapper expenseContractMapper;
-    private final BizOfficeSupplyMapper officeSupplyMapper;
+    private final ArchiveOfficeSupplyMapper officeSupplyMapper;
 
     /**
      * 项目档案（项目信息+成员+合同+资金+施工过程+成本+分包+投标+保证金）

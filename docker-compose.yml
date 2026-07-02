@@ -74,6 +74,20 @@ services:
     networks:
       - zw-insight-net
 
+  frontend:
+    build:
+      context: .            # 项目根目录
+      dockerfile: deploy/frontend/Dockerfile
+    container_name: zw-insight-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"           # 开发环境映射到 3000，避免与本地 vite dev server 冲突
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - zw-insight-net
+
 volumes:
   mysql_data:
   redis_data:

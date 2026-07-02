@@ -15,6 +15,7 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - zwi_mysql:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d:ro   # 首次启动时自动执行初始化 SQL
     mem_limit: 900m
     networks: [zwi-net]
     healthcheck:
@@ -89,6 +90,20 @@ services:
     ports:
       - "18080:8080"   # 仅此端口对公网；前端联调连这里
     mem_limit: 1200m
+    networks: [zwi-net]
+
+  frontend:
+    build:
+      context: ..          # 项目根目录，使 Dockerfile 可同时访问 zw-insight-web/ 和 deploy/frontend/
+      dockerfile: deploy/frontend/Dockerfile
+    image: zwinsight-frontend:debug
+    container_name: zwi-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"            # 前端对公网暴露 80 端口
+    mem_limit: 128m
     networks: [zwi-net]
 
 volumes:
