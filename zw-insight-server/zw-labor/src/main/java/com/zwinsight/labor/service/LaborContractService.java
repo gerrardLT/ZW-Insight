@@ -2,6 +2,7 @@ package com.zwinsight.labor.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.basedata.annotation.BlacklistCheck;
 import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.common.exception.BusinessException;
@@ -37,8 +38,9 @@ public class LaborContractService {
     }
 
     /**
-     * 保存劳务合同（含预算控制）
+     * 保存劳务合同（含预算控制 + 供应商黑名单校验）
      */
+    @BlacklistCheck
     @Transactional(rollbackFor = Exception.class)
     public void save(BizLaborContract contract) {
         // 预算控制：校验LABOR类别预算

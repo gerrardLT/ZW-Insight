@@ -171,16 +171,28 @@ public class SubcontractSettlementService {
         if (settlement == null) throw new BusinessException("结算记录不存在");
         if (!"DRAFT".equals(settlement.getStatus())) throw new BusinessException("仅草稿状态可提交");
 
+        // 获取分包合同
+        BizSubcontract contract = subcontractMapper.selectById(settlement.getContractId());
+        if (contract == null) {
+            throw new BusinessException("分包合同不存在");
+        }
+
+        // 校验：累计结算金额不能超过合同金额
+        BigDecimal contractAmount = contract.getContractAmount() != null ? contract.getContractAmount() : BigDecimal.ZERO;
+        BigDecimal currentCumulative = contract.getCumulativeSettlement() != null ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
+        BigDecimal newCumulative = currentCumulative.add(settlement.getSettlementAmount());
+
+        if (newCumulative.compareTo(contractAmount) > 0) {
+            BigDecimal maxSettlement = contractAmount.subtract(currentCumulative);
+            throw new BusinessException("结算金额超出合同金额限制，当前最大可结算金额：" + maxSettlement);
+        }
+
         settlement.setStatus("APPROVED");
         settlementMapper.updateById(settlement);
 
         // 回写合同累计结算
-        BizSubcontract contract = subcontractMapper.selectById(settlement.getContractId());
-        if (contract != null) {
-            BigDecimal cumulative = contract.getCumulativeSettlement() != null ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
-            contract.setCumulativeSettlement(cumulative.add(settlement.getSettlementAmount()));
-            subcontractMapper.updateById(contract);
-        }
+        contract.setCumulativeSettlement(newCumulative);
+        subcontractMapper.updateById(contract);
 
         // 回写项目总支出
         BizProject project = projectMapper.selectById(settlement.getProjectId());

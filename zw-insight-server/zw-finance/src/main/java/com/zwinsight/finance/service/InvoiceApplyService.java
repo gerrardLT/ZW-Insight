@@ -1,5 +1,6 @@
 package com.zwinsight.finance.service;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
@@ -7,6 +8,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.finance.domain.BizInvoiceApply;
+import com.zwinsight.finance.domain.dto.InvoiceApplyCreateRequest;
 import com.zwinsight.finance.mapper.BizInvoiceApplyMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,25 @@ public class InvoiceApplyService {
                 .orderByDesc(BizInvoiceApply::getCreatedAt);
         Page<BizInvoiceApply> result = invoiceApplyMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);
+    }
+
+    /**
+     * 从请求 DTO 创建开票申请
+     */
+    public void saveFromRequest(InvoiceApplyCreateRequest request) {
+        BizInvoiceApply invoiceApply = new BizInvoiceApply();
+        BeanUtil.copyProperties(request, invoiceApply);
+        save(invoiceApply);
+    }
+
+    /**
+     * 从请求 DTO 更新开票申请
+     */
+    public void updateFromRequest(Long id, InvoiceApplyCreateRequest request) {
+        BizInvoiceApply invoiceApply = new BizInvoiceApply();
+        BeanUtil.copyProperties(request, invoiceApply);
+        invoiceApply.setId(id);
+        update(invoiceApply);
     }
 
     /**

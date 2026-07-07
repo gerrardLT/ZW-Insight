@@ -1,5 +1,6 @@
 package com.zwinsight.contract.service;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -7,6 +8,7 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.domain.BizContractDetail;
+import com.zwinsight.contract.domain.dto.ContractCreateRequest;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.contract.mapper.BizContractDetailMapper;
 import com.zwinsight.file.service.SerialNumberService;
@@ -55,6 +57,26 @@ public class ConstructionContractService {
             throw new BusinessException("合同不存在");
         }
         return contract;
+    }
+
+    /**
+     * 从请求 DTO 创建合同
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void saveFromRequest(ContractCreateRequest request) {
+        BizConstructionContract contract = new BizConstructionContract();
+        BeanUtil.copyProperties(request, contract);
+        save(contract);
+    }
+
+    /**
+     * 从请求 DTO 更新合同
+     */
+    public void updateFromRequest(Long id, ContractCreateRequest request) {
+        BizConstructionContract contract = new BizConstructionContract();
+        BeanUtil.copyProperties(request, contract);
+        contract.setId(id);
+        update(contract);
     }
 
     /**

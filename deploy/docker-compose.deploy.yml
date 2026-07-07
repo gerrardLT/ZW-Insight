@@ -10,8 +10,8 @@ services:
     restart: unless-stopped
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
     environment:
-      MYSQL_ROOT_PASSWORD: zwinsight123
-      MYSQL_DATABASE: zw_insight
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
       TZ: Asia/Shanghai
     volumes:
       - zwi_mysql:/var/lib/mysql
@@ -40,8 +40,8 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - zwi_minio:/data
     mem_limit: 384m
@@ -52,8 +52,8 @@ services:
     container_name: zwi-rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     volumes:
       - zwi_rabbitmq:/var/lib/rabbitmq
     mem_limit: 512m
@@ -76,15 +76,15 @@ services:
       # （原 dev 配置 server.servlet.context-path=/api 会与控制器的 /api/v1 叠加成 /api/api/v1）
       SERVER_SERVLET_CONTEXT_PATH: /
       # 覆盖 dev 配置里的连接地址，指向本编排内的服务名
-      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/zw_insight?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: zwinsight123
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: "5672"
-      SPRING_RABBITMQ_USERNAME: guest
-      SPRING_RABBITMQ_PASSWORD: guest
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
       # minio.access-key/secret-key 在 dev 配置里已是 minioadmin，与本编排一致，无需覆盖；仅改 endpoint 指向服务名
       MINIO_ENDPOINT: "http://minio:9000"
     ports:

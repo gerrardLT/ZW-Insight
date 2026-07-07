@@ -1,9 +1,11 @@
 package com.zwinsight.budget.controller;
 
 import com.zwinsight.budget.domain.BizBudget;
+import com.zwinsight.budget.dto.BudgetCreateRequest;
 import com.zwinsight.budget.service.BudgetService;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,20 +19,12 @@ public class BudgetController {
 
     private final BudgetService budgetService;
 
-    @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizBudget>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId) {
         return R.ok(budgetService.page(page, size, projectId));
-    }
-
-    @GetMapping("/page")
-    public R<PageResult<BizBudget>> pageAlias(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return page(page, size, projectId);
     }
 
     @GetMapping("/{id}")
@@ -39,8 +33,8 @@ public class BudgetController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody BizBudget budget) {
-        budgetService.save(budget);
+    public R<Void> save(@Valid @RequestBody BudgetCreateRequest request) {
+        budgetService.saveFromRequest(request);
         return R.ok();
     }
 
@@ -50,20 +44,14 @@ public class BudgetController {
         return R.ok();
     }
 
-    @PutMapping("/{id}/submit")
-    public R<Void> submitByPut(@PathVariable Long id) {
-        return submit(id);
-    }
-
     @GetMapping("/project/{projectId}")
     public R<BizBudget> getByProject(@PathVariable Long projectId) {
         return R.ok(budgetService.getByProject(projectId));
     }
 
     @PutMapping("/{id}")
-    public R<Void> update(@PathVariable Long id, @RequestBody BizBudget budget) {
-        budget.setId(id);
-        budgetService.update(budget);
+    public R<Void> update(@PathVariable Long id, @Valid @RequestBody BudgetCreateRequest request) {
+        budgetService.updateFromRequest(id, request);
         return R.ok();
     }
 

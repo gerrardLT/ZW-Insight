@@ -4,7 +4,9 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.domain.BizContractDetail;
+import com.zwinsight.contract.domain.dto.ContractCreateRequest;
 import com.zwinsight.contract.service.ConstructionContractService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +22,7 @@ public class ContractController {
 
     private final ConstructionContractService contractService;
 
-    @GetMapping
+    @GetMapping("/page")
     public R<PageResult<BizConstructionContract>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -29,30 +31,20 @@ public class ContractController {
         return R.ok(contractService.page(page, size, projectId, status));
     }
 
-    @GetMapping("/page")
-    public R<PageResult<BizConstructionContract>> pageAlias(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) String status) {
-        return page(page, size, projectId, status);
-    }
-
     @GetMapping("/{id}")
     public R<BizConstructionContract> getById(@PathVariable Long id) {
         return R.ok(contractService.getById(id));
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody BizConstructionContract contract) {
-        contractService.save(contract);
+    public R<Void> save(@Valid @RequestBody ContractCreateRequest request) {
+        contractService.saveFromRequest(request);
         return R.ok();
     }
 
     @PutMapping("/{id}")
-    public R<Void> update(@PathVariable Long id, @RequestBody BizConstructionContract contract) {
-        contract.setId(id);
-        contractService.update(contract);
+    public R<Void> update(@PathVariable Long id, @Valid @RequestBody ContractCreateRequest request) {
+        contractService.updateFromRequest(id, request);
         return R.ok();
     }
 
@@ -60,11 +52,6 @@ public class ContractController {
     public R<Void> submit(@PathVariable Long id) {
         contractService.submit(id);
         return R.ok();
-    }
-
-    @PutMapping("/{id}/submit")
-    public R<Void> submitByPut(@PathVariable Long id) {
-        return submit(id);
     }
 
     @GetMapping("/{id}/details")

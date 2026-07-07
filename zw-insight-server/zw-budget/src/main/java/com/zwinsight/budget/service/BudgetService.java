@@ -1,9 +1,11 @@
 package com.zwinsight.budget.service;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.budget.domain.BizBudget;
 import com.zwinsight.budget.domain.BizBudgetDetail;
+import com.zwinsight.budget.dto.BudgetCreateRequest;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BizBudgetMapper;
 import com.zwinsight.common.exception.BusinessException;
@@ -50,6 +52,26 @@ public class BudgetService {
             throw new BusinessException("预算不存在");
         }
         return budget;
+    }
+
+    /**
+     * 从请求 DTO 创建预算
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void saveFromRequest(BudgetCreateRequest request) {
+        BizBudget budget = new BizBudget();
+        BeanUtil.copyProperties(request, budget);
+        save(budget);
+    }
+
+    /**
+     * 从请求 DTO 更新预算
+     */
+    public void updateFromRequest(Long id, BudgetCreateRequest request) {
+        BizBudget budget = new BizBudget();
+        BeanUtil.copyProperties(request, budget);
+        budget.setId(id);
+        update(budget);
     }
 
     /**

@@ -1,0 +1,25 @@
+-- Flyway Baseline Placeholder
+-- ============================
+-- 现有数据库 schema 已通过 deploy/db-init/ 目录下的脚本手动初始化完成。
+-- Flyway 从 V1 开始作为基线版本（baseline-version=0），此脚本为占位符。
+--
+-- 历史迁移脚本对应关系：
+--   deploy/db-init/00_schema.sql                              → 原始 schema
+--   deploy/db-init/01_p0_core_features.sql                   → P0 核心功能表
+--   deploy/db-init/10_V2026_07__p1_system_integrity.sql      → P1 系统完整性
+--   deploy/db-init/11_V2026_08__p2_experience_enhancement.sql→ P2 体验增强
+--   deploy/db-init/12_V2026_09__p0_overdue_reminder.sql      → P0 逾期提醒
+--   deploy/db-init/13_V2026_10__p0_data_permission.sql       → P0 数据权限
+--   deploy/db-init/14_V2026_11__p1_contract_expiry_log.sql   → P1 合同到期
+--   deploy/db-init/15_V2026_11__p1_expense_contract.sql      → P1 费用合同
+--   deploy/db-init/16_V2026_11__p1_material_refund.sql       → P1 材料退货
+--   deploy/db-init/17_V2026_11__p1_subcontract_settlement.sql→ P1 分包结算
+--   deploy/db-init/18_V2026_12__p1_machine_work_log.sql      → P1 机械工作日志
+--   deploy/db-init/19_V2026_13__p1_office_supply.sql         → P1 办公用品
+--   deploy/db-init/20_V2026_14__p2_business_enhance.sql      → P2 业务增强
+--   deploy/db-init/21_V2026_15__p2_advanced.sql              → P2 高级功能
+--   deploy/db-init/99_data-menu.sql                          → 菜单种子数据
+--
+-- 从下一个版本 V2 开始，所有新增的 DDL/DML 变更均通过 Flyway 管理。
+
+SELECT 1;

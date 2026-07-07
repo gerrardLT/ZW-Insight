@@ -8,6 +8,17 @@ spring:
     name: zw-insight-server
   profiles:
     active: dev
+  # Flyway 数据库版本管理
+  flyway:
+    enabled: true
+    # 现有数据库表已存在，设置 baseline 避免重复执行历史脚本
+    baseline-on-migrate: true
+    baseline-version: '0'
+    locations: classpath:db/migration
+    table: flyway_schema_history
+    encoding: UTF-8
+    validate-on-migrate: true
+    out-of-order: false
 
 # MyBatis-Plus 配置
 mybatis-plus:

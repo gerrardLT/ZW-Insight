@@ -41,6 +41,11 @@ public class BizPurchaseSettlement extends BaseEntity {
     private String status;
 
     /**
+     * 关联入库单ID（结算依据）
+     */
+    private Long inboundId;
+
+    /**
      * 流程实例ID
      */
     private String workflowInstanceId;

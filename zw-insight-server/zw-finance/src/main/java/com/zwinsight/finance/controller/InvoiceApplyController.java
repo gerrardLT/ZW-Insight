@@ -4,7 +4,9 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
 import com.zwinsight.finance.domain.BizInvoiceApply;
+import com.zwinsight.finance.domain.dto.InvoiceApplyCreateRequest;
 import com.zwinsight.finance.service.InvoiceApplyService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,16 +36,15 @@ public class InvoiceApplyController {
 
     @PostMapping
     @FinanceLockCheck(dateField = "applyDate", operation = "新增")
-    public R<Void> save(@RequestBody BizInvoiceApply invoiceApply) {
-        invoiceApplyService.save(invoiceApply);
+    public R<Void> save(@Valid @RequestBody InvoiceApplyCreateRequest request) {
+        invoiceApplyService.saveFromRequest(request);
         return R.ok();
     }
 
     @PutMapping("/{id}")
     @FinanceLockCheck(dateField = "applyDate", operation = "编辑")
-    public R<Void> update(@PathVariable Long id, @RequestBody BizInvoiceApply invoiceApply) {
-        invoiceApply.setId(id);
-        invoiceApplyService.update(invoiceApply);
+    public R<Void> update(@PathVariable Long id, @Valid @RequestBody InvoiceApplyCreateRequest request) {
+        invoiceApplyService.updateFromRequest(id, request);
         return R.ok();
     }
 
