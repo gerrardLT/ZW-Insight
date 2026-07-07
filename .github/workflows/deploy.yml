@@ -55,7 +55,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: backend-jar
-          path: zw-insight-server/deploy/
+          path: deploy/
 
       - name: Setup SSH
         run: |
