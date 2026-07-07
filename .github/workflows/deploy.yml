@@ -120,3 +120,80 @@ jobs:
           done
           echo "::warning::后端健康检查未通过，请检查服务器日志"
           exit 1
+
+  # ────────────────────────────────────────────────────
+  # 3. 集成测试（部署后自动执行）
+  # ────────────────────────────────────────────────────
+  integration-test:
+    name: Integration Test (Lifecycle Sim)
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload and run lifecycle test
+        run: |
+          # 上传测试脚本
+          scp -i ~/.ssh/deploy_key keys/lifecycle-sim.sh \
+            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim.sh
+
+          # 修复换行 + 赋权 + 执行
+          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} bash -s <<'TEST_SCRIPT'
+          set -uo pipefail
+          cd /root/zwi-deploy
+          sed -i 's/\r$//' lifecycle-sim.sh
+          chmod +x lifecycle-sim.sh
+          bash lifecycle-sim.sh 2>&1 | tee /root/zwi-deploy/lifecycle-sim-result.log
+          TEST_SCRIPT
+
+      - name: Download test results
+        if: always()
+        run: |
+          scp -i ~/.ssh/deploy_key \
+            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim.log \
+            ./test-results-lifecycle.log || true
+          scp -i ~/.ssh/deploy_key \
+            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim-result.log \
+            ./test-results-output.log || true
+
+      - name: Upload test results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: |
+            test-results-lifecycle.log
+            test-results-output.log
+          retention-days: 7
+
+      - name: Show test summary
+        if: always()
+        run: |
+          echo "=== 集成测试结果摘要 ==="
+          if [ -f test-results-output.log ]; then
+            echo ""
+            echo "--- 成功项 ---"
+            grep -c "✅" test-results-output.log || echo "0"
+            echo ""
+            echo "--- 失败项 ---"
+            grep "❌" test-results-output.log || echo "无失败"
+            echo ""
+            echo "--- 警告项 ---"
+            grep "⚠️" test-results-output.log || echo "无警告"
+            echo ""
+            # 如果有失败则报错
+            if grep -q "❌" test-results-output.log; then
+              echo "::error::集成测试存在失败项，请查看 Artifact 中的详细日志"
+              exit 1
+            fi
+          else
+            echo "::warning::未找到测试结果文件"
+          fi
