@@ -102,7 +102,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"            # 前端对公网暴露 80 端口
+      - "18081:80"         # 前端对公网暴露 18081 端口（避免与宝塔 nginx 80 冲突）
     mem_limit: 128m
     networks: [zwi-net]
 
