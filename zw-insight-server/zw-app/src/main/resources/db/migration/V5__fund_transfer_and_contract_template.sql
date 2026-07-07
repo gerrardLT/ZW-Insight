@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS biz_contract_template (
     template_name VARCHAR(200) NOT NULL COMMENT '模板名称',
     template_code VARCHAR(50) NOT NULL COMMENT '模板编码',
     contract_category VARCHAR(20) NOT NULL COMMENT '适用合同类型（CONSTRUCTION/MATERIAL/LABOR/MACHINE/SUBCONTRACT/OTHER）',
-    template_content TEXT COMMENT '模板内容（含变量占位符 ${xxx}）',
+    template_content TEXT COMMENT '模板内容（含变量占位符 #{xxx}）',
     template_fields TEXT COMMENT '可替换字段列表（JSON数组）',
     description VARCHAR(500) COMMENT '模板说明',
     status TINYINT DEFAULT 1 COMMENT '状态（1启用/0停用）',
