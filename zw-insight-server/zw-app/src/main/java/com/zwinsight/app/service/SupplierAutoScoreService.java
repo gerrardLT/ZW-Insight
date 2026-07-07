@@ -1,4 +1,4 @@
-package com.zwinsight.basedata.service;
+package com.zwinsight.app.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.basedata.domain.BizSupplierEvaluation;

@@ -5,6 +5,8 @@ import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -44,4 +46,44 @@ public class BizInquiry extends BaseEntity {
      * 报价截止时间
      */
     private LocalDateTime deadline;
+
+    /**
+     * 定标方式描述
+     */
+    private String awardMethod;
+
+    /**
+     * 询价描述/说明
+     */
+    private String description;
+
+    /**
+     * 技术要求
+     */
+    private String requirements;
+
+    /**
+     * 材料清单摘要
+     */
+    private String materialSummary;
+
+    /**
+     * 中标供应商名称
+     */
+    private String winnerName;
+
+    /**
+     * 中标金额
+     */
+    private BigDecimal winnerAmount;
+
+    /**
+     * 定标日期
+     */
+    private LocalDate awardDate;
+
+    /**
+     * 公示日期
+     */
+    private LocalDate publicizeDate;
 }

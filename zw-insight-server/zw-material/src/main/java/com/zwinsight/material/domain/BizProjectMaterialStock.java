@@ -18,6 +18,9 @@ public class BizProjectMaterialStock extends BaseEntity {
     /** 项目ID */
     private Long projectId;
 
+    /** 材料ID */
+    private Long materialId;
+
     /** 材料名称 */
     private String materialName;
 

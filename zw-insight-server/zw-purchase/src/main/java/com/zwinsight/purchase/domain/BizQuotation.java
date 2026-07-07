@@ -45,4 +45,14 @@ public class BizQuotation extends BaseEntity {
      * 提交时间
      */
     private LocalDateTime submitTime;
+
+    /**
+     * 供应商联系电话
+     */
+    private String supplierPhone;
+
+    /**
+     * 报价来源（PORTAL-门户提交/MANUAL-手动录入）
+     */
+    private String quotationSource;
 }

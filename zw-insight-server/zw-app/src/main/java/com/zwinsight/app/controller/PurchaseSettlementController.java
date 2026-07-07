@@ -1,9 +1,9 @@
-package com.zwinsight.purchase.controller;
+package com.zwinsight.app.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.purchase.domain.BizPurchaseSettlement;
-import com.zwinsight.purchase.service.PurchaseSettlementService;
+import com.zwinsight.app.service.PurchaseSettlementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -51,7 +51,6 @@ public class PurchaseSettlementController {
     }
 
     @PostMapping("/{id}/submit")
-    @PutMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
         purchaseSettlementService.submit(id);
         return R.ok();

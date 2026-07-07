@@ -1,4 +1,4 @@
-package com.zwinsight.purchase.service;
+package com.zwinsight.app.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;

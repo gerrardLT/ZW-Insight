@@ -40,6 +40,10 @@
             <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-file</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-basedata</artifactId>
+        </dependency>
 
         <!-- Spring Boot Web -->
         <dependency>

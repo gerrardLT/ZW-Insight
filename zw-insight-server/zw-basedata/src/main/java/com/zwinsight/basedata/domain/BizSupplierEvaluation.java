@@ -43,6 +43,9 @@ public class BizSupplierEvaluation extends BaseEntity {
     /** 综合评分 */
     private BigDecimal totalScore;
 
+    /** 评价类型（AUTO-系统自动/MANUAL-人工评价） */
+    private String evaluationType;
+
     /** 备注 */
     private String remark;
 }
