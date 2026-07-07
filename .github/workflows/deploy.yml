@@ -3,7 +3,7 @@ name: CI/CD Deploy to BaoTa Server
 on:
   push:
     branches: [main]
-  workflow_dispatch:   # 支持手动触发
+  workflow_dispatch:
 
 env:
   JAVA_VERSION: '21'
@@ -14,10 +14,10 @@ env:
 
 jobs:
   # ────────────────────────────────────────────────────
-  # 1. 后端构建 + 测试
+  # 1. 后端构建
   # ────────────────────────────────────────────────────
   backend:
-    name: Backend Build & Test
+    name: Backend Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,7 +64,6 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      # 同步项目文件到服务器（排除 node_modules、target、.git 等大目录）
       - name: Sync project to server
         run: |
           rsync -avz --delete \
@@ -74,38 +73,44 @@ jobs:
             --exclude='**/dist/' \
             --exclude='test-results/' \
             --exclude='.kiro/' \
-            --exclude='zw-insight-web/dist/' \
             --exclude='deploy/.env' \
             -e "ssh -i ~/.ssh/deploy_key" \
             ./ "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.DEPLOY_DIR }}/"
 
-      # SSH 到服务器执行部署
       - name: Deploy via SSH
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} bash -s <<'DEPLOY_SCRIPT'
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'DEPLOY_SCRIPT'
           set -euo pipefail
-          cd "${DEPLOY_DIR:-/root/zw-insight}"
+          DEPLOY_DIR="${DEPLOY_DIR:-/root/zw-insight}"
+          cd "$DEPLOY_DIR/deploy"
 
-          echo "=== [1/4] 准备部署目录 ==="
-          mkdir -p deploy
+          echo "=== [1/5] 确保基础设施运行 ==="
+          # 启动 MySQL/Redis/MinIO/RabbitMQ（如已运行则无操作）
+          docker compose -f docker-compose.deploy.yml up -d mysql redis minio rabbitmq
 
-          echo "=== [2/4] 构建 Docker 镜像 ==="
-          cd deploy
-          docker compose -f docker-compose.deploy.yml build --no-cache
+          echo "=== [2/5] 等待 MySQL 就绪 ==="
+          for i in $(seq 1 30); do
+            if docker exec zwi-mysql mysqladmin ping -h 127.0.0.1 -uroot -pzwinsight123 --silent 2>/dev/null; then
+              echo "MySQL 就绪"
+              break
+            fi
+            echo "等待 MySQL... ($i/30)"
+            sleep 3
+          done
 
-          echo "=== [2.5/4] 清理 Flyway 失败迁移记录 ==="
-          # 如果 MySQL 容器正在运行，清除 flyway_schema_history 中的失败记录
-          # 这样新版 jar 启动时不会因历史失败记录而拒绝迁移
-          docker exec zwi-mysql mysql -uroot -p"${MYSQL_ROOT_PASSWORD:-zwinsight123}" "${MYSQL_DATABASE:-zw_insight}" \
+          echo "=== [3/5] 清理 Flyway 失败记录 ==="
+          # 直接清理（表不存在或无记录时静默忽略）
+          docker exec zwi-mysql mysql -uroot -pzwinsight123 zw_insight \
             -e "DELETE FROM flyway_schema_history WHERE success = 0;" 2>/dev/null || true
 
-          echo "=== [3/4] 滚动更新容器 ==="
-          # 强制清理可能的僵尸容器（上次部署失败留下的）
-          docker compose -f docker-compose.deploy.yml down --remove-orphans --timeout 10 2>/dev/null || true
-          docker rm -f zwi-frontend zwi-backend 2>/dev/null || true
-          docker compose -f docker-compose.deploy.yml up -d --remove-orphans
+          echo "=== [4/5] 重建并启动应用容器 ==="
+          # 只停止并重建 backend 和 frontend，基础设施保持运行
+          docker compose -f docker-compose.deploy.yml stop backend frontend 2>/dev/null || true
+          docker rm -f zwi-backend zwi-frontend 2>/dev/null || true
+          docker compose -f docker-compose.deploy.yml build --no-cache backend frontend
+          docker compose -f docker-compose.deploy.yml up -d backend frontend
 
-          echo "=== [4/4] 清理旧镜像 ==="
+          echo "=== [5/5] 清理旧镜像 ==="
           docker image prune -f
 
           echo ""
@@ -117,25 +122,28 @@ jobs:
 
       - name: Health check
         run: |
-          echo "等待服务启动..."
-          sleep 15
-          for i in $(seq 1 10); do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ env.SERVER_HOST }}:18080/api/v1/system/menu/user" || true)
+          echo "等待服务启动（Spring Boot + Flyway 迁移）..."
+          sleep 30
+          for i in $(seq 1 15); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              "http://${{ env.SERVER_HOST }}:18080/api/v1/system/menu/user" || true)
             if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
-              echo "后端健康检查通过 (HTTP $HTTP_CODE)"
+              echo "✅ 后端健康检查通过 (HTTP $HTTP_CODE)"
               exit 0
             fi
-            echo "等待中... ($i/10, HTTP $HTTP_CODE)"
+            echo "等待中... ($i/15, HTTP $HTTP_CODE)"
             sleep 10
           done
-          echo "::warning::后端健康检查未通过，请检查服务器日志"
+          echo "::warning::后端健康检查未通过，查看日志..."
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+            "docker logs zwi-backend --tail 50" || true
           exit 1
 
   # ────────────────────────────────────────────────────
-  # 3. 集成测试（部署后自动执行）
+  # 3. 集成测试
   # ────────────────────────────────────────────────────
   integration-test:
-    name: Integration Test (Lifecycle Sim)
+    name: Integration Test
     runs-on: ubuntu-latest
     needs: deploy
     if: success()
@@ -149,14 +157,12 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Upload and run lifecycle test
+      - name: Run lifecycle test
         run: |
-          # 上传测试脚本
           scp -i ~/.ssh/deploy_key keys/lifecycle-sim.sh \
-            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim.sh
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim.sh"
 
-          # 修复换行 + 赋权 + 执行
-          ssh -i ~/.ssh/deploy_key ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} bash -s <<'TEST_SCRIPT'
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'TEST_SCRIPT'
           set -uo pipefail
           cd /root/zwi-deploy
           sed -i 's/\r$//' lifecycle-sim.sh
@@ -168,13 +174,13 @@ jobs:
         if: always()
         run: |
           scp -i ~/.ssh/deploy_key \
-            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim.log \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim.log" \
             ./test-results-lifecycle.log || true
           scp -i ~/.ssh/deploy_key \
-            ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim-result.log \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim-result.log" \
             ./test-results-output.log || true
 
-      - name: Upload test results artifact
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -184,24 +190,15 @@ jobs:
             test-results-output.log
           retention-days: 7
 
-      - name: Show test summary
+      - name: Test summary
         if: always()
         run: |
-          echo "=== 集成测试结果摘要 ==="
+          echo "=== 集成测试结果 ==="
           if [ -f test-results-output.log ]; then
-            echo ""
-            echo "--- 成功项 ---"
-            grep -c "✅" test-results-output.log || echo "0"
-            echo ""
-            echo "--- 失败项 ---"
-            grep "❌" test-results-output.log || echo "无失败"
-            echo ""
-            echo "--- 警告项 ---"
-            grep "⚠️" test-results-output.log || echo "无警告"
-            echo ""
-            # 如果有失败则报错
+            echo "成功: $(grep -c '✅' test-results-output.log || echo 0)"
+            echo "失败: $(grep -c '❌' test-results-output.log || echo 0)"
             if grep -q "❌" test-results-output.log; then
-              echo "::error::集成测试存在失败项，请查看 Artifact 中的详细日志"
+              echo "::error::集成测试存在失败项"
               exit 1
             fi
           else

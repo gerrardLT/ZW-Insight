@@ -19,8 +19,6 @@ spring:
     encoding: UTF-8
     validate-on-migrate: true
     out-of-order: false
-    # 忽略历史中的失败迁移记录，允许重试
-    ignore-migration-patterns: "*:failed"
 
 # MyBatis-Plus 配置
 mybatis-plus:
