@@ -93,6 +93,9 @@ jobs:
           docker compose -f docker-compose.deploy.yml build --no-cache
 
           echo "=== [3/4] 滚动更新容器 ==="
+          # 强制清理可能的僵尸容器（上次部署失败留下的）
+          docker compose -f docker-compose.deploy.yml down --remove-orphans --timeout 10 2>/dev/null || true
+          docker rm -f zwi-frontend zwi-backend 2>/dev/null || true
           docker compose -f docker-compose.deploy.yml up -d --remove-orphans
 
           echo "=== [4/4] 清理旧镜像 ==="
