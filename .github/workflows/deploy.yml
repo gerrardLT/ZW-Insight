@@ -93,6 +93,12 @@ jobs:
           cd deploy
           docker compose -f docker-compose.deploy.yml build --no-cache
 
+          echo "=== [2.5/4] 清理 Flyway 失败迁移记录 ==="
+          # 如果 MySQL 容器正在运行，清除 flyway_schema_history 中的失败记录
+          # 这样新版 jar 启动时不会因历史失败记录而拒绝迁移
+          docker exec zwi-mysql mysql -uroot -p"${MYSQL_ROOT_PASSWORD:-zwinsight123}" "${MYSQL_DATABASE:-zw_insight}" \
+            -e "DELETE FROM flyway_schema_history WHERE success = 0;" 2>/dev/null || true
+
           echo "=== [3/4] 滚动更新容器 ==="
           # 强制清理可能的僵尸容器（上次部署失败留下的）
           docker compose -f docker-compose.deploy.yml down --remove-orphans --timeout 10 2>/dev/null || true
