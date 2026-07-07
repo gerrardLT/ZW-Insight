@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS biz_sign_record (
 
 -- ============ 4. 初始化系统导入模板数据 ============
 
-INSERT INTO sys_template (id, template_name, template_type, module_code, is_default, created_at, updated_at) VALUES
+INSERT IGNORE INTO sys_template (id, template_name, template_type, module_code, is_default, created_at, updated_at) VALUES
 (2001, '机械台账导入模板', 'IMPORT', 'MACHINE_LEDGER', 1, NOW(), NOW()),
 (2002, '劳务花名册导入模板', 'IMPORT', 'LABOR_ROSTER', 1, NOW(), NOW()),
 (2003, '人员信息导入模板', 'IMPORT', 'SYS_USER', 1, NOW(), NOW()),

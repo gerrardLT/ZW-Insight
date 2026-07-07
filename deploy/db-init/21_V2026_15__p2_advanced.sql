@@ -25,8 +25,7 @@ ALTER TABLE sys_template
 ALTER TABLE sys_template
     ADD COLUMN IF NOT EXISTS version INT DEFAULT 0 COMMENT '乐观锁版本号';
 
-ALTER TABLE sys_template
-    ADD INDEX idx_business_type (business_type);
+CREATE INDEX IF NOT EXISTS idx_business_type ON sys_template (business_type);
 
 -- ============ 2. 用户安全：登录设备表 ============
 

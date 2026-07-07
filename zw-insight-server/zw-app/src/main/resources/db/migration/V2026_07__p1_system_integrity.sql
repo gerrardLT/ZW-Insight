@@ -7,7 +7,7 @@
 
 -- ============ 1. 角色表增加数据范围字段 ============
 
-ALTER TABLE sys_role ADD COLUMN data_scope VARCHAR(30) DEFAULT 'SELF'
+ALTER TABLE sys_role ADD COLUMN IF NOT EXISTS data_scope VARCHAR(30) DEFAULT 'SELF'
     COMMENT '数据范围：ALL/DEPT_AND_CHILDREN/DEPT/PROJECT/SELF';
 
 -- ============ 2. 用户-项目关联表 ============
@@ -157,19 +157,19 @@ CREATE TABLE IF NOT EXISTS biz_approval_rollback_log (
 
 -- ============ 10. 租户表增强 ============
 
-ALTER TABLE sys_tenant ADD COLUMN user_type VARCHAR(20) DEFAULT 'STANDARD'
+ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS user_type VARCHAR(20) DEFAULT 'STANDARD'
     COMMENT '用户类型：TRIAL/STANDARD/ENTERPRISE';
-ALTER TABLE sys_tenant ADD COLUMN start_date DATE COMMENT '有效期开始日期';
-ALTER TABLE sys_tenant ADD COLUMN end_date DATE COMMENT '有效期结束日期';
-ALTER TABLE sys_tenant ADD COLUMN max_users INT DEFAULT 50 COMMENT '用户数上限';
-ALTER TABLE sys_tenant ADD COLUMN modules JSON COMMENT '已授权功能模块列表';
+ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS start_date DATE COMMENT '有效期开始日期';
+ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS end_date DATE COMMENT '有效期结束日期';
+ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS max_users INT DEFAULT 50 COMMENT '用户数上限';
+ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS modules JSON COMMENT '已授权功能模块列表';
 ALTER TABLE sys_tenant MODIFY COLUMN status TINYINT DEFAULT 1
     COMMENT '状态：1-正常 2-已停用 3-已过期';
 
 -- ============ 11. 初始化系统配置数据 ============
 
 -- 安全设置
-INSERT INTO sys_config (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at) VALUES
+INSERT IGNORE INTO sys_config (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at) VALUES
 (1001, 'password_min_length', '8', '密码最小长度', 'security', 'NUMBER', '8', '6-20', '用户密码最少字符数', NOW(), NOW()),
 (1002, 'password_complexity', 'UPPER_LOWER_NUMBER', '密码复杂度', 'security', 'STRING', 'UPPER_LOWER_NUMBER', NULL, '密码需包含大写字母、小写字母和数字', NOW(), NOW()),
 (1003, 'login_fail_lock_count', '5', '登录失败锁定次数', 'security', 'NUMBER', '5', '3-10', '连续登录失败达此次数后锁定账户', NOW(), NOW()),
@@ -177,19 +177,19 @@ INSERT INTO sys_config (id, config_key, config_value, config_name, config_group,
 (1005, 'captcha_enabled', 'true', '启用验证码', 'security', 'BOOLEAN', 'true', NULL, '登录时是否启用图形验证码', NOW(), NOW());
 
 -- 审批设置
-INSERT INTO sys_config (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at) VALUES
+INSERT IGNORE INTO sys_config (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at) VALUES
 (1011, 'approval_timeout_reminder', '24', '审批超时提醒(小时)', 'approval', 'NUMBER', '24', '1-168', '审批任务超过此时间未处理则发送提醒', NOW(), NOW()),
 (1012, 'approval_auto_urge_interval', '48', '自动催办间隔(小时)', 'approval', 'NUMBER', '48', '24-720', '自动发送催办通知的间隔时间', NOW(), NOW()),
 (1013, 'approval_auto_transfer_enabled', 'false', '启用自动转办', 'approval', 'BOOLEAN', 'false', NULL, '超时后是否自动将审批任务转办给上级', NOW(), NOW());
 
 -- 文件设置
-INSERT INTO sys_config (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at) VALUES
+INSERT IGNORE INTO sys_config (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at) VALUES
 (1021, 'file_max_size', '20', '文件最大大小(MB)', 'file', 'NUMBER', '20', '1-100', '单个上传文件的最大大小，单位MB', NOW(), NOW()),
 (1022, 'file_allowed_types', '.doc,.docx,.xls,.xlsx,.pdf,.jpg,.png,.zip', '允许上传文件类型', 'file', 'STRING', '.doc,.docx,.xls,.xlsx,.pdf,.jpg,.png,.zip', NULL, '允许上传的文件扩展名列表', NOW(), NOW()),
 (1023, 'attachment_storage_limit', '10', '附件存储上限(GB)', 'file', 'NUMBER', '10', '1-100', '租户附件存储空间上限，单位GB', NOW(), NOW());
 
 -- 通知设置
-INSERT INTO sys_config (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at) VALUES
+INSERT IGNORE INTO sys_config (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at) VALUES
 (1031, 'message_retention_days', '90', '消息保留天数', 'notification', 'NUMBER', '90', '30-365', '站内消息自动清理的保留天数', NOW(), NOW()),
 (1032, 'sms_notification_enabled', 'false', '启用短信通知', 'notification', 'BOOLEAN', 'false', NULL, '是否开启短信通知渠道', NOW(), NOW()),
 (1033, 'wechat_notification_enabled', 'false', '启用微信通知', 'notification', 'BOOLEAN', 'false', NULL, '是否开启微信公众号/企微通知', NOW(), NOW());

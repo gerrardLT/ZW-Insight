@@ -7,26 +7,25 @@
 -- ============ 1. 打印模板：sys_template 表新增字段 ============
 
 ALTER TABLE sys_template
-    ADD COLUMN engine_type VARCHAR(20) DEFAULT 'SIMPLE' COMMENT '渲染引擎：SIMPLE(占位符) / THYMELEAF';
+    ADD COLUMN IF NOT EXISTS engine_type VARCHAR(20) DEFAULT 'SIMPLE' COMMENT '渲染引擎：SIMPLE(占位符) / THYMELEAF';
 
 ALTER TABLE sys_template
-    ADD COLUMN business_type VARCHAR(50) COMMENT '关联业务类型：CONTRACT / BUDGET / MATERIAL 等';
+    ADD COLUMN IF NOT EXISTS business_type VARCHAR(50) COMMENT '关联业务类型：CONTRACT / BUDGET / MATERIAL 等';
 
 ALTER TABLE sys_template
-    ADD COLUMN data_query_config TEXT COMMENT '数据查询配置JSON(数据源SQL或服务方法)';
+    ADD COLUMN IF NOT EXISTS data_query_config TEXT COMMENT '数据查询配置JSON(数据源SQL或服务方法)';
 
 -- sys_template 补齐 BaseEntity 映射字段（逻辑删除/乐观锁/创建人）
 ALTER TABLE sys_template
-    ADD COLUMN created_by BIGINT COMMENT '创建人ID';
+    ADD COLUMN IF NOT EXISTS created_by BIGINT COMMENT '创建人ID';
 
 ALTER TABLE sys_template
-    ADD COLUMN deleted TINYINT(1) DEFAULT 0 COMMENT '逻辑删除标记（0-未删除 1-已删除）';
+    ADD COLUMN IF NOT EXISTS deleted TINYINT(1) DEFAULT 0 COMMENT '逻辑删除标记（0-未删除 1-已删除）';
 
 ALTER TABLE sys_template
-    ADD COLUMN version INT DEFAULT 0 COMMENT '乐观锁版本号';
+    ADD COLUMN IF NOT EXISTS version INT DEFAULT 0 COMMENT '乐观锁版本号';
 
-ALTER TABLE sys_template
-    ADD INDEX idx_business_type (business_type);
+CREATE INDEX IF NOT EXISTS idx_business_type ON sys_template (business_type);
 
 -- ============ 2. 用户安全：登录设备表 ============
 

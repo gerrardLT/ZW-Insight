@@ -55,11 +55,11 @@ CREATE TABLE IF NOT EXISTS msg_available_shortcut (
 -- ============ 4. 用户快捷入口表新增字段 ============
 
 ALTER TABLE msg_user_shortcut
-    ADD COLUMN shortcut_id BIGINT COMMENT '关联可选快捷功能ID（msg_available_shortcut.id）' AFTER menu_icon;
+    ADD COLUMN IF NOT EXISTS shortcut_id BIGINT COMMENT '关联可选快捷功能ID（msg_available_shortcut.id）' AFTER menu_icon;
 
 -- ============ 5. 初始化可选快捷功能数据 ============
 
-INSERT INTO msg_available_shortcut (id, name, icon, route_path, sort_order, status, create_time) VALUES
+INSERT IGNORE INTO msg_available_shortcut (id, name, icon, route_path, sort_order, status, create_time) VALUES
 (1, '材料入库', 'icon-material-inbound', '/pages/material/inbound', 1, 'ENABLED', NOW()),
 (2, '材料出库', 'icon-material-outbound', '/pages/material/outbound', 2, 'ENABLED', NOW()),
 (3, '施工日志', 'icon-construction-log', '/pages/site/construction-log', 3, 'ENABLED', NOW()),
@@ -82,7 +82,7 @@ INSERT INTO msg_available_shortcut (id, name, icon, route_path, sort_order, stat
 -- ============ 6. 开票申请/收票登记表新增税率字段 ============
 
 ALTER TABLE biz_invoice_apply
-    ADD COLUMN tax_rate DECIMAL(5,2) COMMENT '税率(%)，引用税率字典或手动输入';
+    ADD COLUMN IF NOT EXISTS tax_rate DECIMAL(5,2) COMMENT '税率(%)，引用税率字典或手动输入';
 
 ALTER TABLE biz_invoice_received
-    ADD COLUMN tax_rate DECIMAL(5,2) COMMENT '税率(%)，引用税率字典或手动输入';
+    ADD COLUMN IF NOT EXISTS tax_rate DECIMAL(5,2) COMMENT '税率(%)，引用税率字典或手动输入';
