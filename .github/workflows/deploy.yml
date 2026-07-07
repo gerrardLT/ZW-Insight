@@ -75,6 +75,7 @@ jobs:
             --exclude='test-results/' \
             --exclude='.kiro/' \
             --exclude='zw-insight-web/dist/' \
+            --exclude='deploy/.env' \
             -e "ssh -i ~/.ssh/deploy_key" \
             ./ "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.DEPLOY_DIR }}/"
 
