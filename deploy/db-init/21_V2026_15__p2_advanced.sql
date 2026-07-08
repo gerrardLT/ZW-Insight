@@ -6,26 +6,76 @@
 
 -- ============ 1. 打印模板：sys_template 表新增字段 ============
 
-ALTER TABLE sys_template
-    ADD COLUMN IF NOT EXISTS engine_type VARCHAR(20) DEFAULT 'SIMPLE' COMMENT '渲染引擎：SIMPLE(占位符) / THYMELEAF';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_template' AND COLUMN_NAME = 'engine_type') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_template` ADD COLUMN `engine_type` VARCHAR(20) DEFAULT ''SIMPLE'' COMMENT ''渲染引擎：SIMPLE(占位符) / THYMELEAF'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
-ALTER TABLE sys_template
-    ADD COLUMN IF NOT EXISTS business_type VARCHAR(50) COMMENT '关联业务类型：CONTRACT / BUDGET / MATERIAL 等';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_template' AND COLUMN_NAME = 'business_type') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_template` ADD COLUMN `business_type` VARCHAR(50) COMMENT ''关联业务类型：CONTRACT / BUDGET / MATERIAL 等'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
-ALTER TABLE sys_template
-    ADD COLUMN IF NOT EXISTS data_query_config TEXT COMMENT '数据查询配置JSON(数据源SQL或服务方法)';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_template' AND COLUMN_NAME = 'data_query_config') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_template` ADD COLUMN `data_query_config` TEXT COMMENT ''数据查询配置JSON(数据源SQL或服务方法)'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
 -- sys_template 补齐 BaseEntity 映射字段（逻辑删除/乐观锁/创建人）
-ALTER TABLE sys_template
-    ADD COLUMN IF NOT EXISTS created_by BIGINT COMMENT '创建人ID';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_template' AND COLUMN_NAME = 'created_by') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_template` ADD COLUMN `created_by` BIGINT COMMENT ''创建人ID'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
-ALTER TABLE sys_template
-    ADD COLUMN IF NOT EXISTS deleted TINYINT(1) DEFAULT 0 COMMENT '逻辑删除标记（0-未删除 1-已删除）';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_template' AND COLUMN_NAME = 'deleted') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_template` ADD COLUMN `deleted` TINYINT(1) DEFAULT 0 COMMENT ''逻辑删除标记（0-未删除 1-已删除）'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
-ALTER TABLE sys_template
-    ADD COLUMN IF NOT EXISTS version INT DEFAULT 0 COMMENT '乐观锁版本号';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_template' AND COLUMN_NAME = 'version') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_template` ADD COLUMN `version` INT DEFAULT 0 COMMENT ''乐观锁版本号'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
-CREATE INDEX IF NOT EXISTS idx_business_type ON sys_template (business_type);
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_template' AND INDEX_NAME = 'idx_business_type') > 0,
+    'SELECT 1',
+    'CREATE INDEX `idx_business_type` ON `sys_template` (`business_type`)'
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
 -- ============ 2. 用户安全：登录设备表 ============
 

@@ -48,14 +48,45 @@ CREATE TABLE IF NOT EXISTS biz_expense_contract (
 
 -- 如果表已存在，确保 end_date 和 contract_name 字段存在
 -- 添加合同到期日期字段（合同到期扫描功能5的前置依赖）
-ALTER TABLE biz_expense_contract ADD COLUMN IF NOT EXISTS end_date DATE COMMENT '合同到期日期';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'biz_expense_contract' AND COLUMN_NAME = 'end_date') > 0,
+    'SELECT 1',
+    'ALTER TABLE `biz_expense_contract` ADD COLUMN `end_date` DATE COMMENT ''合同到期日期'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
 -- 添加合同名称字段（到期提醒消息和档案展示功能8的前置依赖）
-ALTER TABLE biz_expense_contract ADD COLUMN IF NOT EXISTS contract_name VARCHAR(200) COMMENT '合同名称';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'biz_expense_contract' AND COLUMN_NAME = 'contract_name') > 0,
+    'SELECT 1',
+    'ALTER TABLE `biz_expense_contract` ADD COLUMN `contract_name` VARCHAR(200) COMMENT ''合同名称'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
 -- 添加合同负责人字段（到期提醒通知目标）
-ALTER TABLE biz_expense_contract ADD COLUMN IF NOT EXISTS responsible_user_id BIGINT COMMENT '合同负责人ID';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'biz_expense_contract' AND COLUMN_NAME = 'responsible_user_id') > 0,
+    'SELECT 1',
+    'ALTER TABLE `biz_expense_contract` ADD COLUMN `responsible_user_id` BIGINT COMMENT ''合同负责人ID'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
 -- 为 end_date 添加索引以支持到期扫描查询
--- 使用 IF NOT EXISTS 避免重复创建索引
-CREATE INDEX IF NOT EXISTS idx_end_date ON biz_expense_contract (end_date);
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'biz_expense_contract' AND INDEX_NAME = 'idx_end_date') > 0,
+    'SELECT 1',
+    'CREATE INDEX `idx_end_date` ON `biz_expense_contract` (`end_date`)'
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;

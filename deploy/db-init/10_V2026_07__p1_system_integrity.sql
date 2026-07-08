@@ -7,8 +7,15 @@
 
 -- ============ 1. 角色表增加数据范围字段 ============
 
-ALTER TABLE sys_role ADD COLUMN IF NOT EXISTS data_scope VARCHAR(30) DEFAULT 'SELF'
-    COMMENT '数据范围：ALL/DEPT_AND_CHILDREN/DEPT/PROJECT/SELF';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_role' AND COLUMN_NAME = 'data_scope') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_role` ADD COLUMN `data_scope` VARCHAR(30) DEFAULT ''SELF'' COMMENT ''数据范围：ALL/DEPT_AND_CHILDREN/DEPT/PROJECT/SELF'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
 
 -- ============ 2. 用户-项目关联表 ============
 
@@ -157,12 +164,56 @@ CREATE TABLE IF NOT EXISTS biz_approval_rollback_log (
 
 -- ============ 10. 租户表增强 ============
 
-ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS user_type VARCHAR(20) DEFAULT 'STANDARD'
-    COMMENT '用户类型：TRIAL/STANDARD/ENTERPRISE';
-ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS start_date DATE COMMENT '有效期开始日期';
-ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS end_date DATE COMMENT '有效期结束日期';
-ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS max_users INT DEFAULT 50 COMMENT '用户数上限';
-ALTER TABLE sys_tenant ADD COLUMN IF NOT EXISTS modules JSON COMMENT '已授权功能模块列表';
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_tenant' AND COLUMN_NAME = 'user_type') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_tenant` ADD COLUMN `user_type` VARCHAR(20) DEFAULT ''STANDARD'' COMMENT ''用户类型：TRIAL/STANDARD/ENTERPRISE'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
+
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_tenant' AND COLUMN_NAME = 'start_date') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_tenant` ADD COLUMN `start_date` DATE COMMENT ''有效期开始日期'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
+
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_tenant' AND COLUMN_NAME = 'end_date') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_tenant` ADD COLUMN `end_date` DATE COMMENT ''有效期结束日期'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
+
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_tenant' AND COLUMN_NAME = 'max_users') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_tenant` ADD COLUMN `max_users` INT DEFAULT 50 COMMENT ''用户数上限'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
+
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_tenant' AND COLUMN_NAME = 'modules') > 0,
+    'SELECT 1',
+    'ALTER TABLE `sys_tenant` ADD COLUMN `modules` JSON COMMENT ''已授权功能模块列表'''
+));
+PREPARE __stmt FROM @sql;
+EXECUTE __stmt;
+DEALLOCATE PREPARE __stmt;
+
 ALTER TABLE sys_tenant MODIFY COLUMN status TINYINT DEFAULT 1
     COMMENT '状态：1-正常 2-已停用 3-已过期';
 
