@@ -85,7 +85,9 @@ jobs:
           cd "$DEPLOY_DIR/deploy"
 
           echo "=== [1/5] 确保基础设施运行 ==="
-          # 启动 MySQL/Redis/MinIO/RabbitMQ（如已运行则无操作）
+          # 拉取最新 MySQL 镜像（升级到 8.0.37 以支持 IF NOT EXISTS 语法）
+          docker compose -f docker-compose.deploy.yml pull mysql
+          # 启动 MySQL/Redis/MinIO/RabbitMQ（如已运行则无操作，如镜像更新则自动重建）
           docker compose -f docker-compose.deploy.yml up -d mysql redis minio rabbitmq
 
           echo "=== [2/5] 等待 MySQL 就绪 ==="
