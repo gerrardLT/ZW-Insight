@@ -7,6 +7,8 @@ import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * 甲方单位接口
  */
@@ -33,6 +35,15 @@ public class OwnerController {
             @RequestParam(required = false) String ownerName,
             @RequestParam(required = false) Integer status) {
         return page(page, size, ownerName, status);
+    }
+
+    /**
+     * 甲方列表（下拉选择用，按名称模糊匹配）。静态路径 /list 先于 /{id}。
+     */
+    @GetMapping("/list")
+    public R<List<BdOwner>> list(@RequestParam(required = false) String ownerName,
+                                 @RequestParam(required = false) Integer status) {
+        return R.ok(ownerService.list(ownerName, status));
     }
 
     @GetMapping("/{id}")

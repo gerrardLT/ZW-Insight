@@ -45,6 +45,18 @@ public class ProjectService {
     }
 
     /**
+     * 列表查询（供前端下拉选择使用）
+     * 按项目名称模糊匹配，按创建时间倒序，限制返回条数避免数据量过大。
+     */
+    public List<BizProject> list(String projectName) {
+        LambdaQueryWrapper<BizProject> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StrUtil.isNotBlank(projectName), BizProject::getProjectName, projectName)
+                .orderByDesc(BizProject::getCreatedAt)
+                .last("LIMIT 50");
+        return projectMapper.selectList(wrapper);
+    }
+
+    /**
      * 根据ID查询
      */
     public BizProject getById(Long id) {

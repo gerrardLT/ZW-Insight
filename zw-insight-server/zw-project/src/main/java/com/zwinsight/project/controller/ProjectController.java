@@ -35,6 +35,15 @@ public class ProjectController {
         return R.ok(projectService.page(page, size, projectName, status, projectType));
     }
 
+    /**
+     * 项目列表（下拉选择用，按名称模糊匹配）。
+     * 注意：静态路径 /list 需先于 /{id} 声明语义，Spring 会优先精确匹配 /list。
+     */
+    @GetMapping("/list")
+    public R<List<BizProject>> list(@RequestParam(required = false) String projectName) {
+        return R.ok(projectService.list(projectName));
+    }
+
     @GetMapping("/{id}")
     public R<BizProject> getById(@PathVariable Long id) {
         return R.ok(projectService.getById(id));

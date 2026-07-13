@@ -10,6 +10,8 @@ import com.zwinsight.common.result.PageResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 甲方单位服务
  */
@@ -30,6 +32,19 @@ public class OwnerService {
                 .orderByDesc(BdOwner::getCreatedAt);
         Page<BdOwner> result = ownerMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);
+    }
+
+    /**
+     * 列表查询（供前端下拉选择使用）
+     * 按甲方名称模糊匹配 + 可选状态过滤，按创建时间倒序，限制返回条数。
+     */
+    public List<BdOwner> list(String ownerName, Integer status) {
+        LambdaQueryWrapper<BdOwner> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StrUtil.isNotBlank(ownerName), BdOwner::getOwnerName, ownerName)
+                .eq(status != null, BdOwner::getStatus, status)
+                .orderByDesc(BdOwner::getCreatedAt)
+                .last("LIMIT 50");
+        return ownerMapper.selectList(wrapper);
     }
 
     /**

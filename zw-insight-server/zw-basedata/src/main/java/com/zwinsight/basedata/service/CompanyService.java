@@ -10,6 +10,8 @@ import com.zwinsight.common.result.PageResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 自持公司服务
  */
@@ -30,6 +32,19 @@ public class CompanyService {
                 .orderByDesc(BdCompany::getCreatedAt);
         Page<BdCompany> result = companyMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);
+    }
+
+    /**
+     * 列表查询（供前端下拉选择使用）
+     * 按公司名称模糊匹配 + 可选状态过滤，按创建时间倒序，限制返回条数。
+     */
+    public List<BdCompany> list(String companyName, Integer status) {
+        LambdaQueryWrapper<BdCompany> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StrUtil.isNotBlank(companyName), BdCompany::getCompanyName, companyName)
+                .eq(status != null, BdCompany::getStatus, status)
+                .orderByDesc(BdCompany::getCreatedAt)
+                .last("LIMIT 50");
+        return companyMapper.selectList(wrapper);
     }
 
     /**

@@ -7,6 +7,8 @@ import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * 自持公司接口
  */
@@ -33,6 +35,15 @@ public class CompanyController {
             @RequestParam(required = false) String companyName,
             @RequestParam(required = false) Integer status) {
         return page(page, size, companyName, status);
+    }
+
+    /**
+     * 公司列表（下拉选择用，按名称模糊匹配）。静态路径 /list 先于 /{id}。
+     */
+    @GetMapping("/list")
+    public R<List<BdCompany>> list(@RequestParam(required = false) String companyName,
+                                   @RequestParam(required = false) Integer status) {
+        return R.ok(companyService.list(companyName, status));
     }
 
     @GetMapping("/{id}")
