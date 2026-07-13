@@ -5,7 +5,7 @@ import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.subcontract.domain.BizSubcontract;
 import com.zwinsight.subcontract.domain.BizSubcontractSettlement;
-import com.zwinsight.subcontract.domain.BizSubcontractSettlementDetail;
+
 import com.zwinsight.subcontract.dto.SubcontractSettlementCreateRequest;
 import com.zwinsight.subcontract.dto.SubcontractSettlementDetailDTO;
 import com.zwinsight.subcontract.mapper.BizSubcontractMapper;
@@ -80,8 +80,14 @@ class SubcontractSettlementServiceTest {
         when(settlementMapper.selectById(anyLong())).thenReturn(settlement);
 
         BizSubcontract contract = new BizSubcontract();
+        contract.setContractAmount(new BigDecimal("500000")); // 合同金额需大于累计结算
         contract.setCumulativeSettlement(new BigDecimal("30000"));
         when(subcontractMapper.selectById(anyLong())).thenReturn(contract);
+
+        BizProject project = new BizProject();
+        project.setId(10L);
+        project.setTotalExpense(BigDecimal.ZERO);
+        when(projectMapper.selectById(anyLong())).thenReturn(project);
 
         subSettlementService.submit(1L);
 
@@ -100,7 +106,11 @@ class SubcontractSettlementServiceTest {
         settlement.setStatus("DRAFT");
         settlement.setSettlementAmount(new BigDecimal("20000"));
         when(settlementMapper.selectById(anyLong())).thenReturn(settlement);
-        lenient().when(subcontractMapper.selectById(anyLong())).thenReturn(null); // 合同不存在也OK
+
+        BizSubcontract contract = new BizSubcontract();
+        contract.setContractAmount(new BigDecimal("500000")); // 合同金额需大于累计结算
+        contract.setCumulativeSettlement(new BigDecimal("10000"));
+        when(subcontractMapper.selectById(anyLong())).thenReturn(contract);
 
         BizProject project = new BizProject();
         project.setTotalExpense(new BigDecimal("100000"));

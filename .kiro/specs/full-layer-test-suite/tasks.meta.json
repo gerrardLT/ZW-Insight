@@ -1,0 +1,586 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 创建 TestConstants 常量类": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560659814
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560673410
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560989619
+      }
+    ],
+    "1.2 实现 TestDataCleaner 数据清理组件": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660086
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560674218
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560990256
+      }
+    ],
+    "1.4 实现 IntegrationTestBase 集成测试基类": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660251
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560996726
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561204784
+      }
+    ],
+    "1.5 实现 AssertUtils 公共断言工具类": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660350
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560997494
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561205699
+      }
+    ],
+    "1.7 创建 Maven Profile 与测试配置文件": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660418
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560998254
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561206628
+      }
+    ],
+    "1.8 创建手动清理脚本 cleanup-test-data.sh": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660484
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560999119
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561207525
+      }
+    ],
+    "2.1 编写 ProjectService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660577
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561254402
+      },
+      {
+        "executionId": "799f78c2-78f4-4317-8958-c6f46661569e",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561939631
+      }
+    ],
+    "2.2 编写 ContractService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660692
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561254981
+      },
+      {
+        "executionId": "799f78c2-78f4-4317-8958-c6f46661569e",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561940517
+      }
+    ],
+    "2.3 编写 FinanceService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660737
+      },
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561255771
+      },
+      {
+        "executionId": "799f78c2-78f4-4317-8958-c6f46661569e",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561941214
+      }
+    ],
+    "3.1 编写 ProjectService 集成测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660784
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562052888
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562515601
+      }
+    ],
+    "3.2 编写 ContractService 集成测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660833
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562053782
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562514787
+      }
+    ],
+    "3.3 编写 FinanceService 集成测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660883
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562054398
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562514024
+      }
+    ],
+    "3.4 编写 Flowable 工作流集成测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660931
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562649597
+      },
+      {
+        "executionId": "92af008c-0c26-4b24-b181-d7d06455d828",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783566045279
+      }
+    ],
+    "3.6 处理服务器不可达场景": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560660994
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562055216
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562513218
+      }
+    ],
+    "4. Checkpoint - 基础设施与核心测试验证": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661044
+      }
+    ],
+    "5.1 编写 BudgetService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661102
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562650470
+      },
+      {
+        "executionId": "92af008c-0c26-4b24-b181-d7d06455d828",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783566045963
+      }
+    ],
+    "5.2 编写 MaterialService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661170
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562651125
+      },
+      {
+        "executionId": "92af008c-0c26-4b24-b181-d7d06455d828",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783566046727
+      }
+    ],
+    "5.3 编写 MachineService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661218
+      },
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562651985
+      },
+      {
+        "executionId": "92af008c-0c26-4b24-b181-d7d06455d828",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783566047508
+      }
+    ],
+    "5.4 编写 LaborService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661270
+      },
+      {
+        "executionId": "1746bcda-3633-48a4-be77-2dd062ec5b9d",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783565073708
+      }
+    ],
+    "5.5 编写 SubcontractService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661326
+      },
+      {
+        "executionId": "1746bcda-3633-48a4-be77-2dd062ec5b9d",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783565074493
+      }
+    ],
+    "5.6 编写 PurchaseService + FieldService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661369
+      },
+      {
+        "executionId": "1746bcda-3633-48a4-be77-2dd062ec5b9d",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783565075225
+      }
+    ],
+    "5.7 编写 TenderService 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661416
+      },
+      {
+        "executionId": "1746bcda-3633-48a4-be77-2dd062ec5b9d",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783565076011
+      }
+    ],
+    "6.1 编写 JWT 认证与权限单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661479
+      },
+      {
+        "executionId": "1746bcda-3633-48a4-be77-2dd062ec5b9d",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783565076909
+      }
+    ],
+    "6.2 编写验证码与 Redis 缓存测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661535
+      },
+      {
+        "executionId": "e5fc2eaf-3634-43ce-aa4b-a97a18d0132c",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783574808026
+      }
+    ],
+    "6.3 编写菜单树与数据权限测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661581
+      },
+      {
+        "executionId": "e5fc2eaf-3634-43ce-aa4b-a97a18d0132c",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783574808815
+      }
+    ],
+    "6.4 编写 Flowable 审批流 Service 单元测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661633
+      },
+      {
+        "executionId": "e5fc2eaf-3634-43ce-aa4b-a97a18d0132c",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783574809701
+      }
+    ],
+    "7. Checkpoint - L1 单元测试全量验证": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661678
+      }
+    ],
+    "8.1 创建 lifecycle-sim-v2.sh 基础框架": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661721
+      }
+    ],
+    "8.2 实现 10 阶段业务流与严格断言": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661764
+      }
+    ],
+    "8.3 实现自动清理与兜底 SQL + JSON 报告": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661803
+      }
+    ],
+    "9.1 创建 API 测试基础框架与项目模块脚本": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661845
+      }
+    ],
+    "9.2 创建合同/财务/采购模块 API 测试脚本": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661896
+      }
+    ],
+    "9.3 创建剩余业务模块 API 测试脚本": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661941
+      }
+    ],
+    "10.1 修改 playwright.config.ts 新增 e2e-real project": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560661993
+      }
+    ],
+    "10.2 创建 auth-real.setup.ts 真实登录 setup": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662045
+      }
+    ],
+    "10.3 创建真实模式 E2E 测试用例": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662096
+      }
+    ],
+    "11. Checkpoint - L3/L4/L5 测试验证": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662141
+      }
+    ],
+    "12.1 创建 run-all-tests.sh 主脚本": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662194
+      }
+    ],
+    "12.2 实现汇总报告输出": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662262
+      }
+    ],
+    "13.1 恢复 CI 后端测试执行": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662302
+      }
+    ],
+    "13.2 恢复 integration-test job": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662357
+      }
+    ],
+    "13.3 更新 dev-loop.ps1 对接测试体系": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662423
+      }
+    ],
+    "14.1 配置 JaCoCo Maven 插件": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662467
+      }
+    ],
+    "14.2 配置 CI JaCoCo 报告上传": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662529
+      }
+    ],
+    "14.3 创建测试维护文档与规则": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662575
+      }
+    ],
+    "15. Final checkpoint - 全层次测试体系验证": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783560662670
+      }
+    ],
+    "1. 测试基础设施与数据清理框架": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561207568
+      }
+    ],
+    "1.3 编写 TestDataCleaner 属性测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561247148
+      }
+    ],
+    "1.6 编写 AssertUtils 属性测试": [
+      {
+        "executionId": "600ff5ff-d3d2-419d-b676-756e38042197",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561247918
+      }
+    ],
+    "2. 核心模块 L1 单元测试（project/contract/finance）": [
+      {
+        "executionId": "799f78c2-78f4-4317-8958-c6f46661569e",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783561941256
+      }
+    ],
+    "2.4 编写核心模块数值计算属性测试": [
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562641664
+      }
+    ],
+    "3.5 编写集成测试数据隔离属性测试": [
+      {
+        "executionId": "0dbf960a-620e-4fc5-80c9-57233f3a5e57",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783562642781
+      }
+    ],
+    "3. 核心模块 L2 集成测试": [
+      {
+        "executionId": "92af008c-0c26-4b24-b181-d7d06455d828",
+        "chatSessionId": "sess_61835cda-eff1-4dbd-83b1-c0ad5261af72",
+        "timestamp": 1783566045416
+      }
+    ]
+  }
+}

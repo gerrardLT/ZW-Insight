@@ -117,6 +117,25 @@ class ApprovalServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("发起流程：流程定义不存在时 RuntimeService 抛异常上抛")
+    void testStartProcess_processDefinitionNotFound() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(100L);
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+
+            when(runtimeService.startProcessInstanceByKeyAndTenantId(
+                    eq("nonexistent_process"), anyString(), anyMap(), anyString()))
+                    .thenThrow(new org.flowable.common.engine.api.FlowableObjectNotFoundException(
+                            "no processes deployed with key 'nonexistent_process'"));
+
+            assertThatThrownBy(() -> approvalService.startProcess(
+                    "CONTRACT", 100L, "nonexistent_process", null))
+                    .isInstanceOf(org.flowable.common.engine.api.FlowableObjectNotFoundException.class)
+                    .hasMessageContaining("nonexistent_process");
+        }
+    }
+
     // =====================================================================
     // complete
     // =====================================================================

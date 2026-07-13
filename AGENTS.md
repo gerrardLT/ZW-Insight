@@ -125,3 +125,32 @@ cd tools/consistency-audit && npm run dev
 ### 7. 改造记录
 
 进行项目优化改造时，需完整记录改造的详细信息（变更原因、影响范围、回滚方案），确保后续能从上下文恢复。
+
+### 8. 测试开发规则
+
+以下规则在开发新功能或修复 Bug 时必须遵守：
+
+#### 新模块必须包含单元测试
+
+- 每个新建 Service 类的 public 方法至少编写 1 个正常路径 + 1 个异常路径测试
+- 使用 `@ExtendWith(MockitoExtension.class)` + Mockito Mock 所有外部依赖
+- 核心业务模块（project, contract, budget, finance, material, machine, labor, subcontract）JaCoCo 行覆盖率必须 ≥ 80%
+
+#### 集成测试使用 tenant_id=9999
+
+- 所有集成测试数据必须使用 `tenant_id=9999`（自动化测试租户）
+- 严禁在测试中使用真实租户 ID 或操作生产数据
+- `@AfterAll` 必须调用 `TestDataCleaner.cleanByTenantId(9999L)` 清理测试数据
+- Redis 测试键使用 `test:t9999:` 前缀，测试后清除
+
+#### PR 前运行 L1 单元测试
+
+- 提交 PR 前必须在本地运行 `mvn test` 确认单元测试通过
+- CI 中 `mvn -B clean package` 会自动执行单元测试 + JaCoCo 覆盖率检查
+- 覆盖率不达标将导致 CI 构建失败
+
+#### 测试体系文档
+
+- 详细的测试架构、执行方式、添加新测试指南见 `tests/README.md`
+- 测试常量定义见 `zw-common/src/test/java/com/zwinsight/common/base/TestConstants.java`
+- 统一编排脚本：`bash tests/run-all-tests.sh`

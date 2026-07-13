@@ -29,9 +29,25 @@ jobs:
           distribution: 'corretto'
           cache: maven
 
-      - name: Build (skip tests)
+      - name: Build & Test
         working-directory: zw-insight-server
-        run: mvn -B clean package -Dmaven.test.skip=true
+        run: mvn -B clean package
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: zw-insight-server/**/target/surefire-reports/*.xml
+          retention-days: 7
+
+      - name: Upload JaCoCo coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: zw-insight-server/**/target/site/jacoco/
+          retention-days: 14
 
       - name: Upload backend artifact
         uses: actions/upload-artifact@v4
@@ -142,13 +158,12 @@ jobs:
             "docker logs zwi-backend --tail 30" || true
 
   # ────────────────────────────────────────────────────
-  # 3. 集成测试
+  # 3. 集成测试（L3 API + L4 端到端业务流）
   # ────────────────────────────────────────────────────
   integration-test:
     name: Integration Test
     runs-on: ubuntu-latest
     needs: deploy
-    if: false   # 暂时禁用，等服务稳定后再开启
     steps:
       - uses: actions/checkout@v4
 
@@ -159,50 +174,153 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Run lifecycle test
+      - name: Upload test scripts
         run: |
-          scp -i ~/.ssh/deploy_key keys/lifecycle-sim.sh \
-            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim.sh"
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+            "mkdir -p /root/zwi-deploy/test-scripts"
 
-          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'TEST_SCRIPT'
+          # 上传核心基座脚本
+          scp -i ~/.ssh/deploy_key keys/verify-base.sh \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/verify-base.sh"
+
+          # 上传 L4 lifecycle-sim-v2.sh
+          scp -i ~/.ssh/deploy_key keys/lifecycle-sim-v2.sh \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/lifecycle-sim-v2.sh"
+
+          # 上传所有 L3 API 测试脚本
+          for script in keys/test-api-*.sh; do
+            scp -i ~/.ssh/deploy_key "$script" \
+              "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/$(basename $script)"
+          done
+
+          # 统一修复换行符并赋予执行权限
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'FIX_SCRIPT'
+          cd /root/zwi-deploy/test-scripts
+          sed -i 's/\r$//' *.sh
+          chmod +x *.sh
+          FIX_SCRIPT
+
+      - name: Run L3 API tests
+        id: l3_test
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'L3_SCRIPT'
           set -uo pipefail
-          cd /root/zwi-deploy
-          sed -i 's/\r$//' lifecycle-sim.sh
-          chmod +x lifecycle-sim.sh
-          bash lifecycle-sim.sh 2>&1 | tee /root/zwi-deploy/lifecycle-sim-result.log
-          TEST_SCRIPT
+          cd /root/zwi-deploy/test-scripts
+          export ZWI_WORKDIR=/root/zwi-deploy
+
+          L3_PASS=0
+          L3_FAIL=0
+          L3_RESULTS=""
+
+          for script in test-api-*.sh; do
+            [ -f "$script" ] || continue
+            echo "=========================================="
+            echo "执行 L3 测试: $script"
+            echo "=========================================="
+            if bash "$script" 2>&1 | tee "/root/zwi-deploy/l3-${script%.sh}.log"; then
+              L3_PASS=$((L3_PASS + 1))
+              L3_RESULTS="${L3_RESULTS}✅ ${script}\n"
+            else
+              L3_FAIL=$((L3_FAIL + 1))
+              L3_RESULTS="${L3_RESULTS}❌ ${script}\n"
+            fi
+          done
+
+          echo ""
+          echo "=========================================="
+          echo "L3 API 测试汇总: 通过=${L3_PASS} 失败=${L3_FAIL}"
+          echo "=========================================="
+          printf "%b" "$L3_RESULTS"
+
+          # 写入汇总到结果文件
+          printf "%b" "$L3_RESULTS" > /root/zwi-deploy/l3-summary.log
+          echo "L3_PASS=${L3_PASS} L3_FAIL=${L3_FAIL}" >> /root/zwi-deploy/l3-summary.log
+
+          [ "$L3_FAIL" -eq 0 ]
+          L3_SCRIPT
+
+      - name: Run L4 lifecycle test
+        id: l4_test
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'L4_SCRIPT'
+          set -uo pipefail
+          cd /root/zwi-deploy/test-scripts
+          export ZWI_WORKDIR=/root/zwi-deploy
+
+          echo "=========================================="
+          echo "执行 L4 测试: lifecycle-sim-v2.sh"
+          echo "=========================================="
+          bash lifecycle-sim-v2.sh 2>&1 | tee /root/zwi-deploy/l4-lifecycle-result.log
+          L4_SCRIPT
 
       - name: Download test results
         if: always()
         run: |
+          mkdir -p ./test-results
+
+          # 下载 L3 结果
           scp -i ~/.ssh/deploy_key \
-            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim.log" \
-            ./test-results-lifecycle.log || true
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/l3-summary.log" \
+            ./test-results/l3-summary.log || true
           scp -i ~/.ssh/deploy_key \
-            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/lifecycle-sim-result.log" \
-            ./test-results-output.log || true
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/l3-*.log" \
+            ./test-results/ 2>/dev/null || true
+
+          # 下载 L4 结果
+          scp -i ~/.ssh/deploy_key \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/l4-lifecycle-result.log" \
+            ./test-results/l4-lifecycle-result.log || true
+
+          # 下载 JSON 报告（如果存在）
+          scp -i ~/.ssh/deploy_key \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/tests/reports/lifecycle-sim-report.json" \
+            ./test-results/lifecycle-sim-report.json 2>/dev/null || true
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-results
-          path: |
-            test-results-lifecycle.log
-            test-results-output.log
+          path: test-results/
           retention-days: 7
 
       - name: Test summary
         if: always()
         run: |
-          echo "=== 集成测试结果 ==="
-          if [ -f test-results-output.log ]; then
-            echo "成功: $(grep -c '✅' test-results-output.log || echo 0)"
-            echo "失败: $(grep -c '❌' test-results-output.log || echo 0)"
-            if grep -q "❌" test-results-output.log; then
-              echo "::error::集成测试存在失败项"
-              exit 1
+          echo "=== 集成测试结果汇总 ==="
+          HAS_FAILURE=false
+
+          # L3 汇总
+          echo ""
+          echo "--- L3 API 测试 ---"
+          if [ -f test-results/l3-summary.log ]; then
+            cat test-results/l3-summary.log
+            if grep -q "❌" test-results/l3-summary.log; then
+              HAS_FAILURE=true
             fi
           else
-            echo "::warning::未找到测试结果文件"
+            echo "::warning::未找到 L3 测试结果文件"
+          fi
+
+          # L4 汇总
+          echo ""
+          echo "--- L4 Lifecycle 测试 ---"
+          if [ -f test-results/l4-lifecycle-result.log ]; then
+            echo "成功: $(grep -c '✅' test-results/l4-lifecycle-result.log || echo 0)"
+            echo "失败: $(grep -c '❌' test-results/l4-lifecycle-result.log || echo 0)"
+            if grep -q "❌" test-results/l4-lifecycle-result.log; then
+              HAS_FAILURE=true
+            fi
+          else
+            echo "::warning::未找到 L4 测试结果文件"
+          fi
+
+          # 最终判定
+          echo ""
+          if [ "$HAS_FAILURE" = "true" ]; then
+            echo "::error::集成测试存在失败项，workflow 标记为失败"
+            exit 1
+          else
+            echo "✅ 所有集成测试通过"
           fi

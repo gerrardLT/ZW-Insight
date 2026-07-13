@@ -113,6 +113,7 @@ keys/*.key
 
 # 测试结果（本地生成，不入库）
 test-results/
+tests/reports/
 
 # 部署用的大体积可启动 jar（本地构建产物，不入库）
 deploy/zw-insight-app.jar

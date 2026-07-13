@@ -73,6 +73,33 @@ class ProjectServiceTest {
     }
 
     @Test
+    @DisplayName("新增项目：金额已有值时不覆盖")
+    void testSave_existingAmountsPreserved() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(100L);
+
+            when(serialNumberService.generate("PROJECT")).thenReturn("PRJ-002");
+            when(projectMapper.insert(any(BizProject.class))).thenReturn(1);
+
+            BizProject project = new BizProject();
+            project.setProjectName("带预算项目");
+            project.setBudgetAmount(new BigDecimal("500000.00"));
+            project.setContractAmount(new BigDecimal("300000.00"));
+            projectService.save(project);
+
+            // 已有值不应被覆盖为 ZERO
+            assertThat(project.getBudgetAmount()).isEqualByComparingTo(new BigDecimal("500000.00"));
+            assertThat(project.getContractAmount()).isEqualByComparingTo(new BigDecimal("300000.00"));
+            // 未设置的字段应被初始化为 ZERO
+            assertThat(project.getCumulativeOutput()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(project.getSettlementAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(project.getTotalIncome()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(project.getTotalExpense()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(project.getTotalOtherPayment()).isEqualByComparingTo(BigDecimal.ZERO);
+        }
+    }
+
+    @Test
     @DisplayName("新增项目：创建人自动添加为项目经理")
     void testSave_addCreatorAsManager() {
         try (var sc = mockStatic(SecurityContextHolder.class)) {
@@ -173,6 +200,16 @@ class ProjectServiceTest {
                 .hasMessageContaining("仅草稿状态可删除");
     }
 
+    @Test
+    @DisplayName("删除：项目不存在抛异常")
+    void testDelete_notFound() {
+        when(projectMapper.selectById(999L)).thenReturn(null);
+
+        assertThatThrownBy(() -> projectService.delete(999L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("项目不存在");
+    }
+
     // =====================================================================
     // submit
     // =====================================================================
@@ -218,6 +255,47 @@ class ProjectServiceTest {
         when(projectMapper.selectById(999L)).thenReturn(null);
 
         assertThatThrownBy(() -> projectService.updateStatus(999L, "COMPLETED"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("项目不存在");
+    }
+
+    // =====================================================================
+    // closeProject
+    // =====================================================================
+
+    @Test
+    @DisplayName("结项：非 COMPLETED 状态抛异常")
+    void testCloseProject_statusNotCompleted() {
+        // 项目状态为 ACTIVE（非 COMPLETED），结项条件不满足
+        sampleProject.setStatus("ACTIVE");
+        sampleProject.setTotalIncome(BigDecimal.ZERO);
+        sampleProject.setCumulativeOutput(BigDecimal.ZERO);
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+
+        assertThatThrownBy(() -> projectService.closeProject(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("无法结项");
+    }
+
+    @Test
+    @DisplayName("结项：DRAFT 状态抛异常（未进入施工阶段）")
+    void testCloseProject_draftStatus() {
+        sampleProject.setStatus("DRAFT");
+        sampleProject.setTotalIncome(BigDecimal.ZERO);
+        sampleProject.setCumulativeOutput(BigDecimal.ZERO);
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+
+        assertThatThrownBy(() -> projectService.closeProject(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("无法结项");
+    }
+
+    @Test
+    @DisplayName("结项：项目不存在抛异常")
+    void testCloseProject_notFound() {
+        when(projectMapper.selectById(999L)).thenReturn(null);
+
+        assertThatThrownBy(() -> projectService.closeProject(999L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("项目不存在");
     }
