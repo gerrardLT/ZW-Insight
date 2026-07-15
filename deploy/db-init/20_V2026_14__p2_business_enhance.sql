@@ -16,10 +16,13 @@ CREATE TABLE IF NOT EXISTS biz_finance_lock (
     lock_time DATETIME COMMENT '封账时间',
     unlock_by BIGINT COMMENT '解封操作人ID',
     unlock_time DATETIME COMMENT '解封时间',
+    tenant_id BIGINT COMMENT '租户ID',
     tenant_code VARCHAR(50) COMMENT '租户编码',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    deleted TINYINT(1) DEFAULT 0 COMMENT '逻辑删除标记（0-未删除 1-已删除）',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
     PRIMARY KEY (id),
     UNIQUE KEY uk_period_project (period, project_id, tenant_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='财务封账记录表';
@@ -31,10 +34,13 @@ CREATE TABLE IF NOT EXISTS biz_tax_rate (
     name VARCHAR(30) NOT NULL COMMENT '税率名称',
     rate_value DECIMAL(5,2) NOT NULL COMMENT '税率数值（如 13.00 表示 13%）',
     status VARCHAR(20) NOT NULL DEFAULT 'ENABLED' COMMENT '状态：ENABLED-启用 / DISABLED-停用',
+    tenant_id BIGINT COMMENT '租户ID',
     tenant_code VARCHAR(50) COMMENT '租户编码',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    deleted TINYINT(1) DEFAULT 0 COMMENT '逻辑删除标记（0-未删除 1-已删除）',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
     PRIMARY KEY (id),
     UNIQUE KEY uk_name_tenant (name, tenant_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='税率字典表';

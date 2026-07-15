@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS biz_approval_snapshot (
     field_name VARCHAR(100) NOT NULL COMMENT '快照字段名',
     original_value TEXT COMMENT '变更前值(JSON)',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
     PRIMARY KEY (id),
     INDEX idx_workflow_instance (workflow_instance_id),
     INDEX idx_biz (biz_type, biz_id)
@@ -156,6 +157,7 @@ CREATE TABLE IF NOT EXISTS biz_approval_rollback_log (
     error_msg VARCHAR(500) COMMENT '错误信息',
     operator_id BIGINT COMMENT '操作人',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
     PRIMARY KEY (id),
     INDEX idx_workflow_instance (workflow_instance_id),
     INDEX idx_biz (biz_type, biz_id),

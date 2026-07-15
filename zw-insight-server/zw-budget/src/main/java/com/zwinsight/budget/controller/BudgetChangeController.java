@@ -22,7 +22,7 @@ public class BudgetChangeController {
 
     private final BudgetChangeService budgetChangeService;
 
-    @GetMapping
+    @GetMapping({"/page", ""})
     public R<PageResult<BizBudgetChange>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,

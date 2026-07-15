@@ -313,12 +313,17 @@ public class MachineWorkSettlementService {
      * 项目费用总览
      */
     public MachineSettlementSummaryVO getProjectSummary(Long projectId) {
-        if (projectId == null) {
-            throw new BusinessException("项目ID不能为空");
-        }
-
         MachineSettlementSummaryVO summary = new MachineSettlementSummaryVO();
         summary.setProjectId(projectId);
+
+        if (projectId == null) {
+            // 无项目选择时返回空汇总
+            summary.setTotalSettledAmount(BigDecimal.ZERO);
+            summary.setTotalPaidAmount(BigDecimal.ZERO);
+            summary.setUnpaidAmount(BigDecimal.ZERO);
+            summary.setSettlementCount(0);
+            return summary;
+        }
 
         // 累计结算总金额（已审批状态）
         BigDecimal totalSettled = detailMapper.sumApprovedAmountByProject(projectId);

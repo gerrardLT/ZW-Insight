@@ -7,6 +7,8 @@ import com.zwinsight.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 预算管控配置服务
  */
@@ -15,6 +17,13 @@ import org.springframework.stereotype.Service;
 public class BudgetConfigService {
 
     private final BizBudgetConfigMapper budgetConfigMapper;
+
+    /**
+     * 查询全部预算管控配置列表
+     */
+    public List<BizBudgetConfig> listAll() {
+        return budgetConfigMapper.selectList(new LambdaQueryWrapper<>());
+    }
 
     /**
      * 获取配置（优先项目级，其次全局）

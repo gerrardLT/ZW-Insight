@@ -1,10 +1,13 @@
 package com.zwinsight.budget.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.budget.domain.BizBudgetConfig;
 import com.zwinsight.budget.service.BudgetConfigService;
 import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 预算管控配置接口
@@ -15,6 +18,14 @@ import org.springframework.web.bind.annotation.*;
 public class BudgetConfigController {
 
     private final BudgetConfigService budgetConfigService;
+
+    /**
+     * 查询全部预算管控配置列表
+     */
+    @GetMapping("/list")
+    public R<List<BizBudgetConfig>> list() {
+        return R.ok(budgetConfigService.listAll());
+    }
 
     @GetMapping("/{projectId}")
     public R<BizBudgetConfig> getConfig(@PathVariable Long projectId) {

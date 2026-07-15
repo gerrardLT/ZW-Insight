@@ -57,7 +57,7 @@ public class MachineSettlementController {
      * 项目费用总览
      */
     @GetMapping("/summary")
-    public R<MachineSettlementSummaryVO> getProjectSummary(@RequestParam Long projectId) {
+    public R<MachineSettlementSummaryVO> getProjectSummary(@RequestParam(required = false) Long projectId) {
         return R.ok(machineWorkSettlementService.getProjectSummary(projectId));
     }
 
