@@ -44,7 +44,8 @@ export function deleteSubcontractOutput(id: number) {
 
 // ======================== 分包结算 ========================
 export function getSubcontractSettlementPage(params: any) {
-  return request.get('/v1/subcontract/settlement/page', { params })
+  // 后端为根 @GetMapping（/api/v1/subcontract/settlement），无 /page 后缀
+  return request.get('/v1/subcontract/settlement', { params })
 }
 
 export function getSubcontractSettlementDetail(id: number) {

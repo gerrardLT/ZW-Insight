@@ -1,11 +1,13 @@
 package com.zwinsight.site.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 质量安全检查实体
@@ -47,4 +49,8 @@ public class BizInspection extends BaseEntity {
 
     /** 整改状态（PENDING/SUBMITTED/APPROVED/REJECTED） */
     private String rectificationStatus;
+
+    /** 检查明细（随主表提交，非表字段） */
+    @TableField(exist = false)
+    private List<BizInspectionDetail> details;
 }

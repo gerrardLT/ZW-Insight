@@ -43,21 +43,44 @@ public class MaterialInboundService {
     }
 
     /**
-     * 根据ID查询
+     * 根据ID查询（含明细）
      */
     public BizMaterialInbound getById(Long id) {
         BizMaterialInbound inbound = inboundMapper.selectById(id);
         if (inbound == null) throw new BusinessException("入库单不存在");
+        List<BizMaterialInboundDetail> details = inboundDetailMapper.selectList(
+                new LambdaQueryWrapper<BizMaterialInboundDetail>()
+                        .eq(BizMaterialInboundDetail::getInboundId, id));
+        inbound.setDetails(details);
         return inbound;
     }
 
     /**
-     * 更新入库单
+     * 更新入库单（同步更新明细并重算总金额）
      */
+    @Transactional(rollbackFor = Exception.class)
     public void update(BizMaterialInbound inbound) {
         BizMaterialInbound existing = inboundMapper.selectById(inbound.getId());
         if (existing == null) throw new BusinessException("入库单不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+
+        List<BizMaterialInboundDetail> details = inbound.getDetails();
+        if (details != null) {
+            // 删除原明细后按新明细重建，重算总金额
+            inboundDetailMapper.delete(new LambdaQueryWrapper<BizMaterialInboundDetail>()
+                    .eq(BizMaterialInboundDetail::getInboundId, inbound.getId()));
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            for (BizMaterialInboundDetail detail : details) {
+                detail.setId(null);
+                detail.setInboundId(inbound.getId());
+                if (detail.getTotalPrice() == null && detail.getUnitPrice() != null && detail.getQuantity() != null) {
+                    detail.setTotalPrice(detail.getUnitPrice().multiply(detail.getQuantity()));
+                }
+                totalAmount = totalAmount.add(detail.getTotalPrice() != null ? detail.getTotalPrice() : BigDecimal.ZERO);
+                inboundDetailMapper.insert(detail);
+            }
+            inbound.setTotalAmount(totalAmount);
+        }
         inboundMapper.updateById(inbound);
     }
 

@@ -3,11 +3,13 @@ package com.zwinsight.site.controller;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.site.domain.BizInspection;
+import com.zwinsight.site.domain.BizInspectionDetail;
 import com.zwinsight.site.service.InspectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,9 +31,20 @@ public class InspectionController {
         return R.ok(inspectionService.page(page, size, projectId, inspectionType));
     }
 
+    @GetMapping("/{id}")
+    public R<BizInspection> getDetail(@PathVariable Long id) {
+        return R.ok(inspectionService.getDetail(id));
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody BizInspection inspection) {
         inspectionService.save(inspection);
+        return R.ok();
+    }
+
+    @PutMapping("/{id}/details")
+    public R<Void> updateDetails(@PathVariable Long id, @RequestBody List<BizInspectionDetail> details) {
+        inspectionService.updateDetails(id, details);
         return R.ok();
     }
 

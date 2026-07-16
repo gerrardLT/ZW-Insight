@@ -103,7 +103,26 @@ function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, title: 
 function handleAdd() { isEdit.value = false; formData.value = { id: undefined, title: '', materialName: '', specification: '', quantity: 1, deadline: '', requirement: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 
-async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateInquiry(formData.value) : await createInquiry(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
+// 将单物料表单字段组装为后端期望的 items 数组（后端持久化到 biz_inquiry_item），保持前后端一致
+function buildInquiryPayload() {
+  const f = formData.value
+  return {
+    id: f.id,
+    title: f.title,
+    deadline: f.deadline,
+    description: f.requirement,
+    materialSummary: f.materialName,
+    items: [
+      {
+        materialName: f.materialName,
+        specification: f.specification,
+        quantity: f.quantity,
+      },
+    ],
+  }
+}
+
+async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { const payload = buildInquiryPayload(); isEdit.value ? await updateInquiry(payload) : await createInquiry(payload); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handlePublish(row: any) { await ElMessageBox.confirm('确定要发布此询价吗？', '提示', { type: 'warning' }); await publishInquiry(row.id); ElMessage.success('发布成功'); loadData() }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteInquiry(row.id); ElMessage.success('删除成功'); loadData() }
 onMounted(() => { loadData() })

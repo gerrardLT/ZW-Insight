@@ -128,4 +128,82 @@ class MaterialInboundServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("入库单不存在");
     }
+
+    @Test
+    @DisplayName("查询：返回主表并加载明细")
+    void testGetById_withDetails() {
+        BizMaterialInbound inbound = new BizMaterialInbound();
+        inbound.setId(1L);
+        when(inboundMapper.selectById(1L)).thenReturn(inbound);
+
+        BizMaterialInboundDetail detail = new BizMaterialInboundDetail();
+        detail.setMaterialName("水泥");
+        when(inboundDetailMapper.selectList(any())).thenReturn(List.of(detail));
+
+        BizMaterialInbound result = materialInboundService.getById(1L);
+
+        assertThat(result.getDetails()).hasSize(1);
+        assertThat(result.getDetails().get(0).getMaterialName()).isEqualTo("水泥");
+    }
+
+    @Test
+    @DisplayName("更新：删除原明细重建并重算总金额")
+    void testUpdate_replaceDetails() {
+        BizMaterialInbound existing = new BizMaterialInbound();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(inboundMapper.selectById(1L)).thenReturn(existing);
+
+        BizMaterialInbound inbound = new BizMaterialInbound();
+        inbound.setId(1L);
+        BizMaterialInboundDetail d1 = new BizMaterialInboundDetail();
+        d1.setUnitPrice(new BigDecimal("100"));
+        d1.setQuantity(new BigDecimal("3"));
+        BizMaterialInboundDetail d2 = new BizMaterialInboundDetail();
+        d2.setTotalPrice(new BigDecimal("200"));
+        inbound.setDetails(List.of(d1, d2));
+
+        materialInboundService.update(inbound);
+
+        verify(inboundDetailMapper).delete(any());
+        verify(inboundDetailMapper, times(2)).insert(any());
+        assertThat(d1.getTotalPrice()).isEqualTo(new BigDecimal("300"));
+        assertThat(inbound.getTotalAmount()).isEqualTo(new BigDecimal("500"));
+        verify(inboundMapper).updateById(inbound);
+    }
+
+    @Test
+    @DisplayName("更新：details 为 null 时仅更新主表")
+    void testUpdate_nullDetails_onlyMaster() {
+        BizMaterialInbound existing = new BizMaterialInbound();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(inboundMapper.selectById(1L)).thenReturn(existing);
+
+        BizMaterialInbound inbound = new BizMaterialInbound();
+        inbound.setId(1L);
+        // details 为 null
+
+        materialInboundService.update(inbound);
+
+        verify(inboundDetailMapper, never()).delete(any());
+        verify(inboundDetailMapper, never()).insert(any());
+        verify(inboundMapper).updateById(inbound);
+    }
+
+    @Test
+    @DisplayName("更新：非DRAFT拒绝")
+    void testUpdate_nonDraft() {
+        BizMaterialInbound existing = new BizMaterialInbound();
+        existing.setId(1L);
+        existing.setStatus("APPROVED");
+        when(inboundMapper.selectById(1L)).thenReturn(existing);
+
+        BizMaterialInbound inbound = new BizMaterialInbound();
+        inbound.setId(1L);
+
+        assertThatThrownBy(() -> materialInboundService.update(inbound))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可编辑");
+    }
 }

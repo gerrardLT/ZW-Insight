@@ -89,6 +89,9 @@
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="关联合同" prop="contractId">
+          <ContractSelector v-model="formData.contractId" :project-id="formData.projectId" />
+        </el-form-item>
         <el-form-item label="开票金额" prop="invoiceAmount">
           <el-input-number v-model="formData.invoiceAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
@@ -123,6 +126,7 @@ import type { FormInstance } from 'element-plus'
 import { getInvoiceApplyPage, createInvoiceApply, deleteInvoiceApply, submitInvoiceApply } from '@/api/finance'
 import { getProjectList } from '@/api/project'
 import TaxRateSelector from '@/components/TaxRateSelector.vue'
+import ContractSelector from '@/components/ContractSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -141,6 +145,7 @@ const queryParams = ref({
 
 const formData = ref({
   projectId: undefined as number | undefined,
+  contractId: undefined as number | undefined,
   invoiceAmount: 0,
   taxRate: undefined as number | undefined,
   invoiceType: '增值税专用发票',
@@ -150,6 +155,7 @@ const formData = ref({
 
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
+  contractId: [{ required: true, message: '请选择关联合同', trigger: 'change' }],
   invoiceAmount: [{ required: true, message: '请输入开票金额', trigger: 'blur' }]
 }
 
@@ -185,7 +191,7 @@ function handleReset() {
 }
 
 function handleAdd() {
-  formData.value = { projectId: undefined, invoiceAmount: 0, taxRate: undefined, invoiceType: '增值税专用发票', applyDate: '', remark: '' }
+  formData.value = { projectId: undefined, contractId: undefined, invoiceAmount: 0, taxRate: undefined, invoiceType: '增值税专用发票', applyDate: '', remark: '' }
   dialogVisible.value = true
 }
 

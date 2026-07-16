@@ -6,11 +6,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.site.domain.BizInspection;
+import com.zwinsight.site.domain.BizInspectionDetail;
+import com.zwinsight.site.mapper.BizInspectionDetailMapper;
 import com.zwinsight.site.mapper.BizInspectionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 质量安全检查服务
@@ -20,6 +24,7 @@ import java.time.LocalDate;
 public class InspectionService {
 
     private final BizInspectionMapper inspectionMapper;
+    private final BizInspectionDetailMapper inspectionDetailMapper;
 
     /**
      * 分页查询
@@ -35,13 +40,63 @@ public class InspectionService {
     }
 
     /**
-     * 新增检查记录
+     * 新增检查记录（含明细）
      */
+    @Transactional(rollbackFor = Exception.class)
     public void save(BizInspection inspection) {
         if (inspection.getHasProblem() == null) {
             inspection.setHasProblem(0);
         }
         inspectionMapper.insert(inspection);
+        saveDetails(inspection.getId(), inspection.getDetails());
+    }
+
+    /**
+     * 查询检查记录详情（含明细）
+     */
+    public BizInspection getDetail(Long id) {
+        BizInspection inspection = inspectionMapper.selectById(id);
+        if (inspection == null) {
+            throw new BusinessException("检查记录不存在");
+        }
+        List<BizInspectionDetail> details = inspectionDetailMapper.selectList(
+                new LambdaQueryWrapper<BizInspectionDetail>()
+                        .eq(BizInspectionDetail::getInspectionId, id)
+                        .orderByAsc(BizInspectionDetail::getSortOrder));
+        inspection.setDetails(details);
+        return inspection;
+    }
+
+    /**
+     * 更新检查明细（删除后重建）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateDetails(Long id, List<BizInspectionDetail> details) {
+        BizInspection inspection = inspectionMapper.selectById(id);
+        if (inspection == null) {
+            throw new BusinessException("检查记录不存在");
+        }
+        inspectionDetailMapper.deleteByInspectionId(id);
+        saveDetails(id, details);
+    }
+
+    /**
+     * 批量插入检查明细（统一设置 inspectionId、默认检查结果与排序）
+     */
+    private void saveDetails(Long inspectionId, List<BizInspectionDetail> details) {
+        if (details == null || details.isEmpty()) {
+            return;
+        }
+        int sortOrder = 1;
+        for (BizInspectionDetail detail : details) {
+            detail.setId(null);
+            detail.setInspectionId(inspectionId);
+            if (StrUtil.isBlank(detail.getCheckResult())) {
+                detail.setCheckResult("NOT_CHECKED");
+            }
+            detail.setSortOrder(sortOrder++);
+            inspectionDetailMapper.insert(detail);
+        }
     }
 
     /**

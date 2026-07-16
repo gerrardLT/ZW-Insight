@@ -11,13 +11,8 @@
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="110px">
         <el-row :gutter="24">
           <el-col :span="12">
-            <el-form-item label="项目名称" prop="projectName">
-              <el-input v-model="formData.projectName" placeholder="请输入项目名称" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="检查人">
-              <el-input v-model="formData.inspector" placeholder="请输入检查人" />
+            <el-form-item label="项目" prop="projectId">
+              <ProjectSelector v-model="formData.projectId" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -59,20 +54,9 @@
         </el-row>
 
         <el-row :gutter="24">
-          <el-col :span="12">
-            <el-form-item label="检查日期">
-              <el-date-picker
-                v-model="formData.inspectionDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择日期"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="整改说明">
-              <el-input v-model="formData.remark" placeholder="请输入整改说明" />
+          <el-col :span="24">
+            <el-form-item label="检查内容">
+              <el-input v-model="formData.inspectionContent" type="textarea" :rows="2" placeholder="请输入检查内容（可选）" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -121,12 +105,12 @@
               <span v-else>{{ row.checkMethod }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="result" label="检查结果" width="140" align="center">
+          <el-table-column prop="checkResult" label="检查结果" width="140" align="center">
             <template #default="{ row }">
-              <el-select v-model="row.result" placeholder="请选择" style="width: 100%">
+              <el-select v-model="row.checkResult" placeholder="请选择" style="width: 100%">
                 <el-option label="合格" value="PASS" />
                 <el-option label="不合格" value="FAIL" />
-                <el-option label="未检查" value="UNCHECKED" />
+                <el-option label="未检查" value="NOT_CHECKED" />
               </el-select>
             </template>
           </el-table-column>
@@ -155,6 +139,7 @@ import {
   createInspection,
   getInspectionPage
 } from '@/api/site'
+import ProjectSelector from '@/components/ProjectSelector.vue'
 import {
   listInspectionSchemes,
   getSchemeItems,
@@ -168,7 +153,7 @@ interface InspectionDetail {
   itemName: string
   checkStandard: string
   checkMethod: string
-  result: string
+  checkResult: string
 }
 
 const route = useRoute()
@@ -183,17 +168,14 @@ const isEdit = computed(() => !!route.params.id)
 
 const formData = ref({
   id: undefined as number | undefined,
-  projectName: '',
-  inspector: '',
+  projectId: undefined as number | undefined,
   inspectionType: '' as string,
   schemeId: undefined as number | undefined,
-  inspectionDate: '',
-  result: 'PASS',
-  remark: ''
+  inspectionContent: ''
 })
 
 const formRules = {
-  projectName: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+  projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   inspectionType: [{ required: true, message: '请选择检查类型', trigger: 'change' }]
 }
 
@@ -253,7 +235,7 @@ async function handleSchemeChange(schemeId: number | undefined) {
       itemName: item.itemName,
       checkStandard: item.checkStandard || '',
       checkMethod: item.checkMethod || '',
-      result: 'UNCHECKED'
+      checkResult: 'NOT_CHECKED'
     }))
   } catch (e) {
     ElMessage.error('获取方案检查项失败')
@@ -270,7 +252,7 @@ function handleAddDetail() {
     itemName: '',
     checkStandard: '',
     checkMethod: '',
-    result: 'UNCHECKED'
+    checkResult: 'NOT_CHECKED'
   })
 }
 
@@ -286,13 +268,10 @@ async function loadInspectionDetail(id: number) {
     const data = res.data
     formData.value = {
       id: data.id,
-      projectName: data.projectName || '',
-      inspector: data.inspector || '',
+      projectId: data.projectId || undefined,
       inspectionType: data.inspectionType || '',
       schemeId: data.schemeId || undefined,
-      inspectionDate: data.inspectionDate || '',
-      result: data.result || 'PASS',
-      remark: data.remark || ''
+      inspectionContent: data.inspectionContent || ''
     }
     // 如果有方案快照，从快照加载明细
     if (data.details && data.details.length > 0) {
@@ -301,7 +280,7 @@ async function loadInspectionDetail(id: number) {
         itemName: d.itemName || '',
         checkStandard: d.checkStandard || '',
         checkMethod: d.checkMethod || '',
-        result: d.result || 'UNCHECKED'
+        checkResult: d.checkResult || 'NOT_CHECKED'
       }))
     } else if (data.schemeSnapshot) {
       // 从快照恢复
@@ -313,7 +292,7 @@ async function loadInspectionDetail(id: number) {
           itemName: item.itemName || '',
           checkStandard: item.checkStandard || '',
           checkMethod: item.checkMethod || '',
-          result: 'UNCHECKED'
+          checkResult: 'NOT_CHECKED'
         }))
       } catch (e) {
         detailList.value = []

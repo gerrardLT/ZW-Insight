@@ -42,11 +42,10 @@
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="supplierName" label="收款单位" width="150" show-overflow-tooltip />
-        <el-table-column prop="applyAmount" label="申请金额" width="130" align="right">
-          <template #default="{ row }">{{ formatMoney(row.applyAmount) }}</template>
+        <el-table-column prop="paymentAmount" label="付款金额" width="130" align="right">
+          <template #default="{ row }">{{ formatMoney(row.paymentAmount) }}</template>
         </el-table-column>
-        <el-table-column prop="paymentType" label="付款类型" width="120" />
-        <el-table-column prop="applyDate" label="申请日期" width="110" />
+        <el-table-column prop="paymentDate" label="付款日期" width="110" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
@@ -91,26 +90,17 @@
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="收款单位" prop="supplierName">
-          <el-input v-model="formData.supplierName" placeholder="请输入收款单位" />
+        <el-form-item label="关联合同" prop="contractId">
+          <OtherContractSelector v-model="formData.contractId" :project-id="formData.projectId" />
         </el-form-item>
-        <el-form-item label="申请金额" prop="applyAmount">
-          <el-input-number v-model="formData.applyAmount" :min="0" :precision="2" style="width: 100%" />
+        <el-form-item label="收款单位" prop="supplierId">
+          <SupplierSelector v-model="formData.supplierId" @change="handleSupplierChange" />
         </el-form-item>
-        <el-form-item label="付款类型">
-          <el-select v-model="formData.paymentType" style="width: 100%">
-            <el-option label="材料款" value="材料款" />
-            <el-option label="劳务款" value="劳务款" />
-            <el-option label="机械租赁" value="机械租赁" />
-            <el-option label="分包款" value="分包款" />
-            <el-option label="其他" value="其他" />
-          </el-select>
+        <el-form-item label="付款金额" prop="paymentAmount">
+          <el-input-number v-model="formData.paymentAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="申请日期">
-          <el-date-picker v-model="formData.applyDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="formData.remark" type="textarea" :rows="3" />
+        <el-form-item label="付款日期" prop="paymentDate">
+          <el-date-picker v-model="formData.paymentDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -127,6 +117,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getPaymentApplyPage, createPaymentApply, deletePaymentApply, submitPaymentApply } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import SupplierSelector from '@/components/SupplierSelector.vue'
+import OtherContractSelector from '@/components/OtherContractSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -145,17 +137,23 @@ const queryParams = ref({
 
 const formData = ref({
   projectId: undefined as number | undefined,
+  contractId: undefined as number | undefined,
+  supplierId: undefined as number | undefined,
   supplierName: '',
-  applyAmount: 0,
-  paymentType: '材料款',
-  applyDate: '',
-  remark: ''
+  paymentAmount: 0,
+  paymentDate: ''
 })
 
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
-  supplierName: [{ required: true, message: '请输入收款单位', trigger: 'blur' }],
-  applyAmount: [{ required: true, message: '请输入申请金额', trigger: 'blur' }]
+  contractId: [{ required: true, message: '请选择关联合同', trigger: 'change' }],
+  supplierId: [{ required: true, message: '请选择收款单位', trigger: 'change' }],
+  paymentAmount: [{ required: true, message: '请输入付款金额', trigger: 'blur' }],
+  paymentDate: [{ required: true, message: '请选择付款日期', trigger: 'change' }]
+}
+
+function handleSupplierChange(_val: number | undefined, item: any) {
+  formData.value.supplierName = item?.supplierName || ''
 }
 
 const statusMap: Record<string, { label: string; type: string }> = {
@@ -205,7 +203,7 @@ function handleReset() {
 }
 
 function handleAdd() {
-  formData.value = { projectId: undefined, supplierName: '', applyAmount: 0, paymentType: '材料款', applyDate: '', remark: '' }
+  formData.value = { projectId: undefined, contractId: undefined, supplierId: undefined, supplierName: '', paymentAmount: 0, paymentDate: '' }
   dialogVisible.value = true
 }
 
