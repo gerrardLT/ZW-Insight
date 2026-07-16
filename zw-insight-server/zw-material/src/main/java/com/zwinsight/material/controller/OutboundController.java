@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 材料出库接口
@@ -36,15 +35,13 @@ public class OutboundController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody Map<String, Object> body) {
-        BizMaterialOutbound outbound = new BizMaterialOutbound();
-        outboundService.save(outbound, List.of());
+    public R<Void> save(@RequestBody BizMaterialOutbound outbound) {
+        outboundService.save(outbound, outbound.getDetails() != null ? outbound.getDetails() : List.of());
         return R.ok();
     }
 
     @PutMapping("/{id}")
-    public R<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        BizMaterialOutbound outbound = new BizMaterialOutbound();
+    public R<Void> update(@PathVariable Long id, @RequestBody BizMaterialOutbound outbound) {
         outbound.setId(id);
         outboundService.update(outbound);
         return R.ok();

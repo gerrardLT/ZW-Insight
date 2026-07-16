@@ -4,8 +4,6 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
-import com.zwinsight.common.reference.ReferenceCheck;
-import com.zwinsight.common.reference.ReferenceRelation;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.tender.domain.BizPersonCertificate;
 import com.zwinsight.tender.mapper.BizPersonCertificateMapper;
@@ -53,14 +51,10 @@ public class PersonCertificateService {
     }
 
     /**
-     * 删除（引用校验：投标报名、投标任务）
+     * 删除人员证书
+     * <p>注：投标登记（biz_tender_register）与投标任务（biz_tender_task）均不以证书ID关联，
+     * 故不做引用校验。</p>
      */
-    @ReferenceCheck({
-            @ReferenceRelation(tableName = "biz_tender_registration", column = "certificate_id",
-                    displayName = "投标报名", codeColumn = "registration_code"),
-            @ReferenceRelation(tableName = "biz_tender_task", column = "certificate_id",
-                    displayName = "投标任务", codeColumn = "task_code")
-    })
     public void delete(Long id) {
         BizPersonCertificate existing = certificateMapper.selectById(id);
         if (existing == null) {

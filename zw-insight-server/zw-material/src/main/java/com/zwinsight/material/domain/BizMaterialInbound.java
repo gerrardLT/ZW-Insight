@@ -1,5 +1,6 @@
 package com.zwinsight.material.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -7,6 +8,7 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 材料入库单
@@ -36,4 +38,8 @@ public class BizMaterialInbound extends BaseEntity {
 
     /** 状态（DRAFT-草稿/APPROVED-已审批） */
     private String status;
+
+    /** 入库明细（随主表提交，非表字段） */
+    @TableField(exist = false)
+    private List<BizMaterialInboundDetail> details;
 }

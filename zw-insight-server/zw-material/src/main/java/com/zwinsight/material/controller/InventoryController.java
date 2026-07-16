@@ -7,7 +7,6 @@ import com.zwinsight.material.service.MaterialInventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.Map;
 
 /**
@@ -34,15 +33,13 @@ public class InventoryController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody Map<String, Object> body) {
-        BizMaterialInventory inventory = new BizMaterialInventory();
-        inventoryService.save(inventory, Map.of());
+    public R<Void> save(@RequestBody BizMaterialInventory inventory) {
+        inventoryService.save(inventory, inventory.getAdjustments() != null ? inventory.getAdjustments() : Map.of());
         return R.ok();
     }
 
     @PutMapping("/{id}")
-    public R<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        BizMaterialInventory inventory = new BizMaterialInventory();
+    public R<Void> update(@PathVariable Long id, @RequestBody BizMaterialInventory inventory) {
         inventory.setId(id);
         inventoryService.update(inventory);
         return R.ok();

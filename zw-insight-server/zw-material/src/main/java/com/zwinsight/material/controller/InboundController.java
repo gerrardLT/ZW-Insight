@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 材料入库接口
@@ -35,17 +34,13 @@ public class InboundController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody Map<String, Object> body) {
-        BizMaterialInbound inbound = new BizMaterialInbound();
-        // 由前端传入inbound和details，这里通过Map方式接收后手动绑定
-        // 实际项目中建议使用专用DTO
-        inboundService.save(inbound, List.of());
+    public R<Void> save(@RequestBody BizMaterialInbound inbound) {
+        inboundService.save(inbound, inbound.getDetails() != null ? inbound.getDetails() : List.of());
         return R.ok();
     }
 
     @PutMapping("/{id}")
-    public R<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        BizMaterialInbound inbound = new BizMaterialInbound();
+    public R<Void> update(@PathVariable Long id, @RequestBody BizMaterialInbound inbound) {
         inbound.setId(id);
         inboundService.update(inbound);
         return R.ok();

@@ -1,5 +1,6 @@
 package com.zwinsight.purchase.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -8,6 +9,7 @@ import lombok.EqualsAndHashCode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 询价单实体
@@ -86,4 +88,16 @@ public class BizInquiry extends BaseEntity {
      * 公示日期
      */
     private LocalDate publicizeDate;
+
+    /**
+     * 询价物料明细（非表字段，创建/更新时随主表一起提交并持久化到 biz_inquiry_item）
+     */
+    @TableField(exist = false)
+    private List<BizInquiryItem> items;
+
+    /**
+     * 定向邀请供应商（非表字段，创建/更新时随主表一起提交并持久化到 biz_inquiry_supplier）
+     */
+    @TableField(exist = false)
+    private List<BizInquirySupplier> suppliers;
 }

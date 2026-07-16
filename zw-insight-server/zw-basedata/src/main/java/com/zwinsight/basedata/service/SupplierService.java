@@ -74,15 +74,15 @@ public class SupplierService {
     }
 
     /**
-     * 删除供应商（引用校验：采购合同、入库单、询价）
+     * 删除供应商（引用校验：采购合同乙方、询价供应商关联）
+     * <p>注：采购合同以 party_b_id 记录乙方（供应商）；询价供应商关联存于 biz_inquiry_supplier。
+     * 入库单主表不直接以 supplier_id 关联供应商，故不做入库引用校验。</p>
      */
     @ReferenceCheck({
-            @ReferenceRelation(tableName = "biz_purchase_contract", column = "supplier_id",
+            @ReferenceRelation(tableName = "biz_purchase_contract", column = "party_b_id",
                     displayName = "采购合同", codeColumn = "contract_code"),
-            @ReferenceRelation(tableName = "biz_material_inbound", column = "supplier_id",
-                    displayName = "入库单", codeColumn = "inbound_code"),
-            @ReferenceRelation(tableName = "biz_purchase_inquiry", column = "supplier_id",
-                    displayName = "询价单", codeColumn = "inquiry_code")
+            @ReferenceRelation(tableName = "biz_inquiry_supplier", column = "supplier_id",
+                    displayName = "询价单", codeColumn = "")
     })
     public void delete(Long id) {
         supplierMapper.deleteById(id);

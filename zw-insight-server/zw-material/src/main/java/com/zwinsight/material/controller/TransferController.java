@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 材料调拨接口
@@ -36,15 +35,13 @@ public class TransferController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody Map<String, Object> body) {
-        BizMaterialTransfer transfer = new BizMaterialTransfer();
-        transferService.save(transfer, List.of());
+    public R<Void> save(@RequestBody BizMaterialTransfer transfer) {
+        transferService.save(transfer, transfer.getDetails() != null ? transfer.getDetails() : List.of());
         return R.ok();
     }
 
     @PutMapping("/{id}")
-    public R<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        BizMaterialTransfer transfer = new BizMaterialTransfer();
+    public R<Void> update(@PathVariable Long id, @RequestBody BizMaterialTransfer transfer) {
         transfer.setId(id);
         transferService.update(transfer);
         return R.ok();

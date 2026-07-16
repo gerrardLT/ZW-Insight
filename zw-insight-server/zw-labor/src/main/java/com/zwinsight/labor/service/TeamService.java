@@ -59,11 +59,11 @@ public class TeamService {
      */
     @ReferenceCheck({
             @ReferenceRelation(tableName = "biz_labor_roster", column = "team_id",
-                    displayName = "花名册", codeColumn = "roster_code"),
+                    displayName = "花名册", codeColumn = ""),
             @ReferenceRelation(tableName = "biz_work_order", column = "team_id",
-                    displayName = "用工单", codeColumn = "order_code"),
+                    displayName = "用工单", codeColumn = ""),
             @ReferenceRelation(tableName = "biz_labor_payroll", column = "team_id",
-                    displayName = "工资单", codeColumn = "payroll_code")
+                    displayName = "工资单", codeColumn = "")
     })
     public void delete(Long id) {
         teamMapper.deleteById(id);

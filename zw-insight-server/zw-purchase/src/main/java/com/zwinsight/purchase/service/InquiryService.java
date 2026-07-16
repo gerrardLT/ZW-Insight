@@ -52,15 +52,21 @@ public class InquiryService {
 
     /**
      * 保存询价单（草稿）
+     * <p>同时持久化随主表提交的物料明细与定向供应商，补齐三方比价链路入口。</p>
      */
+    @Transactional(rollbackFor = Exception.class)
     public void save(BizInquiry inquiry) {
         inquiry.setStatus("DRAFT");
         inquiryMapper.insert(inquiry);
+        saveItems(inquiry.getId(), inquiry.getItems());
+        saveSuppliers(inquiry.getId(), inquiry.getSuppliers());
     }
 
     /**
      * 更新询价单
+     * <p>若随主表提交了物料明细/供应商，则整体替换（先删后插），保证与前端提交内容一致。</p>
      */
+    @Transactional(rollbackFor = Exception.class)
     public void update(BizInquiry inquiry) {
         BizInquiry existing = inquiryMapper.selectById(inquiry.getId());
         if (existing == null) {
@@ -70,6 +76,46 @@ public class InquiryService {
             throw new BusinessException("仅草稿状态可编辑");
         }
         inquiryMapper.updateById(inquiry);
+        if (inquiry.getItems() != null) {
+            LambdaQueryWrapper<BizInquiryItem> delItems = new LambdaQueryWrapper<>();
+            delItems.eq(BizInquiryItem::getInquiryId, inquiry.getId());
+            inquiryItemMapper.delete(delItems);
+            saveItems(inquiry.getId(), inquiry.getItems());
+        }
+        if (inquiry.getSuppliers() != null) {
+            LambdaQueryWrapper<BizInquirySupplier> delSuppliers = new LambdaQueryWrapper<>();
+            delSuppliers.eq(BizInquirySupplier::getInquiryId, inquiry.getId());
+            inquirySupplierMapper.delete(delSuppliers);
+            saveSuppliers(inquiry.getId(), inquiry.getSuppliers());
+        }
+    }
+
+    /**
+     * 持久化物料明细
+     */
+    private void saveItems(Long inquiryId, List<BizInquiryItem> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        for (BizInquiryItem item : items) {
+            item.setId(null);
+            item.setInquiryId(inquiryId);
+            inquiryItemMapper.insert(item);
+        }
+    }
+
+    /**
+     * 持久化定向供应商
+     */
+    private void saveSuppliers(Long inquiryId, List<BizInquirySupplier> suppliers) {
+        if (suppliers == null || suppliers.isEmpty()) {
+            return;
+        }
+        for (BizInquirySupplier supplier : suppliers) {
+            supplier.setId(null);
+            supplier.setInquiryId(inquiryId);
+            inquirySupplierMapper.insert(supplier);
+        }
     }
 
     /**

@@ -6,8 +6,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.basedata.domain.BdMaterial;
 import com.zwinsight.basedata.mapper.BdMaterialMapper;
 import com.zwinsight.common.exception.BusinessException;
-import com.zwinsight.common.reference.ReferenceCheck;
-import com.zwinsight.common.reference.ReferenceRelation;
 import com.zwinsight.common.result.PageResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -67,16 +65,10 @@ public class MaterialService {
     }
 
     /**
-     * 删除材料（引用校验：合同明细、入库明细、库存）
+     * 删除材料
+     * <p>注：入库明细、库存等业务表均以 material_name 快照存储物料，与材料主数据无 material_id
+     * 外键关联，删除主数据不影响历史单据快照，故不做引用校验。</p>
      */
-    @ReferenceCheck({
-            @ReferenceRelation(tableName = "biz_contract_material_detail", column = "material_id",
-                    displayName = "合同明细", codeColumn = ""),
-            @ReferenceRelation(tableName = "biz_material_inbound_detail", column = "material_id",
-                    displayName = "入库明细", codeColumn = ""),
-            @ReferenceRelation(tableName = "biz_material_inventory", column = "material_id",
-                    displayName = "库存记录", codeColumn = "")
-    })
     public void delete(Long id) {
         materialMapper.deleteById(id);
     }

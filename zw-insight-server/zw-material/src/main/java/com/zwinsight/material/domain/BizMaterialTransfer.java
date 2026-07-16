@@ -1,11 +1,13 @@
 package com.zwinsight.material.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 材料调拨单
@@ -26,4 +28,8 @@ public class BizMaterialTransfer extends BaseEntity {
 
     /** 状态（DRAFT-草稿/APPROVED-已审批） */
     private String status;
+
+    /** 调拨明细（随主表提交，非表字段） */
+    @TableField(exist = false)
+    private List<BizMaterialTransferDetail> details;
 }
