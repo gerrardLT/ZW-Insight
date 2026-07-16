@@ -67,7 +67,8 @@ jwt:
 
 # 认证配置
 auth:
-  captcha-enabled: true
+  # 联调测试期临时关闭图形验证码，便于自动化 API 测试登录；上线前须改回 true
+  captcha-enabled: false
   lock-enabled: true
   lock-check-period: 300
   lock-max-attempts: 5
