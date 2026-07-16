@@ -117,3 +117,28 @@ tests/reports/
 
 # 部署用的大体积可启动 jar（本地构建产物，不入库）
 deploy/zw-insight-app.jar
+
+# ========================
+# API 测试套件本地产物（源码入库，运行态产物不入库）
+# ========================
+zw-insight-web/e2e/api-tests/node_modules/
+zw-insight-web/e2e/api-tests/.auth/
+zw-insight-web/e2e/api-tests/_*.mjs
+zw-insight-web/e2e/api-tests/_*.json
+# OCR 训练二进制（体积大，不入库；本地/CI 自行提供）
+**/eng.traineddata
+
+# ========================
+# 本机诊断脚本 / 临时工具（不入库）
+# ========================
+keys/_*
+keys/coldig.*
+tools/login-helper.js
+
+# ========================
+# Qoder 本地缓存
+# ========================
+.qoder/
+
+# unplugin-vue-components 自动生成（不入库，构建时生成）
+zw-insight-web/src/components.d.ts
