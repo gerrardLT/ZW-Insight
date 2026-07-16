@@ -90,7 +90,10 @@ public class MybatisPlusConfig {
             @Override
             public boolean ignoreTable(String tableName) {
                 // sys_开头的系统表和act_开头的流程表不做租户隔离
-                return tableName.startsWith("sys_") || tableName.startsWith("act_");
+                // msg_available_shortcut 为全局可选快捷功能定义表（实体无 tenantId），不做租户隔离
+                return tableName.startsWith("sys_")
+                        || tableName.startsWith("act_")
+                        || "msg_available_shortcut".equals(tableName);
             }
         });
     }
