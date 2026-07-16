@@ -26,6 +26,12 @@ public class InvoiceApplyCreateRequest {
     private Long contractId;
 
     /**
+     * 申请日期（业务日期，格式 yyyy-MM-dd，用于财务封账期间校验）
+     */
+    @NotNull(message = "申请日期不能为空")
+    private String applyDate;
+
+    /**
      * 发票类型（SPECIAL-专票/NORMAL-普票）
      */
     @Size(max = 20, message = "发票类型不能超过20个字符")

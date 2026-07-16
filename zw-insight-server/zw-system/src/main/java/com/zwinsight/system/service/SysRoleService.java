@@ -170,12 +170,13 @@ public class SysRoleService {
             throw new BusinessException(403, "无权限：仅系统管理员可配置数据权限");
         }
 
-        // 查询这些角色中是否有 ADMIN 角色
+        // 查询这些角色中是否有管理员角色（ADMIN 或超级管理员 SUPER_ADMIN）
+        // 注意：种子数据中系统管理员账号 admin 关联的角色 roleCode 为 SUPER_ADMIN
         List<Long> roleIds = userRoles.stream().map(SysUserRole::getRoleId).toList();
         Long adminCount = roleMapper.selectCount(
                 new LambdaQueryWrapper<SysRole>()
                         .in(SysRole::getId, roleIds)
-                        .eq(SysRole::getRoleCode, "ADMIN"));
+                        .in(SysRole::getRoleCode, "ADMIN", "SUPER_ADMIN"));
 
         if (adminCount == 0) {
             throw new BusinessException(403, "无权限：仅系统管理员可配置数据权限");
