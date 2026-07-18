@@ -60,4 +60,26 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <!-- 将测试基类（IntegrationTestBase / TestConstants / TestDataCleaner / AssertUtils）
+                 打包为 test-jar，供其他模块的集成测试复用。
+                 原开发者已在 finance/contract/project/system 等集成测试中引用这些基类，
+                 但遗漏了 test-jar 配置，导致这些模块 test-compile 断链，此处补全。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>package-test-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

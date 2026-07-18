@@ -62,6 +62,7 @@
         <lombok.version>1.18.32</lombok.version>
         <jqwik.version>1.9.1</jqwik.version>
         <ip2region.version>2.7.0</ip2region.version>
+        <aliyun-dysmsapi.version>3.0.0</aliyun-dysmsapi.version>
     </properties>
 
     <dependencyManagement>
@@ -298,6 +299,13 @@
                 <groupId>org.lionsoul</groupId>
                 <artifactId>ip2region</artifactId>
                 <version>${ip2region.version}</version>
+            </dependency>
+
+            <!-- 阿里云短信服务 SDK（dysmsapi 2017-05-25） -->
+            <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>dysmsapi20170525</artifactId>
+                <version>${aliyun-dysmsapi.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

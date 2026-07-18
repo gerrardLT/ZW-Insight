@@ -35,7 +35,27 @@ export function deleteProject(id: number) {
 }
 
 export function submitProject(id: number) {
-  return request.put<R<void>>(`/v1/project/${id}/submit`)
+  return request.post<R<void>>(`/v1/project/${id}/submit`)
+}
+
+// 结项条件预检（发起结项前调用，提示哪些条件未满足）
+export interface CloseCheckCondition {
+  name: string
+  passed: boolean
+  message: string
+}
+export interface CloseCheckResult {
+  allPassed: boolean
+  conditions: CloseCheckCondition[]
+  failedReasons: string[]
+}
+export function getProjectCloseCheck(id: number) {
+  return request.get<R<CloseCheckResult>>(`/v1/project/${id}/close-check`)
+}
+
+// 发起项目结项审批（校验通过后状态置 CLOSING，审批通过后置 CLOSED）
+export function closeProject(id: number) {
+  return request.post<R<void>>(`/v1/project/${id}/close`)
 }
 
 // ======================== 建设单位（甲方） ========================

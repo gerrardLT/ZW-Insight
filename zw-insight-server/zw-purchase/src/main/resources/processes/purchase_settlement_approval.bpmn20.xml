@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.zwinsight.com/purchase"
+             xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL http://www.omg.org/spec/BPMN/20100524/MODEL/BPMN20.xsd">
+
+    <process id="purchase_settlement_approval" name="采购结算审批" isExecutable="true">
+
+        <!-- 开始事件 -->
+        <startEvent id="startEvent" name="发起审批"/>
+
+        <!-- 顺序流：开始 → 项目负责人审批 -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="managerApproval"/>
+
+        <!-- 项目负责人审批 -->
+        <userTask id="managerApproval" name="项目负责人审批"
+                  flowable:assignee="${initiator}">
+            <documentation>采购结算单审批 - 项目负责人审核</documentation>
+        </userTask>
+
+        <!-- 顺序流：项目负责人审批 → 财务审核 -->
+        <sequenceFlow id="flow2" sourceRef="managerApproval" targetRef="financeApproval"/>
+
+        <!-- 财务审核 -->
+        <userTask id="financeApproval" name="财务审核"
+                  flowable:candidateGroups="FINANCE">
+            <documentation>采购结算单审批 - 财务审核</documentation>
+        </userTask>
+
+        <!-- 顺序流：财务审核 → 结束 -->
+        <sequenceFlow id="flow3" sourceRef="financeApproval" targetRef="endEvent"/>
+
+        <!-- 结束事件 -->
+        <endEvent id="endEvent" name="审批完成"/>
+
+    </process>
+
+</definitions>

@@ -45,7 +45,12 @@
 
     <!-- 消息提醒 -->
     <view class="section">
-      <view class="section-title">消息提醒<text class="badge" v-if="unreadCount">{{ unreadCount }}</text></view>
+      <view class="section-header">
+        <view class="section-title">消息提醒<text class="badge" v-if="unreadCount">{{ unreadCount }}</text></view>
+        <view class="edit-entry" @click="goMessageCenter">
+          <text class="edit-text">信息中心</text><text class="more-arrow">›</text>
+        </view>
+      </view>
       <view class="msg-list" v-if="messages.length">
         <view class="msg-item" v-for="msg in messages" :key="msg.id">
           <text class="msg-title">{{ msg.title }}</text>
@@ -80,6 +85,10 @@ function navigateTo(url: string) {
 
 function goShortcutEdit() {
   uni.navigateTo({ url: '/pages/mine/shortcut-edit' })
+}
+
+function goMessageCenter() {
+  uni.navigateTo({ url: '/pages/message-center/index' })
 }
 
 // 加载用户个性化快捷入口（未配置时后端返回系统默认项，≤4 项）
@@ -127,6 +136,7 @@ onMounted(() => { loadData() })
 .edit-entry { display: flex; align-items: center; color: #409eff; font-size: 24rpx; }
 .edit-icon { font-size: 26rpx; margin-right: 6rpx; }
 .edit-text { font-size: 24rpx; }
+.more-arrow { font-size: 30rpx; color: #409eff; margin-left: 4rpx; }
 .badge { background: #f56c6c; color: #fff; font-size: 22rpx; padding: 2rpx 12rpx; border-radius: 20rpx; margin-left: 12rpx; font-weight: normal; }
 .shortcut-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20rpx; }
 .shortcut-item { display: flex; flex-direction: column; align-items: center; padding: 16rpx 0; font-size: 24rpx; color: #606266; }

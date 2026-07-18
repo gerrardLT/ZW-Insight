@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.result.PageResult;
 import com.zwinsight.machine.domain.*;
 import com.zwinsight.machine.dto.*;
 import com.zwinsight.machine.mapper.*;
@@ -39,13 +40,17 @@ class MachineWorkSettlementServiceTest {
     @Mock private BizMachineContractMapper contractMapper;
     @Mock private ApprovalService approvalService;
 
-    @InjectMocks
     private MachineWorkSettlementService settlementService;
 
     private MockedStatic<SecurityContextHolder> securityContextMock;
 
     @BeforeEach
     void setUp() {
+        // 手动构造，显式传入 mock。
+        // JDK 21 下 Mockito @InjectMocks 对本服务的 6 个 private final 依赖会回退到字段注入并静默失败，
+        // 导致 stub 的 mock 与 service 实际使用的不是同一实例，故改用构造注入。
+        settlementService = new MachineWorkSettlementService(
+                settlementMapper, detailMapper, workLogMapper, ledgerMapper, contractMapper, approvalService);
         securityContextMock = mockStatic(SecurityContextHolder.class);
         securityContextMock.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
     }
@@ -431,11 +436,16 @@ class MachineWorkSettlementServiceTest {
         }
 
         @Test
-        @DisplayName("项目ID为空 - 抛异常")
+        @DisplayName("项目ID为空 - 返回空汇总（无项目选择时的友好返回，不抛异常）")
         void getProjectSummary_nullProjectId() {
-            assertThatThrownBy(() -> settlementService.getProjectSummary(null))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("项目ID不能为空");
+            MachineSettlementSummaryVO summary = settlementService.getProjectSummary(null);
+
+            assertThat(summary).isNotNull();
+            assertThat(summary.getProjectId()).isNull();
+            assertThat(summary.getTotalSettledAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(summary.getTotalPaidAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(summary.getUnpaidAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(summary.getSettlementCount()).isEqualTo(0);
         }
 
         @Test

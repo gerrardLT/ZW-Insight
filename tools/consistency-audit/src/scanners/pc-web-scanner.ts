@@ -14,25 +14,12 @@ import { join } from 'node:path';
 import type { IScanner } from '../interfaces.js';
 import type { FrontendApiEntry, HttpMethod } from '../types.js';
 
-/** PC 前端需要扫描的 16 个 API 文件 */
-const PC_WEB_API_FILES = [
-  'system.ts',
-  'project.ts',
-  'finance.ts',
-  'site.ts',
-  'material.ts',
-  'machine.ts',
-  'contract.ts',
-  'budget.ts',
-  'purchase.ts',
-  'labor.ts',
-  'subcontract.ts',
-  'hr.ts',
-  'tender.ts',
-  'archive.ts',
-  'dashboard.ts',
-  'basedata.ts',
-];
+/**
+ * PC 前端 API 目录下的类型定义/非请求文件（无 request.xxx() 调用，扫描后自然产出 0 条目，无需排除）。
+ * 扫描策略：动态扫描 zw-insight-web/src/api 目录下的全部 .ts 文件，
+ * 不再使用硬编码白名单，避免新增 api 文件（如 platform.ts、message.ts、
+ * captcha.ts、password-reset.ts、budget-control-config.ts 等）被遗漏而产生假阳性。
+ */
 
 /** HTTP 方法名到枚举值的映射 */
 const METHOD_MAP: Record<string, HttpMethod> = {
@@ -57,8 +44,7 @@ export class PcWebScanner implements IScanner<FrontendApiEntry> {
       return [];
     }
 
-    const allFiles = readdirSync(apiDir).filter((f) => f.endsWith('.ts'));
-    const targetFiles = allFiles.filter((f) => PC_WEB_API_FILES.includes(f));
+    const targetFiles = readdirSync(apiDir).filter((f) => f.endsWith('.ts'));
 
     const entries: FrontendApiEntry[] = [];
 

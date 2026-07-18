@@ -53,7 +53,7 @@ function printSummary(report: AuditReport): void {
 
   console.log(`扫描时间: ${report.summary.scanTime}`);
   console.log(`耗时: ${report.summary.duration}ms`);
-  console.log(`一致率: ${stats.consistencyRate.toFixed(1)}%\n`);
+  console.log(`一致率: ${(stats.consistencyRate * 100).toFixed(1)}%\n`);
 
   console.log('--- API 统计 ---');
   console.log(`后端 API: ${stats.totalBackendApis}`);

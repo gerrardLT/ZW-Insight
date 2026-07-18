@@ -8,25 +8,29 @@
       <view class="tab-item" :class="{ active: activeTab === 'done' }" @click="switchTab('done')">
         <text>已办</text>
       </view>
+      <view class="tab-item" :class="{ active: activeTab === 'initiated' }" @click="switchTab('initiated')">
+        <text>我发起</text>
+      </view>
     </view>
 
     <!-- 列表 -->
     <scroll-view scroll-y class="task-list" @scrolltolower="loadMore" refresher-enabled @refresherrefresh="onRefresh" :refresher-triggered="refreshing">
-      <view class="task-item" v-for="item in tasks" :key="item.id" @click="goDetail(item)">
+      <view class="task-item" v-for="item in tasks" :key="item.id || item.processInstanceId" @click="goDetail(item)">
         <view class="task-header">
-          <text class="task-title">{{ item.processName }}</text>
-          <text class="task-status" :class="item.status">{{ item.statusText || '待处理' }}</text>
+          <text class="task-title">{{ item.processName || item.taskName }}</text>
+          <text class="task-status" :class="item.status">{{ statusText(item) }}</text>
         </view>
         <view class="task-info">
-          <text class="task-applicant">申请人：{{ item.startUserName }}</text>
-          <text class="task-time">{{ item.createTime }}</text>
+          <text class="task-applicant" v-if="activeTab !== 'initiated'">申请人：{{ item.startUserName }}</text>
+          <text class="task-applicant" v-else>发起时间</text>
+          <text class="task-time">{{ item.createTime || item.startTime }}</text>
         </view>
         <view class="task-desc" v-if="item.businessTitle">
           <text>{{ item.businessTitle }}</text>
         </view>
       </view>
       <view class="empty" v-if="!tasks.length && !loading">
-        <text>暂无{{ activeTab === 'todo' ? '待办' : '已办' }}任务</text>
+        <text>暂无{{ tabLabel }}任务</text>
       </view>
       <view class="loading-more" v-if="loading"><text>加载中...</text></view>
       <view class="no-more" v-if="!hasMore && tasks.length"><text>没有更多了</text></view>
@@ -35,9 +39,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { getTodoTasks, getDoneTasks } from '@/api/common'
+import { getTodoTasks, getDoneTasks, getMyInitiatedTasks } from '@/api/common'
 
 const activeTab = ref('todo')
 const tasks = ref<any[]>([])
@@ -45,6 +49,19 @@ const loading = ref(false)
 const refreshing = ref(false)
 const page = ref(1)
 const hasMore = ref(true)
+
+const tabLabel = computed(() => {
+  if (activeTab.value === 'todo') return '待办'
+  if (activeTab.value === 'done') return '已办'
+  return '我发起的'
+})
+
+function statusText(item: any) {
+  if (activeTab.value === 'initiated') {
+    return item.status === 'RUNNING' ? '审批中' : '已完成'
+  }
+  return item.statusText || '待处理'
+}
 
 function switchTab(tab: string) {
   activeTab.value = tab
@@ -58,7 +75,9 @@ async function loadData() {
   if (loading.value) return
   loading.value = true
   try {
-    const api = activeTab.value === 'todo' ? getTodoTasks : getDoneTasks
+    let api = getTodoTasks
+    if (activeTab.value === 'done') api = getDoneTasks
+    else if (activeTab.value === 'initiated') api = getMyInitiatedTasks
     const res: any = await api({ page: page.value, size: 15 })
     const records = res.data?.records || []
     if (page.value === 1) {
@@ -87,8 +106,9 @@ function onRefresh() {
 }
 
 function goDetail(item: any) {
+  const taskId = item.id || item.taskId || ''
   uni.navigateTo({
-    url: `/pages/approval/detail?taskId=${item.id}&processInstanceId=${item.processInstanceId}`
+    url: `/pages/approval/detail?taskId=${taskId}&processInstanceId=${item.processInstanceId}`
   })
 }
 

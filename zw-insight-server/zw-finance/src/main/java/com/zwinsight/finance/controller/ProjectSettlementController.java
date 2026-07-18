@@ -1,6 +1,7 @@
 package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizProjectSettlement;
 import com.zwinsight.finance.domain.BizSettlementContractDetail;
 import com.zwinsight.finance.domain.dto.ProjectSettlementUpdateDTO;
@@ -22,6 +23,18 @@ import java.util.List;
 public class ProjectSettlementController {
 
     private final ProjectSettlementService settlementService;
+
+    /**
+     * 分页查询结算单列表
+     */
+    @GetMapping
+    public R<PageResult<BizProjectSettlement>> page(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String status) {
+        return R.ok(settlementService.page(page, size, projectId, status));
+    }
 
     /**
      * 创建结算单（自动汇总数据）

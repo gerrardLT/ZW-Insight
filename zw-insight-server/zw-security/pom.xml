@@ -73,6 +73,12 @@
             <artifactId>ip2region</artifactId>
         </dependency>
 
+        <!-- 阿里云短信服务 SDK（真实发送短信验证码） -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>dysmsapi20170525</artifactId>
+        </dependency>
+
         <!-- jqwik 属性测试框架（版本由父 POM dependencyManagement 统一管理）。
              spring-boot-starter-test（含 JUnit5 / Mockito / AssertJ / spring-test）已由父 POM
              的通用 <dependencies> 为所有子模块统一引入，无需在此重复声明。 -->

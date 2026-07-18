@@ -5,6 +5,8 @@ import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.contract.mapper.BizContractDetailMapper;
 import com.zwinsight.file.service.SerialNumberService;
+import com.zwinsight.project.domain.BizProject;
+import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -40,6 +42,9 @@ class ConstructionContractServiceTest {
 
     @Mock
     private ApprovalService approvalService;
+
+    @Mock
+    private BizProjectMapper projectMapper;
 
     @InjectMocks
     private ConstructionContractService contractService;
@@ -293,7 +298,12 @@ class ConstructionContractServiceTest {
             existing.setContractAmount(new BigDecimal("1130000"));
             existing.setProjectId(1L);
 
+            BizProject project = new BizProject();
+            project.setId(1L);
+            project.setContractAmount(new BigDecimal("5000000"));
+
             when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(1L)).thenReturn(project);
             when(approvalService.startProcess(
                     eq("CONSTRUCTION_CONTRACT"),
                     eq(contractId),
@@ -312,6 +322,65 @@ class ConstructionContractServiceTest {
 
             assertThat(submitted.getStatus()).isEqualTo("EFFECTIVE");
             assertThat(submitted.getWorkflowInstanceId()).isEqualTo("PROCESS-001");
+
+            // 验证回写项目累计合同金额：5000000 + 1130000 = 6130000
+            ArgumentCaptor<BizProject> projectCaptor = ArgumentCaptor.forClass(BizProject.class);
+            verify(projectMapper).updateById(projectCaptor.capture());
+            assertThat(projectCaptor.getValue().getContractAmount())
+                    .isEqualByComparingTo(new BigDecimal("6130000"));
+        }
+
+        @Test
+        @DisplayName("回写项目金额：项目原金额为 null 时按合同金额累加")
+        void submit_projectAmountNull_shouldInitFromContractAmount() {
+            // Given
+            Long contractId = 100L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("DRAFT");
+            existing.setContractAmount(new BigDecimal("800000"));
+            existing.setProjectId(2L);
+
+            BizProject project = new BizProject();
+            project.setId(2L);
+            project.setContractAmount(null);
+
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(2L)).thenReturn(project);
+            when(approvalService.startProcess(any(), any(), any(), any(Map.class))).thenReturn("PROCESS-002");
+            when(contractMapper.updateById(any(BizConstructionContract.class))).thenReturn(1);
+
+            // When
+            contractService.submit(contractId);
+
+            // Then
+            ArgumentCaptor<BizProject> projectCaptor = ArgumentCaptor.forClass(BizProject.class);
+            verify(projectMapper).updateById(projectCaptor.capture());
+            assertThat(projectCaptor.getValue().getContractAmount())
+                    .isEqualByComparingTo(new BigDecimal("800000"));
+        }
+
+        @Test
+        @DisplayName("回写项目金额：项目不存在时跳过回写不报错")
+        void submit_projectNotFound_shouldSkipWriteback() {
+            // Given
+            Long contractId = 100L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("DRAFT");
+            existing.setContractAmount(new BigDecimal("800000"));
+            existing.setProjectId(999L);
+
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(999L)).thenReturn(null);
+            when(approvalService.startProcess(any(), any(), any(), any(Map.class))).thenReturn("PROCESS-003");
+            when(contractMapper.updateById(any(BizConstructionContract.class))).thenReturn(1);
+
+            // When
+            contractService.submit(contractId);
+
+            // Then
+            verify(projectMapper, never()).updateById(any());
         }
 
         @Test

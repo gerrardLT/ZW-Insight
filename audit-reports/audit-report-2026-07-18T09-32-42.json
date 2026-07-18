@@ -1,0 +1,2527 @@
+{
+  "summary": {
+    "scanTime": "2026-07-18T09:32:42.307Z",
+    "duration": 472,
+    "consistencyRate": 0.8055954088952655,
+    "stats": {
+      "totalBackendModules": 20,
+      "auditedBackendModules": 20,
+      "totalBackendApis": 732,
+      "totalPcWebApis": 613,
+      "totalMobileApis": 49,
+      "totalInconsistencies": 271,
+      "byType": {
+        "FRONTEND_EXTRA_API": 0,
+        "BACKEND_ORPHAN_API": 171,
+        "HTTP_METHOD_MISMATCH": 0,
+        "FEATURE_MISSING": 0,
+        "FEATURE_EXTRA": 100,
+        "FIELD_NAME_MISMATCH": 0,
+        "FIELD_EXTRA_FRONTEND": 0,
+        "FIELD_REQUIRED_MISSING": 0,
+        "PATH_NAMING_VIOLATION": 0,
+        "RESTFUL_NAMING_VIOLATION": 0,
+        "MOBILE_FEATURE_MISSING": 0,
+        "PC_FEATURE_MISSING": 0
+      },
+      "bySeverity": {
+        "Critical": 0,
+        "Major": 0,
+        "Minor": 271
+      },
+      "consistencyRate": 0.8055954088952655
+    }
+  },
+  "moduleReports": [
+    {
+      "moduleName": "system",
+      "backendApiCount": 84,
+      "pcWebApiCount": 63,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\AuditLogController.java",
+          "description": "后端接口 GET /api/v1/system/audit（AuditLogController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysDictController.java",
+          "description": "后端接口 GET /api/v1/system/dict/{id}（SysDictController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysDictController.java",
+          "description": "后端接口 DELETE /api/v1/system/dict/batch（SysDictController.batchDelete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysLogController.java",
+          "description": "后端接口 DELETE /api/v1/system/log/oper（SysLogController.deleteOperLogs）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysLogController.java",
+          "description": "后端接口 DELETE /api/v1/system/log/login（SysLogController.deleteLoginLogs）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysMenuController.java",
+          "description": "后端接口 GET /api/v1/system/menu/user（SysMenuController.getUserMenus）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysPostController.java",
+          "description": "后端接口 DELETE /api/v1/system/post/batch（SysPostController.batchDelete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysTenantController.java",
+          "description": "后端接口 GET /api/v1/platform/tenant/{id}（SysTenantController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysTenantController.java",
+          "description": "后端接口 DELETE /api/v1/platform/tenant/{id}（SysTenantController.delete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysTenantController.java",
+          "description": "后端接口 POST /api/v1/platform/tenant/renew（SysTenantController.renewLegacy）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysTenantController.java",
+          "description": "后端接口 PUT /api/v1/platform/tenant/{id}/permissions（SysTenantController.updatePermissions）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysTenantTypeController.java",
+          "description": "后端接口 DELETE /api/v1/platform/tenant-type/batch（SysTenantTypeController.batchDelete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysUserController.java",
+          "description": "后端接口 DELETE /api/v1/system/user/batch（SysUserController.batchDelete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysUserController.java",
+          "description": "后端接口 PUT /api/v1/system/user/status（SysUserController.batchUpdateStatus）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysUserController.java",
+          "description": "后端接口 POST /api/v1/system/user/import（SysUserController.importUsers）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "system",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-system\\src\\main\\java\\com\\zwinsight\\system\\controller\\SysUserController.java",
+          "description": "后端接口 GET /api/v1/system/user/export（SysUserController.exportUsers）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\backup.ts",
+          "description": "PC端超范围实现: executeBackup（路径: /v1/system/backup/execute），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\backup.ts",
+          "description": "PC端超范围实现: getBackupPage（路径: /v1/system/backup/list），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\backup.ts",
+          "description": "PC端超范围实现: downloadBackup（路径: /v1/system/backup/download/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\backup.ts",
+          "description": "PC端超范围实现: deleteBackup（路径: /v1/system/backup/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\backup.ts",
+          "description": "PC端超范围实现: restoreBackup（路径: /v1/system/backup/restore/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\monitor.ts",
+          "description": "PC端超范围实现: getSystemHealthMetrics（路径: /v1/system/monitor/metrics），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\system.ts",
+          "description": "PC端超范围实现: getDictItemTree（路径: /v1/system/dict-item/{dictId}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\system.ts",
+          "description": "PC端超范围实现: getDictItemList（路径: /v1/system/dict-item/{dictId}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\system.ts",
+          "description": "PC端超范围实现: createDictItem（路径: /v1/system/dict-item），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\system.ts",
+          "description": "PC端超范围实现: updateDictItem（路径: /v1/system/dict-item/{data.id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\system.ts",
+          "description": "PC端超范围实现: deleteDictItem（路径: /v1/system/dict-item/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\version.ts",
+          "description": "PC端超范围实现: createVersion（路径: /v1/system/version），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\version.ts",
+          "description": "PC端超范围实现: getVersionList（路径: /v1/system/version/list），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "system",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\version.ts",
+          "description": "PC端超范围实现: getCurrentVersion（路径: /v1/system/version/current），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "finance",
+      "backendApiCount": 59,
+      "pcWebApiCount": 46,
+      "mobileApiCount": 9,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "finance",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-finance\\src\\main\\java\\com\\zwinsight\\finance\\controller\\BankAccountController.java",
+          "description": "后端接口 GET /api/v1/finance/bank-account（BankAccountController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "finance",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-finance\\src\\main\\java\\com\\zwinsight\\finance\\controller\\BankAccountController.java",
+          "description": "后端接口 POST /api/v1/finance/bank-account（BankAccountController.save）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "finance",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-finance\\src\\main\\java\\com\\zwinsight\\finance\\controller\\BankAccountController.java",
+          "description": "后端接口 PUT /api/v1/finance/bank-account（BankAccountController.update）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "finance",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-finance\\src\\main\\java\\com\\zwinsight\\finance\\controller\\BankAccountController.java",
+          "description": "后端接口 DELETE /api/v1/finance/bank-account/{id}（BankAccountController.delete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "finance",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-finance\\src\\main\\java\\com\\zwinsight\\finance\\controller\\InvoiceApplyController.java",
+          "description": "后端接口 GET /api/v1/finance/invoice-apply/{id}（InvoiceApplyController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "finance",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-finance\\src\\main\\java\\com\\zwinsight\\finance\\controller\\InvoiceApplyController.java",
+          "description": "后端接口 POST /api/v1/finance/invoice-apply/{id}/submit（InvoiceApplyController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "finance",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-finance\\src\\main\\java\\com\\zwinsight\\finance\\controller\\PaymentApplyController.java",
+          "description": "后端接口 GET /api/v1/finance/payment-apply/{id}（PaymentApplyController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "finance",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-finance\\src\\main\\java\\com\\zwinsight\\finance\\controller\\PaymentApplyController.java",
+          "description": "后端接口 POST /api/v1/finance/payment-apply/{id}/submit（PaymentApplyController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "finance",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-finance\\src\\main\\java\\com\\zwinsight\\finance\\controller\\PaymentReceivedController.java",
+          "description": "后端接口 GET /api/v1/finance/payment-received/{id}（PaymentReceivedController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\finance-lock.ts",
+          "description": "PC端超范围实现: createLock（路径: /v1/finance/lock），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\finance-lock.ts",
+          "description": "PC端超范围实现: unlockPeriod（路径: /v1/finance/lock/{id}/unlock），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\finance-lock.ts",
+          "description": "PC端超范围实现: getLockPage（路径: /v1/finance/lock/page），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\finance-lock.ts",
+          "description": "PC端超范围实现: getLockStatus（路径: /v1/finance/lock/status），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\finance.ts",
+          "description": "PC端超范围实现: getInvoiceSummary（路径: /v1/finance/invoice-summary），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\tax-rate.ts",
+          "description": "PC端超范围实现: createTaxRate（路径: /v1/finance/tax-rate），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\tax-rate.ts",
+          "description": "PC端超范围实现: updateTaxRate（路径: /v1/finance/tax-rate/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\tax-rate.ts",
+          "description": "PC端超范围实现: deleteTaxRate（路径: /v1/finance/tax-rate/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\tax-rate.ts",
+          "description": "PC端超范围实现: getTaxRateList（路径: /v1/finance/tax-rate/list），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "finance",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\tax-rate.ts",
+          "description": "PC端超范围实现: getAllTaxRates（路径: /v1/finance/tax-rate/all），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "site",
+      "backendApiCount": 38,
+      "pcWebApiCount": 33,
+      "mobileApiCount": 5,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\controller\\InspectionController.java",
+          "description": "后端接口 GET /api/v1/site/inspection/{id}（InspectionController.getDetail）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\controller\\ReminderConfigController.java",
+          "description": "后端接口 GET /api/v1/site/reminder-config（ReminderConfigController.getConfig）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\controller\\ReminderConfigController.java",
+          "description": "后端接口 PUT /api/v1/site/reminder-config（ReminderConfigController.updateConfig）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\controller\\ReminderLogController.java",
+          "description": "后端接口 GET /api/v1/site/reminder-logs/{inspectionId}（ReminderLogController.getLogsByInspectionId）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\controller\\ReminderLogController.java",
+          "description": "后端接口 GET /api/v1/site/reminder-stats/{projectId}（ReminderLogController.getStatsByProjectId）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\sign\\SignController.java",
+          "description": "后端接口 POST /api/v1/site/sign（SignController.sign）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\sign\\SignController.java",
+          "description": "后端接口 GET /api/v1/site/sign/records（SignController.records）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\sign\\SignController.java",
+          "description": "后端接口 GET /api/v1/site/sign/monthly（SignController.monthly）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\sign\\SignController.java",
+          "description": "后端接口 GET /api/v1/site/sign/statistics（SignController.statistics）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\sign\\SignController.java",
+          "description": "后端接口 PUT /api/v1/site/sign/config（SignController.updateConfig）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "site",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-site\\src\\main\\java\\com\\zwinsight\\site\\sign\\SignController.java",
+          "description": "后端接口 GET /api/v1/site/sign/config（SignController.getConfig）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "material",
+      "backendApiCount": 31,
+      "pcWebApiCount": 27,
+      "mobileApiCount": 3,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "material",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-material\\src\\main\\java\\com\\zwinsight\\material\\controller\\InboundController.java",
+          "description": "后端接口 GET /api/v1/material/inbound/{id}（InboundController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "material",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-material\\src\\main\\java\\com\\zwinsight\\material\\controller\\InboundController.java",
+          "description": "后端接口 POST /api/v1/material/inbound/{id}/submit（InboundController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "material",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-material\\src\\main\\java\\com\\zwinsight\\material\\controller\\InventoryController.java",
+          "description": "后端接口 GET /api/v1/material/inventory/{id}（InventoryController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "material",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-material\\src\\main\\java\\com\\zwinsight\\material\\controller\\OutboundController.java",
+          "description": "后端接口 GET /api/v1/material/outbound/{id}（OutboundController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "material",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-material\\src\\main\\java\\com\\zwinsight\\material\\controller\\OutboundController.java",
+          "description": "后端接口 POST /api/v1/material/outbound/{id}/submit（OutboundController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "material",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-material\\src\\main\\java\\com\\zwinsight\\material\\controller\\StockController.java",
+          "description": "后端接口 GET /api/v1/material/stock/{projectId}（StockController.getByProject）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "material",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-material\\src\\main\\java\\com\\zwinsight\\material\\controller\\TransferController.java",
+          "description": "后端接口 GET /api/v1/material/transfer/{id}（TransferController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "material",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-material\\src\\main\\java\\com\\zwinsight\\material\\controller\\TransferController.java",
+          "description": "后端接口 POST /api/v1/material/transfer/{id}/submit（TransferController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "material",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\material.ts",
+          "description": "PC端超范围实现: getMaterialStockPage（路径: /v1/material/stock/page），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "material",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\material.ts",
+          "description": "PC端超范围实现: getMaterialStockDetail（路径: /v1/material/stock/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "machine",
+      "backendApiCount": 42,
+      "pcWebApiCount": 36,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "machine",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-machine\\src\\main\\java\\com\\zwinsight\\machine\\controller\\MachineContractController.java",
+          "description": "后端接口 GET /api/v1/machine/contract/{id}（MachineContractController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "machine",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-machine\\src\\main\\java\\com\\zwinsight\\machine\\controller\\MachineContractController.java",
+          "description": "后端接口 POST /api/v1/machine/contract/{id}/submit（MachineContractController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "machine",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-machine\\src\\main\\java\\com\\zwinsight\\machine\\controller\\MachineEntryController.java",
+          "description": "后端接口 POST /api/v1/machine/entry/in（MachineEntryController.entryIn）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "machine",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-machine\\src\\main\\java\\com\\zwinsight\\machine\\controller\\MachineEntryController.java",
+          "description": "后端接口 POST /api/v1/machine/entry/out（MachineEntryController.entryOut）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "machine",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-machine\\src\\main\\java\\com\\zwinsight\\machine\\controller\\MachineEntryController.java",
+          "description": "后端接口 GET /api/v1/machine/entry/machine/{machineId}（MachineEntryController.getByMachine）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "machine",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-machine\\src\\main\\java\\com\\zwinsight\\machine\\controller\\MachineRepairController.java",
+          "description": "后端接口 POST /api/v1/machine/repair/{id}/dispatch（MachineRepairController.dispatch）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "machine",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-machine\\src\\main\\java\\com\\zwinsight\\machine\\controller\\MachineRepairController.java",
+          "description": "后端接口 POST /api/v1/machine/repair/{id}/complete（MachineRepairController.complete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "machine",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-machine\\src\\main\\java\\com\\zwinsight\\machine\\controller\\MachineRepairController.java",
+          "description": "后端接口 GET /api/v1/machine/repair/history/{machineId}（MachineRepairController.getHistory）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "machine",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-machine\\src\\main\\java\\com\\zwinsight\\machine\\controller\\MachineSettlementController.java",
+          "description": "后端接口 GET /api/v1/machine/settlement/summary（MachineSettlementController.getProjectSummary）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "project",
+      "backendApiCount": 17,
+      "pcWebApiCount": 13,
+      "mobileApiCount": 1,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "project",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-project\\src\\main\\java\\com\\zwinsight\\project\\controller\\ProjectController.java",
+          "description": "后端接口 GET /api/v1/project/{id}（ProjectController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "project",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-project\\src\\main\\java\\com\\zwinsight\\project\\controller\\ProjectController.java",
+          "description": "后端接口 DELETE /api/v1/project/batch（ProjectController.batchDelete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "project",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-project\\src\\main\\java\\com\\zwinsight\\project\\controller\\ProjectController.java",
+          "description": "后端接口 GET /api/v1/project/{id}/members（ProjectController.getMembers）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "project",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-project\\src\\main\\java\\com\\zwinsight\\project\\controller\\ProjectController.java",
+          "description": "后端接口 POST /api/v1/project/{id}/members（ProjectController.addMember）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "project",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-project\\src\\main\\java\\com\\zwinsight\\project\\controller\\ProjectController.java",
+          "description": "后端接口 DELETE /api/v1/project/members/{memberId}（ProjectController.removeMember）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "workflow",
+      "backendApiCount": 32,
+      "pcWebApiCount": 25,
+      "mobileApiCount": 5,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "workflow",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-workflow\\src\\main\\java\\com\\zwinsight\\workflow\\controller\\ApprovalController.java",
+          "description": "后端接口 POST /api/v1/workflow/approval/urge/{taskId}（ApprovalController.urgeTask）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "workflow",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-workflow\\src\\main\\java\\com\\zwinsight\\workflow\\controller\\ApprovalController.java",
+          "description": "后端接口 GET /api/v1/workflow/approval/urge/count/{taskId}（ApprovalController.getUrgeCount）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "workflow",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-workflow\\src\\main\\java\\com\\zwinsight\\workflow\\controller\\ApprovalRollbackController.java",
+          "description": "后端接口 POST /api/v1/workflow/rollback/{workflowInstanceId}/execute（ApprovalRollbackController.executeRollback）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "workflow",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-workflow\\src\\main\\java\\com\\zwinsight\\workflow\\controller\\BusinessTypeController.java",
+          "description": "后端接口 GET /api/v1/workflow/business-type/{id}（BusinessTypeController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "workflow",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-workflow\\src\\main\\java\\com\\zwinsight\\workflow\\controller\\ProcessDefinitionController.java",
+          "description": "后端接口 GET /api/v1/workflow/process/{id}/image（ProcessDefinitionController.getProcessImage）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "workflow",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-workflow\\src\\main\\java\\com\\zwinsight\\workflow\\controller\\UrgeConfigController.java",
+          "description": "后端接口 GET /api/v1/workflow/urge-config（UrgeConfigController.getConfig）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "workflow",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-workflow\\src\\main\\java\\com\\zwinsight\\workflow\\controller\\UrgeConfigController.java",
+          "description": "后端接口 POST /api/v1/workflow/urge-config（UrgeConfigController.saveConfig）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "workflow",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\workflow.ts",
+          "description": "PC端超范围实现: createDelegation（路径: /v1/workflow/delegate），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "workflow",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\workflow.ts",
+          "description": "PC端超范围实现: cancelDelegation（路径: /v1/workflow/delegate/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "workflow",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\workflow.ts",
+          "description": "PC端超范围实现: getMyDelegations（路径: /v1/workflow/delegate/my），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "workflow",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\workflow.ts",
+          "description": "PC端超范围实现: getActiveDelegation（路径: /v1/workflow/delegate/active），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "workflow",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\workflow.ts",
+          "description": "PC端超范围实现: getDelegationsToMe（路径: /v1/workflow/delegate/to-me），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "workflow",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\workflow.ts",
+          "description": "PC端超范围实现: getRollbackLogs（路径: /v1/workflow/rollback/logs），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "workflow",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\workflow.ts",
+          "description": "PC端超范围实现: confirmRollbackConflict（路径: /v1/workflow/rollback/{id}/confirm），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "dashboard",
+      "backendApiCount": 18,
+      "pcWebApiCount": 14,
+      "mobileApiCount": 7,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "dashboard",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-dashboard\\src\\main\\java\\com\\zwinsight\\dashboard\\controller\\DashboardController.java",
+          "description": "后端接口 GET /api/v1/dashboard/budget-variance（DashboardController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "dashboard",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-dashboard\\src\\main\\java\\com\\zwinsight\\dashboard\\controller\\DashboardController.java",
+          "description": "后端接口 GET /api/v1/dashboard/profit-trend（DashboardController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "dashboard",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-dashboard\\src\\main\\java\\com\\zwinsight\\dashboard\\controller\\DashboardController.java",
+          "description": "后端接口 GET /api/v1/dashboard/project-ranking（DashboardController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "dashboard",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-dashboard\\src\\main\\java\\com\\zwinsight\\dashboard\\controller\\DashboardController.java",
+          "description": "后端接口 GET /api/v1/dashboard/invoice-ledger（DashboardController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "dashboard",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-dashboard\\src\\main\\java\\com\\zwinsight\\dashboard\\controller\\DashboardController.java",
+          "description": "后端接口 GET /api/v1/dashboard/hr-statistics（DashboardController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "contract",
+      "backendApiCount": 36,
+      "pcWebApiCount": 32,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "contract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-contract\\src\\main\\java\\com\\zwinsight\\contract\\controller\\ContractController.java",
+          "description": "后端接口 POST /api/v1/contract/{id}/submit（ContractController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "contract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-contract\\src\\main\\java\\com\\zwinsight\\contract\\controller\\FinalSettlementController.java",
+          "description": "后端接口 GET /api/v1/contract/settlement（FinalSettlementController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "contract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-contract\\src\\main\\java\\com\\zwinsight\\contract\\controller\\OtherContractController.java",
+          "description": "后端接口 GET /api/v1/contract/other（OtherContractController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "contract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-contract\\src\\main\\java\\com\\zwinsight\\contract\\controller\\OutputReportController.java",
+          "description": "后端接口 GET /api/v1/contract/output（OutputReportController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "contract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-contract\\src\\main\\java\\com\\zwinsight\\contract\\controller\\QuantityListController.java",
+          "description": "后端接口 GET /api/v1/contract/quantity（QuantityListController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "budget",
+      "backendApiCount": 30,
+      "pcWebApiCount": 28,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "budget",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-budget\\src\\main\\java\\com\\zwinsight\\budget\\controller\\BudgetChangeController.java",
+          "description": "后端接口 GET /api/v1/budget/change/trace（BudgetChangeController.getChangeTrace）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "budget",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-budget\\src\\main\\java\\com\\zwinsight\\budget\\controller\\BudgetConfigController.java",
+          "description": "后端接口 GET /api/v1/budget/config/{projectId}（BudgetConfigController.getConfig）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "budget",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-budget\\src\\main\\java\\com\\zwinsight\\budget\\controller\\BudgetController.java",
+          "description": "后端接口 GET /api/v1/budget/{id}（BudgetController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "budget",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-budget\\src\\main\\java\\com\\zwinsight\\budget\\controller\\BudgetController.java",
+          "description": "后端接口 POST /api/v1/budget/{id}/submit（BudgetController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "budget",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-budget\\src\\main\\java\\com\\zwinsight\\budget\\controller\\BudgetController.java",
+          "description": "后端接口 GET /api/v1/budget/project/{projectId}（BudgetController.getByProject）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "purchase",
+      "backendApiCount": 44,
+      "pcWebApiCount": 25,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\InquiryController.java",
+          "description": "后端接口 GET /api/v1/purchase/inquiry/{id}（InquiryController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\InquiryController.java",
+          "description": "后端接口 POST /api/v1/purchase/inquiry/{id}/publish（InquiryController.publish）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PublicQuotationController.java",
+          "description": "后端接口 GET /api/v1/public/quotation/inquiries（PublicQuotationController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PublicQuotationController.java",
+          "description": "后端接口 GET /api/v1/public/quotation/inquiries/{inquiryId}（PublicQuotationController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PublicQuotationController.java",
+          "description": "后端接口 GET /api/v1/public/quotation/inquiries/{inquiryId}/award（PublicQuotationController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PublicQuotationController.java",
+          "description": "后端接口 POST /api/v1/public/quotation/inquiries/{inquiryId}/quote（PublicQuotationController.submitPublicQuotation）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PublicQuotationController.java",
+          "description": "后端接口 GET /api/v1/public/quotation/inquiries/{inquiryId}/my-quote（PublicQuotationController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PurchaseContractController.java",
+          "description": "后端接口 GET /api/v1/purchase/contract/{id}（PurchaseContractController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PurchaseContractController.java",
+          "description": "后端接口 POST /api/v1/purchase/contract/{id}/submit（PurchaseContractController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PurchaseContractController.java",
+          "description": "后端接口 GET /api/v1/purchase/contract/{id}/details（PurchaseContractController.getDetails）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PurchaseSettlementController.java",
+          "description": "后端接口 GET /api/v1/purchase/settlement/available-inbounds（PurchaseSettlementController.availableInbounds）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\PurchaseSettlementController.java",
+          "description": "后端接口 POST /api/v1/purchase/settlement/{id}/submit（PurchaseSettlementController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\controller\\QuotationController.java",
+          "description": "后端接口 GET /api/v1/purchase/quotation/inquiry/{inquiryId}（QuotationController.getByInquiry）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\portal\\controller\\PublicInquiryController.java",
+          "description": "后端接口 GET /api/v1/supplier-portal/public/inquiry/list（PublicInquiryController.publicList）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\portal\\controller\\PublicInquiryController.java",
+          "description": "后端接口 GET /api/v1/supplier-portal/public/inquiry/{id}（PublicInquiryController.publicDetail）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\portal\\controller\\PublicInquiryController.java",
+          "description": "后端接口 POST /api/v1/supplier-portal/public/inquiry/{id}/quote（PublicInquiryController.submitQuote）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\portal\\controller\\SupplierPortalController.java",
+          "description": "后端接口 POST /api/v1/supplier-portal/auth/send-code（SupplierPortalController.sendCode）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\portal\\controller\\SupplierPortalController.java",
+          "description": "后端接口 POST /api/v1/supplier-portal/auth/login（SupplierPortalController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\portal\\controller\\SupplierPortalController.java",
+          "description": "后端接口 GET /api/v1/supplier-portal/inquiry/list（SupplierPortalController.inquiryList）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\portal\\controller\\SupplierPortalController.java",
+          "description": "后端接口 GET /api/v1/supplier-portal/inquiry/{id}（SupplierPortalController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\portal\\controller\\SupplierPortalController.java",
+          "description": "后端接口 POST /api/v1/supplier-portal/quotation（SupplierPortalController.submitQuotation）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "purchase",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-purchase\\src\\main\\java\\com\\zwinsight\\purchase\\portal\\controller\\SupplierPortalController.java",
+          "description": "后端接口 GET /api/v1/supplier-portal/quotation/mine（SupplierPortalController.myQuotations）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "labor",
+      "backendApiCount": 53,
+      "pcWebApiCount": 39,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborContractController.java",
+          "description": "后端接口 GET /api/v1/labor/contract/{id}（LaborContractController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborContractController.java",
+          "description": "后端接口 POST /api/v1/labor/contract/{id}/submit（LaborContractController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborOutputReportController.java",
+          "description": "后端接口 GET /api/v1/labor/output-report/{id}（LaborOutputReportController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborOutputReportController.java",
+          "description": "后端接口 POST /api/v1/labor/output-report/{id}/submit（LaborOutputReportController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborOutputReportController.java",
+          "description": "后端接口 PUT /api/v1/labor/output-report/{id}/submit（LaborOutputReportController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborPayrollController.java",
+          "description": "后端接口 GET /api/v1/labor/payroll/{id}（LaborPayrollController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborPayrollController.java",
+          "description": "后端接口 POST /api/v1/labor/payroll/{id}/submit（LaborPayrollController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborRosterController.java",
+          "description": "后端接口 POST /api/v1/labor/roster/import（LaborRosterController.batchImport）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborSettlementController.java",
+          "description": "后端接口 GET /api/v1/labor/settlement/{id}（LaborSettlementController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\LaborSettlementController.java",
+          "description": "后端接口 POST /api/v1/labor/settlement/{id}/submit（LaborSettlementController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\SalaryStatisticsController.java",
+          "description": "后端接口 GET /api/v1/labor/salary/report（SalaryStatisticsController.getMonthlyReport）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\SalaryStatisticsController.java",
+          "description": "后端接口 GET /api/v1/labor/salary/export（SalaryStatisticsController.exportReport）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\TeamController.java",
+          "description": "后端接口 PUT /api/v1/labor/team/{id}/status（TeamController.updateStatus）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\WorkOrderController.java",
+          "description": "后端接口 POST /api/v1/labor/work-order/batch（WorkOrderController.batchSave）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "labor",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-labor\\src\\main\\java\\com\\zwinsight\\labor\\controller\\WorkOrderController.java",
+          "description": "后端接口 POST /api/v1/labor/work-order/{id}/submit（WorkOrderController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "labor",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\labor.ts",
+          "description": "PC端超范围实现: getPayrollPage（路径: /v1/labor/payroll/page），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "labor",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\labor.ts",
+          "description": "PC端超范围实现: createPayroll（路径: /v1/labor/payroll），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "labor",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\labor.ts",
+          "description": "PC端超范围实现: updatePayroll（路径: /v1/labor/payroll/{data.id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "labor",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\labor.ts",
+          "description": "PC端超范围实现: deletePayroll（路径: /v1/labor/payroll/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "labor",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\labor.ts",
+          "description": "PC端超范围实现: submitPayroll（路径: /v1/labor/payroll/{id}/submit），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "subcontract",
+      "backendApiCount": 24,
+      "pcWebApiCount": 19,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "subcontract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-subcontract\\src\\main\\java\\com\\zwinsight\\subcontract\\controller\\SubcontractController.java",
+          "description": "后端接口 GET /api/v1/subcontract/contract/{id}（SubcontractController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "subcontract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-subcontract\\src\\main\\java\\com\\zwinsight\\subcontract\\controller\\SubcontractController.java",
+          "description": "后端接口 POST /api/v1/subcontract/contract/{id}/submit（SubcontractController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "subcontract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-subcontract\\src\\main\\java\\com\\zwinsight\\subcontract\\controller\\SubcontractOutputController.java",
+          "description": "后端接口 GET /api/v1/subcontract/output/{id}（SubcontractOutputController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "subcontract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-subcontract\\src\\main\\java\\com\\zwinsight\\subcontract\\controller\\SubcontractOutputController.java",
+          "description": "后端接口 POST /api/v1/subcontract/output/{id}/submit（SubcontractOutputController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "subcontract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-subcontract\\src\\main\\java\\com\\zwinsight\\subcontract\\controller\\SubcontractOutputController.java",
+          "description": "后端接口 PUT /api/v1/subcontract/output/{id}/submit（SubcontractOutputController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "subcontract",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-subcontract\\src\\main\\java\\com\\zwinsight\\subcontract\\controller\\SubcontractSettlementController.java",
+          "description": "后端接口 GET /api/v1/subcontract/settlement/{id}/export（SubcontractSettlementController.exportSettlement）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "hr",
+      "backendApiCount": 42,
+      "pcWebApiCount": 32,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\EntryApplyController.java",
+          "description": "后端接口 GET /api/v1/hr/entry-apply/{id}（EntryApplyController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\EntryApplyController.java",
+          "description": "后端接口 POST /api/v1/hr/entry-apply/{id}/submit（EntryApplyController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\OfficeSupplyController.java",
+          "description": "后端接口 GET /api/v1/hr/office-supply/in-out（OfficeSupplyController.inOutPage）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\OfficeSupplyController.java",
+          "description": "后端接口 POST /api/v1/hr/office-supply/in-out（OfficeSupplyController.saveInOut）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\RegularApplyController.java",
+          "description": "后端接口 POST /api/v1/hr/regular-apply/{id}/submit（RegularApplyController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\SealApplyController.java",
+          "description": "后端接口 POST /api/v1/hr/seal-apply/{id}/submit（SealApplyController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\TransferApplyController.java",
+          "description": "后端接口 POST /api/v1/hr/transfer-apply/{id}/submit（TransferApplyController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\VehicleController.java",
+          "description": "后端接口 GET /api/v1/hr/vehicle/apply（VehicleController.applyPage）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\VehicleController.java",
+          "description": "后端接口 POST /api/v1/hr/vehicle/apply（VehicleController.saveApply）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\VehicleController.java",
+          "description": "后端接口 POST /api/v1/hr/vehicle/apply/{id}/submit（VehicleController.submitApply）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\VehicleController.java",
+          "description": "后端接口 GET /api/v1/hr/vehicle/maintenance（VehicleController.maintenancePage）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "hr",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-hr\\src\\main\\java\\com\\zwinsight\\hr\\controller\\VehicleController.java",
+          "description": "后端接口 POST /api/v1/hr/vehicle/maintenance（VehicleController.saveMaintenance）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "hr",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\hr.ts",
+          "description": "PC端超范围实现: getHrStatisticsOverview（路径: /v1/hr/statistics/overview），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "tender",
+      "backendApiCount": 38,
+      "pcWebApiCount": 30,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "tender",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-tender\\src\\main\\java\\com\\zwinsight\\tender\\controller\\CertificateController.java",
+          "description": "后端接口 GET /api/v1/tender/certificate/company（CertificateController.companyPage）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "tender",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-tender\\src\\main\\java\\com\\zwinsight\\tender\\controller\\CertificateController.java",
+          "description": "后端接口 POST /api/v1/tender/certificate/company（CertificateController.saveCompany）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "tender",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-tender\\src\\main\\java\\com\\zwinsight\\tender\\controller\\CertificateController.java",
+          "description": "后端接口 PUT /api/v1/tender/certificate/company/{id}（CertificateController.updateCompany）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "tender",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-tender\\src\\main\\java\\com\\zwinsight\\tender\\controller\\CertificateController.java",
+          "description": "后端接口 DELETE /api/v1/tender/certificate/company/{id}（CertificateController.deleteCompany）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "tender",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-tender\\src\\main\\java\\com\\zwinsight\\tender\\controller\\DepositController.java",
+          "description": "后端接口 POST /api/v1/tender/deposit/apply/{id}/submit（DepositController.submitApply）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "tender",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-tender\\src\\main\\java\\com\\zwinsight\\tender\\controller\\TenderFeeController.java",
+          "description": "后端接口 POST /api/v1/tender/fee/{id}/confirm-payment（TenderFeeController.confirmPayment）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "tender",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-tender\\src\\main\\java\\com\\zwinsight\\tender\\controller\\TenderRegisterController.java",
+          "description": "后端接口 GET /api/v1/tender/register/{id}（TenderRegisterController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "tender",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-tender\\src\\main\\java\\com\\zwinsight\\tender\\controller\\TenderRegisterController.java",
+          "description": "后端接口 POST /api/v1/tender/register/{id}/submit（TenderRegisterController.submit）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "tender",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-tender\\src\\main\\java\\com\\zwinsight\\tender\\controller\\TenderTaskController.java",
+          "description": "后端接口 POST /api/v1/tender/task/{id}/complete（TenderTaskController.complete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "basedata",
+      "backendApiCount": 50,
+      "pcWebApiCount": 38,
+      "mobileApiCount": 1,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\CompanyController.java",
+          "description": "后端接口 GET /api/v1/basedata/company（CompanyController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\CompanyController.java",
+          "description": "后端接口 GET /api/v1/basedata/company/{id}（CompanyController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\InspectionSchemeController.java",
+          "description": "后端接口 GET /api/v1/basedata/inspection-scheme（InspectionSchemeController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\InspectionSchemeController.java",
+          "description": "后端接口 GET /api/v1/basedata/inspection-scheme/{id}（InspectionSchemeController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\MaterialCategoryController.java",
+          "description": "后端接口 GET /api/v1/basedata/material-category（MaterialCategoryController.list）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\MaterialController.java",
+          "description": "后端接口 GET /api/v1/basedata/material/{id}（MaterialController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\MaterialController.java",
+          "description": "后端接口 DELETE /api/v1/basedata/material/batch（MaterialController.batchDelete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\MaterialController.java",
+          "description": "后端接口 GET /api/v1/basedata/material/categories（MaterialController.categories）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\OwnerController.java",
+          "description": "后端接口 GET /api/v1/basedata/owner（OwnerController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\OwnerController.java",
+          "description": "后端接口 GET /api/v1/basedata/owner/{id}（OwnerController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\SupplierBlacklistController.java",
+          "description": "后端接口 GET /api/v1/basedata/supplier-blacklist/check/{supplierId}（SupplierBlacklistController.isBlacklisted）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\SupplierController.java",
+          "description": "后端接口 GET /api/v1/basedata/supplier（SupplierController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\SupplierController.java",
+          "description": "后端接口 GET /api/v1/basedata/supplier/{id}（SupplierController.getById）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\SupplierController.java",
+          "description": "后端接口 DELETE /api/v1/basedata/supplier/batch（SupplierController.batchDelete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\SupplierController.java",
+          "description": "后端接口 POST /api/v1/basedata/supplier/import（SupplierController.importSuppliers）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "basedata",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-basedata\\src\\main\\java\\com\\zwinsight\\basedata\\controller\\SupplierEvaluationController.java",
+          "description": "后端接口 GET /api/v1/basedata/supplier-evaluation/avg-score/{supplierId}（SupplierEvaluationController.getAvgScore）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: getMaterialCategoryTree（路径: /v1/basedata/material-category/tree），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: createMaterialCategory（路径: /v1/basedata/material-category），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: updateMaterialCategory（路径: /v1/basedata/material-category/{data.id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: deleteMaterialCategory（路径: /v1/basedata/material-category/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: getSupplierEvaluationPage（路径: /v1/basedata/supplier-evaluation），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: createSupplierEvaluation（路径: /v1/basedata/supplier-evaluation），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: updateSupplierEvaluation（路径: /v1/basedata/supplier-evaluation/{data.id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: deleteSupplierEvaluation（路径: /v1/basedata/supplier-evaluation/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: getSupplierBlacklistPage（路径: /v1/basedata/supplier-blacklist），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: createSupplierBlacklist（路径: /v1/basedata/supplier-blacklist），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "basedata",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\basedata.ts",
+          "description": "PC端超范围实现: deleteSupplierBlacklist（路径: /v1/basedata/supplier-blacklist/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "security",
+      "backendApiCount": 11,
+      "pcWebApiCount": 0,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "security",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-security\\src\\main\\java\\com\\zwinsight\\security\\controller\\AuthController.java",
+          "description": "后端接口 GET /api/v1/auth/captcha（AuthController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        }
+      ]
+    },
+    {
+      "moduleName": "file",
+      "backendApiCount": 37,
+      "pcWebApiCount": 16,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\batch\\controller\\ExportScheduleController.java",
+          "description": "后端接口 GET /api/v1/export-schedule/page（ExportScheduleController.page）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\batch\\controller\\ExportScheduleController.java",
+          "description": "后端接口 POST /api/v1/export-schedule（ExportScheduleController.save）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\batch\\controller\\ExportScheduleController.java",
+          "description": "后端接口 PUT /api/v1/export-schedule/{id}（ExportScheduleController.update）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\batch\\controller\\ExportScheduleController.java",
+          "description": "后端接口 DELETE /api/v1/export-schedule/{id}（ExportScheduleController.delete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\batch\\controller\\ExportScheduleController.java",
+          "description": "后端接口 POST /api/v1/export-schedule/{id}/execute（ExportScheduleController.executeNow）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\batch\\controller\\ExportScheduleController.java",
+          "description": "后端接口 GET /api/v1/export-schedule/modules（ExportScheduleController.unknownMethod）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\controller\\FileController.java",
+          "description": "后端接口 POST /api/v1/file/upload（FileController.upload）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\controller\\FileController.java",
+          "description": "后端接口 DELETE /api/v1/file/{id}（FileController.delete）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\controller\\FileController.java",
+          "description": "后端接口 GET /api/v1/file/list（FileController.list）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "BACKEND_ORPHAN_API",
+          "severity": "Minor",
+          "module": "file",
+          "backendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-server\\zw-file\\src\\main\\java\\com\\zwinsight\\file\\controller\\PrintTemplateController.java",
+          "description": "后端接口 GET /api/v1/print-template/{id}（PrintTemplateController.detail）在 PC 前端和移动端均无调用",
+          "suggestion": "确认该接口是否仍在使用，若已废弃建议添加 @Deprecated 注解或移除"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: getFilePreviewUrl（路径: /v1/file/preview-url），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: getTemplateList（路径: /v1/file/template），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: createTemplate（路径: /v1/file/template），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: updateTemplate（路径: /v1/file/template/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: deleteTemplate（路径: /v1/file/template/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: renderTemplate（路径: /v1/file/template/{id}/render），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\file.ts",
+          "description": "PC端超范围实现: getSerialNumberList（路径: /v1/file/serial），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\file.ts",
+          "description": "PC端超范围实现: createSerialNumber（路径: /v1/file/serial），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\file.ts",
+          "description": "PC端超范围实现: updateSerialNumber（路径: /v1/file/serial/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\file.ts",
+          "description": "PC端超范围实现: deleteSerialNumber（路径: /v1/file/serial/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "file",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\file.ts",
+          "description": "PC端超范围实现: generateSerialNumber（路径: /v1/file/serial/generate/{businessType}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "batch",
+      "backendApiCount": 0,
+      "pcWebApiCount": 5,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "batch",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: importData（路径: /v1/batch/import），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "batch",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: startExport（路径: /v1/batch/export），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "batch",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: getExportStatus（路径: /v1/batch/export/{taskId}/status），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "batch",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: downloadExportFile（路径: /v1/batch/export/{taskId}/download），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "batch",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\batch.ts",
+          "description": "PC端超范围实现: downloadTemplate（路径: /v1/batch/template/{moduleCode}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "contracts",
+      "backendApiCount": 0,
+      "pcWebApiCount": 4,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "contracts",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\boq.ts",
+          "description": "PC端超范围实现: uploadBoq（路径: /v1/contracts/{contractId}/boq/upload），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "contracts",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\boq.ts",
+          "description": "PC端超范围实现: getBoqTree（路径: /v1/contracts/{contractId}/boq），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "contracts",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\boq.ts",
+          "description": "PC端超范围实现: getBoqFlat（路径: /v1/contracts/{contractId}/boq/flat），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "contracts",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\boq.ts",
+          "description": "PC端超范围实现: deleteBoq（路径: /v1/contracts/{contractId}/boq），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "user",
+      "backendApiCount": 0,
+      "pcWebApiCount": 2,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "user",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\device.ts",
+          "description": "PC端超范围实现: getLoginDevices（路径: /v1/user/devices/list），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "user",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\device.ts",
+          "description": "PC端超范围实现: revokeLoginDevice（路径: /v1/user/devices/{deviceId}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "inspection-schemes",
+      "backendApiCount": 0,
+      "pcWebApiCount": 2,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "inspection-schemes",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\inspection-scheme.ts",
+          "description": "PC端超范围实现: listInspectionSchemes（路径: /v1/inspection-schemes），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "inspection-schemes",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\inspection-scheme.ts",
+          "description": "PC端超范围实现: getSchemeItems（路径: /v1/inspection-schemes/{schemeId}/items），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "inspections",
+      "backendApiCount": 0,
+      "pcWebApiCount": 1,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "inspections",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\inspection-scheme.ts",
+          "description": "PC端超范围实现: applyScheme（路径: /v1/inspections/{inspectionId}/apply-scheme），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "message",
+      "backendApiCount": 33,
+      "pcWebApiCount": 31,
+      "mobileApiCount": 10,
+      "inconsistencies": [
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: getTemplatePage（路径: /v1/message/template），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: getTemplateDetail（路径: /v1/message/template/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: createTemplate（路径: /v1/message/template），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: updateTemplate（路径: /v1/message/template/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: deleteTemplate（路径: /v1/message/template/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: getPushConfigPage（路径: /v1/message/push-config），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: getPushConfigDetail（路径: /v1/message/push-config/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: createPushConfig（路径: /v1/message/push-config），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: updatePushConfig（路径: /v1/message/push-config/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: deletePushConfig（路径: /v1/message/push-config/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "message",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\message.ts",
+          "description": "PC端超范围实现: getPushConfigByType（路径: /v1/message/push-config/by-type/{businessType}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "print-template",
+      "backendApiCount": 0,
+      "pcWebApiCount": 7,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "print-template",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\print-template.ts",
+          "description": "PC端超范围实现: getPrintTemplatePage（路径: /v1/print-template/list），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "print-template",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\print-template.ts",
+          "description": "PC端超范围实现: getPrintTemplateDetail（路径: /v1/print-template/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "print-template",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\print-template.ts",
+          "description": "PC端超范围实现: createPrintTemplate（路径: /v1/print-template），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "print-template",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\print-template.ts",
+          "description": "PC端超范围实现: updatePrintTemplate（路径: /v1/print-template/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "print-template",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\print-template.ts",
+          "description": "PC端超范围实现: deletePrintTemplate（路径: /v1/print-template/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "print-template",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\print-template.ts",
+          "description": "PC端超范围实现: renderPrintTemplate（路径: /v1/print-template/render），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "print-template",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\print-template.ts",
+          "description": "PC端超范围实现: exportPrintTemplatePdf（路径: /v1/print-template/export-pdf），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    },
+    {
+      "moduleName": "project-settlements",
+      "backendApiCount": 0,
+      "pcWebApiCount": 7,
+      "mobileApiCount": 0,
+      "inconsistencies": [
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "project-settlements",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\settlement.ts",
+          "description": "PC端超范围实现: getSettlementPage（路径: /v1/project-settlements），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "project-settlements",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\settlement.ts",
+          "description": "PC端超范围实现: createSettlement（路径: /v1/project-settlements），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "project-settlements",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\settlement.ts",
+          "description": "PC端超范围实现: getSettlement（路径: /v1/project-settlements/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "project-settlements",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\settlement.ts",
+          "description": "PC端超范围实现: updateSettlement（路径: /v1/project-settlements/{id}），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "project-settlements",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\settlement.ts",
+          "description": "PC端超范围实现: submitSettlement（路径: /v1/project-settlements/{id}/submit），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "project-settlements",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\settlement.ts",
+          "description": "PC端超范围实现: exportSettlement（路径: /v1/project-settlements/{id}/export），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        },
+        {
+          "type": "FEATURE_EXTRA",
+          "severity": "Minor",
+          "module": "project-settlements",
+          "frontendFilePath": "d:\\5个项目\\ZW-Insight\\zw-insight-web\\src\\api\\settlement.ts",
+          "description": "PC端超范围实现: getUnsettledContracts（路径: /v1/project-settlements/{id}/unsettled-contracts），该接口未在功能表中定义",
+          "suggestion": "确认该功能是否应添加到功能表中，或移除多余的前端实现"
+        }
+      ]
+    }
+  ],
+  "platformDifferences": {
+    "pcOnly": [
+      "目标成本编制",
+      "目标成本变更",
+      "新建材料合同",
+      "材料合同结算",
+      "询价公告管理",
+      "供应商报价管理",
+      "报价汇总排名",
+      "中标结果管理",
+      "劳务分包合同",
+      "劳务产值上报",
+      "劳务合同结算",
+      "劳务分包合同奖惩",
+      "班组管理",
+      "劳务花名册",
+      "劳务用工单",
+      "劳务结算单",
+      "劳务薪资统计",
+      "劳务点工单",
+      "点工结算单",
+      "点工薪资统计",
+      "材料调拨",
+      "材料库存盘点",
+      "项目材料库存",
+      "机械合同",
+      "机械使用过程记录",
+      "机械合同结算",
+      "机械台账",
+      "进场登记",
+      "出场登记",
+      "台班/工作量登记",
+      "工作量结算",
+      "加油登记",
+      "故障报修",
+      "维修派工",
+      "维修过程",
+      "维保记录",
+      "专业分包合同",
+      "分包产值上报",
+      "专业分包结算",
+      "专业分包合同奖惩",
+      "质量整改",
+      "安全整改",
+      "竣工验收",
+      "入职申请",
+      "转正申请",
+      "人员调转",
+      "离职申请",
+      "用章申请",
+      "新增办公用品",
+      "办公用品采购入库",
+      "办公用品领用出库",
+      "车辆登记",
+      "用车申请",
+      "车辆维保&保险",
+      "自持公司档案",
+      "甲方单位档案",
+      "投标档案",
+      "目标成本档案",
+      "施工合同档案",
+      "供应商档案",
+      "材料合同档案",
+      "分包合同档案",
+      "其它收入合同档案",
+      "其它支出合同档案",
+      "机械合同档案",
+      "人员信息档案",
+      "办公用品档案",
+      "车辆档案",
+      "自持公司",
+      "供应商管理",
+      "甲方单位",
+      "质量检查方案",
+      "安全检查方案",
+      "质保金预警及逾期",
+      "预算控制配置",
+      "二级科目管理",
+      "工程进度甘特图",
+      "投标报名",
+      "投标任务分配",
+      "投标费用缴纳",
+      "保证金支付申请",
+      "开标记录",
+      "保证金退回登记",
+      "人员证件",
+      "公司证件",
+      "施工合同登记",
+      "工程量清单上传",
+      "产值上报",
+      "项目最终结算",
+      "其它收入合同",
+      "其它支出合同",
+      "机构管理",
+      "岗位管理",
+      "人员管理",
+      "角色管理",
+      "菜单管理",
+      "数据权限",
+      "数据字典",
+      "系统设置",
+      "存储管理",
+      "日志管理",
+      "用户类型",
+      "用户信息",
+      "业务类型",
+      "流程设计",
+      "流程定义"
+    ],
+    "mobileOnly": [],
+    "pendingIntegration": [
+      "security"
+    ]
+  }
+}

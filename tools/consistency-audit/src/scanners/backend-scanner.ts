@@ -2,11 +2,13 @@
  * 后端 Java Controller 扫描器
  *
  * 扫描策略：
- * 1. 遍历 zw-insight-server 下各模块的 controller 目录
- * 2. 读取每个 .java 文件内容
- * 3. 用正则提取类级 @RequestMapping 前缀
- * 4. 用正则提取方法级 @XxxMapping 注解的路径和 HTTP 方法
- * 5. 拼接完整路径（避免双斜杠）
+ * 1. 遍历 zw-insight-server 下各模块的包根目录 com/zwinsight/{module}
+ * 2. 递归查找全部 *Controller.java 文件（覆盖 controller 及其兄弟子包，
+ *    如 file/batch/controller、file/preview、file/template、site/sign）
+ * 3. 读取每个 .java 文件内容
+ * 4. 用正则提取类级 @RequestMapping 前缀
+ * 5. 用正则提取方法级 @XxxMapping 注解的路径和 HTTP 方法
+ * 6. 拼接完整路径（避免双斜杠）
  *
  * Requirements: 1.1, 1.2, 1.3, 1.4
  */
@@ -291,7 +293,10 @@ export class BackendScanner implements IScanner<BackendApiEntry> {
     const serverPath = path.join(rootPath, 'zw-insight-server');
 
     for (const moduleName of BACKEND_MODULES) {
-      const controllerDir = path.join(
+      // 从模块包根目录 com/zwinsight/{module} 递归查找全部 *Controller.java，
+      // 避免仅扫描 {module}/controller 而漏掉子包中的 Controller
+      // （如 file/batch/controller、file/preview、file/template、site/sign）。
+      const modulePkgDir = path.join(
         serverPath,
         `zw-${moduleName}`,
         'src',
@@ -299,16 +304,17 @@ export class BackendScanner implements IScanner<BackendApiEntry> {
         'java',
         'com',
         'zwinsight',
-        moduleName,
-        'controller'
+        moduleName
       );
 
-      // 如果 controller 目录不存在，跳过
-      if (!fs.existsSync(controllerDir)) {
+      // 如果模块包目录不存在，跳过
+      if (!fs.existsSync(modulePkgDir)) {
         continue;
       }
 
-      const javaFiles = this.getJavaFiles(controllerDir);
+      const javaFiles = this.getJavaFiles(modulePkgDir).filter((f) =>
+        f.endsWith('Controller.java')
+      );
 
       for (const javaFile of javaFiles) {
         const fileEntries = this.parseJavaFile(javaFile, moduleName);

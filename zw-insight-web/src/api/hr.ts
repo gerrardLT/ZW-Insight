@@ -122,3 +122,17 @@ export function updateVehicle(data: any) {
 export function deleteVehicle(id: number) {
   return request.delete(`/v1/hr/vehicle/${id}`)
 }
+
+// ======================== 离职申请 ========================
+// 后端：ResignApplyController @RequestMapping("/api/v1/hr/resign-apply")
+export function getResignApplyPage(params: { page?: number; size?: number }) {
+  return request.get('/v1/hr/resign-apply', { params })
+}
+
+export function createResignApply(data: any) {
+  return request.post('/v1/hr/resign-apply', data)
+}
+
+export function submitResignApply(id: number) {
+  return request.post(`/v1/hr/resign-apply/${id}/submit`)
+}

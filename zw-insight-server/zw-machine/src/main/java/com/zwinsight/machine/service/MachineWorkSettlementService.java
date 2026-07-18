@@ -289,21 +289,68 @@ public class MachineWorkSettlementService {
             log.info("回写工作日志结算状态, settlementId={}, workLogCount={}", settlementId, allWorkLogIds.size());
         }
 
-        // 累加合同已结算金额 —— 查找该项目关联的生效合同
+        // 累加合同已结算金额 —— 按结算明细逐机械分摊到对应机械合同（而非全额倾倒到首个合同）
         LambdaQueryWrapper<BizMachineContract> contractWrapper = new LambdaQueryWrapper<>();
         contractWrapper.eq(BizMachineContract::getProjectId, settlement.getProjectId())
                 .eq(BizMachineContract::getStatus, "EFFECTIVE");
         List<BizMachineContract> contracts = contractMapper.selectList(contractWrapper);
 
-        if (!contracts.isEmpty()) {
-            // 将总金额按合同数量均摊（如仅1个合同则全额累加）
-            // 实际业务中通常1个项目对应多个机械合同，按明细对应累加更精确
-            // 这里简化处理：累加到第一个生效合同
-            BizMachineContract contract = contracts.get(0);
-            BigDecimal cumulative = contract.getCumulativeSettlement() != null
-                    ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
-            contract.setCumulativeSettlement(cumulative.add(settlement.getTotalAmount()));
-            contractMapper.updateById(contract);
+        if (!contracts.isEmpty() && !details.isEmpty()) {
+            // 建立机械名称 -> 合同映射（与 createSettlement 计价时的匹配口径保持一致）
+            Map<String, BizMachineContract> contractByMachineName = new HashMap<>();
+            for (BizMachineContract c : contracts) {
+                if (c.getMachineName() != null) {
+                    contractByMachineName.putIfAbsent(c.getMachineName(), c);
+                }
+            }
+
+            // 加载明细对应的台账，获取机械名称
+            Set<Long> ledgerIds = details.stream()
+                    .map(BizMachineWorkSettlementDetail::getLedgerId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Map<Long, BizMachineLedger> ledgerMap = new HashMap<>();
+            if (!ledgerIds.isEmpty()) {
+                LambdaQueryWrapper<BizMachineLedger> ledgerWrapper = new LambdaQueryWrapper<>();
+                ledgerWrapper.in(BizMachineLedger::getId, ledgerIds);
+                ledgerMap = ledgerMapper.selectList(ledgerWrapper).stream()
+                        .collect(Collectors.toMap(BizMachineLedger::getId, l -> l));
+            }
+
+            // 按合同汇总分摊金额（先在内存累加，再逐合同一次性回写）
+            Map<Long, BigDecimal> incrementByContractId = new HashMap<>();
+            BigDecimal unmatchedAmount = BigDecimal.ZERO;
+            for (BizMachineWorkSettlementDetail detail : details) {
+                BigDecimal subtotal = detail.getSubtotal() != null ? detail.getSubtotal() : BigDecimal.ZERO;
+                if (subtotal.compareTo(BigDecimal.ZERO) == 0) {
+                    continue;
+                }
+                BizMachineLedger ledger = ledgerMap.get(detail.getLedgerId());
+                BizMachineContract matched = (ledger != null && ledger.getMachineName() != null)
+                        ? contractByMachineName.get(ledger.getMachineName()) : null;
+                if (matched != null) {
+                    incrementByContractId.merge(matched.getId(), subtotal, BigDecimal::add);
+                } else {
+                    unmatchedAmount = unmatchedAmount.add(subtotal);
+                }
+            }
+
+            for (Map.Entry<Long, BigDecimal> e : incrementByContractId.entrySet()) {
+                BizMachineContract contract = contractMapper.selectById(e.getKey());
+                if (contract == null) {
+                    continue;
+                }
+                BigDecimal cumulative = contract.getCumulativeSettlement() != null
+                        ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
+                contract.setCumulativeSettlement(cumulative.add(e.getValue()));
+                contractMapper.updateById(contract);
+            }
+
+            // 未匹配到合同的明细金额不静默丢弃，明确告警以便排查（机械名称与合同名称未对齐）
+            if (unmatchedAmount.compareTo(BigDecimal.ZERO) > 0) {
+                log.warn("机械结算存在未匹配到生效合同的明细金额, settlementId={}, unmatchedAmount={}",
+                        settlementId, unmatchedAmount);
+            }
         }
 
         log.info("机械结算单审批通过, settlementId={}, totalAmount={}", settlementId, settlement.getTotalAmount());

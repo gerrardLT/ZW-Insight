@@ -1,7 +1,9 @@
 package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.finance.domain.BizProjectSettlement;
 import com.zwinsight.finance.mapper.BizProjectSettlementMapper;
@@ -148,5 +150,52 @@ class ProjectSettlementServiceTest {
 
         // 验证：项目状态未被更新（projectMapper.updateStatus 从未被调用）
         verify(projectMapper, never()).updateStatus(anyLong(), anyString());
+    }
+
+    // ============ page 测试 ============
+
+    @Test
+    @DisplayName("testPage_returnsPagedResult — 按项目+状态分页查询返回结算单列表")
+    void testPage_returnsPagedResult() {
+        // 准备：mock selectPage 返回一条记录
+        BizProjectSettlement settlement = new BizProjectSettlement();
+        settlement.setId(1L);
+        settlement.setProjectId(10L);
+        settlement.setStatus("DRAFT");
+
+        Page<BizProjectSettlement> mockPage = new Page<>(1, 10);
+        mockPage.setRecords(java.util.List.of(settlement));
+        mockPage.setTotal(1);
+
+        when(settlementMapper.selectPage(any(), any())).thenReturn(mockPage);
+
+        // 执行
+        PageResult<BizProjectSettlement> result = projectSettlementService.page(1, 10, 10L, "DRAFT");
+
+        // 验证
+        assertNotNull(result);
+        assertEquals(1, result.getTotal());
+        assertEquals(1, result.getRecords().size());
+        assertEquals("DRAFT", result.getRecords().get(0).getStatus());
+        verify(settlementMapper).selectPage(any(), any());
+    }
+
+    @Test
+    @DisplayName("testPage_emptyResultWhenNoFilter — 无筛选条件时返回空分页不报错")
+    void testPage_emptyResultWhenNoFilter() {
+        // 准备：mock selectPage 返回空结果
+        Page<BizProjectSettlement> mockPage = new Page<>(1, 10);
+        mockPage.setRecords(java.util.Collections.emptyList());
+        mockPage.setTotal(0);
+
+        when(settlementMapper.selectPage(any(), any())).thenReturn(mockPage);
+
+        // 执行：projectId 与 status 均为 null（不加筛选条件）
+        PageResult<BizProjectSettlement> result = projectSettlementService.page(1, 10, null, null);
+
+        // 验证
+        assertNotNull(result);
+        assertEquals(0, result.getTotal());
+        assertTrue(result.getRecords().isEmpty());
     }
 }

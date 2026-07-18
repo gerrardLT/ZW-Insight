@@ -92,6 +92,11 @@ export function deleteMaterialCheck(id: number) {
   return request.delete(`/v1/material/inventory/${id}`)
 }
 
+// 审批盘点单（第二阶段：据实盘数量调整库存）
+export function submitMaterialCheck(id: number) {
+  return request.put(`/v1/material/inventory/${id}/submit`)
+}
+
 // ======================== 库存查询 ========================
 export function getMaterialStockPage(params: any) {
   return request.get('/v1/material/stock/page', { params })
@@ -99,4 +104,15 @@ export function getMaterialStockPage(params: any) {
 
 export function getMaterialStockDetail(id: number) {
   return request.get(`/v1/material/stock/${id}`)
+}
+
+// ======================== 材料退货（退款记录，只读） ========================
+// 后端：MaterialRefundController @RequestMapping("/api/v1/material/refund")
+// 退款由退货出库事件自动创建，无手动创建接口
+export function getMaterialRefundPage(params: { page?: number; size?: number; contractId?: number; startTime?: string; endTime?: string }) {
+  return request.get('/v1/material/refund', { params })
+}
+
+export function getMaterialRefundDetail(id: number) {
+  return request.get(`/v1/material/refund/${id}`)
 }

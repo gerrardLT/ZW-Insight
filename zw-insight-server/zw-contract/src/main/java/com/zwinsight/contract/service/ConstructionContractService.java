@@ -11,6 +11,8 @@ import com.zwinsight.contract.domain.BizContractDetail;
 import com.zwinsight.contract.domain.dto.ContractCreateRequest;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.contract.mapper.BizContractDetailMapper;
+import com.zwinsight.project.domain.BizProject;
+import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class ConstructionContractService {
     private final BizContractDetailMapper detailMapper;
     private final SerialNumberService serialNumberService;
     private final ApprovalService approvalService;
+    private final BizProjectMapper projectMapper;
 
     /**
      * 分页查询
@@ -149,6 +152,19 @@ public class ConstructionContractService {
         contract.setWorkflowInstanceId(processInstanceId);
         contract.setStatus("EFFECTIVE");
         contractMapper.updateById(contract);
+
+        // 回写项目累计合同金额（项目下所有施工合同金额之和；DRAFT→EFFECTIVE 仅一次，不会重复累加）
+        if (contract.getProjectId() != null) {
+            BizProject project = projectMapper.selectById(contract.getProjectId());
+            if (project != null) {
+                BigDecimal total = project.getContractAmount() == null
+                        ? BigDecimal.ZERO : project.getContractAmount();
+                BigDecimal amount = contract.getContractAmount() == null
+                        ? BigDecimal.ZERO : contract.getContractAmount();
+                project.setContractAmount(total.add(amount));
+                projectMapper.updateById(project);
+            }
+        }
     }
 
     /**

@@ -5,6 +5,7 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.workflow.service.ApprovalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ class ProjectServiceTest {
     @Mock private BizProjectMapper projectMapper;
     @Mock private SerialNumberService serialNumberService;
     @Mock private ProjectMemberService memberService;
+    @Mock private ApprovalService approvalService;
 
     @InjectMocks
     private ProjectService projectService;
@@ -296,6 +298,59 @@ class ProjectServiceTest {
         when(projectMapper.selectById(999L)).thenReturn(null);
 
         assertThatThrownBy(() -> projectService.closeProject(999L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("项目不存在");
+    }
+
+    @Test
+    @DisplayName("结项：条件满足时发起审批，状态置 CLOSING 并记录流程实例ID")
+    void testCloseProject_startsApproval() {
+        sampleProject.setStatus("COMPLETED");
+        sampleProject.setTotalIncome(new BigDecimal("1000"));
+        sampleProject.setCumulativeOutput(new BigDecimal("1000"));
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(approvalService.startProcess(eq("PROJECT_CLOSE"), eq(1L), eq("project_close_approval"), anyMap()))
+                .thenReturn("proc-1");
+
+        projectService.closeProject(1L);
+
+        verify(approvalService).startProcess(eq("PROJECT_CLOSE"), eq(1L), eq("project_close_approval"), anyMap());
+        verify(projectMapper).updateById(argThat(p ->
+                "CLOSING".equals(p.getStatus()) && "proc-1".equals(p.getWorkflowInstanceId())));
+    }
+
+    // =====================================================================
+    // onCloseApproved / onCloseRejected
+    // =====================================================================
+
+    @Test
+    @DisplayName("结项审批通过：CLOSING → CLOSED")
+    void testOnCloseApproved_toClosed() {
+        sampleProject.setStatus("CLOSING");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+
+        projectService.onCloseApproved(1L);
+
+        verify(projectMapper).updateById(argThat(p -> "CLOSED".equals(p.getStatus())));
+    }
+
+    @Test
+    @DisplayName("结项审批驳回：CLOSING → COMPLETED（回退）")
+    void testOnCloseRejected_backToCompleted() {
+        sampleProject.setStatus("CLOSING");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+
+        projectService.onCloseRejected(1L);
+
+        verify(projectMapper).updateById(argThat(p -> "COMPLETED".equals(p.getStatus())));
+    }
+
+    @Test
+    @DisplayName("结项审批通过：项目不存在抛异常")
+    void testOnCloseApproved_notFound() {
+        when(projectMapper.selectById(999L)).thenReturn(null);
+
+        assertThatThrownBy(() -> projectService.onCloseApproved(999L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("项目不存在");
     }

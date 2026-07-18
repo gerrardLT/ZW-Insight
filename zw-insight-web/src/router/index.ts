@@ -229,6 +229,12 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '收票登记', icon: 'Tickets' }
       },
       {
+        path: 'invoice-summary',
+        name: 'InvoiceSummary',
+        component: () => import('@/views/finance/invoice-summary.vue'),
+        meta: { title: '发票汇总', icon: 'DataAnalysis' }
+      },
+      {
         path: 'payment-received',
         name: 'PaymentReceived',
         component: () => import('@/views/finance/payment-received.vue'),
@@ -239,6 +245,36 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'PaymentApply',
         component: () => import('@/views/finance/payment-apply.vue'),
         meta: { title: '付款申请', icon: 'CreditCard' }
+      },
+      {
+        path: 'other-payment',
+        name: 'OtherPayment',
+        component: () => import('@/views/finance/other-payment.vue'),
+        meta: { title: '其他费用付款', icon: 'Coin' }
+      },
+      {
+        path: 'project-reimbursement',
+        name: 'ProjectReimbursement',
+        component: () => import('@/views/finance/project-reimbursement.vue'),
+        meta: { title: '项目报销', icon: 'Document' }
+      },
+      {
+        path: 'reserve-fund',
+        name: 'ReserveFund',
+        component: () => import('@/views/finance/reserve-fund.vue'),
+        meta: { title: '备用金管理', icon: 'Wallet' }
+      },
+      {
+        path: 'personal-reimbursement',
+        name: 'PersonalReimbursement',
+        component: () => import('@/views/finance/personal-reimbursement.vue'),
+        meta: { title: '个人报销', icon: 'User' }
+      },
+      {
+        path: 'retention',
+        name: 'Retention',
+        component: () => import('@/views/finance/retention.vue'),
+        meta: { title: '质保金管理', icon: 'GoldMedal' }
       },
       {
         path: 'settlement',
@@ -407,6 +443,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'MaterialStock',
         component: () => import('@/views/material/stock.vue'),
         meta: { title: '库存查询', icon: 'Search' }
+      },
+      {
+        path: 'refund',
+        name: 'MaterialRefund',
+        component: () => import('@/views/material/refund.vue'),
+        meta: { title: '退货退款', icon: 'RefreshLeft' }
       }
     ]
   },
@@ -584,6 +626,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'Vehicle',
         component: () => import('@/views/hr/vehicle.vue'),
         meta: { title: '车辆管理', icon: 'Van' }
+      },
+      {
+        path: 'resign-apply',
+        name: 'ResignApply',
+        component: () => import('@/views/hr/resign-apply.vue'),
+        meta: { title: '离职申请', icon: 'RemoveFilled' }
       }
     ]
   },
@@ -599,6 +647,51 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'ArchiveIndex',
         component: () => import('@/views/archive/index.vue'),
         meta: { title: '档案查询', icon: 'Search' }
+      },
+      {
+        path: 'other-income-contract',
+        name: 'ArchiveOtherIncomeContract',
+        component: () => import('@/views/archive/other-income-contract.vue'),
+        meta: { title: '其它收入合同档案', icon: 'Document' }
+      },
+      {
+        path: 'other-expense-contract',
+        name: 'ArchiveOtherExpenseContract',
+        component: () => import('@/views/archive/other-expense-contract.vue'),
+        meta: { title: '其它支出合同档案', icon: 'Document' }
+      },
+      {
+        path: 'office-supply',
+        name: 'ArchiveOfficeSupply',
+        component: () => import('@/views/archive/office-supply.vue'),
+        meta: { title: '办公用品档案', icon: 'Box' }
+      }
+    ]
+  },
+  // 平台管理
+  {
+    path: '/platform',
+    component: () => import('@/layouts/DefaultLayout.vue'),
+    redirect: '/platform/tenant',
+    meta: { title: '平台管理', icon: 'Platform' },
+    children: [
+      {
+        path: 'tenant',
+        name: 'PlatformTenant',
+        component: () => import('@/views/platform/tenant/index.vue'),
+        meta: { title: '租户管理', icon: 'OfficeBuilding' }
+      },
+      {
+        path: 'tenant-type',
+        name: 'PlatformTenantType',
+        component: () => import('@/views/platform/tenant-type/index.vue'),
+        meta: { title: '用户类型', icon: 'Collection' }
+      },
+      {
+        path: 'storage',
+        name: 'PlatformStorage',
+        component: () => import('@/views/platform/storage/index.vue'),
+        meta: { title: '存储管理', icon: 'FolderOpened' }
       }
     ]
   },

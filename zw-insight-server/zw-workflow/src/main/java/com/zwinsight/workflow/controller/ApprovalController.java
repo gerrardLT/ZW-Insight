@@ -113,6 +113,17 @@ public class ApprovalController {
     }
 
     /**
+     * 我发起的流程（分页）
+     */
+    @GetMapping("/my-initiated")
+    public R<PageResult<Map<String, Object>>> getMyInitiated(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Long userId = SecurityContextHolder.getUserId();
+        return R.ok(approvalService.getMyInitiatedProcesses(userId, page, size));
+    }
+
+    /**
      * 批量通过
      */
     @PostMapping("/batch-approve")

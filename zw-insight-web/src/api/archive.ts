@@ -50,6 +50,21 @@ export function getVehicleArchive(vehicleId: number) {
   return request.get(`/v1/archive/vehicle/${vehicleId}`)
 }
 
+// ======================== 其它收入合同档案（只读聚合列表） ========================
+export function getOtherIncomeContractArchive(params: { page?: number; size?: number; keyword?: string }) {
+  return request.get('/v1/archive/other-income-contract', { params })
+}
+
+// ======================== 其它支出合同档案（只读聚合列表） ========================
+export function getOtherExpenseContractArchive(params: { page?: number; size?: number; keyword?: string }) {
+  return request.get('/v1/archive/other-expense-contract', { params })
+}
+
+// ======================== 办公用品档案（只读聚合列表） ========================
+export function getOfficeSupplyArchive(params: { page?: number; size?: number; keyword?: string }) {
+  return request.get('/v1/archive/office-supply', { params })
+}
+
 // ======================== 兼容别名（页面引用传统 CRUD） ========================
 // archive/index.vue 使用传统分页列表模式
 export function getArchivePage(params: any) {

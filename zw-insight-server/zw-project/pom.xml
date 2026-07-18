@@ -20,6 +20,14 @@
             <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-common</artifactId>
         </dependency>
+        <!-- 复用 zw-common 的测试基类（IntegrationTestBase 等） -->
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-common</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-security</artifactId>
@@ -27,6 +35,11 @@
         <dependency>
             <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-file</artifactId>
+        </dependency>
+        <!-- 审批流（项目结项审批） -->
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-workflow</artifactId>
         </dependency>
 
         <!-- Spring Boot Web -->

@@ -10,9 +10,11 @@ import com.zwinsight.workflow.mapper.WfApprovalRecordMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.HistoryService;
+import org.flowable.engine.IdentityService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricActivityInstance;
+import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
@@ -35,6 +37,7 @@ public class ApprovalService {
     private final RuntimeService runtimeService;
     private final TaskService taskService;
     private final HistoryService historyService;
+    private final IdentityService identityService;
     private final ApplicationEventPublisher eventPublisher;
     private final WfApprovalRecordMapper approvalRecordMapper;
 
@@ -62,8 +65,17 @@ public class ApprovalService {
         // 设置businessKey为 businessType:businessId
         String businessKey = businessType + ":" + businessId;
 
-        ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(
-                processKey, businessKey, variables, String.valueOf(tenantId));
+        // 记录流程发起人，使 HistoricProcessInstance.startUserId 可用（支持"我发起"查询）
+        identityService.setAuthenticatedUserId(String.valueOf(userId));
+
+        ProcessInstance processInstance;
+        try {
+            processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(
+                    processKey, businessKey, variables, String.valueOf(tenantId));
+        } finally {
+            // 清理线程绑定的发起人，防止线程池复用导致后续流程发起人被污染
+            identityService.setAuthenticatedUserId(null);
+        }
 
         log.info("流程发起成功, processInstanceId={}, businessKey={}, userId={}",
                 processInstance.getId(), businessKey, userId);
@@ -358,6 +370,37 @@ public class ApprovalService {
     }
 
     /**
+     * 我发起的流程（分页）
+     * <p>
+     * 基于 HistoricProcessInstance.startedBy 查询当前用户发起的全部流程实例，
+     * 包含进行中（RUNNING）和已结束（COMPLETED）两种状态。
+     * </p>
+     *
+     * @param userId 用户ID
+     * @param page   页码
+     * @param size   每页大小
+     * @return 分页结果
+     */
+    public PageResult<Map<String, Object>> getMyInitiatedProcesses(Long userId, int page, int size) {
+        long count = historyService.createHistoricProcessInstanceQuery()
+                .startedBy(String.valueOf(userId))
+                .count();
+
+        List<HistoricProcessInstance> instances = historyService.createHistoricProcessInstanceQuery()
+                .startedBy(String.valueOf(userId))
+                .orderByProcessInstanceStartTime()
+                .desc()
+                .listPage((page - 1) * size, size);
+
+        List<Map<String, Object>> records = instances.stream()
+                .map(this::historicProcessToMap)
+                .collect(Collectors.toList());
+
+        long pages = (count + size - 1) / size;
+        return new PageResult<>(records, count, page, size, pages);
+    }
+
+    /**
      * 批量通过
      *
      * @param taskIds 任务ID列表
@@ -420,6 +463,31 @@ public class ApprovalService {
         map.put("createTime", task.getCreateTime());
         map.put("endTime", task.getEndTime());
         map.put("processDefinitionId", task.getProcessDefinitionId());
+        return map;
+    }
+
+    private Map<String, Object> historicProcessToMap(HistoricProcessInstance instance) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("processInstanceId", instance.getId());
+        map.put("processDefinitionId", instance.getProcessDefinitionId());
+        map.put("processDefinitionKey", instance.getProcessDefinitionKey());
+        map.put("processName", instance.getProcessDefinitionName());
+        map.put("startTime", instance.getStartTime());
+        map.put("endTime", instance.getEndTime());
+        map.put("initiator", instance.getStartUserId());
+        // 流程状态：结束时间为空表示进行中，否则已完成
+        map.put("status", instance.getEndTime() == null ? "RUNNING" : "COMPLETED");
+
+        // 从 businessKey（格式 businessType:businessId）解析业务信息
+        String businessKey = instance.getBusinessKey();
+        if (businessKey != null && businessKey.contains(":")) {
+            String[] parts = businessKey.split(":", 2);
+            map.put("businessType", parts[0]);
+            map.put("businessId", parts[1]);
+        } else {
+            map.put("businessType", null);
+            map.put("businessId", null);
+        }
         return map;
     }
 }

@@ -66,5 +66,18 @@ public class SubcontractOutputService {
 
         report.setStatus("APPROVED");
         outputReportMapper.updateById(report);
+
+        // 回写分包合同累计产值（与累计结算分离，避免与结算回写重复累加）
+        if (report.getContractId() != null) {
+            BizSubcontract contract = subcontractMapper.selectById(report.getContractId());
+            if (contract != null) {
+                BigDecimal cumulative = contract.getCumulativeOutput() == null
+                        ? BigDecimal.ZERO : contract.getCumulativeOutput();
+                BigDecimal current = report.getCurrentOutput() == null
+                        ? BigDecimal.ZERO : report.getCurrentOutput();
+                contract.setCumulativeOutput(cumulative.add(current));
+                subcontractMapper.updateById(contract);
+            }
+        }
     }
 }

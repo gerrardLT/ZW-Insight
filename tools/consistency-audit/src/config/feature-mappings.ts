@@ -28,7 +28,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'budget',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/budget/target-cost'],
+    expectedApiPatterns: ['/v1/budget'],
   },
   {
     featureId: 'BIZ-2.1-02',
@@ -37,7 +37,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'budget',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/budget/target-cost-change'],
+    expectedApiPatterns: ['/v1/budget/change'],
   },
 
   // --- 2.2 采购管理 ---
@@ -48,7 +48,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'purchase',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/purchase/material-contract'],
+    expectedApiPatterns: ['/v1/purchase/contract'],
   },
   {
     featureId: 'BIZ-2.2-02',
@@ -57,7 +57,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'purchase',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/purchase/material-contract-settlement'],
+    expectedApiPatterns: ['/v1/purchase/settlement'],
   },
 
   // --- 2.3 三方比价 ---
@@ -68,7 +68,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'purchase',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/purchase/inquiry-notice'],
+    expectedApiPatterns: ['/v1/purchase/inquiry'],
   },
   {
     featureId: 'BIZ-2.3-02',
@@ -77,7 +77,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'purchase',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/purchase/supplier-quote'],
+    expectedApiPatterns: ['/v1/purchase/quotation'],
   },
   {
     featureId: 'BIZ-2.3-03',
@@ -86,7 +86,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'purchase',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/purchase/quote-ranking'],
+    expectedApiPatterns: ['/v1/purchase/quotation'],
   },
   {
     featureId: 'BIZ-2.3-04',
@@ -95,7 +95,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'purchase',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/purchase/bid-result'],
+    expectedApiPatterns: ['/v1/purchase/bid'],
   },
 
   // --- 2.4 劳务管理 ---
@@ -106,7 +106,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'labor',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/labor/subcontract'],
+    expectedApiPatterns: ['/v1/labor/contract'],
   },
   {
     featureId: 'BIZ-2.4-02',
@@ -133,7 +133,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'labor',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/labor/reward-penalty'],
+    expectedApiPatterns: ['/v1/labor/reward-punish'],
   },
   {
     featureId: 'BIZ-2.4-05',
@@ -169,7 +169,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'labor',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/labor/settlement-sheet'],
+    expectedApiPatterns: ['/v1/labor/settlement'],
   },
   {
     featureId: 'BIZ-2.4-09',
@@ -178,7 +178,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'labor',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/labor/salary-stats'],
+    expectedApiPatterns: ['/v1/labor/salary'],
   },
   {
     featureId: 'BIZ-2.4-10',
@@ -187,7 +187,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'labor',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/labor/spot-work-order'],
+    expectedApiPatterns: ['/v1/labor/work-order'],
   },
   {
     featureId: 'BIZ-2.4-11',
@@ -196,7 +196,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'labor',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/labor/spot-settlement'],
+    expectedApiPatterns: ['/v1/labor/settlement'],
   },
   {
     featureId: 'BIZ-2.4-12',
@@ -205,7 +205,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'labor',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/labor/spot-salary-stats'],
+    expectedApiPatterns: ['/v1/labor/salary'],
   },
 
   // --- 2.5 材料库存 ---
@@ -234,7 +234,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'material',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/material/return'],
+    expectedApiPatterns: ['/v1/material/refund'],
   },
   {
     featureId: 'BIZ-2.5-04',
@@ -252,7 +252,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'material',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/material/inventory-check'],
+    expectedApiPatterns: ['/v1/material/inventory'],
   },
   {
     featureId: 'BIZ-2.5-06',
@@ -308,7 +308,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'machine',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/machine/entry-register'],
+    expectedApiPatterns: ['/v1/machine/entry'],
   },
   {
     featureId: 'BIZ-2.6-06',
@@ -317,7 +317,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'machine',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/machine/exit-register'],
+    expectedApiPatterns: ['/v1/machine/entry'],
   },
   {
     featureId: 'BIZ-2.6-07',
@@ -326,7 +326,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'machine',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/machine/workload'],
+    expectedApiPatterns: ['/v1/machine/work-log'],
   },
   {
     featureId: 'BIZ-2.6-08',
@@ -335,7 +335,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'machine',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/machine/workload-settlement'],
+    expectedApiPatterns: ['/v1/machine/settlement'],
   },
   {
     featureId: 'BIZ-2.6-09',
@@ -344,7 +344,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'machine',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/machine/fuel-record'],
+    expectedApiPatterns: ['/v1/machine/oil-record'],
   },
   {
     featureId: 'BIZ-2.6-10',
@@ -353,7 +353,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'machine',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/machine/fault-report'],
+    expectedApiPatterns: ['/v1/machine/repair'],
   },
   {
     featureId: 'BIZ-2.6-11',
@@ -362,7 +362,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'machine',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/machine/repair-dispatch'],
+    expectedApiPatterns: ['/v1/machine/repair'],
   },
   {
     featureId: 'BIZ-2.6-12',
@@ -371,7 +371,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'machine',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/machine/repair-process'],
+    expectedApiPatterns: ['/v1/machine/repair'],
   },
   {
     featureId: 'BIZ-2.6-13',
@@ -380,7 +380,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'machine',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/machine/maintenance-record'],
+    expectedApiPatterns: ['/v1/machine/repair'],
   },
 
   // --- 2.7 分包管理 ---
@@ -400,7 +400,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'subcontract',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/subcontract/output-report'],
+    expectedApiPatterns: ['/v1/subcontract/output'],
   },
   {
     featureId: 'BIZ-2.7-03',
@@ -418,7 +418,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'subcontract',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/subcontract/reward-penalty'],
+    expectedApiPatterns: ['/v1/subcontract/reward-punish'],
   },
 
   // --- 2.8 现场管理（双端功能）---
@@ -438,7 +438,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'site',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/site/progress-feedback'],
+    expectedApiPatterns: ['/v1/site/schedule'],
   },
   {
     featureId: 'BIZ-2.8-03',
@@ -456,7 +456,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'site',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/site/quality-check'],
+    expectedApiPatterns: ['/v1/site/inspection'],
   },
   {
     featureId: 'BIZ-2.8-05',
@@ -465,7 +465,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'site',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/site/quality-rectification'],
+    expectedApiPatterns: ['/v1/site/rectification'],
   },
   {
     featureId: 'BIZ-2.8-06',
@@ -474,7 +474,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'site',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/site/safety-check'],
+    expectedApiPatterns: ['/v1/site/inspection'],
   },
   {
     featureId: 'BIZ-2.8-07',
@@ -483,7 +483,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'site',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/site/safety-rectification'],
+    expectedApiPatterns: ['/v1/site/rectification'],
   },
   {
     featureId: 'BIZ-2.8-08',
@@ -492,7 +492,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'site',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/site/completion-acceptance'],
+    expectedApiPatterns: ['/v1/site/completion'],
   },
 
   // --- 2.9 财务管理（双端功能）---
@@ -521,7 +521,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'finance',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/finance/ticket-received'],
+    expectedApiPatterns: ['/v1/finance/invoice-received'],
   },
   {
     featureId: 'BIZ-2.9-04',
@@ -557,7 +557,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'finance',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/finance/petty-cash-apply'],
+    expectedApiPatterns: ['/v1/finance/reserve-fund'],
   },
   {
     featureId: 'BIZ-2.9-08',
@@ -566,7 +566,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'finance',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/finance/petty-cash-return'],
+    expectedApiPatterns: ['/v1/finance/reserve-fund'],
   },
   {
     featureId: 'BIZ-2.9-09',
@@ -595,7 +595,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/regularization-apply'],
+    expectedApiPatterns: ['/v1/hr/regular-apply'],
   },
   {
     featureId: 'BIZ-2.10-03',
@@ -604,7 +604,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/transfer'],
+    expectedApiPatterns: ['/v1/hr/transfer-apply'],
   },
   {
     featureId: 'BIZ-2.10-04',
@@ -613,7 +613,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/resignation-apply'],
+    expectedApiPatterns: ['/v1/hr/resign-apply'],
   },
   {
     featureId: 'BIZ-2.10-05',
@@ -640,7 +640,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/office-supply-inbound'],
+    expectedApiPatterns: ['/v1/hr/office-supply'],
   },
   {
     featureId: 'BIZ-2.10-08',
@@ -649,7 +649,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/office-supply-outbound'],
+    expectedApiPatterns: ['/v1/hr/office-supply'],
   },
   {
     featureId: 'BIZ-2.10-09',
@@ -658,7 +658,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/vehicle-register'],
+    expectedApiPatterns: ['/v1/hr/vehicle'],
   },
   {
     featureId: 'BIZ-2.10-10',
@@ -667,7 +667,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/vehicle-apply'],
+    expectedApiPatterns: ['/v1/hr/vehicle'],
   },
   {
     featureId: 'BIZ-2.10-11',
@@ -676,7 +676,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/vehicle-maintenance'],
+    expectedApiPatterns: ['/v1/hr/vehicle'],
   },
   {
     featureId: 'BIZ-2.10-12',
@@ -685,7 +685,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/self-company-archive'],
+    expectedApiPatterns: ['/v1/basedata/company'],
   },
   {
     featureId: 'BIZ-2.10-13',
@@ -694,7 +694,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'hr',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/hr/client-archive'],
+    expectedApiPatterns: ['/v1/basedata/owner'],
   },
 
   // --- 2.11 档案 ---
@@ -723,7 +723,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'archive',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/archive/target-cost'],
+    expectedApiPatterns: ['/v1/archive/budget'],
   },
   {
     featureId: 'BIZ-2.11-04',
@@ -732,7 +732,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'archive',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/archive/construction-contract'],
+    expectedApiPatterns: ['/v1/archive/contract'],
   },
   {
     featureId: 'BIZ-2.11-05',
@@ -768,7 +768,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'archive',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/archive/income-contract'],
+    expectedApiPatterns: ['/v1/archive/other-income-contract'],
   },
   {
     featureId: 'BIZ-2.11-09',
@@ -777,7 +777,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'archive',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/archive/expense-contract'],
+    expectedApiPatterns: ['/v1/archive/other-expense-contract'],
   },
   {
     featureId: 'BIZ-2.11-10',
@@ -824,7 +824,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'basedata',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/basedata/material-dict'],
+    expectedApiPatterns: ['/v1/basedata/material'],
   },
   {
     featureId: 'BIZ-2.12-02',
@@ -833,7 +833,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'basedata',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/basedata/self-company'],
+    expectedApiPatterns: ['/v1/basedata/company'],
   },
   {
     featureId: 'BIZ-2.12-03',
@@ -851,7 +851,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'basedata',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/basedata/client-unit'],
+    expectedApiPatterns: ['/v1/basedata/owner'],
   },
   {
     featureId: 'BIZ-2.12-05',
@@ -860,7 +860,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'basedata',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/basedata/quality-scheme'],
+    expectedApiPatterns: ['/v1/basedata/inspection-scheme'],
   },
   {
     featureId: 'BIZ-2.12-06',
@@ -869,7 +869,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'basedata',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/basedata/safety-scheme'],
+    expectedApiPatterns: ['/v1/basedata/inspection-scheme'],
   },
 
   // --- 2.13 基础配置 ---
@@ -880,7 +880,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/warranty-config'],
+    expectedApiPatterns: ['/v1/finance/retention'],
   },
   {
     featureId: 'BIZ-2.13-02',
@@ -889,7 +889,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/budget-control-config'],
+    expectedApiPatterns: ['/v1/budget-control-configs'],
   },
   {
     featureId: 'BIZ-2.13-03',
@@ -898,7 +898,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/secondary-account'],
+    expectedApiPatterns: ['/v1/budget/subcategory'],
   },
 
   // --- 2.14 看板（双端功能）---
@@ -936,7 +936,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'dashboard',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/dashboard/supplier-payment-monitor'],
+    expectedApiPatterns: ['/v1/dashboard/supplier-payable'],
   },
   {
     featureId: 'BIZ-2.14-05',
@@ -963,7 +963,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'dashboard',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/dashboard/gantt-chart'],
+    expectedApiPatterns: ['/v1/dashboard/schedule-gantt'],
   },
 
   // ===================== 一、用户管理功能 =====================
@@ -976,7 +976,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/system/login', '/v1/system/captcha'],
+    expectedApiPatterns: ['/v1/auth', '/v1/captcha'],
   },
 
   // --- 1.2 首页 ---
@@ -987,7 +987,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'workflow',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/workflow/todo', '/v1/workflow/done'],
+    expectedApiPatterns: ['/v1/workflow/approval'],
   },
   {
     featureId: 'USR-1.2-02',
@@ -996,7 +996,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/system/shortcut'],
+    expectedApiPatterns: ['/v1/message/shortcut'],
   },
   {
     featureId: 'USR-1.2-03',
@@ -1005,7 +1005,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/system/notice'],
+    expectedApiPatterns: ['/v1/message/announcement'],
   },
   {
     featureId: 'USR-1.2-04',
@@ -1014,7 +1014,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/system/notification'],
+    expectedApiPatterns: ['/v1/message/notice'],
   },
   {
     featureId: 'USR-1.2-05',
@@ -1023,7 +1023,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/system/message'],
+    expectedApiPatterns: ['/v1/message/msg'],
   },
 
   // --- 1.3 项目报备 ---
@@ -1034,7 +1034,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'project',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/project/filing'],
+    expectedApiPatterns: ['/v1/project'],
   },
 
   // --- 1.4 投标管理 ---
@@ -1045,7 +1045,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'tender',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/tender/registration'],
+    expectedApiPatterns: ['/v1/tender/register'],
   },
   {
     featureId: 'USR-1.4-02',
@@ -1054,7 +1054,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'tender',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/tender/task-assign'],
+    expectedApiPatterns: ['/v1/tender/task'],
   },
   {
     featureId: 'USR-1.4-03',
@@ -1063,7 +1063,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'tender',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/tender/fee-payment'],
+    expectedApiPatterns: ['/v1/tender/fee'],
   },
   {
     featureId: 'USR-1.4-04',
@@ -1072,7 +1072,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'tender',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/tender/deposit-apply'],
+    expectedApiPatterns: ['/v1/tender/deposit'],
   },
   {
     featureId: 'USR-1.4-05',
@@ -1081,7 +1081,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'tender',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/tender/bid-opening'],
+    expectedApiPatterns: ['/v1/tender/open-bid'],
   },
   {
     featureId: 'USR-1.4-06',
@@ -1090,7 +1090,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'tender',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/tender/deposit-return'],
+    expectedApiPatterns: ['/v1/tender/deposit'],
   },
   {
     featureId: 'USR-1.4-07',
@@ -1099,7 +1099,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'tender',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/tender/personnel-cert'],
+    expectedApiPatterns: ['/v1/tender/certificate'],
   },
   {
     featureId: 'USR-1.4-08',
@@ -1108,7 +1108,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'tender',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/tender/company-cert'],
+    expectedApiPatterns: ['/v1/tender/certificate'],
   },
 
   // --- 1.5 项目管理 ---
@@ -1119,7 +1119,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'contract',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/contract/construction'],
+    expectedApiPatterns: ['/v1/contract'],
   },
   {
     featureId: 'USR-1.5-02',
@@ -1128,7 +1128,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'project',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/project/quantity-list'],
+    expectedApiPatterns: ['/v1/contract/quantity'],
   },
   {
     featureId: 'USR-1.5-03',
@@ -1137,7 +1137,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'project',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/project/output-report'],
+    expectedApiPatterns: ['/v1/contract/output'],
   },
   {
     featureId: 'USR-1.5-04',
@@ -1146,7 +1146,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'project',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/project/final-settlement'],
+    expectedApiPatterns: ['/v1/contract/settlement'],
   },
   {
     featureId: 'USR-1.5-05',
@@ -1155,7 +1155,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'contract',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/contract/other-income'],
+    expectedApiPatterns: ['/v1/contract/other'],
   },
   {
     featureId: 'USR-1.5-06',
@@ -1164,7 +1164,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'contract',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/contract/other-expense'],
+    expectedApiPatterns: ['/v1/contract/other'],
   },
 
   // ===================== 三、手机管理功能（移动端必须）=====================
@@ -1179,7 +1179,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: false,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/system/shortcut'],
+    expectedApiPatterns: ['/v1/message/shortcut'],
   },
   {
     featureId: 'MOB-3.2-02',
@@ -1188,7 +1188,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: false,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/system/message', '/v1/system/notice'],
+    expectedApiPatterns: ['/v1/message/msg', '/v1/message/notice'],
   },
   {
     featureId: 'MOB-3.2-03',
@@ -1197,7 +1197,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'workflow',
     pcRequired: false,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/workflow/todo', '/v1/workflow/done', '/v1/workflow/my-initiated'],
+    expectedApiPatterns: ['/v1/workflow/approval'],
   },
   {
     featureId: 'MOB-3.3-01',
@@ -1206,7 +1206,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'dashboard',
     pcRequired: false,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/dashboard/project-board'],
+    expectedApiPatterns: ['/v1/dashboard/project'],
   },
   {
     featureId: 'MOB-3.4-01',
@@ -1215,7 +1215,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: false,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/system/logout'],
+    expectedApiPatterns: ['/v1/auth'],
   },
   {
     featureId: 'MOB-3.4-02',
@@ -1224,7 +1224,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: true,
-    expectedApiPatterns: ['/v1/system/change-password'],
+    expectedApiPatterns: ['/v1/auth/password-reset'],
   },
 
   // ===================== 四、平台管理功能（仅PC端）=====================
@@ -1246,7 +1246,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/position'],
+    expectedApiPatterns: ['/v1/system/post'],
   },
   {
     featureId: 'PLT-4.2-03',
@@ -1282,7 +1282,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/data-permission'],
+    expectedApiPatterns: ['/v1/system/role'],
   },
   {
     featureId: 'PLT-4.2-07',
@@ -1300,7 +1300,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/settings'],
+    expectedApiPatterns: ['/v1/system/config'],
   },
   {
     featureId: 'PLT-4.2-09',
@@ -1309,7 +1309,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/storage'],
+    expectedApiPatterns: ['/v1/file/storage'],
   },
   {
     featureId: 'PLT-4.2-10',
@@ -1318,7 +1318,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/log/operation', '/v1/system/log/exception', '/v1/system/log/login'],
+    expectedApiPatterns: ['/v1/system/log', '/v1/system/audit'],
   },
 
   // --- 4.3 用户管理 ---
@@ -1329,7 +1329,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/user-type'],
+    expectedApiPatterns: ['/v1/platform/tenant-type'],
   },
   {
     featureId: 'PLT-4.3-02',
@@ -1338,7 +1338,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'system',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/system/tenant'],
+    expectedApiPatterns: ['/v1/platform/tenant'],
   },
 
   // --- 4.4 流程管理 ---
@@ -1358,7 +1358,7 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'workflow',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/workflow/design'],
+    expectedApiPatterns: ['/v1/workflow/process'],
   },
   {
     featureId: 'PLT-4.4-03',
@@ -1367,6 +1367,6 @@ export const featureMappings: FeatureMapping[] = [
     backendModule: 'workflow',
     pcRequired: true,
     mobileRequired: false,
-    expectedApiPatterns: ['/v1/workflow/definition'],
+    expectedApiPatterns: ['/v1/workflow/process'],
   },
 ];

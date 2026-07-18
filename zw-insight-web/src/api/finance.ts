@@ -7,7 +7,16 @@ import type {
   PaymentReceived,
   PaymentApply,
   PaymentApplyCreateRequest,
-  InvoiceReceived
+  InvoiceReceived,
+  InvoiceSummary,
+  InvoiceSummaryQuery,
+  OtherPayment,
+  ProjectReimbursement,
+  ReserveFundApply,
+  ReserveFundReturn,
+  PersonalReimbursement,
+  RetentionMoney,
+  RetentionReturn
 } from '@/types/finance'
 
 // ======================== 开票申请 ========================
@@ -42,6 +51,11 @@ export function getInvoiceReceivedPage(params: { page?: number; size?: number; p
 
 export function createInvoiceReceived(data: Partial<InvoiceReceived>) {
   return request.post<R<void>>('/v1/finance/invoice-received', data)
+}
+
+// ======================== 发票明细汇总 ========================
+export function getInvoiceSummary(params: InvoiceSummaryQuery) {
+  return request.get<R<InvoiceSummary[]>>('/v1/finance/invoice-summary', { params })
 }
 
 // ======================== 回款登记 ========================
@@ -88,4 +102,83 @@ export function deletePaymentApply(id: number) {
 
 export function submitPaymentApply(id: number) {
   return request.put<R<void>>(`/v1/finance/payment-apply/${id}/submit`)
+}
+
+// ======================== 其他费用付款 ========================
+// 后端：OtherPaymentController @RequestMapping("/api/v1/finance/other-payment")
+export function getOtherPaymentPage(params: { page?: number; size?: number; projectId?: number }) {
+  return request.get<R<PageResult<OtherPayment>>>('/v1/finance/other-payment', { params })
+}
+
+export function createOtherPayment(data: Partial<OtherPayment>) {
+  return request.post<R<void>>('/v1/finance/other-payment', data)
+}
+
+// ======================== 项目报销 ========================
+// 后端：ProjectReimbursementController @RequestMapping("/api/v1/finance/project-reimbursement")
+export function getProjectReimbursementPage(params: { page?: number; size?: number; projectId?: number }) {
+  return request.get<R<PageResult<ProjectReimbursement>>>('/v1/finance/project-reimbursement', { params })
+}
+
+export function createProjectReimbursement(data: Partial<ProjectReimbursement>) {
+  return request.post<R<void>>('/v1/finance/project-reimbursement', data)
+}
+
+export function submitProjectReimbursement(id: number) {
+  return request.post<R<void>>(`/v1/finance/project-reimbursement/${id}/submit`)
+}
+
+// ======================== 备用金（申请 + 归还） ========================
+// 后端：ReserveFundController @RequestMapping("/api/v1/finance/reserve-fund")
+export function getReserveFundApplyPage(params: { page?: number; size?: number; projectId?: number }) {
+  return request.get<R<PageResult<ReserveFundApply>>>('/v1/finance/reserve-fund/apply', { params })
+}
+
+export function createReserveFundApply(data: Partial<ReserveFundApply>) {
+  return request.post<R<void>>('/v1/finance/reserve-fund/apply', data)
+}
+
+export function submitReserveFundApply(id: number) {
+  return request.post<R<void>>(`/v1/finance/reserve-fund/apply/${id}/submit`)
+}
+
+export function createReserveFundReturn(data: ReserveFundReturn) {
+  return request.post<R<void>>('/v1/finance/reserve-fund/return', data)
+}
+
+// ======================== 个人报销 ========================
+// 后端：PersonalReimbursementController @RequestMapping("/api/v1/finance/personal-reimbursement")
+export function getPersonalReimbursementPage(params: { page?: number; size?: number }) {
+  return request.get<R<PageResult<PersonalReimbursement>>>('/v1/finance/personal-reimbursement', { params })
+}
+
+export function createPersonalReimbursement(data: Partial<PersonalReimbursement>) {
+  return request.post<R<void>>('/v1/finance/personal-reimbursement', data)
+}
+
+export function submitPersonalReimbursement(id: number) {
+  return request.post<R<void>>(`/v1/finance/personal-reimbursement/${id}/submit`)
+}
+
+// ======================== 质保金管理 ========================
+// 后端：RetentionController @RequestMapping("/api/v1/finance/retention")
+export function getRetentionPage(params: { page?: number; size?: number; projectId?: number; contractId?: number }) {
+  return request.get<R<PageResult<RetentionMoney>>>('/v1/finance/retention/page', { params })
+}
+
+export function createRetention(data: Partial<RetentionMoney>) {
+  return request.post<R<void>>('/v1/finance/retention', data)
+}
+
+// 即将到期质保金预警
+export function getExpiringRetention(days = 30) {
+  return request.get<R<RetentionMoney[]>>('/v1/finance/retention/expiring', { params: { days } })
+}
+
+export function createRetentionReturn(data: RetentionReturn) {
+  return request.post<R<void>>('/v1/finance/retention/return', data)
+}
+
+export function submitRetentionReturn(id: number) {
+  return request.post<R<void>>(`/v1/finance/retention/return/${id}/submit`)
 }

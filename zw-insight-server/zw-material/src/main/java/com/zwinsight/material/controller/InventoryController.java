@@ -45,6 +45,12 @@ public class InventoryController {
         return R.ok();
     }
 
+    @PutMapping("/{id}/submit")
+    public R<Void> submit(@PathVariable Long id) {
+        inventoryService.submit(id);
+        return R.ok();
+    }
+
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         inventoryService.delete(id);

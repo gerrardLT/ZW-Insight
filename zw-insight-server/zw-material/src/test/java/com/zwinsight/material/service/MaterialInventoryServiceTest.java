@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.material.domain.BizMaterialInventory;
+import com.zwinsight.material.domain.BizMaterialInventoryDetail;
 import com.zwinsight.material.domain.BizProjectMaterialStock;
+import com.zwinsight.material.mapper.BizMaterialInventoryDetailMapper;
 import com.zwinsight.material.mapper.BizMaterialInventoryMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
@@ -34,6 +37,9 @@ class MaterialInventoryServiceTest {
 
     @Mock
     private BizMaterialInventoryMapper inventoryMapper;
+
+    @Mock
+    private BizMaterialInventoryDetailMapper detailMapper;
 
     @Mock
     private BizProjectMaterialStockMapper stockMapper;
@@ -116,99 +122,63 @@ class MaterialInventoryServiceTest {
     // =====================================================================
 
     @Nested
-    @DisplayName("保存盘点单")
+    @DisplayName("登记盘点单（第一阶段）")
     class SaveTests {
 
         @Test
-        @DisplayName("保存盘点单 — 正常路径（库存调整为盘点数量）")
-        void testSave_happyPath_adjustStock() {
+        @DisplayName("登记盘点单 — 只落单据+明细，不调库存")
+        void testSave_happyPath_persistDetailNotStock() {
             when(inventoryMapper.insert(any(BizMaterialInventory.class))).thenReturn(1);
             when(stockMapper.selectById(10L)).thenReturn(sampleStock);
-            when(stockMapper.updateById(any(BizProjectMaterialStock.class))).thenReturn(1);
+            when(detailMapper.insert(any(BizMaterialInventoryDetail.class))).thenReturn(1);
 
             BizMaterialInventory inventory = new BizMaterialInventory();
             inventory.setProjectId(100L);
             inventory.setInventoryDate(LocalDate.now());
 
-            // 盘点数量=45，原库存=50，差异=-5
+            // 实盘数量=45，账面=50，差异=-5
             Map<Long, BigDecimal> adjustments = new HashMap<>();
             adjustments.put(10L, new BigDecimal("45.00"));
 
             inventoryService.save(inventory, adjustments);
 
-            // 验证状态被设为 DRAFT
+            // 状态为 DRAFT
             assertThat(inventory.getStatus()).isEqualTo("DRAFT");
             verify(inventoryMapper).insert(inventory);
-            // 验证库存被更新为盘点数量
-            verify(stockMapper).updateById(argThat(stock ->
-                    stock.getStockQuantity().compareTo(new BigDecimal("45.00")) == 0
+            // 关键：登记阶段不调整库存
+            verify(stockMapper, never()).updateById(any());
+            // 明细记录账面/实盘/差异
+            verify(detailMapper).insert(argThat(d ->
+                    d.getStockId().equals(10L)
+                            && d.getBookQuantity().compareTo(new BigDecimal("50.00")) == 0
+                            && d.getActualQuantity().compareTo(new BigDecimal("45.00")) == 0
+                            && d.getDiffQuantity().compareTo(new BigDecimal("-5.00")) == 0
             ));
         }
 
         @Test
-        @DisplayName("保存盘点单 — 库存增加（盘点数量 > 当前库存）")
-        void testSave_stockIncrease() {
+        @DisplayName("登记盘点单 — 盘盈（实盘 > 账面，差异为正）")
+        void testSave_stockSurplus() {
             when(inventoryMapper.insert(any(BizMaterialInventory.class))).thenReturn(1);
             when(stockMapper.selectById(10L)).thenReturn(sampleStock);
-            when(stockMapper.updateById(any(BizProjectMaterialStock.class))).thenReturn(1);
+            when(detailMapper.insert(any(BizMaterialInventoryDetail.class))).thenReturn(1);
 
             BizMaterialInventory inventory = new BizMaterialInventory();
             inventory.setProjectId(100L);
 
-            // 盘点数量=80，原库存=50，库存增加
             Map<Long, BigDecimal> adjustments = new HashMap<>();
             adjustments.put(10L, new BigDecimal("80.00"));
 
             inventoryService.save(inventory, adjustments);
 
-            verify(stockMapper).updateById(argThat(stock ->
-                    stock.getStockQuantity().compareTo(new BigDecimal("80.00")) == 0
+            verify(detailMapper).insert(argThat(d ->
+                    d.getDiffQuantity().compareTo(new BigDecimal("30.00")) == 0
             ));
+            verify(stockMapper, never()).updateById(any());
         }
 
         @Test
-        @DisplayName("保存盘点单 — 库存减少（盘点数量 < 当前库存）")
-        void testSave_stockDecrease() {
-            when(inventoryMapper.insert(any(BizMaterialInventory.class))).thenReturn(1);
-            when(stockMapper.selectById(10L)).thenReturn(sampleStock);
-            when(stockMapper.updateById(any(BizProjectMaterialStock.class))).thenReturn(1);
-
-            BizMaterialInventory inventory = new BizMaterialInventory();
-            inventory.setProjectId(100L);
-
-            // 盘点数量=20，原库存=50，库存减少
-            Map<Long, BigDecimal> adjustments = new HashMap<>();
-            adjustments.put(10L, new BigDecimal("20.00"));
-
-            inventoryService.save(inventory, adjustments);
-
-            verify(stockMapper).updateById(argThat(stock ->
-                    stock.getStockQuantity().compareTo(new BigDecimal("20.00")) == 0
-            ));
-        }
-
-        @Test
-        @DisplayName("保存盘点单 — 盘点数量为 0")
-        void testSave_adjustToZero() {
-            when(inventoryMapper.insert(any(BizMaterialInventory.class))).thenReturn(1);
-            when(stockMapper.selectById(10L)).thenReturn(sampleStock);
-            when(stockMapper.updateById(any(BizProjectMaterialStock.class))).thenReturn(1);
-
-            BizMaterialInventory inventory = new BizMaterialInventory();
-            inventory.setProjectId(100L);
-
-            Map<Long, BigDecimal> adjustments = new HashMap<>();
-            adjustments.put(10L, BigDecimal.ZERO);
-
-            inventoryService.save(inventory, adjustments);
-
-            verify(stockMapper).updateById(argThat(stock ->
-                    stock.getStockQuantity().compareTo(BigDecimal.ZERO) == 0
-            ));
-        }
-
-        @Test
-        @DisplayName("保存盘点单 — stockId 查询不到时不更新")
+        @DisplayName("登记盘点单 — stockId 查不到时跳过，不插明细")
         void testSave_stockNotFound_skipped() {
             when(inventoryMapper.insert(any(BizMaterialInventory.class))).thenReturn(1);
             when(stockMapper.selectById(999L)).thenReturn(null);
@@ -222,11 +192,12 @@ class MaterialInventoryServiceTest {
             inventoryService.save(inventory, adjustments);
 
             verify(inventoryMapper).insert(inventory);
+            verify(detailMapper, never()).insert(any());
             verify(stockMapper, never()).updateById(any());
         }
 
         @Test
-        @DisplayName("保存盘点单 — adjustments 为 null 时只保存盘点单")
+        @DisplayName("登记盘点单 — adjustments 为 null 时只保存盘点单")
         void testSave_nullAdjustments() {
             when(inventoryMapper.insert(any(BizMaterialInventory.class))).thenReturn(1);
 
@@ -237,26 +208,12 @@ class MaterialInventoryServiceTest {
 
             verify(inventoryMapper).insert(inventory);
             verify(stockMapper, never()).selectById(anyLong());
-            verify(stockMapper, never()).updateById(any());
+            verify(detailMapper, never()).insert(any());
         }
 
         @Test
-        @DisplayName("保存盘点单 — adjustments 为空 Map 时只保存盘点单")
-        void testSave_emptyAdjustments() {
-            when(inventoryMapper.insert(any(BizMaterialInventory.class))).thenReturn(1);
-
-            BizMaterialInventory inventory = new BizMaterialInventory();
-            inventory.setProjectId(100L);
-
-            inventoryService.save(inventory, new HashMap<>());
-
-            verify(inventoryMapper).insert(inventory);
-            verify(stockMapper, never()).selectById(anyLong());
-        }
-
-        @Test
-        @DisplayName("保存盘点单 — 多条库存调整")
-        void testSave_multipleAdjustments() {
+        @DisplayName("登记盘点单 — 多条盘点明细")
+        void testSave_multipleDetails() {
             BizProjectMaterialStock stock2 = new BizProjectMaterialStock();
             stock2.setId(11L);
             stock2.setStockQuantity(new BigDecimal("100.00"));
@@ -264,7 +221,7 @@ class MaterialInventoryServiceTest {
             when(inventoryMapper.insert(any(BizMaterialInventory.class))).thenReturn(1);
             when(stockMapper.selectById(10L)).thenReturn(sampleStock);
             when(stockMapper.selectById(11L)).thenReturn(stock2);
-            when(stockMapper.updateById(any(BizProjectMaterialStock.class))).thenReturn(1);
+            when(detailMapper.insert(any(BizMaterialInventoryDetail.class))).thenReturn(1);
 
             BizMaterialInventory inventory = new BizMaterialInventory();
             inventory.setProjectId(100L);
@@ -275,7 +232,89 @@ class MaterialInventoryServiceTest {
 
             inventoryService.save(inventory, adjustments);
 
-            verify(stockMapper, times(2)).updateById(any(BizProjectMaterialStock.class));
+            verify(detailMapper, times(2)).insert(any(BizMaterialInventoryDetail.class));
+            verify(stockMapper, never()).updateById(any());
+        }
+    }
+
+    // =====================================================================
+    // 审批盘点单（第二阶段：据实盘数量调整库存）
+    // =====================================================================
+
+    @Nested
+    @DisplayName("审批盘点单")
+    class SubmitTests {
+
+        @Test
+        @DisplayName("审批盘点单 — 据实盘数量调整库存并置 APPROVED")
+        void testSubmit_happyPath_adjustStock() {
+            sampleInventory.setStatus("DRAFT");
+            when(inventoryMapper.selectById(1L)).thenReturn(sampleInventory);
+
+            BizMaterialInventoryDetail detail = new BizMaterialInventoryDetail();
+            detail.setInventoryId(1L);
+            detail.setStockId(10L);
+            detail.setBookQuantity(new BigDecimal("50.00"));
+            detail.setActualQuantity(new BigDecimal("45.00"));
+            detail.setDiffQuantity(new BigDecimal("-5.00"));
+            when(detailMapper.selectList(any())).thenReturn(List.of(detail));
+            when(stockMapper.selectById(10L)).thenReturn(sampleStock);
+            when(stockMapper.updateById(any(BizProjectMaterialStock.class))).thenReturn(1);
+            when(inventoryMapper.updateById(any(BizMaterialInventory.class))).thenReturn(1);
+
+            inventoryService.submit(1L);
+
+            // 库存被调为实盘数量
+            verify(stockMapper).updateById(argThat(stock ->
+                    stock.getStockQuantity().compareTo(new BigDecimal("45.00")) == 0
+            ));
+            // 状态置 APPROVED
+            verify(inventoryMapper).updateById(argThat(inv -> "APPROVED".equals(inv.getStatus())));
+        }
+
+        @Test
+        @DisplayName("审批盘点单 — 单据不存在抛异常")
+        void testSubmit_notFound() {
+            when(inventoryMapper.selectById(999L)).thenReturn(null);
+
+            assertThatThrownBy(() -> inventoryService.submit(999L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("盘点单不存在");
+
+            verify(stockMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("审批盘点单 — 非 DRAFT 状态拒绝审批")
+        void testSubmit_nonDraftRejected() {
+            sampleInventory.setStatus("APPROVED");
+            when(inventoryMapper.selectById(1L)).thenReturn(sampleInventory);
+
+            assertThatThrownBy(() -> inventoryService.submit(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅草稿状态可审批");
+
+            verify(stockMapper, never()).updateById(any());
+            verify(inventoryMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("审批盘点单 — 明细对应库存不存在时跳过，仍置 APPROVED")
+        void testSubmit_stockNotFound_skipButApprove() {
+            sampleInventory.setStatus("DRAFT");
+            when(inventoryMapper.selectById(1L)).thenReturn(sampleInventory);
+
+            BizMaterialInventoryDetail detail = new BizMaterialInventoryDetail();
+            detail.setStockId(999L);
+            detail.setActualQuantity(new BigDecimal("10.00"));
+            when(detailMapper.selectList(any())).thenReturn(List.of(detail));
+            when(stockMapper.selectById(999L)).thenReturn(null);
+            when(inventoryMapper.updateById(any(BizMaterialInventory.class))).thenReturn(1);
+
+            inventoryService.submit(1L);
+
+            verify(stockMapper, never()).updateById(any());
+            verify(inventoryMapper).updateById(argThat(inv -> "APPROVED".equals(inv.getStatus())));
         }
     }
 

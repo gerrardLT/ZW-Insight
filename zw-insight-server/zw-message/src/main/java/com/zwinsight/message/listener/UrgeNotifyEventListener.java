@@ -2,6 +2,7 @@ package com.zwinsight.message.listener;
 
 import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.message.service.MessageService;
+import com.zwinsight.message.service.WeChatWorkService;
 import com.zwinsight.message.websocket.MessageWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ public class UrgeNotifyEventListener {
 
     private final MessageService messageService;
     private final MessageWebSocketHandler webSocketHandler;
+    private final WeChatWorkService weChatWorkService;
 
     @Async
     @EventListener
@@ -40,6 +42,9 @@ public class UrgeNotifyEventListener {
                     + "\",\"taskId\":\"" + event.getTaskId()
                     + "\",\"processInstanceId\":\"" + event.getProcessInstanceId() + "\"}";
             webSocketHandler.sendToUser(String.valueOf(event.getTargetUserId()), pushMessage);
+
+            // 3. 企微群机器人推送（配置 wework.robot.enabled=true 时生效）
+            weChatWorkService.sendText("【催办提醒】" + event.getTitle() + "\n" + event.getContent());
 
             log.info("催办通知已推送, userId={}, taskId={}", event.getTargetUserId(), event.getTaskId());
         } catch (Exception e) {

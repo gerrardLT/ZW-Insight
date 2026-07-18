@@ -40,10 +40,29 @@ public class PaymentReceivedService {
     }
 
     /**
-     * 新增收款（回写项目totalIncome + 合同cumulativeReceivedAmount）
+     * 新增收款（校验回款上限 + 回写项目totalIncome + 合同cumulativeReceivedAmount）
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizPaymentReceived paymentReceived) {
+        BigDecimal receiveAmount = paymentReceived.getReceiveAmount() == null
+                ? BigDecimal.ZERO : paymentReceived.getReceiveAmount();
+
+        // 校验回款金额上限：不能超过已开票未收金额（累计开票 - 累计已回款）
+        BizConstructionContract contract = null;
+        if (paymentReceived.getContractId() != null) {
+            contract = contractMapper.selectById(paymentReceived.getContractId());
+            if (contract != null) {
+                BigDecimal invoiced = contract.getCumulativeInvoiceAmount() == null
+                        ? BigDecimal.ZERO : contract.getCumulativeInvoiceAmount();
+                BigDecimal received = contract.getCumulativeReceivedAmount() == null
+                        ? BigDecimal.ZERO : contract.getCumulativeReceivedAmount();
+                BigDecimal maxReceivable = invoiced.subtract(received);
+                if (receiveAmount.compareTo(maxReceivable) > 0) {
+                    throw new BusinessException("回款金额不能超过已开票未收金额，最大可回款金额：" + maxReceivable);
+                }
+            }
+        }
+
         paymentReceived.setStatus("APPROVED");
         paymentReceivedMapper.insert(paymentReceived);
 
@@ -52,19 +71,16 @@ public class PaymentReceivedService {
         if (project != null) {
             BigDecimal totalIncome = project.getTotalIncome() == null
                     ? BigDecimal.ZERO : project.getTotalIncome();
-            project.setTotalIncome(totalIncome.add(paymentReceived.getReceiveAmount()));
+            project.setTotalIncome(totalIncome.add(receiveAmount));
             projectMapper.updateById(project);
         }
 
-        // 回写合同累计收款金额
-        if (paymentReceived.getContractId() != null) {
-            BizConstructionContract contract = contractMapper.selectById(paymentReceived.getContractId());
-            if (contract != null) {
-                BigDecimal cumulativeReceived = contract.getCumulativeReceivedAmount() == null
-                        ? BigDecimal.ZERO : contract.getCumulativeReceivedAmount();
-                contract.setCumulativeReceivedAmount(cumulativeReceived.add(paymentReceived.getReceiveAmount()));
-                contractMapper.updateById(contract);
-            }
+        // 回写合同累计收款金额（复用已查询的 contract）
+        if (contract != null) {
+            BigDecimal cumulativeReceived = contract.getCumulativeReceivedAmount() == null
+                    ? BigDecimal.ZERO : contract.getCumulativeReceivedAmount();
+            contract.setCumulativeReceivedAmount(cumulativeReceived.add(receiveAmount));
+            contractMapper.updateById(contract);
         }
     }
 

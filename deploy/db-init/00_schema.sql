@@ -637,7 +637,8 @@ CREATE TABLE IF NOT EXISTS biz_project (
     contact_name VARCHAR(50) COMMENT '联系人',
     contact_phone VARCHAR(20) COMMENT '联系电话',
     need_tender INT DEFAULT 0 COMMENT '是否需要招标（1-是 0-否）',
-    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT/FILED/TENDERING/WON/CONSTRUCTION/COMPLETED/CLOSED）',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT/FILED/TENDERING/WON/CONSTRUCTION/COMPLETED/CLOSING/CLOSED）',
+    workflow_instance_id VARCHAR(64) DEFAULT NULL COMMENT '结项审批流程实例ID',
     budget_amount DECIMAL(18,2) DEFAULT 0 COMMENT '预算金额',
     contract_amount DECIMAL(18,2) DEFAULT 0 COMMENT '合同金额',
     cumulative_output DECIMAL(18,2) DEFAULT 0 COMMENT '累计产值',
@@ -1171,6 +1172,7 @@ CREATE TABLE IF NOT EXISTS biz_labor_contract (
     budget_id BIGINT COMMENT '关联预算ID',
     contract_amount DECIMAL(18,2) COMMENT '合同金额',
     payment_terms VARCHAR(500) COMMENT '付款条款',
+    cumulative_output DECIMAL(18,2) DEFAULT 0 COMMENT '累计产值',
     cumulative_settlement DECIMAL(18,2) DEFAULT 0 COMMENT '累计结算金额',
     cumulative_paid DECIMAL(18,2) DEFAULT 0 COMMENT '累计付款金额',
     status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/EFFECTIVE-生效）',
@@ -1485,6 +1487,29 @@ CREATE TABLE IF NOT EXISTS biz_material_inventory (
     KEY idx_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='材料盘点单表';
 
+-- 材料盘点明细表（盘盈亏差异流水）
+CREATE TABLE IF NOT EXISTS biz_material_inventory_detail (
+    id BIGINT NOT NULL COMMENT '主键',
+    tenant_id BIGINT COMMENT '租户ID',
+    inventory_id BIGINT NOT NULL COMMENT '盘点单ID',
+    stock_id BIGINT NOT NULL COMMENT '库存ID',
+    material_name VARCHAR(200) COMMENT '材料名称（快照）',
+    specification VARCHAR(100) COMMENT '规格（快照）',
+    unit VARCHAR(20) COMMENT '单位（快照）',
+    book_quantity DECIMAL(18,4) DEFAULT 0 COMMENT '账面数量（登记时库存快照）',
+    actual_quantity DECIMAL(18,4) DEFAULT 0 COMMENT '实盘数量',
+    diff_quantity DECIMAL(18,4) DEFAULT 0 COMMENT '差异数量（实盘-账面，正数盘盈/负数盘亏）',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_inventory (inventory_id),
+    KEY idx_stock (stock_id),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='材料盘点明细表（盘盈亏差异流水）';
+
 -- 项目材料库存表
 CREATE TABLE IF NOT EXISTS biz_project_material_stock (
     id BIGINT NOT NULL COMMENT '主键ID',
@@ -1702,6 +1727,7 @@ CREATE TABLE IF NOT EXISTS biz_subcontract (
     budget_id BIGINT COMMENT '关联预算ID',
     contract_amount DECIMAL(18,2) COMMENT '合同金额',
     payment_terms VARCHAR(500) COMMENT '付款条款',
+    cumulative_output DECIMAL(18,2) DEFAULT 0 COMMENT '累计产值',
     cumulative_settlement DECIMAL(18,2) DEFAULT 0 COMMENT '累计结算金额',
     cumulative_paid DECIMAL(18,2) DEFAULT 0 COMMENT '累计付款金额',
     status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/EFFECTIVE-生效）',

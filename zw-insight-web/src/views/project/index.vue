@@ -14,6 +14,7 @@
             <el-option label="已中标" value="WON" />
             <el-option label="施工中" value="CONSTRUCTION" />
             <el-option label="已竣工" value="COMPLETED" />
+            <el-option label="结项审批中" value="CLOSING" />
             <el-option label="已关闭" value="CLOSED" />
           </el-select>
         </el-form-item>
@@ -59,6 +60,7 @@
             <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="row.status === 'COMPLETED'" link type="warning" @click="handleClose(row)">结项</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -83,7 +85,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getProjectPage, deleteProject, submitProject } from '@/api/project'
+import { getProjectPage, deleteProject, submitProject, closeProject, getProjectCloseCheck } from '@/api/project'
 
 const router = useRouter()
 const loading = ref(false)
@@ -105,6 +107,7 @@ const statusMap: Record<string, { label: string; type: string }> = {
   WON: { label: '已中标', type: 'success' },
   CONSTRUCTION: { label: '施工中', type: '' },
   COMPLETED: { label: '已竣工', type: 'success' },
+  CLOSING: { label: '结项审批中', type: 'warning' },
   CLOSED: { label: '已关闭', type: 'danger' }
 }
 
@@ -160,6 +163,21 @@ async function handleDelete(row: any) {
   await ElMessageBox.confirm('确定要删除该项目吗？', '提示', { type: 'warning' })
   await deleteProject(row.id)
   ElMessage.success('删除成功')
+  loadData()
+}
+
+async function handleClose(row: any) {
+  // 先预检结项条件
+  const res: any = await getProjectCloseCheck(row.id)
+  const result = res.data || {}
+  if (!result.allPassed) {
+    const reasons = (result.failedReasons || []).join('；') || '结项条件不满足'
+    ElMessageBox.alert(reasons, '无法结项', { type: 'warning' })
+    return
+  }
+  await ElMessageBox.confirm('确定发起项目结项审批吗？提交后项目进入结项审批中，审批通过后自动关闭。', '提示', { type: 'warning' })
+  await closeProject(row.id)
+  ElMessage.success('结项审批已发起')
   loadData()
 }
 

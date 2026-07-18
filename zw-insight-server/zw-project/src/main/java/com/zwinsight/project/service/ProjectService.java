@@ -11,6 +11,7 @@ import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.domain.dto.ProjectCreateRequest;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class ProjectService {
     private final BizProjectMapper projectMapper;
     private final SerialNumberService serialNumberService;
     private final ProjectMemberService memberService;
+    private final ApprovalService approvalService;
 
     /**
      * 分页查询
@@ -195,20 +197,22 @@ public class ProjectService {
     }
 
     /**
-     * 项目结项/关闭
+     * 项目结项/关闭（发起审批流程）
      * <p>
-     * 条件校验：
+     * 校验结项条件通过后，发起 project_close_approval 审批流，将状态置为 CLOSING（结项审批中）。
+     * 审批通过后由 {@link #onCloseApproved(Long)} 置 CLOSED；驳回后由 {@link #onCloseRejected(Long)} 回退 COMPLETED。
+     * </p>
+     * <p>
+     * 结项条件校验：
      * 1. 项目状态必须为 COMPLETED（已竣工验收）
-     * 2. 所有关联合同状态为 SETTLED 或 CLOSED
-     * 3. 质保金已全部退还
-     * 4. 应收款已全部回收（totalIncome >= cumulativeOutput 或无欠款）
-     * 5. 无在审业务单据
+     * 2. 款项基本结清（容差100元）
+     * 3. 项目已进入施工阶段
      * </p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void closeProject(Long id) {
         Map<String, Object> checkResult = checkCloseConditions(id);
-
+    
         // 校验所有条件是否满足
         Boolean allPassed = (Boolean) checkResult.get("allPassed");
         if (!Boolean.TRUE.equals(allPassed)) {
@@ -219,10 +223,45 @@ public class ProjectService {
                     : "结项条件不满足";
             throw new BusinessException("无法结项：" + message);
         }
-
-        // 更新状态为 CLOSED
+    
         BizProject project = projectMapper.selectById(id);
+    
+        // 发起结项审批流程
+        Map<String, Object> variables = new java.util.HashMap<>();
+        variables.put("businessType", "PROJECT_CLOSE");
+        variables.put("projectId", id);
+        String processInstanceId = approvalService.startProcess(
+                "PROJECT_CLOSE", id, "project_close_approval", variables);
+    
+        // 更新状态为 CLOSING（结项审批中），记录流程实例ID
+        project.setStatus("CLOSING");
+        project.setWorkflowInstanceId(processInstanceId);
+        projectMapper.updateById(project);
+    }
+    
+    /**
+     * 结项审批通过回调：状态 CLOSING → CLOSED
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onCloseApproved(Long id) {
+        BizProject project = projectMapper.selectById(id);
+        if (project == null) {
+            throw new BusinessException("项目不存在");
+        }
         project.setStatus("CLOSED");
+        projectMapper.updateById(project);
+    }
+    
+    /**
+     * 结项审批驳回回调：状态 CLOSING → COMPLETED（回退）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onCloseRejected(Long id) {
+        BizProject project = projectMapper.selectById(id);
+        if (project == null) {
+            throw new BusinessException("项目不存在");
+        }
+        project.setStatus("COMPLETED");
         projectMapper.updateById(project);
     }
 

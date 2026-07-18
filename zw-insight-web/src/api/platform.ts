@@ -36,3 +36,44 @@ export function renewTenant(id: number, durationDays: number) {
 export function updateTenantModules(id: number, modules: string[]) {
   return request.put(`/v1/platform/tenant/${id}/modules`, { modules })
 }
+
+// ======================== 租户类型管理（SysTenantTypeController） ========================
+
+/** 租户类型接口类型 */
+export interface TenantType {
+  id?: number
+  typeName: string
+  durationDays: number
+  sortOrder?: number
+  status?: number
+}
+
+/** 租户类型分页列表 */
+export function getTenantTypePage(params: { page?: number; size?: number; typeName?: string; status?: number }) {
+  return request.get('/v1/platform/tenant-type', { params })
+}
+
+/** 租户类型详情 */
+export function getTenantTypeById(id: number) {
+  return request.get(`/v1/platform/tenant-type/${id}`)
+}
+
+/** 新增租户类型 */
+export function createTenantType(data: TenantType) {
+  return request.post('/v1/platform/tenant-type', data)
+}
+
+/** 更新租户类型 */
+export function updateTenantType(id: number, data: TenantType) {
+  return request.put(`/v1/platform/tenant-type/${id}`, data)
+}
+
+/** 删除租户类型 */
+export function deleteTenantType(id: number) {
+  return request.delete(`/v1/platform/tenant-type/${id}`)
+}
+
+/** 批量删除租户类型 */
+export function batchDeleteTenantType(ids: number[]) {
+  return request.delete('/v1/platform/tenant-type/batch', { data: ids })
+}

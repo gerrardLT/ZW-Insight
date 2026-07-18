@@ -20,7 +20,8 @@
     { "path": "pages/project/archive", "style": { "navigationBarTitleText": "项目档案" } },
     { "path": "pages/mine/index", "style": { "navigationBarTitleText": "我的" } },
     { "path": "pages/mine/password", "style": { "navigationBarTitleText": "修改密码" } },
-    { "path": "pages/mine/shortcut-edit", "style": { "navigationBarTitleText": "编辑快捷入口" } }
+    { "path": "pages/mine/shortcut-edit", "style": { "navigationBarTitleText": "编辑快捷入口" } },
+    { "path": "pages/message-center/index", "style": { "navigationBarTitleText": "信息中心", "enablePullDownRefresh": true } }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",

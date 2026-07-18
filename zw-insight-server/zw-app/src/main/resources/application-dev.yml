@@ -82,6 +82,12 @@ sms:
   sign-name: ZW-Insight
   template-code: SMS_000000
 
+# 企业微信群机器人通知配置
+wework:
+  robot:
+    enabled: false
+    webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=your-robot-key
+
 # 日志配置
 logging:
   level:

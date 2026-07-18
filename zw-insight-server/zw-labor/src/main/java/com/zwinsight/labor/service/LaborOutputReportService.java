@@ -85,7 +85,7 @@ public class LaborOutputReportService {
     }
 
     /**
-     * 提交（回写合同累计结算）
+     * 提交（回写合同累计产值）
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
@@ -100,11 +100,13 @@ public class LaborOutputReportService {
         report.setStatus("APPROVED");
         outputReportMapper.updateById(report);
 
-        // 回写合同累计结算
+        // 回写合同累计产值（修复：原实现误将产值加到 cumulativeSettlement，
+        // 与结算单回写同一字段造成重复累加，现改为回写独立的 cumulativeOutput）
         BizLaborContract contract = laborContractMapper.selectById(report.getContractId());
         if (contract != null) {
-            BigDecimal cumulative = contract.getCumulativeSettlement() != null ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
-            contract.setCumulativeSettlement(cumulative.add(report.getCurrentOutput()));
+            BigDecimal cumulative = contract.getCumulativeOutput() != null ? contract.getCumulativeOutput() : BigDecimal.ZERO;
+            BigDecimal current = report.getCurrentOutput() != null ? report.getCurrentOutput() : BigDecimal.ZERO;
+            contract.setCumulativeOutput(cumulative.add(current));
             laborContractMapper.updateById(contract);
         }
     }

@@ -81,9 +81,14 @@ public class BizProject extends BaseEntity {
     private Integer needTender;
 
     /**
-     * 项目状态（DRAFT/FILED/TENDERING/WON/CONSTRUCTION/COMPLETED/CLOSED）
+     * 项目状态（DRAFT/FILED/TENDERING/WON/CONSTRUCTION/COMPLETED/CLOSING/CLOSED）
      */
     private String status;
+
+    /**
+     * 结项审批流程实例ID
+     */
+    private String workflowInstanceId;
 
     /**
      * 预算金额

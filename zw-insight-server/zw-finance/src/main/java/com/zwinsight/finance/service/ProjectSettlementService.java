@@ -4,7 +4,9 @@ import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.metadata.WriteSheet;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.finance.domain.BizProjectSettlement;
@@ -157,6 +159,25 @@ public class ProjectSettlementService {
         generateContractDetails(settlement.getId(), projectId);
 
         return settlement.getId();
+    }
+
+    /**
+     * 分页查询结算单列表
+     *
+     * @param page      页码
+     * @param size      每页数量
+     * @param projectId 项目ID（可选）
+     * @param status    结算单状态（可选）
+     * @return 分页结果
+     */
+    public PageResult<BizProjectSettlement> page(int page, int size, Long projectId, String status) {
+        Page<BizProjectSettlement> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<BizProjectSettlement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(projectId != null, BizProjectSettlement::getProjectId, projectId)
+                .eq(status != null && !status.isEmpty(), BizProjectSettlement::getStatus, status)
+                .orderByDesc(BizProjectSettlement::getCreatedAt);
+        Page<BizProjectSettlement> result = settlementMapper.selectPage(pageParam, wrapper);
+        return PageResult.of(result);
     }
 
     /**
