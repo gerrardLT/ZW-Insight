@@ -64,8 +64,8 @@
         <plugins>
             <!-- 将测试基类（IntegrationTestBase / TestConstants / TestDataCleaner / AssertUtils）
                  打包为 test-jar，供其他模块的集成测试复用。
-                 原开发者已在 finance/contract/project/system 等集成测试中引用这些基类，
-                 但遗漏了 test-jar 配置，导致这些模块 test-compile 断链，此处补全。 -->
+                 注意：CI 必须使用 -DskipTests（仅跳过执行）而非 -Dmaven.test.skip=true（跳过编译），
+                 否则 testCompile 被跳过，test-jar 无产物，下游模块依赖解析断链。 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -76,6 +76,10 @@
                         <goals>
                             <goal>test-jar</goal>
                         </goals>
+                        <configuration>
+                            <!-- 即使测试类为空也产出 jar，确保下游依赖解析不断链 -->
+                            <skipIfEmpty>false</skipIfEmpty>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

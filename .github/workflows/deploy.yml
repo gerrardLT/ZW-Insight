@@ -29,11 +29,13 @@ jobs:
           distribution: 'corretto'
           cache: maven
 
-      # 临时策略：跳过测试与 JaCoCo 覆盖率门槛，优先保证可部署。
+      # 临时策略：跳过测试执行与 JaCoCo 覆盖率门槛，优先保证可部署。
+      # 注意：使用 -DskipTests（仅跳过执行）而非 -Dmaven.test.skip=true（跳过编译+执行），
+      # 因为 zw-common 的 test-jar 需要测试类编译产物，否则下游模块依赖解析断链。
       # 测试套件作为独立任务修绿后，删除下面两个 -D 参数即可恢复完整质量门槛。
-      - name: Build (temporarily skip tests & coverage)
+      - name: Build (skip test execution & coverage)
         working-directory: zw-insight-server
-        run: mvn -B clean package -Dmaven.test.skip=true -Djacoco.skip=true
+        run: mvn -B clean package -DskipTests -Djacoco.skip=true
 
       - name: Upload test reports on failure
         if: failure()
