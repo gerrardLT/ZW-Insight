@@ -1,5 +1,15 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+
+export type ThemeMode = 'light' | 'dark'
+
+/** 获取系统偏好主题 */
+function getSystemTheme(): ThemeMode {
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark'
+  }
+  return 'light'
+}
 
 /**
  * 应用全局状态 Store — 管理侧边栏、主题、设备等全局 UI 状态
@@ -29,8 +39,34 @@ export const useAppStore = defineStore('app', () => {
   /** 标签栏是否显示 */
   const showTagsView = ref(true)
 
+  /** 当前主题模式 */
+  const theme = ref<ThemeMode>(getSystemTheme())
+
   /** 是否有全局项目上下文 */
   const hasProjectContext = computed(() => currentProjectId.value !== null)
+
+  /** 是否为深色主题 */
+  const isDark = computed(() => theme.value === 'dark')
+
+  /** 应用主题到 DOM */
+  function applyTheme(mode: ThemeMode) {
+    document.documentElement.dataset.theme = mode
+  }
+
+  /** 切换主题 */
+  function toggleTheme() {
+    theme.value = theme.value === 'light' ? 'dark' : 'light'
+  }
+
+  /** 设置主题 */
+  function setTheme(mode: ThemeMode) {
+    theme.value = mode
+  }
+
+  // 监听主题变化，自动应用到 DOM
+  watch(theme, (val) => {
+    applyTheme(val)
+  }, { immediate: true })
 
   /** 切换侧边栏折叠 */
   function toggleSidebar() {
@@ -77,7 +113,12 @@ export const useAppStore = defineStore('app', () => {
     currentProjectName,
     showBreadcrumb,
     showTagsView,
+    theme,
     hasProjectContext,
+    isDark,
+    applyTheme,
+    toggleTheme,
+    setTheme,
     toggleSidebar,
     setDevice,
     startLoading,
@@ -87,6 +128,6 @@ export const useAppStore = defineStore('app', () => {
   }
 }, {
   persist: {
-    paths: ['sidebarCollapsed', 'showBreadcrumb', 'showTagsView', 'currentProjectId', 'currentProjectName']
+    paths: ['sidebarCollapsed', 'showBreadcrumb', 'showTagsView', 'currentProjectId', 'currentProjectName', 'theme']
   }
 })

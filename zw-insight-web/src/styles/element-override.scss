@@ -1,0 +1,254 @@
+/* Element Plus 主题覆盖 — 桥接 ZW Design Tokens */
+
+:root {
+  /* 品牌色映射 */
+  --el-color-primary: var(--zw-brand);
+  --el-color-primary-light-3: var(--zw-brand-hover);
+  --el-color-primary-light-5: var(--zw-brand-light);
+  --el-color-primary-light-7: var(--zw-brand-lighter);
+  --el-color-primary-light-8: var(--zw-brand-lighter);
+  --el-color-primary-light-9: var(--zw-brand-lighter);
+  --el-color-primary-dark-2: var(--zw-brand-active);
+
+  /* 功能色 */
+  --el-color-success: var(--zw-success);
+  --el-color-success-light-9: var(--zw-success-light);
+  --el-color-warning: var(--zw-warning);
+  --el-color-warning-light-9: var(--zw-warning-light);
+  --el-color-danger: var(--zw-danger);
+  --el-color-danger-light-9: var(--zw-danger-light);
+  --el-color-info: var(--zw-info);
+  --el-color-info-light-9: var(--zw-info-light);
+
+  /* 文字色 */
+  --el-text-color-primary: var(--zw-text-primary);
+  --el-text-color-regular: var(--zw-text-secondary);
+  --el-text-color-secondary: var(--zw-text-tertiary);
+  --el-text-color-placeholder: var(--zw-text-quaternary);
+
+  /* 背景色 */
+  --el-bg-color: var(--zw-bg-card);
+  --el-bg-color-page: var(--zw-bg-page);
+  --el-bg-color-overlay: var(--zw-bg-elevated);
+
+  /* 边框 */
+  --el-border-color: var(--zw-border);
+  --el-border-color-light: var(--zw-border-light);
+  --el-border-color-lighter: var(--zw-border-light);
+  --el-border-color-hover: var(--zw-border-hover);
+
+  /* 圆角 */
+  --el-border-radius-base: var(--zw-radius-sm);
+  --el-border-radius-small: var(--zw-radius-xs);
+  --el-border-radius-round: var(--zw-radius-full);
+
+  /* 字体 */
+  --el-font-family: var(--zw-font-family);
+  --el-font-size-base: var(--zw-font-size-base);
+
+  /* 填充色 */
+  --el-fill-color: var(--zw-bg-hover);
+  --el-fill-color-light: var(--zw-bg-page);
+  --el-fill-color-lighter: var(--zw-bg-page);
+  --el-fill-color-blank: var(--zw-bg-card);
+
+  /* 遮罩 */
+  --el-mask-color: var(--zw-bg-mask);
+
+  /* 过渡 */
+  --el-transition-duration: 0.2s;
+  --el-transition-duration-fast: 0.15s;
+}
+
+/* ===== 组件级增强 ===== */
+
+/* Button - 主按钮渐变 */
+.el-button--primary {
+  background: var(--zw-brand-gradient);
+  border-color: transparent;
+  transition: all var(--zw-transition-base);
+
+  &:hover,
+  &:focus {
+    background: var(--zw-brand-gradient-hover);
+    border-color: transparent;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(51, 112, 255, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+
+  &.is-disabled {
+    background: var(--zw-brand-light);
+    color: var(--zw-brand);
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* Card - 现代卡片 */
+.el-card {
+  border: none;
+  border-radius: var(--zw-radius-md);
+  box-shadow: var(--zw-shadow-card);
+  transition: box-shadow var(--zw-transition-base), transform var(--zw-transition-base);
+  background-color: var(--zw-bg-card);
+
+  .el-card__header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--zw-border-light);
+    font-weight: var(--zw-font-weight-semibold);
+  }
+
+  .el-card__body {
+    padding: 20px;
+  }
+}
+
+/* Table - 无边框现代表格 */
+.el-table {
+  --el-table-border-color: var(--zw-table-border);
+  --el-table-header-bg-color: var(--zw-table-header-bg);
+  --el-table-row-hover-bg-color: var(--zw-table-row-hover);
+  --el-table-bg-color: var(--zw-bg-card);
+  --el-table-tr-bg-color: var(--zw-bg-card);
+  --el-table-text-color: var(--zw-text-primary);
+  --el-table-header-text-color: var(--zw-text-secondary);
+
+  border-radius: var(--zw-radius-md);
+
+  .el-table__header th {
+    font-weight: var(--zw-font-weight-medium);
+    font-size: var(--zw-font-size-sm);
+    color: var(--zw-text-secondary);
+  }
+
+  .el-table__row {
+    transition: background-color var(--zw-transition-fast);
+  }
+
+  /* 去除最外层 border */
+  &::before {
+    height: 0;
+  }
+
+  .el-table__inner-wrapper::before {
+    height: 0;
+  }
+}
+
+/* Tag - 柔和标签 */
+.el-tag {
+  border-radius: var(--zw-radius-xs);
+  border: none;
+  font-weight: var(--zw-font-weight-medium);
+}
+
+/* Input / Select - 圆角增强 */
+.el-input__wrapper,
+.el-select__wrapper {
+  border-radius: var(--zw-radius-sm);
+  transition: box-shadow var(--zw-transition-fast), border-color var(--zw-transition-fast);
+}
+
+.el-input__wrapper:focus-within,
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 2px rgba(51, 112, 255, 0.2);
+}
+
+/* Dialog - 圆角增强 */
+.el-dialog {
+  border-radius: var(--zw-radius-lg);
+  overflow: hidden;
+
+  .el-dialog__header {
+    padding: 20px 24px 12px;
+    margin-right: 0;
+  }
+
+  .el-dialog__body {
+    padding: 16px 24px;
+  }
+
+  .el-dialog__footer {
+    padding: 12px 24px 20px;
+  }
+}
+
+/* Pagination */
+.el-pagination {
+  --el-pagination-border-radius: var(--zw-radius-sm);
+
+  .el-pager li {
+    border-radius: var(--zw-radius-sm);
+  }
+
+  .btn-prev,
+  .btn-next {
+    border-radius: var(--zw-radius-sm);
+  }
+}
+
+/* Message - 圆角阴影 */
+.el-message {
+  border-radius: var(--zw-radius-md);
+  border: none;
+  box-shadow: var(--zw-shadow-dropdown);
+}
+
+/* Dropdown */
+.el-dropdown-menu {
+  border-radius: var(--zw-radius-md);
+  border: none;
+  box-shadow: var(--zw-shadow-dropdown);
+  padding: 6px;
+
+  .el-dropdown-menu__item {
+    border-radius: var(--zw-radius-sm);
+    margin: 2px 0;
+  }
+}
+
+/* Menu - 侧边栏菜单 */
+.el-menu {
+  border-right: none;
+
+  .el-menu-item,
+  .el-sub-menu__title {
+    border-radius: var(--zw-radius-sm);
+    margin: 2px 8px;
+    height: 42px;
+    line-height: 42px;
+    transition: all var(--zw-transition-fast);
+  }
+
+  .el-menu-item.is-active {
+    background-color: var(--zw-bg-sidebar-active);
+    font-weight: var(--zw-font-weight-medium);
+  }
+}
+
+/* Form */
+.el-form-item__label {
+  color: var(--zw-text-secondary);
+  font-weight: var(--zw-font-weight-medium);
+}
+
+/* Breadcrumb */
+.el-breadcrumb__inner {
+  color: var(--zw-text-tertiary);
+  font-weight: var(--zw-font-weight-normal);
+
+  &.is-link:hover {
+    color: var(--zw-brand);
+  }
+}
+
+.el-breadcrumb__item:last-child .el-breadcrumb__inner {
+  color: var(--zw-text-primary);
+  font-weight: var(--zw-font-weight-medium);
+}

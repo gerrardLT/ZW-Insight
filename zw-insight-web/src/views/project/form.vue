@@ -1,126 +1,140 @@
 <template>
   <div class="project-form-container">
-    <el-card shadow="never">
+    <el-card shadow="never" class="form-card">
       <template #header>
         <div class="card-header">
-          <span>{{ isEdit ? '编辑项目' : '新增项目' }}</span>
-          <el-button @click="handleBack">返回</el-button>
+          <span class="card-title">{{ isEdit ? '编辑项目' : '新增项目' }}</span>
+          <el-button @click="handleBack">
+            <el-icon><Back /></el-icon>返回
+          </el-button>
         </div>
       </template>
 
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px" style="max-width: 900px">
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="项目名称" prop="projectName">
-              <el-input v-model="formData.projectName" placeholder="请输入项目名称" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="项目编号">
-              <el-input v-model="formData.projectCode" placeholder="系统自动生成" disabled />
-            </el-form-item>
-          </el-col>
-        </el-row>
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px" class="project-form">
+        <!-- 基本信息 -->
+        <div class="form-section">
+          <div class="section-title"><span class="section-bar"></span>基本信息</div>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="项目名称" prop="projectName">
+                <el-input v-model="formData.projectName" placeholder="请输入项目名称" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="项目编号">
+                <el-input v-model="formData.projectCode" placeholder="系统自动生成" disabled />
+              </el-form-item>
+            </el-col>
+          </el-row>
 
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="项目性质" prop="projectNature">
-              <el-select v-model="formData.projectNature" placeholder="请选择项目性质" style="width: 100%">
-                <el-option label="新建" value="新建" />
-                <el-option label="改造" value="改造" />
-                <el-option label="扩建" value="扩建" />
-                <el-option label="维修" value="维修" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="项目类型" prop="projectType">
-              <el-select v-model="formData.projectType" placeholder="请选择项目类型" style="width: 100%">
-                <el-option label="市政工程" value="市政工程" />
-                <el-option label="房建工程" value="房建工程" />
-                <el-option label="公路工程" value="公路工程" />
-                <el-option label="水利工程" value="水利工程" />
-                <el-option label="装饰工程" value="装饰工程" />
-                <el-option label="其他" value="其他" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="项目性质" prop="projectNature">
+                <el-select v-model="formData.projectNature" placeholder="请选择项目性质" style="width: 100%">
+                  <el-option label="新建" value="新建" />
+                  <el-option label="改造" value="改造" />
+                  <el-option label="扩建" value="扩建" />
+                  <el-option label="维修" value="维修" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="项目类型" prop="projectType">
+                <el-select v-model="formData.projectType" placeholder="请选择项目类型" style="width: 100%">
+                  <el-option label="市政工程" value="市政工程" />
+                  <el-option label="房建工程" value="房建工程" />
+                  <el-option label="公路工程" value="公路工程" />
+                  <el-option label="水利工程" value="水利工程" />
+                  <el-option label="装饰工程" value="装饰工程" />
+                  <el-option label="其他" value="其他" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
 
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="业主单位" prop="ownerCompanyId">
-              <el-select
-                v-model="formData.ownerCompanyId"
-                placeholder="请选择业主单位"
-                filterable
-                remote
-                :remote-method="searchOwner"
-                :loading="ownerLoading"
-                style="width: 100%"
-                @change="handleOwnerChange"
-              >
-                <el-option v-for="item in ownerList" :key="item.id" :label="item.ownerName" :value="item.id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="签约公司" prop="signingCompanyId">
-              <el-select
-                v-model="formData.signingCompanyId"
-                placeholder="请选择签约公司"
-                filterable
-                style="width: 100%"
-                @change="handleCompanyChange"
-              >
-                <el-option v-for="item in companyList" :key="item.id" :label="item.companyName" :value="item.id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <!-- 单位信息 -->
+        <div class="form-section">
+          <div class="section-title"><span class="section-bar"></span>单位信息</div>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="业主单位" prop="ownerCompanyId">
+                <el-select
+                  v-model="formData.ownerCompanyId"
+                  placeholder="请选择业主单位"
+                  filterable
+                  remote
+                  :remote-method="searchOwner"
+                  :loading="ownerLoading"
+                  style="width: 100%"
+                  @change="handleOwnerChange"
+                >
+                  <el-option v-for="item in ownerList" :key="item.id" :label="item.ownerName" :value="item.id" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="签约公司" prop="signingCompanyId">
+                <el-select
+                  v-model="formData.signingCompanyId"
+                  placeholder="请选择签约公司"
+                  filterable
+                  style="width: 100%"
+                  @change="handleCompanyChange"
+                >
+                  <el-option v-for="item in companyList" :key="item.id" :label="item.companyName" :value="item.id" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="联系人">
+                <el-input v-model="formData.contactName" placeholder="请输入联系人" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="联系电话">
+                <el-input v-model="formData.contactPhone" placeholder="请输入联系电话" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
 
-        <el-form-item label="项目概述">
-          <el-input v-model="formData.projectOverview" type="textarea" :rows="3" placeholder="请输入项目概述" />
-        </el-form-item>
+        <!-- 项目详情 -->
+        <div class="form-section">
+          <div class="section-title"><span class="section-bar"></span>项目详情</div>
+          <el-form-item label="项目概述">
+            <el-input v-model="formData.projectOverview" type="textarea" :rows="3" placeholder="请输入项目概述" />
+          </el-form-item>
 
-        <el-form-item label="项目地址">
-          <el-input v-model="formData.projectAddress" placeholder="请输入项目地址" />
-        </el-form-item>
+          <el-form-item label="项目地址">
+            <el-input v-model="formData.projectAddress" placeholder="请输入项目地址" />
+          </el-form-item>
 
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="联系人">
-              <el-input v-model="formData.contactName" placeholder="请输入联系人" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="联系电话">
-              <el-input v-model="formData.contactPhone" placeholder="请输入联系电话" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="预算金额">
-              <el-input-number v-model="formData.budgetAmount" :min="0" :precision="2" style="width: 100%" placeholder="请输入预算金额" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="是否招标">
-              <el-radio-group v-model="formData.needTender">
-                <el-radio :value="1">是</el-radio>
-                <el-radio :value="0">否</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-form-item>
-          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
-          <el-button @click="handleBack">取消</el-button>
-        </el-form-item>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="预算金额">
+                <el-input-number v-model="formData.budgetAmount" :min="0" :precision="2" style="width: 100%" placeholder="请输入预算金额" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="是否招标">
+                <el-radio-group v-model="formData.needTender">
+                  <el-radio :value="1">是</el-radio>
+                  <el-radio :value="0">否</el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
       </el-form>
+
+      <!-- 底部操作栏 -->
+      <div class="form-footer">
+        <el-button @click="handleBack">取消</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
+      </div>
     </el-card>
   </div>
 </template>
@@ -232,11 +246,59 @@ onMounted(() => {
 
 <style scoped>
 .project-form-container {
-  padding: 16px;
+  padding: var(--zw-content-padding);
+  max-width: var(--zw-content-max-width);
+  margin: 0 auto;
 }
+
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.card-title {
+  font-size: var(--zw-font-size-lg);
+  font-weight: var(--zw-font-weight-semibold);
+  color: var(--zw-text-primary);
+}
+
+.project-form {
+  max-width: 900px;
+}
+
+.form-section {
+  margin-bottom: var(--zw-space-lg);
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--zw-space-md);
+  font-size: var(--zw-font-size-md);
+  font-weight: var(--zw-font-weight-semibold);
+  color: var(--zw-text-primary);
+}
+
+.section-bar {
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--zw-brand-gradient);
+}
+
+.form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--zw-space-sm);
+  margin-top: var(--zw-space-lg);
+  padding-top: var(--zw-space-md);
+  border-top: 1px solid var(--zw-border-light);
 }
 </style>

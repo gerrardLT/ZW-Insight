@@ -1,0 +1,48 @@
+{
+  "module": "message",
+  "generatedAt": "2026-07-23T12:46:56.769Z",
+  "pages": [
+    {
+      "route": "/message/announcement",
+      "title": "公告管理",
+      "api": "GET /v1/message/announcement",
+      "recordCount": 2,
+      "mismatches": []
+    },
+    {
+      "route": "/message/notice",
+      "title": "通知管理",
+      "api": "GET /v1/message/notice",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    },
+    {
+      "route": "/message/center",
+      "title": "消息中心",
+      "api": "GET /v1/message/msg/unread",
+      "recordCount": 1,
+      "mismatches": []
+    },
+    {
+      "route": "/message/push-config",
+      "title": "推送配置",
+      "api": "GET /v1/message/push-config",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    }
+  ]
+}

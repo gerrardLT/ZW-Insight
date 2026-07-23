@@ -5,5 +5,14 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import ConfirmPasswordDialog from '@/components/ConfirmPasswordDialog.vue'
+import { useAppStore } from '@/stores/app'
+
+const appStore = useAppStore()
+
+onMounted(() => {
+  // 确保主题在应用启动时应用到 DOM
+  appStore.applyTheme(appStore.theme)
+})
 </script>

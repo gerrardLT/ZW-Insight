@@ -1,0 +1,19 @@
+{
+  "module": "subcontract",
+  "generatedAt": "2026-07-23T12:47:05.388Z",
+  "pages": [
+    {
+      "route": "/subcontract/contract",
+      "title": "分包合同列表",
+      "api": "GET /v1/subcontract/contract/page",
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__apiError__",
+          "expected": "code=200",
+          "actual": "code=500 message=系统内部错误，请稍后重试"
+        }
+      ]
+    }
+  ]
+}

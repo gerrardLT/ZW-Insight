@@ -1,0 +1,20 @@
+{
+  "module": "finance",
+  "generatedAt": "2026-07-23T12:46:36.742Z",
+  "pages": [
+    {
+      "route": "/finance/invoice-apply",
+      "title": "开票申请列表",
+      "api": "GET /v1/finance/invoice-apply/page",
+      "recordCount": 2,
+      "mismatches": []
+    },
+    {
+      "route": "/finance/payment-apply",
+      "title": "付款申请列表",
+      "api": "GET /v1/finance/payment-apply/page",
+      "recordCount": 3,
+      "mismatches": []
+    }
+  ]
+}

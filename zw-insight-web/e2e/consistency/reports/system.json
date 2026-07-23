@@ -1,0 +1,83 @@
+{
+  "module": "system",
+  "generatedAt": "2026-07-23T12:47:34.096Z",
+  "pages": [
+    {
+      "route": "/system/user",
+      "title": "用户管理",
+      "api": "GET /v1/system/user",
+      "recordCount": 8,
+      "mismatches": []
+    },
+    {
+      "route": "/system/post",
+      "title": "岗位管理",
+      "api": "GET /v1/system/post",
+      "recordCount": 7,
+      "mismatches": []
+    },
+    {
+      "route": "/system/log",
+      "title": "操作日志",
+      "api": "GET /v1/system/log/oper",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    },
+    {
+      "route": "/system/backup",
+      "title": "数据备份",
+      "api": "GET /v1/system/backup/list",
+      "recordCount": 20,
+      "mismatches": []
+    },
+    {
+      "route": "/system/print-template",
+      "title": "打印模板",
+      "api": "GET /v1/print-template/list",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    },
+    {
+      "route": "/system/serial-number",
+      "title": "编号规则",
+      "api": "GET /v1/file/serial",
+      "recordCount": 5,
+      "mismatches": []
+    },
+    {
+      "route": "/system/template",
+      "title": "通用模板",
+      "api": "GET /v1/file/template",
+      "recordCount": 5,
+      "mismatches": []
+    },
+    {
+      "route": "/system/version",
+      "title": "版本管理",
+      "api": "GET /v1/system/version/list",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+/* ZW-Insight Design Tokens - 深色主题 */
+:root[data-theme="dark"] {
+  /* 背景 */
+  --zw-bg-page: #17171a;
+  --zw-bg-card: #232324;
+  --zw-bg-elevated: #2a2a2c;
+  --zw-bg-sidebar: #20202b;
+  --zw-bg-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --zw-bg-sidebar-active: rgba(255, 255, 255, 0.1);
+  --zw-bg-hover: #2a2a2c;
+  --zw-bg-active: #1a2744;
+  --zw-bg-mask: rgba(0, 0, 0, 0.65);
+  --zw-bg-tag: #2a2a2c;
+
+  /* 文字 */
+  --zw-text-primary: #f6f6f6;
+  --zw-text-secondary: #a3a3a3;
+  --zw-text-tertiary: #6b6b6b;
+  --zw-text-quaternary: #4a4a4a;
+  --zw-text-inverse: #17171a;
+  --zw-text-sidebar: rgba(255, 255, 255, 0.55);
+  --zw-text-sidebar-active: #ffffff;
+
+  /* 边框 */
+  --zw-border: #333335;
+  --zw-border-light: #2a2a2c;
+  --zw-border-hover: #4a4a4c;
+
+  /* 品牌色 */
+  --zw-brand: #4e83fd;
+  --zw-brand-hover: #6b9bff;
+  --zw-brand-active: #3370ff;
+  --zw-brand-light: #1a2744;
+  --zw-brand-lighter: #162038;
+  --zw-brand-gradient: linear-gradient(135deg, #4e83fd 0%, #6b9bff 100%);
+  --zw-brand-gradient-hover: linear-gradient(135deg, #6b9bff 0%, #89b4ff 100%);
+
+  /* 功能色 */
+  --zw-success: #27c346;
+  --zw-success-light: #162e1c;
+  --zw-warning: #ff9a2e;
+  --zw-warning-light: #2e2214;
+  --zw-danger: #f76560;
+  --zw-danger-light: #2e1a1a;
+  --zw-info: #6b6b6b;
+  --zw-info-light: #2a2a2c;
+
+  /* 阴影（深色主题专用） */
+  --zw-shadow-card: 0 1px 4px rgba(0, 0, 0, 0.2);
+  --zw-shadow-card-hover: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --zw-shadow-header: 0 1px 4px rgba(0, 0, 0, 0.2);
+  --zw-shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+  /* 表格 */
+  --zw-table-header-bg: #1e1e20;
+  --zw-table-row-hover: rgba(78, 131, 253, 0.08);
+  --zw-table-border: #2a2a2c;
+
+  /* 滚动条 */
+  --zw-scrollbar-thumb: #4a4a4c;
+  --zw-scrollbar-track: transparent;
+}

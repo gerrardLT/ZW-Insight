@@ -1,4 +1,6 @@
-// 全局样式
+/* ZW-Insight 全局样式 — 基于 Design Token 体系 */
+
+/* ===== Reset & Base ===== */
 * {
   margin: 0;
   padding: 0;
@@ -7,73 +9,184 @@
 
 html, body, #app {
   height: 100%;
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+  font-family: var(--zw-font-family);
+  font-size: var(--zw-font-size-base);
+  line-height: var(--zw-line-height-normal);
+  color: var(--zw-text-primary);
+  background-color: var(--zw-bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-// 卡片通用样式
-.el-card {
-  border-radius: 4px;
-
-  .el-card__header {
-    padding: 12px 20px;
-    border-bottom: 1px solid #f0f0f0;
-  }
-}
-
-// 表格通用样式
-.el-table {
-  --el-table-border-color: #ebeef5;
-
-  .el-table__header th {
-    background-color: #fafafa;
-    font-weight: 600;
-  }
-}
-
-// 分页通用样式
-.pagination-wrap {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-// 表单通用样式
-.el-form--inline .el-form-item {
-  margin-bottom: 12px;
-}
-
-// 操作栏通用样式
-.table-toolbar {
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-// 卡片头部通用样式
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-// 滚动条优化
+/* ===== 滚动条 ===== */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #c1c1c1;
+  background-color: var(--zw-scrollbar-thumb);
   border-radius: 3px;
+
+  &:hover {
+    background-color: var(--zw-text-tertiary);
+  }
 }
 
 ::-webkit-scrollbar-track {
-  background-color: transparent;
+  background-color: var(--zw-scrollbar-track);
 }
 
-// Element Plus 覆盖
+/* ===== 文本选中 ===== */
+::selection {
+  background-color: var(--zw-brand-light);
+  color: var(--zw-brand);
+}
+
+/* ===== 页面容器 ===== */
+.page-container {
+  padding: var(--zw-content-padding);
+  max-width: var(--zw-content-max-width);
+  margin: 0 auto;
+  min-height: 100%;
+}
+
+/* ===== 页面头部 ===== */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--zw-space-lg);
+
+  h3 {
+    font-size: var(--zw-font-size-xl);
+    font-weight: var(--zw-font-weight-semibold);
+    color: var(--zw-text-primary);
+  }
+
+  .page-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--zw-space-sm);
+  }
+}
+
+/* ===== 区块标题（表单分区） ===== */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--zw-space-sm);
+  margin-bottom: var(--zw-space-lg);
+  font-size: var(--zw-font-size-md);
+  font-weight: var(--zw-font-weight-semibold);
+  color: var(--zw-text-primary);
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 16px;
+    border-radius: 2px;
+    background: var(--zw-brand-gradient);
+  }
+}
+
+/* ===== 操作栏 ===== */
+.table-toolbar {
+  margin-bottom: var(--zw-space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--zw-space-sm);
+}
+
+/* ===== 分页容器 ===== */
+.pagination-wrap {
+  margin-top: var(--zw-space-md);
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--zw-space-sm) 0;
+}
+
+/* ===== 卡片头部 ===== */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ===== 筛选表单 ===== */
+.el-form--inline .el-form-item {
+  margin-bottom: var(--zw-space-md);
+  margin-right: var(--zw-space-md);
+}
+
+/* ===== 统计数字字体 ===== */
+.stat-number {
+  font-family: var(--zw-font-mono);
+  font-weight: var(--zw-font-weight-bold);
+  letter-spacing: -0.02em;
+}
+
+/* ===== 页面过渡动画 ===== */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* ===== 通用过渡 ===== */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--zw-transition-base);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* ===== 工具类 ===== */
+.text-secondary {
+  color: var(--zw-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--zw-text-tertiary);
+}
+
+.text-brand {
+  color: var(--zw-brand);
+}
+
+.font-medium {
+  font-weight: var(--zw-font-weight-medium);
+}
+
+.font-semibold {
+  font-weight: var(--zw-font-weight-semibold);
+}
+
+/* ===== Element Plus 菜单折叠修复 ===== */
 .el-menu--collapse .el-sub-menu__title span,
 .el-menu--collapse .el-sub-menu__title .el-sub-menu__icon-arrow {
   display: none;
+}
+
+/* ===== NProgress 品牌色 ===== */
+#nprogress .bar {
+  background: var(--zw-brand-gradient) !important;
+  height: 3px !important;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px var(--zw-brand), 0 0 5px var(--zw-brand) !important;
 }

@@ -9,6 +9,12 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import { permissionDirective } from './utils/permission'
+
+// Design System - 必须在 Element Plus 样式之后引入
+import './styles/tokens/base.css'
+import './styles/tokens/light.css'
+import './styles/tokens/dark.css'
+import './styles/element-override.scss'
 import './styles/global.scss'
 
 const app = createApp(App)

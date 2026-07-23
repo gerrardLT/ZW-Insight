@@ -1,0 +1,54 @@
+{
+  "module": "archive",
+  "generatedAt": "2026-07-23T12:46:13.231Z",
+  "pages": [
+    {
+      "route": "/archive/index",
+      "title": "档案首页列表",
+      "api": "GET /v1/archive/project/0",
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__apiError__",
+          "expected": "code=200",
+          "actual": "code=500 message=系统内部错误，请稍后重试"
+        }
+      ]
+    },
+    {
+      "route": "/archive/office-supply",
+      "title": "办公用品档案列表",
+      "api": "GET /v1/archive/office-supply",
+      "recordCount": 5,
+      "mismatches": []
+    },
+    {
+      "route": "/archive/other-expense-contract",
+      "title": "其它支出合同档案列表",
+      "api": "GET /v1/archive/other-expense-contract",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    },
+    {
+      "route": "/archive/other-income-contract",
+      "title": "其它收入合同档案列表",
+      "api": "GET /v1/archive/other-income-contract",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    }
+  ]
+}

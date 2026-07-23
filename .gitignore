@@ -142,3 +142,9 @@ tools/login-helper.js
 
 # unplugin-vue-components 自动生成（不入库，构建时生成）
 zw-insight-web/src/components.d.ts
+
+# ========================
+# E2E 测试登录凭证 / token（严禁提交）
+# ========================
+zw-insight-web/e2e/.auth/
+zw-insight-web/.tk.txt

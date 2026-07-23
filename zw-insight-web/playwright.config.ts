@@ -60,5 +60,19 @@ export default defineConfig({
       },
       workers: 4,
     },
+
+    // ─── 一致性模式（前端展示 vs 后端数据 字段级比对，打服务器 :18081） ───
+    {
+      name: 'consistency-real',
+      dependencies: ['setup-real'],
+      testDir: './e2e/consistency',
+      testMatch: /.*\.spec\.ts$/,
+      use: {
+        baseURL: realBaseURL,
+        storageState: './e2e/.auth/storage-state.json',
+      },
+      // 顺序执行，避免并发写库；一致性用例以只读比对为主
+      workers: 2,
+    },
   ],
 })

@@ -1,7 +1,7 @@
 <template>
   <div class="project-container">
-    <el-card shadow="never">
-      <!-- 搜索区域 -->
+    <!-- 筛选区 -->
+    <el-card shadow="never" class="filter-card">
       <el-form :model="queryParams" inline>
         <el-form-item label="项目名称">
           <el-input v-model="queryParams.projectName" placeholder="请输入项目名称" clearable @keyup.enter="handleSearch" />
@@ -30,16 +30,17 @@
           </el-button>
         </el-form-item>
       </el-form>
+    </el-card>
 
-      <!-- 操作栏 -->
+    <!-- 列表区 -->
+    <el-card shadow="never" class="table-card">
       <div class="table-toolbar">
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增项目
         </el-button>
       </div>
 
-      <!-- 表格 -->
-      <el-table :data="tableData" v-loading="loading" border>
+      <el-table :data="tableData" v-loading="loading">
         <el-table-column prop="projectCode" label="项目编号" width="140" />
         <el-table-column prop="projectName" label="项目名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="projectNature" label="项目性质" width="100" />
@@ -188,13 +189,32 @@ onMounted(() => {
 
 <style scoped>
 .project-container {
-  padding: 16px;
+  padding: var(--zw-content-padding);
 }
+
+.filter-card {
+  margin-bottom: var(--zw-space-md);
+}
+
+.filter-card :deep(.el-form--inline) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.filter-card :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
 .table-toolbar {
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: var(--zw-space-md);
 }
+
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

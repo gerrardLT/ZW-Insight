@@ -1,0 +1,47 @@
+{
+  "module": "workflow",
+  "generatedAt": "2026-07-23T12:47:29.130Z",
+  "pages": [
+    {
+      "route": "/workflow/approval",
+      "title": "审批待办",
+      "api": "GET /v1/workflow/approval/todo",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    },
+    {
+      "route": "/workflow/process",
+      "title": "流程定义",
+      "api": "GET /v1/workflow/process",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    },
+    {
+      "route": "/workflow/rollback",
+      "title": "回滚日志",
+      "api": "GET /v1/workflow/rollback/logs",
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__apiError__",
+          "expected": "code=200",
+          "actual": "code=500 message=系统内部错误，请稍后重试"
+        }
+      ]
+    }
+  ]
+}

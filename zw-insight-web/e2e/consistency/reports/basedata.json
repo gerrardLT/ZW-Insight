@@ -1,0 +1,61 @@
+{
+  "module": "basedata",
+  "generatedAt": "2026-07-23T12:46:29.019Z",
+  "pages": [
+    {
+      "route": "/basedata/company",
+      "title": "自持公司列表",
+      "api": "GET /v1/basedata/company/page",
+      "recordCount": 6,
+      "mismatches": []
+    },
+    {
+      "route": "/basedata/material",
+      "title": "材料字典列表",
+      "api": "GET /v1/basedata/material/page",
+      "recordCount": 10,
+      "mismatches": []
+    },
+    {
+      "route": "/basedata/owner",
+      "title": "甲方单位列表",
+      "api": "GET /v1/basedata/owner/page",
+      "recordCount": 4,
+      "mismatches": []
+    },
+    {
+      "route": "/basedata/supplier",
+      "title": "供应商列表",
+      "api": "GET /v1/basedata/supplier/page",
+      "recordCount": 10,
+      "mismatches": []
+    },
+    {
+      "route": "/basedata/supplier-blacklist",
+      "title": "供应商黑名单列表",
+      "api": "GET /v1/basedata/supplier-blacklist",
+      "recordCount": 1,
+      "mismatches": []
+    },
+    {
+      "route": "/basedata/supplier-evaluation",
+      "title": "供应商评价列表",
+      "api": "GET /v1/basedata/supplier-evaluation",
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__apiError__",
+          "expected": "code=200",
+          "actual": "code=500 message=系统内部错误，请稍后重试"
+        }
+      ]
+    },
+    {
+      "route": "/basedata/inspection-scheme",
+      "title": "检查方案列表",
+      "api": "GET /v1/basedata/inspection-scheme/page",
+      "recordCount": 2,
+      "mismatches": []
+    }
+  ]
+}

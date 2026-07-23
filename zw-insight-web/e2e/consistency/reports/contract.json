@@ -1,0 +1,13 @@
+{
+  "module": "contract",
+  "generatedAt": "2026-07-23T12:46:22.620Z",
+  "pages": [
+    {
+      "route": "/contract/list",
+      "title": "施工合同列表",
+      "api": "GET /v1/contract/page",
+      "recordCount": 10,
+      "mismatches": []
+    }
+  ]
+}

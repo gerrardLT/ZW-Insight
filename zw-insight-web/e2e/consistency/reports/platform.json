@@ -1,0 +1,40 @@
+{
+  "module": "platform",
+  "generatedAt": "2026-07-23T12:46:54.370Z",
+  "pages": [
+    {
+      "route": "/platform/tenant",
+      "title": "租户管理",
+      "api": "GET /v1/platform/tenant",
+      "recordCount": 1,
+      "mismatches": []
+    },
+    {
+      "route": "/platform/tenant-type",
+      "title": "租户类型",
+      "api": "GET /v1/platform/tenant-type",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    },
+    {
+      "route": "/platform/storage",
+      "title": "存储配置",
+      "api": "GET /v1/file/storage",
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__apiError__",
+          "expected": "code=200",
+          "actual": "code=500 message=系统内部错误，请稍后重试"
+        }
+      ]
+    }
+  ]
+}

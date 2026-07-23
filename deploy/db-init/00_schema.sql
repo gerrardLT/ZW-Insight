@@ -2559,6 +2559,7 @@ CREATE TABLE IF NOT EXISTS biz_supplier_evaluation (
     cooperation_score INT COMMENT '合作评分（1-5）',
     total_score DECIMAL(4,2) COMMENT '综合评分',
     remark VARCHAR(500) COMMENT '备注',
+    evaluation_type VARCHAR(20) COMMENT '评价类型（AUTO-系统自动/MANUAL-人工评价）',
     tenant_id BIGINT COMMENT '租户ID',
     created_by BIGINT COMMENT '创建人ID',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -2568,6 +2569,26 @@ CREATE TABLE IF NOT EXISTS biz_supplier_evaluation (
     PRIMARY KEY (id),
     KEY idx_supplier (supplier_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='供应商评价表';
+
+-- 文件存储配置表
+CREATE TABLE IF NOT EXISTS file_storage (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    storage_type VARCHAR(20) COMMENT '存储类型（LOCAL/MINIO/ALIYUN/TENCENT/QINIU）',
+    endpoint VARCHAR(255) COMMENT '存储端点地址',
+    access_key VARCHAR(255) COMMENT '访问密钥',
+    secret_key VARCHAR(255) COMMENT '密钥',
+    bucket VARCHAR(100) COMMENT '存储桶',
+    base_path VARCHAR(255) COMMENT '基础路径',
+    status INT DEFAULT 1 COMMENT '状态（1-启用 0-停用）',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='文件存储配置表';
 
 -- 供应商黑名单表
 CREATE TABLE IF NOT EXISTS biz_supplier_blacklist (

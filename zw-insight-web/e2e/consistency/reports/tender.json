@@ -1,0 +1,20 @@
+{
+  "module": "tender",
+  "generatedAt": "2026-07-23T12:47:17.434Z",
+  "pages": [
+    {
+      "route": "/tender/certificate",
+      "title": "证件管理列表",
+      "api": "GET /v1/tender/certificate/person",
+      "recordCount": 6,
+      "mismatches": []
+    },
+    {
+      "route": "/tender/register",
+      "title": "投标报名列表",
+      "api": "GET /v1/tender/register/page",
+      "recordCount": 7,
+      "mismatches": []
+    }
+  ]
+}

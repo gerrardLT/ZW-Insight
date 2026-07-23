@@ -1,0 +1,34 @@
+{
+  "module": "site",
+  "generatedAt": "2026-07-23T12:47:11.023Z",
+  "pages": [
+    {
+      "route": "/site/construction-log",
+      "title": "施工日志列表",
+      "api": "GET /v1/site/construction-log/page",
+      "recordCount": 9,
+      "mismatches": []
+    },
+    {
+      "route": "/site/schedule",
+      "title": "进度计划列表",
+      "api": "GET /v1/site/schedule/page",
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
+    },
+    {
+      "route": "/site/inspection",
+      "title": "质量检查列表",
+      "api": "GET /v1/site/inspection/page",
+      "recordCount": 1,
+      "mismatches": []
+    }
+  ]
+}

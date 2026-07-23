@@ -1,0 +1,73 @@
+/* ZW-Insight Design Tokens - 基础变量（与主题无关） */
+:root {
+  /* 圆角 */
+  --zw-radius-xs: 4px;
+  --zw-radius-sm: 6px;
+  --zw-radius-md: 10px;
+  --zw-radius-lg: 16px;
+  --zw-radius-xl: 20px;
+  --zw-radius-full: 9999px;
+
+  /* 阴影层次 */
+  --zw-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --zw-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03);
+  --zw-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
+  --zw-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.06);
+
+  /* 间距 */
+  --zw-space-2xs: 2px;
+  --zw-space-xs: 4px;
+  --zw-space-sm: 8px;
+  --zw-space-md: 16px;
+  --zw-space-lg: 24px;
+  --zw-space-xl: 32px;
+  --zw-space-2xl: 48px;
+  --zw-space-3xl: 64px;
+
+  /* 字体 */
+  --zw-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --zw-font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  --zw-font-size-xs: 12px;
+  --zw-font-size-sm: 13px;
+  --zw-font-size-base: 14px;
+  --zw-font-size-md: 16px;
+  --zw-font-size-lg: 18px;
+  --zw-font-size-xl: 20px;
+  --zw-font-size-2xl: 24px;
+  --zw-font-size-3xl: 30px;
+  --zw-font-size-4xl: 36px;
+
+  /* 字重 */
+  --zw-font-weight-normal: 400;
+  --zw-font-weight-medium: 500;
+  --zw-font-weight-semibold: 600;
+  --zw-font-weight-bold: 700;
+
+  /* 行高 */
+  --zw-line-height-tight: 1.25;
+  --zw-line-height-normal: 1.5;
+  --zw-line-height-relaxed: 1.75;
+
+  /* 动画 */
+  --zw-transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --zw-transition-base: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --zw-transition-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --zw-transition-spring: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 布局 */
+  --zw-sidebar-width: 240px;
+  --zw-sidebar-collapsed-width: 68px;
+  --zw-header-height: 56px;
+  --zw-tags-height: 40px;
+  --zw-content-max-width: 1440px;
+  --zw-content-padding: 24px;
+
+  /* 层级 */
+  --zw-z-dropdown: 1000;
+  --zw-z-sticky: 1020;
+  --zw-z-fixed: 1030;
+  --zw-z-modal-backdrop: 1040;
+  --zw-z-modal: 1050;
+  --zw-z-popover: 1060;
+  --zw-z-tooltip: 1070;
+}

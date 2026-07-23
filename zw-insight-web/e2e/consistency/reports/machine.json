@@ -1,0 +1,13 @@
+{
+  "module": "machine",
+  "generatedAt": "2026-07-23T12:46:42.673Z",
+  "pages": [
+    {
+      "route": "/machine/contract",
+      "title": "机械合同列表",
+      "api": "GET /v1/machine/contract/page",
+      "recordCount": 5,
+      "mismatches": []
+    }
+  ]
+}

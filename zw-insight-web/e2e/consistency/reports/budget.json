@@ -1,0 +1,13 @@
+{
+  "module": "budget",
+  "generatedAt": "2026-07-23T12:46:18.567Z",
+  "pages": [
+    {
+      "route": "/budget/list",
+      "title": "预算列表",
+      "api": "GET /v1/budget/page",
+      "recordCount": 7,
+      "mismatches": []
+    }
+  ]
+}

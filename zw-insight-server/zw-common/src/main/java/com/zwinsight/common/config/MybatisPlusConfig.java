@@ -91,9 +91,13 @@ public class MybatisPlusConfig {
             public boolean ignoreTable(String tableName) {
                 // sys_开头的系统表和act_开头的流程表不做租户隔离
                 // msg_available_shortcut 为全局可选快捷功能定义表（实体无 tenantId），不做租户隔离
+                // biz_approval_rollback_log 为流程回滚审计日志（实体 BizApprovalRollbackLog 不继承
+                // BaseEntity、无 tenantId 列），若参与租户隔离会追加 tenant_id 条件导致
+                // "Unknown column 'tenant_id' in 'where clause'" 报 500，故排除
                 return tableName.startsWith("sys_")
                         || tableName.startsWith("act_")
-                        || "msg_available_shortcut".equals(tableName);
+                        || "msg_available_shortcut".equals(tableName)
+                        || "biz_approval_rollback_log".equals(tableName);
             }
         });
     }

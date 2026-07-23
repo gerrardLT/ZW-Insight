@@ -1,0 +1,13 @@
+{
+  "module": "material",
+  "generatedAt": "2026-07-23T12:46:45.142Z",
+  "pages": [
+    {
+      "route": "/material/inbound",
+      "title": "材料入库列表",
+      "api": "GET /v1/material/inbound/page",
+      "recordCount": 4,
+      "mismatches": []
+    }
+  ]
+}

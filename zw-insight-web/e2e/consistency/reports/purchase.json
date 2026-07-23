@@ -1,0 +1,13 @@
+{
+  "module": "purchase",
+  "generatedAt": "2026-07-23T12:46:59.358Z",
+  "pages": [
+    {
+      "route": "/purchase/contract",
+      "title": "采购合同列表",
+      "api": "GET /v1/purchase/contract/page",
+      "recordCount": 2,
+      "mismatches": []
+    }
+  ]
+}

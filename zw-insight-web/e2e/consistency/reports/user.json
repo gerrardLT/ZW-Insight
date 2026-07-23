@@ -1,0 +1,13 @@
+{
+  "module": "user",
+  "generatedAt": "2026-07-23T12:47:20.246Z",
+  "pages": [
+    {
+      "route": "/user/devices",
+      "title": "登录设备",
+      "api": "GET /v1/user/devices/list",
+      "recordCount": 5,
+      "mismatches": []
+    }
+  ]
+}

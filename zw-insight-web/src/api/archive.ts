@@ -64,21 +64,3 @@ export function getOtherExpenseContractArchive(params: { page?: number; size?: n
 export function getOfficeSupplyArchive(params: { page?: number; size?: number; keyword?: string }) {
   return request.get('/v1/archive/office-supply', { params })
 }
-
-// ======================== 兼容别名（页面引用传统 CRUD） ========================
-// archive/index.vue 使用传统分页列表模式
-export function getArchivePage(params: any) {
-  return request.get(`/v1/archive/project/${params.projectId || 0}`)
-}
-
-export function createArchive(data: any) {
-  return Promise.resolve({ code: 200, data: null })
-}
-
-export function updateArchive(data: any) {
-  return Promise.resolve({ code: 200, data: null })
-}
-
-export function deleteArchive(id: number) {
-  return Promise.resolve({ code: 200, data: null })
-}

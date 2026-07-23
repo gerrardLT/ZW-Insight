@@ -1,0 +1,34 @@
+{
+  "module": "hr",
+  "generatedAt": "2026-07-23T12:46:44.591Z",
+  "pages": [
+    {
+      "route": "/hr/entry",
+      "title": "入职申请列表",
+      "api": "GET /v1/hr/entry-apply/page",
+      "recordCount": 2,
+      "mismatches": []
+    },
+    {
+      "route": "/hr/resign-apply",
+      "title": "离职申请列表",
+      "api": "GET /v1/hr/resign-apply",
+      "recordCount": 1,
+      "mismatches": []
+    },
+    {
+      "route": "/hr/vehicle",
+      "title": "车辆管理列表",
+      "api": "GET /v1/hr/vehicle/page",
+      "recordCount": 2,
+      "mismatches": []
+    },
+    {
+      "route": "/hr/office-supply",
+      "title": "办公用品列表",
+      "api": "GET /v1/hr/office-supply/page",
+      "recordCount": 5,
+      "mismatches": []
+    }
+  ]
+}

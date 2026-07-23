@@ -1,0 +1,25 @@
+{
+  "module": "project",
+  "generatedAt": "2026-07-23T12:47:03.325Z",
+  "pages": [
+    {
+      "route": "/project/list",
+      "title": "项目列表",
+      "api": "GET /v1/project/page",
+      "recordCount": 10,
+      "mismatches": []
+    },
+    {
+      "route": "/project/detail/:id",
+      "title": "项目详情",
+      "api": "GET /v1/project/{id}",
+      "mismatches": []
+    },
+    {
+      "route": "/project/edit/:id",
+      "title": "项目编辑回显",
+      "api": "GET /v1/project/{id}",
+      "mismatches": []
+    }
+  ]
+}

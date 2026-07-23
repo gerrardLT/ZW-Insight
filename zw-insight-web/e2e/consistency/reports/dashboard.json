@@ -1,0 +1,34 @@
+{
+  "module": "dashboard",
+  "generatedAt": "2026-07-23T12:46:30.377Z",
+  "pages": [
+    {
+      "route": "/dashboard",
+      "title": "首页驾驶舱",
+      "api": "GET /v1/dashboard/company-overview",
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__silentFallback__",
+          "field": "loadStats/pie/bar catch",
+          "expected": "接口异常应显式提示",
+          "actual": "index.vue 三处 catch 静默兜底空数据，无错误提示（违反无静默 fallback 约定）"
+        }
+      ]
+    },
+    {
+      "route": "/project-dashboard",
+      "title": "项目看板",
+      "api": "GET /v1/dashboard/project/{id}/overview",
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__note__",
+          "field": "overview",
+          "expected": "维度接口 code=200",
+          "actual": "接口正常返回"
+        }
+      ]
+    }
+  ]
+}
