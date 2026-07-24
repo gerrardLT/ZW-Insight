@@ -21,8 +21,10 @@ public class TeamController {
     public R<PageResult<BizTeam>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(teamService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String teamName,
+            @RequestParam(required = false) String workType) {
+        return R.ok(teamService.page(page, size, projectId, teamName, workType));
     }
 
     @PostMapping

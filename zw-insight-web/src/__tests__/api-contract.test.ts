@@ -68,13 +68,13 @@ describe('contract API 模块', () => {
     })
 
     it('createContract 调用 POST /v1/contract', () => {
-      const data = { name: '合同A', amount: 500000 }
+      const data = { projectId: 1, contractType: 'REGISTER', contractAmount: 500000 }
       createContract(data)
       expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract', data)
     })
 
     it('updateContract 调用 PUT /v1/contract/:id', () => {
-      const data = { id: 3, name: '更新合同' }
+      const data = { id: 3, projectId: 1, contractType: 'REGISTER', contractAmount: 0 }
       updateContract(data)
       expect(mockRequest.put).toHaveBeenCalledWith('/v1/contract/3', data)
     })
@@ -99,7 +99,7 @@ describe('contract API 模块', () => {
     })
 
     it('saveContractDetails 调用 POST /v1/contract/:id/details', () => {
-      const items = [{ name: '明细1', amount: 100 }]
+      const items = [{ contractId: 10, itemName: '明细1' }]
       saveContractDetails(10, items)
       expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract/10/details', items)
     })
@@ -115,7 +115,7 @@ describe('contract API 模块', () => {
     })
 
     it('createChangeVisa 调用 POST /v1/contract/change-visa', () => {
-      const data = { description: '变更内容' }
+      const data = { changeContent: '变更内容' }
       createChangeVisa(data)
       expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract/change-visa', data)
     })
@@ -140,13 +140,13 @@ describe('contract API 模块', () => {
     })
 
     it('createOtherContract 调用 POST /v1/contract/other', () => {
-      const data = { name: '其他合同' }
+      const data = { contractCode: 'OTHER-001', contractCategory: 'RENT' }
       createOtherContract(data)
       expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract/other', data)
     })
 
     it('updateOtherContract 调用 PUT /v1/contract/other/:id', () => {
-      const data = { name: '更新' }
+      const data = { partyBName: '更新' }
       updateOtherContract(20, data)
       expect(mockRequest.put).toHaveBeenCalledWith('/v1/contract/other/20', data)
     })
@@ -166,14 +166,14 @@ describe('contract API 模块', () => {
     })
 
     it('createQuantityList 调用 POST /v1/contract/quantity', () => {
-      const data = { name: '清单项' }
+      const data = { itemName: '清单项' }
       createQuantityList(data)
       expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract/quantity', data)
     })
 
     it('updateQuantityList 调用 PUT /v1/contract/quantity/:id', () => {
-      updateQuantityList(5, { name: '更新' })
-      expect(mockRequest.put).toHaveBeenCalledWith('/v1/contract/quantity/5', { name: '更新' })
+      updateQuantityList(5, { itemName: '更新' })
+      expect(mockRequest.put).toHaveBeenCalledWith('/v1/contract/quantity/5', { itemName: '更新' })
     })
 
     it('deleteQuantityList 调用 DELETE /v1/contract/quantity/:id', () => {
@@ -220,7 +220,7 @@ describe('contract API 模块', () => {
     })
 
     it('createOutputReport 调用 POST /v1/contract/output', () => {
-      const data = { period: '2024-01' }
+      const data = { reportPeriod: '2024-01' }
       createOutputReport(data)
       expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract/output', data)
     })

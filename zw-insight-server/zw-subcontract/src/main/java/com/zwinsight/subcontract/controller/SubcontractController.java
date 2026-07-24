@@ -21,8 +21,11 @@ public class SubcontractController {
     public R<PageResult<BizSubcontract>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(subcontractService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String contractName,
+            @RequestParam(required = false) String subcontractor,
+            @RequestParam(required = false) String status) {
+        return R.ok(subcontractService.page(page, size, projectId, contractName, subcontractor, status));
     }
 
     @GetMapping("/{id}")

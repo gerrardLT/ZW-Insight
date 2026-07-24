@@ -21,8 +21,11 @@ public class LaborContractController {
     public R<PageResult<BizLaborContract>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(laborContractService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String contractName,
+            @RequestParam(required = false) String teamName,
+            @RequestParam(required = false) String status) {
+        return R.ok(laborContractService.page(page, size, projectId, contractName, teamName, status));
     }
 
     @GetMapping("/{id}")

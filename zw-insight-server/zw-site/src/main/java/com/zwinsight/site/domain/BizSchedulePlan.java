@@ -48,10 +48,17 @@ public class BizSchedulePlan extends BaseEntity {
     /** 任务详情 */
     private String taskDetail;
 
+    /** 负责人 */
+    private String responsible;
+
     /** 排序号 */
     private Integer sortOrder;
 
     /** 子任务列表（非数据库字段） */
     @TableField(exist = false)
     private List<BizSchedulePlan> children;
+
+    /** 所属项目名称（透传，非本表字段） */
+    @TableField(exist = false)
+    private String projectName;
 }

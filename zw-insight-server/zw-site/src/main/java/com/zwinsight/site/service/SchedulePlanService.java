@@ -1,7 +1,13 @@
 package com.zwinsight.site.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.result.PageResult;
+import com.zwinsight.project.domain.BizProject;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.site.domain.BizSchedulePlan;
 import com.zwinsight.site.mapper.BizSchedulePlanMapper;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +29,34 @@ import java.util.stream.Collectors;
 public class SchedulePlanService {
 
     private final BizSchedulePlanMapper planMapper;
+    private final BizProjectMapper projectMapper;
+
+    /**
+     * 分页查询进度计划（平铺列表，支持项目名称/任务名称筛选，回填项目名）
+     */
+    public PageResult<BizSchedulePlan> page(int page, int size, Long projectId, String projectName, String taskName) {
+        // projectName 不是本表字段，需先经 biz_project 解析为 projectId 集合再过滤
+        List<Long> nameMatchedIds = null;
+        if (StrUtil.isNotBlank(projectName)) {
+            LambdaQueryWrapper<BizProject> projectWrapper = new LambdaQueryWrapper<>();
+            projectWrapper.like(BizProject::getProjectName, projectName);
+            nameMatchedIds = projectMapper.selectList(projectWrapper).stream()
+                    .map(BizProject::getId).collect(Collectors.toList());
+            if (nameMatchedIds.isEmpty()) {
+                return PageResult.of(new Page<>(page, size));
+            }
+        }
+        Page<BizSchedulePlan> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<BizSchedulePlan> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(projectId != null, BizSchedulePlan::getProjectId, projectId)
+                .in(nameMatchedIds != null, BizSchedulePlan::getProjectId, nameMatchedIds)
+                .like(StrUtil.isNotBlank(taskName), BizSchedulePlan::getTaskName, taskName)
+                .orderByAsc(BizSchedulePlan::getSortOrder);
+        Page<BizSchedulePlan> result = planMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizSchedulePlan::getProjectId, BizSchedulePlan::setProjectName);
+        return PageResult.of(result);
+    }
 
     /**
      * 获取项目进度计划（树形返回）

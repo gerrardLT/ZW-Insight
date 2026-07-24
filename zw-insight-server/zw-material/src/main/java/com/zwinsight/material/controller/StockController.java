@@ -23,8 +23,11 @@ public class StockController {
     public R<PageResult<BizProjectMaterialStock>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(stockService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String materialName,
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) String warning) {
+        return R.ok(stockService.page(page, size, projectId, materialName, projectName, warning));
     }
 
     @GetMapping("/{projectId}")

@@ -224,11 +224,11 @@ async function handleSubmit() {
   try {
     let contractId: number
     if (formData.value.id) {
-      await updateContract(formData.value)
+      await updateContract({ ...formData.value, id: formData.value.id!, projectId: formData.value.projectId! })
       contractId = formData.value.id
       ElMessage.success('更新成功')
     } else {
-      const res: any = await createContract(formData.value)
+      const res: any = await createContract({ ...formData.value, projectId: formData.value.projectId! })
       contractId = res.data?.id || res.data
       ElMessage.success('新增成功')
     }

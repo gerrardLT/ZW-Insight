@@ -3,6 +3,7 @@ package com.zwinsight.subcontract.service;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.metadata.WriteSheet;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
@@ -47,11 +48,12 @@ public class SubcontractSettlementService {
     private final BizSubcontractMapper subcontractMapper;
     private final BizProjectMapper projectMapper;
 
-    public PageResult<BizSubcontractSettlement> page(int page, int size, Long projectId, Long contractId) {
+    public PageResult<BizSubcontractSettlement> page(int page, int size, Long projectId, Long contractId, String status) {
         Page<BizSubcontractSettlement> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizSubcontractSettlement> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizSubcontractSettlement::getProjectId, projectId)
                 .eq(contractId != null, BizSubcontractSettlement::getContractId, contractId)
+                .eq(StrUtil.isNotBlank(status), BizSubcontractSettlement::getStatus, status)
                 .orderByDesc(BizSubcontractSettlement::getCreatedAt);
         return PageResult.of(settlementMapper.selectPage(pageParam, wrapper));
     }

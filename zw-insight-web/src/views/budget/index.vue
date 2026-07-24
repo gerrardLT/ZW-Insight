@@ -3,16 +3,16 @@
     <el-card shadow="never">
       <el-form :model="queryParams" inline>
         <el-form-item label="项目">
-          <el-input v-model="queryParams.projectName" placeholder="项目名称" clearable style="width: 200px" />
-        </el-form-item>
-        <el-form-item label="年度">
-          <el-date-picker v-model="queryParams.budgetYear" type="year" value-format="YYYY" placeholder="选择年度" style="width: 120px" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
-            <el-option label="草稿" value="DRAFT" />
-            <el-option label="审批中" value="APPROVING" />
-            <el-option label="已批准" value="APPROVED" />
+          <el-select
+            v-model="queryParams.projectId"
+            placeholder="请选择项目"
+            filterable
+            remote
+            clearable
+            :remote-method="searchProject"
+            style="width: 220px"
+          >
+            <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -27,12 +27,8 @@
 
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="budgetYear" label="预算年度" width="100" align="center" />
-        <el-table-column prop="totalAmount" label="预算总额(万元)" width="140" align="right">
+        <el-table-column prop="totalAmount" label="预算总额(元)" width="160" align="right">
           <template #default="{ row }">{{ row.totalAmount?.toLocaleString() }}</template>
-        </el-table-column>
-        <el-table-column prop="usedAmount" label="已用金额(万元)" width="140" align="right">
-          <template #default="{ row }">{{ row.usedAmount?.toLocaleString() }}</template>
         </el-table-column>
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
@@ -41,7 +37,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="160" />
+        <el-table-column prop="createdAt" label="创建时间" width="180" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
@@ -66,20 +62,20 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑预算' : '新增预算编制'" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
-        <el-form-item label="项目名称" prop="projectId">
-          <el-input v-model="formData.projectName" placeholder="请输入项目名称" />
-        </el-form-item>
-        <el-form-item label="预算年度" prop="budgetYear">
-          <el-date-picker v-model="formData.budgetYear" type="year" value-format="YYYY" placeholder="选择年度" style="width: 100%" />
+        <el-form-item label="项目" prop="projectId">
+          <el-select
+            v-model="formData.projectId"
+            placeholder="请选择项目"
+            filterable
+            remote
+            :remote-method="searchProject"
+            style="width: 100%"
+          >
+            <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="预算总额" prop="totalAmount">
           <el-input-number v-model="formData.totalAmount" :min="0" :precision="2" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="科目明细">
-          <el-input v-model="formData.subjectDetail" type="textarea" :rows="3" placeholder="科目及预算分配说明" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="formData.remark" type="textarea" :rows="2" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -95,10 +91,12 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getBudgetPage, createBudget, updateBudget, deleteBudget, submitBudget } from '@/api/budget'
+import { getProjectList } from '@/api/project'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const tableData = ref<any[]>([])
+const projectList = ref<any[]>([])
 const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
@@ -107,25 +105,23 @@ const isEdit = ref(false)
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  projectName: '',
-  budgetYear: '',
-  status: ''
+  projectId: undefined as number | undefined
 })
 
 const formData = ref({
   id: undefined as number | undefined,
   projectId: undefined as number | undefined,
-  projectName: '',
-  budgetYear: '',
-  totalAmount: 0,
-  subjectDetail: '',
-  remark: ''
+  totalAmount: 0
 })
 
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
-  budgetYear: [{ required: true, message: '请选择预算年度', trigger: 'change' }],
   totalAmount: [{ required: true, message: '请输入预算总额', trigger: 'blur' }]
+}
+
+async function searchProject(query: string) {
+  const res: any = await getProjectList({ projectName: query })
+  projectList.value = res.data || []
 }
 
 async function loadData() {
@@ -145,19 +141,19 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, projectName: '', budgetYear: '', status: '' }
+  queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined }
   loadData()
 }
 
 function handleAdd() {
   isEdit.value = false
-  formData.value = { id: undefined, projectId: undefined, projectName: '', budgetYear: '', totalAmount: 0, subjectDetail: '', remark: '' }
+  formData.value = { id: undefined, projectId: undefined, totalAmount: 0 }
   dialogVisible.value = true
 }
 
 function handleEdit(row: any) {
   isEdit.value = true
-  formData.value = { ...row }
+  formData.value = { id: row.id, projectId: row.projectId, totalAmount: row.totalAmount }
   dialogVisible.value = true
 }
 
@@ -165,11 +161,16 @@ async function handleFormSubmit() {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
+    const payload = {
+      projectId: formData.value.projectId as number,
+      budgetType: 'ORIGINAL',
+      totalAmount: formData.value.totalAmount
+    }
     if (isEdit.value) {
-      await updateBudget(formData.value)
+      await updateBudget({ ...payload, id: formData.value.id as number })
       ElMessage.success('更新成功')
     } else {
-      await createBudget(formData.value)
+      await createBudget(payload)
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
@@ -194,6 +195,7 @@ async function handleDelete(row: any) {
 }
 
 onMounted(() => {
+  searchProject('')
   loadData()
 })
 </script>

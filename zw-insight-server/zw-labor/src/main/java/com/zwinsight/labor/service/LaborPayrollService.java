@@ -1,12 +1,15 @@
 package com.zwinsight.labor.service;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.labor.domain.BizLaborPayroll;
+import com.zwinsight.labor.domain.BizTeam;
 import com.zwinsight.labor.domain.BizWorkOrder;
 import com.zwinsight.labor.mapper.BizLaborPayrollMapper;
+import com.zwinsight.labor.mapper.BizTeamMapper;
 import com.zwinsight.labor.mapper.BizWorkOrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 劳务工资单服务
@@ -24,18 +29,53 @@ public class LaborPayrollService {
 
     private final BizLaborPayrollMapper payrollMapper;
     private final BizWorkOrderMapper workOrderMapper;
+    private final BizTeamMapper teamMapper;
 
     /**
      * 分页查询
      */
-    public PageResult<BizLaborPayroll> page(int page, int size, Long projectId, Long teamId) {
+    public PageResult<BizLaborPayroll> page(int page, int size, Long projectId, Long teamId,
+                                            String teamName, String status) {
+        List<Long> teamMatchedIds = null;
+        if (StrUtil.isNotBlank(teamName)) {
+            LambdaQueryWrapper<BizTeam> teamWrapper = new LambdaQueryWrapper<>();
+            teamWrapper.like(BizTeam::getTeamName, teamName);
+            teamMatchedIds = teamMapper.selectList(teamWrapper).stream()
+                    .map(BizTeam::getId).collect(Collectors.toList());
+            if (teamMatchedIds.isEmpty()) {
+                return PageResult.of(new Page<>(page, size));
+            }
+        }
         Page<BizLaborPayroll> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizLaborPayroll> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizLaborPayroll::getProjectId, projectId)
                 .eq(teamId != null, BizLaborPayroll::getTeamId, teamId)
+                .in(teamMatchedIds != null, BizLaborPayroll::getTeamId, teamMatchedIds)
+                .eq(StrUtil.isNotBlank(status), BizLaborPayroll::getStatus, status)
                 .orderByDesc(BizLaborPayroll::getCreatedAt);
         Page<BizLaborPayroll> result = payrollMapper.selectPage(pageParam, wrapper);
+        fillTeamName(result.getRecords());
         return PageResult.of(result);
+    }
+
+    /**
+     * 回填班组名称
+     */
+    private void fillTeamName(List<BizLaborPayroll> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        List<Long> teamIds = records.stream()
+                .map(BizLaborPayroll::getTeamId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+        if (teamIds.isEmpty()) {
+            return;
+        }
+        Map<Long, String> nameMap = teamMapper.selectBatchIds(teamIds).stream()
+                .collect(Collectors.toMap(BizTeam::getId, BizTeam::getTeamName, (a, b) -> a));
+        records.forEach(r -> r.setTeamName(nameMap.get(r.getTeamId())));
     }
 
     /**

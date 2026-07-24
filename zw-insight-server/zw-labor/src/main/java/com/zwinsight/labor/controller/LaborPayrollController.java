@@ -22,8 +22,10 @@ public class LaborPayrollController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) Long teamId) {
-        return R.ok(payrollService.page(page, size, projectId, teamId));
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) String teamName,
+            @RequestParam(required = false) String status) {
+        return R.ok(payrollService.page(page, size, projectId, teamId, teamName, status));
     }
 
     @GetMapping("/{id}")

@@ -41,7 +41,7 @@ class SupplierEvaluationControllerTest {
         BizSupplierEvaluation e = new BizSupplierEvaluation();
         e.setId(1L); e.setSupplierName("供应商A"); e.setTotalScore(new BigDecimal("4.5"));
         PageResult<BizSupplierEvaluation> page = new PageResult<>(List.of(e), 1, 1, 10, 1);
-        when(evaluationService.page(anyInt(), anyInt(), any())).thenReturn(page);
+        when(evaluationService.page(anyInt(), anyInt(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/basedata/supplier-evaluation").param("page","1").param("size","10"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200));

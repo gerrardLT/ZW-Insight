@@ -24,8 +24,9 @@ public class MachineRepairController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long machineId,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(repairService.page(page, size, machineId, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String machineName) {
+        return R.ok(repairService.page(page, size, machineId, projectId, machineName));
     }
 
     @PostMapping("/report")

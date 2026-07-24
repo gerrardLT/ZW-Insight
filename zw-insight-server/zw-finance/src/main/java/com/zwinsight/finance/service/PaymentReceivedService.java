@@ -10,6 +10,7 @@ import com.zwinsight.finance.domain.BizPaymentReceived;
 import com.zwinsight.finance.mapper.BizPaymentReceivedMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,8 @@ public class PaymentReceivedService {
         wrapper.eq(projectId != null, BizPaymentReceived::getProjectId, projectId)
                 .orderByDesc(BizPaymentReceived::getCreatedAt);
         Page<BizPaymentReceived> result = paymentReceivedMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizPaymentReceived::getProjectId, BizPaymentReceived::setProjectName);
         return PageResult.of(result);
     }
 

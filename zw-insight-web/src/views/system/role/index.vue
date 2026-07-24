@@ -87,6 +87,9 @@
         <el-form-item label="角色编码" prop="roleCode">
           <el-input v-model="formData.roleCode" placeholder="请输入角色编码" />
         </el-form-item>
+        <el-form-item label="状态">
+          <el-switch v-model="formData.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" />
+        </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="formData.remark" type="textarea" placeholder="请输入备注" :rows="3" />
         </el-form-item>
@@ -166,6 +169,7 @@ const formData = ref({
   id: undefined as number | undefined,
   roleName: '',
   roleCode: '',
+  status: 1,
   remark: ''
 })
 
@@ -243,7 +247,7 @@ async function handleSaveMenus() {
 
 function handleAdd() {
   dialogTitle.value = '新增角色'
-  formData.value = { id: undefined, roleName: '', roleCode: '', remark: '' }
+  formData.value = { id: undefined, roleName: '', roleCode: '', status: 1, remark: '' }
   dialogVisible.value = true
 }
 

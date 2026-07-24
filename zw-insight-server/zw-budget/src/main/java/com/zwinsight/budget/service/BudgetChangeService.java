@@ -2,6 +2,7 @@ package com.zwinsight.budget.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import com.zwinsight.budget.domain.BizBudgetChange;
 import com.zwinsight.budget.domain.BizBudgetChangeDetail;
 import com.zwinsight.budget.dto.BudgetChangeDTO;
@@ -14,6 +15,7 @@ import com.zwinsight.budget.mapper.BudgetOccupiedMapper;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,12 +50,15 @@ public class BudgetChangeService {
     /**
      * 分页查询变更记录
      */
-    public PageResult<BizBudgetChange> page(int page, int size, Long projectId) {
+    public PageResult<BizBudgetChange> page(int page, int size, Long projectId, String status) {
         Page<BizBudgetChange> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizBudgetChange> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizBudgetChange::getProjectId, projectId)
+                .eq(StrUtil.isNotBlank(status), BizBudgetChange::getStatus, status)
                 .orderByDesc(BizBudgetChange::getCreatedAt);
         Page<BizBudgetChange> result = budgetChangeMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizBudgetChange::getProjectId, BizBudgetChange::setProjectName);
         return PageResult.of(result);
     }
 

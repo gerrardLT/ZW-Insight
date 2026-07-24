@@ -23,8 +23,11 @@ public class LaborRosterController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) Long teamId) {
-        return R.ok(rosterService.page(page, size, projectId, teamId));
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) String workerName,
+            @RequestParam(required = false) String teamName,
+            @RequestParam(required = false) String workType) {
+        return R.ok(rosterService.page(page, size, projectId, teamId, workerName, teamName, workType));
     }
 
     @PostMapping

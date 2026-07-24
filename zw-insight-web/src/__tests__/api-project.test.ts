@@ -44,7 +44,7 @@ describe('project API 模块', () => {
   })
 
   it('getProjectList 调用 GET /v1/project/list', () => {
-    const params = { keyword: 'test' }
+    const params = { projectName: 'test' }
     getProjectList(params)
     expect(mockRequest.get).toHaveBeenCalledWith('/v1/project/list', { params })
   })
@@ -60,13 +60,13 @@ describe('project API 模块', () => {
   })
 
   it('createProject 调用 POST /v1/project', () => {
-    const data = { name: '新项目', budget: 1000000 }
+    const data = { projectName: '新项目', budgetAmount: 1000000 }
     createProject(data)
     expect(mockRequest.post).toHaveBeenCalledWith('/v1/project', data)
   })
 
   it('updateProject 调用 PUT /v1/project/:id', () => {
-    const data = { id: 5, name: '更新项目' }
+    const data = { id: 5, projectName: '更新项目' }
     updateProject(data)
     expect(mockRequest.put).toHaveBeenCalledWith('/v1/project/5', data)
   })
@@ -76,9 +76,9 @@ describe('project API 模块', () => {
     expect(mockRequest.delete).toHaveBeenCalledWith('/v1/project/10')
   })
 
-  it('submitProject 调用 PUT /v1/project/:id/submit', () => {
+  it('submitProject 调用 POST /v1/project/:id/submit', () => {
     submitProject(7)
-    expect(mockRequest.put).toHaveBeenCalledWith('/v1/project/7/submit')
+    expect(mockRequest.post).toHaveBeenCalledWith('/v1/project/7/submit')
   })
 
   // ======================== 建设单位（甲方） ========================
@@ -109,7 +109,7 @@ describe('project API 模块', () => {
   })
 
   it('addProjectMember 调用 POST /v1/project/:id/member', () => {
-    const data = { userId: 100, role: 'PM' }
+    const data = { userId: 100, projectRoles: ['PM'] }
     addProjectMember(1, data)
     expect(mockRequest.post).toHaveBeenCalledWith('/v1/project/1/member', data)
   })
@@ -120,7 +120,7 @@ describe('project API 模块', () => {
   })
 
   it('updateMemberRoles 调用 PUT /v1/project/:id/member/:userId/roles', () => {
-    const data = { roles: ['PM', 'TECH'] }
+    const data = { projectRoles: ['PM', 'TECH'] }
     updateMemberRoles(1, 100, data)
     expect(mockRequest.put).toHaveBeenCalledWith('/v1/project/1/member/100/roles', data)
   })

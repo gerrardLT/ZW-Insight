@@ -26,6 +26,7 @@ export interface BudgetCreateRequest {
 /** 预算分页查询参数 */
 export interface BudgetPageQuery extends PageQuery {
   projectId?: ID
+  status?: string
 }
 
 /** 预算明细 */

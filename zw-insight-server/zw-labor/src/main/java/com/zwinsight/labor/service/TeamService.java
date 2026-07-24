@@ -2,6 +2,7 @@ package com.zwinsight.labor.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.reference.ReferenceCheck;
 import com.zwinsight.common.reference.ReferenceRelation;
@@ -10,8 +11,14 @@ import com.zwinsight.labor.domain.BizLaborRoster;
 import com.zwinsight.labor.domain.BizTeam;
 import com.zwinsight.labor.mapper.BizLaborRosterMapper;
 import com.zwinsight.labor.mapper.BizTeamMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 班组服务
@@ -22,17 +29,40 @@ public class TeamService {
 
     private final BizTeamMapper teamMapper;
     private final BizLaborRosterMapper rosterMapper;
+    private final BizProjectMapper projectMapper;
 
     /**
-     * 分页查询
+     * 分页查询（支持按班组名称/工种筛选，回填项目名与成员数）
      */
-    public PageResult<BizTeam> page(int page, int size, Long projectId) {
+    public PageResult<BizTeam> page(int page, int size, Long projectId, String teamName, String workType) {
         Page<BizTeam> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizTeam> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizTeam::getProjectId, projectId)
+                .like(StrUtil.isNotBlank(teamName), BizTeam::getTeamName, teamName)
+                .like(StrUtil.isNotBlank(workType), BizTeam::getWorkType, workType)
                 .orderByDesc(BizTeam::getCreatedAt);
         Page<BizTeam> result = teamMapper.selectPage(pageParam, wrapper);
+        List<BizTeam> records = result.getRecords();
+        ProjectNameFiller.fill(records, projectMapper,
+                BizTeam::getProjectId, BizTeam::setProjectName);
+        fillMemberCount(records);
         return PageResult.of(result);
+    }
+
+    /**
+     * 批量回填班组成员数（从花名册按 team_id 聚合）
+     */
+    private void fillMemberCount(List<BizTeam> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        List<Long> teamIds = records.stream().map(BizTeam::getId).collect(Collectors.toList());
+        LambdaQueryWrapper<BizLaborRoster> rosterWrapper = new LambdaQueryWrapper<>();
+        rosterWrapper.in(BizLaborRoster::getTeamId, teamIds);
+        Map<Long, Long> countMap = rosterMapper.selectList(rosterWrapper).stream()
+                .filter(r -> r.getTeamId() != null)
+                .collect(Collectors.groupingBy(BizLaborRoster::getTeamId, Collectors.counting()));
+        records.forEach(t -> t.setMemberCount(countMap.getOrDefault(t.getId(), 0L).intValue()));
     }
 
     /**

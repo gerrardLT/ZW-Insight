@@ -26,8 +26,9 @@ public class BudgetChangeController {
     public R<PageResult<BizBudgetChange>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(budgetChangeService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String status) {
+        return R.ok(budgetChangeService.page(page, size, projectId, status));
     }
 
     @GetMapping("/{id}")

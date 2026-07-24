@@ -1,5 +1,6 @@
 package com.zwinsight.finance.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -17,6 +18,10 @@ public class BizProjectSettlement extends BaseEntity {
 
     /** 项目ID */
     private Long projectId;
+
+    /** 项目名称（冗余展示字段，不持久化） */
+    @TableField(exist = false)
+    private String projectName;
 
     /** 结算单编号 */
     private String settlementCode;

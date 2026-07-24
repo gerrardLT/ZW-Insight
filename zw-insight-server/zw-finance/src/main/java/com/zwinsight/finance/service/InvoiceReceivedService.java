@@ -7,6 +7,8 @@ import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizInvoiceReceived;
 import com.zwinsight.finance.mapper.BizInvoiceReceivedMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ public class InvoiceReceivedService {
 
     private final BizInvoiceReceivedMapper invoiceReceivedMapper;
     private final BizOtherContractMapper otherContractMapper;
+    private final BizProjectMapper projectMapper;
 
     /**
      * 分页查询
@@ -32,6 +35,8 @@ public class InvoiceReceivedService {
         wrapper.eq(projectId != null, BizInvoiceReceived::getProjectId, projectId)
                 .orderByDesc(BizInvoiceReceived::getCreatedAt);
         Page<BizInvoiceReceived> result = invoiceReceivedMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizInvoiceReceived::getProjectId, BizInvoiceReceived::setProjectName);
         return PageResult.of(result);
     }
 

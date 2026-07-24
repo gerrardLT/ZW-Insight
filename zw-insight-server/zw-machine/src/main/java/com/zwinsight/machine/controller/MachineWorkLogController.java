@@ -22,8 +22,10 @@ public class MachineWorkLogController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long machineId,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(workLogService.page(page, size, machineId, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String machineName,
+            @RequestParam(required = false) String workDate) {
+        return R.ok(workLogService.page(page, size, machineId, projectId, machineName, workDate));
     }
 
     @PostMapping

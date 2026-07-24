@@ -2,6 +2,7 @@ package com.zwinsight.budget.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import com.zwinsight.budget.domain.SysBudgetControlConfig;
 import com.zwinsight.budget.dto.BudgetCheckResult;
 import com.zwinsight.budget.dto.BudgetControlConfigDTO;
@@ -10,6 +11,9 @@ import com.zwinsight.budget.mapper.BudgetOccupiedMapper;
 import com.zwinsight.budget.mapper.SysBudgetControlConfigMapper;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.project.domain.BizProject;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +22,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 预算控制配置服务
@@ -30,20 +35,34 @@ public class BudgetControlConfigService {
     private final SysBudgetControlConfigMapper configMapper;
     private final BizBudgetDetailMapper budgetDetailMapper;
     private final BudgetOccupiedMapper budgetOccupiedMapper;
+    private final BizProjectMapper projectMapper;
 
     /** 合法的控制模式枚举值 */
     private static final List<String> VALID_CONTROL_MODES = Arrays.asList("WARN_ONLY", "BLOCK", "EXEMPT");
 
     /**
-     * 分页查询（支持按项目名称筛选）
+     * 分页查询（支持按项目名称/控制模式筛选）
      */
-    public PageResult<SysBudgetControlConfig> page(int page, int size, String projectName) {
+    public PageResult<SysBudgetControlConfig> page(int page, int size, String projectName, String controlMode) {
+        // projectName 不是本表字段，需先经 biz_project 解析为 projectId 集合再过滤
+        List<Long> nameMatchedIds = null;
+        if (StrUtil.isNotBlank(projectName)) {
+            LambdaQueryWrapper<BizProject> projectWrapper = new LambdaQueryWrapper<>();
+            projectWrapper.like(BizProject::getProjectName, projectName);
+            nameMatchedIds = projectMapper.selectList(projectWrapper).stream()
+                    .map(BizProject::getId).collect(Collectors.toList());
+            if (nameMatchedIds.isEmpty()) {
+                return PageResult.of(new Page<>(page, size));
+            }
+        }
         Page<SysBudgetControlConfig> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<SysBudgetControlConfig> wrapper = new LambdaQueryWrapper<>();
-        // 注：projectName 筛选需要关联项目表，当前简化为按 projectId 非空筛选
-        // 若需按项目名称筛选，后续可通过自定义 SQL 或 join 实现
-        wrapper.orderByDesc(SysBudgetControlConfig::getCreatedAt);
+        wrapper.in(nameMatchedIds != null, SysBudgetControlConfig::getProjectId, nameMatchedIds)
+                .eq(StrUtil.isNotBlank(controlMode), SysBudgetControlConfig::getControlMode, controlMode)
+                .orderByDesc(SysBudgetControlConfig::getCreatedAt);
         Page<SysBudgetControlConfig> result = configMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                SysBudgetControlConfig::getProjectId, SysBudgetControlConfig::setProjectName);
         return PageResult.of(result);
     }
 

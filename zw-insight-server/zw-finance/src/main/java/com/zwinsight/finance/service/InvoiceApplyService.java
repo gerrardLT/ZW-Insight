@@ -1,6 +1,7 @@
 package com.zwinsight.finance.service;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
@@ -10,6 +11,8 @@ import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.finance.domain.BizInvoiceApply;
 import com.zwinsight.finance.domain.dto.InvoiceApplyCreateRequest;
 import com.zwinsight.finance.mapper.BizInvoiceApplyMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,18 +31,22 @@ public class InvoiceApplyService {
 
     private final BizInvoiceApplyMapper invoiceApplyMapper;
     private final BizConstructionContractMapper contractMapper;
+    private final BizProjectMapper projectMapper;
     private final ApprovalService approvalService;
 
     /**
      * 分页查询
      */
-    public PageResult<BizInvoiceApply> page(int page, int size, Long projectId, Long contractId) {
+    public PageResult<BizInvoiceApply> page(int page, int size, Long projectId, Long contractId, String status) {
         Page<BizInvoiceApply> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizInvoiceApply> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizInvoiceApply::getProjectId, projectId)
                 .eq(contractId != null, BizInvoiceApply::getContractId, contractId)
+                .eq(StrUtil.isNotBlank(status), BizInvoiceApply::getStatus, status)
                 .orderByDesc(BizInvoiceApply::getCreatedAt);
         Page<BizInvoiceApply> result = invoiceApplyMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizInvoiceApply::getProjectId, BizInvoiceApply::setProjectName);
         return PageResult.of(result);
     }
 

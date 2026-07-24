@@ -29,8 +29,9 @@ public class VehicleController {
     public R<PageResult<BizVehicle>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String plateNumber) {
-        return R.ok(vehicleService.page(page, size, plateNumber));
+            @RequestParam(required = false) String plateNumber,
+            @RequestParam(required = false) String vehicleType) {
+        return R.ok(vehicleService.page(page, size, plateNumber, vehicleType));
     }
 
     @PostMapping

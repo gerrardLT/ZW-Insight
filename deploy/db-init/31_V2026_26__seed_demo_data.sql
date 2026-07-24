@@ -259,9 +259,9 @@ INSERT IGNORE INTO biz_other_contract (id, project_id, contract_name, contract_c
 (91402, 90001, '检测服务协议', 'OTHER_EXPENSE', '中正建设集团有限公司', '杭州正信检测有限公司', 300000.00, 6.00, 283018.87, 16981.13, '2026-02-01', '检测完成后30日内支付', '主体结构检测+桩基检测', 100000.00, 0.00, 100000.00, 100000.00, 'EFFECTIVE', 1, 1, NOW(), NOW(), 0, 0);
 
 -- 采购合同
-INSERT IGNORE INTO biz_purchase_contract (id, project_id, contract_code, party_a_id, party_a_name, party_b_id, party_b_name, signing_date, budget_id, contract_amount, payment_terms, cumulative_inbound, cumulative_settlement, cumulative_paid, cumulative_invoice_received, status, workflow_instance_id, tenant_id, created_by, created_at, updated_at, deleted, version) VALUES
-(91501, 90001, 'CG20260201001', 90301, '中正建设集团有限公司', 90401, '杭州鑫达建材有限公司', '2026-02-01', 92001, 8000000.00, '月结，次月15日前支付', 8000000.00, 7000000.00, 6000000.00, 7000000.00, 'EFFECTIVE', NULL, 1, 1, NOW(), NOW(), 0, 0),
-(91502, 90001, 'CG20260215001', 90301, '中正建设集团有限公司', 90402, '浙江宏远钢铁贸易有限公司', '2026-02-15', 92001, 7000000.00, '货到付款，7日内支付', 5000000.00, 5000000.00, 4000000.00, 5000000.00, 'EFFECTIVE', NULL, 1, 1, NOW(), NOW(), 0, 0);
+INSERT IGNORE INTO biz_purchase_contract (id, project_id, contract_code, contract_name, party_a_id, party_a_name, party_b_id, party_b_name, supplier_name, signing_date, budget_id, contract_amount, payment_terms, cumulative_inbound, cumulative_settlement, cumulative_paid, cumulative_invoice_received, status, workflow_instance_id, tenant_id, created_by, created_at, updated_at, deleted, version) VALUES
+(91501, 90001, 'CG20260201001', '水泥砂石采购合同', 90301, '中正建设集团有限公司', 90401, '杭州鑫达建材有限公司', '杭州鑫达建材有限公司', '2026-02-01', 92001, 8000000.00, '月结，次月15日前支付', 8000000.00, 7000000.00, 6000000.00, 7000000.00, 'EFFECTIVE', NULL, 1, 1, NOW(), NOW(), 0, 0),
+(91502, 90001, 'CG20260215001', '钢材采购合同', 90301, '中正建设集团有限公司', 90402, '浙江宏远钢铁贸易有限公司', '浙江宏远钢铁贸易有限公司', '2026-02-15', 92001, 7000000.00, '货到付款，7日内支付', 5000000.00, 5000000.00, 4000000.00, 5000000.00, 'EFFECTIVE', NULL, 1, 1, NOW(), NOW(), 0, 0);
 
 -- 采购合同明细
 INSERT IGNORE INTO biz_purchase_contract_detail (id, contract_id, material_name, specification, unit, quantity, contract_quantity, contract_price, sort_order, tenant_id, created_by, created_at, updated_at, deleted, version) VALUES
@@ -271,9 +271,9 @@ INSERT IGNORE INTO biz_purchase_contract_detail (id, contract_id, material_name,
 (91514, 91502, '盘螺', 'HRB400 Φ8', '吨', 600.0000, 600.0000, 3900.0000, 2, 1, 1, NOW(), NOW(), 0, 0);
 
 -- 劳务合同
-INSERT IGNORE INTO biz_labor_contract (id, project_id, contract_code, party_a_name, party_b_id, party_b_name, signing_date, budget_id, contract_amount, payment_terms, cumulative_settlement, cumulative_paid, status, workflow_instance_id, tenant_id, created_by, created_at, updated_at, deleted, version) VALUES
-(91601, 90001, 'LW20260201001', '中正建设集团有限公司', 90403, '杭州顺安劳务有限公司', '2026-02-01', 92001, 6000000.00, '月结，次月20日前支付', 3500000.00, 3000000.00, 'EFFECTIVE', NULL, 1, 1, NOW(), NOW(), 0, 0),
-(91602, 90001, 'LW20260301001', '中正建设集团有限公司', 90403, '杭州顺安劳务有限公司', '2026-03-01', 92001, 4000000.00, '月结，次月20日前支付', 1500000.00, 1000000.00, 'EFFECTIVE', NULL, 1, 1, NOW(), NOW(), 0, 0);
+INSERT IGNORE INTO biz_labor_contract (id, project_id, contract_code, contract_name, party_a_name, party_b_id, party_b_name, team_name, signing_date, start_date, end_date, budget_id, contract_amount, payment_terms, cumulative_output, cumulative_settlement, cumulative_paid, status, workflow_instance_id, tenant_id, created_by, created_at, updated_at, deleted, version) VALUES
+(91601, 90001, 'LW20260201001', '主体结构劳务分包合同', '中正建设集团有限公司', 90403, '杭州顺安劳务有限公司', '顺安结构劳务一队', '2026-02-01', '2026-02-15', '2026-12-31', 92001, 6000000.00, '月结，次月20日前支付', 3800000.00, 3500000.00, 3000000.00, 'EFFECTIVE', NULL, 1, 1, NOW(), NOW(), 0, 0),
+(91602, 90001, 'LW20260301001', '装饰装修劳务分包合同', '中正建设集团有限公司', 90403, '杭州顺安劳务有限公司', '顺安装饰劳务二队', '2026-03-01', '2026-03-15', '2027-03-31', 92001, 4000000.00, '月结，次月20日前支付', 1800000.00, 1500000.00, 1000000.00, 'EFFECTIVE', NULL, 1, 1, NOW(), NOW(), 0, 0);
 
 -- 机械合同
 INSERT IGNORE INTO biz_machine_contract (id, project_id, contract_code, supplier_id, supplier_name, signing_date, budget_id, contract_amount, payment_terms, cumulative_settlement, cumulative_paid, status, tenant_id, created_by, created_at, updated_at, deleted, version) VALUES

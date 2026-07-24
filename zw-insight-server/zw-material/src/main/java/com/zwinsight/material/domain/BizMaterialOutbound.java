@@ -41,4 +41,8 @@ public class BizMaterialOutbound extends BaseEntity {
     /** 出库明细（随主表提交，非表字段） */
     @TableField(exist = false)
     private List<BizMaterialOutboundDetail> details;
+
+    /** 所属项目名称（非本表字段，从 biz_project 回填） */
+    @TableField(exist = false)
+    private String projectName;
 }

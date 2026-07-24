@@ -1,5 +1,6 @@
 package com.zwinsight.site.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -38,4 +39,8 @@ public class BizConstructionLog extends BaseEntity {
 
     /** 技术记录 */
     private String technicalRecord;
+
+    /** 项目名称（展示用，不持久化） */
+    @TableField(exist = false)
+    private String projectName;
 }

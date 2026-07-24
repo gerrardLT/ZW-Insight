@@ -31,8 +31,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="entryDate" label="日期" width="110" />
-        <el-table-column prop="operator" label="经办人" width="100" />
-        <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>

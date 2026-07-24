@@ -10,6 +10,8 @@ import com.zwinsight.material.domain.BizProjectMaterialStock;
 import com.zwinsight.material.mapper.BizMaterialTransferDetailMapper;
 import com.zwinsight.material.mapper.BizMaterialTransferMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ public class MaterialTransferService {
     private final BizMaterialTransferMapper transferMapper;
     private final BizMaterialTransferDetailMapper transferDetailMapper;
     private final BizProjectMaterialStockMapper stockMapper;
+    private final BizProjectMapper projectMapper;
 
     /**
      * 分页查询
@@ -38,6 +41,10 @@ public class MaterialTransferService {
                 .eq(toProjectId != null, BizMaterialTransfer::getToProjectId, toProjectId)
                 .orderByDesc(BizMaterialTransfer::getCreatedAt);
         Page<BizMaterialTransfer> result = transferMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizMaterialTransfer::getFromProjectId, BizMaterialTransfer::setFromProjectName);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizMaterialTransfer::getToProjectId, BizMaterialTransfer::setToProjectName);
         return PageResult.of(result);
     }
 
@@ -100,6 +107,9 @@ public class MaterialTransferService {
     public BizMaterialTransfer getById(Long id) {
         BizMaterialTransfer transfer = transferMapper.selectById(id);
         if (transfer == null) throw new BusinessException("调拨单不存在");
+        LambdaQueryWrapper<BizMaterialTransferDetail> detailWrapper = new LambdaQueryWrapper<>();
+        detailWrapper.eq(BizMaterialTransferDetail::getTransferId, id);
+        transfer.setDetails(transferDetailMapper.selectList(detailWrapper));
         return transfer;
     }
 

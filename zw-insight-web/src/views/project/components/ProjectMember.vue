@@ -225,7 +225,7 @@ async function handleAdd() {
   addLoading.value = true
   try {
     await addProjectMember(props.projectId, {
-      userId: addForm.value.userId,
+      userId: addForm.value.userId!,
       userName: addForm.value.userName,
       projectRoles: addForm.value.projectRoles
     })

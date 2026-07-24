@@ -25,11 +25,12 @@ public class MaterialService {
     /**
      * 分页查询材料（支持分类筛选）
      */
-    public PageResult<BdMaterial> page(int page, int size, String materialName, Long categoryId) {
+    public PageResult<BdMaterial> page(int page, int size, String materialName, Long categoryId, String categoryName) {
         Page<BdMaterial> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BdMaterial> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(materialName), BdMaterial::getMaterialName, materialName)
                 .eq(categoryId != null, BdMaterial::getCategoryId, categoryId)
+                .like(StrUtil.isNotBlank(categoryName), BdMaterial::getCategoryName, categoryName)
                 .orderByDesc(BdMaterial::getCreatedAt);
         Page<BdMaterial> result = materialMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);

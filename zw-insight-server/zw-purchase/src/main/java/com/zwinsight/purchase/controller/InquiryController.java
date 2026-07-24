@@ -24,8 +24,10 @@ public class InquiryController {
     @GetMapping("/page")
     public R<PageResult<BizInquiry>> page(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return R.ok(inquiryService.page(page, size));
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String status) {
+        return R.ok(inquiryService.page(page, size, title, status));
     }
 
     @GetMapping("/{id}")

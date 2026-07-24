@@ -2,15 +2,22 @@ package com.zwinsight.machine.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.machine.domain.BizMachineRepair;
+import com.zwinsight.machine.domain.BizMachineLedger;
 import com.zwinsight.machine.mapper.BizMachineRepairMapper;
+import com.zwinsight.machine.mapper.BizMachineLedgerMapper;
+import com.zwinsight.machine.util.MachineNameFiller;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 机械维修服务
@@ -20,14 +27,33 @@ import java.util.List;
 public class MachineRepairService {
 
     private final BizMachineRepairMapper repairMapper;
+    private final BizMachineLedgerMapper ledgerMapper;
+    private final BizProjectMapper projectMapper;
 
-    public PageResult<BizMachineRepair> page(int page, int size, Long machineId, Long projectId) {
+    public PageResult<BizMachineRepair> page(int page, int size, Long machineId, Long projectId, String machineName) {
+        // machineName 属台账展示字段，需先经 biz_machine_ledger 解析为 machineId 集合再过滤
+        List<Long> nameMatchedIds = null;
+        if (StrUtil.isNotBlank(machineName)) {
+            LambdaQueryWrapper<BizMachineLedger> ledgerWrapper = new LambdaQueryWrapper<>();
+            ledgerWrapper.like(BizMachineLedger::getMachineName, machineName);
+            nameMatchedIds = ledgerMapper.selectList(ledgerWrapper).stream()
+                    .map(BizMachineLedger::getId).collect(Collectors.toList());
+            if (nameMatchedIds.isEmpty()) {
+                return PageResult.of(new Page<>(page, size));
+            }
+        }
         Page<BizMachineRepair> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizMachineRepair> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(machineId != null, BizMachineRepair::getMachineId, machineId)
                 .eq(projectId != null, BizMachineRepair::getProjectId, projectId)
+                .in(nameMatchedIds != null, BizMachineRepair::getMachineId, nameMatchedIds)
                 .orderByDesc(BizMachineRepair::getReportDate);
-        return PageResult.of(repairMapper.selectPage(pageParam, wrapper));
+        Page<BizMachineRepair> result = repairMapper.selectPage(pageParam, wrapper);
+        MachineNameFiller.fill(result.getRecords(), ledgerMapper,
+                BizMachineRepair::getMachineId, BizMachineRepair::setMachineName, null);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizMachineRepair::getProjectId, BizMachineRepair::setProjectName);
+        return PageResult.of(result);
     }
 
     public void report(BizMachineRepair repair) {

@@ -2,6 +2,7 @@ package com.zwinsight.basedata.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import com.zwinsight.basedata.domain.BizSupplierEvaluation;
 import com.zwinsight.basedata.mapper.BizSupplierEvaluationMapper;
 import com.zwinsight.common.result.PageResult;
@@ -24,10 +25,11 @@ public class SupplierEvaluationService {
     /**
      * 分页查询
      */
-    public PageResult<BizSupplierEvaluation> page(int page, int size, Long supplierId) {
+    public PageResult<BizSupplierEvaluation> page(int page, int size, Long supplierId, String supplierName) {
         Page<BizSupplierEvaluation> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizSupplierEvaluation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(supplierId != null, BizSupplierEvaluation::getSupplierId, supplierId)
+                .like(StrUtil.isNotBlank(supplierName), BizSupplierEvaluation::getSupplierName, supplierName)
                 .orderByDesc(BizSupplierEvaluation::getEvaluationDate);
         Page<BizSupplierEvaluation> result = evaluationMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);

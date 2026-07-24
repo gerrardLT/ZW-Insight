@@ -26,8 +26,9 @@ public class SupplierEvaluationController {
     public R<PageResult<BizSupplierEvaluation>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long supplierId) {
-        return R.ok(evaluationService.page(page, size, supplierId));
+            @RequestParam(required = false) Long supplierId,
+            @RequestParam(required = false) String supplierName) {
+        return R.ok(evaluationService.page(page, size, supplierId, supplierName));
     }
 
     /**

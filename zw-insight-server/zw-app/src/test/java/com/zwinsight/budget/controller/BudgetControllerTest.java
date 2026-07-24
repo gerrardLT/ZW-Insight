@@ -59,7 +59,7 @@ class BudgetControllerTest {
         budget.setStatus("DRAFT");
 
         PageResult<BizBudget> pageResult = new PageResult<>(List.of(budget), 1, 1, 10, 1);
-        when(budgetService.page(anyInt(), anyInt(), any())).thenReturn(pageResult);
+        when(budgetService.page(anyInt(), anyInt(), any(), any())).thenReturn(pageResult);
 
         mockMvc.perform(get("/api/v1/budget")
                         .param("page", "1")

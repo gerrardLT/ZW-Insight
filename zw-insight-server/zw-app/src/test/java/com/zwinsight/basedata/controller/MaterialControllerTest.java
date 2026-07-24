@@ -62,7 +62,7 @@ class MaterialControllerTest {
         material.setUnit("吨");
 
         PageResult<BdMaterial> pageResult = new PageResult<>(List.of(material), 1, 1, 10, 1);
-        when(materialService.page(anyInt(), anyInt(), any(), any())).thenReturn(pageResult);
+        when(materialService.page(anyInt(), anyInt(), any(), any(), any())).thenReturn(pageResult);
 
         mockMvc.perform(get("/api/v1/basedata/material")
                         .param("page", "1")

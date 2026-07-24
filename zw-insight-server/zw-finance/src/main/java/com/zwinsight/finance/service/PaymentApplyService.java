@@ -2,6 +2,7 @@ package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
@@ -11,6 +12,7 @@ import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,13 +37,16 @@ public class PaymentApplyService {
     /**
      * 分页查询
      */
-    public PageResult<BizPaymentApply> page(int page, int size, Long projectId, Long contractId) {
+    public PageResult<BizPaymentApply> page(int page, int size, Long projectId, Long contractId, String status) {
         Page<BizPaymentApply> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizPaymentApply> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizPaymentApply::getProjectId, projectId)
                 .eq(contractId != null, BizPaymentApply::getContractId, contractId)
+                .eq(StrUtil.isNotBlank(status), BizPaymentApply::getStatus, status)
                 .orderByDesc(BizPaymentApply::getCreatedAt);
         Page<BizPaymentApply> result = paymentApplyMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizPaymentApply::getProjectId, BizPaymentApply::setProjectName);
         return PageResult.of(result);
     }
 

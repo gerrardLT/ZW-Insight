@@ -24,18 +24,17 @@
         <el-table-column prop="materialName" label="材料名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="specification" label="规格型号" width="130" />
         <el-table-column prop="unit" label="单位" width="70" align="center" />
-        <el-table-column prop="currentStock" label="当前库存" width="110" align="right" />
+        <el-table-column prop="stockQuantity" label="当前库存" width="110" align="right" />
         <el-table-column prop="minStock" label="最低库存" width="100" align="right" />
         <el-table-column prop="projectName" label="所属项目" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="warehouseName" label="仓库" width="120" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.currentStock <= row.minStock ? 'danger' : 'success'" size="small">
-              {{ row.currentStock <= row.minStock ? '库存不足' : '正常' }}
+            <el-tag :type="row.minStock != null && row.stockQuantity <= row.minStock ? 'danger' : 'success'" size="small">
+              {{ row.minStock != null && row.stockQuantity <= row.minStock ? '库存不足' : '正常' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="lastUpdateTime" label="更新时间" width="160" />
+        <el-table-column prop="updatedAt" label="更新时间" width="160" />
       </el-table>
 
       <div class="pagination-wrap">

@@ -1,6 +1,7 @@
 package com.zwinsight.budget.controller;
 
 import com.zwinsight.budget.domain.BizBudget;
+import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.dto.BudgetCreateRequest;
 import com.zwinsight.budget.service.BudgetService;
 import com.zwinsight.common.result.PageResult;
@@ -8,6 +9,8 @@ import com.zwinsight.common.result.R;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 预算管理接口
@@ -23,13 +26,19 @@ public class BudgetController {
     public R<PageResult<BizBudget>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(budgetService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String status) {
+        return R.ok(budgetService.page(page, size, projectId, status));
     }
 
     @GetMapping("/{id}")
     public R<BizBudget> getById(@PathVariable Long id) {
         return R.ok(budgetService.getById(id));
+    }
+
+    @GetMapping("/{id}/details")
+    public R<List<BizBudgetDetail>> getDetails(@PathVariable Long id) {
+        return R.ok(budgetService.getDetailsByBudgetId(id));
     }
 
     @PostMapping

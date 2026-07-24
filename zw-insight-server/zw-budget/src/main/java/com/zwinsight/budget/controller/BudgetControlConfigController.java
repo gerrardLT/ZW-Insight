@@ -29,8 +29,9 @@ public class BudgetControlConfigController {
     public R<PageResult<SysBudgetControlConfig>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String projectName) {
-        return R.ok(budgetControlConfigService.page(page, size, projectName));
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) String controlMode) {
+        return R.ok(budgetControlConfigService.page(page, size, projectName, controlMode));
     }
 
     /**

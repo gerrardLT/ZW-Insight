@@ -29,11 +29,15 @@ public class ScheduleController {
         return R.ok(planService.list(projectId));
     }
 
-    /** 进度计划分页别名，兼容前端 /schedule/page 调用 */
+    /** 进度计划分页（真分页 PageResult，支持 projectName/taskName 筛选） */
     @GetMapping("/page")
-    public R<List<BizSchedulePlan>> planPage(
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(planService.list(projectId));
+    public R<PageResult<BizSchedulePlan>> planPage(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) String taskName) {
+        return R.ok(planService.page(page, size, projectId, projectName, taskName));
     }
 
     @PostMapping("/plan")

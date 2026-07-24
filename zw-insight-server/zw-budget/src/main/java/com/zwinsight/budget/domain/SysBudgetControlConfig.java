@@ -1,5 +1,6 @@
 package com.zwinsight.budget.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -24,4 +25,8 @@ public class SysBudgetControlConfig extends BaseEntity {
 
     /** 是否系统默认(1是/0否) */
     private Integer isDefault;
+
+    /** 项目名称（非表字段，分页时按 projectId 批量回填） */
+    @TableField(exist = false)
+    private String projectName;
 }

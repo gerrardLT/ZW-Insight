@@ -58,7 +58,7 @@ class BudgetControlConfigControllerTest {
         config.setWarningThreshold(80);
 
         PageResult<SysBudgetControlConfig> pageResult = new PageResult<>(List.of(config), 1, 1, 10, 1);
-        when(budgetControlConfigService.page(anyInt(), anyInt(), any())).thenReturn(pageResult);
+        when(budgetControlConfigService.page(anyInt(), anyInt(), any(), any())).thenReturn(pageResult);
 
         mockMvc.perform(get("/api/v1/budget-control-configs")
                         .param("page", "1")

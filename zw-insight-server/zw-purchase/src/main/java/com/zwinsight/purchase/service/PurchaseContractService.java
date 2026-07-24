@@ -39,10 +39,12 @@ public class PurchaseContractService {
     /**
      * 分页查询
      */
-    public PageResult<BizPurchaseContract> page(int page, int size, Long projectId, String status) {
+    public PageResult<BizPurchaseContract> page(int page, int size, Long projectId, String contractName, String supplierName, String status) {
         Page<BizPurchaseContract> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizPurchaseContract> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizPurchaseContract::getProjectId, projectId)
+                .like(StrUtil.isNotBlank(contractName), BizPurchaseContract::getContractName, contractName)
+                .like(StrUtil.isNotBlank(supplierName), BizPurchaseContract::getSupplierName, supplierName)
                 .eq(StrUtil.isNotBlank(status), BizPurchaseContract::getStatus, status)
                 .orderByDesc(BizPurchaseContract::getCreatedAt);
         Page<BizPurchaseContract> result = purchaseContractMapper.selectPage(pageParam, wrapper);

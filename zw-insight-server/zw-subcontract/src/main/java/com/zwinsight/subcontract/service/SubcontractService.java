@@ -1,5 +1,6 @@
 package com.zwinsight.subcontract.service;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.basedata.annotation.BlacklistCheck;
@@ -8,6 +9,8 @@ import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.subcontract.domain.BizSubcontract;
 import com.zwinsight.subcontract.mapper.BizSubcontractMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,13 +29,20 @@ public class SubcontractService {
 
     private final BizSubcontractMapper subcontractMapper;
     private final BizBudgetDetailMapper budgetDetailMapper;
+    private final BizProjectMapper projectMapper;
 
-    public PageResult<BizSubcontract> page(int page, int size, Long projectId) {
+    public PageResult<BizSubcontract> page(int page, int size, Long projectId, String contractName, String subcontractor, String status) {
         Page<BizSubcontract> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizSubcontract> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizSubcontract::getProjectId, projectId)
+                .like(StrUtil.isNotBlank(contractName), BizSubcontract::getContractName, contractName)
+                .like(StrUtil.isNotBlank(subcontractor), BizSubcontract::getSubcontractor, subcontractor)
+                .eq(StrUtil.isNotBlank(status), BizSubcontract::getStatus, status)
                 .orderByDesc(BizSubcontract::getCreatedAt);
-        return PageResult.of(subcontractMapper.selectPage(pageParam, wrapper));
+        Page<BizSubcontract> result = subcontractMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizSubcontract::getProjectId, BizSubcontract::setProjectName);
+        return PageResult.of(result);
     }
 
     @BlacklistCheck

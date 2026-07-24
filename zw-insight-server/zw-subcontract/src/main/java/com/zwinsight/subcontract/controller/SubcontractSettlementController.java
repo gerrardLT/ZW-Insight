@@ -50,8 +50,9 @@ public class SubcontractSettlementController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) Long contractId) {
-        return R.ok(settlementService.page(page, size, projectId, contractId));
+            @RequestParam(required = false) Long contractId,
+            @RequestParam(required = false) String status) {
+        return R.ok(settlementService.page(page, size, projectId, contractId, status));
     }
 
     /**

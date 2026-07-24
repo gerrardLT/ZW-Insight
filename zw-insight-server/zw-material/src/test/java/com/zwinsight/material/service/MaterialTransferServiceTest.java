@@ -7,6 +7,7 @@ import com.zwinsight.material.domain.BizProjectMaterialStock;
 import com.zwinsight.material.mapper.BizMaterialTransferDetailMapper;
 import com.zwinsight.material.mapper.BizMaterialTransferMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +28,7 @@ class MaterialTransferServiceTest {
     @Mock private BizMaterialTransferMapper transferMapper;
     @Mock private BizMaterialTransferDetailMapper transferDetailMapper;
     @Mock private BizProjectMaterialStockMapper stockMapper;
+    @Mock private BizProjectMapper projectMapper;
 
     @InjectMocks
     private MaterialTransferService materialTransferService;

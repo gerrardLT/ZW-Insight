@@ -81,7 +81,7 @@ class BudgetServiceTest {
                     .thenReturn(mockPage);
 
             // when
-            PageResult<BizBudget> result = budgetService.page(1, 10, 100L);
+            PageResult<BizBudget> result = budgetService.page(1, 10, 100L, null);
 
             // then
             assertThat(result).isNotNull();
@@ -101,7 +101,7 @@ class BudgetServiceTest {
                     .thenReturn(mockPage);
 
             // when
-            PageResult<BizBudget> result = budgetService.page(1, 10, null);
+            PageResult<BizBudget> result = budgetService.page(1, 10, null, null);
 
             // then
             assertThat(result).isNotNull();

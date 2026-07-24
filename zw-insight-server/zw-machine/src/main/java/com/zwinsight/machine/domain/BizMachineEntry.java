@@ -1,5 +1,6 @@
 package com.zwinsight.machine.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -26,4 +27,16 @@ public class BizMachineEntry extends BaseEntity {
 
     /** 进退场类型（IN-进场/OUT-退场） */
     private String entryType;
+
+    /** 机械名称（展示用，不持久化） */
+    @TableField(exist = false)
+    private String machineName;
+
+    /** 机械编号（展示用，不持久化） */
+    @TableField(exist = false)
+    private String machineCode;
+
+    /** 项目名称（展示用，不持久化） */
+    @TableField(exist = false)
+    private String projectName;
 }

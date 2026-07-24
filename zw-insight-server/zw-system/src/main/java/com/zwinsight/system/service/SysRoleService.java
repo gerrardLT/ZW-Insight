@@ -52,8 +52,17 @@ public class SysRoleService {
 
     /**
      * 新增
+     * <p>
+     * Controller 未启用 @Valid 校验，前端新增表单可能不传 status/dataScope，
+     * 此处兜底默认值：status=1(启用)、dataScope=SELF(仅本人)，避免新增角色显示"停用"。
      */
     public void save(SysRole role) {
+        if (role.getStatus() == null) {
+            role.setStatus(1);
+        }
+        if (StrUtil.isBlank(role.getDataScope())) {
+            role.setDataScope(DataScopeEnum.SELF.name());
+        }
         roleMapper.insert(role);
     }
 

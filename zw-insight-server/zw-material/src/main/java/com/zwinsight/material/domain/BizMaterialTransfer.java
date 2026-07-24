@@ -32,4 +32,12 @@ public class BizMaterialTransfer extends BaseEntity {
     /** 调拨明细（随主表提交，非表字段） */
     @TableField(exist = false)
     private List<BizMaterialTransferDetail> details;
+
+    /** 调出项目名称（非本表字段，从 biz_project 回填） */
+    @TableField(exist = false)
+    private String fromProjectName;
+
+    /** 调入项目名称（非本表字段，从 biz_project 回填） */
+    @TableField(exist = false)
+    private String toProjectName;
 }

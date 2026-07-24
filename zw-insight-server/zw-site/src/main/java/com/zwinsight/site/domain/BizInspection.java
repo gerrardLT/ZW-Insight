@@ -53,4 +53,8 @@ public class BizInspection extends BaseEntity {
     /** 检查明细（随主表提交，非表字段） */
     @TableField(exist = false)
     private List<BizInspectionDetail> details;
+
+    /** 项目名称（展示用，不持久化） */
+    @TableField(exist = false)
+    private String projectName;
 }

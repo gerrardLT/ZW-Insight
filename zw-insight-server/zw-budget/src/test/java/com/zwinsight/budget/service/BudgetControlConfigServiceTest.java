@@ -7,6 +7,7 @@ import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BudgetOccupiedMapper;
 import com.zwinsight.budget.mapper.SysBudgetControlConfigMapper;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.project.mapper.BizProjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class BudgetControlConfigServiceTest {
 
     @Mock
     private BudgetOccupiedMapper budgetOccupiedMapper;
+
+    @Mock
+    private BizProjectMapper projectMapper;
 
     @InjectMocks
     private BudgetControlConfigService budgetControlConfigService;

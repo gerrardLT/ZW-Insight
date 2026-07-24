@@ -12,6 +12,7 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,13 +34,16 @@ public class BudgetService {
     /**
      * 分页查询
      */
-    public PageResult<BizBudget> page(int page, int size, Long projectId) {
+    public PageResult<BizBudget> page(int page, int size, Long projectId, String status) {
         Page<BizBudget> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizBudget> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizBudget::getProjectId, projectId)
+                .eq(cn.hutool.core.util.StrUtil.isNotBlank(status), BizBudget::getStatus, status)
                 .eq(BizBudget::getBudgetType, "ORIGINAL")
                 .orderByDesc(BizBudget::getCreatedAt);
         Page<BizBudget> result = budgetMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizBudget::getProjectId, BizBudget::setProjectName);
         return PageResult.of(result);
     }
 
@@ -52,6 +56,16 @@ public class BudgetService {
             throw new BusinessException("预算不存在");
         }
         return budget;
+    }
+
+    /**
+     * 查询指定预算下的全部明细（供预算变更表单选择原预算明细）
+     */
+    public List<BizBudgetDetail> getDetailsByBudgetId(Long budgetId) {
+        LambdaQueryWrapper<BizBudgetDetail> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BizBudgetDetail::getBudgetId, budgetId)
+                .orderByAsc(BizBudgetDetail::getId);
+        return budgetDetailMapper.selectList(wrapper);
     }
 
     /**

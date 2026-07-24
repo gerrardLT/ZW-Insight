@@ -9,6 +9,8 @@ import com.zwinsight.site.domain.BizInspection;
 import com.zwinsight.site.domain.BizInspectionDetail;
 import com.zwinsight.site.mapper.BizInspectionDetailMapper;
 import com.zwinsight.site.mapper.BizInspectionMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,7 @@ public class InspectionService {
 
     private final BizInspectionMapper inspectionMapper;
     private final BizInspectionDetailMapper inspectionDetailMapper;
+    private final BizProjectMapper projectMapper;
 
     /**
      * 分页查询
@@ -36,6 +39,8 @@ public class InspectionService {
                 .eq(StrUtil.isNotBlank(inspectionType), BizInspection::getInspectionType, inspectionType)
                 .orderByDesc(BizInspection::getCreatedAt);
         Page<BizInspection> result = inspectionMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizInspection::getProjectId, BizInspection::setProjectName);
         return PageResult.of(result);
     }
 

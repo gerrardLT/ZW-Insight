@@ -19,6 +19,7 @@ import com.zwinsight.finance.mapper.BizSettlementContractDetailMapper;
 import com.zwinsight.finance.mapper.SettlementDataMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.workflow.service.ApprovalService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -177,6 +178,8 @@ public class ProjectSettlementService {
                 .eq(status != null && !status.isEmpty(), BizProjectSettlement::getStatus, status)
                 .orderByDesc(BizProjectSettlement::getCreatedAt);
         Page<BizProjectSettlement> result = settlementMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizProjectSettlement::getProjectId, BizProjectSettlement::setProjectName);
         return PageResult.of(result);
     }
 

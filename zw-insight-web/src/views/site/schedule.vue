@@ -31,8 +31,8 @@
         <el-table-column prop="responsible" label="负责人" width="90" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'COMPLETED' ? 'success' : row.status === 'DELAYED' ? 'danger' : 'warning'" size="small">
-              {{ row.status === 'COMPLETED' ? '已完成' : row.status === 'DELAYED' ? '滞后' : '进行中' }}
+            <el-tag :type="row.taskStatus === 'COMPLETED' ? 'success' : row.taskStatus === 'DELAYED' ? 'danger' : 'warning'" size="small">
+              {{ row.taskStatus === 'COMPLETED' ? '已完成' : row.taskStatus === 'DELAYED' ? '滞后' : '进行中' }}
             </el-tag>
           </template>
         </el-table-column>

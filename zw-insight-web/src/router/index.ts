@@ -328,12 +328,6 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '变更单表单', hidden: true }
       },
       {
-        path: 'config',
-        name: 'BudgetConfig',
-        component: () => import('@/views/budget/config.vue'),
-        meta: { title: '预算配置', icon: 'Setting' }
-      },
-      {
         path: 'control-config',
         name: 'BudgetControlConfig',
         component: () => import('@/views/budget/control-config/index.vue'),

@@ -18,6 +18,11 @@ export function getBudgetDetail(id: number) {
   return request.get<R<Budget>>(`/v1/budget/${id}`)
 }
 
+/** 查询指定预算下的全部明细（供变更表单选择原预算明细） */
+export function getBudgetDetailsByBudgetId(budgetId: number) {
+  return request.get<R<any[]>>(`/v1/budget/${budgetId}/details`)
+}
+
 export function createBudget(data: BudgetCreateRequest) {
   return request.post<R<void>>('/v1/budget', data)
 }
@@ -31,7 +36,7 @@ export function deleteBudget(id: number) {
 }
 
 export function submitBudget(id: number) {
-  return request.put<R<void>>(`/v1/budget/${id}/submit`)
+  return request.post<R<void>>(`/v1/budget/${id}/submit`)
 }
 
 // ======================== 预算变更 ========================

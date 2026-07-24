@@ -215,7 +215,7 @@ async function handleFormSubmit() {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
-    await createPaymentApply(formData.value)
+    await createPaymentApply({ ...formData.value, projectId: formData.value.projectId! })
     ElMessage.success('新增成功')
     dialogVisible.value = false
     loadData()

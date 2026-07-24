@@ -104,11 +104,8 @@
             <el-option label="增值税普通发票" value="增值税普通发票" />
           </el-select>
         </el-form-item>
-        <el-form-item label="申请日期">
+        <el-form-item label="申请日期" prop="applyDate">
           <el-date-picker v-model="formData.applyDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="formData.remark" type="textarea" :rows="3" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -149,14 +146,14 @@ const formData = ref({
   invoiceAmount: 0,
   taxRate: undefined as number | undefined,
   invoiceType: '增值税专用发票',
-  applyDate: '',
-  remark: ''
+  applyDate: ''
 })
 
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   contractId: [{ required: true, message: '请选择关联合同', trigger: 'change' }],
-  invoiceAmount: [{ required: true, message: '请输入开票金额', trigger: 'blur' }]
+  invoiceAmount: [{ required: true, message: '请输入开票金额', trigger: 'blur' }],
+  applyDate: [{ required: true, message: '请选择申请日期', trigger: 'change' }]
 }
 
 function formatMoney(val: number) {
@@ -191,7 +188,7 @@ function handleReset() {
 }
 
 function handleAdd() {
-  formData.value = { projectId: undefined, contractId: undefined, invoiceAmount: 0, taxRate: undefined, invoiceType: '增值税专用发票', applyDate: '', remark: '' }
+  formData.value = { projectId: undefined, contractId: undefined, invoiceAmount: 0, taxRate: undefined, invoiceType: '增值税专用发票', applyDate: '' }
   dialogVisible.value = true
 }
 
@@ -203,7 +200,7 @@ async function handleFormSubmit() {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
-    await createInvoiceApply(formData.value)
+    await createInvoiceApply({ ...formData.value, projectId: formData.value.projectId!, contractId: formData.value.contractId! })
     ElMessage.success('新增成功')
     dialogVisible.value = false
     loadData()

@@ -31,7 +31,7 @@
         <el-table-column prop="exitDate" label="退场日期" width="110" />
         <el-table-column label="状态" width="80" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'IN' ? 'success' : 'info'" size="small">{{ row.status === 'IN' ? '在场' : '退场' }}</el-tag>
+            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">{{ row.status === 1 ? '在场' : '退场' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">

@@ -45,6 +45,11 @@ public class InvoiceApplyCreateRequest {
     private BigDecimal invoiceAmount;
 
     /**
+     * 税率(%)，引用税率字典或手动输入
+     */
+    private BigDecimal taxRate;
+
+    /**
      * 发票抬头
      */
     @Size(max = 200, message = "发票抬头不能超过200个字符")

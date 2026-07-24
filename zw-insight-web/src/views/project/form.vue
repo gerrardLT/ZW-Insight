@@ -222,7 +222,7 @@ async function handleSubmit() {
   submitLoading.value = true
   try {
     if (formData.value.id) {
-      await updateProject(formData.value)
+      await updateProject({ ...formData.value, id: formData.value.id! })
       ElMessage.success('更新成功')
     } else {
       await createProject(formData.value)

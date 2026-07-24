@@ -1,5 +1,6 @@
 package com.zwinsight.material.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -50,4 +51,12 @@ public class BizProjectMaterialStock extends BaseEntity {
 
     /** 累计调出数量 */
     private BigDecimal totalTransferOut;
+
+    /** 所属项目名称（透传，非本表字段） */
+    @TableField(exist = false)
+    private String projectName;
+
+    /** 最低库存/安全库存（透传，来自库存预警配置 safetyStock） */
+    @TableField(exist = false)
+    private BigDecimal minStock;
 }

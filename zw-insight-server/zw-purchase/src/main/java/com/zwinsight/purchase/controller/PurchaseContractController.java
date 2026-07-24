@@ -25,8 +25,10 @@ public class PurchaseContractController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String contractName,
+            @RequestParam(required = false) String supplierName,
             @RequestParam(required = false) String status) {
-        return R.ok(purchaseContractService.page(page, size, projectId, status));
+        return R.ok(purchaseContractService.page(page, size, projectId, contractName, supplierName, status));
     }
 
     @GetMapping("/{id}")

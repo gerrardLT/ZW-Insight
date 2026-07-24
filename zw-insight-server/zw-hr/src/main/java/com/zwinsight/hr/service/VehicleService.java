@@ -22,10 +22,11 @@ public class VehicleService {
     /**
      * 分页查询
      */
-    public PageResult<BizVehicle> page(int page, int size, String plateNumber) {
+    public PageResult<BizVehicle> page(int page, int size, String plateNumber, String vehicleType) {
         Page<BizVehicle> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizVehicle> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(plateNumber), BizVehicle::getPlateNumber, plateNumber)
+                .like(StrUtil.isNotBlank(vehicleType), BizVehicle::getVehicleType, vehicleType)
                 .orderByDesc(BizVehicle::getCreatedAt);
         Page<BizVehicle> result = vehicleMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);

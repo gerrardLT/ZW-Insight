@@ -27,8 +27,9 @@ public class MaterialController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String materialName,
-            @RequestParam(required = false) Long categoryId) {
-        return R.ok(materialService.page(page, size, materialName, categoryId));
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String categoryName) {
+        return R.ok(materialService.page(page, size, materialName, categoryId, categoryName));
     }
 
     @GetMapping("/page")
@@ -36,8 +37,9 @@ public class MaterialController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String materialName,
-            @RequestParam(required = false) Long categoryId) {
-        return page(page, size, materialName, categoryId);
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String categoryName) {
+        return page(page, size, materialName, categoryId, categoryName);
     }
 
     @GetMapping("/{id}")

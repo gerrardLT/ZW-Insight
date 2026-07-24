@@ -77,7 +77,7 @@ class LaborContractServiceTest {
                     .thenReturn(mockPage);
 
             // when
-            PageResult<BizLaborContract> result = laborContractService.page(1, 10, 100L);
+            PageResult<BizLaborContract> result = laborContractService.page(1, 10, 100L, null, null, null);
 
             // then
             assertThat(result).isNotNull();
@@ -97,7 +97,7 @@ class LaborContractServiceTest {
                     .thenReturn(mockPage);
 
             // when
-            PageResult<BizLaborContract> result = laborContractService.page(1, 10, null);
+            PageResult<BizLaborContract> result = laborContractService.page(1, 10, null, null, null, null);
 
             // then
             assertThat(result).isNotNull();

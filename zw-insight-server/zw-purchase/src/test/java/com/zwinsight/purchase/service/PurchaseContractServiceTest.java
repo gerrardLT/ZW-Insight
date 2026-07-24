@@ -91,7 +91,7 @@ class PurchaseContractServiceTest {
                     .thenReturn(mockPage);
 
             // when
-            PageResult<BizPurchaseContract> result = purchaseContractService.page(1, 10, 100L, "DRAFT");
+            PageResult<BizPurchaseContract> result = purchaseContractService.page(1, 10, 100L, null, null, "DRAFT");
 
             // then
             assertThat(result).isNotNull();
@@ -111,7 +111,7 @@ class PurchaseContractServiceTest {
                     .thenReturn(mockPage);
 
             // when
-            PageResult<BizPurchaseContract> result = purchaseContractService.page(1, 10, null, null);
+            PageResult<BizPurchaseContract> result = purchaseContractService.page(1, 10, null, null, null, null);
 
             // then
             assertThat(result).isNotNull();

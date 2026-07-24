@@ -1,5 +1,6 @@
 package com.zwinsight.machine.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -39,4 +40,12 @@ public class BizMachineRepair extends BaseEntity {
 
     /** 维修状态（REPORTED-已报修/DISPATCHED-已派工/REPAIRING-维修中/COMPLETED-已完成） */
     private String repairStatus;
+
+    /** 机械名称（展示用，不持久化） */
+    @TableField(exist = false)
+    private String machineName;
+
+    /** 项目名称（展示用，不持久化） */
+    @TableField(exist = false)
+    private String projectName;
 }

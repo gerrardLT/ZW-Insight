@@ -1,5 +1,6 @@
 package com.zwinsight.machine.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -39,4 +40,12 @@ public class BizMachineWorkLog extends BaseEntity {
 
     /** 结算状态（UNSETTLED-未结算/SETTLED-已结算） */
     private String settlementStatus;
+
+    /** 机械名称（展示用，不持久化） */
+    @TableField(exist = false)
+    private String machineName;
+
+    /** 项目名称（展示用，不持久化） */
+    @TableField(exist = false)
+    private String projectName;
 }

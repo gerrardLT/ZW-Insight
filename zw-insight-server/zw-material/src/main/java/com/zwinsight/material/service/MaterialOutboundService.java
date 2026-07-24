@@ -11,6 +11,8 @@ import com.zwinsight.material.event.MaterialReturnCreatedEvent;
 import com.zwinsight.material.mapper.BizMaterialOutboundDetailMapper;
 import com.zwinsight.material.mapper.BizMaterialOutboundMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ public class MaterialOutboundService {
     private final BizMaterialOutboundMapper outboundMapper;
     private final BizMaterialOutboundDetailMapper outboundDetailMapper;
     private final BizProjectMaterialStockMapper stockMapper;
+    private final BizProjectMapper projectMapper;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -42,6 +45,8 @@ public class MaterialOutboundService {
                 .eq(outboundType != null, BizMaterialOutbound::getOutboundType, outboundType)
                 .orderByDesc(BizMaterialOutbound::getCreatedAt);
         Page<BizMaterialOutbound> result = outboundMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizMaterialOutbound::getProjectId, BizMaterialOutbound::setProjectName);
         return PageResult.of(result);
     }
 
@@ -120,6 +125,9 @@ public class MaterialOutboundService {
     public BizMaterialOutbound getById(Long id) {
         BizMaterialOutbound outbound = outboundMapper.selectById(id);
         if (outbound == null) throw new BusinessException("出库单不存在");
+        LambdaQueryWrapper<BizMaterialOutboundDetail> detailWrapper = new LambdaQueryWrapper<>();
+        detailWrapper.eq(BizMaterialOutboundDetail::getOutboundId, id);
+        outbound.setDetails(outboundDetailMapper.selectList(detailWrapper));
         return outbound;
     }
 

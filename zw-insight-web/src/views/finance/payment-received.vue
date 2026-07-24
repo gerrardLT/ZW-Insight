@@ -33,12 +33,13 @@
 
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="receivedAmount" label="回款金额" width="130" align="right">
-          <template #default="{ row }">{{ formatMoney(row.receivedAmount) }}</template>
+        <el-table-column prop="receiveAmount" label="回款金额" width="130" align="right">
+          <template #default="{ row }">{{ formatMoney(row.receiveAmount) }}</template>
         </el-table-column>
-        <el-table-column prop="receivedDate" label="回款日期" width="110" />
-        <el-table-column prop="paymentMethod" label="收款方式" width="120" />
-        <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="receiveDate" label="回款日期" width="110" />
+        <el-table-column prop="receiveType" label="收款方式" width="120" />
+        <el-table-column prop="receiver" label="收款人" width="110" show-overflow-tooltip />
+        <el-table-column prop="receiveBankAccount" label="收款账户" min-width="160" show-overflow-tooltip />
         <el-table-column prop="createdAt" label="登记时间" width="170" />
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
@@ -76,22 +77,25 @@
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="回款金额" prop="receivedAmount">
-          <el-input-number v-model="formData.receivedAmount" :min="0" :precision="2" style="width: 100%" />
+        <el-form-item label="回款金额" prop="receiveAmount">
+          <el-input-number v-model="formData.receiveAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="回款日期" prop="receivedDate">
-          <el-date-picker v-model="formData.receivedDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+        <el-form-item label="回款日期" prop="receiveDate">
+          <el-date-picker v-model="formData.receiveDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
         <el-form-item label="收款方式">
-          <el-select v-model="formData.paymentMethod" style="width: 100%">
+          <el-select v-model="formData.receiveType" style="width: 100%">
             <el-option label="银行转账" value="银行转账" />
             <el-option label="支票" value="支票" />
             <el-option label="现金" value="现金" />
             <el-option label="承兑汇票" value="承兑汇票" />
           </el-select>
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="formData.remark" type="textarea" :rows="3" />
+        <el-form-item label="收款人">
+          <el-input v-model="formData.receiver" placeholder="请输入收款人" />
+        </el-form-item>
+        <el-form-item label="收款账户">
+          <el-input v-model="formData.receiveBankAccount" placeholder="请输入收款银行账户" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -127,16 +131,17 @@ const queryParams = ref({
 const formData = ref({
   id: undefined as number | undefined,
   projectId: undefined as number | undefined,
-  receivedAmount: 0,
-  receivedDate: '',
-  paymentMethod: '银行转账',
-  remark: ''
+  receiveAmount: 0,
+  receiveDate: '',
+  receiveType: '银行转账',
+  receiver: '',
+  receiveBankAccount: ''
 })
 
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
-  receivedAmount: [{ required: true, message: '请输入回款金额', trigger: 'blur' }],
-  receivedDate: [{ required: true, message: '请选择回款日期', trigger: 'change' }]
+  receiveAmount: [{ required: true, message: '请输入回款金额', trigger: 'blur' }],
+  receiveDate: [{ required: true, message: '请选择回款日期', trigger: 'change' }]
 }
 
 function formatMoney(val: number) {
@@ -172,7 +177,7 @@ function handleReset() {
 
 function handleAdd() {
   dialogTitle.value = '新增回款登记'
-  formData.value = { id: undefined, projectId: undefined, receivedAmount: 0, receivedDate: '', paymentMethod: '银行转账', remark: '' }
+  formData.value = { id: undefined, projectId: undefined, receiveAmount: 0, receiveDate: '', receiveType: '银行转账', receiver: '', receiveBankAccount: '' }
   dialogVisible.value = true
 }
 
@@ -187,7 +192,7 @@ async function handleFormSubmit() {
   submitLoading.value = true
   try {
     if (formData.value.id) {
-      await updatePaymentReceived(formData.value)
+      await updatePaymentReceived({ ...formData.value, id: formData.value.id! })
       ElMessage.success('更新成功')
     } else {
       await createPaymentReceived(formData.value)

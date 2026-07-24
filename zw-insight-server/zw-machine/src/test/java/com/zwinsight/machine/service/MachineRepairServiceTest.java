@@ -3,6 +3,8 @@ package com.zwinsight.machine.service;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.machine.domain.BizMachineRepair;
 import com.zwinsight.machine.mapper.BizMachineRepairMapper;
+import com.zwinsight.machine.mapper.BizMachineLedgerMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,12 +23,14 @@ import static org.mockito.Mockito.*;
 class MachineRepairServiceTest {
 
     @Mock private BizMachineRepairMapper repairMapper;
+    @Mock private BizMachineLedgerMapper ledgerMapper;
+    @Mock private BizProjectMapper projectMapper;
 
     private MachineRepairService machineRepairService;
 
     @BeforeEach
     void setUp() {
-        machineRepairService = new MachineRepairService(repairMapper);
+        machineRepairService = new MachineRepairService(repairMapper, ledgerMapper, projectMapper);
     }
 
     @Test

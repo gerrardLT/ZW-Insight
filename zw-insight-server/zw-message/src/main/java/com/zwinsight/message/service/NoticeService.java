@@ -22,10 +22,11 @@ public class NoticeService {
     /**
      * 分页查询通知
      */
-    public PageResult<MsgNotice> page(int page, int size, String title) {
+    public PageResult<MsgNotice> page(int page, int size, String title, String status) {
         Page<MsgNotice> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<MsgNotice> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(title), MsgNotice::getTitle, title)
+                .eq(StrUtil.isNotBlank(status), MsgNotice::getStatus, status)
                 .orderByDesc(MsgNotice::getCreatedAt);
         Page<MsgNotice> result = noticeMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);

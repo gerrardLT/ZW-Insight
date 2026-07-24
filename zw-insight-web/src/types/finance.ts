@@ -28,6 +28,8 @@ export interface InvoiceApplyCreateRequest {
   contractId: ID
   invoiceType?: string
   invoiceAmount: number
+  taxRate?: number
+  applyDate?: string
   invoiceTitle?: string
   taxpayerId?: string
   bankAccount?: string
@@ -44,13 +46,14 @@ export interface InvoiceApplyPageQuery extends PageQuery {
 export interface PaymentReceived {
   id: ID
   projectId: ID
-  contractId: ID
+  projectName?: string
+  contractId?: ID
   receiveDate: string
   receiveAmount: number
   receiver?: string
   receiveType?: string
-  bankAccount?: string
-  status: string
+  receiveBankAccount?: string
+  status?: string
   createdAt?: string
 }
 

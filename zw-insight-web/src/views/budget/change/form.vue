@@ -31,6 +31,7 @@
                 placeholder="请选择原预算"
                 clearable
                 style="width: 100%"
+                @change="handleBudgetChange"
               >
                 <el-option
                   v-for="item in budgetOptions"
@@ -65,27 +66,34 @@
 
             <el-table :data="formData.details" border size="small">
               <el-table-column type="index" label="序号" width="60" align="center" />
-              <el-table-column label="科目名称" min-width="180">
+              <el-table-column label="预算明细" min-width="220">
                 <template #default="{ row }">
-                  <el-input
+                  <el-select
                     v-if="!isViewMode"
-                    v-model="row.subjectName"
-                    placeholder="请输入科目名称"
-                  />
-                  <span v-else>{{ row.subjectName }}</span>
+                    :model-value="row.budgetDetailId"
+                    placeholder="请选择原预算明细"
+                    filterable
+                    style="width: 100%"
+                    @change="(val: number) => handleSelectBudgetDetail(row as DetailRow, val)"
+                  >
+                    <el-option
+                      v-for="item in budgetDetailOptions"
+                      :key="item.id"
+                      :label="`${item.itemName}（${item.costCategory}${item.costSubcategory ? '/' + item.costSubcategory : ''}）`"
+                      :value="item.id"
+                    />
+                  </el-select>
+                  <span v-else>{{ row.itemName }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="原金额(元)" width="150">
+              <el-table-column label="成本大类" width="120">
                 <template #default="{ row }">
-                  <el-input-number
-                    v-if="!isViewMode"
-                    v-model="row.originalAmount"
-                    :precision="2"
-                    :controls="false"
-                    style="width: 100%"
-                    @change="calcAdjustedAmount(row as DetailRow)"
-                  />
-                  <span v-else>{{ row.originalAmount?.toLocaleString() }}</span>
+                  <span>{{ row.costCategory }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="原金额(元)" width="140">
+                <template #default="{ row }">
+                  <span>{{ row.originalAmount?.toLocaleString() }}</span>
                 </template>
               </el-table-column>
               <el-table-column label="调整金额(元)" width="150">
@@ -155,7 +163,7 @@ import {
   updateBudgetChange,
   submitBudgetChange
 } from '@/api/budget-change'
-import { getBudgetPage } from '@/api/budget'
+import { getBudgetPage, getBudgetDetailsByBudgetId } from '@/api/budget'
 
 const route = useRoute()
 const router = useRouter()
@@ -163,6 +171,7 @@ const formRef = ref<FormInstance>()
 const saveLoading = ref(false)
 const submitLoading = ref(false)
 const budgetOptions = ref<any[]>([])
+const budgetDetailOptions = ref<any[]>([])
 
 const changeId = computed(() => {
   const id = route.query.id
@@ -177,8 +186,10 @@ const pageTitle = computed(() => {
 })
 
 interface DetailRow {
-  subjectId?: number
-  subjectName: string
+  budgetDetailId?: number
+  costCategory: string
+  costSubcategory: string
+  itemName: string
   originalAmount: number
   adjustAmount: number
   adjustedAmount: number
@@ -220,11 +231,26 @@ const totalAdjustAmount = computed(() => {
 /** 添加明细行 */
 function handleAddDetail() {
   formData.value.details.push({
-    subjectName: '',
+    budgetDetailId: undefined,
+    costCategory: '',
+    costSubcategory: '',
+    itemName: '',
     originalAmount: 0,
     adjustAmount: 0,
     adjustedAmount: 0
   })
+}
+
+/** 选择原预算明细后带出科目与原金额 */
+function handleSelectBudgetDetail(row: DetailRow, budgetDetailId: number) {
+  const detail = budgetDetailOptions.value.find(d => d.id === budgetDetailId)
+  if (!detail) return
+  row.budgetDetailId = budgetDetailId
+  row.costCategory = detail.costCategory
+  row.costSubcategory = detail.costSubcategory
+  row.itemName = detail.itemName
+  row.originalAmount = Number(detail.budgetTotalPrice || 0)
+  calcAdjustedAmount(row)
 }
 
 /** 删除明细行 */
@@ -235,6 +261,7 @@ function handleRemoveDetail(index: number) {
 /** 项目变更时加载该项目下的已批准预算 */
 async function handleProjectChange(projectId: number | undefined) {
   budgetOptions.value = []
+  budgetDetailOptions.value = []
   formData.value.budgetId = undefined
   if (!projectId) return
   try {
@@ -242,6 +269,18 @@ async function handleProjectChange(projectId: number | undefined) {
     budgetOptions.value = res.data?.records || []
   } catch {
     // 加载预算列表失败不阻塞操作
+  }
+}
+
+/** 预算变更时加载该预算下的明细（供变更明细选择） */
+async function handleBudgetChange(budgetId: number | undefined) {
+  budgetDetailOptions.value = []
+  if (!budgetId) return
+  try {
+    const res: any = await getBudgetDetailsByBudgetId(budgetId)
+    budgetDetailOptions.value = res.data || []
+  } catch {
+    // 加载预算明细失败不阻塞操作
   }
 }
 
@@ -259,12 +298,19 @@ async function loadChangeDetail() {
   if (data.projectId) {
     await handleProjectChange(data.projectId)
   }
+  // 恢复预算选择（handleProjectChange 会清空 budgetId，需重新回填）
+  formData.value.budgetId = data.budgetId
+  if (data.budgetId) {
+    await handleBudgetChange(data.budgetId)
+  }
 
   // 加载明细
   const detailRes: any = await getBudgetChangeDetails(changeId.value)
   formData.value.details = (detailRes.data || []).map((item: any) => ({
-    subjectId: item.subjectId,
-    subjectName: item.subjectName,
+    budgetDetailId: item.budgetDetailId,
+    costCategory: item.costCategory || '',
+    costSubcategory: item.costSubcategory || '',
+    itemName: item.itemName || '',
     originalAmount: item.originalAmount || 0,
     adjustAmount: item.adjustAmount || 0,
     adjustedAmount: item.adjustedAmount || 0
@@ -278,9 +324,9 @@ async function validateForm() {
     ElMessage.warning('请至少添加一条变更明细')
     return false
   }
-  const hasEmptySubject = formData.value.details.some(d => !d.subjectName?.trim())
-  if (hasEmptySubject) {
-    ElMessage.warning('请填写所有明细行的科目名称')
+  const hasEmptyDetail = formData.value.details.some(d => !d.budgetDetailId)
+  if (hasEmptyDetail) {
+    ElMessage.warning('请为每一行选择原预算明细')
     return false
   }
   return true
@@ -295,8 +341,10 @@ function buildSubmitData() {
     changeReason: formData.value.changeReason,
     totalAdjustAmount: totalAdjustAmount.value,
     details: formData.value.details.map(d => ({
-      subjectId: d.subjectId,
-      subjectName: d.subjectName,
+      budgetDetailId: d.budgetDetailId,
+      costCategory: d.costCategory,
+      costSubcategory: d.costSubcategory,
+      itemName: d.itemName,
       originalAmount: d.originalAmount,
       adjustAmount: d.adjustAmount,
       adjustedAmount: d.adjustedAmount

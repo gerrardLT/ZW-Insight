@@ -6,6 +6,8 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.site.domain.BizConstructionLog;
 import com.zwinsight.site.mapper.BizConstructionLogMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,7 @@ import java.time.LocalDate;
 public class ConstructionLogService {
 
     private final BizConstructionLogMapper logMapper;
+    private final BizProjectMapper projectMapper;
 
     /**
      * 分页查询（支持日期范围）
@@ -32,6 +35,8 @@ public class ConstructionLogService {
                 .le(endDate != null, BizConstructionLog::getLogDate, endDate)
                 .orderByDesc(BizConstructionLog::getLogDate);
         Page<BizConstructionLog> result = logMapper.selectPage(pageParam, wrapper);
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizConstructionLog::getProjectId, BizConstructionLog::setProjectName);
         return PageResult.of(result);
     }
 

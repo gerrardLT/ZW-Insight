@@ -5,6 +5,7 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.labor.domain.BizLaborPayroll;
 import com.zwinsight.labor.domain.BizWorkOrder;
 import com.zwinsight.labor.mapper.BizLaborPayrollMapper;
+import com.zwinsight.labor.mapper.BizTeamMapper;
 import com.zwinsight.labor.mapper.BizWorkOrderMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +33,7 @@ class LaborPayrollServiceTest {
 
     @Mock private BizLaborPayrollMapper payrollMapper;
     @Mock private BizWorkOrderMapper workOrderMapper;
+    @Mock private BizTeamMapper teamMapper;
 
     @InjectMocks
     private LaborPayrollService laborPayrollService;

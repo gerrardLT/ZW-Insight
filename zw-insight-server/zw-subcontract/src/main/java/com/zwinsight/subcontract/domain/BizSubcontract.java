@@ -1,5 +1,6 @@
 package com.zwinsight.subcontract.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -60,4 +61,8 @@ public class BizSubcontract extends BaseEntity {
 
     /** 状态（DRAFT-草稿/EFFECTIVE-生效） */
     private String status;
+
+    /** 项目名称（非表字段，分页时按 projectId 批量回填） */
+    @TableField(exist = false)
+    private String projectName;
 }

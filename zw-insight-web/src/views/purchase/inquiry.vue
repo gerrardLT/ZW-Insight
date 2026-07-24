@@ -8,7 +8,8 @@
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
             <el-option label="待发布" value="DRAFT" />
-            <el-option label="报价中" value="QUOTING" />
+            <el-option label="报价中" value="PUBLISHED" />
+            <el-option label="已报价" value="QUOTED" />
             <el-option label="已定标" value="AWARDED" />
           </el-select>
         </el-form-item>
@@ -23,16 +24,14 @@
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="inquiryNo" label="询价编号" width="150" />
         <el-table-column prop="title" label="询价标题" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="materialName" label="材料名称" width="150" />
-        <el-table-column prop="quantity" label="数量" width="100" align="right" />
+        <el-table-column prop="materialSummary" label="材料摘要" min-width="150" show-overflow-tooltip />
         <el-table-column prop="deadline" label="截止日期" width="110" />
         <el-table-column prop="quotationCount" label="报价数" width="80" align="center" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'AWARDED' ? 'success' : row.status === 'QUOTING' ? 'warning' : 'info'" size="small">
-              {{ row.status === 'AWARDED' ? '已定标' : row.status === 'QUOTING' ? '报价中' : '待发布' }}
+            <el-tag :type="row.status === 'AWARDED' ? 'success' : (row.status === 'PUBLISHED' || row.status === 'QUOTED') ? 'warning' : 'info'" size="small">
+              {{ row.status === 'AWARDED' ? '已定标' : row.status === 'ANNOUNCED' ? '已公示' : row.status === 'QUOTED' ? '已报价' : row.status === 'PUBLISHED' ? '报价中' : '待发布' }}
             </el-tag>
           </template>
         </el-table-column>

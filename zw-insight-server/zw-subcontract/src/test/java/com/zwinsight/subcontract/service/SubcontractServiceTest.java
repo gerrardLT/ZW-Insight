@@ -62,6 +62,9 @@ class SubcontractServiceTest {
         @Mock
         private BizBudgetDetailMapper budgetDetailMapper;
 
+        @Mock
+        private BizProjectMapper projectMapper;
+
         @InjectMocks
         private SubcontractService subcontractService;
 
@@ -94,9 +97,10 @@ class SubcontractServiceTest {
                 mockPage.setTotal(1L);
                 when(subcontractMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
                         .thenReturn(mockPage);
+                when(projectMapper.selectBatchIds(any())).thenReturn(Collections.emptyList());
 
                 // when
-                PageResult<BizSubcontract> result = subcontractService.page(1, 10, 100L);
+                PageResult<BizSubcontract> result = subcontractService.page(1, 10, 100L, null, null, null);
 
                 // then
                 assertThat(result).isNotNull();
@@ -116,7 +120,7 @@ class SubcontractServiceTest {
                         .thenReturn(mockPage);
 
                 // when
-                PageResult<BizSubcontract> result = subcontractService.page(1, 10, null);
+                PageResult<BizSubcontract> result = subcontractService.page(1, 10, null, null, null, null);
 
                 // then
                 assertThat(result).isNotNull();
@@ -685,7 +689,7 @@ class SubcontractServiceTest {
                         .thenReturn(mockPage);
 
                 // when
-                PageResult<BizSubcontractSettlement> result = settlementService.page(1, 10, 100L, 10L);
+                PageResult<BizSubcontractSettlement> result = settlementService.page(1, 10, 100L, 10L, null);
 
                 // then
                 assertThat(result).isNotNull();

@@ -8,12 +8,12 @@
 
       <el-form :model="queryParams" inline>
         <el-form-item label="项目">
-          <el-input v-model="queryParams.projectName" placeholder="项目名称" clearable style="width: 180px" />
+          <ProjectSelector v-model="queryParams.projectId" style="width: 180px" />
         </el-form-item>
-        <el-form-item label="检查结果">
-          <el-select v-model="queryParams.result" placeholder="全部" clearable style="width: 120px">
-            <el-option label="合格" value="PASS" />
-            <el-option label="不合格" value="FAIL" />
+        <el-form-item label="是否有问题">
+          <el-select v-model="queryParams.hasProblem" placeholder="全部" clearable style="width: 120px">
+            <el-option label="无问题" :value="0" />
+            <el-option label="有问题" :value="1" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -27,17 +27,21 @@
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="inspectionNo" label="检查编号" width="150" />
         <el-table-column prop="projectName" label="项目名称" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="checkItem" label="检查项" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="inspector" label="检查人" width="90" />
-        <el-table-column prop="inspectionDate" label="检查日期" width="110" />
-        <el-table-column label="结果" width="80" align="center">
+        <el-table-column prop="inspectionContent" label="检查内容" min-width="180" show-overflow-tooltip />
+        <el-table-column label="是否有问题" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.result === 'PASS' ? 'success' : 'danger'" size="small">{{ row.result === 'PASS' ? '合格' : '不合格' }}</el-tag>
+            <el-tag :type="row.hasProblem === 1 ? 'danger' : 'success'" size="small">{{ row.hasProblem === 1 ? '有问题' : '无问题' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="remark" label="整改说明" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="problemDescription" label="问题描述" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="rectificationStatus" label="整改状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.rectificationStatus" :type="rectTagType(row.rectificationStatus)" size="small">{{ rectText(row.rectificationStatus) }}</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createdAt" label="检查时间" width="160" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleDetail(row)">详情</el-button>
@@ -59,6 +63,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getQualityInspectionPage, getSafetyInspectionPage, deleteQualityInspection, deleteSafetyInspection } from '@/api/site'
+import ProjectSelector from '@/components/ProjectSelector.vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -66,7 +71,16 @@ const tableData = ref<any[]>([])
 const total = ref(0)
 const activeTab = ref('quality')
 
-const queryParams = ref({ pageNum: 1, pageSize: 10, projectName: '', result: '' })
+const RECT_MAP: Record<string, { text: string; type: 'success' | 'warning' | 'info' | 'danger' }> = {
+  PENDING: { text: '待整改', type: 'warning' },
+  SUBMITTED: { text: '已提交', type: 'info' },
+  APPROVED: { text: '已通过', type: 'success' },
+  REJECTED: { text: '已驳回', type: 'danger' }
+}
+function rectText(s: string) { return RECT_MAP[s]?.text ?? s }
+function rectTagType(s: string) { return RECT_MAP[s]?.type ?? 'info' }
+
+const queryParams = ref<{ pageNum: number; pageSize: number; projectId: number | undefined; hasProblem: number | undefined }>({ pageNum: 1, pageSize: 10, projectId: undefined, hasProblem: undefined })
 
 const getPageApi = () => activeTab.value === 'quality' ? getQualityInspectionPage : getSafetyInspectionPage
 const getDeleteApi = () => activeTab.value === 'quality' ? deleteQualityInspection : deleteSafetyInspection
@@ -84,7 +98,7 @@ async function loadData() {
 
 function handleTabChange() { queryParams.value.pageNum = 1; loadData() }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
-function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, projectName: '', result: '' }; loadData() }
+function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined, hasProblem: undefined }; loadData() }
 
 function handleAdd() {
   router.push({ path: '/site/inspection/form', query: { type: activeTab.value } })

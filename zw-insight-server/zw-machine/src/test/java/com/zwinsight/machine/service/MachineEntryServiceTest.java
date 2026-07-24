@@ -5,6 +5,7 @@ import com.zwinsight.machine.domain.BizMachineEntry;
 import com.zwinsight.machine.domain.BizMachineLedger;
 import com.zwinsight.machine.mapper.BizMachineEntryMapper;
 import com.zwinsight.machine.mapper.BizMachineLedgerMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,12 +22,13 @@ class MachineEntryServiceTest {
 
     @Mock private BizMachineEntryMapper entryMapper;
     @Mock private BizMachineLedgerMapper ledgerMapper;
+    @Mock private BizProjectMapper projectMapper;
 
     private MachineEntryService machineEntryService;
 
     @BeforeEach
     void setUp() {
-        machineEntryService = new MachineEntryService(entryMapper, ledgerMapper);
+        machineEntryService = new MachineEntryService(entryMapper, ledgerMapper, projectMapper);
     }
 
     @Test

@@ -19,10 +19,14 @@ export interface PageResult<T> {
   pages: number
 }
 
-/** 分页查询参数基类 */
+/** 分页查询参数基类
+ * 运行时约定：组件传 pageNum/pageSize，request.ts 拦截器统一映射为 page/size。
+ * 两组字段均声明为可选，以兼容组件与直接调用两种写法。 */
 export interface PageQuery {
   page?: number
   size?: number
+  pageNum?: number
+  pageSize?: number
 }
 
 /** ID 类型 */

@@ -8,9 +8,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.labor.domain.BizLaborRoster;
+import com.zwinsight.labor.domain.BizTeam;
 import com.zwinsight.labor.domain.BizWorkOrder;
 import com.zwinsight.labor.dto.LaborRosterExcelDTO;
 import com.zwinsight.labor.mapper.BizLaborRosterMapper;
+import com.zwinsight.labor.mapper.BizTeamMapper;
 import com.zwinsight.labor.mapper.BizWorkOrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 劳务花名册服务
@@ -30,18 +34,53 @@ public class LaborRosterService {
 
     private final BizLaborRosterMapper rosterMapper;
     private final BizWorkOrderMapper workOrderMapper;
+    private final BizTeamMapper teamMapper;
 
     /**
-     * 分页查询
+     * 分页查询（支持按姓名/班组名/工种筛选，回填班组名）
      */
-    public PageResult<BizLaborRoster> page(int page, int size, Long projectId, Long teamId) {
+    public PageResult<BizLaborRoster> page(int page, int size, Long projectId, Long teamId,
+                                           String workerName, String teamName, String workType) {
+        List<Long> teamMatchedIds = null;
+        if (StrUtil.isNotBlank(teamName)) {
+            LambdaQueryWrapper<BizTeam> teamWrapper = new LambdaQueryWrapper<>();
+            teamWrapper.like(BizTeam::getTeamName, teamName);
+            teamMatchedIds = teamMapper.selectList(teamWrapper).stream()
+                    .map(BizTeam::getId).collect(Collectors.toList());
+            if (teamMatchedIds.isEmpty()) {
+                return PageResult.of(new Page<>(page, size));
+            }
+        }
         Page<BizLaborRoster> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizLaborRoster> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizLaborRoster::getProjectId, projectId)
                 .eq(teamId != null, BizLaborRoster::getTeamId, teamId)
+                .in(teamMatchedIds != null, BizLaborRoster::getTeamId, teamMatchedIds)
+                .like(StrUtil.isNotBlank(workerName), BizLaborRoster::getWorkerName, workerName)
+                .like(StrUtil.isNotBlank(workType), BizLaborRoster::getWorkType, workType)
                 .orderByDesc(BizLaborRoster::getCreatedAt);
         Page<BizLaborRoster> result = rosterMapper.selectPage(pageParam, wrapper);
+        fillTeamName(result.getRecords());
         return PageResult.of(result);
+    }
+
+    /**
+     * 批量回填班组名称（从 biz_team）
+     */
+    private void fillTeamName(List<BizLaborRoster> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        List<Long> teamIds = records.stream()
+                .map(BizLaborRoster::getTeamId)
+                .filter(java.util.Objects::nonNull)
+                .distinct().collect(Collectors.toList());
+        if (teamIds.isEmpty()) {
+            return;
+        }
+        Map<Long, String> nameMap = teamMapper.selectBatchIds(teamIds).stream()
+                .collect(Collectors.toMap(BizTeam::getId, BizTeam::getTeamName, (a, b) -> a));
+        records.forEach(r -> r.setTeamName(nameMap.get(r.getTeamId())));
     }
 
     /**

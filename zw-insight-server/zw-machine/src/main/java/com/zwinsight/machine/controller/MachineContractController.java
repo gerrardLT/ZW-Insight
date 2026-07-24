@@ -21,8 +21,10 @@ public class MachineContractController {
     public R<PageResult<BizMachineContract>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(contractService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String contractName,
+            @RequestParam(required = false) String supplierName) {
+        return R.ok(contractService.page(page, size, projectId, contractName, supplierName));
     }
 
     @GetMapping("/{id}")

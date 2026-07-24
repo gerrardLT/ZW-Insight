@@ -13,6 +13,7 @@ import com.zwinsight.material.mapper.BizMaterialInboundMapper;
 import com.zwinsight.material.mapper.BizMaterialOutboundDetailMapper;
 import com.zwinsight.material.mapper.BizMaterialOutboundMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
+import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.purchase.mapper.BizPurchaseContractMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -150,6 +151,7 @@ class MaterialServiceTest {
         @Mock private BizMaterialOutboundDetailMapper outboundDetailMapper;
         @Mock private BizProjectMaterialStockMapper stockMapper;
         @Mock private ApplicationEventPublisher eventPublisher;
+        @Mock private BizProjectMapper projectMapper;
 
         @InjectMocks
         private MaterialOutboundService outboundService;
@@ -221,6 +223,7 @@ class MaterialServiceTest {
         @Mock private BizMaterialOutboundDetailMapper outboundDetailMapper;
         @Mock private BizProjectMaterialStockMapper stockMapper;
         @Mock private ApplicationEventPublisher eventPublisher;
+        @Mock private BizProjectMapper projectMapper;
 
         @InjectMocks
         private MaterialOutboundService outboundService;
@@ -303,6 +306,8 @@ class MaterialServiceTest {
     class StockQuery {
 
         @Mock private BizProjectMaterialStockMapper stockMapper;
+        @Mock private com.zwinsight.material.mapper.BizStockWarningConfigMapper warningConfigMapper;
+        @Mock private com.zwinsight.project.mapper.BizProjectMapper projectMapper;
 
         @InjectMocks
         private ProjectMaterialStockService stockService;
@@ -328,7 +333,7 @@ class MaterialServiceTest {
             when(stockMapper.selectPage(any(Page.class), any())).thenReturn(mockPage);
 
             // When
-            PageResult<BizProjectMaterialStock> result = stockService.page(1, 10, 10L);
+            PageResult<BizProjectMaterialStock> result = stockService.page(1, 10, 10L, null, null, null);
 
             // Then
             assertThat(result).isNotNull();
@@ -367,7 +372,7 @@ class MaterialServiceTest {
             when(stockMapper.selectPage(any(Page.class), any())).thenReturn(mockPage);
 
             // When
-            PageResult<BizProjectMaterialStock> result = stockService.page(1, 10, null);
+            PageResult<BizProjectMaterialStock> result = stockService.page(1, 10, null, null, null, null);
 
             // Then
             assertThat(result).isNotNull();

@@ -13,6 +13,7 @@ import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.contract.mapper.BizContractDetailMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,9 @@ public class ConstructionContractService {
                 .eq(StrUtil.isNotBlank(status), BizConstructionContract::getStatus, status)
                 .orderByDesc(BizConstructionContract::getCreatedAt);
         Page<BizConstructionContract> result = contractMapper.selectPage(pageParam, wrapper);
+        // 回填项目名称：实体仅可靠持久化 projectId，列表需展示 projectName
+        ProjectNameFiller.fill(result.getRecords(), projectMapper,
+                BizConstructionContract::getProjectId, BizConstructionContract::setProjectName);
         return PageResult.of(result);
     }
 

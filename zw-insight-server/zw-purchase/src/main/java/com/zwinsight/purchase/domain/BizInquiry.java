@@ -100,4 +100,10 @@ public class BizInquiry extends BaseEntity {
      */
     @TableField(exist = false)
     private List<BizInquirySupplier> suppliers;
+
+    /**
+     * 报价数量（非表字段，分页时按询价单聚合填充）
+     */
+    @TableField(exist = false)
+    private Integer quotationCount;
 }

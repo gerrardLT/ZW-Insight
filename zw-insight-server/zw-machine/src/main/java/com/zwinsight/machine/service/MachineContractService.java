@@ -2,6 +2,7 @@ package com.zwinsight.machine.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import com.zwinsight.basedata.annotation.BlacklistCheck;
 import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.budget.domain.BizBudgetDetail;
@@ -27,10 +28,12 @@ public class MachineContractService {
     private final BizMachineContractMapper machineContractMapper;
     private final BizBudgetDetailMapper budgetDetailMapper;
 
-    public PageResult<BizMachineContract> page(int page, int size, Long projectId) {
+    public PageResult<BizMachineContract> page(int page, int size, Long projectId, String contractName, String supplierName) {
         Page<BizMachineContract> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizMachineContract> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizMachineContract::getProjectId, projectId)
+                .like(StrUtil.isNotBlank(contractName), BizMachineContract::getContractName, contractName)
+                .like(StrUtil.isNotBlank(supplierName), BizMachineContract::getSupplierName, supplierName)
                 .orderByDesc(BizMachineContract::getCreatedAt);
         return PageResult.of(machineContractMapper.selectPage(pageParam, wrapper));
     }

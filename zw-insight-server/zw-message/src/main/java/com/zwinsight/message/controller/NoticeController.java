@@ -21,8 +21,9 @@ public class NoticeController {
     public R<PageResult<MsgNotice>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String title) {
-        return R.ok(noticeService.page(page, size, title));
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String status) {
+        return R.ok(noticeService.page(page, size, title, status));
     }
 
     @GetMapping("/{id}")

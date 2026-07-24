@@ -1,5 +1,6 @@
 package com.zwinsight.labor.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -42,4 +43,8 @@ public class BizLaborPayroll extends BaseEntity {
 
     /** 状态（DRAFT-草稿/APPROVED-已审批/SETTLED-已结算） */
     private String status;
+
+    /** 所属班组名称（非本表字段，从 biz_team 回填） */
+    @TableField(exist = false)
+    private String teamName;
 }
