@@ -10,7 +10,8 @@
           </el-tag>
         </template>
         <template #extra>
-          <el-button v-if="settlement.status === 'DRAFT'" type="success" @click="handleSubmit">提交审批</el-button>
+          <el-button v-if="settlement.status === 'DRAFT' || settlement.status === 'REJECTED'" type="primary" @click="openEditDialog">编辑</el-button>
+          <el-button v-if="settlement.status === 'DRAFT' || settlement.status === 'REJECTED'" type="success" @click="handleSubmit">提交审批</el-button>
           <el-button type="warning" :icon="Download" @click="handleExport">导出 Excel</el-button>
         </template>
       </el-page-header>
@@ -32,6 +33,7 @@
               <el-descriptions-item label="累计产值">{{ formatMoney(settlement.cumulativeOutput) }}</el-descriptions-item>
               <el-descriptions-item label="累计收款">{{ formatMoney(settlement.cumulativeReceived) }}</el-descriptions-item>
               <el-descriptions-item label="累计开票">{{ formatMoney(settlement.cumulativeInvoiced) }}</el-descriptions-item>
+              <el-descriptions-item label="最终结算金额">{{ formatMoney(settlement.finalSettlementAmount) }}</el-descriptions-item>
               <el-descriptions-item label="总收入">
                 <span class="amount-highlight income-amount">{{ formatMoney(settlement.totalIncome) }}</span>
               </el-descriptions-item>
@@ -52,6 +54,7 @@
               <el-descriptions-item label="劳务结算">{{ formatMoney(settlement.laborSettled) }}</el-descriptions-item>
               <el-descriptions-item label="材料结算">{{ formatMoney(settlement.materialSettled) }}</el-descriptions-item>
               <el-descriptions-item label="机械结算">{{ formatMoney(settlement.machineSettled) }}</el-descriptions-item>
+              <el-descriptions-item label="净奖惩">{{ formatMoney(settlement.rewardPunishNet) }}</el-descriptions-item>
               <el-descriptions-item label="累计付款">{{ formatMoney(settlement.cumulativePaid) }}</el-descriptions-item>
               <el-descriptions-item label="总支出">
                 <span class="amount-highlight expense-amount">{{ formatMoney(settlement.totalExpenditure) }}</span>
@@ -133,15 +136,49 @@
         </el-table>
       </el-card>
     </div>
+
+    <!-- 编辑结算单弹窗（仅草稿/已驳回可编辑） -->
+    <el-dialog v-model="editDialogVisible" title="编辑结算单" width="480px" destroy-on-close>
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="120px">
+        <el-form-item label="最终结算金额" prop="finalSettlementAmount">
+          <el-input-number
+            v-model="editForm.finalSettlementAmount"
+            :min="0"
+            :precision="2"
+            :controls="false"
+            placeholder="留空则收入取累计产值"
+            style="width: 100%"
+          />
+          <div class="form-tip">与甲方确认的最终结算收入；留空时总收入取累计产值。</div>
+        </el-form-item>
+        <el-form-item label="其他支出" prop="otherExpense">
+          <el-input-number
+            v-model="editForm.otherExpense"
+            :min="0"
+            :precision="2"
+            :controls="false"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="重新汇总数据">
+          <el-switch v-model="editForm.resummarize" />
+          <div class="form-tip">开启后将从各合同重新汇总收支数据，再应用上述手动调整。</div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editLoading" @click="handleEditSubmit">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
-import { getSettlement, submitSettlement, exportSettlement, getUnsettledContracts } from '@/api/settlement'
+import { getSettlement, submitSettlement, exportSettlement, getUnsettledContracts, updateSettlement } from '@/api/settlement'
 
 const route = useRoute()
 const router = useRouter()
@@ -149,6 +186,24 @@ const loading = ref(false)
 
 const settlement = ref<any>({})
 const contractDetails = ref<any[]>([])
+
+// 编辑结算单弹窗
+const editDialogVisible = ref(false)
+const editLoading = ref(false)
+const editFormRef = ref<FormInstance>()
+const editForm = ref<{ finalSettlementAmount?: number; otherExpense?: number; resummarize: boolean }>({
+  finalSettlementAmount: undefined,
+  otherExpense: undefined,
+  resummarize: false
+})
+const editRules: FormRules = {
+  finalSettlementAmount: [
+    { type: 'number', min: 0, message: '最终结算金额不能为负', trigger: 'blur' }
+  ],
+  otherExpense: [
+    { type: 'number', min: 0, message: '其他支出不能为负', trigger: 'blur' }
+  ]
+}
 
 const unsettledCount = computed(() => {
   return contractDetails.value.filter(c => c.unsettledAmount > 0).length
@@ -233,8 +288,37 @@ async function handleSubmit() {
   await ElMessageBox.confirm('确定要提交该结算单进行审批吗？提交后不可修改。', '提交审批', { type: 'warning' })
   const id = Number(route.params.id)
   await submitSettlement(id)
-  ElMessage.success('提交成功')
+  ElMessage.success('已提交审批，审批通过后项目方可结项')
   loadDetail()
+}
+
+/** 打开编辑弹窗，回填当前值 */
+function openEditDialog() {
+  editForm.value = {
+    finalSettlementAmount: settlement.value.finalSettlementAmount ?? undefined,
+    otherExpense: settlement.value.otherExpense ?? undefined,
+    resummarize: false
+  }
+  editDialogVisible.value = true
+}
+
+async function handleEditSubmit() {
+  if (!editFormRef.value) return
+  await editFormRef.value.validate()
+  const id = Number(route.params.id)
+  editLoading.value = true
+  try {
+    await updateSettlement(id, {
+      finalSettlementAmount: editForm.value.finalSettlementAmount,
+      otherExpense: editForm.value.otherExpense,
+      resummarize: editForm.value.resummarize
+    })
+    ElMessage.success('保存成功')
+    editDialogVisible.value = false
+    loadDetail()
+  } finally {
+    editLoading.value = false
+  }
 }
 
 async function handleExport() {
@@ -314,6 +398,13 @@ onMounted(() => {
 
 :deep(.unsettled-row) {
   background-color: #fef0f0 !important;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
+  margin-top: 4px;
 }
 
 .pagination-wrap {

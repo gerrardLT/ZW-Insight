@@ -3,6 +3,7 @@ package com.zwinsight.budget.controller;
 import com.zwinsight.budget.domain.BizCostSubcategory;
 import com.zwinsight.budget.service.CostSubcategoryService;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,12 +25,14 @@ public class CostSubcategoryController {
     }
 
     @PostMapping
+    @RequiresPermission("budget:costsubcategory:add")
     public R<Void> save(@RequestBody BizCostSubcategory subcategory) {
         costSubcategoryService.save(subcategory);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("budget:costsubcategory:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody BizCostSubcategory subcategory) {
         subcategory.setId(id);
         costSubcategoryService.update(subcategory);
@@ -37,6 +40,7 @@ public class CostSubcategoryController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("budget:costsubcategory:delete")
     public R<Void> delete(@PathVariable Long id) {
         costSubcategoryService.delete(id);
         return R.ok();

@@ -1,6 +1,7 @@
 package com.zwinsight.system.controller;
 
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysOrg;
 import com.zwinsight.system.service.SysOrgService;
 import lombok.RequiredArgsConstructor;
@@ -31,12 +32,14 @@ public class SysOrgController {
     }
 
     @PostMapping
+    @RequiresPermission("system:org:add")
     public R<Void> save(@RequestBody SysOrg org) {
         orgService.save(org);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("system:org:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody SysOrg org) {
         org.setId(id);
         orgService.update(org);
@@ -44,12 +47,14 @@ public class SysOrgController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("system:org:delete")
     public R<Void> delete(@PathVariable Long id) {
         orgService.delete(id);
         return R.ok();
     }
 
     @PutMapping("/{id}/status")
+    @RequiresPermission("system:org:edit")
     public R<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
         orgService.updateStatus(id, status);
         return R.ok();

@@ -2,6 +2,7 @@ package com.zwinsight.system.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysDict;
 import com.zwinsight.system.domain.SysDictItem;
 import com.zwinsight.system.service.SysDictService;
@@ -34,12 +35,14 @@ public class SysDictController {
     }
 
     @PostMapping
+    @RequiresPermission("system:dict:add")
     public R<Void> save(@RequestBody SysDict dict) {
         dictService.save(dict);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("system:dict:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody SysDict dict) {
         dict.setId(id);
         dictService.update(dict);
@@ -47,12 +50,14 @@ public class SysDictController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("system:dict:delete")
     public R<Void> delete(@PathVariable Long id) {
         dictService.delete(id);
         return R.ok();
     }
 
     @DeleteMapping("/batch")
+    @RequiresPermission("system:dict:delete")
     public R<Void> batchDelete(@RequestBody List<Long> ids) {
         dictService.batchDelete(ids);
         return R.ok();

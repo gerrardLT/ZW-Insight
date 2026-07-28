@@ -2,6 +2,7 @@ package com.zwinsight.system.controller;
 
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysMenu;
 import com.zwinsight.system.service.SysMenuService;
 import lombok.RequiredArgsConstructor;
@@ -30,12 +31,14 @@ public class SysMenuController {
     }
 
     @PostMapping
+    @RequiresPermission("system:menu:add")
     public R<Void> save(@RequestBody SysMenu menu) {
         menuService.save(menu);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("system:menu:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody SysMenu menu) {
         menu.setId(id);
         menuService.update(menu);
@@ -43,6 +46,7 @@ public class SysMenuController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("system:menu:delete")
     public R<Void> delete(@PathVariable Long id) {
         menuService.delete(id);
         return R.ok();

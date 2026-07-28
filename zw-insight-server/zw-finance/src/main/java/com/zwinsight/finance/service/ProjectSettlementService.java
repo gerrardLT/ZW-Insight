@@ -104,8 +104,8 @@ public class ProjectSettlementService {
         BigDecimal cumulativeReceived = settlementDataMapper.sumReceivedByProject(projectId);
         // 累计开票
         BigDecimal cumulativeInvoiced = settlementDataMapper.sumInvoicedByProject(projectId);
-        // 总收入 = 累计收款
-        BigDecimal totalIncome = cumulativeReceived;
+        // 总收入 = 最终结算金额（初始为空）；为空时取累计产值（与 REQ-008/REQ-022 口径一致）
+        BigDecimal totalIncome = cumulativeOutput;
 
         // 4. 汇总支出数据
         BigDecimal subcontractSettled = settlementDataMapper.sumSubcontractSettlement(projectId);
@@ -113,13 +113,16 @@ public class ProjectSettlementService {
         BigDecimal materialSettled = settlementDataMapper.sumMaterialSettlement(projectId);
         BigDecimal machineSettled = settlementDataMapper.sumMachineSettlement(projectId);
         BigDecimal cumulativePaid = settlementDataMapper.sumPaymentByProject(projectId);
+        // 净奖惩（奖励为正、处罚为负，计入总支出）
+        BigDecimal rewardPunishNet = settlementDataMapper.sumRewardPunishNetByProject(projectId);
 
-        // 总支出 = 分包结算 + 劳务结算 + 材料结算 + 机械结算 + 累计付款
+        // 总支出 = 分包结算 + 劳务结算 + 材料结算 + 机械结算 + 累计付款 + 净奖惩
         BigDecimal totalExpenditure = subcontractSettled
                 .add(laborSettled)
                 .add(materialSettled)
                 .add(machineSettled)
-                .add(cumulativePaid);
+                .add(cumulativePaid)
+                .add(rewardPunishNet);
 
         // 5. 计算利润（精确到分）
         BigDecimal profit = totalIncome.subtract(totalExpenditure)
@@ -149,6 +152,7 @@ public class ProjectSettlementService {
         settlement.setMaterialSettled(materialSettled.setScale(2, RoundingMode.HALF_UP));
         settlement.setMachineSettled(machineSettled.setScale(2, RoundingMode.HALF_UP));
         settlement.setOtherExpense(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+        settlement.setRewardPunishNet(rewardPunishNet.setScale(2, RoundingMode.HALF_UP));
         settlement.setCumulativePaid(cumulativePaid.setScale(2, RoundingMode.HALF_UP));
         settlement.setTotalExpenditure(totalExpenditure.setScale(2, RoundingMode.HALF_UP));
         settlement.setProfit(profit);
@@ -240,7 +244,10 @@ public class ProjectSettlementService {
 
             BigDecimal cumulativeReceived = settlementDataMapper.sumReceivedByProject(projectId);
             BigDecimal cumulativeInvoiced = settlementDataMapper.sumInvoicedByProject(projectId);
-            BigDecimal totalIncome = cumulativeReceived;
+            // 最终结算金额：优先取本次提交值，其次取已有值；均为空则收入取累计产值
+            BigDecimal finalSettlementAmount = updateDTO.getFinalSettlementAmount() != null
+                    ? updateDTO.getFinalSettlementAmount() : settlement.getFinalSettlementAmount();
+            BigDecimal totalIncome = finalSettlementAmount != null ? finalSettlementAmount : cumulativeOutput;
 
             // 汇总支出
             BigDecimal subcontractSettled = settlementDataMapper.sumSubcontractSettlement(projectId);
@@ -248,6 +255,7 @@ public class ProjectSettlementService {
             BigDecimal materialSettled = settlementDataMapper.sumMaterialSettlement(projectId);
             BigDecimal machineSettled = settlementDataMapper.sumMachineSettlement(projectId);
             BigDecimal cumulativePaid = settlementDataMapper.sumPaymentByProject(projectId);
+            BigDecimal rewardPunishNet = settlementDataMapper.sumRewardPunishNetByProject(projectId);
 
             BigDecimal otherExpense = updateDTO.getOtherExpense() != null ?
                     updateDTO.getOtherExpense() : settlement.getOtherExpense();
@@ -257,6 +265,7 @@ public class ProjectSettlementService {
                     .add(materialSettled)
                     .add(machineSettled)
                     .add(cumulativePaid)
+                    .add(rewardPunishNet)
                     .add(otherExpense);
 
             BigDecimal profit = totalIncome.subtract(totalExpenditure)
@@ -281,6 +290,10 @@ public class ProjectSettlementService {
             settlement.setMaterialSettled(materialSettled.setScale(2, RoundingMode.HALF_UP));
             settlement.setMachineSettled(machineSettled.setScale(2, RoundingMode.HALF_UP));
             settlement.setOtherExpense(otherExpense.setScale(2, RoundingMode.HALF_UP));
+            settlement.setRewardPunishNet(rewardPunishNet.setScale(2, RoundingMode.HALF_UP));
+            if (finalSettlementAmount != null) {
+                settlement.setFinalSettlementAmount(finalSettlementAmount.setScale(2, RoundingMode.HALF_UP));
+            }
             settlement.setCumulativePaid(cumulativePaid.setScale(2, RoundingMode.HALF_UP));
             settlement.setTotalExpenditure(totalExpenditure.setScale(2, RoundingMode.HALF_UP));
             settlement.setProfit(profit);
@@ -291,16 +304,25 @@ public class ProjectSettlementService {
                     .eq(BizSettlementContractDetail::getSettlementId, id));
             generateContractDetails(id, projectId);
         } else {
-            // 仅更新其他支出字段
+            // 仅更新手动调整字段（其他支出/最终结算金额）
+            boolean changed = false;
+            if (updateDTO.getFinalSettlementAmount() != null) {
+                settlement.setFinalSettlementAmount(updateDTO.getFinalSettlementAmount().setScale(2, RoundingMode.HALF_UP));
+                settlement.setTotalIncome(updateDTO.getFinalSettlementAmount().setScale(2, RoundingMode.HALF_UP));
+                changed = true;
+            }
             if (updateDTO.getOtherExpense() != null) {
                 settlement.setOtherExpense(updateDTO.getOtherExpense().setScale(2, RoundingMode.HALF_UP));
-
+                changed = true;
+            }
+            if (changed) {
                 // 重新计算总支出和利润
                 BigDecimal totalExpenditure = settlement.getSubcontractSettled()
                         .add(settlement.getLaborSettled())
                         .add(settlement.getMaterialSettled())
                         .add(settlement.getMachineSettled())
                         .add(settlement.getCumulativePaid())
+                        .add(settlement.getRewardPunishNet() != null ? settlement.getRewardPunishNet() : BigDecimal.ZERO)
                         .add(settlement.getOtherExpense());
                 settlement.setTotalExpenditure(totalExpenditure.setScale(2, RoundingMode.HALF_UP));
 
@@ -393,7 +415,9 @@ public class ProjectSettlementService {
     /**
      * 审批通过回调
      * <p>
-     * 更新结算单状态为 APPROVED，同时将关联项目状态更新为 CLOSED。
+     * 更新结算单状态为 APPROVED，并将该项目下生效中的施工合同批量置为已结算（SETTLED）。
+     * 项目关闭统一走结项审批通道（ProjectService.closeProject，CLOSING→CLOSED），
+     * 已审批的最终结算单是结项条件之一，此处不再直接关闭项目。
      * </p>
      *
      * @param settlementId 结算单ID
@@ -409,11 +433,11 @@ public class ProjectSettlementService {
         settlement.setStatus("APPROVED");
         settlementMapper.updateById(settlement);
 
-        // 更新项目状态为 CLOSED
-        projectMapper.updateStatus(settlement.getProjectId(), "CLOSED");
+        // 施工合同状态流转：EFFECTIVE → SETTLED
+        int settledContracts = constructionContractMapper.settleByProjectId(settlement.getProjectId());
 
-        log.info("结算单审批通过, settlementId={}, 项目状态更新为CLOSED, projectId={}",
-                settlementId, settlement.getProjectId());
+        log.info("结算单审批通过, settlementId={}, projectId={}, 施工合同置SETTLED {}条，项目关闭请走结项审批",
+                settlementId, settlement.getProjectId(), settledContracts);
     }
 
     /**

@@ -54,6 +54,21 @@ public interface BudgetOccupiedMapper {
     BigDecimal sumContractAmountForMaterial(@Param("projectId") Long projectId);
 
     /**
+     * 查询已审批材料调拨对项目预算占用的净影响（调入为正、调出为负，按明细 quantity×unit_price）
+     * <p>调入项目增加材料占用、调出项目减少材料占用，用于预算执行率计算。</p>
+     */
+    @Select("SELECT COALESCE(SUM(net), 0) FROM (" +
+            "SELECT COALESCE(SUM(d.quantity * d.unit_price), 0) AS net FROM biz_material_transfer t " +
+            "JOIN biz_material_transfer_detail d ON d.transfer_id = t.id AND d.deleted = 0 " +
+            "WHERE t.to_project_id = #{projectId} AND t.status = 'APPROVED' AND t.deleted = 0 " +
+            "UNION ALL " +
+            "SELECT -COALESCE(SUM(d.quantity * d.unit_price), 0) AS net FROM biz_material_transfer t " +
+            "JOIN biz_material_transfer_detail d ON d.transfer_id = t.id AND d.deleted = 0 " +
+            "WHERE t.from_project_id = #{projectId} AND t.status = 'APPROVED' AND t.deleted = 0" +
+            ") x")
+    BigDecimal sumTransferNetForMaterial(@Param("projectId") Long projectId);
+
+    /**
      * 按科目查询已签合同金额合计 — 劳务
      */
     @Select("SELECT COALESCE(SUM(contract_amount), 0) FROM biz_labor_contract " +

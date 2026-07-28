@@ -2,6 +2,7 @@ package com.zwinsight.system.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysPost;
 import com.zwinsight.system.service.SysPostService;
 import lombok.RequiredArgsConstructor;
@@ -34,12 +35,14 @@ public class SysPostController {
     }
 
     @PostMapping
+    @RequiresPermission("system:post:add")
     public R<Void> save(@RequestBody SysPost post) {
         postService.save(post);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("system:post:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody SysPost post) {
         post.setId(id);
         postService.update(post);
@@ -47,18 +50,21 @@ public class SysPostController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("system:post:delete")
     public R<Void> delete(@PathVariable Long id) {
         postService.delete(id);
         return R.ok();
     }
 
     @PutMapping("/{id}/status")
+    @RequiresPermission("system:post:edit")
     public R<Void> updateStatus(@PathVariable Long id, @RequestBody SysPost post) {
         postService.updateStatus(id, post.getStatus());
         return R.ok();
     }
 
     @DeleteMapping("/batch")
+    @RequiresPermission("system:post:delete")
     public R<Void> batchDelete(@RequestBody List<Long> ids) {
         postService.batchDelete(ids);
         return R.ok();

@@ -288,7 +288,7 @@ class ConstructionContractServiceTest {
     class SubmitTests {
 
         @Test
-        @DisplayName("正常路径：审批流发起+状态变更为EFFECTIVE")
+        @DisplayName("正常路径：审批流发起+状态变为SUBMITTED（不回写项目）")
         void submit_happyPath_shouldStartProcessAndChangeStatus() {
             // Given
             Long contractId = 100L;
@@ -298,12 +298,7 @@ class ConstructionContractServiceTest {
             existing.setContractAmount(new BigDecimal("1130000"));
             existing.setProjectId(1L);
 
-            BizProject project = new BizProject();
-            project.setId(1L);
-            project.setContractAmount(new BigDecimal("5000000"));
-
             when(contractMapper.selectById(contractId)).thenReturn(existing);
-            when(projectMapper.selectById(1L)).thenReturn(project);
             when(approvalService.startProcess(
                     eq("CONSTRUCTION_CONTRACT"),
                     eq(contractId),
@@ -320,66 +315,10 @@ class ConstructionContractServiceTest {
             verify(contractMapper).updateById(captor.capture());
             BizConstructionContract submitted = captor.getValue();
 
-            assertThat(submitted.getStatus()).isEqualTo("EFFECTIVE");
+            assertThat(submitted.getStatus()).isEqualTo("SUBMITTED");
             assertThat(submitted.getWorkflowInstanceId()).isEqualTo("PROCESS-001");
-
-            // 验证回写项目累计合同金额：5000000 + 1130000 = 6130000
-            ArgumentCaptor<BizProject> projectCaptor = ArgumentCaptor.forClass(BizProject.class);
-            verify(projectMapper).updateById(projectCaptor.capture());
-            assertThat(projectCaptor.getValue().getContractAmount())
-                    .isEqualByComparingTo(new BigDecimal("6130000"));
-        }
-
-        @Test
-        @DisplayName("回写项目金额：项目原金额为 null 时按合同金额累加")
-        void submit_projectAmountNull_shouldInitFromContractAmount() {
-            // Given
-            Long contractId = 100L;
-            BizConstructionContract existing = new BizConstructionContract();
-            existing.setId(contractId);
-            existing.setStatus("DRAFT");
-            existing.setContractAmount(new BigDecimal("800000"));
-            existing.setProjectId(2L);
-
-            BizProject project = new BizProject();
-            project.setId(2L);
-            project.setContractAmount(null);
-
-            when(contractMapper.selectById(contractId)).thenReturn(existing);
-            when(projectMapper.selectById(2L)).thenReturn(project);
-            when(approvalService.startProcess(any(), any(), any(), any(Map.class))).thenReturn("PROCESS-002");
-            when(contractMapper.updateById(any(BizConstructionContract.class))).thenReturn(1);
-
-            // When
-            contractService.submit(contractId);
-
-            // Then
-            ArgumentCaptor<BizProject> projectCaptor = ArgumentCaptor.forClass(BizProject.class);
-            verify(projectMapper).updateById(projectCaptor.capture());
-            assertThat(projectCaptor.getValue().getContractAmount())
-                    .isEqualByComparingTo(new BigDecimal("800000"));
-        }
-
-        @Test
-        @DisplayName("回写项目金额：项目不存在时跳过回写不报错")
-        void submit_projectNotFound_shouldSkipWriteback() {
-            // Given
-            Long contractId = 100L;
-            BizConstructionContract existing = new BizConstructionContract();
-            existing.setId(contractId);
-            existing.setStatus("DRAFT");
-            existing.setContractAmount(new BigDecimal("800000"));
-            existing.setProjectId(999L);
-
-            when(contractMapper.selectById(contractId)).thenReturn(existing);
-            when(projectMapper.selectById(999L)).thenReturn(null);
-            when(approvalService.startProcess(any(), any(), any(), any(Map.class))).thenReturn("PROCESS-003");
-            when(contractMapper.updateById(any(BizConstructionContract.class))).thenReturn(1);
-
-            // When
-            contractService.submit(contractId);
-
-            // Then
+            // 提交阶段不回写项目金额（审批通过后才回写）
+            verify(projectMapper, never()).addContractAmount(anyLong(), any());
             verify(projectMapper, never()).updateById(any());
         }
 
@@ -416,6 +355,68 @@ class ConstructionContractServiceTest {
                     .hasMessageContaining("合同不存在");
 
             verify(approvalService, never()).startProcess(any(), any(), any(), any());
+        }
+    }
+
+    // ============ onApproved() 回调测试 ============
+
+    @Nested
+    @DisplayName("onApproved() - 审批通过回调")
+    class OnApprovedTests {
+
+        @Test
+        @DisplayName("审批通过：置EFFECTIVE + 原子回写项目合同金额 + 状态流转CONSTRUCTION")
+        void onApproved_writesBackAndAdvancesStatus() {
+            Long contractId = 100L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("SUBMITTED");
+            existing.setContractAmount(new BigDecimal("1130000"));
+            existing.setProjectId(1L);
+
+            BizProject project = new BizProject();
+            project.setId(1L);
+            project.setStatus("WON");
+
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(1L)).thenReturn(project);
+
+            contractService.onApproved(contractId);
+
+            assertThat(existing.getStatus()).isEqualTo("EFFECTIVE");
+            verify(projectMapper).addContractAmount(1L, new BigDecimal("1130000"));
+            // WON → CONSTRUCTION
+            ArgumentCaptor<BizProject> projectCaptor = ArgumentCaptor.forClass(BizProject.class);
+            verify(projectMapper).updateById(projectCaptor.capture());
+            assertThat(projectCaptor.getValue().getStatus()).isEqualTo("CONSTRUCTION");
+        }
+
+        @Test
+        @DisplayName("审批通过：已生效幂等跳过")
+        void onApproved_idempotent() {
+            Long contractId = 100L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("EFFECTIVE");
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+
+            contractService.onApproved(contractId);
+
+            verify(projectMapper, never()).addContractAmount(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("审批驳回：SUBMITTED回退DRAFT")
+        void onRejected_backToDraft() {
+            Long contractId = 100L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("SUBMITTED");
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+
+            contractService.onRejected(contractId);
+
+            assertThat(existing.getStatus()).isEqualTo("DRAFT");
         }
     }
 

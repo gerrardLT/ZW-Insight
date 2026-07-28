@@ -2,6 +2,7 @@ package com.zwinsight.contract.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.domain.BizContractDetail;
 import com.zwinsight.contract.domain.dto.ContractCreateRequest;
@@ -37,18 +38,21 @@ public class ContractController {
     }
 
     @PostMapping
+    @RequiresPermission("contract:contract:add")
     public R<Void> save(@Valid @RequestBody ContractCreateRequest request) {
         contractService.saveFromRequest(request);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("contract:contract:edit")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ContractCreateRequest request) {
         contractService.updateFromRequest(id, request);
         return R.ok();
     }
 
     @PostMapping("/{id}/submit")
+    @RequiresPermission("contract:contract:submit")
     public R<Void> submit(@PathVariable Long id) {
         contractService.submit(id);
         return R.ok();
@@ -60,12 +64,14 @@ public class ContractController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("contract:contract:delete")
     public R<Void> delete(@PathVariable Long id) {
         contractService.delete(id);
         return R.ok();
     }
 
     @PostMapping("/{id}/details")
+    @RequiresPermission("contract:contract:edit")
     public R<Void> saveDetails(@PathVariable Long id, @RequestBody List<BizContractDetail> details) {
         contractService.saveDetails(id, details);
         return R.ok();

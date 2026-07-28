@@ -39,14 +39,14 @@
         <el-table-column prop="transferDate" label="调拨日期" width="120" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'APPROVED' ? 'success' : 'info'" size="small">{{ row.status === 'APPROVED' ? '已审批' : '草稿' }}</el-tag>
+            <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="success" @click="handleSubmit(row)">提交</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -179,10 +179,25 @@ async function handleFormSubmit() {
     submitLoading.value = false
   }
 }
+const statusMap: Record<string, { label: string; type: string }> = {
+  DRAFT: { label: '草稿', type: 'info' },
+  SUBMITTED: { label: '审批中', type: 'warning' },
+  APPROVED: { label: '已审批', type: 'success' },
+  REJECTED: { label: '已驳回', type: 'danger' }
+}
+
+function getStatusLabel(status: string) {
+  return statusMap[status]?.label || status
+}
+
+function getStatusType(status: string) {
+  return (statusMap[status]?.type || 'info') as any
+}
+
 async function handleSubmit(row: any) {
   await ElMessageBox.confirm('确定要提交此调拨单吗？', '提示', { type: 'warning' })
   await submitMaterialTransfer(row.id)
-  ElMessage.success('提交成功')
+  ElMessage.success('已提交审批，审批通过后变更库存')
   loadData()
 }
 async function handleDelete(row: any) {

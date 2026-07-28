@@ -133,7 +133,7 @@ public class ConstructionContractService {
     }
 
     /**
-     * 提交审批
+     * 提交审批（启动流程，状态置 SUBMITTED；审批通过后由监听器回调 {@link #onApproved(Long)} 生效）
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
@@ -152,22 +152,63 @@ public class ConstructionContractService {
         String processInstanceId = approvalService.startProcess(
                 "CONSTRUCTION_CONTRACT", id, "construction_contract_approval", variables);
 
-        // 更新流程实例ID和状态
+        // 更新流程实例ID和状态（审批通过后才置 EFFECTIVE 并回写项目）
         contract.setWorkflowInstanceId(processInstanceId);
+        contract.setStatus("SUBMITTED");
+        contractMapper.updateById(contract);
+    }
+
+    /**
+     * 审批通过回调：合同置 EFFECTIVE + 回写项目累计合同金额（原子累加）+ 项目状态流转 CONSTRUCTION
+     * <p>幂等：状态已为 EFFECTIVE 时直接返回（兼容存量在途单据与重复事件）。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onApproved(Long id) {
+        BizConstructionContract contract = contractMapper.selectById(id);
+        if (contract == null) {
+            return;
+        }
+        if ("EFFECTIVE".equals(contract.getStatus())) {
+            return;
+        }
+
         contract.setStatus("EFFECTIVE");
         contractMapper.updateById(contract);
 
-        // 回写项目累计合同金额（项目下所有施工合同金额之和；DRAFT→EFFECTIVE 仅一次，不会重复累加）
+        // 回写项目累计合同金额（原子累加）+ 项目状态流转
         if (contract.getProjectId() != null) {
+            BigDecimal amount = contract.getContractAmount() == null
+                    ? BigDecimal.ZERO : contract.getContractAmount();
+            projectMapper.addContractAmount(contract.getProjectId(), amount);
+
             BizProject project = projectMapper.selectById(contract.getProjectId());
             if (project != null) {
-                BigDecimal total = project.getContractAmount() == null
-                        ? BigDecimal.ZERO : project.getContractAmount();
-                BigDecimal amount = contract.getContractAmount() == null
-                        ? BigDecimal.ZERO : contract.getContractAmount();
-                project.setContractAmount(total.add(amount));
+                // 项目状态流转：中标/已报备 → 施工中（施工合同生效触发）
+                advanceToConstruction(project);
                 projectMapper.updateById(project);
             }
+        }
+    }
+
+    /**
+     * 审批驳回/撤回回调：回退草稿可修改重提（数据未生效，无需回滚）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onRejected(Long id) {
+        BizConstructionContract contract = contractMapper.selectById(id);
+        if (contract == null || !"SUBMITTED".equals(contract.getStatus())) {
+            return;
+        }
+        contract.setStatus("DRAFT");
+        contractMapper.updateById(contract);
+    }
+
+    /**
+     * 项目状态流转 WON/FILED → CONSTRUCTION（施工合同生效时调用）
+     */
+    private void advanceToConstruction(BizProject project) {
+        if ("WON".equals(project.getStatus()) || "FILED".equals(project.getStatus())) {
+            project.setStatus("CONSTRUCTION");
         }
     }
 

@@ -2,6 +2,7 @@ package com.zwinsight.contract.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.contract.domain.BizOutputReport;
 import com.zwinsight.contract.service.OutputReportService;
 import lombok.RequiredArgsConstructor;
@@ -27,12 +28,14 @@ public class OutputReportController {
     }
 
     @PostMapping
+    @RequiresPermission("contract:outputreport:add")
     public R<Void> save(@RequestBody BizOutputReport report) {
         outputReportService.save(report);
         return R.ok();
     }
 
     @PostMapping("/{id}/submit")
+    @RequiresPermission("contract:outputreport:submit")
     public R<Void> submit(@PathVariable Long id) {
         outputReportService.submit(id);
         return R.ok();

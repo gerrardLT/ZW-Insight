@@ -2,7 +2,6 @@ package com.zwinsight.purchase.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.zwinsight.budget.service.BudgetControlService;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.file.service.SerialNumberService;
@@ -45,9 +44,6 @@ class PurchaseContractServiceTest {
 
     @Mock
     private SerialNumberService serialNumberService;
-
-    @Mock
-    private BudgetControlService budgetControlService;
 
     @Mock
     private ApprovalService approvalService;
@@ -174,8 +170,6 @@ class PurchaseContractServiceTest {
             newContract.setContractAmount(new BigDecimal("100000.00"));
 
             when(serialNumberService.generate("PURCHASE_CONTRACT")).thenReturn("PC-2026-002");
-            when(budgetControlService.checkBudget(eq(200L), eq("MATERIAL"), any(BigDecimal.class)))
-                    .thenReturn(true);
             when(purchaseContractMapper.insert(any(BizPurchaseContract.class))).thenReturn(1);
 
             // when
@@ -187,7 +181,6 @@ class PurchaseContractServiceTest {
                     "DRAFT".equals(contract.getStatus())
             ));
             verify(serialNumberService).generate("PURCHASE_CONTRACT");
-            verify(budgetControlService).checkBudget(200L, "MATERIAL", new BigDecimal("100000.00"));
         }
 
         @Test
@@ -204,8 +197,6 @@ class PurchaseContractServiceTest {
             newContract.setCumulativeInvoiceReceived(null);
 
             when(serialNumberService.generate("PURCHASE_CONTRACT")).thenReturn("PC-2026-003");
-            when(budgetControlService.checkBudget(anyLong(), anyString(), any(BigDecimal.class)))
-                    .thenReturn(true);
             when(purchaseContractMapper.insert(any(BizPurchaseContract.class))).thenReturn(1);
 
             // when
@@ -234,8 +225,6 @@ class PurchaseContractServiceTest {
             newContract.setCumulativeInvoiceReceived(new BigDecimal("2000.00"));
 
             when(serialNumberService.generate("PURCHASE_CONTRACT")).thenReturn("PC-2026-004");
-            when(budgetControlService.checkBudget(anyLong(), anyString(), any(BigDecimal.class)))
-                    .thenReturn(true);
             when(purchaseContractMapper.insert(any(BizPurchaseContract.class))).thenReturn(1);
 
             // when
@@ -246,27 +235,6 @@ class PurchaseContractServiceTest {
                     new BigDecimal("10000.00").compareTo(contract.getCumulativeInbound()) == 0 &&
                     new BigDecimal("5000.00").compareTo(contract.getCumulativeSettlement()) == 0
             ));
-        }
-
-        @Test
-        @DisplayName("新增采购合同 - 预算校验FORBID模式超预算时抛异常")
-        void save_budgetExceeded_forbidMode_throwsException() {
-            // given
-            BizPurchaseContract newContract = new BizPurchaseContract();
-            newContract.setProjectId(200L);
-            newContract.setContractName("超预算合同");
-            newContract.setContractAmount(new BigDecimal("9999999.99"));
-
-            when(serialNumberService.generate("PURCHASE_CONTRACT")).thenReturn("PC-2026-005");
-            when(budgetControlService.checkBudget(eq(200L), eq("MATERIAL"), any(BigDecimal.class)))
-                    .thenThrow(new BusinessException("预算不足"));
-
-            // when & then
-            assertThatThrownBy(() -> purchaseContractService.save(newContract))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("预算不足");
-
-            verify(purchaseContractMapper, never()).insert(any());
         }
     }
 
@@ -508,8 +476,6 @@ class PurchaseContractServiceTest {
             newContract.setContractAmount(new BigDecimal("999999999.99"));
 
             when(serialNumberService.generate("PURCHASE_CONTRACT")).thenReturn("PC-2026-010");
-            when(budgetControlService.checkBudget(anyLong(), anyString(), any(BigDecimal.class)))
-                    .thenReturn(true);
             when(purchaseContractMapper.insert(any(BizPurchaseContract.class))).thenReturn(1);
 
             // when
@@ -531,8 +497,6 @@ class PurchaseContractServiceTest {
             newContract.setContractAmount(new BigDecimal("12345.67"));
 
             when(serialNumberService.generate("PURCHASE_CONTRACT")).thenReturn("PC-2026-011");
-            when(budgetControlService.checkBudget(anyLong(), anyString(), any(BigDecimal.class)))
-                    .thenReturn(true);
             when(purchaseContractMapper.insert(any(BizPurchaseContract.class))).thenReturn(1);
 
             // when

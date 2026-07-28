@@ -19,6 +19,7 @@
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 140px">
             <el-option label="草稿" value="DRAFT" />
+            <el-option label="审批中" value="SUBMITTED" />
             <el-option label="已生效" value="EFFECTIVE" />
             <el-option label="已结算" value="SETTLED" />
             <el-option label="已关闭" value="CLOSED" />
@@ -113,6 +114,7 @@ const queryParams = ref({
 
 const statusMap: Record<string, { label: string; type: string }> = {
   DRAFT: { label: '草稿', type: 'info' },
+  SUBMITTED: { label: '审批中', type: 'warning' },
   EFFECTIVE: { label: '已生效', type: 'success' },
   SETTLED: { label: '已结算', type: 'primary' },
   CLOSED: { label: '已关闭', type: 'danger' }

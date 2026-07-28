@@ -2,6 +2,7 @@ package com.zwinsight.contract.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.contract.domain.BizFinalSettlement;
 import com.zwinsight.contract.service.FinalSettlementService;
 import lombok.RequiredArgsConstructor;
@@ -26,12 +27,14 @@ public class FinalSettlementController {
     }
 
     @PostMapping
+    @RequiresPermission("contract:settlement:add")
     public R<Void> save(@RequestBody BizFinalSettlement settlement) {
         finalSettlementService.save(settlement);
         return R.ok();
     }
 
     @PostMapping("/{id}/submit")
+    @RequiresPermission("contract:settlement:submit")
     public R<Void> submit(@PathVariable Long id) {
         finalSettlementService.submit(id);
         return R.ok();

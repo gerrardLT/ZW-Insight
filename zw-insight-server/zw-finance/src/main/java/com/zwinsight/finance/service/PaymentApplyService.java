@@ -5,16 +5,19 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import cn.hutool.core.util.StrUtil;
 import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
-import com.zwinsight.project.domain.BizProject;
+import com.zwinsight.finance.mapper.SettlementDataMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +27,12 @@ import java.util.Map;
 
 /**
  * 付款申请服务
+ * <p>
+ * 审批后生效模式：submit 仅校验并启动流程（状态 SUBMITTED），
+ * 审批通过后由 PaymentApplyApprovalListener 回调 {@link #onApproved(Long)} 回写合同已付与项目支出。
+ * </p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentApplyService {
@@ -32,7 +40,9 @@ public class PaymentApplyService {
     private final BizPaymentApplyMapper paymentApplyMapper;
     private final BizOtherContractMapper otherContractMapper;
     private final BizProjectMapper projectMapper;
+    private final SettlementDataMapper settlementDataMapper;
     private final ApprovalService approvalService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 分页查询
@@ -98,7 +108,7 @@ public class PaymentApplyService {
     }
 
     /**
-     * 提交付款申请（校验paymentAmount≤累计结算-已付，审批通过回写项目totalExpense+合同cumulativePaid）
+     * 提交付款申请（校验paymentAmount≤累计结算-已付后启动流程，状态置 SUBMITTED，不回写累计数据）
      */
     @BudgetCheck(category = "")
     @Transactional(rollbackFor = Exception.class)
@@ -107,8 +117,8 @@ public class PaymentApplyService {
         if (paymentApply == null) {
             throw new BusinessException("付款申请不存在");
         }
-        if (!"DRAFT".equals(paymentApply.getStatus())) {
-            throw new BusinessException("仅草稿状态可提交");
+        if (!"DRAFT".equals(paymentApply.getStatus()) && !"REJECTED".equals(paymentApply.getStatus())) {
+            throw new BusinessException("仅草稿或已驳回状态可提交");
         }
 
         // 校验付款金额
@@ -116,16 +126,7 @@ public class PaymentApplyService {
         if (contract == null) {
             throw new BusinessException("关联合同不存在");
         }
-
-        BigDecimal cumulativeSettlement = contract.getCumulativeSettlement() == null
-                ? BigDecimal.ZERO : contract.getCumulativeSettlement();
-        BigDecimal cumulativePaid = contract.getCumulativePaid() == null
-                ? BigDecimal.ZERO : contract.getCumulativePaid();
-        BigDecimal maxPayment = cumulativeSettlement.subtract(cumulativePaid);
-
-        if (paymentApply.getPaymentAmount().compareTo(maxPayment) > 0) {
-            throw new BusinessException("付款金额不能超过累计结算减已付金额，最大可付金额：" + maxPayment);
-        }
+        validatePaymentLimit(contract, paymentApply.getPaymentAmount());
 
         // 发起审批流程
         Map<String, Object> variables = new HashMap<>();
@@ -135,20 +136,102 @@ public class PaymentApplyService {
                 "PAYMENT_APPLY", id, "payment_apply_approval", variables);
 
         paymentApply.setWorkflowInstanceId(processInstanceId);
+        paymentApply.setStatus("SUBMITTED");
+        paymentApplyMapper.updateById(paymentApply);
+    }
+
+    /**
+     * 审批通过回调：回写合同累计已付与项目总支出（SQL 原子累加）
+     * <p>幂等：状态已为 APPROVED 时直接返回（兼容存量在途单据与重复事件）。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onApproved(Long id) {
+        BizPaymentApply paymentApply = paymentApplyMapper.selectById(id);
+        if (paymentApply == null) {
+            log.warn("付款申请审批通过回调：申请不存在, id={}", id);
+            return;
+        }
+        if ("APPROVED".equals(paymentApply.getStatus())) {
+            log.info("付款申请已生效，跳过重复回调, id={}", id);
+            return;
+        }
+
+        BizOtherContract contract = otherContractMapper.selectById(paymentApply.getContractId());
+        if (contract == null) {
+            log.error("付款申请审批通过回调：关联合同不存在, id={}, contractId={}", id, paymentApply.getContractId());
+            return;
+        }
+
+        // 审批期间上限可能变化，生效前重新校验；不通过则置 REJECTED 并通知发起人
+        try {
+            validatePaymentLimit(contract, paymentApply.getPaymentAmount());
+        } catch (BusinessException e) {
+            paymentApply.setStatus("REJECTED");
+            paymentApplyMapper.updateById(paymentApply);
+            notifyInitiator(paymentApply.getCreatedBy(), "付款申请生效失败", e.getMessage(), paymentApply.getWorkflowInstanceId());
+            log.warn("付款申请生效校验失败已驳回, id={}, reason={}", id, e.getMessage());
+            return;
+        }
+
         paymentApply.setStatus("APPROVED");
         paymentApplyMapper.updateById(paymentApply);
 
-        // 回写合同累计已付
-        contract.setCumulativePaid(cumulativePaid.add(paymentApply.getPaymentAmount()));
-        otherContractMapper.updateById(contract);
+        // 回写合同累计已付与项目总支出（原子累加）
+        otherContractMapper.addCumulativePaid(paymentApply.getContractId(), paymentApply.getPaymentAmount());
+        projectMapper.addTotalExpense(paymentApply.getProjectId(), paymentApply.getPaymentAmount());
 
-        // 回写项目总支出
-        BizProject project = projectMapper.selectById(paymentApply.getProjectId());
-        if (project != null) {
-            BigDecimal totalExpense = project.getTotalExpense() == null
-                    ? BigDecimal.ZERO : project.getTotalExpense();
-            project.setTotalExpense(totalExpense.add(paymentApply.getPaymentAmount()));
-            projectMapper.updateById(project);
+        log.info("付款申请审批通过并生效, id={}, paymentAmount={}", id, paymentApply.getPaymentAmount());
+    }
+
+    /**
+     * 审批驳回/撤回回调：状态置 REJECTED（数据未生效，无需回滚）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onRejected(Long id) {
+        BizPaymentApply paymentApply = paymentApplyMapper.selectById(id);
+        if (paymentApply == null) {
+            log.warn("付款申请驳回回调：申请不存在, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(paymentApply.getStatus())) {
+            return;
+        }
+        paymentApply.setStatus("REJECTED");
+        paymentApplyMapper.updateById(paymentApply);
+        log.info("付款申请审批驳回, id={}", id);
+    }
+
+    /**
+     * 校验付款金额不超过（累计结算 + 净奖惩）减已付金额
+     * <p>奖励增加可付、处罚减少可付（净奖惩：奖励为正、处罚为负）。</p>
+     */
+    private void validatePaymentLimit(BizOtherContract contract, BigDecimal paymentAmount) {
+        BigDecimal cumulativeSettlement = contract.getCumulativeSettlement() == null
+                ? BigDecimal.ZERO : contract.getCumulativeSettlement();
+        BigDecimal cumulativePaid = contract.getCumulativePaid() == null
+                ? BigDecimal.ZERO : contract.getCumulativePaid();
+        BigDecimal rewardPunishNet = settlementDataMapper.sumRewardPunishNetByContract(contract.getId());
+        if (rewardPunishNet == null) {
+            rewardPunishNet = BigDecimal.ZERO;
+        }
+        BigDecimal maxPayment = cumulativeSettlement.add(rewardPunishNet).subtract(cumulativePaid);
+
+        if (paymentAmount.compareTo(maxPayment) > 0) {
+            throw new BusinessException("付款金额不能超过（累计结算含奖惩）减已付金额，最大可付金额：" + maxPayment);
+        }
+    }
+
+    /**
+     * 站内信通知发起人（生效失败等异常场景，不静默）
+     */
+    private void notifyInitiator(Long userId, String title, String content, String workflowInstanceId) {
+        if (userId == null) {
+            return;
+        }
+        try {
+            eventPublisher.publishEvent(new UrgeNotifyEvent(this, userId, title, content, workflowInstanceId, null));
+        } catch (Exception e) {
+            log.error("发送付款申请通知失败, workflowInstanceId={}", workflowInstanceId, e);
         }
     }
 }

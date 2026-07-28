@@ -301,6 +301,11 @@ public class ProjectService {
         addCondition(conditions, failedReasons, "项目已进入施工阶段", notDraft,
                 notDraft ? "已通过" : "项目尚未进入施工阶段");
 
+        // 条件4：存在已审批的最终结算单（项目关闭的唯一通道前置）
+        boolean settlementOk = projectMapper.countApprovedSettlement(id) > 0;
+        addCondition(conditions, failedReasons, "最终结算已审批", settlementOk,
+                settlementOk ? "已通过" : "项目最终结算单尚未审批通过，需先完成最终结算");
+
         result.put("conditions", conditions);
         result.put("failedReasons", failedReasons);
         result.put("allPassed", failedReasons.isEmpty());

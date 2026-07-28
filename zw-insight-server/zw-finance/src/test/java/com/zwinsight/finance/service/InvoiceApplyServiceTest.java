@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -36,6 +37,9 @@ class InvoiceApplyServiceTest {
 
     @Mock
     private ApprovalService approvalService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private InvoiceApplyService invoiceApplyService;
@@ -203,8 +207,8 @@ class InvoiceApplyServiceTest {
     class SubmitTests {
 
         @Test
-        @DisplayName("正常路径 — 金额校验通过 + 审批流发起 + 状态变更为 APPROVED + 合同累计开票金额回写")
-        void submit_normalPath_approvalStartedAndContractUpdated() {
+        @DisplayName("正常路径 — 金额校验通过 + 审批流发起 + 状态变为 SUBMITTED（不回写合同）")
+        void submit_normalPath_approvalStartedStatusSubmitted() {
             Long id = 1L;
             Long contractId = 100L;
             BigDecimal invoiceAmount = new BigDecimal("30000.00");
@@ -228,21 +232,14 @@ class InvoiceApplyServiceTest {
 
             invoiceApplyService.submit(id);
 
-            // 验证状态变更为 APPROVED
-            assertThat(invoiceApply.getStatus()).isEqualTo("APPROVED");
+            // 提交后状态为 SUBMITTED，尚未回写合同
+            assertThat(invoiceApply.getStatus()).isEqualTo("SUBMITTED");
             assertThat(invoiceApply.getWorkflowInstanceId()).isEqualTo("process-instance-001");
-
-            // 验证 mapper.updateById 被调用保存开票申请
             verify(invoiceApplyMapper).updateById(invoiceApply);
-
-            // 验证审批流程发起
             verify(approvalService).startProcess(
                     eq("INVOICE_APPLY"), eq(id), eq("invoice_apply_approval"), anyMap());
-
-            // 验证合同累计开票金额回写：50000 + 30000 = 80000
-            assertThat(contract.getCumulativeInvoiceAmount())
-                    .isEqualByComparingTo(new BigDecimal("80000.00"));
-            verify(contractMapper).updateById(contract);
+            // 合同累计开票金额提交阶段不回写
+            verify(contractMapper, never()).addCumulativeInvoiceAmount(anyLong(), any());
         }
 
         @Test
@@ -261,7 +258,6 @@ class InvoiceApplyServiceTest {
             contract.setId(contractId);
             contract.setCumulativeOutput(new BigDecimal("100000.00"));
             contract.setCumulativeInvoiceAmount(new BigDecimal("50000.00"));
-            // maxInvoiceAmount = 100000 - 50000 = 50000，而申请开票 60000 > 50000
 
             when(invoiceApplyMapper.selectById(id)).thenReturn(invoiceApply);
             when(contractMapper.selectById(contractId)).thenReturn(contract);
@@ -270,14 +266,11 @@ class InvoiceApplyServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("开票金额不能超过累计产值减已开票金额");
 
-            // 验证审批流未发起
             verify(approvalService, never()).startProcess(anyString(), anyLong(), anyString(), anyMap());
-            // 验证合同未被更新
-            verify(contractMapper, never()).updateById(any());
         }
 
         @Test
-        @DisplayName("非 DRAFT 状态 — 抛出 BusinessException")
+        @DisplayName("非 DRAFT/REJECTED 状态 — 抛出 BusinessException")
         void submit_nonDraftStatus_throwsBusinessException() {
             Long id = 3L;
 
@@ -289,7 +282,7 @@ class InvoiceApplyServiceTest {
 
             assertThatThrownBy(() -> invoiceApplyService.submit(id))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessage("仅草稿状态可提交");
+                    .hasMessage("仅草稿或已驳回状态可提交");
 
             verify(contractMapper, never()).selectById(anyLong());
             verify(approvalService, never()).startProcess(anyString(), anyLong(), anyString(), anyMap());
@@ -315,6 +308,67 @@ class InvoiceApplyServiceTest {
                     .hasMessage("关联合同不存在");
 
             verify(approvalService, never()).startProcess(anyString(), anyLong(), anyString(), anyMap());
+        }
+    }
+
+    // ============ onApproved() / onRejected() 回调测试 ============
+
+    @Nested
+    @DisplayName("onApproved() / onRejected() 审批回调")
+    class ApprovalCallbackTests {
+
+        @Test
+        @DisplayName("审批通过 — 状态置 APPROVED + 原子累加合同开票金额")
+        void onApproved_writesBackContract() {
+            Long id = 1L;
+            Long contractId = 100L;
+            BizInvoiceApply invoiceApply = new BizInvoiceApply();
+            invoiceApply.setId(id);
+            invoiceApply.setContractId(contractId);
+            invoiceApply.setInvoiceAmount(new BigDecimal("30000.00"));
+            invoiceApply.setStatus("SUBMITTED");
+
+            BizConstructionContract contract = new BizConstructionContract();
+            contract.setId(contractId);
+            contract.setCumulativeOutput(new BigDecimal("100000.00"));
+            contract.setCumulativeInvoiceAmount(new BigDecimal("50000.00"));
+
+            when(invoiceApplyMapper.selectById(id)).thenReturn(invoiceApply);
+            when(contractMapper.selectById(contractId)).thenReturn(contract);
+
+            invoiceApplyService.onApproved(id);
+
+            assertThat(invoiceApply.getStatus()).isEqualTo("APPROVED");
+            verify(contractMapper).addCumulativeInvoiceAmount(contractId, new BigDecimal("30000.00"));
+        }
+
+        @Test
+        @DisplayName("审批通过 — 已生效幂等跳过，不重复回写")
+        void onApproved_idempotent() {
+            Long id = 1L;
+            BizInvoiceApply invoiceApply = new BizInvoiceApply();
+            invoiceApply.setId(id);
+            invoiceApply.setStatus("APPROVED");
+            when(invoiceApplyMapper.selectById(id)).thenReturn(invoiceApply);
+
+            invoiceApplyService.onApproved(id);
+
+            verify(contractMapper, never()).addCumulativeInvoiceAmount(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("审批驳回 — SUBMITTED 置 REJECTED，不回写金额")
+        void onRejected_setsRejected() {
+            Long id = 1L;
+            BizInvoiceApply invoiceApply = new BizInvoiceApply();
+            invoiceApply.setId(id);
+            invoiceApply.setStatus("SUBMITTED");
+            when(invoiceApplyMapper.selectById(id)).thenReturn(invoiceApply);
+
+            invoiceApplyService.onRejected(id);
+
+            assertThat(invoiceApply.getStatus()).isEqualTo("REJECTED");
+            verify(contractMapper, never()).addCumulativeInvoiceAmount(anyLong(), any());
         }
     }
 }

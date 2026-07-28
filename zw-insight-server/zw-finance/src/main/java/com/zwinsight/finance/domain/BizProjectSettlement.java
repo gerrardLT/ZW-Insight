@@ -60,6 +60,12 @@ public class BizProjectSettlement extends BaseEntity {
     /** 其他支出 */
     private BigDecimal otherExpense;
 
+    /** 净奖惩金额（奖励为正、处罚为负，计入总支出） */
+    private BigDecimal rewardPunishNet;
+
+    /** 最终结算金额（与甲方确认的结算收入，为空时收入取累计产值） */
+    private BigDecimal finalSettlementAmount;
+
     /** 累计付款 */
     private BigDecimal cumulativePaid;
 

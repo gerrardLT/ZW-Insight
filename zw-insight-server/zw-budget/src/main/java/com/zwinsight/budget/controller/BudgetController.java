@@ -6,6 +6,7 @@ import com.zwinsight.budget.dto.BudgetCreateRequest;
 import com.zwinsight.budget.service.BudgetService;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -42,12 +43,14 @@ public class BudgetController {
     }
 
     @PostMapping
+    @RequiresPermission("budget:budget:add")
     public R<Void> save(@Valid @RequestBody BudgetCreateRequest request) {
         budgetService.saveFromRequest(request);
         return R.ok();
     }
 
     @PostMapping("/{id}/submit")
+    @RequiresPermission("budget:budget:submit")
     public R<Void> submit(@PathVariable Long id) {
         budgetService.submit(id);
         return R.ok();
@@ -59,12 +62,14 @@ public class BudgetController {
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("budget:budget:edit")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody BudgetCreateRequest request) {
         budgetService.updateFromRequest(id, request);
         return R.ok();
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("budget:budget:delete")
     public R<Void> delete(@PathVariable Long id) {
         budgetService.delete(id);
         return R.ok();

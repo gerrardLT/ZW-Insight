@@ -1,5 +1,6 @@
 package com.zwinsight.contract.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -7,6 +8,7 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 产值报告实体
@@ -47,7 +49,7 @@ public class BizOutputReport extends BaseEntity {
     private LocalDate confirmDate;
 
     /**
-     * 状态（DRAFT-草稿/APPROVED-已审批）
+     * 状态（DRAFT-草稿/SUBMITTED-审批中/APPROVED-已审批/REJECTED-已驳回）
      */
     private String status;
 
@@ -55,4 +57,10 @@ public class BizOutputReport extends BaseEntity {
      * 流程实例ID
      */
     private String workflowInstanceId;
+
+    /**
+     * 产值明细（按工程量清单条目填报，可选；不持久化到主表）
+     */
+    @TableField(exist = false)
+    private List<BizOutputReportDetail> details;
 }

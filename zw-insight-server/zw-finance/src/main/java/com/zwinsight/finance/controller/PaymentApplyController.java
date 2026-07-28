@@ -2,6 +2,7 @@ package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
 import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.service.PaymentApplyService;
@@ -56,6 +57,7 @@ public class PaymentApplyController {
 
     @PostMapping("/{id}/submit")
     @PutMapping("/{id}/submit")
+    @RequiresPermission("finance:payment:submit")
     public R<Void> submit(@PathVariable Long id) {
         paymentApplyService.submit(id);
         return R.ok();

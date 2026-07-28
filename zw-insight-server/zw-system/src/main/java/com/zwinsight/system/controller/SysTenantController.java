@@ -2,6 +2,7 @@ package com.zwinsight.system.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.security.domain.SysTenant;
 import com.zwinsight.system.dto.TenantCreateRequest;
 import com.zwinsight.system.dto.TenantModulesRequest;
@@ -43,12 +44,14 @@ public class SysTenantController {
     }
 
     @PostMapping
+    @RequiresPermission("system:tenant:add")
     public R<Void> create(@RequestBody TenantCreateRequest request) {
         tenantService.createTenant(request);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("system:tenant:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody SysTenant tenant) {
         tenant.setId(id);
         tenantService.update(tenant);
@@ -56,6 +59,7 @@ public class SysTenantController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("system:tenant:delete")
     public R<Void> delete(@PathVariable Long id) {
         tenantService.delete(id);
         return R.ok();
@@ -67,6 +71,7 @@ public class SysTenantController {
      * 停用租户
      */
     @PostMapping("/{id}/disable")
+    @RequiresPermission("system:tenant:status")
     public R<Void> disable(@PathVariable Long id) {
         tenantService.disableTenant(id);
         return R.ok();
@@ -76,6 +81,7 @@ public class SysTenantController {
      * 启用租户
      */
     @PostMapping("/{id}/enable")
+    @RequiresPermission("system:tenant:status")
     public R<Void> enable(@PathVariable Long id) {
         tenantService.enableTenant(id);
         return R.ok();
@@ -85,6 +91,7 @@ public class SysTenantController {
      * 续期
      */
     @PostMapping("/{id}/renew")
+    @RequiresPermission("system:tenant:renew")
     public R<Void> renew(@PathVariable Long id, @RequestBody TenantRenewRequest request) {
         tenantService.renewTenant(id, request.getDurationDays());
         return R.ok();
@@ -94,6 +101,7 @@ public class SysTenantController {
      * 配置功能模块权限
      */
     @PutMapping("/{id}/modules")
+    @RequiresPermission("system:tenant:modules")
     public R<Void> updateModules(@PathVariable Long id, @RequestBody TenantModulesRequest request) {
         tenantService.updateModules(id, request.getModules());
         return R.ok();
@@ -102,12 +110,14 @@ public class SysTenantController {
     // ============ 旧版兼容接口 ============
 
     @PostMapping("/renew")
+    @RequiresPermission("system:tenant:renew")
     public R<Void> renewLegacy(@RequestBody TenantRenewRequest request) {
         tenantService.renew(request.getTenantId(), request.getDurationDays());
         return R.ok();
     }
 
     @PutMapping("/{id}/permissions")
+    @RequiresPermission("system:tenant:modules")
     public R<Void> updatePermissions(@PathVariable Long id, @RequestBody List<Long> menuIds) {
         tenantService.updatePermissions(id, menuIds);
         return R.ok();

@@ -2,6 +2,7 @@ package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizBankAccount;
 import com.zwinsight.finance.service.BankAccountService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class BankAccountController {
      * 新增
      */
     @PostMapping
+    @RequiresPermission("finance:bankaccount:add")
     public R<Void> save(@RequestBody BizBankAccount bankAccount) {
         bankAccountService.save(bankAccount);
         return R.ok();
@@ -42,6 +44,7 @@ public class BankAccountController {
      * 更新
      */
     @PutMapping
+    @RequiresPermission("finance:bankaccount:edit")
     public R<Void> update(@RequestBody BizBankAccount bankAccount) {
         bankAccountService.update(bankAccount);
         return R.ok();
@@ -51,6 +54,7 @@ public class BankAccountController {
      * 删除
      */
     @DeleteMapping("/{id}")
+    @RequiresPermission("finance:bankaccount:delete")
     public R<Void> delete(@PathVariable Long id) {
         bankAccountService.delete(id);
         return R.ok();

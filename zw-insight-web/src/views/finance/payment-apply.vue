@@ -56,7 +56,7 @@
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看</el-button>
-            <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitApply(row)">提交</el-button>
+            <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="success" @click="handleSubmitApply(row)">提交</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -158,8 +158,10 @@ function handleSupplierChange(_val: number | undefined, item: any) {
 
 const statusMap: Record<string, { label: string; type: string }> = {
   DRAFT: { label: '草稿', type: 'info' },
+  SUBMITTED: { label: '审批中', type: 'warning' },
   APPROVING: { label: '审批中', type: 'warning' },
   APPROVED: { label: '已通过', type: 'success' },
+  REJECTED: { label: '已驳回', type: 'danger' },
   PAID: { label: '已付款', type: 'primary' }
 }
 

@@ -2,6 +2,7 @@ package com.zwinsight.contract.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.service.OtherContractService;
 import lombok.RequiredArgsConstructor;
@@ -32,12 +33,14 @@ public class OtherContractController {
     }
 
     @PostMapping
+    @RequiresPermission("contract:othercontract:add")
     public R<Void> save(@RequestBody BizOtherContract contract) {
         otherContractService.save(contract);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("contract:othercontract:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody BizOtherContract contract) {
         contract.setId(id);
         otherContractService.update(contract);
@@ -45,6 +48,7 @@ public class OtherContractController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("contract:othercontract:delete")
     public R<Void> delete(@PathVariable Long id) {
         otherContractService.delete(id);
         return R.ok();

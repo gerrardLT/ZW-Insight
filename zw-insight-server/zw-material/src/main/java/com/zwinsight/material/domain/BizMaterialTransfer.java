@@ -26,8 +26,11 @@ public class BizMaterialTransfer extends BaseEntity {
     /** 调拨日期 */
     private LocalDate transferDate;
 
-    /** 状态（DRAFT-草稿/APPROVED-已审批） */
+    /** 状态（DRAFT-草稿/SUBMITTED-审批中/APPROVED-已审批/REJECTED-已驳回） */
     private String status;
+
+    /** 流程实例ID */
+    private String workflowInstanceId;
 
     /** 调拨明细（随主表提交，非表字段） */
     @TableField(exist = false)

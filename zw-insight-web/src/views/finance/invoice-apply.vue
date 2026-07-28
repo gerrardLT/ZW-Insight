@@ -47,15 +47,15 @@
         <el-table-column prop="applyDate" label="申请日期" width="110" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'APPROVED' ? 'success' : row.status === 'APPROVING' ? 'warning' : 'info'" size="small">
-              {{ row.status === 'APPROVED' ? '已通过' : row.status === 'APPROVING' ? '审批中' : '草稿' }}
+            <el-tag :type="getStatusType(row.status)" size="small">
+              {{ getStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看</el-button>
-            <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitApply(row)">提交</el-button>
+            <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="success" @click="handleSubmitApply(row)">提交</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -161,6 +161,22 @@ function formatMoney(val: number) {
   return val.toLocaleString('zh-CN', { minimumFractionDigits: 2 })
 }
 
+const statusMap: Record<string, { label: string; type: string }> = {
+  DRAFT: { label: '草稿', type: 'info' },
+  SUBMITTED: { label: '审批中', type: 'warning' },
+  APPROVING: { label: '审批中', type: 'warning' },
+  APPROVED: { label: '已通过', type: 'success' },
+  REJECTED: { label: '已驳回', type: 'danger' }
+}
+
+function getStatusLabel(status: string) {
+  return statusMap[status]?.label || status
+}
+
+function getStatusType(status: string) {
+  return (statusMap[status]?.type || 'info') as any
+}
+
 async function searchProject(query: string) {
   const res: any = await getProjectList({ projectName: query })
   projectList.value = res.data || []
@@ -212,7 +228,7 @@ async function handleFormSubmit() {
 async function handleSubmitApply(row: any) {
   await ElMessageBox.confirm('确定要提交该开票申请吗？', '提示', { type: 'warning' })
   await submitInvoiceApply(row.id)
-  ElMessage.success('提交成功')
+  ElMessage.success('已提交审批，审批通过后生效')
   loadData()
 }
 

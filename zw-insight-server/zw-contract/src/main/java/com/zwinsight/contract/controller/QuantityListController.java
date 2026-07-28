@@ -2,6 +2,7 @@ package com.zwinsight.contract.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.contract.domain.BizQuantityList;
 import com.zwinsight.contract.service.QuantityListService;
 import lombok.RequiredArgsConstructor;
@@ -28,12 +29,14 @@ public class QuantityListController {
     }
 
     @PostMapping
+    @RequiresPermission("contract:quantitylist:add")
     public R<Void> save(@RequestBody BizQuantityList quantityList) {
         quantityListService.save(quantityList);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("contract:quantitylist:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody BizQuantityList quantityList) {
         quantityList.setId(id);
         quantityListService.update(quantityList);
@@ -41,12 +44,14 @@ public class QuantityListController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("contract:quantitylist:delete")
     public R<Void> delete(@PathVariable Long id) {
         quantityListService.delete(id);
         return R.ok();
     }
 
     @PostMapping("/import")
+    @RequiresPermission("contract:quantitylist:import")
     public R<Integer> batchImport(
             @RequestParam("file") MultipartFile file,
             @RequestParam Long projectId,

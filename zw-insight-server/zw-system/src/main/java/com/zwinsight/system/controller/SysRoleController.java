@@ -2,6 +2,7 @@ package com.zwinsight.system.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysRole;
 import com.zwinsight.system.domain.dto.DataScopeUpdateRequest;
 import com.zwinsight.system.service.SysRoleService;
@@ -36,12 +37,14 @@ public class SysRoleController {
     }
 
     @PostMapping
+    @RequiresPermission("system:role:add")
     public R<Void> save(@RequestBody SysRole role) {
         roleService.save(role);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("system:role:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody SysRole role) {
         role.setId(id);
         roleService.update(role);
@@ -49,6 +52,7 @@ public class SysRoleController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("system:role:delete")
     public R<Void> delete(@PathVariable Long id) {
         roleService.delete(id);
         return R.ok();
@@ -60,6 +64,7 @@ public class SysRoleController {
     }
 
     @PutMapping("/{id}/menus")
+    @RequiresPermission("system:role:assign-menu")
     public R<Void> assignMenus(@PathVariable Long id, @RequestBody List<Long> menuIds) {
         roleService.assignMenus(id, menuIds);
         return R.ok();
@@ -72,6 +77,7 @@ public class SysRoleController {
      * ALL / DEPT_AND_CHILDREN / DEPT / PROJECT / SELF
      */
     @PutMapping("/{id}/data-scope")
+    @RequiresPermission("system:role:data-scope")
     public R<Void> updateDataScope(@PathVariable Long id,
                                    @Valid @RequestBody DataScopeUpdateRequest request) {
         roleService.updateDataScope(id, request.getDataScope());

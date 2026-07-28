@@ -5,6 +5,7 @@ import com.zwinsight.budget.dto.BudgetControlConfigDTO;
 import com.zwinsight.budget.service.BudgetControlConfigService;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -46,6 +47,7 @@ public class BudgetControlConfigController {
      * 创建配置
      */
     @PostMapping
+    @RequiresPermission("budget:budgetcontrolconfig:add")
     public R<Void> save(@Valid @RequestBody BudgetControlConfigDTO dto) {
         budgetControlConfigService.save(dto);
         return R.ok();
@@ -55,6 +57,7 @@ public class BudgetControlConfigController {
      * 编辑配置
      */
     @PutMapping("/{id}")
+    @RequiresPermission("budget:budgetcontrolconfig:edit")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody BudgetControlConfigDTO dto) {
         budgetControlConfigService.update(id, dto);
         return R.ok();
@@ -64,6 +67,7 @@ public class BudgetControlConfigController {
      * 删除配置
      */
     @DeleteMapping("/{id}")
+    @RequiresPermission("budget:budgetcontrolconfig:delete")
     public R<Void> delete(@PathVariable Long id) {
         budgetControlConfigService.delete(id);
         return R.ok();

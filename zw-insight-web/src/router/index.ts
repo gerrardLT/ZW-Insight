@@ -206,6 +206,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'ContractBoqUpload',
         component: () => import('@/views/contract/boq-upload.vue'),
         meta: { title: 'BOQ 上传', hidden: true }
+      },
+      {
+        path: 'output-report',
+        name: 'OutputReport',
+        component: () => import('@/views/contract/output-report.vue'),
+        meta: { title: '产值上报', icon: 'TrendCharts' }
       }
     ]
   },

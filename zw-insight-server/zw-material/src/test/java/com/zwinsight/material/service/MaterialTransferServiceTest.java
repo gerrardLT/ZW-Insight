@@ -8,6 +8,7 @@ import com.zwinsight.material.mapper.BizMaterialTransferDetailMapper;
 import com.zwinsight.material.mapper.BizMaterialTransferMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.workflow.service.ApprovalService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,83 +30,128 @@ class MaterialTransferServiceTest {
     @Mock private BizMaterialTransferDetailMapper transferDetailMapper;
     @Mock private BizProjectMaterialStockMapper stockMapper;
     @Mock private BizProjectMapper projectMapper;
-
+    @Mock private ApprovalService approvalService;
+    
     @InjectMocks
     private MaterialTransferService materialTransferService;
-
+    
     @Test
-    @DisplayName("保存调拨：调出减库存+调入增库存")
-    void testSave_transferStock() {
+    @DisplayName("保存调拨：仅落单据不变更库存")
+    void testSave_onlyPersist() {
         BizMaterialTransfer transfer = new BizMaterialTransfer();
         transfer.setFromProjectId(1L);
         transfer.setToProjectId(2L);
-
+    
         BizMaterialTransferDetail detail = new BizMaterialTransferDetail();
         detail.setMaterialName("钢筋");
         detail.setSpecification("HRB400");
         detail.setQuantity(new BigDecimal("10"));
         detail.setUnitPrice(new BigDecimal("200"));
-
+    
+        materialTransferService.save(transfer, List.of(detail));
+    
+        assertThat(transfer.getStatus()).isEqualTo("DRAFT");
+        verify(transferDetailMapper).insert(any());
+        // 库存在保存阶段不变更
+        verify(stockMapper, never()).updateById(any());
+        verify(stockMapper, never()).insert(any());
+    }
+    
+    @Test
+    @DisplayName("审批通过：调出减库存+调入新建库存")
+    void testOnApproved_transferStock() {
+        BizMaterialTransfer transfer = new BizMaterialTransfer();
+        transfer.setId(1L);
+        transfer.setStatus("SUBMITTED");
+        transfer.setFromProjectId(1L);
+        transfer.setToProjectId(2L);
+        when(transferMapper.selectById(1L)).thenReturn(transfer);
+    
+        BizMaterialTransferDetail detail = new BizMaterialTransferDetail();
+        detail.setMaterialName("钢筋");
+        detail.setSpecification("HRB400");
+        detail.setQuantity(new BigDecimal("10"));
+        detail.setUnitPrice(new BigDecimal("200"));
+        when(transferDetailMapper.selectList(any())).thenReturn(List.of(detail));
+    
         BizProjectMaterialStock fromStock = new BizProjectMaterialStock();
         fromStock.setStockQuantity(new BigDecimal("50"));
         fromStock.setTotalTransferOut(BigDecimal.ZERO);
-
-        // 第一次 selectOne 返回调出方库存，第二次返回 null（调入方无库存，新建）
         when(stockMapper.selectOne(any())).thenReturn(fromStock).thenReturn(null);
-
-        materialTransferService.save(transfer, List.of(detail));
-
-        assertThat(transfer.getStatus()).isEqualTo("DRAFT");
-        assertThat(fromStock.getStockQuantity()).isEqualTo(new BigDecimal("40"));
-        assertThat(fromStock.getTotalTransferOut()).isEqualTo(new BigDecimal("10"));
-        verify(stockMapper).insert(any()); // 调入方新建库存
+    
+        materialTransferService.onApproved(1L);
+    
+        assertThat(transfer.getStatus()).isEqualTo("APPROVED");
+        assertThat(fromStock.getStockQuantity()).isEqualByComparingTo(new BigDecimal("40"));
+        verify(stockMapper).insert(any());
     }
-
+    
     @Test
-    @DisplayName("保存调拨：调出方库存不足抛异常")
-    void testSave_stockInsufficient() {
+    @DisplayName("审批通过：已生效幂等跳过")
+    void testOnApproved_idempotent() {
         BizMaterialTransfer transfer = new BizMaterialTransfer();
+        transfer.setId(1L);
+        transfer.setStatus("APPROVED");
+        when(transferMapper.selectById(1L)).thenReturn(transfer);
+    
+        materialTransferService.onApproved(1L);
+    
+        verify(transferDetailMapper, never()).selectList(any());
+        verify(stockMapper, never()).updateById(any());
+    }
+    
+    @Test
+    @DisplayName("审批通过：调出方库存不足拒绝")
+    void testOnApproved_stockInsufficient() {
+        BizMaterialTransfer transfer = new BizMaterialTransfer();
+        transfer.setId(1L);
+        transfer.setStatus("SUBMITTED");
         transfer.setFromProjectId(1L);
         transfer.setToProjectId(2L);
-
+        when(transferMapper.selectById(1L)).thenReturn(transfer);
+    
         BizMaterialTransferDetail detail = new BizMaterialTransferDetail();
         detail.setMaterialName("钢筋");
         detail.setSpecification("HRB400");
         detail.setQuantity(new BigDecimal("100"));
-
+        when(transferDetailMapper.selectList(any())).thenReturn(List.of(detail));
+    
         BizProjectMaterialStock fromStock = new BizProjectMaterialStock();
         fromStock.setStockQuantity(new BigDecimal("10"));
         when(stockMapper.selectOne(any())).thenReturn(fromStock);
-
-        assertThatThrownBy(() -> materialTransferService.save(transfer, List.of(detail)))
+    
+        assertThatThrownBy(() -> materialTransferService.onApproved(1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("库存不足");
     }
-
+    
     @Test
-    @DisplayName("提交调拨：DRAFT→APPROVED")
+    @DisplayName("提交调拨：DRAFT→SUBMITTED并启动流程")
     void testSubmit() {
         BizMaterialTransfer transfer = new BizMaterialTransfer();
         transfer.setId(1L);
         transfer.setStatus("DRAFT");
         when(transferMapper.selectById(1L)).thenReturn(transfer);
-
+        when(approvalService.startProcess(eq("MATERIAL_TRANSFER"), eq(1L), eq("material_transfer_approval"), anyMap()))
+                .thenReturn("proc-1");
+    
         materialTransferService.submit(1L);
-
-        assertThat(transfer.getStatus()).isEqualTo("APPROVED");
+    
+        assertThat(transfer.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(transfer.getWorkflowInstanceId()).isEqualTo("proc-1");
     }
-
+    
     @Test
-    @DisplayName("提交调拨：非DRAFT拒绝")
+    @DisplayName("提交调拨：非DRAFT/REJECTED拒绝")
     void testSubmit_nonDraft() {
         BizMaterialTransfer transfer = new BizMaterialTransfer();
         transfer.setId(1L);
         transfer.setStatus("APPROVED");
         when(transferMapper.selectById(1L)).thenReturn(transfer);
-
+    
         assertThatThrownBy(() -> materialTransferService.submit(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅草稿状态可提交");
+                .hasMessageContaining("仅草稿或已驳回状态可提交");
     }
 
     @Test

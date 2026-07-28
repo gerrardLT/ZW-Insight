@@ -7,8 +7,10 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.machine.domain.BizMachineEntry;
 import com.zwinsight.machine.domain.BizMachineLedger;
+import com.zwinsight.machine.domain.BizMachineWorkLog;
 import com.zwinsight.machine.mapper.BizMachineEntryMapper;
 import com.zwinsight.machine.mapper.BizMachineLedgerMapper;
+import com.zwinsight.machine.mapper.BizMachineWorkLogMapper;
 import com.zwinsight.machine.util.MachineNameFiller;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.util.ProjectNameFiller;
@@ -29,6 +31,7 @@ public class MachineEntryService {
     private final BizMachineEntryMapper entryMapper;
     private final BizMachineLedgerMapper ledgerMapper;
     private final BizProjectMapper projectMapper;
+    private final BizMachineWorkLogMapper workLogMapper;
 
     /**
      * 分页查询进退场记录
@@ -107,6 +110,15 @@ public class MachineEntryService {
         if (ledger == null) throw new BusinessException("机械不存在");
         if (!"IN_FIELD".equals(ledger.getStatus())) {
             throw new BusinessException("仅在场的机械可退场");
+        }
+        // 退场前置校验：该机械的工作量记录须全部完成结算
+        LambdaQueryWrapper<BizMachineWorkLog> unsettledWrapper = new LambdaQueryWrapper<>();
+        unsettledWrapper.eq(BizMachineWorkLog::getMachineId, entry.getMachineId())
+                .and(w -> w.isNull(BizMachineWorkLog::getSettlementStatus)
+                        .or().ne(BizMachineWorkLog::getSettlementStatus, "SETTLED"));
+        Long unsettledCount = workLogMapper.selectCount(unsettledWrapper);
+        if (unsettledCount != null && unsettledCount > 0) {
+            throw new BusinessException("存在" + unsettledCount + "条未结算的工作量记录，须先完成工作量结算方可退场");
         }
         entry.setEntryType("OUT");
         entryMapper.insert(entry);

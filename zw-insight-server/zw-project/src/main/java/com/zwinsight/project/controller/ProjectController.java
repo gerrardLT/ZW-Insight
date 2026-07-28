@@ -2,6 +2,7 @@ package com.zwinsight.project.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.domain.BizProjectMember;
 import com.zwinsight.project.domain.dto.ProjectCreateRequest;
@@ -62,12 +63,14 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("project:delete")
     public R<Void> delete(@PathVariable Long id) {
         projectService.delete(id);
         return R.ok();
     }
 
     @DeleteMapping("/batch")
+    @RequiresPermission("project:delete")
     public R<Void> batchDelete(@RequestBody List<Long> ids) {
         projectService.batchDelete(ids);
         return R.ok();

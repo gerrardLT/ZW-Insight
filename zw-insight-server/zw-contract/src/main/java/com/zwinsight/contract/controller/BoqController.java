@@ -1,6 +1,7 @@
 package com.zwinsight.contract.controller;
 
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.contract.domain.BizBoqItem;
 import com.zwinsight.contract.dto.BoqUploadResultVO;
 import com.zwinsight.contract.service.BoqService;
@@ -28,6 +29,7 @@ public class BoqController {
      * @return 上传结果（条目数、层级数、合计金额、文件地址）
      */
     @PostMapping("/upload")
+    @RequiresPermission("contract:boq:upload")
     public R<BoqUploadResultVO> uploadBoq(
             @PathVariable Long contractId,
             @RequestParam("file") MultipartFile file) {
@@ -63,6 +65,7 @@ public class BoqController {
      * @return 操作结果
      */
     @DeleteMapping
+    @RequiresPermission("contract:boq:delete")
     public R<Void> deleteBoq(@PathVariable Long contractId) {
         boqService.deleteBoq(contractId);
         return R.ok();

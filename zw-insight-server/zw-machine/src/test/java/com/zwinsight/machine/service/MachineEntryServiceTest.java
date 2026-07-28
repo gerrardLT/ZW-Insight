@@ -5,6 +5,7 @@ import com.zwinsight.machine.domain.BizMachineEntry;
 import com.zwinsight.machine.domain.BizMachineLedger;
 import com.zwinsight.machine.mapper.BizMachineEntryMapper;
 import com.zwinsight.machine.mapper.BizMachineLedgerMapper;
+import com.zwinsight.machine.mapper.BizMachineWorkLogMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,12 +24,13 @@ class MachineEntryServiceTest {
     @Mock private BizMachineEntryMapper entryMapper;
     @Mock private BizMachineLedgerMapper ledgerMapper;
     @Mock private BizProjectMapper projectMapper;
+    @Mock private BizMachineWorkLogMapper workLogMapper;
 
     private MachineEntryService machineEntryService;
 
     @BeforeEach
     void setUp() {
-        machineEntryService = new MachineEntryService(entryMapper, ledgerMapper, projectMapper);
+        machineEntryService = new MachineEntryService(entryMapper, ledgerMapper, projectMapper, workLogMapper);
     }
 
     @Test
@@ -77,18 +79,37 @@ class MachineEntryServiceTest {
     }
 
     @Test
-    @DisplayName("退场：IN_FIELD可退场")
+    @DisplayName("退场：IN_FIELD且工作量已全部结算可退场")
     void testEntryOut() {
         BizMachineEntry entry = new BizMachineEntry();
         entry.setMachineId(1L);
         BizMachineLedger ledger = new BizMachineLedger();
         ledger.setStatus("IN_FIELD");
         when(ledgerMapper.selectById(anyLong())).thenReturn(ledger);
+        // 无未结算工作量
+        when(workLogMapper.selectCount(any())).thenReturn(0L);
 
         machineEntryService.entryOut(entry);
 
         assertThat(entry.getEntryType()).isEqualTo("OUT");
         assertThat(ledger.getStatus()).isEqualTo("OUT_FIELD");
+    }
+
+    @Test
+    @DisplayName("退场：存在未结算工作量时拒绝")
+    void testEntryOut_unsettledWorkLog_rejected() {
+        BizMachineEntry entry = new BizMachineEntry();
+        entry.setMachineId(1L);
+        BizMachineLedger ledger = new BizMachineLedger();
+        ledger.setStatus("IN_FIELD");
+        when(ledgerMapper.selectById(anyLong())).thenReturn(ledger);
+        // 存在 2 条未结算工作量
+        when(workLogMapper.selectCount(any())).thenReturn(2L);
+
+        assertThatThrownBy(() -> machineEntryService.entryOut(entry))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("未结算的工作量记录");
+        verify(entryMapper, never()).insert(any());
     }
 
     @Test

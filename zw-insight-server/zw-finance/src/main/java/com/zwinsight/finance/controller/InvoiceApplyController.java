@@ -2,6 +2,7 @@ package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
 import com.zwinsight.finance.domain.BizInvoiceApply;
 import com.zwinsight.finance.domain.dto.InvoiceApplyCreateRequest;
@@ -37,6 +38,7 @@ public class InvoiceApplyController {
 
     @PostMapping
     @FinanceLockCheck(dateField = "applyDate", operation = "新增")
+    @RequiresPermission("finance:invoiceapply:add")
     public R<Void> save(@Valid @RequestBody InvoiceApplyCreateRequest request) {
         invoiceApplyService.saveFromRequest(request);
         return R.ok();
@@ -44,12 +46,14 @@ public class InvoiceApplyController {
 
     @PutMapping("/{id}")
     @FinanceLockCheck(dateField = "applyDate", operation = "编辑")
+    @RequiresPermission("finance:invoiceapply:edit")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody InvoiceApplyCreateRequest request) {
         invoiceApplyService.updateFromRequest(id, request);
         return R.ok();
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("finance:invoiceapply:delete")
     public R<Void> delete(@PathVariable Long id) {
         invoiceApplyService.delete(id);
         return R.ok();
@@ -57,6 +61,7 @@ public class InvoiceApplyController {
 
     @PostMapping("/{id}/submit")
     @PutMapping("/{id}/submit")
+    @RequiresPermission("finance:invoiceapply:submit")
     public R<Void> submit(@PathVariable Long id) {
         invoiceApplyService.submit(id);
         return R.ok();

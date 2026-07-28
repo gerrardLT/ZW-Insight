@@ -65,4 +65,25 @@ public interface SettlementDataMapper {
     @Select("SELECT COALESCE(SUM(invoice_amount), 0) FROM biz_invoice_apply " +
             "WHERE project_id = #{projectId} AND status = 'APPROVED' AND deleted = 0")
     BigDecimal sumInvoicedByProject(@Param("projectId") Long projectId);
+
+    /**
+     * 查询项目净奖惩金额（奖励为正、处罚为负；覆盖劳务/分包两张奖惩表）
+     * <p>奖励增加应付支出、处罚从应付中扣减，用于最终结算支出汇总。</p>
+     */
+    @Select("SELECT COALESCE(SUM(CASE WHEN rp_type = 'REWARD' THEN amount ELSE -amount END), 0) FROM (" +
+            "SELECT rp_type, amount FROM biz_labor_reward_punish WHERE project_id = #{projectId} AND deleted = 0 " +
+            "UNION ALL " +
+            "SELECT rp_type, amount FROM biz_subcontract_reward_punish WHERE project_id = #{projectId} AND deleted = 0" +
+            ") t")
+    BigDecimal sumRewardPunishNetByProject(@Param("projectId") Long projectId);
+
+    /**
+     * 查询合同净奖惩金额（奖励为正、处罚为负；用于付款可付额度计算）
+     */
+    @Select("SELECT COALESCE(SUM(CASE WHEN rp_type = 'REWARD' THEN amount ELSE -amount END), 0) FROM (" +
+            "SELECT rp_type, amount FROM biz_labor_reward_punish WHERE contract_id = #{contractId} AND deleted = 0 " +
+            "UNION ALL " +
+            "SELECT rp_type, amount FROM biz_subcontract_reward_punish WHERE contract_id = #{contractId} AND deleted = 0" +
+            ") t")
+    BigDecimal sumRewardPunishNetByContract(@Param("contractId") Long contractId);
 }

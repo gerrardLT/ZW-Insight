@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.basedata.annotation.BlacklistCheck;
 import com.zwinsight.budget.annotation.BudgetCheck;
-import com.zwinsight.budget.service.BudgetControlService;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.file.service.SerialNumberService;
@@ -33,7 +32,6 @@ public class PurchaseContractService {
     private final BizPurchaseContractMapper purchaseContractMapper;
     private final BizPurchaseContractDetailMapper detailMapper;
     private final SerialNumberService serialNumberService;
-    private final BudgetControlService budgetControlService;
     private final ApprovalService approvalService;
 
     /**
@@ -66,15 +64,13 @@ public class PurchaseContractService {
      * 新增采购合同（自动编号 + 预算校验 + 黑名单拦截）
      */
     @BlacklistCheck
+    @BudgetCheck(category = "MATERIAL")
     @Transactional(rollbackFor = Exception.class)
     public void save(BizPurchaseContract contract) {
         // 自动生成合同编号
         String contractCode = serialNumberService.generate("PURCHASE_CONTRACT");
         contract.setContractCode(contractCode);
         contract.setStatus("DRAFT");
-
-        // 预算校验（材料采购归类为 MATERIAL）
-        budgetControlService.checkBudget(contract.getProjectId(), "MATERIAL", contract.getContractAmount());
 
         // 初始化累计字段
         if (contract.getCumulativeInbound() == null) {

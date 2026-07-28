@@ -102,6 +102,17 @@ export interface OtherContract {
   createdAt?: string
 }
 
+/** 产值报告明细（按 BOQ 清单行填报，可选） */
+export interface OutputReportDetail {
+  boqItemId: ID
+  itemCode?: string
+  itemName?: string
+  unit?: string
+  unitPrice?: number
+  quantity: number
+  amount?: number
+}
+
 /** 产值报告 */
 export interface OutputReport {
   id: ID
@@ -112,4 +123,5 @@ export interface OutputReport {
   cumulativeOutput?: number
   confirmDate?: string
   status: string
+  details?: OutputReportDetail[]
 }

@@ -2,6 +2,7 @@ package com.zwinsight.contract.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.contract.domain.BizChangeVisa;
 import com.zwinsight.contract.service.ChangeVisaService;
 import lombok.RequiredArgsConstructor;
@@ -28,12 +29,14 @@ public class ChangeVisaController {
     }
 
     @PostMapping
+    @RequiresPermission("contract:changevisa:add")
     public R<Void> save(@RequestBody BizChangeVisa changeVisa) {
         changeVisaService.save(changeVisa);
         return R.ok();
     }
 
     @PostMapping("/{id}/submit")
+    @RequiresPermission("contract:changevisa:submit")
     public R<Void> submit(@PathVariable Long id) {
         changeVisaService.submit(id);
         return R.ok();

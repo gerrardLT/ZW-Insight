@@ -1,6 +1,7 @@
 package com.zwinsight.contract.controller;
 
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.contract.domain.BizBomItem;
 import com.zwinsight.contract.service.BomItemService;
 import lombok.RequiredArgsConstructor;
@@ -25,12 +26,14 @@ public class BomItemController {
     }
 
     @PostMapping
+    @RequiresPermission("contract:bom:add")
     public R<Void> save(@RequestBody BizBomItem item) {
         bomItemService.save(item);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("contract:bom:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody BizBomItem item) {
         item.setId(id);
         bomItemService.update(item);
@@ -38,12 +41,14 @@ public class BomItemController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("contract:bom:delete")
     public R<Void> delete(@PathVariable Long id) {
         bomItemService.delete(id);
         return R.ok();
     }
 
     @PostMapping("/import")
+    @RequiresPermission("contract:bom:import")
     public R<Void> batchImport(@RequestParam Long projectId,
                                @RequestParam Long contractId,
                                @RequestParam("file") MultipartFile file) {

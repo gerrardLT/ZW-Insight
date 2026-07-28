@@ -20,6 +20,11 @@ public class ProjectSettlementUpdateDTO {
     private BigDecimal otherExpense;
 
     /**
+     * 最终结算金额（与甲方确认的结算收入，可手动填写；为空时收入取累计产值）
+     */
+    private BigDecimal finalSettlementAmount;
+
+    /**
      * 是否重新汇总项目收支数据
      * <p>true: 重新从合同数据汇总计算; false: 仅更新手动调整的字段</p>
      */

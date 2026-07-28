@@ -126,7 +126,7 @@ export function submitFinalSettlement(id: number) {
 }
 
 // ======================== 产值报告 ========================
-export function getOutputReportPage(params: PageQuery & { contractId?: number }) {
+export function getOutputReportPage(params: PageQuery & { projectId?: number; contractId?: number }) {
   return request.get<R<PageResult<OutputReport>>>('/v1/contract/output', { params })
 }
 

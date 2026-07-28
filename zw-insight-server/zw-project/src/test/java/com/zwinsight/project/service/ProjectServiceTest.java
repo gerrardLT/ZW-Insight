@@ -309,6 +309,8 @@ class ProjectServiceTest {
         sampleProject.setTotalIncome(new BigDecimal("1000"));
         sampleProject.setCumulativeOutput(new BigDecimal("1000"));
         when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        // 条件4：存在已审批的最终结算单
+        when(projectMapper.countApprovedSettlement(1L)).thenReturn(1L);
         when(approvalService.startProcess(eq("PROJECT_CLOSE"), eq(1L), eq("project_close_approval"), anyMap()))
                 .thenReturn("proc-1");
 

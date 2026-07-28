@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.workflow.domain.WfApprovalRecord;
 import com.zwinsight.workflow.listener.ApprovalRejectEvent;
 import com.zwinsight.workflow.mapper.WfApprovalRecordMapper;
@@ -40,6 +41,10 @@ public class ApprovalService {
     private final IdentityService identityService;
     private final ApplicationEventPublisher eventPublisher;
     private final WfApprovalRecordMapper approvalRecordMapper;
+    private final SysUserMapper sysUserMapper;
+
+    /** 超级管理员角色编码，拥有全部审批操作权限，跳过处理人校验 */
+    private static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
 
     /**
      * 发起流程
@@ -94,6 +99,7 @@ public class ApprovalService {
     public void complete(String taskId, String comment, Map<String, Object> variables) {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
+        assertTaskAssignee(task, userId);
 
         // 添加审批意见
         if (comment != null && !comment.isEmpty()) {
@@ -123,6 +129,7 @@ public class ApprovalService {
     public void rejectToPrevious(String taskId, String comment) {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
+        assertTaskAssignee(task, userId);
 
         // 查找上一个用户任务节点
         List<HistoricActivityInstance> activityInstances = historyService
@@ -179,6 +186,7 @@ public class ApprovalService {
     public void rejectToStart(String taskId, String comment) {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
+        assertTaskAssignee(task, userId);
 
         // 查找第一个用户任务节点（发起人节点）
         List<HistoricActivityInstance> activityInstances = historyService
@@ -233,6 +241,7 @@ public class ApprovalService {
     public void terminate(String taskId, String comment) {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
+        assertTaskAssignee(task, userId);
 
         // 添加审批意见
         if (comment != null && !comment.isEmpty()) {
@@ -272,6 +281,7 @@ public class ApprovalService {
     public void transfer(String taskId, String targetUserId, String comment) {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
+        assertTaskAssignee(task, userId);
 
         // 添加审批意见
         if (comment != null && !comment.isEmpty()) {
@@ -298,6 +308,7 @@ public class ApprovalService {
     public void delegate(String taskId, String delegateUserId, String comment) {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
+        assertTaskAssignee(task, userId);
 
         // 添加审批意见
         if (comment != null && !comment.isEmpty()) {
@@ -422,6 +433,35 @@ public class ApprovalService {
             throw new BusinessException("任务不存在或已被处理: " + taskId);
         }
         return task;
+    }
+
+    /**
+     * 校验当前用户是否为该任务的处理人（assignee）。
+     * <p>
+     * 仅任务当前处理人可执行办理/退回/终止/转办/委托等操作，防止越权处理他人审批任务。
+     * 超级管理员（SUPER_ADMIN）拥有全部审批操作权限，跳过校验。
+     * </p>
+     *
+     * @param task   目标任务
+     * @param userId 当前操作用户ID
+     */
+    private void assertTaskAssignee(Task task, Long userId) {
+        if (userId == null) {
+            throw new BusinessException(401, "未登录，无法执行审批操作");
+        }
+        // 超级管理员放行
+        List<String> roleCodes = sysUserMapper.selectRoleCodesByUserId(userId);
+        if (roleCodes != null && roleCodes.contains(ROLE_SUPER_ADMIN)) {
+            return;
+        }
+        String assignee = task.getAssignee();
+        if (assignee == null || assignee.isBlank()) {
+            // 未签收的候选任务，需先签收后再操作，避免越权处理
+            throw new BusinessException(403, "该任务尚未签收，无法直接操作，请先签收任务");
+        }
+        if (!assignee.equals(String.valueOf(userId))) {
+            throw new BusinessException(403, "无权操作他人审批任务");
+        }
     }
 
     private void saveApprovalRecord(Task task, String assignee, String operationType, String comment) {

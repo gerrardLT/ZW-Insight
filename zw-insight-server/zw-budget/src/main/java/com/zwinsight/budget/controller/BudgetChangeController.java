@@ -6,6 +6,7 @@ import com.zwinsight.budget.dto.BudgetChangeDTO;
 import com.zwinsight.budget.service.BudgetChangeService;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -42,30 +43,35 @@ public class BudgetChangeController {
     }
 
     @PostMapping
+    @RequiresPermission("budget:budgetchange:add")
     public R<Void> save(@Valid @RequestBody BudgetChangeDTO dto) {
         budgetChangeService.save(dto);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("budget:budgetchange:edit")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody BudgetChangeDTO dto) {
         budgetChangeService.update(id, dto);
         return R.ok();
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission("budget:budgetchange:delete")
     public R<Void> delete(@PathVariable Long id) {
         budgetChangeService.delete(id);
         return R.ok();
     }
 
     @PostMapping("/{id}/submit")
+    @RequiresPermission("budget:budgetchange:submit")
     public R<Void> submit(@PathVariable Long id) {
         budgetChangeService.submit(id);
         return R.ok();
     }
 
     @PostMapping("/{id}/withdraw")
+    @RequiresPermission("budget:budgetchange:withdraw")
     public R<Void> withdraw(@PathVariable Long id) {
         budgetChangeService.withdraw(id);
         return R.ok();

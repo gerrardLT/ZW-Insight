@@ -100,8 +100,8 @@ class ProjectSettlementServiceTest {
     // ============ onApproved 测试 ============
 
     @Test
-    @DisplayName("testOnApproved_updatesProjectStatusToClosed — 审批通过后项目状态变为 CLOSED")
-    void testOnApproved_updatesProjectStatusToClosed() {
+    @DisplayName("testOnApproved_settlesContractsWithoutClosingProject — 审批通过后合同置SETTLED且不直接关闭项目")
+    void testOnApproved_settlesContractsWithoutClosingProject() {
         // 准备：模拟已存在的结算单
         Long settlementId = 100L;
         Long projectId = 10L;
@@ -113,7 +113,7 @@ class ProjectSettlementServiceTest {
 
         when(settlementMapper.selectById(settlementId)).thenReturn(settlement);
         when(settlementMapper.updateById(any(BizProjectSettlement.class))).thenReturn(1);
-        when(projectMapper.updateStatus(eq(projectId), eq("CLOSED"))).thenReturn(1);
+        when(constructionContractMapper.settleByProjectId(projectId)).thenReturn(1);
 
         // 执行
         projectSettlementService.onApproved(settlementId);
@@ -121,8 +121,11 @@ class ProjectSettlementServiceTest {
         // 验证：结算单状态更新为 APPROVED
         verify(settlementMapper).updateById(argThat(s -> "APPROVED".equals(s.getStatus())));
 
-        // 验证：项目状态更新为 CLOSED
-        verify(projectMapper).updateStatus(projectId, "CLOSED");
+        // 验证：施工合同批量置为 SETTLED
+        verify(constructionContractMapper).settleByProjectId(projectId);
+
+        // 验证：项目状态不再被直接置为 CLOSED（统一走结项审批通道）
+        verify(projectMapper, never()).updateStatus(anyLong(), anyString());
     }
 
     // ============ onRejected 测试 ============

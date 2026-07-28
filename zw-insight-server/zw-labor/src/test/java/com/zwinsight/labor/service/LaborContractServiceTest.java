@@ -2,8 +2,6 @@ package com.zwinsight.labor.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.zwinsight.budget.domain.BizBudgetDetail;
-import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.labor.domain.BizLaborContract;
@@ -19,7 +17,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Collections;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,16 +26,15 @@ import static org.mockito.Mockito.*;
 
 /**
  * LaborContractService 单元测试
- * 覆盖：劳务合同 CRUD + DRAFT 状态约束 + 结算/工资计算（BigDecimal）
+ * 覆盖：劳务合同 CRUD + DRAFT 状态约束
+ * <p>预算校验已统一由 @BudgetCheck 切面（BudgetControlAspect + BudgetControlConfigService）承担，
+ * 相关校验逻辑在 zw-budget 模块测试中覆盖。</p>
  */
 @ExtendWith(MockitoExtension.class)
 class LaborContractServiceTest {
 
     @Mock
     private BizLaborContractMapper laborContractMapper;
-
-    @Mock
-    private BizBudgetDetailMapper budgetDetailMapper;
 
     @InjectMocks
     private LaborContractService laborContractService;
@@ -114,13 +110,12 @@ class LaborContractServiceTest {
     class SaveTests {
 
         @Test
-        @DisplayName("保存合同（无预算关联）- DRAFT 初始化 + 累计字段归零")
-        void save_noBudget_draftWithZeroDefaults() {
+        @DisplayName("保存合同 - DRAFT 初始化 + 累计字段归零")
+        void save_draftWithZeroDefaults() {
             // given
             BizLaborContract contract = new BizLaborContract();
             contract.setProjectId(100L);
             contract.setContractAmount(new BigDecimal("200000.00"));
-            // budgetId 为 null，不触发预算校验
             when(laborContractMapper.insert(any(BizLaborContract.class))).thenReturn(1);
 
             // when
@@ -131,64 +126,6 @@ class LaborContractServiceTest {
             assertThat(contract.getCumulativeSettlement()).isEqualByComparingTo(BigDecimal.ZERO);
             assertThat(contract.getCumulativePaid()).isEqualByComparingTo(BigDecimal.ZERO);
             verify(laborContractMapper).insert(contract);
-        }
-
-        @Test
-        @DisplayName("保存合同（有预算关联）- 预算充足时成功")
-        void save_withBudget_withinLimit_success() {
-            // given
-            BizLaborContract contract = new BizLaborContract();
-            contract.setProjectId(100L);
-            contract.setBudgetId(1L);
-            contract.setContractAmount(new BigDecimal("150000.00"));
-
-            // 预算 LABOR 类别总额 = 300000
-            BizBudgetDetail detail = new BizBudgetDetail();
-            detail.setBudgetTotalPrice(new BigDecimal("300000.00"));
-            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(detail));
-
-            // 已有合同金额 = 100000
-            BizLaborContract existingContract = new BizLaborContract();
-            existingContract.setContractAmount(new BigDecimal("100000.00"));
-            when(laborContractMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(existingContract));
-
-            when(laborContractMapper.insert(any(BizLaborContract.class))).thenReturn(1);
-
-            // when (100000 + 150000 = 250000 <= 300000 预算)
-            laborContractService.save(contract);
-
-            // then
-            assertThat(contract.getStatus()).isEqualTo("DRAFT");
-            verify(laborContractMapper).insert(contract);
-        }
-
-        @Test
-        @DisplayName("保存合同 - 金额超出预算抛异常")
-        void save_exceedsBudget_throwsException() {
-            // given
-            BizLaborContract contract = new BizLaborContract();
-            contract.setProjectId(100L);
-            contract.setBudgetId(1L);
-            contract.setContractAmount(new BigDecimal("500000.00"));
-
-            // 预算 LABOR 类别总额 = 300000
-            BizBudgetDetail detail = new BizBudgetDetail();
-            detail.setBudgetTotalPrice(new BigDecimal("300000.00"));
-            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(detail));
-
-            // 已有合同 = 0
-            when(laborContractMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(Collections.emptyList());
-
-            // when & then (500000 > 300000)
-            assertThatThrownBy(() -> laborContractService.save(contract))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("劳务合同金额超出预算");
-
-            verify(laborContractMapper, never()).insert(any());
         }
 
         @Test
@@ -230,27 +167,21 @@ class LaborContractServiceTest {
         }
 
         @Test
-        @DisplayName("保存合同 - contractAmount 为 null 时预算校验不报错")
-        void save_nullContractAmount_budgetCheckSafe() {
+        @DisplayName("保存合同 - 大额金额精度不丢失")
+        void save_largeAmount_precisionPreserved() {
             // given
             BizLaborContract contract = new BizLaborContract();
             contract.setProjectId(100L);
-            contract.setBudgetId(1L);
-            contract.setContractAmount(null); // null 金额
-
-            BizBudgetDetail detail = new BizBudgetDetail();
-            detail.setBudgetTotalPrice(new BigDecimal("300000.00"));
-            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(detail));
-            when(laborContractMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(Collections.emptyList());
+            contract.setContractAmount(new BigDecimal("999999999.99"));
             when(laborContractMapper.insert(any(BizLaborContract.class))).thenReturn(1);
 
-            // when (null 视为 0，0 <= 300000)
+            // when
             laborContractService.save(contract);
 
-            // then
-            verify(laborContractMapper).insert(contract);
+            // then: 大额金额保持精度
+            verify(laborContractMapper).insert(argThat(c ->
+                    new BigDecimal("999999999.99").compareTo(c.getContractAmount()) == 0
+            ));
         }
     }
 
@@ -450,183 +381,6 @@ class LaborContractServiceTest {
             assertThatThrownBy(() -> laborContractService.submit(999L))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("劳务合同不存在");
-        }
-    }
-
-    // =====================================================================
-    // BigDecimal 精度与预算计算测试
-    // =====================================================================
-
-    @Nested
-    @DisplayName("BigDecimal 精度与预算计算")
-    class BigDecimalPrecisionTests {
-
-        @Test
-        @DisplayName("预算校验 - 多条预算明细 BigDecimal 加总精度正确")
-        void save_multipleBudgetDetails_precisionCorrect() {
-            // given
-            BizLaborContract contract = new BizLaborContract();
-            contract.setProjectId(100L);
-            contract.setBudgetId(1L);
-            contract.setContractAmount(new BigDecimal("249999.99"));
-
-            // 多条预算明细: 100000.01 + 150000.00 = 250000.01
-            BizBudgetDetail detail1 = new BizBudgetDetail();
-            detail1.setBudgetTotalPrice(new BigDecimal("100000.01"));
-            BizBudgetDetail detail2 = new BizBudgetDetail();
-            detail2.setBudgetTotalPrice(new BigDecimal("150000.00"));
-            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(detail1, detail2));
-
-            // 无已有合同
-            when(laborContractMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(Collections.emptyList());
-            when(laborContractMapper.insert(any(BizLaborContract.class))).thenReturn(1);
-
-            // when (249999.99 <= 250000.01 预算)
-            laborContractService.save(contract);
-
-            // then: 没有超限，成功插入
-            verify(laborContractMapper).insert(contract);
-        }
-
-        @Test
-        @DisplayName("预算校验 - 大额金额精度不丢失")
-        void save_largeAmount_precisionPreserved() {
-            // given
-            BizLaborContract contract = new BizLaborContract();
-            contract.setProjectId(100L);
-            contract.setBudgetId(1L);
-            contract.setContractAmount(new BigDecimal("999999999.99"));
-
-            // 预算足够大
-            BizBudgetDetail detail = new BizBudgetDetail();
-            detail.setBudgetTotalPrice(new BigDecimal("1000000000.00"));
-            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(detail));
-            when(laborContractMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(Collections.emptyList());
-            when(laborContractMapper.insert(any(BizLaborContract.class))).thenReturn(1);
-
-            // when
-            laborContractService.save(contract);
-
-            // then: 大额金额保持精度
-            verify(laborContractMapper).insert(argThat(c ->
-                    new BigDecimal("999999999.99").compareTo(c.getContractAmount()) == 0
-            ));
-        }
-
-        @Test
-        @DisplayName("预算校验 - 已有合同金额含 null 时视为零")
-        void save_existingContractNullAmount_treatsAsZero() {
-            // given
-            BizLaborContract contract = new BizLaborContract();
-            contract.setProjectId(100L);
-            contract.setBudgetId(1L);
-            contract.setContractAmount(new BigDecimal("280000.00"));
-
-            BizBudgetDetail detail = new BizBudgetDetail();
-            detail.setBudgetTotalPrice(new BigDecimal("300000.00"));
-            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(detail));
-
-            // 已有合同金额为 null
-            BizLaborContract existingContract = new BizLaborContract();
-            existingContract.setContractAmount(null);
-            when(laborContractMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(existingContract));
-            when(laborContractMapper.insert(any(BizLaborContract.class))).thenReturn(1);
-
-            // when (0 + 280000 = 280000 <= 300000)
-            laborContractService.save(contract);
-
-            // then
-            verify(laborContractMapper).insert(contract);
-        }
-
-        @Test
-        @DisplayName("预算校验 - budgetTotalPrice 为 null 的明细视为零")
-        void save_budgetDetailNullPrice_treatsAsZero() {
-            // given
-            BizLaborContract contract = new BizLaborContract();
-            contract.setProjectId(100L);
-            contract.setBudgetId(1L);
-            contract.setContractAmount(new BigDecimal("100.00"));
-
-            // 预算明细: 200000 + null = 200000
-            BizBudgetDetail detail1 = new BizBudgetDetail();
-            detail1.setBudgetTotalPrice(new BigDecimal("200000.00"));
-            BizBudgetDetail detail2 = new BizBudgetDetail();
-            detail2.setBudgetTotalPrice(null); // null 视为 0
-            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(detail1, detail2));
-
-            when(laborContractMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(Collections.emptyList());
-            when(laborContractMapper.insert(any(BizLaborContract.class))).thenReturn(1);
-
-            // when (100 <= 200000)
-            laborContractService.save(contract);
-
-            // then
-            verify(laborContractMapper).insert(contract);
-        }
-
-        @Test
-        @DisplayName("预算校验 - 边界情况：新合同金额恰好等于预算余额")
-        void save_exactlyAtBudgetLimit_success() {
-            // given
-            BizLaborContract contract = new BizLaborContract();
-            contract.setProjectId(100L);
-            contract.setBudgetId(1L);
-            contract.setContractAmount(new BigDecimal("100000.00"));
-
-            BizBudgetDetail detail = new BizBudgetDetail();
-            detail.setBudgetTotalPrice(new BigDecimal("300000.00"));
-            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(detail));
-
-            // 已有合同 = 200000
-            BizLaborContract existing = new BizLaborContract();
-            existing.setContractAmount(new BigDecimal("200000.00"));
-            when(laborContractMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(existing));
-            when(laborContractMapper.insert(any(BizLaborContract.class))).thenReturn(1);
-
-            // when (200000 + 100000 = 300000 = 预算 300000，不超出)
-            laborContractService.save(contract);
-
-            // then: 恰好等于预算，不抛异常
-            verify(laborContractMapper).insert(contract);
-        }
-
-        @Test
-        @DisplayName("预算校验 - 超出 0.01 元即拒绝")
-        void save_exceedsByOneCent_throwsException() {
-            // given
-            BizLaborContract contract = new BizLaborContract();
-            contract.setProjectId(100L);
-            contract.setBudgetId(1L);
-            contract.setContractAmount(new BigDecimal("100000.01"));
-
-            BizBudgetDetail detail = new BizBudgetDetail();
-            detail.setBudgetTotalPrice(new BigDecimal("300000.00"));
-            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(detail));
-
-            // 已有合同 = 200000
-            BizLaborContract existing = new BizLaborContract();
-            existing.setContractAmount(new BigDecimal("200000.00"));
-            when(laborContractMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(existing));
-
-            // when (200000 + 100000.01 = 300000.01 > 300000 预算)
-            assertThatThrownBy(() -> laborContractService.save(contract))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("劳务合同金额超出预算");
-
-            verify(laborContractMapper, never()).insert(any());
         }
     }
 }

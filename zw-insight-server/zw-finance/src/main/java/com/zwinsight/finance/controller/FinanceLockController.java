@@ -2,6 +2,7 @@ package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.dto.FinanceLockCreateRequest;
 import com.zwinsight.finance.domain.dto.FinanceLockDTO;
 import com.zwinsight.finance.service.FinanceLockService;
@@ -28,6 +29,7 @@ public class FinanceLockController {
      * @return 创建的封账记录列表
      */
     @PostMapping
+    @RequiresPermission("finance:financelock:create")
     public R<List<FinanceLockDTO>> createLock(@RequestBody FinanceLockCreateRequest request) {
         return R.ok(financeLockService.createLock(request.getPeriod(), request.getLockType()));
     }
@@ -39,6 +41,7 @@ public class FinanceLockController {
      * @return 解封后的记录
      */
     @DeleteMapping("/{id}/unlock")
+    @RequiresPermission("finance:financelock:unlock")
     public R<FinanceLockDTO> unlock(@PathVariable Long id) {
         return R.ok(financeLockService.unlock(id));
     }

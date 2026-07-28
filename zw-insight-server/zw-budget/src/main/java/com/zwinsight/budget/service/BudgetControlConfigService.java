@@ -281,7 +281,11 @@ public class BudgetControlConfigService {
         }
         switch (costCategory) {
             case "MATERIAL":
-                return budgetOccupiedMapper.sumContractAmountForMaterial(projectId);
+                // 材料：采购合同已签金额 + 已审批调拨净占用（调入+/调出-）
+                BigDecimal materialContract = budgetOccupiedMapper.sumContractAmountForMaterial(projectId);
+                BigDecimal transferNet = budgetOccupiedMapper.sumTransferNetForMaterial(projectId);
+                return (materialContract != null ? materialContract : BigDecimal.ZERO)
+                        .add(transferNet != null ? transferNet : BigDecimal.ZERO);
             case "LABOR":
                 return budgetOccupiedMapper.sumContractAmountForLabor(projectId);
             case "MACHINE":
