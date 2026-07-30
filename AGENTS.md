@@ -44,6 +44,22 @@ bash keys/verify-base.sh
 
 验证基座会依次调用核心 API 端点，确认 HTTP 状态码和响应结构正确。凭证文件 `keys/zwinsight.pem` 已纳入 `.gitignore`。
 
+## L4 全生命周期测试（隔离租户 9999）
+
+`keys/lifecycle-sim-v2.sh` 在隔离测试租户（tenant_id=9999，账号 t9999admin）上跑通 19 个阶段的全业务闭环：报备→立项→投标→中标→施工合同→预算（含 BLOCK 拦截负向用例）→四类支出合同→材料入出库→机械/劳务/分包执行与结算→产值→开票收款→采购结算→付款闭环→驳回分支（退回重审/终止重提）→竞工结算→结项。每阶段含状态/金额硬断言，退出码严格反映结果。
+
+```bash
+# 首次：初始化测试租户（幂等）+ 部署 BPMN 到租户 9999
+bash keys/init-test-tenant.sh
+ZWI_USER=t9999admin ZWI_PASS=123456 ZWI_TENANT_ID=9999 bash keys/deploy-bpmn.sh
+
+# 运行 L4 + 清理验收（biz_ 表 tenant 9999 残留应为 0）
+bash keys/lifecycle-sim-v2.sh
+bash keys/verify-l4-clean.sh
+```
+
+关键约束：测试租户编号规则用 `T9` 前缀（业务编号唯一键为全局唯一，防与租户 1 撞号）；兑底清理仅限 `biz_%` 表（严禁误删 sys_user/serial_number_rule 等含 tenant_id 的系统表）；待办驱动从 ACT_RU_TASK 取 taskId（候选组任务不入 assignee 待办，SUPER_ADMIN 可完成任意任务）。
+
 ## 演示种子数据
 
 用于快速填充默认租户（`tenant_id=1`）的全模块演示数据，登录系统即可看到完整的项目、合同、预算、财务等业务链路。

@@ -55,7 +55,7 @@ assert_http() {
 assert_body_code() {
   local expected="$1" test_name="$2"
   local actual
-  actual=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"code"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$')
+  actual=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"code"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$')
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
   if [ "$actual" = "$expected" ]; then
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -104,7 +104,7 @@ report_summary() {
 
 # extract_first_record_id：从分页结果的 records 数组中提取第一个 id
 extract_first_record_id() {
-  cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$'
+  cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$'
 }
 
 # ===========================================================================
@@ -133,7 +133,8 @@ trap cleanup EXIT
 
 test_create_purchase_contract() {
   log "▶ 测试：创建采购合同"
-  call POST "/api/v1/purchase/contract" '{"projectId":1,"contractName":"L3测试采购合同","partyAName":"测试甲方","partyBName":"测试供应商","supplierName":"测试供应商","signingDate":"2025-03-01","contractAmount":200000.00,"paymentTerms":"月结30天","status":"DRAFT"}'
+  # 预算控制：项目需有已审批 MATERIAL 预算，使用种子项目 90001（预算 92001 已审批）
+  call POST "/api/v1/purchase/contract" '{"projectId":90001,"contractName":"L3测试采购合同","partyAName":"测试甲方","partyBName":"测试供应商","supplierName":"测试供应商","signingDate":"2025-03-01","contractAmount":200000.00,"paymentTerms":"月结30天","status":"DRAFT"}'
   assert_http 2 "POST /api/v1/purchase/contract 状态码"
   assert_body_code 200 "POST /api/v1/purchase/contract 业务码"
 }

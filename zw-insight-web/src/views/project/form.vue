@@ -209,7 +209,8 @@ async function loadCompanyList() {
 
 async function loadDetail() {
   if (!route.params.id) return
-  const res: any = await getProjectDetail(Number(route.params.id))
+  // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
+  const res: any = await getProjectDetail(route.params.id as string)
   formData.value = res.data || {}
   // 确保业主单位出现在选项中
   if (formData.value.ownerCompanyId) {

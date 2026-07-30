@@ -16,8 +16,8 @@ import { test, expect } from '@playwright/test'
 
 const API_BASE = process.env.E2E_API_BASE || 'http://129.204.3.200:18080'
 
-// 测试中创建的项目 ID，用于 afterAll 清理
-const createdProjectIds: number[] = []
+// 测试中创建的项目 ID（雪花 ID 以字符串保存防精度丢失），用于 afterAll 清理
+const createdProjectIds: (number | string)[] = []
 
 // 生成唯一测试项目名称（带时间戳避免冲突）
 function testProjectName(): string {
@@ -56,12 +56,12 @@ test.describe('项目管理 — 列表查看', () => {
     await page.waitForLoadState('networkidle')
     // 等待表格加载
     await page.waitForSelector('.el-table, .el-empty', { timeout: 15_000 })
-    // 分页组件（可能没有数据时不显示，但有数据时应存在）
-    const pagination = page.locator('.el-pagination')
-    const tableRows = page.locator('.el-table__body-wrapper .el-table__row')
+    // 分页组件（与 src/views/project/index.vue 的 pagination-wrap 容器保持一致）
+    const pagination = page.locator('.el-pagination, .pagination-wrap')
+    const tableRows = page.locator('.el-table__row')
     const rowCount = await tableRows.count()
     if (rowCount > 0) {
-      await expect(pagination).toBeVisible({ timeout: 5_000 })
+      await expect(pagination.first()).toBeVisible({ timeout: 10_000 })
     }
   })
 })
@@ -123,16 +123,17 @@ test.describe('项目管理 — 创建项目', () => {
     const nameInput = page.locator('[placeholder*="项目名称"], [placeholder*="请输入项目名称"]').first()
     await nameInput.fill(projectName)
 
-    // 尝试选择项目性质（el-select 交互）
+    // 尝试选择项目性质（el-select 下拉带动画，选项在 body 传送门中，force 点击避免动画期不稳定）
     const natureSelect = page.locator(
       '.el-form-item:has(.el-form-item__label:has-text("项目性质")) .el-select'
     )
     if (await natureSelect.isVisible().catch(() => false)) {
       await natureSelect.click()
-      await page.waitForSelector('.el-select-dropdown:visible .el-select-dropdown__item', { timeout: 5_000 }).catch(() => {})
       const firstOption = page.locator('.el-select-dropdown:visible .el-select-dropdown__item').first()
+      await firstOption.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {})
       if (await firstOption.isVisible().catch(() => false)) {
-        await firstOption.click()
+        await firstOption.click({ force: true })
+        await page.keyboard.press('Escape')
       }
     }
 
@@ -142,10 +143,11 @@ test.describe('项目管理 — 创建项目', () => {
     )
     if (await typeSelect.isVisible().catch(() => false)) {
       await typeSelect.click()
-      await page.waitForSelector('.el-select-dropdown:visible .el-select-dropdown__item', { timeout: 5_000 }).catch(() => {})
       const firstOption = page.locator('.el-select-dropdown:visible .el-select-dropdown__item').first()
+      await firstOption.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {})
       if (await firstOption.isVisible().catch(() => false)) {
-        await firstOption.click()
+        await firstOption.click({ force: true })
+        await page.keyboard.press('Escape')
       }
     }
 
@@ -176,36 +178,46 @@ test.describe('项目管理 — 创建项目', () => {
 
 test.describe('项目管理 — 编辑项目', () => {
   test('编辑页面 — 表单回显数据', async ({ page }) => {
-    // 先进入列表获取第一个项目的编辑入口
-    await page.goto('/project/list')
-    await page.waitForLoadState('networkidle')
-    await page.waitForSelector('.el-table, .el-empty', { timeout: 15_000 })
+    // 自建 DRAFT 项目后直达编辑页，避免与并行用例争抢/删除列表首行导致 flaky
+    // 先到任意页面恢复 storageState 的 localStorage，取 token 供 API 请求鉴权
+    await page.goto('/')
+    const token = await page.evaluate(() => localStorage.getItem('token') || '')
+    expect(token, '已登录 token 应存在').toBeTruthy()
 
-    // 检查是否有表格数据
-    const rows = page.locator('.el-table__body-wrapper .el-table__row')
-    const rowCount = await rows.count()
+    const projectName = testProjectName()
+    const createResp = await page.request.post(`${API_BASE}/api/v1/project`, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      data: {
+        projectName,
+        projectNature: '新建',
+        projectType: '房建工程',
+        projectAddress: 'E2E编辑回显测试地址',
+      },
+    })
+    expect(createResp.ok()).toBeTruthy()
 
-    if (rowCount > 0) {
-      // 点击第一行的编辑按钮
-      const editBtn = page.locator('.el-table__body-wrapper .el-table__row')
-        .first()
-        .locator('button:has-text("编辑"), a:has-text("编辑")').first()
+    // 按名称查出刚创建的项目 ID
+    const pageResp = await page.request.get(
+      `${API_BASE}/api/v1/project/page?page=1&size=1&projectName=${encodeURIComponent(projectName)}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    const pageJson = await pageResp.json()
+    const record = pageJson?.data?.records?.[0]
+    expect(record, '刚创建的项目应可查到').toBeTruthy()
+    // 雪花 ID 超出 Number 安全整数范围，全程以字符串传递
+    const projectId = String(record.id)
+    createdProjectIds.push(projectId)
 
-      if (await editBtn.isVisible().catch(() => false)) {
-        await editBtn.click()
-        // 等待表单加载
-        await page.waitForSelector('.el-form', { timeout: 10_000 })
-        await expect(page.locator('.el-form').first()).toBeVisible()
-        // 验证名称字段已回显（非空）
-        const nameInput = page.locator('[placeholder*="项目名称"], [placeholder*="请输入项目名称"]').first()
-        const value = await nameInput.inputValue()
-        expect(value.length).toBeGreaterThan(0)
-      } else {
-        test.skip(true, '列表中没有可编辑的项目')
-      }
-    } else {
-      test.skip(true, '项目列表为空，跳过编辑测试')
-    }
+    // 直达编辑页，验证表单回显
+    await page.goto(`/project/edit/${projectId}`)
+    await page.waitForSelector('.el-form', { timeout: 10_000 })
+    await expect(page.locator('.el-form').first()).toBeVisible()
+    // 编辑页异步加载详情后回填，需等待回显为创建时的名称
+    const nameInput = page.locator('[placeholder*="项目名称"], [placeholder*="请输入项目名称"]').first()
+    await expect(nameInput).toHaveValue(projectName, { timeout: 10_000 })
   })
 })
 

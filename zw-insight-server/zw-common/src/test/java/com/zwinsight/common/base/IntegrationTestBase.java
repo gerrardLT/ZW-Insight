@@ -5,8 +5,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.http.*;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
@@ -34,9 +45,40 @@ import java.util.Map;
  * @see TestDataCleaner
  * @see TestAuthenticationException
  */
-@SpringBootTest
+@SpringBootTest(classes = IntegrationTestBase.MinimalTestConfig.class)
 @ActiveProfiles("integration-test")
 public abstract class IntegrationTestBase {
+
+    /**
+     * 集成测试最小 Spring 上下文。
+     * <p>
+     * L2 测试通过 HTTP 调用真实服务器 API，本地上下文仅需
+     * DataSource/JdbcTemplate/Redis（供 TestDataCleaner 直连真实库清理数据），
+     * 精准导入避免拉起各模块完整上下文。
+     * </p>
+     */
+    @SpringBootConfiguration
+    @ImportAutoConfiguration({
+            DataSourceAutoConfiguration.class,
+            JdbcTemplateAutoConfiguration.class,
+            RedisAutoConfiguration.class
+    })
+    @Import(TestDataCleaner.class)
+    public static class MinimalTestConfig {
+
+        /** TestDataCleaner 依赖 RedisTemplate<String, Object>，自动配置仅提供 <Object,Object>，需显式声明 */
+        @Bean
+        public RedisTemplate<String, Object> stringObjectRedisTemplate(RedisConnectionFactory factory) {
+            RedisTemplate<String, Object> template = new RedisTemplate<>();
+            template.setConnectionFactory(factory);
+            template.setKeySerializer(new StringRedisSerializer());
+            template.setHashKeySerializer(new StringRedisSerializer());
+            template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+            template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+            template.afterPropertiesSet();
+            return template;
+        }
+    }
 
     private static final Logger log = LoggerFactory.getLogger(IntegrationTestBase.class);
 
@@ -224,7 +266,7 @@ public abstract class IntegrationTestBase {
             // 由于是静态方法，直接通过 Lettuce 连接 Redis
             org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory factory =
                     new org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory(
-                            TestConstants.SERVER_HOST, 6379);
+                            TestConstants.REDIS_HOST, TestConstants.REDIS_PORT);
             factory.afterPropertiesSet();
             try {
                 StringRedisTemplate redisTemplate = new StringRedisTemplate(factory);

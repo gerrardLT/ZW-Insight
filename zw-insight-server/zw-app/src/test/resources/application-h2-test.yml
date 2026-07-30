@@ -6,6 +6,9 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password:
+  # Flyway 迁移脚本为 MySQL 语法，H2 测试建表由 init-h2-schema.sql 完成，必须禁用
+  flyway:
+    enabled: false
   sql:
     init:
       mode: always

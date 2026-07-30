@@ -28,7 +28,9 @@ set -uo pipefail
 # 环境变量配置
 # ===========================================================================
 BASE="${ZWI_BASE:-http://127.0.0.1:18080}"
-USERNAME="${ZWI_USER:-admin}"
+# 默认使用隔离测试租户管理员 t9999admin（tenant_id=9999），
+# 由 init-test-tenant.sh 初始化；数据与演示租户 1 完全隔离，兑底 SQL 清理 WHERE tenant_id=9999 真实生效
+USERNAME="${ZWI_USER:-t9999admin}"
 PASSWORD="${ZWI_PASS:-123456}"
 REDIS_CT="${ZWI_REDIS_CT:-zwi-redis}"
 BACKEND_CT="${ZWI_BACKEND_CT:-zwi-backend}"
@@ -101,7 +103,8 @@ vb_clear_token() {
 # 日志与格式化
 # ===========================================================================
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$SIM_LOG"; }
-divider() { echo "" | tee -a "$SIM_LOG"; echo "═══════════════════════════════════════════════" | tee -a "$SIM_LOG"; }
+# 分隔线用纯 ASCII，避免多字节字符在 scp/编码转换中破坏函数名解析
+divider() { echo "" | tee -a "$SIM_LOG"; echo "===============================================" | tee -a "$SIM_LOG"; }
 phase() { divider; log "▶ 阶段 $1: $2"; CURRENT_STAGE="$1:$2"; divider; }
 success() { log "  ✅ $*"; }
 fail() { log "  ❌ $*"; }
@@ -139,7 +142,7 @@ strict_assert() {
 
   # 检查响应体 code=200
   if [ -f /tmp/zwi_body ]; then
-    body_code=$(grep -oE '"code"\s*:\s*[0-9]+' /tmp/zwi_body | head -1 | grep -oE '[0-9]+$')
+    body_code=$(grep -oE '"code"\s*:\s*\"?[0-9]+' /tmp/zwi_body | head -1 | grep -oE '[0-9]+$')
     if [ -n "$body_code" ] && [ "$body_code" != "200" ]; then
       fail "$desc: 业务码异常 (code=$body_code)，期望 200"
       ABORT_REASON="$desc: code=$body_code"
@@ -230,14 +233,14 @@ track_resource() {
 # ===========================================================================
 extract_id() {
   local val
-  val=$(grep -oE '"data"\s*:\s*[0-9]+' /tmp/zwi_body | head -1 | grep -oE '[0-9]+$')
+  val=$(grep -oE '"data"\s*:\s*\"?[0-9]+' /tmp/zwi_body | head -1 | grep -oE '[0-9]+$')
   if [ -n "$val" ]; then echo "$val"; return; fi
-  val=$(grep -oE '"id"\s*:\s*[0-9]+' /tmp/zwi_body | head -1 | grep -oE '[0-9]+$')
+  val=$(grep -oE '"id"\s*:\s*\"?[0-9]+' /tmp/zwi_body | head -1 | grep -oE '[0-9]+$')
   if [ -n "$val" ]; then echo "$val"; return; fi
   echo ""
 }
 
-extract_first_record_id() { grep -oE '"id"\s*:\s*[0-9]+' /tmp/zwi_body | head -1 | grep -oE '[0-9]+$'; }
+extract_first_record_id() { grep -oE '"id"\s*:\s*\"?[0-9]+' /tmp/zwi_body | head -1 | grep -oE '[0-9]+$'; }
 extract_task_id() { grep -oE '"taskId"\s*:\s*"[^"]+"' /tmp/zwi_body | head -1 | sed -E 's/.*"taskId"\s*:\s*"//;s/"$//'; }
 extract_field() { grep -oE "\"$1\"\s*:\s*\"?[^\",}]+" /tmp/zwi_body | head -1 | sed -E "s/.*\"$1\"\s*:\s*\"?//;s/\"?$//"; }
 
@@ -291,62 +294,35 @@ cleanup_all() {
     log "  接口清理: 已尝试 $cleaned 项"
   fi
 
-  # 2. 兜底 SQL 清理：通过 docker exec 执行 DELETE WHERE tenant_id=9999
-  log "  🗄️ 执行兜底 SQL 清理 (tenant_id=$TEST_TENANT_ID)..."
-  local sql_tables=(
-    "t_workflow_instance"
-    "t_workflow_task"
-    "t_finance_payment_apply"
-    "t_finance_payment_received"
-    "t_finance_invoice_apply"
-    "t_subcontract_output"
-    "t_subcontract_settlement"
-    "t_subcontract_contract"
-    "t_machine_work_log"
-    "t_machine_entry"
-    "t_machine_settlement"
-    "t_machine_contract"
-    "t_machine_ledger"
-    "t_labor_work_order"
-    "t_labor_team"
-    "t_labor_settlement"
-    "t_labor_contract"
-    "t_material_outbound_detail"
-    "t_material_outbound"
-    "t_material_inbound_detail"
-    "t_material_inbound"
-    "t_material_inventory"
-    "t_purchase_settlement"
-    "t_purchase_contract"
-    "t_contract_output"
-    "t_contract"
-    "t_budget_item"
-    "t_budget"
-    "t_tender_open_bid"
-    "t_tender_register"
-    "t_site_inspection"
-    "t_site_construction_log"
-    "t_site_schedule_plan"
-    "t_site_completion"
-    "t_project_settlement"
-    "t_project_member"
-    "t_project"
-  )
-
+  # 2. 兑底 SQL 清理：动态发现所有含 tenant_id 列的业务表（仅 biz_ 前缀）
+  #    关键：必须限定 biz_%，否则会误删 sys_user/serial_number_rule 等含 tenant_id 的系统表
+  #    （测试租户自身的账号/编号规则属于基建配置，应跨轮保留）。无真实外键约束，无序删除安全
+  log "  执行兑底 SQL 清理 (tenant_id=$TEST_TENANT_ID, 仅 biz_ 表)..."
+  local MYSQL_PW="${ZWI_MYSQL_PASS:-zwinsight123}"
+  local del_sql
+  del_sql=$(docker exec "$MYSQL_CT" mysql -uroot -p"$MYSQL_PW" -N -B \
+    -e "SELECT CONCAT('DELETE FROM \`', TABLE_NAME, '\` WHERE tenant_id=$TEST_TENANT_ID;') \
+        FROM information_schema.COLUMNS \
+        WHERE TABLE_SCHEMA='zw_insight' AND COLUMN_NAME='tenant_id' \
+          AND TABLE_NAME LIKE 'biz_%';" 2>/dev/null)
   local sql_cleaned=0
-  for table in "${sql_tables[@]}"; do
-    local result
-    result=$(docker exec "$MYSQL_CT" mysql -uroot -p"${ZWI_MYSQL_PASS:-root}" \
-      -e "DELETE FROM zw_insight.$table WHERE tenant_id=$TEST_TENANT_ID;" 2>&1) || true
-    if echo "$result" | grep -q "Query OK"; then
-      local rows
-      rows=$(echo "$result" | grep -oE '[0-9]+ row' | grep -oE '[0-9]+')
-      if [ -n "$rows" ] && [ "$rows" -gt 0 ]; then
-        ((sql_cleaned += rows))
-      fi
-    fi
-  done
-  log "  兜底 SQL 清理完成（预估清理 $sql_cleaned 行）"
+  if [ -n "$del_sql" ]; then
+    # SET FOREIGN_KEY_CHECKS=0 防御；批量执行所有 DELETE
+    printf 'SET FOREIGN_KEY_CHECKS=0;\n%s\n' "$del_sql" | \
+      docker exec -i "$MYSQL_CT" mysql -uroot -p"$MYSQL_PW" zw_insight 2>/dev/null || true
+    sql_cleaned=$(echo "$del_sql" | grep -c 'DELETE FROM')
+  fi
+  log "  兑底 SQL 清理完成（执行 $sql_cleaned 张表的 tenant_id=$TEST_TENANT_ID 删除）"
+
+  # 2b. 清理 Flowable 流程运行时/历史数据（按 TENANT_ID_ 列）
+  docker exec "$MYSQL_CT" mysql -uroot -p"$MYSQL_PW" zw_insight 2>/dev/null <<FLOW || true
+SET FOREIGN_KEY_CHECKS=0;
+DELETE FROM ACT_RU_TASK WHERE TENANT_ID_='$TEST_TENANT_ID';
+DELETE FROM ACT_RU_EXECUTION WHERE TENANT_ID_='$TEST_TENANT_ID';
+DELETE FROM ACT_HI_TASKINST WHERE TENANT_ID_='$TEST_TENANT_ID';
+DELETE FROM ACT_HI_PROCINST WHERE TENANT_ID_='$TEST_TENANT_ID';
+SET FOREIGN_KEY_CHECKS=1;
+FLOW
 
   # 3. 清除 Redis test:t9999:* 键
   log "  🔑 清除 Redis test:t$TEST_TENANT_ID:* 键..."
@@ -413,20 +389,101 @@ REGISTER_ID=""
 PURCHASE_CONTRACT_ID=""
 LABOR_CONTRACT_ID=""
 MACHINE_CONTRACT_ID=""
+SUBCONTRACT_CONTRACT_ID=""
+MACHINE_LEDGER_ID=""
+INBOUND_ID=""
+PURCHASE_SETTLEMENT_ID=""
+OTHER_CONTRACT_ID=""
 
 # ===========================================================================
-# approve() — 从待办列表中取首个任务并审批通过
+# db_next_task — 从 Flowable 运行时表取租户 9999 最早一个待办 taskId
+# 原因：getMyTodoTasks 仅按 assignee 查询，而部分 BPMN 第2级为 candidateGroups=FINANCE
+#       （如 machine_settlement/project_close）无 assignee，不会出现在待办里。
+#       SUPER_ADMIN 在 assertTaskAssignee 中被放行，可直接 complete 任意 taskId，
+#       故直接从 ACT_RU_TASK 取待办 ID 驱动，统一处理 assignee 与候选任务。
+# ===========================================================================
+db_next_task() {
+  docker exec "$MYSQL_CT" mysql -uroot -p"${ZWI_MYSQL_PASS:-zwinsight123}" zw_insight -N -B \
+    -e "SELECT ID_ FROM ACT_RU_TASK WHERE TENANT_ID_='$TEST_TENANT_ID' ORDER BY CREATE_TIME_ ASC LIMIT 1;" 2>/dev/null | tr -d '\r' | head -1
+}
+
+# ===========================================================================
+# approve() — 逐个完成当前租户的待办任务（从 ACT_RU_TASK 取 taskId）
+# 用法：approve "审批意见" [required]
+#   required=1：首轮无待办即判失败（有流程单据用，防流程未启动被静默放过）
 # ===========================================================================
 approve() {
   local comment="${1:-同意}"
-  api_call GET "/api/v1/workflow/approval/todo?page=1&size=10"
-  local task_id=$(extract_task_id)
-  if [ -z "$task_id" ]; then
-    log "  ⚠️ 无待办任务"
-    return 0
+  local required="${2:-0}"
+  local handled=0
+  local round
+  for round in 1 2 3 4 5 6 7 8; do
+    local task_id=$(db_next_task)
+    if [ -z "$task_id" ]; then
+      if [ "$round" -eq 1 ] && [ "$required" = "1" ]; then
+        fail "审批失败：期望有待办任务但无待办（流程可能未启动）"
+        ABORT_REASON="$CURRENT_STAGE: 审批待办为空"
+        record_stage_result "FAILED"
+        exit 1
+      fi
+      break
+    fi
+    api_call POST "/api/v1/workflow/approval/complete" "{\"taskId\":\"$task_id\",\"comment\":\"$comment\"}"
+    strict_assert "审批完成 第${round}级 (taskId: ${task_id:0:8}...)"
+    handled=$((handled+1))
+    sleep 1
+  done
+  if [ "$required" = "1" ] && [ "$handled" -eq 0 ]; then
+    fail "审批失败：未处理任何待办"
+    ABORT_REASON="$CURRENT_STAGE: 未处理待办"
+    record_stage_result "FAILED"
+    exit 1
   fi
-  api_call POST "/api/v1/workflow/approval/complete" "{\"taskId\":\"$task_id\",\"comment\":\"$comment\"}"
-  success "审批通过 (taskId: ${task_id:0:8}...)"
+}
+
+# ===========================================================================
+# 断言库（需求 5.2：每阶段 HTTP 2xx + 业务状态/金额硬断言）
+# 消除“创建返回 200 即算通过”的弱判定，真实回查业务字段
+# ===========================================================================
+# require_id <value> <desc> — ID 为空立即失败（替代 if [ -n "$id" ] 静默跳过）
+require_id() {
+  local value="$1" desc="$2"
+  if [ -z "$value" ]; then
+    fail "$desc: 未获取到 ID（不允许静默跳过）"
+    ABORT_REASON="$CURRENT_STAGE: $desc 无ID"
+    record_stage_result "FAILED"
+    exit 1
+  fi
+}
+
+# assert_status <GET-path> <field> <expected> <desc> — GET 详情后断言字段值
+assert_status() {
+  local path="$1" field="$2" expected="$3" desc="$4"
+  api_call GET "$path"
+  local actual=$(extract_field "$field")
+  if [ "$actual" != "$expected" ]; then
+    fail "$desc: 期望 $field=$expected，实际=$actual"
+    ABORT_REASON="$CURRENT_STAGE: $desc ($field=$actual!=$expected)"
+    record_stage_result "FAILED"
+    exit 1
+  fi
+  success "$desc: $field=$actual [OK]"
+}
+
+# assert_amount <GET-path> <field> <expected> <desc> — 数值断言（容差 0.01）
+assert_amount() {
+  local path="$1" field="$2" expected="$3" desc="$4"
+  api_call GET "$path"
+  local actual=$(grep -oE "\"$field\"[[:space:]]*:[[:space:]]*\"?[0-9.]+" /tmp/zwi_body | head -1 | grep -oE '[0-9.]+$')
+  actual="${actual:-0}"
+  local ok=$(awk -v a="$actual" -v e="$expected" 'BEGIN{d=a-e; if(d<0)d=-d; print (d<=0.01)?"1":"0"}')
+  if [ "$ok" != "1" ]; then
+    fail "$desc: 期望 $field~=$expected，实际=$actual"
+    ABORT_REASON="$CURRENT_STAGE: $desc ($field=$actual!=$expected)"
+    record_stage_result "FAILED"
+    exit 1
+  fi
+  success "$desc: $field=$actual [OK]"
 }
 
 # ===========================================================================
@@ -437,7 +494,7 @@ stage_1_project_create() {
   phase "1" "项目报备"
   CURRENT_STAGE="1:项目报备"
 
-  api_call POST "/api/v1/project" "{\"projectName\":\"[测试]中维综合楼装修工程\",\"projectNature\":\"装修改造\",\"projectType\":\"公共建筑\",\"ownerCompanyName\":\"城市建设投资集团\",\"signingCompanyName\":\"中维建设有限公司\",\"projectOverview\":\"中维综合楼1-5层精装修改造\",\"projectAddress\":\"广州市天河区体育西路188号\",\"contactName\":\"张建国\",\"contactPhone\":\"13800138001\",\"needTender\":1,\"budgetAmount\":5000000.00,\"tenantId\":$TEST_TENANT_ID}"
+  api_call POST "/api/v1/project" "{\"projectName\":\"[测试]中维综合楼装修工程\",\"projectNature\":\"装修改造\",\"projectType\":\"公共建筑\",\"ownerCompanyName\":\"城市建设投资集团\",\"signingCompanyName\":\"中维建设有限公司\",\"projectOverview\":\"中维综合楼1-5层精装修改造\",\"projectAddress\":\"广州市天河区体育西路188号\",\"contactName\":\"张建国\",\"contactPhone\":\"13800138001\",\"needTender\":1,\"budgetAmount\":5000000.00}"
   strict_assert "创建项目"
 
   # 通过查询获取项目 ID（创建可能不直接返回 ID）
@@ -453,27 +510,25 @@ stage_1_project_create() {
   success "项目 ID: $PROJECT_ID"
   track_resource "DELETE" "/api/v1/project/$PROJECT_ID"
 
+  # 创建后断言初始状态为 DRAFT
+  assert_status "/api/v1/project/$PROJECT_ID" "status" "DRAFT" "项目初始状态"
+
   record_stage_result "PASSED"
 }
 
 # ===========================================================================
-# 阶段 2: 立项审批
-# POST /api/v1/project/{id}/submit → 提交立项审批
+# 阶段 2: 立项（DRAFT → FILED，无审批流程，后端 submit 直接置位）
 # ===========================================================================
 stage_2_project_submit() {
-  phase "2" "立项审批"
-  CURRENT_STAGE="2:立项审批"
+  phase "2" "立项提交"
+  CURRENT_STAGE="2:立项提交"
 
   api_call POST "/api/v1/project/$PROJECT_ID/submit"
-  strict_assert "提交立项审批"
+  strict_assert "提交立项"
 
-  sleep 2
-  approve "同意立项"
-
-  # 验证项目状态
-  api_call GET "/api/v1/project/$PROJECT_ID"
-  local status=$(extract_field "status")
-  success "项目状态: $status"
+  sleep 1
+  # 立项无审批流程，提交后状态直接为 FILED（ProjectService.submit 硬编码）
+  assert_status "/api/v1/project/$PROJECT_ID" "status" "FILED" "立项后项目状态"
 
   record_stage_result "PASSED"
 }
@@ -486,7 +541,7 @@ stage_3_tender_register() {
   phase "3" "投标登记"
   CURRENT_STAGE="3:投标登记"
 
-  api_call POST "/api/v1/tender/register" "{\"projectId\":$PROJECT_ID,\"ownerCompany\":\"城市建设投资集团\",\"bidMethod\":\"公开招标\",\"registerMethod\":\"线上报名\",\"registerDate\":\"2026-07-07\",\"openDate\":\"2026-07-20\",\"tenderMethod\":\"综合评标法\",\"depositAmount\":100000.00,\"status\":\"REGISTERED\",\"tenantId\":$TEST_TENANT_ID}"
+  api_call POST "/api/v1/tender/register" "{\"projectId\":$PROJECT_ID,\"ownerCompany\":\"城市建设投资集团\",\"bidMethod\":\"公开招标\",\"registerMethod\":\"线上报名\",\"registerDate\":\"2026-07-07\",\"openDate\":\"2026-07-20\",\"tenderMethod\":\"综合评标法\",\"depositAmount\":100000.00,\"status\":\"REGISTERED\"}"
   strict_assert "投标登记"
 
   sleep 1
@@ -501,6 +556,27 @@ stage_3_tender_register() {
   success "投标登记 ID: $REGISTER_ID"
   track_resource "DELETE" "/api/v1/tender/register/$REGISTER_ID"
 
+  # 投标登记保存时后端自动将项目置 TENDERING（TenderRegisterService）
+  assert_status "/api/v1/project/$PROJECT_ID" "status" "TENDERING" "投标登记后项目状态"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 3B: 开标中标
+# POST /api/v1/tender/open-bid（isWon=1 → 项目 status=WON、登记 status=WON）
+# ===========================================================================
+stage_3b_open_bid() {
+  phase "3B" "开标中标"
+  CURRENT_STAGE="3B:开标中标"
+
+  api_call POST "/api/v1/tender/open-bid" "{\"registerId\":$REGISTER_ID,\"projectId\":$PROJECT_ID,\"openDate\":\"2026-07-20\",\"isWon\":1,\"winAmount\":4800000.00,\"remark\":\"全生命周期模拟-中标\"}"
+  strict_assert "开标中标登记"
+
+  sleep 1
+  # 中标后项目状态自动置 WON
+  assert_status "/api/v1/project/$PROJECT_ID" "status" "WON" "中标后项目状态"
+
   record_stage_result "PASSED"
 }
 
@@ -512,7 +588,7 @@ stage_4_contract() {
   phase "4" "施工合同"
   CURRENT_STAGE="4:施工合同"
 
-  api_call POST "/api/v1/contract" "{\"projectId\":$PROJECT_ID,\"contractType\":\"REGISTER\",\"partyAName\":\"城市建设投资集团\",\"signingDate\":\"2026-07-25\",\"startDate\":\"2026-08-01\",\"endDate\":\"2027-02-01\",\"contractAmount\":4800000.00,\"taxRate\":9.00,\"amountWithoutTax\":4403669.72,\"taxAmount\":396330.28,\"tenantId\":$TEST_TENANT_ID}"
+  api_call POST "/api/v1/contract" "{\"projectId\":$PROJECT_ID,\"contractType\":\"REGISTER\",\"partyAName\":\"城市建设投资集团\",\"signingDate\":\"2026-07-25\",\"startDate\":\"2026-08-01\",\"endDate\":\"2027-02-01\",\"contractAmount\":4800000.00,\"taxRate\":9.00,\"amountWithoutTax\":4403669.72,\"taxAmount\":396330.28}"
   strict_assert "创建施工合同"
 
   sleep 1
@@ -527,11 +603,15 @@ stage_4_contract() {
   success "施工合同 ID: $CONTRACT_ID"
   track_resource "DELETE" "/api/v1/contract/$CONTRACT_ID"
 
-  # 提交合同审批
+  # 提交合同审批（construction_contract_approval 两级）
   api_call POST "/api/v1/contract/$CONTRACT_ID/submit"
   strict_assert "提交合同审批"
   sleep 2
-  approve "同意签订合同"
+  approve "同意签订合同" 1
+
+  # 审批通过后：合同 EFFECTIVE + 项目由 WON → CONSTRUCTION
+  assert_status "/api/v1/contract/$CONTRACT_ID" "status" "EFFECTIVE" "合同审批后状态"
+  assert_status "/api/v1/project/$PROJECT_ID" "status" "CONSTRUCTION" "合同生效后项目状态"
 
   record_stage_result "PASSED"
 }
@@ -544,7 +624,7 @@ stage_5_budget() {
   phase "5" "预算编制"
   CURRENT_STAGE="5:预算编制"
 
-  api_call POST "/api/v1/budget" "{\"projectId\":$PROJECT_ID,\"budgetType\":\"ORIGINAL\",\"totalAmount\":4200000.00,\"tenantId\":$TEST_TENANT_ID}"
+  api_call POST "/api/v1/budget" "{\"projectId\":$PROJECT_ID,\"budgetType\":\"ORIGINAL\",\"totalAmount\":4200000.00}"
   strict_assert "创建预算"
 
   sleep 1
@@ -559,60 +639,107 @@ stage_5_budget() {
   success "预算 ID: $BUDGET_ID"
   track_resource "DELETE" "/api/v1/budget/$BUDGET_ID"
 
-  # 提交预算审批
+  # 提交预算审批（若无流程则 approve 非 required 会空转）
   api_call POST "/api/v1/budget/$BUDGET_ID/submit"
   strict_assert "提交预算审批"
   sleep 2
   approve "预算批准"
 
+  # ── 预算控制负向用例：先 BLOCK 验证拦截生效，再改 WARN_ONLY 放行 ──
+  # 新项目无科目额度，BLOCK 模式下支出合同会被 @BudgetCheck 拦截
+  api_call POST "/api/v1/budget-control-configs" "{\"projectId\":$PROJECT_ID,\"controlMode\":\"BLOCK\",\"warningThreshold\":80}"
+  strict_assert "配置预算控制 BLOCK"
+  sleep 1
+  api_call GET "/api/v1/budget-control-configs?page=1&size=1&projectName="
+  BUDGET_CTRL_ID=$(extract_first_record_id)
+  require_id "$BUDGET_CTRL_ID" "预算控制配置 ID"
+  track_resource "DELETE" "/api/v1/budget-control-configs/$BUDGET_CTRL_ID"
+
+  # 负向断言：BLOCK 下创建采购合同应被拦截（HTTP非2xx 或 code!=200 且含“预算”）
+  api_call POST "/api/v1/purchase/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"[负向]预算拦截探针合同\",\"partyBName\":\"探针供应商\",\"supplierName\":\"探针供应商\",\"signingDate\":\"2026-08-05\",\"contractAmount\":800000.00}"
+  local blk_code=$(cat /tmp/zwi_last_code 2>/dev/null || echo 000)
+  if [[ "$blk_code" =~ ^2[0-9][0-9]$ ]] && ! grep -q "预算" /tmp/zwi_body; then
+    fail "预算 BLOCK 未生效：支出合同本应被拦截（HTTP $blk_code）"
+    ABORT_REASON="阶段5: 预算BLOCK未生效"
+    record_stage_result "FAILED"
+    exit 1
+  fi
+  success "预算 BLOCK 生效：支出合同创建被拦截 (HTTP $blk_code)"
+
+  # 改为 WARN_ONLY（PUT 更新），后续支出合同可在超预算时仅告警不拦截
+  api_call PUT "/api/v1/budget-control-configs/$BUDGET_CTRL_ID" "{\"projectId\":$PROJECT_ID,\"controlMode\":\"WARN_ONLY\",\"warningThreshold\":80}"
+  strict_assert "预算控制改为 WARN_ONLY"
+
   record_stage_result "PASSED"
 }
 
 # ===========================================================================
-# 阶段 6: 采购/劳务/机械 — 每类各创建一份合同 + track_resource
+# 阶段 6: 支出合同（采购/劳务/机械/分包）— 创建+提交+断言 EFFECTIVE
 # ===========================================================================
 stage_6_subcontracts() {
-  phase "6" "采购/劳务/机械合同"
-  CURRENT_STAGE="6:采购/劳务/机械"
+  phase "6" "支出合同（采购/劳务/机械/分包）"
+  CURRENT_STAGE="6:支出合同"
 
-  # 6A: 采购合同
-  log "  ── 6A: 采购合同 ──"
-  api_call POST "/api/v1/purchase/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"装修主材采购合同\",\"partyBName\":\"广州建材供应有限公司\",\"supplierName\":\"广州建材供应有限公司\",\"signingDate\":\"2026-08-05\",\"contractAmount\":800000.00,\"paymentTerms\":\"月结30天\",\"tenantId\":$TEST_TENANT_ID}"
+  # 6A: 采购合同（purchase_contract_approval 流程）
+  log "  -- 6A: 采购合同 --"
+  api_call POST "/api/v1/purchase/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"装修主材采购合同\",\"partyBName\":\"广州建材供应有限公司\",\"supplierName\":\"广州建材供应有限公司\",\"signingDate\":\"2026-08-05\",\"contractAmount\":800000.00,\"paymentTerms\":\"月结30天\"}"
   strict_assert "创建采购合同"
-
   sleep 1
   api_call GET "/api/v1/purchase/contract/page?page=1&size=1&projectId=$PROJECT_ID"
   PURCHASE_CONTRACT_ID=$(extract_first_record_id)
-  if [ -n "$PURCHASE_CONTRACT_ID" ]; then
-    success "采购合同 ID: $PURCHASE_CONTRACT_ID"
-    track_resource "DELETE" "/api/v1/purchase/contract/$PURCHASE_CONTRACT_ID"
-  fi
+  require_id "$PURCHASE_CONTRACT_ID" "采购合同 ID"
+  success "采购合同 ID: $PURCHASE_CONTRACT_ID"
+  track_resource "DELETE" "/api/v1/purchase/contract/$PURCHASE_CONTRACT_ID"
+  api_call POST "/api/v1/purchase/contract/$PURCHASE_CONTRACT_ID/submit"
+  strict_assert "提交采购合同审批"
+  sleep 2
+  approve "同意采购合同"
+  assert_status "/api/v1/purchase/contract/$PURCHASE_CONTRACT_ID" "status" "EFFECTIVE" "采购合同状态"
 
-  # 6B: 劳务合同
-  log "  ── 6B: 劳务合同 ──"
-  api_call POST "/api/v1/labor/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"泥水木工劳务合同\",\"partyBName\":\"恒通劳务公司\",\"signingDate\":\"2026-08-01\",\"startDate\":\"2026-08-01\",\"endDate\":\"2027-01-31\",\"contractAmount\":1200000.00,\"tenantId\":$TEST_TENANT_ID}"
+  # 6B: 劳务合同（无工作流，submit 直接 EFFECTIVE）
+  log "  -- 6B: 劳务合同 --"
+  api_call POST "/api/v1/labor/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"泥水木工劳务合同\",\"partyBName\":\"恒通劳务公司\",\"teamName\":\"恒通施工队\",\"signingDate\":\"2026-08-01\",\"startDate\":\"2026-08-01\",\"endDate\":\"2027-01-31\",\"contractAmount\":1200000.00}"
   strict_assert "创建劳务合同"
-
   sleep 1
   api_call GET "/api/v1/labor/contract/page?page=1&size=1&projectId=$PROJECT_ID"
   LABOR_CONTRACT_ID=$(extract_first_record_id)
-  if [ -n "$LABOR_CONTRACT_ID" ]; then
-    success "劳务合同 ID: $LABOR_CONTRACT_ID"
-    track_resource "DELETE" "/api/v1/labor/contract/$LABOR_CONTRACT_ID"
-  fi
+  require_id "$LABOR_CONTRACT_ID" "劳务合同 ID"
+  success "劳务合同 ID: $LABOR_CONTRACT_ID"
+  track_resource "DELETE" "/api/v1/labor/contract/$LABOR_CONTRACT_ID"
+  api_call POST "/api/v1/labor/contract/$LABOR_CONTRACT_ID/submit"
+  strict_assert "提交劳务合同"
+  sleep 1
+  assert_status "/api/v1/labor/contract/$LABOR_CONTRACT_ID" "status" "EFFECTIVE" "劳务合同状态"
 
-  # 6C: 机械合同
-  log "  ── 6C: 机械合同 ──"
-  api_call POST "/api/v1/machine/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"塔吊租赁合同\",\"supplierName\":\"华南机械租赁\",\"machineName\":\"QTZ63塔吊\",\"rentalType\":\"月租\",\"signingDate\":\"2026-08-01\",\"startDate\":\"2026-08-01\",\"endDate\":\"2027-01-31\",\"contractAmount\":300000.00,\"tenantId\":$TEST_TENANT_ID}"
+  # 6C: 机械合同（rentalType=台班，contractAmount 作为台班单价—代码取 contractAmount 为单价）
+  log "  -- 6C: 机械合同 --"
+  api_call POST "/api/v1/machine/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"塔吊租赁合同\",\"supplierName\":\"华南机械租赁\",\"machineName\":\"QTZ63塔吊\",\"rentalType\":\"台班\",\"signingDate\":\"2026-08-01\",\"startDate\":\"2026-08-01\",\"endDate\":\"2027-01-31\",\"contractAmount\":500.00}"
   strict_assert "创建机械合同"
-
   sleep 1
   api_call GET "/api/v1/machine/contract/page?page=1&size=1&projectId=$PROJECT_ID"
   MACHINE_CONTRACT_ID=$(extract_first_record_id)
-  if [ -n "$MACHINE_CONTRACT_ID" ]; then
-    success "机械合同 ID: $MACHINE_CONTRACT_ID"
-    track_resource "DELETE" "/api/v1/machine/contract/$MACHINE_CONTRACT_ID"
-  fi
+  require_id "$MACHINE_CONTRACT_ID" "机械合同 ID"
+  success "机械合同 ID: $MACHINE_CONTRACT_ID"
+  track_resource "DELETE" "/api/v1/machine/contract/$MACHINE_CONTRACT_ID"
+  api_call POST "/api/v1/machine/contract/$MACHINE_CONTRACT_ID/submit"
+  strict_assert "提交机械合同"
+  sleep 1
+  assert_status "/api/v1/machine/contract/$MACHINE_CONTRACT_ID" "status" "EFFECTIVE" "机械合同状态"
+
+  # 6D: 分包合同（无工作流，submit 直接 EFFECTIVE）
+  log "  -- 6D: 分包合同 --"
+  api_call POST "/api/v1/subcontract/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"钢结构分包合同\",\"partyBName\":\"中铁分包公司\",\"supplierName\":\"中铁分包公司\",\"signingDate\":\"2026-08-02\",\"contractAmount\":600000.00}"
+  strict_assert "创建分包合同"
+  sleep 1
+  api_call GET "/api/v1/subcontract/contract/page?page=1&size=1&projectId=$PROJECT_ID"
+  SUBCONTRACT_CONTRACT_ID=$(extract_first_record_id)
+  require_id "$SUBCONTRACT_CONTRACT_ID" "分包合同 ID"
+  success "分包合同 ID: $SUBCONTRACT_CONTRACT_ID"
+  track_resource "DELETE" "/api/v1/subcontract/contract/$SUBCONTRACT_CONTRACT_ID"
+  api_call POST "/api/v1/subcontract/contract/$SUBCONTRACT_CONTRACT_ID/submit"
+  strict_assert "提交分包合同"
+  sleep 1
+  assert_status "/api/v1/subcontract/contract/$SUBCONTRACT_CONTRACT_ID" "status" "EFFECTIVE" "分包合同状态"
 
   record_stage_result "PASSED"
 }
@@ -625,7 +752,7 @@ stage_7_site_management() {
   phase "7" "现场管理"
   CURRENT_STAGE="7:现场管理"
 
-  api_call POST "/api/v1/site/construction-log" "{\"projectId\":$PROJECT_ID,\"logDate\":\"2026-08-15\",\"weather\":\"晴\",\"temperature\":\"32℃\",\"wind\":\"微风\",\"workerCount\":45,\"productionRecord\":\"地砖铺贴60%\",\"technicalRecord\":\"隐蔽验收合格\",\"tenantId\":$TEST_TENANT_ID}"
+  api_call POST "/api/v1/site/construction-log" "{\"projectId\":$PROJECT_ID,\"logDate\":\"2026-08-15\",\"weather\":\"晴\",\"temperature\":\"32℃\",\"wind\":\"微风\",\"workerCount\":45,\"productionRecord\":\"地砖铺贴60%\",\"technicalRecord\":\"隐蔽验收合格\"}"
   strict_assert "创建施工日志"
 
   # 尝试获取施工日志 ID 用于清理追踪
@@ -648,22 +775,24 @@ stage_8_output_settlement() {
   phase "8" "产值结算"
   CURRENT_STAGE="8:产值结算"
 
-  api_call POST "/api/v1/contract/output" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"reportPeriod\":\"2026-08\",\"currentOutput\":1200000.00,\"tenantId\":$TEST_TENANT_ID}"
+  api_call POST "/api/v1/contract/output" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"reportPeriod\":\"2026-08\",\"currentOutput\":1200000.00}"
   strict_assert "提交产值报告"
 
   sleep 1
   api_call GET "/api/v1/contract/output?page=1&size=1&projectId=$PROJECT_ID"
   local output_id=$(extract_first_record_id)
-  if [ -n "$output_id" ]; then
-    success "产值报告 ID: $output_id"
-    track_resource "DELETE" "/api/v1/contract/output/$output_id"
+  require_id "$output_id" "产值报告 ID"
+  success "产值报告 ID: $output_id"
+  track_resource "DELETE" "/api/v1/contract/output/$output_id"
 
-    # 提交产值审批
-    api_call POST "/api/v1/contract/output/$output_id/submit"
-    strict_assert "提交产值审批"
-    sleep 2
-    approve "产值确认"
-  fi
+  # 提交产值审批（output_report_approval 两级）
+  api_call POST "/api/v1/contract/output/$output_id/submit"
+  strict_assert "提交产值审批"
+  sleep 2
+  approve "产值确认" 1
+
+  # 审批通过后回写施工合同累计产值=120万
+  assert_amount "/api/v1/contract/$CONTRACT_ID" "cumulativeOutput" "1200000" "施工合同累计产值"
 
   record_stage_result "PASSED"
 }
@@ -676,35 +805,86 @@ stage_9_finance() {
   phase "9" "财务收付"
   CURRENT_STAGE="9:财务收付"
 
-  # 开票申请
-  api_call POST "/api/v1/finance/invoice-apply" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"invoiceType\":\"SPECIAL\",\"invoiceAmount\":1000000.00,\"invoiceTitle\":\"城市建设投资集团\",\"taxpayerId\":\"914401001234567890\",\"tenantId\":$TEST_TENANT_ID}"
+  # 开票申请（applyDate 为后端 @NotNull 必填；金额对齐累计产值 120 万，为后续收款结清/结项铺路）
+  api_call POST "/api/v1/finance/invoice-apply" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"applyDate\":\"2026-09-10\",\"invoiceType\":\"SPECIAL\",\"invoiceAmount\":1200000.00,\"invoiceTitle\":\"城市建设投资集团\",\"taxpayerId\":\"914401001234567890\"}"
   strict_assert "开票申请"
 
   sleep 1
   api_call GET "/api/v1/finance/invoice-apply/page?page=1&size=1&projectId=$PROJECT_ID"
   local invoice_id=$(extract_first_record_id)
-  if [ -n "$invoice_id" ]; then
-    success "开票申请 ID: $invoice_id"
-    track_resource "DELETE" "/api/v1/finance/invoice-apply/$invoice_id"
+  require_id "$invoice_id" "开票申请 ID"
+  success "开票申请 ID: $invoice_id"
+  track_resource "DELETE" "/api/v1/finance/invoice-apply/$invoice_id"
+  api_call POST "/api/v1/finance/invoice-apply/$invoice_id/submit"
+  strict_assert "提交开票审批"
+  sleep 2
+  approve "同意开票" 1
+  # 开票审批通过后回写累计开票=120万
+  assert_amount "/api/v1/contract/$CONTRACT_ID" "cumulativeInvoiceAmount" "1200000" "施工合同累计开票"
 
-    # 提交开票审批
-    api_call POST "/api/v1/finance/invoice-apply/$invoice_id/submit"
-    strict_assert "提交开票审批"
-    sleep 2
-    approve "同意开票"
-  fi
-
-  # 收款登记
-  api_call POST "/api/v1/finance/payment-received" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"receiveDate\":\"2026-09-15\",\"receiveAmount\":1000000.00,\"receiveType\":\"转账\",\"tenantId\":$TEST_TENANT_ID}"
+  # 收款登记（金额对齐累计产值，满足结项「款项基本结清」条件：产值-已收 ≤ 100）
+  api_call POST "/api/v1/finance/payment-received" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"receiveDate\":\"2026-09-15\",\"receiveAmount\":1200000.00,\"receiveType\":\"转账\"}"
   strict_assert "收款登记"
 
   sleep 1
   api_call GET "/api/v1/finance/payment-received/page?page=1&size=1&projectId=$PROJECT_ID"
   local received_id=$(extract_first_record_id)
-  if [ -n "$received_id" ]; then
-    success "收款记录 ID: $received_id"
-    track_resource "DELETE" "/api/v1/finance/payment-received/$received_id"
+  require_id "$received_id" "收款记录 ID"
+  success "收款记录 ID: $received_id"
+  track_resource "DELETE" "/api/v1/finance/payment-received/$received_id"
+
+  # 收款登记后回写项目总收入=120万（满足结项“款项基本结清”：产值-已收≤0）
+  assert_amount "/api/v1/project/$PROJECT_ID" "totalIncome" "1200000" "项目总收入"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 9B: 竣工验收 + 最终结算（结项前置条件）
+# POST /api/v1/site/completion + /api/v1/project-settlements
+# ===========================================================================
+stage_9b_completion_settlement() {
+  phase "9B" "竣工验收与最终结算"
+  CURRENT_STAGE="9B:竣工验收与最终结算"
+
+  # 竣工验收：创建 + 提交（提交后项目状态→COMPLETED）
+  api_call POST "/api/v1/site/completion" "{\"projectId\":$PROJECT_ID,\"acceptanceDate\":\"2026-10-10\",\"acceptanceResult\":\"合格\",\"remark\":\"全生命周期模拟-竣工验收\"}"
+  strict_assert "创建竣工验收"
+
+  sleep 1
+  api_call GET "/api/v1/site/completion/page?page=1&size=1&projectId=$PROJECT_ID"
+  local acceptance_id=$(extract_first_record_id)
+  if [ -z "$acceptance_id" ]; then
+    fail "未获取到竣工验收 ID"
+    ABORT_REASON="阶段9B: 无法获取竣工验收ID"
+    record_stage_result "FAILED"
+    exit 1
   fi
+  success "竣工验收 ID: $acceptance_id"
+  track_resource "DELETE" "/api/v1/site/completion/$acceptance_id"
+
+  api_call POST "/api/v1/site/completion/$acceptance_id/submit"
+  strict_assert "提交竣工验收"
+  sleep 2
+  approve "竣工验收通过"
+
+  # 最终结算：创建（RequestParam projectId）+ 提交审批（project_settlement_approval）
+  assert_status "/api/v1/project/$PROJECT_ID" "status" "COMPLETED" "completion-project-status"
+  api_call POST "/api/v1/project-settlements?projectId=$PROJECT_ID"
+  strict_assert "创建最终结算单"
+  local settlement_id=$(extract_id)
+  if [ -z "$settlement_id" ]; then
+    fail "未获取到结算单 ID"
+    ABORT_REASON="阶段9B: 无法获取结算单ID"
+    record_stage_result "FAILED"
+    exit 1
+  fi
+  success "最终结算单 ID: $settlement_id"
+
+  api_call POST "/api/v1/project-settlements/$settlement_id/submit"
+  strict_assert "提交最终结算审批"
+  sleep 2
+  approve "最终结算通过"
 
   record_stage_result "PASSED"
 }
@@ -718,12 +898,12 @@ stage_10_project_close() {
   CURRENT_STAGE="10:项目关闭"
 
   api_call POST "/api/v1/project/$PROJECT_ID/close"
-  strict_assert "项目关闭"
+  strict_assert "项目关闭（发起结项审批）"
+  sleep 2
+  approve "同意结项" 1
 
-  # 验证项目状态
-  api_call GET "/api/v1/project/$PROJECT_ID"
-  local status=$(extract_field "status")
-  success "项目最终状态: $status"
+  # 结项审批通过后项目状态 CLOSED
+  assert_status "/api/v1/project/$PROJECT_ID" "status" "CLOSED" "项目最细状态"
 
   record_stage_result "PASSED"
 }
@@ -731,6 +911,290 @@ stage_10_project_close() {
 # ===========================================================================
 # main — 入口
 # ===========================================================================
+# ===========================================================================
+# 阶段 7B: 材料入库/出库（入库后库存增加、回写采购合同累计入库）
+# ===========================================================================
+stage_7b_material() {
+  phase "7B" "材料入出库"
+  CURRENT_STAGE="7B:材料入出库"
+
+  # 入库 10 万（关联采购合同，含明细）
+  api_call POST "/api/v1/material/inbound" "{\"projectId\":$PROJECT_ID,\"contractId\":$PURCHASE_CONTRACT_ID,\"inboundDate\":\"2026-08-20\",\"totalAmount\":100000.00,\"directOutbound\":0,\"details\":[{\"materialName\":\"瓷砖\",\"specification\":\"800x800\",\"unit\":\"块\",\"quantity\":2000,\"unitPrice\":50.00,\"totalPrice\":100000.00}]}"
+  strict_assert "创建材料入库单"
+  sleep 1
+  api_call GET "/api/v1/material/inbound/page?page=1&size=1&projectId=$PROJECT_ID"
+  INBOUND_ID=$(extract_first_record_id)
+  require_id "$INBOUND_ID" "材料入库单 ID"
+  success "材料入库单 ID: $INBOUND_ID"
+  track_resource "DELETE" "/api/v1/material/inbound/$INBOUND_ID"
+  api_call POST "/api/v1/material/inbound/$INBOUND_ID/submit"
+  strict_assert "提交材料入库"
+  sleep 1
+  assert_status "/api/v1/material/inbound/$INBOUND_ID" "status" "APPROVED" "入库单状态"
+  # 入库审批后回写采购合同累计入库=100000
+  assert_amount "/api/v1/purchase/contract/$PURCHASE_CONTRACT_ID" "cumulativeInbound" "100000" "采购合同累计入库"
+
+  # 出库 6 万
+  api_call POST "/api/v1/material/outbound" "{\"projectId\":$PROJECT_ID,\"outboundType\":\"NORMAL\",\"outboundDate\":\"2026-08-25\",\"operatorName\":\"仓管员\",\"details\":[{\"materialName\":\"瓷砖\",\"specification\":\"800x800\",\"unit\":\"块\",\"quantity\":1200,\"unitPrice\":50.00,\"totalPrice\":60000.00}]}"
+  strict_assert "创建材料出库单"
+  sleep 1
+  api_call GET "/api/v1/material/outbound/page?page=1&size=1&projectId=$PROJECT_ID"
+  local outbound_id=$(extract_first_record_id)
+  require_id "$outbound_id" "材料出库单 ID"
+  success "材料出库单 ID: $outbound_id"
+  track_resource "DELETE" "/api/v1/material/outbound/$outbound_id"
+  api_call POST "/api/v1/material/outbound/$outbound_id/submit"
+  strict_assert "提交材料出库"
+  sleep 1
+  assert_status "/api/v1/material/outbound/$outbound_id" "status" "APPROVED" "出库单状态"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 7C: 机械执行（台账 → 进场 → 台班日志 → 结算）
+# 机械结算通过 machineName 匹配 EFFECTIVE 机械合同取单价（=contractAmount=500）
+# ===========================================================================
+stage_7c_machine_exec() {
+  phase "7C" "机械执行与结算"
+  CURRENT_STAGE="7C:机械执行"
+
+  # 台账（租户级资产，machineName 与机械合同一致以便结算匹配）
+  api_call POST "/api/v1/machine/ledger" "{\"machineName\":\"QTZ63塔吊\",\"machineCode\":\"JX-T9-001\",\"machineType\":\"起重机械\",\"ownerType\":\"租赁\",\"status\":\"REGISTERED\"}"
+  strict_assert "创建机械台账"
+  sleep 1
+  api_call GET "/api/v1/machine/ledger/page?page=1&size=1&machineName=QTZ63"
+  MACHINE_LEDGER_ID=$(extract_first_record_id)
+  require_id "$MACHINE_LEDGER_ID" "机械台账 ID"
+  success "机械台账 ID: $MACHINE_LEDGER_ID"
+  track_resource "DELETE" "/api/v1/machine/ledger/$MACHINE_LEDGER_ID"
+
+  # 进场
+  api_call POST "/api/v1/machine/entry/in" "{\"machineId\":$MACHINE_LEDGER_ID,\"projectId\":$PROJECT_ID,\"entryDate\":\"2026-08-05\",\"entryType\":\"IN\"}"
+  strict_assert "机械进场"
+
+  # 台班日志 shiftCount=10
+  api_call POST "/api/v1/machine/work-log" "{\"machineId\":$MACHINE_LEDGER_ID,\"projectId\":$PROJECT_ID,\"workDate\":\"2026-08-15\",\"shiftCount\":10,\"workQuantity\":0}"
+  strict_assert "创建台班工作日志"
+
+  # 结算：周期覆盖日志（金额=shiftCount*单价=10*500=5000）
+  api_call POST "/api/v1/machine/settlement" "{\"projectId\":$PROJECT_ID,\"periodStart\":\"2026-08-01\",\"periodEnd\":\"2026-08-31\"}"
+  strict_assert "创建机械结算单"
+  sleep 1
+  api_call GET "/api/v1/machine/settlement?page=1&size=1&projectId=$PROJECT_ID"
+  local m_settle_id=$(extract_first_record_id)
+  require_id "$m_settle_id" "机械结算单 ID"
+  success "机械结算单 ID: $m_settle_id"
+  track_resource "DELETE" "/api/v1/machine/settlement/$m_settle_id"
+  # 结算金额断言=5000
+  assert_amount "/api/v1/machine/settlement/$m_settle_id" "totalAmount" "5000" "机械结算金额"
+  # 提交审批（machine_settlement 流程）
+  api_call POST "/api/v1/machine/settlement/$m_settle_id/submit"
+  strict_assert "提交机械结算审批"
+  sleep 2
+  approve "机械结算确认" 1
+  # 审批通过后 status=2（已审批）+ 回写机械合同累计结算=5000
+  assert_status "/api/v1/machine/settlement/$m_settle_id" "status" "2" "机械结算状态"
+  assert_amount "/api/v1/machine/contract/$MACHINE_CONTRACT_ID" "cumulativeSettlement" "5000" "机械合同累计结算"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 7D: 劳务执行（劳务结算直接给金额，后端 submit 直接 APPROVED）
+# ===========================================================================
+stage_7d_labor_exec() {
+  phase "7D" "劳务执行与结算"
+  CURRENT_STAGE="7D:劳务执行"
+
+  # 劳务结算 5 万（LaborSettlement 只要 projectId/contractId/settlementAmount，不依赖工单）
+  api_call POST "/api/v1/labor/settlement" "{\"projectId\":$PROJECT_ID,\"contractId\":$LABOR_CONTRACT_ID,\"settlementAmount\":50000.00}"
+  strict_assert "创建劳务结算单"
+  sleep 1
+  api_call GET "/api/v1/labor/settlement/page?page=1&size=1&projectId=$PROJECT_ID"
+  local l_settle_id=$(extract_first_record_id)
+  require_id "$l_settle_id" "劳务结算单 ID"
+  success "劳务结算单 ID: $l_settle_id"
+  track_resource "DELETE" "/api/v1/labor/settlement/$l_settle_id"
+  api_call POST "/api/v1/labor/settlement/$l_settle_id/submit"
+  strict_assert "提交劳务结算"
+  sleep 1
+  # 无工作流，submit 直接 APPROVED + 回写劳务合同累计结算=50000
+  assert_status "/api/v1/labor/settlement/$l_settle_id" "status" "APPROVED" "劳务结算状态"
+  assert_amount "/api/v1/labor/contract/$LABOR_CONTRACT_ID" "cumulativeSettlement" "50000" "劳务合同累计结算"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 7E: 分包执行（产值 → 结算，含明细）
+# ===========================================================================
+stage_7e_subcontract_exec() {
+  phase "7E" "分包执行与结算"
+  CURRENT_STAGE="7E:分包执行"
+
+  # 分包产值 3 万
+  api_call POST "/api/v1/subcontract/output" "{\"projectId\":$PROJECT_ID,\"contractId\":$SUBCONTRACT_CONTRACT_ID,\"currentOutput\":30000.00}"
+  strict_assert "创建分包产值"
+  sleep 1
+  api_call GET "/api/v1/subcontract/output/page?page=1&size=1&projectId=$PROJECT_ID"
+  local sub_output_id=$(extract_first_record_id)
+  require_id "$sub_output_id" "分包产值 ID"
+  track_resource "DELETE" "/api/v1/subcontract/output/$sub_output_id"
+  api_call POST "/api/v1/subcontract/output/$sub_output_id/submit"
+  strict_assert "提交分包产值"
+  sleep 1
+
+  # 分包结算 3 万（明细 quantity*unitPrice=300*100=30000）
+  api_call POST "/api/v1/subcontract/settlement" "{\"projectId\":$PROJECT_ID,\"contractId\":$SUBCONTRACT_CONTRACT_ID,\"details\":[{\"itemName\":\"钢结构安装\",\"quantity\":300,\"unitPrice\":100.00}]}"
+  strict_assert "创建分包结算单"
+  sleep 1
+  api_call GET "/api/v1/subcontract/settlement?page=1&size=1&projectId=$PROJECT_ID"
+  local sub_settle_id=$(extract_first_record_id)
+  require_id "$sub_settle_id" "分包结算单 ID"
+  track_resource "DELETE" "/api/v1/subcontract/settlement/$sub_settle_id"
+  api_call POST "/api/v1/subcontract/settlement/$sub_settle_id/submit"
+  strict_assert "提交分包结算"
+  sleep 1
+  assert_amount "/api/v1/subcontract/contract/$SUBCONTRACT_CONTRACT_ID" "cumulativeSettlement" "30000" "分包合同累计结算"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 9C: 采购结算（关联已审批入库单，submit 直接 APPROVED）
+# ===========================================================================
+stage_9c_purchase_settlement() {
+  phase "9C" "采购结算"
+  CURRENT_STAGE="9C:采购结算"
+
+  # 采购结算 10 万（关联已审批入库单 INBOUND_ID，结算金额≤入库金额）
+  api_call POST "/api/v1/purchase/settlement" "{\"projectId\":$PROJECT_ID,\"contractId\":$PURCHASE_CONTRACT_ID,\"inboundId\":$INBOUND_ID,\"settlementAmount\":100000.00}"
+  strict_assert "创建采购结算单"
+  sleep 1
+  api_call GET "/api/v1/purchase/settlement/page?page=1&size=1&projectId=$PROJECT_ID"
+  PURCHASE_SETTLEMENT_ID=$(extract_first_record_id)
+  require_id "$PURCHASE_SETTLEMENT_ID" "采购结算单 ID"
+  success "采购结算单 ID: $PURCHASE_SETTLEMENT_ID"
+  track_resource "DELETE" "/api/v1/purchase/settlement/$PURCHASE_SETTLEMENT_ID"
+  api_call POST "/api/v1/purchase/settlement/$PURCHASE_SETTLEMENT_ID/submit"
+  strict_assert "提交采购结算审批"
+  sleep 2
+  approve "采购结算确认"
+  # submit 后立即回写采购合同累计结算=100000
+  assert_amount "/api/v1/purchase/contract/$PURCHASE_CONTRACT_ID" "cumulativeSettlement" "100000" "采购合同累计结算"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 9D: 付款闭环（4 笔付款，均≤各自 cumulativeSettlement，payment_apply_approval）
+# 金额：采购8万/劳务5万/机械5000/分包3万 → 项目 totalExpense=165000
+# ===========================================================================
+pay_one() {
+  # 保留占位（已不再使用；付款改为基于 biz_other_contract 的真实流程）
+  return 0
+}
+
+stage_9d_payment_closure() {
+  phase "9D" "付款闭环"
+  CURRENT_STAGE="9D:付款闭环"
+
+  # 说明：payment-apply 仅支持 biz_other_contract（contractId 必须是其他合同 id），
+  # 校验 付款≤累计结算-已付。其他合同无独立结算流程，cumulativeSettlement 于创建时直接带入
+  # （OtherContractService.save 仅在字段为 null 时才置 0，创建体可携带该值—系统唯一支持方式）。
+  # 创建其他支出合同：累计结算 200000（含 9E 驳回用例余量）
+  api_call POST "/api/v1/contract/other" "{\"projectId\":$PROJECT_ID,\"contractName\":\"综合服务其他支出合同\",\"contractCategory\":\"OTHER_EXPENSE\",\"partyBName\":\"综合服务供应商\",\"contractAmount\":200000.00,\"cumulativeSettlement\":200000.00}"
+  strict_assert "创建其他支出合同"
+  sleep 1
+  api_call GET "/api/v1/contract/other?page=1&size=1&projectId=$PROJECT_ID&contractCategory=OTHER_EXPENSE"
+  OTHER_CONTRACT_ID=$(extract_first_record_id)
+  require_id "$OTHER_CONTRACT_ID" "其他支出合同 ID"
+  success "其他支出合同 ID: $OTHER_CONTRACT_ID"
+  track_resource "DELETE" "/api/v1/contract/other/$OTHER_CONTRACT_ID"
+
+  # 付款申请 165000（≤累计结算 200000），提交审批（payment_apply_approval）
+  api_call POST "/api/v1/finance/payment-apply" "{\"projectId\":$PROJECT_ID,\"contractId\":$OTHER_CONTRACT_ID,\"contractCategory\":\"OTHER_EXPENSE\",\"supplierName\":\"综合服务供应商\",\"paymentAmount\":165000.00,\"paymentDate\":\"2026-09-20\"}"
+  strict_assert "创建付款申请"
+  sleep 1
+  api_call GET "/api/v1/finance/payment-apply/page?page=1&size=1&projectId=$PROJECT_ID&contractId=$OTHER_CONTRACT_ID"
+  local pid=$(extract_first_record_id)
+  require_id "$pid" "付款申请 ID"
+  track_resource "DELETE" "/api/v1/finance/payment-apply/$pid"
+  api_call POST "/api/v1/finance/payment-apply/$pid/submit"
+  strict_assert "提交付款审批"
+  sleep 2
+  approve "同意付款" 1
+  assert_status "/api/v1/finance/payment-apply/$pid" "status" "APPROVED" "付款状态"
+  # 审批通过回写其他合同累计已付=165000；项目总支出=195000
+  # （=分包结算 30000 + 本次付款 165000；SubcontractSettlementService.submit 会将结算额计入
+  #   项目 totalExpense，而劳务/机械/采购结算不写—此为后端现状，测试按实断言）
+  assert_amount "/api/v1/contract/other/$OTHER_CONTRACT_ID" "cumulativePaid" "165000" "其他合同累计已付"
+  assert_amount "/api/v1/project/$PROJECT_ID" "totalExpense" "195000" "项目总支出"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 9E: 驳回分支（两条真实路径，在 totalExpense 断言之后执行）
+#   路径A 退回重审：付款 submit → reject-start 退回发起人 → 重新 complete → APPROVED
+#   路径B 终止重提：付款 submit → terminate → REJECTED → 重新 submit → APPROVED
+# 采购合同已付 80000，cumulativeSettlement=100000，尚可再付 20000
+# ===========================================================================
+stage_9e_reject_branch() {
+  phase "9E" "驳回分支"
+  CURRENT_STAGE="9E:驳回分支"
+
+  # 复用 9D 其他支出合同（累计结算200000，已付165000，余量35000）
+  # ── 路径A：reject-start 退回发起人 → 重审 complete → APPROVED（再付 10000）──
+  log "  -- 9E-A: reject-start 退回重审 --"
+  api_call POST "/api/v1/finance/payment-apply" "{\"projectId\":$PROJECT_ID,\"contractId\":$OTHER_CONTRACT_ID,\"contractCategory\":\"OTHER_EXPENSE\",\"supplierName\":\"综合服务供应商\",\"paymentAmount\":10000.00,\"paymentDate\":\"2026-09-21\"}"
+  strict_assert "创建付款申请-退回用例"
+  sleep 1
+  api_call GET "/api/v1/finance/payment-apply/page?page=1&size=1&projectId=$PROJECT_ID&contractId=$OTHER_CONTRACT_ID&status=DRAFT"
+  local pidA=$(extract_first_record_id)
+  require_id "$pidA" "退回用例付款 ID"
+  track_resource "DELETE" "/api/v1/finance/payment-apply/$pidA"
+  api_call POST "/api/v1/finance/payment-apply/$pidA/submit"
+  strict_assert "提交付款-退回用例"
+  sleep 2
+  api_call GET "/api/v1/workflow/approval/todo?page=1&size=10"
+  local taskA=$(extract_task_id)
+  require_id "$taskA" "退回用例待办 taskId"
+  api_call POST "/api/v1/workflow/approval/reject-start" "{\"taskId\":\"$taskA\",\"comment\":\"退回发起人重填\"}"
+  strict_assert "退回至发起人"
+  sleep 2
+  approve "重审通过" 1
+  assert_status "/api/v1/finance/payment-apply/$pidA" "status" "APPROVED" "退回重审后付款状态"
+
+  # ── 路径B：terminate 终止→REJECTED→重提→APPROVED（再付 5000）──
+  log "  -- 9E-B: terminate 终止重提 --"
+  api_call POST "/api/v1/finance/payment-apply" "{\"projectId\":$PROJECT_ID,\"contractId\":$OTHER_CONTRACT_ID,\"contractCategory\":\"OTHER_EXPENSE\",\"supplierName\":\"综合服务供应商\",\"paymentAmount\":5000.00,\"paymentDate\":\"2026-09-22\"}"
+  strict_assert "创建付款申请-终止用例"
+  sleep 1
+  api_call GET "/api/v1/finance/payment-apply/page?page=1&size=1&projectId=$PROJECT_ID&contractId=$OTHER_CONTRACT_ID&status=DRAFT"
+  local pidB=$(extract_first_record_id)
+  require_id "$pidB" "终止用例付款 ID"
+  track_resource "DELETE" "/api/v1/finance/payment-apply/$pidB"
+  api_call POST "/api/v1/finance/payment-apply/$pidB/submit"
+  strict_assert "提交付款-终止用例"
+  sleep 2
+  api_call GET "/api/v1/workflow/approval/todo?page=1&size=10"
+  local taskB=$(extract_task_id)
+  require_id "$taskB" "终止用例待办 taskId"
+  api_call POST "/api/v1/workflow/approval/terminate" "{\"taskId\":\"$taskB\",\"comment\":\"终止重提\"}"
+  strict_assert "终止流程"
+  sleep 2
+  assert_status "/api/v1/finance/payment-apply/$pidB" "status" "REJECTED" "终止后付款状态"
+  api_call POST "/api/v1/finance/payment-apply/$pidB/submit"
+  strict_assert "重新提交付款-终止用例"
+  sleep 2
+  approve "重提通过" 1
+  assert_status "/api/v1/finance/payment-apply/$pidB" "status" "APPROVED" "重提后付款状态"
+
+  record_stage_result "PASSED"
+}
+
 main() {
   echo "" > "$SIM_LOG"
   divider
@@ -752,18 +1216,33 @@ main() {
   stage_1_project_create
   stage_2_project_submit
   stage_3_tender_register
+  stage_3b_open_bid
   stage_4_contract
   stage_5_budget
   stage_6_subcontracts
   stage_7_site_management
+  stage_7b_material
+  stage_7c_machine_exec
+  stage_7d_labor_exec
+  stage_7e_subcontract_exec
   stage_8_output_settlement
   stage_9_finance
+  stage_9c_purchase_settlement
+  stage_9d_payment_closure
+  stage_9e_reject_branch
+  stage_9b_completion_settlement
   stage_10_project_close
 
   divider
   log "🎉 全生命周期模拟 v2 完成！"
   log "通过: $TOTAL_PASSED / 失败: $TOTAL_FAILED / 跳过: $TOTAL_SKIPPED"
   divider
+
+  # 退出码严格反映断言结果（需求 5.7）
+  if [ "$TOTAL_FAILED" -gt 0 ]; then
+    exit 1
+  fi
+  exit 0
 }
 
 main "$@"

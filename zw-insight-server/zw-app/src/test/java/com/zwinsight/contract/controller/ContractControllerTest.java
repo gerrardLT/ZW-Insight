@@ -5,6 +5,7 @@ import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.domain.BizContractDetail;
+import com.zwinsight.contract.domain.dto.ContractCreateRequest;
 import com.zwinsight.contract.service.ConstructionContractService;
 import com.zwinsight.test.TestSecurityConfig;
 import org.junit.jupiter.api.AfterEach;
@@ -52,7 +53,7 @@ class ContractControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/contract - 返回分页列表")
+    @DisplayName("GET /api/v1/contract/page - 返回分页列表")
     void should_return_page() throws Exception {
         BizConstructionContract contract = new BizConstructionContract();
         contract.setId(1L);
@@ -64,7 +65,7 @@ class ContractControllerTest {
                 List.of(contract), 1, 1, 10, 1);
         when(contractService.page(anyInt(), anyInt(), any(), any())).thenReturn(pageResult);
 
-        mockMvc.perform(get("/api/v1/contract")
+        mockMvc.perform(get("/api/v1/contract/page")
                         .param("page", "1")
                         .param("size", "10"))
                 .andExpect(status().isOk())
@@ -94,32 +95,36 @@ class ContractControllerTest {
     @Test
     @DisplayName("POST /api/v1/contract - 新增合同")
     void should_save_contract() throws Exception {
-        BizConstructionContract contract = new BizConstructionContract();
-        contract.setContractCode("HT-002");
-        contract.setContractAmount(new BigDecimal("500000"));
+        // Controller 接收 @Valid ContractCreateRequest：projectId/contractType/contractAmount 必填
+        ContractCreateRequest request = new ContractCreateRequest();
+        request.setProjectId(100L);
+        request.setContractType("REGISTER");
+        request.setContractAmount(new BigDecimal("500000"));
 
         mockMvc.perform(post("/api/v1/contract")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(contract)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
-        verify(contractService).save(any(BizConstructionContract.class));
+        verify(contractService).saveFromRequest(any(ContractCreateRequest.class));
     }
 
     @Test
     @DisplayName("PUT /api/v1/contract/{id} - 更新合同")
     void should_update_contract() throws Exception {
-        BizConstructionContract contract = new BizConstructionContract();
-        contract.setContractCode("HT-002-UPDATED");
+        ContractCreateRequest request = new ContractCreateRequest();
+        request.setProjectId(100L);
+        request.setContractType("REGISTER");
+        request.setContractAmount(new BigDecimal("600000"));
 
         mockMvc.perform(put("/api/v1/contract/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(contract)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
-        verify(contractService).update(any(BizConstructionContract.class));
+        verify(contractService).updateFromRequest(eq(1L), any(ContractCreateRequest.class));
     }
 
     @Test

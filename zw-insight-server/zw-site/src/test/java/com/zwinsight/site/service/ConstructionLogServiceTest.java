@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.site.domain.BizConstructionLog;
 import com.zwinsight.site.mapper.BizConstructionLogMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,9 @@ class ConstructionLogServiceTest {
 
     @Mock
     private BizConstructionLogMapper logMapper;
+
+    @Mock
+    private BizProjectMapper projectMapper;
 
     @InjectMocks
     private ConstructionLogService constructionLogService;
@@ -71,6 +75,7 @@ class ConstructionLogServiceTest {
             mockPage.setTotal(1L);
             when(logMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
                     .thenReturn(mockPage);
+            when(projectMapper.selectBatchIds(any())).thenReturn(Collections.emptyList());
 
             // when
             PageResult<BizConstructionLog> result = constructionLogService.page(
@@ -114,6 +119,7 @@ class ConstructionLogServiceTest {
             mockPage.setTotal(1L);
             when(logMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
                     .thenReturn(mockPage);
+            when(projectMapper.selectBatchIds(any())).thenReturn(Collections.emptyList());
 
             // when
             PageResult<BizConstructionLog> result = constructionLogService.page(1, 20, 100L, null, null);

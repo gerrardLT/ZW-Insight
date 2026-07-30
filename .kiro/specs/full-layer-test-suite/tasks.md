@@ -129,12 +129,12 @@
     - CI 输出中明确显示跳过原因
     - _需求: 3.6_
 
-- [~] 4. Checkpoint - 基础设施与核心测试验证
+- [x] 4. Checkpoint - 基础设施与核心测试验证
   - 确保所有测试通过，ask the user if questions arise.
   - 验证 `mvn test` 核心模块单元测试通过
   - 验证 `mvn verify -Pintegration-test` 集成测试通过（需服务器可达）
 
-- [ ] 5. 补齐剩余业务模块单元测试
+- [x] 5. 补齐剩余业务模块单元测试
   - [x] 5.1 编写 BudgetService 单元测试
     - 创建 `zw-budget/src/test/java/com/zwinsight/budget/service/BudgetServiceTest.java`
     - 覆盖：预算编制（正常+超限）、预算调整（正常+已锁定）、预算查询
@@ -150,106 +150,118 @@
     - 覆盖：机械台班记录（正常+重复记录）、结算计算、台班查询
     - _需求: 2.1, 2.2_
 
-  - [-] 5.4 编写 LaborService 单元测试
+  - [x] 5.4 编写 LaborService 单元测试
     - 创建 `zw-labor/src/test/java/com/zwinsight/labor/service/LaborServiceTest.java`
     - 覆盖：劳务人员管理（正常+重复身份证）、考勤记录、工资计算
     - _需求: 2.1, 2.2_
 
-  - [-] 5.5 编写 SubcontractService 单元测试
+  - [x] 5.5 编写 SubcontractService 单元测试
     - 创建 `zw-subcontract/src/test/java/com/zwinsight/subcontract/service/SubcontractServiceTest.java`
     - 覆盖：分包合同管理、结算审批流、计量确认
     - _需求: 2.1, 2.2_
 
-  - [-] 5.6 编写 PurchaseService + FieldService 单元测试
+  - [x] 5.6 编写 PurchaseService + FieldService 单元测试
     - 创建采购模块和现场模块的 Service 单元测试
     - 覆盖：采购申请/入库/退料流程、现场日志/签证/变更
     - _需求: 2.1, 2.2_
 
-  - [-] 5.7 编写 TenderService 单元测试
+  - [x] 5.7 编写 TenderService 单元测试
     - 创建 `zw-tender/src/test/java/com/zwinsight/tender/service/TenderServiceTest.java`
     - 覆盖：招标发布、投标记录、开标评标流程
     - _需求: 2.1, 2.2_
 
-- [ ] 6. 系统/安全/工作流模块测试
-  - [-] 6.1 编写 JWT 认证与权限单元测试
+- [x] 6. 系统/安全/工作流模块测试
+  - [x] 6.1 编写 JWT 认证与权限单元测试
     - 创建 `zw-system/src/test/java/com/zwinsight/system/service/AuthServiceTest.java`
     - 覆盖：token 生成（正常+过期）、token 验证（有效+无效+篡改）、权限校验（有权限+无权限）
     - _需求: 2.1_
 
-  - [-] 6.2 编写验证码与 Redis 缓存测试
+  - [x] 6.2 编写验证码与 Redis 缓存测试
     - 创建 `zw-system/src/test/java/com/zwinsight/system/service/CaptchaServiceTest.java`
     - 覆盖：验证码生成（正常返回 UUID+图片）、验证码校验（正确+错误+过期）
     - Mock RedisTemplate 验证 key 格式为 `captcha:{uuid}`
     - _需求: 2.1, 2.2_
 
-  - [-] 6.3 编写菜单树与数据权限测试
+  - [x] 6.3 编写菜单树与数据权限测试
     - 创建 `zw-system/src/test/java/com/zwinsight/system/service/MenuServiceTest.java`
     - 覆盖：菜单树构建（多级嵌套+空节点）、角色数据范围计算
     - _需求: 2.1_
 
-  - [-] 6.4 编写 Flowable 审批流 Service 单元测试
+  - [x] 6.4 编写 Flowable 审批流 Service 单元测试
     - 创建 `zw-system/src/test/java/com/zwinsight/system/service/WorkflowServiceTest.java`
     - Mock ProcessEngine 和 TaskService
     - 覆盖：流程发起（正常+流程定义不存在）、任务审批（通过+驳回+转办）
     - _需求: 2.1, 2.2_
 
-- [~] 7. Checkpoint - L1 单元测试全量验证
+- [x] 7. Checkpoint - L1 单元测试全量验证
   - 确保所有测试通过，ask the user if questions arise.
   - 执行 `mvn test` 确认所有 22 模块单元测试通过
   - 确认无编译错误和测试隔离问题
+  - 2026-07-29 验证通过：23/23 模块 BUILD SUCCESS（含父 POM），修复项：subcontract 舍入断言/per_class 串扰、site 缺 projectMapper Mock、zw-app H2 禁用 Flyway、Budget/Contract Controller 测试对齐后端契约
 
-- [ ] 8. 升级 lifecycle-sim.sh（L4 端到端业务流）
-  - [~] 8.1 创建 lifecycle-sim-v2.sh 基础框架
+- [x] 8. 升级 lifecycle-sim.sh（L4 端到端业务流）
+  - [x] 8.1 创建 lifecycle-sim-v2.sh 基础框架
     - 在 `keys/` 目录下创建 `lifecycle-sim-v2.sh`
     - 实现 TEST_TENANT_ID=9999 变量、CREATED_IDS 数组追踪、strict_assert() 函数
     - 实现 trap EXIT → cleanup_all 确保无论如何都执行清理
     - source verify-base.sh 复用登录/调用基座
     - _需求: 5.1, 5.3, 5.5_
 
-  - [~] 8.2 实现 10 阶段业务流与严格断言
+  - [x] 8.2 实现 10 阶段业务流与严格断言
     - 实现 10 个阶段的 API 调用链（创建项目→合同→预算→采购→施工→计量→结算→验收→完工→归档）
     - 每阶段调用后 strict_assert 验证 HTTP 2xx + code=200
     - 每阶段创建的资源 ID 加入 CREATED_IDS 追踪
     - 严格模式失败时立即 BREAK 并触发 cleanup_all
     - _需求: 5.2, 5.4_
 
-  - [~] 8.3 实现自动清理与兜底 SQL + JSON 报告
+  - [x] 8.3 实现自动清理与兜底 SQL + JSON 报告
     - cleanup_all 函数：逆序遍历 CREATED_IDS 调用 DELETE 接口
     - 兜底清理：docker exec zwi-mysql 执行 DELETE WHERE tenant_id=9999
     - 生成结构化 JSON 报告：`{passed, failed, skipped, cleanedRecords, stages: [...]}`
     - 输出到 `tests/reports/lifecycle-sim-report.json`
     - _需求: 5.4, 5.6, 5.7_
 
-  - [ ]* 8.4 编写 lifecycle-sim 报告正确性验证
+  - [x]* 8.4 编写 lifecycle-sim 报告正确性验证
     - **Property 7: 测试报告正确性**
     - 验证 JSON 报告中 passed + failed + skipped = total
     - 验证 failed > 0 时脚本退出码非零，failed = 0 时退出码为零
     - 可通过 shell 脚本模拟不同阶段结果组合来验证
     - **验证: 需求 5.7**
+    - 2026-07-30 断言自证通过：篡改 cumulativeOutput 期望值 1200000→999999 后脚本正确变红（EXIT=1），证明断言无假绿
 
-- [ ] 9. L3 API 接口测试脚本
-  - [~] 9.1 创建 API 测试基础框架与项目模块脚本
+- [x] 8.5 L4 全业务闭环改造（五项补全，2026-07-30）
+    - 项1 硬断言：新增 assert_status/assert_amount/require_id 断言库，消除全部 if [ -n "$id" ] 静默跳过；每阶段状态断言 + 关键金额数值断言（产值/开票/收款 120 万，各结算累计，totalExpense=195000=分包结算 3 万+付款 16.5 万）
+    - 项2 支出闭环：采购/劳务/机械/分包合同提交生效→材料入库出库（回写 cumulativeInbound）→机械台账/进场/台班/结算（status=2+分摊回写）→劳务/分包结算→采购结算（关联入库单）→付款申请审批（基于 biz_other_contract，payment-apply 仅支持该合同类型—代码实证）
+    - 项3 中标环节：新增阶段 3B 开标中标（isWon=1→项目 WON）；预算负向用例：先 BLOCK 断言拦截生效再改 WARN_ONLY 放行
+    - 项4 租户隔离：新增 keys/init-test-tenant.sh（租户 9999+t9999admin+SUPER_ADMIN+T9 前缀编号规则，防全局唯一键撞号）；11 个 BPMN 部署到租户 9999；兑底清理改为动态发现 biz_% 含 tenant_id 表（严禁误删 sys_/serial 系统表）+ Flowable 运行时清理
+    - 项5 驳回分支：阶段 9E 两条真实路径—reject-start 退回发起人重审→APPROVED；terminate 终止→REJECTED→重提→APPROVED
+    - 关键技术点：approve 改为从 ACT_RU_TASK 取待办 taskId（getMyTodoTasks 仅按 assignee 查，machine_settlement 等 BPMN 第2级为 candidateGroups=FINANCE 不入待办；SUPER_ADMIN 在 assertTaskAssignee 中豁免可完成任意任务）
+    - 验收：19/19 阶段 PASSED（连跑两遍幂等）；tenant_id=9999 biz_ 表残留 0 行；租户 1 零污染；基建（admin+编号规则）跨轮保留；验证脚本 keys/verify-l4-clean.sh
+    - 已知偏差（如实记录）：付款申请后端仅支持 biz_other_contract，4 类模块合同无法通过 payment-apply 支付（各自 cumulativePaid 无写入链路）；仅分包结算写项目 totalExpense，劳务/机械/采购结算不写—两者均为后端现状不一致，测试按实断言，建议后续统一
+
+- [x] 9. L3 API 接口测试脚本
+  - [x] 9.1 创建 API 测试基础框架与项目模块脚本
     - 创建 `keys/test-api-project.sh`：项目模块 CRUD + 审批 + 分页查询测试
     - 定义 assert_http()、report_summary() 公共函数
     - source verify-base.sh 复用登录和调用能力
     - 实现测试资源清理逻辑（测试结束前 DELETE 已创建资源）
     - _需求: 4.1, 4.2, 4.3, 4.5_
 
-  - [~] 9.2 创建合同/财务/采购模块 API 测试脚本
+  - [x] 9.2 创建合同/财务/采购模块 API 测试脚本
     - 创建 `keys/test-api-contract.sh`：合同 CRUD + 审批接口测试
     - 创建 `keys/test-api-finance.sh`：财务收支 CRUD + 汇总查询测试
     - 创建 `keys/test-api-purchase.sh`：采购申请/入库/退料测试
     - 每个脚本独立执行，输出通过/失败计数
     - _需求: 4.1, 4.3, 4.4, 4.6_
 
-  - [~] 9.3 创建剩余业务模块 API 测试脚本
+  - [x] 9.3 创建剩余业务模块 API 测试脚本
     - 创建 `keys/test-api-material.sh`、`keys/test-api-machine.sh`、`keys/test-api-labor.sh`、`keys/test-api-subcontract.sh`
     - 每个脚本覆盖对应模块的 CRUD 端点
     - 断言 HTTP 2xx + body.code=200 + 无异常堆栈
     - _需求: 4.1, 4.3, 4.4_
 
-- [ ] 10. 前端 Playwright E2E 改造（L5）
-  - [~] 10.1 修改 playwright.config.ts 新增 e2e-real project
+- [x] 10. 前端 Playwright E2E 改造（L5）
+  - [x] 10.1 修改 playwright.config.ts 新增 e2e-real project
     - 在 `zw-insight-web/playwright.config.ts` 中新增 `e2e-real` project 配置
     - 设置 baseURL 指向服务器 :18081
     - 配置 storageState 引用 `./e2e/.auth/storage-state.json`
@@ -257,24 +269,29 @@
     - 保留原有 `e2e` project 作为 Mock 模式
     - _需求: 6.1, 6.5, 6.6_
 
-  - [~] 10.2 创建 auth-real.setup.ts 真实登录 setup
+  - [x] 10.2 创建 auth-real.setup.ts 真实登录 setup
     - 创建 `zw-insight-web/e2e/fixtures/auth-real.setup.ts`
     - 实现真实登录流程：导航登录页→填写用户名密码→调用 /api/v1/test/captcha-code 获取验证码→提交→保存 storageState
     - 当 captcha-code 接口不可用时输出降级警告
     - _需求: 6.2, 6.3, 6.4_
 
-  - [~] 10.3 创建真实模式 E2E 测试用例
+  - [x] 10.3 创建真实模式 E2E 测试用例
     - 创建 `zw-insight-web/e2e/tests/real/login.spec.ts`：真实登录流程验证
     - 创建 `zw-insight-web/e2e/tests/real/project-crud.spec.ts`：项目列表/创建/编辑/删除
     - 创建 `zw-insight-web/e2e/tests/real/workflow.spec.ts`：审批流操作验证
     - 所有操作使用 tenant_id=9999 数据
     - _需求: 6.1, 6.2_
 
-- [~] 11. Checkpoint - L3/L4/L5 测试验证
+- [x] 11. Checkpoint - L3/L4/L5 测试验证
   - 确保所有测试通过，ask the user if questions arise.
   - 验证 `bash keys/test-api-project.sh` 等 L3 脚本可正常执行
   - 验证 `bash keys/lifecycle-sim-v2.sh` L4 脚本通过
   - 验证 `npx playwright test --project=e2e-real` L5 可执行（需服务器可达）
+  - 2026-07-30 全部验证通过：
+    - L2 `mvn verify -Pintegration-test` 全模块 SUCCESS（MySQL/Redis 经 SSH 隧道 13306/16379 直连真实库）
+    - L3 8 脚本 138/138 通过（修复 finance 字段契约/purchase-labor 预算拦截项目/ID 字符串提取）
+    - L4 lifecycle-sim-v2 10/10 阶段 PASSED（部署 construction_contract/output_report/invoice_apply/payment_apply/project_settlement/purchase_contract/completion_acceptance 等 BPMN 到租户 1，新增 9B 竣工验收+最终结算阶段）
+    - L5 e2e-real EXIT=0（26 通过；发现并修复前端 Number(route.params.id) 雪花 ID 精度丢失缺陷，已热更新部署）
 
 - [ ] 12. 统一测试编排脚本 run-all-tests.sh
   - [~] 12.1 创建 run-all-tests.sh 主脚本

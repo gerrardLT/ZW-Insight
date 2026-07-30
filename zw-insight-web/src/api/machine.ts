@@ -47,7 +47,7 @@ export function getMachineSettlementPage(params: any) {
   return request.get('/v1/machine/settlement', { params })
 }
 
-export function getMachineSettlementDetail(id: number) {
+export function getMachineSettlementDetail(id: number | string) {
   return request.get(`/v1/machine/settlement/${id}`)
 }
 

@@ -111,7 +111,7 @@ import { getProjectMembers, addProjectMember, removeProjectMember, updateMemberR
 import { getUserPage } from '@/api/system'
 
 const props = defineProps<{
-  projectId: number
+  projectId: number | string
 }>()
 
 // 角色选项

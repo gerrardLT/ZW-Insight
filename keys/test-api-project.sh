@@ -60,7 +60,7 @@ assert_http() {
 assert_body_code() {
   local expected="$1" test_name="$2"
   local actual
-  actual=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"code"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$')
+  actual=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"code"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$')
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
   if [ "$actual" = "$expected" ]; then
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -111,15 +111,15 @@ report_summary() {
 # extract_id：从响应体提取 data 字段中的 ID（创建接口返回）
 extract_id() {
   local val
-  val=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"data"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$')
+  val=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"data"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$')
   if [ -n "$val" ]; then echo "$val"; return; fi
-  val=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$')
+  val=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$')
   echo "$val"
 }
 
 # extract_first_record_id：从分页结果的 records 数组中提取第一个 id
 extract_first_record_id() {
-  cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$'
+  cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$'
 }
 
 # ===========================================================================

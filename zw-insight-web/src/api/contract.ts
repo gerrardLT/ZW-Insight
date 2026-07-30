@@ -15,7 +15,7 @@ export function getContractPage(params: ContractPageQuery) {
   return request.get<R<PageResult<ConstructionContract>>>('/v1/contract/page', { params })
 }
 
-export function getContractDetail(id: number) {
+export function getContractDetail(id: number | string) {
   return request.get<R<ConstructionContract>>(`/v1/contract/${id}`)
 }
 
@@ -36,11 +36,11 @@ export function submitContract(id: number) {
 }
 
 // ======================== 合同明细 ========================
-export function getContractDetails(contractId: number) {
+export function getContractDetails(contractId: number | string) {
   return request.get<R<ContractDetail[]>>(`/v1/contract/${contractId}/details`)
 }
 
-export function saveContractDetails(contractId: number, items: ContractDetail[]) {
+export function saveContractDetails(contractId: number | string, items: ContractDetail[]) {
   return request.post<R<void>>(`/v1/contract/${contractId}/details`, items)
 }
 

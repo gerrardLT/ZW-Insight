@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.budget.domain.BizBudget;
+import com.zwinsight.budget.dto.BudgetCreateRequest;
 import com.zwinsight.budget.service.BudgetService;
 import com.zwinsight.test.TestSecurityConfig;
 import org.junit.jupiter.api.AfterEach;
@@ -50,7 +51,7 @@ class BudgetControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/budget - 返回分页列表")
+    @DisplayName("GET /api/v1/budget/page - 返回分页列表")
     void should_return_page() throws Exception {
         BizBudget budget = new BizBudget();
         budget.setId(1L);
@@ -61,7 +62,7 @@ class BudgetControllerTest {
         PageResult<BizBudget> pageResult = new PageResult<>(List.of(budget), 1, 1, 10, 1);
         when(budgetService.page(anyInt(), anyInt(), any(), any())).thenReturn(pageResult);
 
-        mockMvc.perform(get("/api/v1/budget")
+        mockMvc.perform(get("/api/v1/budget/page")
                         .param("page", "1")
                         .param("size", "10"))
                 .andExpect(status().isOk())
@@ -89,17 +90,19 @@ class BudgetControllerTest {
     @Test
     @DisplayName("POST /api/v1/budget - 新增预算")
     void should_save_budget() throws Exception {
-        BizBudget budget = new BizBudget();
-        budget.setProjectId(100L);
-        budget.setTotalAmount(new BigDecimal("1000000"));
+        // Controller 接收 @Valid BudgetCreateRequest：projectId/budgetType 必填
+        BudgetCreateRequest request = new BudgetCreateRequest();
+        request.setProjectId(100L);
+        request.setBudgetType("ORIGINAL");
+        request.setTotalAmount(new BigDecimal("1000000"));
 
         mockMvc.perform(post("/api/v1/budget")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(budget)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
-        verify(budgetService).save(any(BizBudget.class));
+        verify(budgetService).saveFromRequest(any(BudgetCreateRequest.class));
     }
 
     @Test

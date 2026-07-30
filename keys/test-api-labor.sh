@@ -55,7 +55,7 @@ assert_http() {
 assert_body_code() {
   local expected="$1" test_name="$2"
   local actual
-  actual=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"code"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$')
+  actual=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"code"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$')
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
   if [ "$actual" = "$expected" ]; then
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -102,14 +102,14 @@ report_summary() {
 
 extract_id() {
   local val
-  val=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"data"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$')
+  val=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"data"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$')
   if [ -n "$val" ]; then echo "$val"; return; fi
-  val=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$')
+  val=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$')
   echo "$val"
 }
 
 extract_first_record_id() {
-  cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$'
+  cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$'
 }
 
 # ===========================================================================
@@ -135,10 +135,20 @@ trap cleanup EXIT
 # ===========================================================================
 
 test_contract_create() {
-  log "▶ 测试：创建劳务合同"
-  call POST "/api/v1/labor/contract" '{"projectId":1,"contractName":"测试劳务合同-自动化","contractNo":"LC-AUTO-001","teamName":"测试班组","contractAmount":80000.00,"startDate":"2025-07-01","endDate":"2025-12-31","remark":"L3接口自动化测试"}'
+  log "▶ 测试：创建劳务合同（预算控制拦截验证）"
+  # 种子项目 90001 的 LABOR 科目已发生额（合同1000万+已批付款400万）超预算 1200 万，
+  # 按真实业务规则 BLOCK 模式必被拦截：此处断言预算控制真实生效（非绕过）
+  call POST "/api/v1/labor/contract" '{"projectId":90001,"contractName":"测试劳务合同-自动化","contractNo":"LC-AUTO-001","teamName":"测试班组","contractAmount":80000.00,"startDate":"2025-07-01","endDate":"2025-12-31","remark":"L3接口自动化测试"}'
   assert_http 2 "POST /api/v1/labor/contract 状态码"
-  assert_body_code 200 "POST /api/v1/labor/contract 业务码"
+  assert_body_code 500 "POST /api/v1/labor/contract 预算超支拦截（业务码500）"
+  TOTAL_COUNT=$((TOTAL_COUNT + 1))
+  if grep -q '已超预算' /tmp/zwi_body 2>/dev/null; then
+    PASS_COUNT=$((PASS_COUNT + 1))
+    log "  PASS [$TOTAL_COUNT] 预算拦截消息正确：已超预算"
+  else
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    log "  FAIL [$TOTAL_COUNT] 预算拦截消息缺失（期望含'已超预算'）"
+  fi
 }
 
 test_contract_page() {

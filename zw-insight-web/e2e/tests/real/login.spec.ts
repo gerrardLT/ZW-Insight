@@ -56,8 +56,8 @@ test.describe('未认证登录流程', () => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 
-    // 验证登录表单元素存在
-    await expect(page.locator('.login-container, .login-card').first()).toBeVisible({ timeout: 15_000 })
+    // 验证登录表单元素存在（容器类名与 src/views/login/index.vue 保持一致）
+    await expect(page.locator('.login-box, .login-page').first()).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('input[placeholder*="用户名"]')).toBeVisible()
     await expect(page.locator('input[placeholder*="密码"]')).toBeVisible()
     await expect(page.locator('input[placeholder*="验证码"]')).toBeVisible()

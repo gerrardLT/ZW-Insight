@@ -9,22 +9,22 @@ export function createSettlement(projectId: number) {
   return request.post('/v1/project-settlements', null, { params: { projectId } })
 }
 
-export function getSettlement(id: number) {
+export function getSettlement(id: number | string) {
   return request.get(`/v1/project-settlements/${id}`)
 }
 
-export function updateSettlement(id: number, data: any) {
+export function updateSettlement(id: number | string, data: any) {
   return request.put(`/v1/project-settlements/${id}`, data)
 }
 
-export function submitSettlement(id: number) {
+export function submitSettlement(id: number | string) {
   return request.post(`/v1/project-settlements/${id}/submit`)
 }
 
-export function exportSettlement(id: number) {
+export function exportSettlement(id: number | string) {
   return request.post(`/v1/project-settlements/${id}/export`, null, { responseType: 'blob' })
 }
 
-export function getUnsettledContracts(id: number) {
+export function getUnsettledContracts(id: number | string) {
   return request.get(`/v1/project-settlements/${id}/unsettled-contracts`)
 }

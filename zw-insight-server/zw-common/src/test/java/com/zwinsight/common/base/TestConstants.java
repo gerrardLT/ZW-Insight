@@ -38,12 +38,28 @@ public final class TestConstants {
     public static final String REDIS_CAPTCHA_PREFIX = "captcha:";
 
     // ==================== 服务器连接 ====================
+    // 默认直连联调服务器；当 MySQL/Redis 容器未映射宿主机端口时，
+    // 可通过系统属性 zwi.* 或环境变量 ZWI_* 指向 SSH 隧道（仍为真实库，非 mock）
 
     /** 服务器地址 */
-    public static final String SERVER_HOST = "129.204.3.200";
+    public static final String SERVER_HOST = prop("zwi.server.host", "ZWI_SERVER_HOST", "129.204.3.200");
 
     /** 后端 API 端口 */
-    public static final int API_PORT = 18080;
+    public static final int API_PORT = Integer.parseInt(prop("zwi.api.port", "ZWI_API_PORT", "18080"));
+
+    /** Redis 主机（验证码读取） */
+    public static final String REDIS_HOST = prop("zwi.redis.host", "ZWI_REDIS_HOST", SERVER_HOST);
+
+    /** Redis 端口（验证码读取） */
+    public static final int REDIS_PORT = Integer.parseInt(prop("zwi.redis.port", "ZWI_REDIS_PORT", "6379"));
+
+    /** 优先级：系统属性 > 环境变量 > 默认值 */
+    private static String prop(String sysKey, String envKey, String def) {
+        String v = System.getProperty(sysKey);
+        if (v != null && !v.isBlank()) return v;
+        v = System.getenv(envKey);
+        return (v != null && !v.isBlank()) ? v : def;
+    }
 
     /** 后端 API 基础 URL */
     public static final String API_BASE_URL = "http://" + SERVER_HOST + ":" + API_PORT;

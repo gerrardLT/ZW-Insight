@@ -87,7 +87,8 @@ function statusTagType(status: number): TagType {
 }
 
 async function loadDetail() {
-  const id = Number(route.params.id)
+  // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
+  const id = route.params.id as string
   if (!id) return
   loading.value = true
   try {

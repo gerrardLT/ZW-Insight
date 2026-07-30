@@ -206,7 +206,8 @@ function removeDetailRow(index: number) {
 
 async function loadDetail() {
   if (!route.params.id) return
-  const contractId = Number(route.params.id)
+  // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
+  const contractId = route.params.id as string
   const res: any = await getContractDetail(contractId)
   formData.value = res.data || {}
   // 确保项目出现在选项中
@@ -222,7 +223,7 @@ async function handleSubmit() {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
-    let contractId: number
+    let contractId: number | string
     if (formData.value.id) {
       await updateContract({ ...formData.value, id: formData.value.id!, projectId: formData.value.projectId! })
       contractId = formData.value.id

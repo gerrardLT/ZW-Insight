@@ -18,7 +18,7 @@ export function getProjectList(params?: Partial<ProjectPageQuery>) {
   return request.get<R<Project[]>>('/v1/project/list', { params })
 }
 
-export function getProjectDetail(id: number) {
+export function getProjectDetail(id: number | string) {
   return request.get<R<Project>>(`/v1/project/${id}`)
 }
 
@@ -85,18 +85,18 @@ export function getCompanyList(params?: Record<string, unknown>) {
 }
 
 // ======================== 项目成员管理 ========================
-export function getProjectMembers(projectId: number, params?: Record<string, unknown>) {
+export function getProjectMembers(projectId: number | string, params?: Record<string, unknown>) {
   return request.get<R<ProjectMember[]>>(`/v1/project/${projectId}/member`, { params })
 }
 
-export function addProjectMember(projectId: number, data: ProjectMemberAddRequest) {
+export function addProjectMember(projectId: number | string, data: ProjectMemberAddRequest) {
   return request.post<R<void>>(`/v1/project/${projectId}/member`, data)
 }
 
-export function removeProjectMember(projectId: number, userId: number) {
+export function removeProjectMember(projectId: number | string, userId: number) {
   return request.delete<R<void>>(`/v1/project/${projectId}/member/${userId}`)
 }
 
-export function updateMemberRoles(projectId: number, userId: number, data: UpdateMemberRolesRequest) {
+export function updateMemberRoles(projectId: number | string, userId: number, data: UpdateMemberRolesRequest) {
   return request.put<R<void>>(`/v1/project/${projectId}/member/${userId}/roles`, data)
 }

@@ -5,11 +5,13 @@ import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.workflow.domain.WfApprovalRecord;
 import com.zwinsight.workflow.listener.ApprovalRejectEvent;
 import com.zwinsight.workflow.mapper.WfApprovalRecordMapper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.flowable.engine.HistoryService;
+import org.flowable.engine.IdentityService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricActivityInstance;
@@ -41,8 +43,10 @@ class ApprovalServiceTest {
     @Mock private RuntimeService runtimeService;
     @Mock private TaskService taskService;
     @Mock private HistoryService historyService;
+    @Mock private IdentityService identityService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private WfApprovalRecordMapper approvalRecordMapper;
+    @Mock private SysUserMapper sysUserMapper;
 
     @InjectMocks
     private ApprovalService approvalService;
@@ -63,7 +67,8 @@ class ApprovalServiceTest {
         lenient().when(mockTask.getProcessInstanceId()).thenReturn("pi-001");
         lenient().when(mockTask.getName()).thenReturn("部门经理审批");
         lenient().when(mockTask.getTaskDefinitionKey()).thenReturn("deptManagerApprove");
-        lenient().when(mockTask.getAssignee()).thenReturn("100");
+        // assignee 与审批操作用例的当前用户(userId=200)一致，满足 assertTaskAssignee 处理人校验
+        lenient().when(mockTask.getAssignee()).thenReturn("200");
     }
 
     // =====================================================================
@@ -406,6 +411,7 @@ class ApprovalServiceTest {
             lenient().when(task2.getProcessInstanceId()).thenReturn("pi-002");
             lenient().when(task2.getName()).thenReturn("审批节点2");
             lenient().when(task2.getTaskDefinitionKey()).thenReturn("node2");
+            lenient().when(task2.getAssignee()).thenReturn("200");
 
             TaskQuery q1 = mock(TaskQuery.class);
             when(taskService.createTaskQuery())

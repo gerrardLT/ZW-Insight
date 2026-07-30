@@ -768,7 +768,7 @@ class SubcontractServiceTest {
                 request.setContractId(10L);
                 request.setProjectId(100L);
 
-                // 100.333 × 30.567 = 3067.525111 → HALF_UP → 3067.53
+                // 100.333 × 30.567 = 3066.878811 → HALF_UP → 3066.88
                 SubcontractSettlementDetailDTO detail = new SubcontractSettlementDetailDTO();
                 detail.setItemName("精密计量项");
                 detail.setQuantity(new BigDecimal("100.333"));
@@ -783,12 +783,12 @@ class SubcontractServiceTest {
                 // when
                 settlementService.createSettlement(request);
 
-                // then: 100.333 × 30.567 = 3067.525511 → 3067.53 (HALF_UP)
+                // then: 100.333 × 30.567 = 3066.878811 → 3066.88 (HALF_UP)
                 verify(detailMapper).insert(argThat(d ->
-                        new BigDecimal("3067.53").compareTo(d.getAmount()) == 0
+                        new BigDecimal("3066.88").compareTo(d.getAmount()) == 0
                 ));
                 verify(settlementMapper).updateById(argThat(s ->
-                        new BigDecimal("3067.53").compareTo(s.getSettlementAmount()) == 0
+                        new BigDecimal("3066.88").compareTo(s.getSettlementAmount()) == 0
                 ));
             }
         }

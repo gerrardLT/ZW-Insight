@@ -265,7 +265,8 @@ function handleBack() {
 }
 
 async function loadDetail() {
-  const id = Number(route.params.id)
+  // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
+  const id = route.params.id as string
   if (!id) return
 
   loading.value = true
@@ -286,7 +287,7 @@ async function loadDetail() {
 
 async function handleSubmit() {
   await ElMessageBox.confirm('确定要提交该结算单进行审批吗？提交后不可修改。', '提交审批', { type: 'warning' })
-  const id = Number(route.params.id)
+  const id = route.params.id as string
   await submitSettlement(id)
   ElMessage.success('已提交审批，审批通过后项目方可结项')
   loadDetail()
@@ -305,7 +306,7 @@ function openEditDialog() {
 async function handleEditSubmit() {
   if (!editFormRef.value) return
   await editFormRef.value.validate()
-  const id = Number(route.params.id)
+  const id = route.params.id as string
   editLoading.value = true
   try {
     await updateSettlement(id, {
@@ -322,7 +323,7 @@ async function handleEditSubmit() {
 }
 
 async function handleExport() {
-  const id = Number(route.params.id)
+  const id = route.params.id as string
   try {
     const res: any = await exportSettlement(id)
     const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

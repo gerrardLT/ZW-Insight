@@ -103,7 +103,7 @@ class ProjectIntegrationTest extends IntegrationTestBase {
         List<Map<String, Object>> records = (List<Map<String, Object>>) data.get("records");
         assertThat(records).as("项目列表不应为空").isNotEmpty();
 
-        testProjectId = ((Number) records.get(0).get("id")).longValue();
+        testProjectId = AssertUtils.asLong(records.get(0).get("id"));
         assertThat(testProjectId).as("测试项目 ID 应有效").isPositive();
 
         log.info("[创建项目] 成功，projectId={}", testProjectId);
@@ -129,7 +129,7 @@ class ProjectIntegrationTest extends IntegrationTestBase {
         Map<String, Object> project = (Map<String, Object>) body.get("data");
 
         // 验证基本字段
-        assertThat(((Number) project.get("id")).longValue())
+        assertThat(AssertUtils.asLong(project.get("id")))
                 .as("id 应匹配").isEqualTo(testProjectId);
         assertThat((String) project.get("projectName"))
                 .as("项目名称应包含测试标识").contains("集成测试项目_CRUD_");
@@ -280,7 +280,7 @@ class ProjectIntegrationTest extends IntegrationTestBase {
         List<Map<String, Object>> records = (List<Map<String, Object>>) data.get("records");
         assertThat(records).as("项目列表不应为空").isNotEmpty();
 
-        deleteTestProjectId = ((Number) records.get(0).get("id")).longValue();
+        deleteTestProjectId = AssertUtils.asLong(records.get(0).get("id"));
         assertThat(deleteTestProjectId).as("待删除项目 ID 应有效").isPositive();
         log.info("待删除项目 ID: {}", deleteTestProjectId);
 

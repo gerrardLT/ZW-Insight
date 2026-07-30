@@ -128,7 +128,7 @@ class FlowableIntegrationTest extends IntegrationTestBase {
         List<Map<String, Object>> records = (List<Map<String, Object>>) data.get("records");
         assertThat(records).as("项目列表不应为空").isNotEmpty();
 
-        testProjectId = ((Number) records.get(0).get("id")).longValue();
+        testProjectId = AssertUtils.asLong(records.get(0).get("id"));
         assertThat(testProjectId).as("测试项目 ID 应有效").isPositive();
         log.info("Step 1 完成: 测试项目创建成功，projectId={}", testProjectId);
     }
@@ -172,7 +172,7 @@ class FlowableIntegrationTest extends IntegrationTestBase {
         List<Map<String, Object>> records = (List<Map<String, Object>>) data.get("records");
         assertThat(records).as("合同列表不应为空").isNotEmpty();
 
-        testContractId = ((Number) records.get(0).get("id")).longValue();
+        testContractId = AssertUtils.asLong(records.get(0).get("id"));
         assertThat(testContractId).as("测试合同 ID 应有效").isPositive();
         log.info("Step 2.1 完成: 合同创建成功，contractId={}", testContractId);
 

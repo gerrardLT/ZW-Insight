@@ -96,7 +96,7 @@ class FinanceIntegrationTest extends IntegrationTestBase {
         List<Map<String, Object>> records = (List<Map<String, Object>>) data.get("records");
         assertThat(records).isNotEmpty();
 
-        createdProjectId = ((Number) records.get(0).get("id")).longValue();
+        createdProjectId = AssertUtils.asLong(records.get(0).get("id"));
         log.info("测试项目 ID: {}", createdProjectId);
     }
 
@@ -139,7 +139,7 @@ class FinanceIntegrationTest extends IntegrationTestBase {
         List<Map<String, Object>> records = (List<Map<String, Object>>) data.get("records");
         assertThat(records).isNotEmpty();
 
-        createdContractId = ((Number) records.get(0).get("id")).longValue();
+        createdContractId = AssertUtils.asLong(records.get(0).get("id"));
         log.info("施工合同 ID: {}", createdContractId);
     }
 
@@ -159,9 +159,9 @@ class FinanceIntegrationTest extends IntegrationTestBase {
                 new ParameterizedTypeReference<>() {});
 
         AssertUtils.assertApiSuccess(response);
-        log.info("施工合同已提交，状态变为 EFFECTIVE");
+        log.info("施工合同已提交，状态变为 SUBMITTED（待审批）");
 
-        // 验证合同状态已变为 EFFECTIVE
+        // 审批后生效改造：提交后状态为 SUBMITTED，审批通过回调后才置 EFFECTIVE
         ResponseEntity<Map<String, Object>> detailResponse = restTemplate.exchange(
                 CONTRACT_URL + "/" + createdContractId,
                 HttpMethod.GET, new HttpEntity<>(headers),
@@ -169,8 +169,8 @@ class FinanceIntegrationTest extends IntegrationTestBase {
 
         AssertUtils.assertApiSuccess(detailResponse);
         Map<String, Object> contractData = extractData(detailResponse);
-        assertThat(contractData.get("status")).isEqualTo("EFFECTIVE");
-        log.info("合同状态确认: EFFECTIVE");
+        assertThat(contractData.get("status")).isEqualTo("SUBMITTED");
+        log.info("合同状态确认: SUBMITTED（待审批）");
     }
 
     // ==================== 开票申请 CRUD 测试 ====================
@@ -208,7 +208,7 @@ class FinanceIntegrationTest extends IntegrationTestBase {
         List<Map<String, Object>> records = (List<Map<String, Object>>) data.get("records");
         assertThat(records).isNotEmpty();
 
-        createdInvoiceApplyId = ((Number) records.get(0).get("id")).longValue();
+        createdInvoiceApplyId = AssertUtils.asLong(records.get(0).get("id"));
         log.info("开票申请 ID: {}", createdInvoiceApplyId);
     }
 
@@ -231,8 +231,8 @@ class FinanceIntegrationTest extends IntegrationTestBase {
 
         // 验证关键字段
         assertThat(data.get("id")).isNotNull();
-        assertThat(((Number) data.get("projectId")).longValue()).isEqualTo(createdProjectId);
-        assertThat(((Number) data.get("contractId")).longValue()).isEqualTo(createdContractId);
+        assertThat(AssertUtils.asLong(data.get("projectId"))).isEqualTo(createdProjectId);
+        assertThat(AssertUtils.asLong(data.get("contractId"))).isEqualTo(createdContractId);
         assertThat(data.get("status")).isEqualTo("DRAFT");
 
         // 验证开票金额（BigDecimal 精度）
@@ -413,6 +413,8 @@ class FinanceIntegrationTest extends IntegrationTestBase {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("projectId", createdProjectId);
         body.put("contractId", createdContractId);
+        // applyDate 为后端 @NotNull 必填（财务封账期间校验）
+        body.put("applyDate", LocalDate.now().toString());
         body.put("invoiceType", "SPECIAL");
         body.put("invoiceAmount", invoiceAmount);
         body.put("invoiceTitle", "测试发票抬头-集成测试");

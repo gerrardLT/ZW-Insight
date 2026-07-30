@@ -58,7 +58,7 @@ assert_http() {
 assert_body_code() {
   local expected="$1" test_name="$2"
   local actual
-  actual=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"code"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$')
+  actual=$(cat /tmp/zwi_body 2>/dev/null | grep -oE '"code"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$')
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
   if [ "$actual" = "$expected" ]; then
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -107,7 +107,7 @@ report_summary() {
 
 # extract_first_record_id：从分页结果的 records 数组中提取第一个 id
 extract_first_record_id() {
-  cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*[0-9]+' | head -1 | grep -oE '[0-9]+$'
+  cat /tmp/zwi_body 2>/dev/null | grep -oE '"id"\s*:\s*\"?[0-9]+' | head -1 | grep -oE '[0-9]+$'
 }
 
 # ===========================================================================
@@ -139,7 +139,8 @@ trap cleanup EXIT
 
 test_create_payment_apply() {
   log "▶ 测试：创建付款申请"
-  call POST "/api/v1/finance/payment-apply" '{"projectId":1,"contractCategory":"CONSTRUCTION","supplierName":"测试供应商","paymentAmount":50000.00,"paymentDate":"2025-03-15"}'
+  # biz_payment_apply.contract_id NOT NULL：关联种子支出合同 99431（项目 90001 水泥砂石采购合同）
+  call POST "/api/v1/finance/payment-apply" '{"projectId":90001,"contractId":99431,"contractCategory":"MATERIAL","supplierName":"测试供应商","paymentAmount":50000.00,"paymentDate":"2025-03-15"}'
   assert_http 2 "POST /api/v1/finance/payment-apply 状态码"
   assert_body_code 200 "POST /api/v1/finance/payment-apply 业务码"
 }
@@ -185,7 +186,7 @@ test_update_payment_apply() {
   if [ -z "$CREATED_PAYMENT_APPLY_ID" ]; then
     log "  SKIP: 无付款申请ID"; return 0
   fi
-  call PUT "/api/v1/finance/payment-apply/$CREATED_PAYMENT_APPLY_ID" '{"projectId":1,"contractCategory":"CONSTRUCTION","supplierName":"测试供应商-已修改","paymentAmount":65000.00,"paymentDate":"2025-03-20"}'
+  call PUT "/api/v1/finance/payment-apply/$CREATED_PAYMENT_APPLY_ID" '{"projectId":90001,"contractId":99431,"contractCategory":"MATERIAL","supplierName":"测试供应商-已修改","paymentAmount":65000.00,"paymentDate":"2025-03-20"}'
   assert_http 2 "PUT /api/v1/finance/payment-apply/{id} 状态码"
   assert_body_code 200 "PUT /api/v1/finance/payment-apply/{id} 业务码"
 }
@@ -217,7 +218,8 @@ test_delete_payment_apply() {
 
 test_create_payment_received() {
   log "▶ 测试：创建收款登记"
-  call POST "/api/v1/finance/payment-received" '{"projectId":1,"receiveDate":"2025-04-01","amount":100000.00,"payerName":"测试付款方","remark":"L3接口测试收款"}'
+  # 字段对齐后端契约：receive_amount NOT NULL，收款人/收款方式为 receiver/receiveType
+  call POST "/api/v1/finance/payment-received" '{"projectId":90001,"contractId":91001,"receiveDate":"2025-04-01","receiveAmount":100000.00,"receiver":"测试收款人","receiveType":"转账"}'
   assert_http 2 "POST /api/v1/finance/payment-received 状态码"
   assert_body_code 200 "POST /api/v1/finance/payment-received 业务码"
 }

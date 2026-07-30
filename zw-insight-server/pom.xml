@@ -355,6 +355,13 @@
                     <threadCount>4</threadCount>
                     <forkCount>1C</forkCount>
                     <reuseForks>true</reuseForks>
+                    <!-- L1 边界：*IntegrationTest 属于 L2（需真实 MySQL/Redis），
+                         仅由 Failsafe 在 -Pintegration-test profile 下执行（见 tests/README.md 分层设计）。
+                         Surefire 默认 includes 会误匹配以 Test 结尾的 *IntegrationTest，此处显式排除，
+                         保证 mvn test（L1）可离线跑绿。 -->
+                    <excludes>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
             <!-- JaCoCo 代码覆盖率插件 -->
@@ -410,6 +417,14 @@
             <properties>
                 <spring.profiles.active>integration-test</spring.profiles.active>
             </properties>
+            <!-- L2 集成测试直连真实 MySQL，各业务模块测试运行时需要驱动（仅此 profile 生效） -->
+            <dependencies>
+                <dependency>
+                    <groupId>com.mysql</groupId>
+                    <artifactId>mysql-connector-j</artifactId>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
                     <plugin>

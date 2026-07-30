@@ -21,6 +21,34 @@ public final class AssertUtils {
     }
 
     /**
+     * 把 JSON 反序列化后的 id 类字段转为 Long。
+     * <p>
+     * 后端对雪花 ID 统一序列化为字符串（防 JS 精度丢失），
+     * 测试解析时需同时兼容 String / Number 两种类型。
+     * </p>
+     *
+     * @param value JSON 反序列化后的字段值（String 或 Number）
+     * @return Long 值；value 为 null 时返回 null
+     * @throws AssertionError 当值既非数字也非数字字符串时
+     */
+    public static Long asLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value instanceof String str && !str.isBlank()) {
+            try {
+                return Long.parseLong(str.trim());
+            } catch (NumberFormatException e) {
+                throw new AssertionError("字段值无法解析为 Long: \"" + str + "\"", e);
+            }
+        }
+        throw new AssertionError("字段类型既非 Number 也非数字字符串: " + value.getClass() + " -> " + value);
+    }
+
+    /**
      * 断言 API 响应成功
      * <p>
      * 验证规则：
@@ -139,8 +167,11 @@ public final class AssertUtils {
         long total;
         if (totalValue instanceof Number) {
             total = ((Number) totalValue).longValue();
+        } else if (totalValue instanceof String str && str.matches("\\d+")) {
+            // 后端 Long 统一序列化为字符串（防 JS 精度丢失），兼容数字字符串
+            total = Long.parseLong(str);
         } else {
-            fail("total 字段应为数值类型，实际为: %s（值: %s）",
+            fail("total 字段应为数值或数字字符串，实际为: %s（值: %s）",
                     totalValue.getClass().getSimpleName(), totalValue);
             return; // unreachable
         }

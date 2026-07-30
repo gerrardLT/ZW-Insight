@@ -3,6 +3,7 @@ package com.zwinsight.system.integration;
 import com.zwinsight.common.base.IntegrationTestBase;
 import com.zwinsight.common.base.TestConstants;
 import com.zwinsight.common.base.TestDataCleaner;
+import com.zwinsight.common.util.AssertUtils;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.slf4j.Logger;
@@ -334,7 +335,7 @@ class SecurityBoundaryIntegrationTest extends IntegrationTestBase {
                 return null;
             }
             Map first = (Map) ((List) records).get(0);
-            createdUserId = ((Number) first.get("id")).longValue();
+            createdUserId = AssertUtils.asLong(first.get("id"));
             createdUsername = username;
             log.info("已创建低权测试用户 username={}, userId={}", username, createdUserId);
             return createdUserId;
@@ -442,7 +443,7 @@ class SecurityBoundaryIntegrationTest extends IntegrationTestBase {
                 return null;
             }
             Map first = (Map) ((List) records).get(0);
-            return ((Number) first.get("id")).longValue();
+            return AssertUtils.asLong(first.get("id"));
         } catch (Exception e) {
             return null;
         }
