@@ -1,6 +1,11 @@
 # 集成测试环境配置
-# Testcontainers 会动态覆盖 datasource 和 redis 连接信息（@DynamicPropertySource）
+# Testcontainers 会动态覆盖 datasource 与 redis 连接信息（@DynamicPropertySource）
 spring:
+  # 集成测试用 Testcontainers withInitScript(init-test-schema.sql) 建表，
+  # 禁用 Flyway：迁移脚本依赖完整建表顺序，与 initScript 并存会报
+  # “Table 'zw_test.biz_project' doesn't exist”（2026-08-05 CI 首跑暴露）
+  flyway:
+    enabled: false
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     # Testcontainers 动态注入 URL
