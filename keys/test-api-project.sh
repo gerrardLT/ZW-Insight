@@ -235,7 +235,9 @@ test_add_member() {
   if [ -z "$CREATED_PROJECT_ID" ]; then
     log "  SKIP: 无项目ID"; return 0
   fi
-  call POST "/api/v1/project/$CREATED_PROJECT_ID/members" "{\"projectId\":$CREATED_PROJECT_ID,\"userId\":1,\"roleType\":\"PROJECT_MANAGER\"}"
+  # 方案B：项目创建时已自动加入创建人(userId=1)为项目经理，重复添加会被唯一性校验拒绝。
+  # 改为添加 userId=2；成员列表按 createdAt 降序，随后删除测试将移除该最新成员且保留 userId=1 这名 PM。
+  call POST "/api/v1/project/$CREATED_PROJECT_ID/members" "{\"projectId\":$CREATED_PROJECT_ID,\"userId\":2,\"roleType\":\"PROJECT_MANAGER\"}"
   assert_http 2 "POST /api/v1/project/{id}/members 状态码"
   assert_body_code 200 "POST /api/v1/project/{id}/members 业务码"
 }

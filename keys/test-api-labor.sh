@@ -159,11 +159,16 @@ test_contract_page() {
   assert_has_field "records" "劳务合同分页含 records 字段"
   assert_has_field "total" "劳务合同分页含 total 字段"
 
+  # 创建测试是预算拦截验证（未实际产生合同），分页首条为种子 EFFECTIVE 合同不可编辑/提交。
+  # 故新建一个草稿（不传金额以跳过预算切面）供详情/更新/提交测试使用。
+  call POST "/api/v1/labor/contract" '{"projectId":90001,"contractName":"流转测试劳务合同","contractNo":"LC-FLOW-001","teamName":"测试班组","startDate":"2025-07-01","endDate":"2025-12-31","remark":"流转测试"}'
+  sleep 1
+  call GET "/api/v1/labor/contract/page?page=1&size=1&status=DRAFT"
   CREATED_CONTRACT_ID=$(extract_first_record_id)
   if [ -n "$CREATED_CONTRACT_ID" ]; then
-    log "  获取劳务合同 ID=$CREATED_CONTRACT_ID"
+    log "  获取草稿劳务合同 ID=$CREATED_CONTRACT_ID"
   else
-    log "  WARN: 未能获取劳务合同ID，后续测试可能失败"
+    log "  WARN: 未能获取草稿劳务合同ID，后续测试可能失败"
   fi
 }
 
