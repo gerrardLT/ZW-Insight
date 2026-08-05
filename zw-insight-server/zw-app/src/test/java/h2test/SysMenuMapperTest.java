@@ -1,8 +1,7 @@
-package com.zwinsight.test.mapper;
+package h2test;
 
 import com.zwinsight.system.domain.SysMenu;
 import com.zwinsight.system.mapper.SysMenuMapper;
-import com.zwinsight.test.BaseH2MapperTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

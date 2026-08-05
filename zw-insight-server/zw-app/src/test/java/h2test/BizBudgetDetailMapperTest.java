@@ -1,7 +1,6 @@
-package com.zwinsight.test.mapper;
+package h2test;
 
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
-import com.zwinsight.test.BaseH2MapperTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
