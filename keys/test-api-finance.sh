@@ -202,14 +202,17 @@ test_submit_payment_apply() {
 }
 
 test_delete_payment_apply() {
-  log "▶ 测试：删除付款申请"
-  if [ -z "$CREATED_PAYMENT_APPLY_ID" ]; then
-    log "  SKIP: 无付款申请ID"; return 0
-  fi
-  call DELETE "/api/v1/finance/payment-apply/$CREATED_PAYMENT_APPLY_ID"
+  log "▶ 测试：删除付款申请（仅草稿可删除）"
+  # 方案B：主流程付款申请已提交(非草稿)不可删。新建一个草稿再删(按 status=DRAFT 取最新一条)
+  call POST "/api/v1/finance/payment-apply" '{"projectId":90001,"contractId":91501,"contractCategory":"PURCHASE","supplierName":"删除测试供应商","paymentAmount":1000.00,"paymentDate":"2025-03-15"}'
+  assert_body_code 200 "POST /api/v1/finance/payment-apply 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/finance/payment-apply/page?page=1&size=1&status=DRAFT"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿付款申请ID"; return 0; fi
+  call DELETE "/api/v1/finance/payment-apply/$DEL_ID"
   assert_http 2 "DELETE /api/v1/finance/payment-apply/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/finance/payment-apply/{id} 业务码"
-  CREATED_PAYMENT_APPLY_ID=""
 }
 
 # ===========================================================================
