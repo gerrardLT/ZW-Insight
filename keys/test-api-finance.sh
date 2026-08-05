@@ -140,7 +140,7 @@ trap cleanup EXIT
 test_create_payment_apply() {
   log "▶ 测试：创建付款申请"
   # biz_payment_apply.contract_id NOT NULL：关联种子支出合同 91501（项目 90001 水泥砂石采购合同）
-  call POST "/api/v1/finance/payment-apply" '{"projectId":90001,"contractId":91501,"contractCategory":"MATERIAL","supplierName":"测试供应商","paymentAmount":50000.00,"paymentDate":"2025-03-15"}'
+  call POST "/api/v1/finance/payment-apply" '{"projectId":90001,"contractId":91501,"contractCategory":"PURCHASE","supplierName":"测试供应商","paymentAmount":50000.00,"paymentDate":"2025-03-15"}'
   assert_http 2 "POST /api/v1/finance/payment-apply 状态码"
   assert_body_code 200 "POST /api/v1/finance/payment-apply 业务码"
 }
@@ -186,7 +186,7 @@ test_update_payment_apply() {
   if [ -z "$CREATED_PAYMENT_APPLY_ID" ]; then
     log "  SKIP: 无付款申请ID"; return 0
   fi
-  call PUT "/api/v1/finance/payment-apply/$CREATED_PAYMENT_APPLY_ID" '{"projectId":90001,"contractId":91501,"contractCategory":"MATERIAL","supplierName":"测试供应商-已修改","paymentAmount":65000.00,"paymentDate":"2025-03-20"}'
+  call PUT "/api/v1/finance/payment-apply/$CREATED_PAYMENT_APPLY_ID" '{"projectId":90001,"contractId":91501,"contractCategory":"PURCHASE","supplierName":"测试供应商-已修改","paymentAmount":65000.00,"paymentDate":"2025-03-20"}'
   assert_http 2 "PUT /api/v1/finance/payment-apply/{id} 状态码"
   assert_body_code 200 "PUT /api/v1/finance/payment-apply/{id} 业务码"
 }
