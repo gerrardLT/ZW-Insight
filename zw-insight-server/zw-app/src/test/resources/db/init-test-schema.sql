@@ -286,3 +286,194 @@ CREATE TABLE IF NOT EXISTS biz_labor_payroll (
     deleted INT DEFAULT 0,
     version INT DEFAULT 0
 );
+
+-- ============================================================
+-- 以下表为 2026-08-05 补全（CI L2 首跑暴露缺表）：
+-- BudgetOccupiedMapperTest / HrStatisticsMapperTest 等集成测试需要
+-- DDL 提取自 deploy/db-init/00_schema.sql
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS `biz_entry_apply` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    username VARCHAR(50) COMMENT '用户名',
+    real_name VARCHAR(50) COMMENT '真实姓名',
+    gender VARCHAR(10) COMMENT '性别',
+    birth_date DATE COMMENT '出生日期',
+    id_card VARCHAR(20) COMMENT '身份证号',
+    phone VARCHAR(20) COMMENT '手机号',
+    entry_date DATE COMMENT '入职日期',
+    org_id BIGINT COMMENT '部门ID',
+    post_id BIGINT COMMENT '岗位ID',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT/APPROVED）',
+    workflow_instance_id VARCHAR(100) COMMENT '流程实例ID',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='入职申请表';
+
+CREATE TABLE IF NOT EXISTS `biz_labor_contract` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    project_id BIGINT NOT NULL COMMENT '项目ID',
+    contract_code VARCHAR(50) COMMENT '合同编号',
+    party_a_name VARCHAR(200) COMMENT '甲方名称',
+    party_b_id BIGINT COMMENT '乙方ID（供应商）',
+    party_b_name VARCHAR(200) COMMENT '乙方名称',
+    signing_date DATE COMMENT '签订日期',
+    budget_id BIGINT COMMENT '关联预算ID',
+    contract_amount DECIMAL(18,2) COMMENT '合同金额',
+    payment_terms VARCHAR(500) COMMENT '付款条款',
+    cumulative_output DECIMAL(18,2) DEFAULT 0 COMMENT '累计产值',
+    cumulative_settlement DECIMAL(18,2) DEFAULT 0 COMMENT '累计结算金额',
+    cumulative_paid DECIMAL(18,2) DEFAULT 0 COMMENT '累计付款金额',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/EFFECTIVE-生效）',
+    workflow_instance_id VARCHAR(64) COMMENT '流程实例ID',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_project (project_id),
+    KEY idx_status (status),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='劳务合同表';
+
+CREATE TABLE IF NOT EXISTS `biz_payment_apply` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    project_id BIGINT NOT NULL COMMENT '项目ID',
+    contract_id BIGINT NOT NULL COMMENT '合同ID',
+    contract_category VARCHAR(50) COMMENT '合同分类',
+    supplier_id BIGINT COMMENT '供应商ID',
+    supplier_name VARCHAR(200) COMMENT '供应商名称',
+    payment_amount DECIMAL(18,2) NOT NULL COMMENT '付款金额',
+    payment_date DATE COMMENT '付款日期',
+    cumulative_settlement_snapshot DECIMAL(18,2) COMMENT '累计结算金额快照',
+    unpaid_amount_snapshot DECIMAL(18,2) COMMENT '未付金额快照',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT/APPROVED）',
+    workflow_instance_id VARCHAR(100) COMMENT '流程实例ID',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_project_id (project_id),
+    KEY idx_contract_id (contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='付款申请表';
+
+CREATE TABLE IF NOT EXISTS `biz_purchase_contract` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    project_id BIGINT NOT NULL COMMENT '项目ID',
+    contract_code VARCHAR(50) NOT NULL COMMENT '合同编号',
+    party_a_id BIGINT COMMENT '甲方ID',
+    party_a_name VARCHAR(200) COMMENT '甲方名称',
+    party_b_id BIGINT COMMENT '乙方ID（供应商）',
+    party_b_name VARCHAR(200) COMMENT '乙方名称',
+    signing_date DATE COMMENT '签订日期',
+    budget_id BIGINT COMMENT '关联预算ID',
+    contract_amount DECIMAL(18,2) COMMENT '合同金额',
+    payment_terms VARCHAR(500) COMMENT '付款条款',
+    cumulative_inbound DECIMAL(18,2) DEFAULT 0 COMMENT '累计入库金额',
+    cumulative_settlement DECIMAL(18,2) DEFAULT 0 COMMENT '累计结算金额',
+    cumulative_paid DECIMAL(18,2) DEFAULT 0 COMMENT '累计付款金额',
+    cumulative_invoice_received DECIMAL(18,2) DEFAULT 0 COMMENT '累计收票金额',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/EFFECTIVE-生效）',
+    workflow_instance_id VARCHAR(64) COMMENT '流程实例ID',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_contract_code_tenant (contract_code, tenant_id),
+    KEY idx_project (project_id),
+    KEY idx_status (status),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='采购合同表';
+
+CREATE TABLE IF NOT EXISTS `biz_resign_apply` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    user_id BIGINT COMMENT '用户ID',
+    user_name VARCHAR(50) COMMENT '用户姓名',
+    resign_date DATE COMMENT '离职日期',
+    handover_person VARCHAR(50) COMMENT '交接人',
+    is_handover INT DEFAULT 0 COMMENT '是否已交接（0-否 1-是）',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT/APPROVED）',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='离职申请表';
+
+CREATE TABLE IF NOT EXISTS `biz_subcontract` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    project_id BIGINT NOT NULL COMMENT '项目ID',
+    contract_code VARCHAR(50) COMMENT '合同编号',
+    supplier_id BIGINT COMMENT '供应商ID',
+    supplier_name VARCHAR(200) COMMENT '供应商名称',
+    signing_date DATE COMMENT '签订日期',
+    budget_id BIGINT COMMENT '关联预算ID',
+    contract_amount DECIMAL(18,2) COMMENT '合同金额',
+    payment_terms VARCHAR(500) COMMENT '付款条款',
+    cumulative_output DECIMAL(18,2) DEFAULT 0 COMMENT '累计产值',
+    cumulative_settlement DECIMAL(18,2) DEFAULT 0 COMMENT '累计结算金额',
+    cumulative_paid DECIMAL(18,2) DEFAULT 0 COMMENT '累计付款金额',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/EFFECTIVE-生效）',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_project (project_id),
+    KEY idx_status (status),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='分包合同表';
+
+CREATE TABLE IF NOT EXISTS `sys_org` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    org_name VARCHAR(100) NOT NULL COMMENT '机构名称',
+    org_code VARCHAR(50) COMMENT '机构编码',
+    org_type VARCHAR(20) DEFAULT 'DEPARTMENT' COMMENT '机构类型（COMPANY-公司 DEPARTMENT-部门）',
+    parent_id BIGINT DEFAULT 0 COMMENT '父机构ID',
+    sort_order INT DEFAULT 0 COMMENT '排序号',
+    status INT DEFAULT 1 COMMENT '状态（1-启用 0-停用）',
+    ancestors VARCHAR(500) DEFAULT '0' COMMENT '祖先路径',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_parent_id (parent_id),
+    KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='机构表';
+
+CREATE TABLE IF NOT EXISTS `sys_post` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    post_name VARCHAR(100) NOT NULL COMMENT '岗位名称',
+    post_code VARCHAR(50) COMMENT '岗位编码',
+    status INT DEFAULT 1 COMMENT '状态（1-启用 0-停用）',
+    sort_order INT DEFAULT 0 COMMENT '排序号',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='岗位表';
+

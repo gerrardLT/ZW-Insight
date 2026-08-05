@@ -33,27 +33,27 @@ class BizProjectMemberMapperTest extends BaseIntegrationTest {
     void setUp() {
         jdbc.execute("DELETE FROM biz_project_member");
 
-        // 项目1 成员
-        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version) "
-                        + "VALUES (1, ?, 101, '张三', '[\"PROJECT_MANAGER\", \"CONSTRUCTOR\"]', 1, 0, 0)",
+        // 项目1 成员（tenant_id=9999 与基类租户上下文一致）
+        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version, tenant_id) "
+                        + "VALUES (1, ?, 101, '张三', '[\"PROJECT_MANAGER\", \"CONSTRUCTOR\"]', 1, 0, 0, 9999)",
                 PROJECT_ID);
-        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version) "
-                        + "VALUES (2, ?, 102, '李四', '[\"CONSTRUCTOR\"]', 1, 0, 0)",
+        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version, tenant_id) "
+                        + "VALUES (2, ?, 102, '李四', '[\"CONSTRUCTOR\"]', 1, 0, 0, 9999)",
                 PROJECT_ID);
-        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version) "
-                        + "VALUES (3, ?, 103, '王五', '[\"SAFETY_OFFICER\"]', 1, 0, 0)",
+        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version, tenant_id) "
+                        + "VALUES (3, ?, 103, '王五', '[\"SAFETY_OFFICER\"]', 1, 0, 0, 9999)",
                 PROJECT_ID);
         // 已删除成员
-        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version) "
-                        + "VALUES (4, ?, 104, '赵六', '[\"PROJECT_MANAGER\"]', 1, 1, 0)",
+        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version, tenant_id) "
+                        + "VALUES (4, ?, 104, '赵六', '[\"PROJECT_MANAGER\"]', 1, 1, 0, 9999)",
                 PROJECT_ID);
         // 已失效成员（status=2）
-        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version) "
-                        + "VALUES (5, ?, 105, '孙七', '[\"CONSTRUCTOR\"]', 2, 0, 0)",
+        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version, tenant_id) "
+                        + "VALUES (5, ?, 105, '孙七', '[\"CONSTRUCTOR\"]', 2, 0, 0, 9999)",
                 PROJECT_ID);
         // 其他项目
-        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version) "
-                        + "VALUES (6, ?, 201, '其他项目成员', '[\"PROJECT_MANAGER\"]', 1, 0, 0)",
+        jdbc.update("INSERT INTO biz_project_member (id, project_id, user_id, user_name, project_roles, status, deleted, version, tenant_id) "
+                        + "VALUES (6, ?, 201, '其他项目成员', '[\"PROJECT_MANAGER\"]', 1, 0, 0, 9999)",
                 OTHER_PROJECT_ID);
     }
 

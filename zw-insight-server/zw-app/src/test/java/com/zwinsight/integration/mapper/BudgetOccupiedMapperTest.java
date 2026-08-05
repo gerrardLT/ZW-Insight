@@ -38,47 +38,47 @@ class BudgetOccupiedMapperTest extends BaseIntegrationTest {
         jdbc.execute("DELETE FROM biz_payment_apply");
 
         // 分包合同
-        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (1, ?, 'SUB-001', 100000.00, 'EFFECTIVE', 0, 0)", PROJECT_ID);
-        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (2, ?, 'SUB-002', 50000.00, 'EFFECTIVE', 0, 0)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (1, ?, 'SUB-001', 100000.00, 'EFFECTIVE', 0, 0, 9999)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (2, ?, 'SUB-002', 50000.00, 'EFFECTIVE', 0, 0, 9999)", PROJECT_ID);
         // 草稿状态（不应计入）
-        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (3, ?, 'SUB-003', 99999.00, 'DRAFT', 0, 0)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (3, ?, 'SUB-003', 99999.00, 'DRAFT', 0, 0, 9999)", PROJECT_ID);
         // 已删除（不应计入）
-        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (4, ?, 'SUB-004', 88888.00, 'EFFECTIVE', 1, 0)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (4, ?, 'SUB-004', 88888.00, 'EFFECTIVE', 1, 0, 9999)", PROJECT_ID);
         // 其他项目
-        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (5, ?, 'SUB-005', 200000.00, 'EFFECTIVE', 0, 0)", OTHER_PROJECT_ID);
+        jdbc.update("INSERT INTO biz_subcontract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (5, ?, 'SUB-005', 200000.00, 'EFFECTIVE', 0, 0, 9999)", OTHER_PROJECT_ID);
 
         // 劳务合同
-        jdbc.update("INSERT INTO biz_labor_contract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (1, ?, 'LAB-001', 80000.00, 'EFFECTIVE', 0, 0)", PROJECT_ID);
-        jdbc.update("INSERT INTO biz_labor_contract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (2, ?, 'LAB-002', 30000.00, 'EFFECTIVE', 0, 0)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_labor_contract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (1, ?, 'LAB-001', 80000.00, 'EFFECTIVE', 0, 0, 9999)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_labor_contract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (2, ?, 'LAB-002', 30000.00, 'EFFECTIVE', 0, 0, 9999)", PROJECT_ID);
 
         // 机械合同
-        jdbc.update("INSERT INTO biz_machine_contract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (1, ?, 'MAC-001', 60000.00, 'EFFECTIVE', 0, 0)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_machine_contract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (1, ?, 'MAC-001', 60000.00, 'EFFECTIVE', 0, 0, 9999)", PROJECT_ID);
 
         // 采购合同
-        jdbc.update("INSERT INTO biz_purchase_contract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (1, ?, 'PUR-001', 120000.00, 'EFFECTIVE', 0, 0)", PROJECT_ID);
-        jdbc.update("INSERT INTO biz_purchase_contract (id, project_id, contract_code, contract_amount, status, deleted, version) "
-                + "VALUES (2, ?, 'PUR-002', 40000.00, 'EFFECTIVE', 0, 0)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_purchase_contract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (1, ?, 'PUR-001', 120000.00, 'EFFECTIVE', 0, 0, 9999)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_purchase_contract (id, project_id, contract_code, contract_amount, status, deleted, version, tenant_id) "
+                + "VALUES (2, ?, 'PUR-002', 40000.00, 'EFFECTIVE', 0, 0, 9999)", PROJECT_ID);
 
         // 付款申请
-        jdbc.update("INSERT INTO biz_payment_apply (id, project_id, contract_id, contract_category, payment_amount, status, deleted, version) "
-                + "VALUES (1, ?, 1, 'MATERIAL', 50000.00, 'APPROVED', 0, 0)", PROJECT_ID);
-        jdbc.update("INSERT INTO biz_payment_apply (id, project_id, contract_id, contract_category, payment_amount, status, deleted, version) "
-                + "VALUES (2, ?, 1, 'MATERIAL', 30000.00, 'APPROVED', 0, 0)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_payment_apply (id, project_id, contract_id, contract_category, payment_amount, status, deleted, version, tenant_id) "
+                + "VALUES (1, ?, 1, 'MATERIAL', 50000.00, 'APPROVED', 0, 0, 9999)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_payment_apply (id, project_id, contract_id, contract_category, payment_amount, status, deleted, version, tenant_id) "
+                + "VALUES (2, ?, 1, 'MATERIAL', 30000.00, 'APPROVED', 0, 0, 9999)", PROJECT_ID);
         // 草稿状态（不应计入）
-        jdbc.update("INSERT INTO biz_payment_apply (id, project_id, contract_id, contract_category, payment_amount, status, deleted, version) "
-                + "VALUES (3, ?, 1, 'MATERIAL', 99999.00, 'DRAFT', 0, 0)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_payment_apply (id, project_id, contract_id, contract_category, payment_amount, status, deleted, version, tenant_id) "
+                + "VALUES (3, ?, 1, 'MATERIAL', 99999.00, 'DRAFT', 0, 0, 9999)", PROJECT_ID);
         // 其他科目
-        jdbc.update("INSERT INTO biz_payment_apply (id, project_id, contract_id, contract_category, payment_amount, status, deleted, version) "
-                + "VALUES (4, ?, 1, 'LABOR', 20000.00, 'APPROVED', 0, 0)", PROJECT_ID);
+        jdbc.update("INSERT INTO biz_payment_apply (id, project_id, contract_id, contract_category, payment_amount, status, deleted, version, tenant_id) "
+                + "VALUES (4, ?, 1, 'LABOR', 20000.00, 'APPROVED', 0, 0, 9999)", PROJECT_ID);
     }
 
     @Test

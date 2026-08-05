@@ -1,7 +1,10 @@
 package com.zwinsight.integration;
 
 import com.zwinsight.app.ZwInsightApplication;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.integration.support.EnabledIfDockerAvailable;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -23,6 +26,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * </p>
  *
  * <b>注意：全部集成测试应当在执行 {@code mvn test} 时通过；在缺少 Docker 的环境下将被自动跳过。</b>
+ * <p>
+ * 租户上下文：无登录态时 MyBatis-Plus 租户插件注入 tenant_id=0 条件，
+ * 故每个测试前将上下文租户设为 9999（自动化测试租户），测试数据 INSERT 时
+ * 必须显式带 tenant_id=9999 才能被 Mapper 查询命中（2026-08-05 CI 首跑暴露）。
+ * </p>
  */
 @SpringBootTest(classes = ZwInsightApplication.class)
 @Testcontainers
@@ -52,4 +60,25 @@ public abstract class BaseIntegrationTest {
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
     }
+
+    /**
+     * 每个测试方法前设置租户上下文为 9999（自动化测试租户），
+     * 使租户插件注入 tenant_id=9999 条件，与测试数据匹配。
+     */
+    @BeforeEach
+    void setUpTenantContext() {
+        SecurityContextHolder.setTenantId(TEST_TENANT_ID);
+        SecurityContextHolder.setUserId(TEST_USER_ID);
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        SecurityContextHolder.clear();
+    }
+
+    /** 自动化测试租户 ID（与 AGENTS.md 测试规则一致） */
+    protected static final Long TEST_TENANT_ID = 9999L;
+
+    /** 测试用户 ID */
+    protected static final Long TEST_USER_ID = 999901L;
 }

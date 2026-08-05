@@ -28,7 +28,8 @@ class HrStatisticsMapperTest extends BaseIntegrationTest {
     @Autowired
     private JdbcTemplate jdbc;
 
-    private static final Long TENANT_ID = 1L;
+    /** 与 BaseIntegrationTest 租户上下文一致（租户插件会注入 tenant_id=9999 条件） */
+    private static final Long TENANT_ID = 9999L;
 
     @BeforeEach
     void setUp() {
