@@ -653,7 +653,7 @@ CREATE TABLE IF NOT EXISTS biz_project (
     deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
     version INT DEFAULT 0 COMMENT '乐观锁版本号',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_project_code (project_code),
+    UNIQUE KEY uk_project_code_tenant (project_code, tenant_id),
     KEY idx_status (status),
     KEY idx_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='项目表';
@@ -713,7 +713,7 @@ CREATE TABLE IF NOT EXISTS biz_construction_contract (
     deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
     version INT DEFAULT 0 COMMENT '乐观锁版本号',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_contract_code (contract_code),
+    UNIQUE KEY uk_contract_code_tenant (contract_code, tenant_id),
     KEY idx_project (project_id),
     KEY idx_status (status),
     KEY idx_tenant (tenant_id)
@@ -984,7 +984,7 @@ CREATE TABLE IF NOT EXISTS biz_purchase_contract (
     deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
     version INT DEFAULT 0 COMMENT '乐观锁版本号',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_contract_code (contract_code),
+    UNIQUE KEY uk_contract_code_tenant (contract_code, tenant_id),
     KEY idx_project (project_id),
     KEY idx_status (status),
     KEY idx_tenant (tenant_id)

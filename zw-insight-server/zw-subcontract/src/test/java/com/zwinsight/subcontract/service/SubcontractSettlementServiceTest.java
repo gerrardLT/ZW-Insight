@@ -1,8 +1,6 @@
 package com.zwinsight.subcontract.service;
 
 import com.zwinsight.common.exception.BusinessException;
-import com.zwinsight.project.domain.BizProject;
-import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.subcontract.domain.BizSubcontract;
 import com.zwinsight.subcontract.domain.BizSubcontractSettlement;
 
@@ -31,13 +29,12 @@ class SubcontractSettlementServiceTest {
     @Mock private BizSubcontractSettlementMapper settlementMapper;
     @Mock private SubcontractSettlementDetailMapper detailMapper;
     @Mock private BizSubcontractMapper subcontractMapper;
-    @Mock private BizProjectMapper projectMapper;
 
     private SubcontractSettlementService subSettlementService;
 
     @BeforeEach
     void setUp() {
-        subSettlementService = new SubcontractSettlementService(settlementMapper, detailMapper, subcontractMapper, projectMapper);
+        subSettlementService = new SubcontractSettlementService(settlementMapper, detailMapper, subcontractMapper);
     }
 
     @Test
@@ -84,11 +81,6 @@ class SubcontractSettlementServiceTest {
         contract.setCumulativeSettlement(new BigDecimal("30000"));
         when(subcontractMapper.selectById(anyLong())).thenReturn(contract);
 
-        BizProject project = new BizProject();
-        project.setId(10L);
-        project.setTotalExpense(BigDecimal.ZERO);
-        when(projectMapper.selectById(anyLong())).thenReturn(project);
-
         subSettlementService.submit(1L);
 
         assertThat(settlement.getStatus()).isEqualTo("APPROVED");
@@ -97,8 +89,8 @@ class SubcontractSettlementServiceTest {
     }
 
     @Test
-    @DisplayName("提交结算：同时回写项目总支出")
-    void testSubmit_writeBackProject() {
+    @DisplayName("提交结算：不再回写项目 totalExpense（统一为付款口径）")
+    void testSubmit_noProjectExpenseWriteback() {
         BizSubcontractSettlement settlement = new BizSubcontractSettlement();
         settlement.setId(1L);
         settlement.setContractId(100L);
@@ -112,14 +104,12 @@ class SubcontractSettlementServiceTest {
         contract.setCumulativeSettlement(new BigDecimal("10000"));
         when(subcontractMapper.selectById(anyLong())).thenReturn(contract);
 
-        BizProject project = new BizProject();
-        project.setTotalExpense(new BigDecimal("100000"));
-        when(projectMapper.selectById(anyLong())).thenReturn(project);
-
+        // 不再依赖 projectMapper：结算只回写合同累计，不触碰项目 totalExpense
         subSettlementService.submit(1L);
 
-        assertThat(project.getTotalExpense()).isEqualTo(new BigDecimal("120000"));
-        verify(projectMapper).updateById(project);
+        assertThat(settlement.getStatus()).isEqualTo("APPROVED");
+        assertThat(contract.getCumulativeSettlement()).isEqualTo(new BigDecimal("30000"));
+        verify(subcontractMapper).updateById(contract);
     }
 
     @Test

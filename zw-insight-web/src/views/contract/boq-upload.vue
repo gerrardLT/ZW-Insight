@@ -126,7 +126,8 @@ import { uploadBoq, getBoqTree, deleteBoq } from '@/api/boq'
 import { getContractDetail } from '@/api/contract'
 
 const route = useRoute()
-const contractId = computed(() => Number(route.params.contractId || route.params.id))
+// 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
+const contractId = computed(() => (route.params.contractId || route.params.id) as string)
 
 // 合同信息
 const contractInfo = ref<any>({})

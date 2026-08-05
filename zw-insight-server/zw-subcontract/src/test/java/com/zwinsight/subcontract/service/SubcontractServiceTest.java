@@ -951,19 +951,14 @@ class SubcontractServiceTest {
         class SubmitTests {
 
             @Test
-            @DisplayName("提交结算 - 累计金额未超合同时成功并回写累计结算和项目支出")
+            @DisplayName("提交结算 - 累计金额未超合同时成功并回写累计结算（不再回写项目支出）")
             void submit_withinContractLimit_success() {
                 // given: 合同500000, 累计已结算100000, 本次150000 => 250000 < 500000
                 when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
                 when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
 
-                BizProject project = new BizProject();
-                project.setId(100L);
-                project.setTotalExpense(new BigDecimal("200000.00"));
-                when(projectMapper.selectById(100L)).thenReturn(project);
                 when(settlementMapper.updateById(any(BizSubcontractSettlement.class))).thenReturn(1);
                 when(subcontractMapper.updateById(any(BizSubcontract.class))).thenReturn(1);
-                when(projectMapper.updateById(any(BizProject.class))).thenReturn(1);
 
                 // when
                 settlementService.submit(1L);
@@ -976,10 +971,8 @@ class SubcontractServiceTest {
                 verify(subcontractMapper).updateById(argThat(c ->
                         new BigDecimal("250000.00").compareTo(c.getCumulativeSettlement()) == 0
                 ));
-                // 项目总支出 = 200000 + 150000 = 350000
-                verify(projectMapper).updateById(argThat(p ->
-                        new BigDecimal("350000.00").compareTo(p.getTotalExpense()) == 0
-                ));
+                // 统一付款口径后：结算不再回写项目 totalExpense（改造②）
+                verify(projectMapper, never()).updateById(any());
             }
 
             @Test
@@ -1025,24 +1018,23 @@ class SubcontractServiceTest {
             }
 
             @Test
-            @DisplayName("提交结算 - 项目不存在时不回写项目支出但不报错")
-            void submit_projectNotFound_skipsProjectUpdate() {
+            @DisplayName("提交结算 - 不再回写项目支出（统一付款口径）")
+            void submit_doesNotWriteProjectExpense() {
                 // given: 合同限额内
                 sampleSettlement.setSettlementAmount(new BigDecimal("50000.00"));
                 when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
                 when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
-                when(projectMapper.selectById(100L)).thenReturn(null);
                 when(settlementMapper.updateById(any(BizSubcontractSettlement.class))).thenReturn(1);
                 when(subcontractMapper.updateById(any(BizSubcontract.class))).thenReturn(1);
 
                 // when
                 settlementService.submit(1L);
 
-                // then: 结算状态更新
+                // then: 结算状态更新，且完全不触碰 projectMapper（totalExpense 由付款申请口径维护）
                 verify(settlementMapper).updateById(argThat(s ->
                         "APPROVED".equals(s.getStatus())
                 ));
-                // 项目不存在时不回写
+                verify(projectMapper, never()).selectById(anyLong());
                 verify(projectMapper, never()).updateById(any());
             }
 
@@ -1056,13 +1048,8 @@ class SubcontractServiceTest {
                 when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
                 when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
 
-                BizProject project = new BizProject();
-                project.setId(100L);
-                project.setTotalExpense(BigDecimal.ZERO);
-                when(projectMapper.selectById(100L)).thenReturn(project);
                 when(settlementMapper.updateById(any(BizSubcontractSettlement.class))).thenReturn(1);
                 when(subcontractMapper.updateById(any(BizSubcontract.class))).thenReturn(1);
-                when(projectMapper.updateById(any(BizProject.class))).thenReturn(1);
 
                 // when
                 settlementService.submit(1L);

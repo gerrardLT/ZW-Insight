@@ -10,7 +10,9 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.dto.ContractPayableInfo;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
+import com.zwinsight.finance.mapper.ContractPayableMapper;
 import com.zwinsight.finance.mapper.SettlementDataMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.util.ProjectNameFiller;
@@ -39,10 +41,15 @@ public class PaymentApplyService {
 
     private final BizPaymentApplyMapper paymentApplyMapper;
     private final BizOtherContractMapper otherContractMapper;
+    private final ContractPayableMapper contractPayableMapper;
     private final BizProjectMapper projectMapper;
     private final SettlementDataMapper settlementDataMapper;
     private final ApprovalService approvalService;
     private final ApplicationEventPublisher eventPublisher;
+
+    /** 走各模块合同表（biz_purchase_contract 等）的合同类型；其余（OTHER_EXPENSE/OTHER_INCOME/空）走 biz_other_contract */
+    private static final java.util.Set<String> MODULE_CATEGORIES =
+            java.util.Set.of("PURCHASE", "LABOR", "MACHINE", "SUBCONTRACT");
 
     /**
      * 分页查询
@@ -121,12 +128,12 @@ public class PaymentApplyService {
             throw new BusinessException("仅草稿或已驳回状态可提交");
         }
 
-        // 校验付款金额
-        BizOtherContract contract = otherContractMapper.selectById(paymentApply.getContractId());
-        if (contract == null) {
+        // 校验付款金额（按合同类型路由到对应合同表）
+        ContractPayableInfo payable = resolvePayable(paymentApply);
+        if (payable == null) {
             throw new BusinessException("关联合同不存在");
         }
-        validatePaymentLimit(contract, paymentApply.getPaymentAmount());
+        validatePaymentLimit(payable, paymentApply.getContractId(), paymentApply.getPaymentAmount());
 
         // 发起审批流程
         Map<String, Object> variables = new HashMap<>();
@@ -156,15 +163,16 @@ public class PaymentApplyService {
             return;
         }
 
-        BizOtherContract contract = otherContractMapper.selectById(paymentApply.getContractId());
-        if (contract == null) {
-            log.error("付款申请审批通过回调：关联合同不存在, id={}, contractId={}", id, paymentApply.getContractId());
+        ContractPayableInfo payable = resolvePayable(paymentApply);
+        if (payable == null) {
+            log.error("付款申请审批通过回调：关联合同不存在, id={}, contractId={}, category={}",
+                    id, paymentApply.getContractId(), paymentApply.getContractCategory());
             return;
         }
 
         // 审批期间上限可能变化，生效前重新校验；不通过则置 REJECTED 并通知发起人
         try {
-            validatePaymentLimit(contract, paymentApply.getPaymentAmount());
+            validatePaymentLimit(payable, paymentApply.getContractId(), paymentApply.getPaymentAmount());
         } catch (BusinessException e) {
             paymentApply.setStatus("REJECTED");
             paymentApplyMapper.updateById(paymentApply);
@@ -176,8 +184,8 @@ public class PaymentApplyService {
         paymentApply.setStatus("APPROVED");
         paymentApplyMapper.updateById(paymentApply);
 
-        // 回写合同累计已付与项目总支出（原子累加）
-        otherContractMapper.addCumulativePaid(paymentApply.getContractId(), paymentApply.getPaymentAmount());
+        // 回写合同累计已付（按合同类型路由）与项目总支出（原子累加）
+        addCumulativePaid(paymentApply, paymentApply.getPaymentAmount());
         projectMapper.addTotalExpense(paymentApply.getProjectId(), paymentApply.getPaymentAmount());
 
         log.info("付款申请审批通过并生效, id={}, paymentAmount={}", id, paymentApply.getPaymentAmount());
@@ -203,14 +211,16 @@ public class PaymentApplyService {
 
     /**
      * 校验付款金额不超过（累计结算 + 净奖惩）减已付金额
-     * <p>奖励增加可付、处罚减少可付（净奖惩：奖励为正、处罚为负）。</p>
+     * <p>奖励增加可付、处罚减少可付（净奖惩：奖励为正、处罚为负）。
+     * 净奖惩仅劳务/分包合同适用（sumRewardPunishNetByContract 仅覆盖这两张奖惩表），
+     * 其余类型返回 0。</p>
      */
-    private void validatePaymentLimit(BizOtherContract contract, BigDecimal paymentAmount) {
-        BigDecimal cumulativeSettlement = contract.getCumulativeSettlement() == null
-                ? BigDecimal.ZERO : contract.getCumulativeSettlement();
-        BigDecimal cumulativePaid = contract.getCumulativePaid() == null
-                ? BigDecimal.ZERO : contract.getCumulativePaid();
-        BigDecimal rewardPunishNet = settlementDataMapper.sumRewardPunishNetByContract(contract.getId());
+    private void validatePaymentLimit(ContractPayableInfo payable, Long contractId, BigDecimal paymentAmount) {
+        BigDecimal cumulativeSettlement = payable.getCumulativeSettlement() == null
+                ? BigDecimal.ZERO : payable.getCumulativeSettlement();
+        BigDecimal cumulativePaid = payable.getCumulativePaid() == null
+                ? BigDecimal.ZERO : payable.getCumulativePaid();
+        BigDecimal rewardPunishNet = settlementDataMapper.sumRewardPunishNetByContract(contractId);
         if (rewardPunishNet == null) {
             rewardPunishNet = BigDecimal.ZERO;
         }
@@ -219,6 +229,47 @@ public class PaymentApplyService {
         if (paymentAmount.compareTo(maxPayment) > 0) {
             throw new BusinessException("付款金额不能超过（累计结算含奖惩）减已付金额，最大可付金额：" + maxPayment);
         }
+    }
+
+    /**
+     * 按合同类型读取可付信息（累计结算/累计已付）。
+     * PURCHASE/LABOR/MACHINE/SUBCONTRACT 路由到各模块合同表；
+     * 其余（OTHER_EXPENSE/OTHER_INCOME/空，向后兼容）走 biz_other_contract。
+     */
+    private ContractPayableInfo resolvePayable(BizPaymentApply paymentApply) {
+        String category = paymentApply.getContractCategory();
+        Long contractId = paymentApply.getContractId();
+        if (category != null && MODULE_CATEGORIES.contains(category)) {
+            return switch (category) {
+                case "PURCHASE" -> contractPayableMapper.purchasePayable(contractId);
+                case "LABOR" -> contractPayableMapper.laborPayable(contractId);
+                case "MACHINE" -> contractPayableMapper.machinePayable(contractId);
+                case "SUBCONTRACT" -> contractPayableMapper.subcontractPayable(contractId);
+                default -> null;
+            };
+        }
+        BizOtherContract other = otherContractMapper.selectById(contractId);
+        return other == null ? null
+                : new ContractPayableInfo(other.getCumulativeSettlement(), other.getCumulativePaid());
+    }
+
+    /**
+     * 按合同类型原子累加合同累计已付金额。
+     */
+    private void addCumulativePaid(BizPaymentApply paymentApply, BigDecimal amount) {
+        String category = paymentApply.getContractCategory();
+        Long contractId = paymentApply.getContractId();
+        if (category != null && MODULE_CATEGORIES.contains(category)) {
+            switch (category) {
+                case "PURCHASE" -> contractPayableMapper.addPurchasePaid(contractId, amount);
+                case "LABOR" -> contractPayableMapper.addLaborPaid(contractId, amount);
+                case "MACHINE" -> contractPayableMapper.addMachinePaid(contractId, amount);
+                case "SUBCONTRACT" -> contractPayableMapper.addSubcontractPaid(contractId, amount);
+                default -> { /* 不可达 */ }
+            }
+            return;
+        }
+        otherContractMapper.addCumulativePaid(contractId, amount);
     }
 
     /**

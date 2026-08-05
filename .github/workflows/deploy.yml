@@ -29,13 +29,48 @@ jobs:
           distribution: 'corretto'
           cache: maven
 
-      # 临时策略：跳过测试执行与 JaCoCo 覆盖率门槛，优先保证可部署。
-      # 注意：使用 -DskipTests（仅跳过执行）而非 -Dmaven.test.skip=true（跳过编译+执行），
-      # 因为 zw-common 的 test-jar 需要测试类编译产物，否则下游模块依赖解析断链。
-      # 测试套件作为独立任务修绿后，删除下面两个 -D 参数即可恢复完整质量门槛。
-      - name: Build (skip test execution & coverage)
+      # 质量门槛：执行全量单元测试 + JaCoCo 覆盖率报告（package 阶段不触发 check 门槛，
+      # check 绑定 verify 阶段；覆盖率报告作为 artifact 上传供查阅）。
+      # 若需强制覆盖率门槛（BUNDLE LINE ≥60%），将 package 换为 verify（见 spec test-maturity-upgrade 3.3）。
+      - name: Build & Unit Test (with JaCoCo)
         working-directory: zw-insight-server
-        run: mvn -B clean package -DskipTests -Djacoco.skip=true
+        run: mvn -B clean package
+
+      # 覆盖率不回退守护：逐模块比对 tests/coverage-baseline.json（千分比，容忍 ±1‰ 波动），
+      # 任一模块下降即构建失败。基线只许升不许降，更新需提交新 JSON。
+      # 见 .kiro/specs/test-maturity-upgrade/design.md D1
+      - name: Coverage baseline check (no regression)
+        working-directory: zw-insight-server
+        run: |
+          BASELINE="../tests/coverage-baseline.json"
+          if [ ! -f "$BASELINE" ]; then
+            echo "::error::tests/coverage-baseline.json 不存在，无法比对覆盖率基线"
+            exit 1
+          fi
+          FAIL=0
+          for csv in zw-*/target/site/jacoco/jacoco.csv; do
+            [ -f "$csv" ] || continue
+            module=$(echo "$csv" | cut -d/ -f1)
+            base=$(python3 -c "import json,sys; d=json.load(open('$BASELINE')); v=d.get('$module'); sys.exit(0) if v is None else print(v)" 2>/dev/null || true)
+            [ -n "$base" ] || continue
+            awk -F, -v base="$base" -v m="$module" '
+              NR>1 { cov += $9; miss += $8 }
+              END {
+                total = cov + miss
+                if (total == 0) exit 0
+                cur = int(cov * 1000 / total)
+                if (cur < base - 1) {
+                  printf "\xe2\x9d\x8c %s 覆盖率回退: 当前 %d\xe2\x80\xb0 < 基线 %d\xe2\x80\xb0\n", m, cur, base
+                  exit 1
+                } else {
+                  printf "\xe2\x9c\x85 %s 覆盖率: 当前 %d\xe2\x80\xb0 >= 基线 %d\xe2\x80\xb0\n", m, cur, base
+                }
+              }' "$csv" || FAIL=1
+          done
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::存在模块覆盖率低于基线，请补测或说明后更新基线 JSON（只许升不许降）"
+            exit 1
+          fi
 
       - name: Upload test reports on failure
         if: failure()
@@ -59,6 +94,14 @@ jobs:
           name: backend-jar
           path: zw-insight-server/deploy/zw-insight-app.jar
           retention-days: 3
+
+      # L2 集成测试（Testcontainers hermetic 体系，ubuntu runner 自带 Docker）。
+      # 只跑 zw-app 的 com.zwinsight.integration.*（@EnabledIfDockerAvailable 无 Docker 自动跳过）；
+      # 各模块直连服务器 DB 的 *IntegrationTest 不在 CI 跑（CI 无法访问内网服务器）。
+      # 首次跑用于验证 Testcontainers 基建可用性，失败则按受阻机制登记（spec test-maturity-upgrade 台账）。
+      - name: L2 integration test (Testcontainers)
+        working-directory: zw-insight-server
+        run: mvn -B verify -pl zw-app -am -Pintegration-test "-Dit.test=com.zwinsight.integration.*" -DfailIfNoTests=false
 
   # ────────────────────────────────────────────────────
   # 2. 部署到宝塔服务器
@@ -168,7 +211,6 @@ jobs:
     name: Integration Test
     runs-on: ubuntu-latest
     needs: deploy
-    if: false   # 临时禁用：与后端跳过测试保持一致，L3/L4 测试作为独立任务修绿后再移除本行
     steps:
       - uses: actions/checkout@v4
 
@@ -191,6 +233,12 @@ jobs:
           # 上传 L4 lifecycle-sim-v2.sh
           scp -i ~/.ssh/deploy_key keys/lifecycle-sim-v2.sh \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/lifecycle-sim-v2.sh"
+
+          # 上传 L4 租户隔离基建脚本（初始化测试租户 9999）+ BPMN 部署脚本
+          scp -i ~/.ssh/deploy_key keys/init-test-tenant.sh \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/init-test-tenant.sh"
+          scp -i ~/.ssh/deploy_key keys/deploy-bpmn.sh \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/deploy-bpmn.sh"
 
           # 上传所有 L3 API 测试脚本
           for script in keys/test-api-*.sh; do
@@ -243,6 +291,24 @@ jobs:
 
           [ "$L3_FAIL" -eq 0 ]
           L3_SCRIPT
+
+      - name: Init L4 test tenant (9999) & deploy BPMN
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'INIT_SCRIPT'
+          set -uo pipefail
+          cd /root/zwi-deploy/test-scripts
+          # 1) 初始化隔离测试租户 9999 + t9999admin + 编号规则（幂等，自包含 docker exec SQL）
+          bash init-test-tenant.sh
+          # 2) 准备 deploy-bpmn 运行环境：verify-base.sh + 从 rsync 仓库汇集全部 BPMN 到 /root/zwi-deploy
+          cp -f verify-base.sh /root/zwi-deploy/verify-base.sh
+          cp -f deploy-bpmn.sh /root/zwi-deploy/deploy-bpmn.sh
+          find "${DEPLOY_DIR:-/root/zw-insight}" -path '*/src/main/resources/processes/*.bpmn20.xml' -exec cp -f {} /root/zwi-deploy/ \; 2>/dev/null || true
+          # 3) 部署全部 BPMN 到租户 9999（幂等；BPMN 持久化于 ACT_RE_PROCDEF，重复部署只增版本）
+          cd /root/zwi-deploy
+          ZWI_USER=t9999admin ZWI_PASS=123456 ZWI_TENANT_ID=9999 bash deploy-bpmn.sh || true
+          INIT_SCRIPT
+        env:
+          DEPLOY_DIR: ${{ env.DEPLOY_DIR }}
 
       - name: Run L4 lifecycle test
         id: l4_test

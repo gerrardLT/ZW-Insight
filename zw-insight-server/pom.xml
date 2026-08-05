@@ -47,6 +47,9 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- JaCoCo agent 占位：prepare-agent 运行时会将 -javaagent 追加到该属性，
+             surefire 通过 @{argLine} late 绑定消费；jacoco.skip 时保持空值不破坏 JVM 参数 -->
+        <argLine></argLine>
 
         <!-- 核心依赖版本 -->
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
@@ -63,6 +66,9 @@
         <jqwik.version>1.9.1</jqwik.version>
         <ip2region.version>2.7.0</ip2region.version>
         <aliyun-dysmsapi.version>3.0.0</aliyun-dysmsapi.version>
+        <!-- easyexcel-core 3.3.4 运行时需要 commons-io 2.12+（AbstractStreamBuilder），
+             而 spring-boot 3.2 BOM 管理为 2.11.0，不显式钉住会导致 Excel 导出 NoClassDefFoundError -->
+        <commons-io.version>2.16.1</commons-io.version>
     </properties>
 
     <dependencyManagement>
@@ -307,6 +313,13 @@
                 <artifactId>dysmsapi20170525</artifactId>
                 <version>${aliyun-dysmsapi.version}</version>
             </dependency>
+
+            <!-- 钉住 commons-io 版本：覆盖 spring-boot BOM 的 2.11.0，满足 easyexcel-core 3.3.4 运行时需求 -->
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -355,6 +368,11 @@
                     <threadCount>4</threadCount>
                     <forkCount>1C</forkCount>
                     <reuseForks>true</reuseForks>
+                    <!-- 消费 JaCoCo prepare-agent 注入的 -javaagent（late 绑定 @{argLine}），
+                         否则覆盖率数据文件 jacoco.exec 不会生成，report 会 Skipping 导致覆盖率始终为空 -->
+                    <!-- EnableDynamicAgentLoading：JDK21 下 Mockito 动态自挂载 agent 需要此开关，
+                         否则与 JaCoCo agent 共存时报 “unable to load MockMaker” -->
+                    <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
                     <!-- L1 边界：*IntegrationTest 属于 L2（需真实 MySQL/Redis），
                          仅由 Failsafe 在 -Pintegration-test profile 下执行（见 tests/README.md 分层设计）。
                          Surefire 默认 includes 会误匹配以 Test 结尾的 *IntegrationTest，此处显式排除，

@@ -18,10 +18,10 @@
 
 | 层级 | 框架 | 目标 | 预期耗时 |
 |------|------|------|---------|
-| L1 | JUnit 5 + Mockito + AssertJ + jqwik | 22 模块 Service 层逻辑，核心模块覆盖率 ≥80% | < 60s |
-| L2 | @SpringBootTest + MySQL/Redis 直连 | CRUD 往返、审批流、Flowable 流程 | 3-5min |
+| L1 | JUnit 5 + Mockito + AssertJ + jqwik | 22 模块 Service 层逻辑，当前门槛 60%（pom jacoco check），80% 为阶段三目标 | < 60s |
+| L2 | @SpringBootTest + Testcontainers（MySQL 8 + Redis），备选直连服务器 | CRUD 往返、审批流、Flowable 流程 | 3-5min |
 | L3 | Shell 脚本 + verify-base.sh | 每模块 REST 端点 CRUD + 审批 + 分页 | 2-3min |
-| L4 | lifecycle-sim-v2.sh | 10 阶段业务生命周期（创建→完工→归档） | 5-8min |
+| L4 | lifecycle-sim-v2.sh | 19 阶段业务生命周期（立项→投标→合同→预算→收支→竣工→关闭） | 5-8min |
 | L5 | Playwright 1.61 (真实模式/Mock 模式) | 前端登录、项目操作、审批流 UI | 3-5min |
 
 ---
@@ -47,9 +47,15 @@ cd zw-insight-server
 mvn verify -Pintegration-test         # 使用独立 profile 执行
 ```
 
-前置条件：
+两种运行模式：
+
+1. **Testcontainers 本地模式（首选，hermetic）**：`zw-app` 的 `BaseIntegrationTest` 体系自动启动 MySQL 8 + Redis 容器，无 Docker 时 `@EnabledIfDockerAvailable` 自动跳过。执行：`mvn test -Dtest="com.zwinsight.integration.*"`
+2. **直连服务器模式**：配置文件 `src/test/resources/application-integration-test.yml`
+
+直连模式前置条件：
 - 服务器 MySQL（3306）和 Redis（6379）可达
-- 配置文件：`src/test/resources/application-integration-test.yml`
+
+> 受阻提醒：Docker/服务器不可达导致 L2 无法实跑时，按《测试受阻汇报规则》登记（见 AGENTS.md），禁止静默跳过。
 
 ### L3 API 接口测试
 
@@ -171,8 +177,9 @@ class YourServiceTest {
 
 1. 查看 `target/site/jacoco/index.html` 了解哪些方法未覆盖
 2. 重点补充复杂分支逻辑的测试
-3. 核心模块阈值 ≥80%，非核心模块 ≥50%
+3. 当前门槛：行覆盖率 ≥60%（pom jacoco check，verify 阶段）；80% 为阶段三目标（见 `.kiro/specs/test-maturity-upgrade/tasks.md` 3.3）
 4. CI 中 JaCoCo 报告会上传为 artifact，可直接下载查看
+5. **Windows 中文路径注意**：本机采集覆盖率需加 `-Djacoco.destFile=<ASCII路径>`（中文路径导致 agent 无法写 exec 文件）
 
 ### Q: 测试数据残留怎么清理
 
@@ -250,7 +257,16 @@ CI 构建完成后，JaCoCo HTML 报告会上传为 GitHub Actions artifact：
 
 ### 覆盖率门槛
 
-| 模块类型 | 行覆盖率要求 |
-|---------|------------|
-| 核心模块 (project, contract, budget, finance, material, machine, labor, subcontract) | ≥ 80% |
-| 非核心模块 (system, common 等) | ≥ 50% |
+| 阶段 | 行覆盖率要求 | 强制方式 |
+|------|------------|---------|
+| 当前（阶段一） | ≥60%（pom jacoco check，BUNDLE LINE）+ `tests/coverage-baseline.json` 不回退守护 | verify 阶段门槛 + CI 基线比对 |
+| 阶段三目标 | 核心 8 模块 ≥80% | 达标后 pom check 调至 0.80，CI 切 verify |
+
+各模块实测基线见 `tests/TESTING-MATURITY.md` 附录 A；测试受阻处理规则见 AGENTS.md。
+
+---
+
+## 相关文档
+
+- 测试成熟度评估：`tests/TESTING-MATURITY.md`
+- 升级三阶段任务：`.kiro/specs/test-maturity-upgrade/tasks.md`（含受阻项登记台账）

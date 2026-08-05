@@ -86,12 +86,34 @@
             remote
             :remote-method="searchProject"
             style="width: 100%"
+            @change="loadContracts"
           >
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="合同类型" prop="contractCategory">
+          <el-select v-model="formData.contractCategory" style="width: 100%" @change="loadContracts">
+            <el-option label="其他支出合同" value="OTHER_EXPENSE" />
+            <el-option label="采购合同" value="PURCHASE" />
+            <el-option label="劳务合同" value="LABOR" />
+            <el-option label="机械合同" value="MACHINE" />
+            <el-option label="分包合同" value="SUBCONTRACT" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="关联合同" prop="contractId">
-          <OtherContractSelector v-model="formData.contractId" :project-id="formData.projectId" />
+          <el-select
+            v-model="formData.contractId"
+            filterable
+            placeholder="请先选择项目与合同类型"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="c in contractOptions"
+              :key="c.id"
+              :label="c.contractName || c.contractCode || ('合同#' + c.id)"
+              :value="c.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="收款单位" prop="supplierId">
           <SupplierSelector v-model="formData.supplierId" @change="handleSupplierChange" />
@@ -117,14 +139,19 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getPaymentApplyPage, createPaymentApply, deletePaymentApply, submitPaymentApply } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import { getOtherContractPage } from '@/api/contract'
+import { getPurchaseContractPage } from '@/api/purchase'
+import { getLaborContractPage } from '@/api/labor'
+import { getMachineContractPage } from '@/api/machine'
+import { getSubcontractPage } from '@/api/subcontract'
 import SupplierSelector from '@/components/SupplierSelector.vue'
-import OtherContractSelector from '@/components/OtherContractSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const total = ref(0)
 const projectList = ref<any[]>([])
+const contractOptions = ref<any[]>([])
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 
@@ -137,6 +164,7 @@ const queryParams = ref({
 
 const formData = ref({
   projectId: undefined as number | undefined,
+  contractCategory: 'OTHER_EXPENSE',
   contractId: undefined as number | undefined,
   supplierId: undefined as number | undefined,
   supplierName: '',
@@ -146,10 +174,32 @@ const formData = ref({
 
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
+  contractCategory: [{ required: true, message: '请选择合同类型', trigger: 'change' }],
   contractId: [{ required: true, message: '请选择关联合同', trigger: 'change' }],
   supplierId: [{ required: true, message: '请选择收款单位', trigger: 'change' }],
   paymentAmount: [{ required: true, message: '请输入付款金额', trigger: 'blur' }],
   paymentDate: [{ required: true, message: '请选择付款日期', trigger: 'change' }]
+}
+
+/**
+ * 按合同类型 + 项目加载可选合同（与后端 PaymentApplyService 按 contractCategory 路由一致）。
+ * 项目或合同类型变化时重新加载并清空已选合同。
+ */
+async function loadContracts() {
+  formData.value.contractId = undefined
+  contractOptions.value = []
+  const pid = formData.value.projectId
+  if (!pid) return
+  const params: any = { projectId: pid, page: 1, size: 100, pageNum: 1, pageSize: 100 }
+  let res: any
+  switch (formData.value.contractCategory) {
+    case 'PURCHASE': res = await getPurchaseContractPage(params); break
+    case 'LABOR': res = await getLaborContractPage(params); break
+    case 'MACHINE': res = await getMachineContractPage(params); break
+    case 'SUBCONTRACT': res = await getSubcontractPage(params); break
+    default: res = await getOtherContractPage({ ...params, contractCategory: 'OTHER_EXPENSE' })
+  }
+  contractOptions.value = res.data?.records || res.data || []
 }
 
 function handleSupplierChange(_val: number | undefined, item: any) {
@@ -205,7 +255,8 @@ function handleReset() {
 }
 
 function handleAdd() {
-  formData.value = { projectId: undefined, contractId: undefined, supplierId: undefined, supplierName: '', paymentAmount: 0, paymentDate: '' }
+  formData.value = { projectId: undefined, contractCategory: 'OTHER_EXPENSE', contractId: undefined, supplierId: undefined, supplierName: '', paymentAmount: 0, paymentDate: '' }
+  contractOptions.value = []
   dialogVisible.value = true
 }
 

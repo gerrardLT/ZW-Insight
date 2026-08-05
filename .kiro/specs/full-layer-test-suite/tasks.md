@@ -361,6 +361,39 @@
   - 确认 CI workflow 配置正确（可通过 dry-run 或推送到测试分支验证）
   - 确认 JaCoCo 覆盖率报告正常生成
 
+## 由 L4 测试发现并修复的后端真实缺陷（2026-07-30）
+
+在以真实接口/真实数据验证 L4 全流程过程中，发现并修复 3 个生产级后端缺陷（按优先级）：
+
+- [x] ① 业务编号跨租户撞号
+    - 缺陷：SerialNumberService 按租户维护序列，但生成的编号（前缀+日期+序号）在两租户同前缀同日会重复，而 biz_project/biz_construction_contract/biz_purchase_contract/biz_machine_work_settlement 的编号唯一键为全局唯一，导致第二租户创建 500
+    - 修复：迁移 `39_V2026_37__biz_code_unique_per_tenant.sql` 将 4 张表唯一键改为 `(code, tenant_id)` 租户内唯一（幂等）；同步 `00_schema.sql` 建表定义；线上执行后 information_schema 复查 4 表已移出“缺 tenant_id 唯一键”清单
+
+- [x] ② 项目 totalExpense 记账口径不一致
+    - 缺陷：addTotalExpense 注释明确“付款申请审批通过时回写”（付款口径），但 SubcontractSettlementService.submit 多写了 settlementAmount（结算口径），与劳务/机械/采购结算（均不写）口径不一致且与付款重复计量
+    - 修复：删除分包结算对 totalExpense 的累加（保留 cumulativeSettlement 回写），统一为付款口径；同步移除死依赖 projectMapper、改单元测试（7/7）、更新 L4 断言（最细结算 ProjectSettlementService 另行重算，不依赖此字段）
+
+- [x] ③ 付款不支持模块合同（cumulativePaid 死字段）
+    - 缺陷：采购/劳务/机械/分包合同的 cumulativePaid 有定义、初始化 0 但无任何写入路径；payment-apply 只认 biz_other_contract，四类模块合同无法付款
+    - 修复（全量）：后端新增 finance 侧 `ContractPayableMapper`（原始 SQL 跨模块，以 `SettlementDataMapper` 同模式避循环依赖）+ `ContractPayableInfo` DTO；PaymentApplyService.submit/onApproved 按 contractCategory 路由（OTHER 路径不变，向后兼容）；前端 payment-apply.vue 新增“合同类型”选择器按类型加载合同；单测 9/9；L4 择采购合同付款 80000 断言其 cumulativePaid=80000、项目 totalExpense=245000
+    - 验证：后端 jar 重建热部署到 zwi-backend（docker cp /app/app.jar + restart），L4 全量 19/19 通过（含采购跨模块付款）。已知局限：后端镜像未重建（热部署，容器重建会回退，源码随下次 CI 构建生效）
+
+## 测试体系遗留问题修复（2026-07-31）
+
+按“都要修复”指令完成的工程债清理：
+
+- [x] 前端第 8 处雪花 ID 精度隐患：boq-upload.vue `Number(route.params.contractId||id)` 改字符串 + boq.ts 4 签名放宽 `number | string`（vue-tsc 0 错）
+- [x] CI 恢复测试门槛：backend job 去掉 `-DskipTests -Djacoco.skip`；integration-test job 移除 `if: false`，新增“Init L4 test tenant (9999) & deploy BPMN”步骤（init-test-tenant.sh + deploy-bpmn.sh 上传执行）
+- [x] 修复脌弱属性测试：RefundTriggerPropertyTest 单价下限 0.01→1.00（0.01×0.01 经 HALF_UP 舍入为 0 误报“退款额必须>0”）
+- [x] 修复改造②遗漏回归：SubcontractServiceTest 内嵌套 SubmitTests 3 用例仍断言旧 totalExpense 回写，已改为断言“不再回写”（zw-subcontract 175/175）
+- [x] JaCoCo 覆盖率从未真实采集过的根因：Windows 中文工作区路径导致 agent 无法写 jacoco.exec（验证：destfile 指向 ASCII 路径立即成功）；pom 补 surefire `<argLine>@{argLine}</argLine>` 标准写法；CI ubuntu 不受影响；本机采集需 `-Djacoco.destFile/-Djacoco.dataFile` 指向 ASCII 路径
+- [x] 首次真实覆盖率基线（LINE，全量单测全绿后采集）：zw-subcontract 62.5%、zw-project 51%、zw-machine 49%、zw-material 41.6%、zw-budget 39.6%、zw-finance 27.6%、zw-contract 23.5%、zw-labor 20.7%、zw-purchase 10.3%。**如实结论：距 AGENTS.md 核心模块≥80% 目标差距巨大（需数周补测），CI 暂用 `mvn package`（跑测试+出报告不强制 60% 门槛），强制门槛需改 verify 且先补覆盖**
+- [x] 财务核心边界测试：PaymentApplyServiceTest 新增 5 用例（恰等上限允许/超 0.01 拒绝/null 视为 0/处罚压缩边界/审批期额度被占 onApproved 重校驳回），14/14
+- [x] 移动端测试验证：zw-insight-app vitest 9/9（watermark/offlineCache 属性测试）
+- [x] supplier-portal 零测试→补基础：vitest+happy-dom，api 拦截器 5 用例（token 注入/401 登出跳转/错误透传），5/5
+- [x] 镜像重建固化：含①②③修复的新 jar 上传 /root/zw-insight/deploy 并 `docker compose build backend`，health=200，L4 19/19（不再是 docker cp 热部署，容器重建不回退）
+- [x] 收款侧核实（非缺陷不造功能）：收款登记为项目级设计（前端无合同选择器，不传 contractId），biz_other_contract.cumulativeReceived/cumulativeInvoice 为良性未用字段，最终结算用项目级 sumReceivedByProject 不受影响；不投机构建“其他收入合同收款”功能
+
 ## Notes
 
 - 任务标记 `*` 为可选属性测试任务，可跳过以加速 MVP 交付

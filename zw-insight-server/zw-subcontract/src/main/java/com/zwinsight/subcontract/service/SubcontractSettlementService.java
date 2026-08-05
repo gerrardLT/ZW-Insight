@@ -8,8 +8,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
-import com.zwinsight.project.domain.BizProject;
-import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.subcontract.domain.BizSubcontract;
 import com.zwinsight.subcontract.domain.BizSubcontractSettlement;
 import com.zwinsight.subcontract.domain.BizSubcontractSettlementDetail;
@@ -46,7 +44,6 @@ public class SubcontractSettlementService {
     private final BizSubcontractSettlementMapper settlementMapper;
     private final SubcontractSettlementDetailMapper detailMapper;
     private final BizSubcontractMapper subcontractMapper;
-    private final BizProjectMapper projectMapper;
 
     public PageResult<BizSubcontractSettlement> page(int page, int size, Long projectId, Long contractId, String status) {
         Page<BizSubcontractSettlement> pageParam = new Page<>(page, size);
@@ -196,13 +193,13 @@ public class SubcontractSettlementService {
         contract.setCumulativeSettlement(newCumulative);
         subcontractMapper.updateById(contract);
 
-        // 回写项目总支出
-        BizProject project = projectMapper.selectById(settlement.getProjectId());
-        if (project != null) {
-            BigDecimal totalExpense = project.getTotalExpense() != null ? project.getTotalExpense() : BigDecimal.ZERO;
-            project.setTotalExpense(totalExpense.add(settlement.getSettlementAmount()));
-            projectMapper.updateById(project);
-        }
+        // 注：不在结算时回写项目 totalExpense。
+        // totalExpense 统一为“付款口径”（实际现金流出），仅由付款申请审批通过
+        // （PaymentApplyService.onApproved）与资金调拨回写，与 BizProjectMapper.addTotalExpense
+        // “付款申请审批通过时回写”的设计一致；劳务/机械/采购结算同样只回写
+        // 合同 cumulativeSettlement 而不写 totalExpense。此前分包结算多写 totalExpense
+        // 导致与付款重复计量及与其他模块口径不一致（改造 2026-07-30 修正）。
+        // 最细结算由 ProjectSettlementService 基于各类结算+付款独立重算，不依赖此字段。
     }
 
     // ==================== 详情与导出 ====================

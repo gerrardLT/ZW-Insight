@@ -4,7 +4,9 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.dto.ContractPayableInfo;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
+import com.zwinsight.finance.mapper.ContractPayableMapper;
 import com.zwinsight.finance.mapper.SettlementDataMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.workflow.service.ApprovalService;
@@ -33,6 +35,7 @@ class PaymentApplyServiceTest {
 
     @Mock private BizPaymentApplyMapper paymentApplyMapper;
     @Mock private BizOtherContractMapper otherContractMapper;
+    @Mock private ContractPayableMapper contractPayableMapper;
     @Mock private BizProjectMapper projectMapper;
     @Mock private SettlementDataMapper settlementDataMapper;
     @Mock private ApprovalService approvalService;
@@ -180,6 +183,215 @@ class PaymentApplyServiceTest {
 
             assertThat(apply.getStatus()).isEqualTo("REJECTED");
             verify(otherContractMapper, never()).addCumulativePaid(anyLong(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("按合同类型路由（采购/劳务/机械/分包）")
+    class ContractCategoryRoutingTests {
+
+        @Test
+        @DisplayName("PURCHASE 提交 — 读取采购合同可付，不走 biz_other_contract")
+        void submit_purchase_routesToPurchaseTable() {
+            Long id = 5L;
+            Long contractId = 500L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setProjectId(10L);
+            apply.setContractCategory("PURCHASE");
+            apply.setPaymentAmount(new BigDecimal("80000.00"));
+            apply.setStatus("DRAFT");
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            // 采购合同：累计结算 100000，已付 0 → 可付 100000 ≥ 80000
+            when(contractPayableMapper.purchasePayable(contractId))
+                    .thenReturn(new ContractPayableInfo(new BigDecimal("100000.00"), BigDecimal.ZERO));
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+            when(approvalService.startProcess(eq("PAYMENT_APPLY"), eq(id), eq("payment_apply_approval"), anyMap()))
+                    .thenReturn("proc-5");
+
+            paymentApplyService.submit(id);
+
+            assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+            verify(contractPayableMapper).purchasePayable(contractId);
+            verify(otherContractMapper, never()).selectById(anyLong());
+        }
+
+        @Test
+        @DisplayName("PURCHASE 审批通过 — 回写采购合同 cumulative_paid + 项目 totalExpense")
+        void onApproved_purchase_writesBackPurchaseTable() {
+            Long id = 5L;
+            Long contractId = 500L;
+            Long projectId = 10L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setProjectId(projectId);
+            apply.setContractCategory("PURCHASE");
+            apply.setPaymentAmount(new BigDecimal("80000.00"));
+            apply.setStatus("SUBMITTED");
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(contractPayableMapper.purchasePayable(contractId))
+                    .thenReturn(new ContractPayableInfo(new BigDecimal("100000.00"), BigDecimal.ZERO));
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+
+            paymentApplyService.onApproved(id);
+
+            assertThat(apply.getStatus()).isEqualTo("APPROVED");
+            verify(contractPayableMapper).addPurchasePaid(contractId, new BigDecimal("80000.00"));
+            verify(projectMapper).addTotalExpense(projectId, new BigDecimal("80000.00"));
+            verify(otherContractMapper, never()).addCumulativePaid(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("合同不存在 — 采购可付为 null 时提交报错")
+        void submit_purchaseNotFound_throws() {
+            Long id = 6L;
+            Long contractId = 600L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setContractCategory("PURCHASE");
+            apply.setPaymentAmount(new BigDecimal("1000.00"));
+            apply.setStatus("DRAFT");
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(contractPayableMapper.purchasePayable(contractId)).thenReturn(null);
+
+            assertThatThrownBy(() -> paymentApplyService.submit(id))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("关联合同不存在");
+        }
+    }
+
+    @Nested
+    @DisplayName("付款上限边界值")
+    class PaymentLimitBoundaryTests {
+
+        private BizPaymentApply buildDraft(Long id, Long contractId, String amount) {
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setProjectId(10L);
+            apply.setPaymentAmount(new BigDecimal(amount));
+            apply.setStatus("DRAFT");
+            return apply;
+        }
+
+        @Test
+        @DisplayName("边界：付款金额恰等于可付上限 — 允许提交")
+        void submit_amountEqualsLimit_allowed() {
+            // 可付 = 100000 - 50000 = 50000，提交恰好 50000
+            Long id = 20L;
+            Long contractId = 200L;
+            BizPaymentApply apply = buildDraft(id, contractId, "50000.00");
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(contractId);
+            contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+            contract.setCumulativePaid(new BigDecimal("50000.00"));
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+            when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("p");
+
+            paymentApplyService.submit(id);
+
+            assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        }
+
+        @Test
+        @DisplayName("边界：超出可付上限 0.01 元 — 拒绝提交")
+        void submit_amountExceedsLimitByOneCent_rejected() {
+            Long id = 21L;
+            Long contractId = 201L;
+            BizPaymentApply apply = buildDraft(id, contractId, "50000.01");
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(contractId);
+            contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+            contract.setCumulativePaid(new BigDecimal("50000.00"));
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+
+            assertThatThrownBy(() -> paymentApplyService.submit(id))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("付款金额不能超过");
+            verify(approvalService, never()).startProcess(anyString(), anyLong(), anyString(), anyMap());
+        }
+
+        @Test
+        @DisplayName("边界：累计结算/已付均为 null — 视为 0，任意正数付款拒绝")
+        void submit_nullSettlementFields_treatedAsZero() {
+            Long id = 22L;
+            Long contractId = 202L;
+            BizPaymentApply apply = buildDraft(id, contractId, "0.01");
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(contractId);
+            contract.setCumulativeSettlement(null);
+            contract.setCumulativePaid(null);
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(null);
+
+            assertThatThrownBy(() -> paymentApplyService.submit(id))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("付款金额不能超过");
+        }
+
+        @Test
+        @DisplayName("边界：处罚净额压缩可付至正好等额 — 允许；再多 1 分拒绝")
+        void submit_punishmentShrinksLimit_boundaryExact() {
+            // 可付 = 100000 + (-40000) - 50000 = 10000
+            Long id = 23L;
+            Long contractId = 203L;
+            BizPaymentApply apply = buildDraft(id, contractId, "10000.00");
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(contractId);
+            contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+            contract.setCumulativePaid(new BigDecimal("50000.00"));
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId))
+                    .thenReturn(new BigDecimal("-40000.00"));
+            when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("p");
+
+            paymentApplyService.submit(id);
+            assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        }
+
+        @Test
+        @DisplayName("并发语义：审批期间额度被占用 — onApproved 重校失败置 REJECTED 不回写")
+        void onApproved_limitConsumedDuringApproval_rejectsWithoutWriteback() {
+            // 提交时可付 50000；审批期间另一笔已付 30000 生效 → 可付仅剩 20000 < 本笔 50000
+            Long id = 24L;
+            Long contractId = 204L;
+            BizPaymentApply apply = buildDraft(id, contractId, "50000.00");
+            apply.setStatus("SUBMITTED");
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(contractId);
+            contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+            contract.setCumulativePaid(new BigDecimal("80000.00"));
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+
+            paymentApplyService.onApproved(id);
+
+            assertThat(apply.getStatus()).isEqualTo("REJECTED");
+            verify(otherContractMapper, never()).addCumulativePaid(anyLong(), any());
+            verify(projectMapper, never()).addTotalExpense(anyLong(), any());
         }
     }
 }

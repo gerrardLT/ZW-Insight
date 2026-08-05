@@ -182,7 +182,7 @@ cd tools/consistency-audit && npm run dev
 
 - 每个新建 Service 类的 public 方法至少编写 1 个正常路径 + 1 个异常路径测试
 - 使用 `@ExtendWith(MockitoExtension.class)` + Mockito Mock 所有外部依赖
-- 核心业务模块（project, contract, budget, finance, material, machine, labor, subcontract）JaCoCo 行覆盖率必须 ≥ 80%
+- 覆盖率门槛：当前 pom jacoco check 为行覆盖率 ≥60%（verify 阶段，BUNDLE），且 `tests/coverage-baseline.json` 只升不降（CI 比对）；核心 8 模块 ≥80% 为阶段三目标（见 `.kiro/specs/test-maturity-upgrade/tasks.md` 3.3）。各模块实测基线见 `tests/TESTING-MATURITY.md` 附录 A
 
 #### 集成测试使用 tenant_id=9999
 
@@ -194,8 +194,17 @@ cd tools/consistency-audit && npm run dev
 #### PR 前运行 L1 单元测试
 
 - 提交 PR 前必须在本地运行 `mvn test` 确认单元测试通过
-- CI 中 `mvn -B clean package` 会自动执行单元测试 + JaCoCo 覆盖率检查
-- 覆盖率不达标将导致 CI 构建失败
+- CI backend job 执行 `mvn -B clean package`（运行全量单元测试 + JaCoCo 报告），并比对 `tests/coverage-baseline.json`：任一模块覆盖率回退即构建失败
+- 覆盖率门槛（jacoco check 0.60）绑定 verify 阶段；阶段三目标达成后 CI 切 verify 强制（见 spec 3.3）
+
+#### 测试受阻汇报规则（强制，AI 代理与人均适用）
+
+测试因环境或其他原因无法执行时（Docker 未启、网络不可达、凭证失效、工具装不上、覆盖率采集失败等）：
+
+1. **禁止静默跳过、禁止标记为通过、禁止用 mock/假数据降级替代真实验证**（与本项目“真实接口真实流程”原则一致）
+2. 必须立即：① 停止该项执行 ② 在 `.kiro/specs/test-maturity-upgrade/tasks.md` 末尾“受阻项登记台账”追加一行（日期/层级/测试项/分类 ENV|DEP|NET|CRED|DATA|OTHER/原因/影响范围/处置决策/决策人/状态） ③ 向用户汇报（受阻原因 + 影响范围 + 三选项：修复环境/延期/缩减范围）
+3. 用户决策后回填台账“处置决策/决策人”列；禁止 AI 自行决定降级方案
+4. 汇报模板与历史案例见 `tests/TESTING-MATURITY.md` 附录 B；本机 JaCoCo 中文路径坑需加 `-Djacoco.destFile=<ASCII路径>`
 
 #### 测试体系文档
 

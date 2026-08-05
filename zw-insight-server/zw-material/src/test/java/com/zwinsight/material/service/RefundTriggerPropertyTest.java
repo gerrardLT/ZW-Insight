@@ -118,8 +118,11 @@ class RefundTriggerPropertyTest {
         Arbitrary<BigDecimal> quantities = Arbitraries.bigDecimals()
                 .between(BigDecimal.valueOf(0.01), BigDecimal.valueOf(9999.99))
                 .ofScale(2);
+        // 单价下限取 1.00（材料单价≥01元符合现实）：避免 quantity×unitPrice 过小
+        // （如 0.01×0.01=0.0001）经 setScale(2,HALF_UP) 舍入为 0.00，导致退款额=0 而误报
+        // “退款金额必须大于0”（退化输入导致的属性测试脉动）。最小乘积 0.01×1.00=0.01>0。
         Arbitrary<BigDecimal> unitPrices = Arbitraries.bigDecimals()
-                .between(BigDecimal.valueOf(0.01), BigDecimal.valueOf(9999.99))
+                .between(BigDecimal.valueOf(1.00), BigDecimal.valueOf(9999.99))
                 .ofScale(2);
 
         return Combinators.combine(materialIds, quantities, unitPrices)

@@ -1100,9 +1100,9 @@ stage_9d_payment_closure() {
   phase "9D" "付款闭环"
   CURRENT_STAGE="9D:付款闭环"
 
-  # 说明：payment-apply 仅支持 biz_other_contract（contractId 必须是其他合同 id），
-  # 校验 付款≤累计结算-已付。其他合同无独立结算流程，cumulativeSettlement 于创建时直接带入
-  # （OtherContractService.save 仅在字段为 null 时才置 0，创建体可携带该值—系统唯一支持方式）。
+  # 付款申请支持多合同类型（改造③）：按 contractCategory 路由—OTHER_EXPENSE 走 biz_other_contract，
+  # PURCHASE/LABOR/MACHINE/SUBCONTRACT 走各模块合同表。本阶段先验证 OTHER_EXPENSE 路径，
+  # 再验证 PURCHASE 跨模块路由。其他合同无独立结算流程，cumulativeSettlement 于创建时直接带入。
   # 创建其他支出合同：累计结算 200000（含 9E 驳回用例余量）
   api_call POST "/api/v1/contract/other" "{\"projectId\":$PROJECT_ID,\"contractName\":\"综合服务其他支出合同\",\"contractCategory\":\"OTHER_EXPENSE\",\"partyBName\":\"综合服务供应商\",\"contractAmount\":200000.00,\"cumulativeSettlement\":200000.00}"
   strict_assert "创建其他支出合同"
@@ -1126,11 +1126,29 @@ stage_9d_payment_closure() {
   sleep 2
   approve "同意付款" 1
   assert_status "/api/v1/finance/payment-apply/$pid" "status" "APPROVED" "付款状态"
-  # 审批通过回写其他合同累计已付=165000；项目总支出=195000
-  # （=分包结算 30000 + 本次付款 165000；SubcontractSettlementService.submit 会将结算额计入
-  #   项目 totalExpense，而劳务/机械/采购结算不写—此为后端现状，测试按实断言）
+  # 审批通过回写其他合同累计已付=165000（付款口径：仅付款审批通过回写 totalExpense）
   assert_amount "/api/v1/contract/other/$OTHER_CONTRACT_ID" "cumulativePaid" "165000" "其他合同累计已付"
-  assert_amount "/api/v1/project/$PROJECT_ID" "totalExpense" "195000" "项目总支出"
+
+  # ── 跨模块付款路由：对采购合同付款 80000（contractCategory=PURCHASE）──
+  # 验证 payment-apply 按 contractCategory 路由到 biz_purchase_contract 并回写其 cumulative_paid
+  # 采购合同累计结算=100000（阶段9C），可付 100000 ≥ 80000
+  api_call POST "/api/v1/finance/payment-apply" "{\"projectId\":$PROJECT_ID,\"contractId\":$PURCHASE_CONTRACT_ID,\"contractCategory\":\"PURCHASE\",\"supplierName\":\"广州建材供应有限公司\",\"paymentAmount\":80000.00,\"paymentDate\":\"2026-09-20\"}"
+  strict_assert "创建付款申请-采购合同"
+  sleep 1
+  api_call GET "/api/v1/finance/payment-apply/page?page=1&size=1&projectId=$PROJECT_ID&contractId=$PURCHASE_CONTRACT_ID"
+  local pid_pur=$(extract_first_record_id)
+  require_id "$pid_pur" "采购付款申请 ID"
+  track_resource "DELETE" "/api/v1/finance/payment-apply/$pid_pur"
+  api_call POST "/api/v1/finance/payment-apply/$pid_pur/submit"
+  strict_assert "提交采购付款审批"
+  sleep 2
+  approve "同意采购付款" 1
+  assert_status "/api/v1/finance/payment-apply/$pid_pur" "status" "APPROVED" "采购付款状态"
+  # 跨模块路由回写采购合同 cumulative_paid=80000（此前为死字段，改造③后生效）
+  assert_amount "/api/v1/purchase/contract/$PURCHASE_CONTRACT_ID" "cumulativePaid" "80000" "采购合同累计已付"
+
+  # 项目总支出=245000（其他合同付款 165000 + 采购合同付款 80000；均付款口径回写）
+  assert_amount "/api/v1/project/$PROJECT_ID" "totalExpense" "245000" "项目总支出"
 
   record_stage_result "PASSED"
 }
