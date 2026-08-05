@@ -101,7 +101,9 @@ jobs:
       # 首次跑用于验证 Testcontainers 基建可用性，失败则按受阻机制登记（spec test-maturity-upgrade 台账）。
       - name: L2 integration test (Testcontainers)
         working-directory: zw-insight-server
-        run: mvn -B verify -pl zw-app -am -Pintegration-test "-Dit.test=com.zwinsight.integration.*" -DfailIfNoTests=false
+        # failsafe 在无匹配测试的模块（根聚合/其他模块）会报错，
+        # 必须用 -Dfailsafe.failIfNoSpecifiedTests=false（-DfailIfNoTests 仅对 surefire 生效）
+        run: mvn -B verify -pl zw-app -am -Pintegration-test "-Dit.test=com.zwinsight.integration.*" -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false
 
   # ────────────────────────────────────────────────────
   # 2. 部署到宝塔服务器
