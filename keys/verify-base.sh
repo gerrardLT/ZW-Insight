@@ -139,7 +139,7 @@ check_logs() {
   local secs="${1:-60}" raw n404 nexc
   raw=$(docker logs --since "${secs}s" "$BACKEND_CT" 2>&1)
   n404=$(echo "$raw" | grep -E '(HTTP|status)[^0-9]*(404|405)|No mapping|Method Not Allowed|Not Found' | wc -l)
-  nexc=$(echo "$raw" | grep -E 'Exception|ERROR|\bat [a-z0-9_]+(\.[A-Za-z0-9_$]+)+\(' | wc -l)
+  nexc=$(echo "$raw" | grep -E 'Exception|ERROR|\bat [a-z0-9_]+(\.[A-Za-z0-9_$]+)+\(' | grep -v 'GlobalExceptionHandler' | grep -cv '^$' || true)
   log "日志核对（最近 ${secs}s, 容器=$BACKEND_CT）: 404/405命中=$n404, 异常/堆栈命中=$nexc"
   if [ "$n404" -gt 0 ]; then
     echo "  --- 404/405 命中行(脱敏) ---"
