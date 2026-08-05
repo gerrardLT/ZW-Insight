@@ -1,5 +1,15 @@
 # 集成测试环境配置
 # Testcontainers 会动态覆盖 datasource 与 redis 连接信息（@DynamicPropertySource）
+
+# MinIO 哑配置：MinioClient Bean 创建时 endpoint 不能为 null，
+# 仅满足启动（集成测试不实际调用文件上传，无需真实 MinIO）。
+# 2026-08-05 CI 首跑暴露“endpoint must not be null”
+minio:
+  endpoint: http://localhost:9000
+  access-key: test
+  secret-key: test
+  bucket: test-bucket
+
 spring:
   # 集成测试用 Testcontainers withInitScript(init-test-schema.sql) 建表，
   # 禁用 Flyway：迁移脚本依赖完整建表顺序，与 initScript 并存会报
