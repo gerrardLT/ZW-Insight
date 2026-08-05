@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS sys_user (
     real_name VARCHAR(64),
     phone VARCHAR(32),
     dept_id BIGINT,
+    org_id BIGINT,
+    post_id BIGINT,
     status INT DEFAULT 1,
     created_by BIGINT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
