@@ -196,7 +196,7 @@ test_settlement_create() {
   if [ -z "$CREATED_CONTRACT_ID" ]; then
     log "  SKIP: 无合同ID，无法创建结算单"; return 0
   fi
-  call POST "/api/v1/subcontract/settlement" "{\"projectId\":1,\"contractId\":$CREATED_CONTRACT_ID,\"settlementName\":\"第1期结算-自动化\",\"settlementAmount\":50000.00,\"remark\":\"L3接口自动化测试结算\"}"
+  call POST "/api/v1/subcontract/settlement" "{\"projectId\":1,\"contractId\":$CREATED_CONTRACT_ID,\"details\":[{\"itemName\":\"L3-auto\",\"quantity\":1,\"unitPrice\":50000.00}],\"settlementName\":\"第1期结算-自动化\",\"settlementAmount\":50000.00,\"remark\":\"L3接口自动化测试结算\"}"
   assert_http 2 "POST /api/v1/subcontract/settlement 状态码"
   assert_body_code 200 "POST /api/v1/subcontract/settlement 业务码"
 
@@ -240,7 +240,7 @@ test_settlement_update() {
   if [ -z "$CREATED_CONTRACT_ID" ]; then
     log "  SKIP: 无合同ID"; return 0
   fi
-  call PUT "/api/v1/subcontract/settlement/$CREATED_SETTLEMENT_ID" "{\"projectId\":1,\"contractId\":$CREATED_CONTRACT_ID,\"settlementName\":\"第1期结算-已修改\",\"settlementAmount\":55000.00,\"remark\":\"修改后的结算\"}"
+  call PUT "/api/v1/subcontract/settlement/$CREATED_SETTLEMENT_ID" "{\"projectId\":1,\"contractId\":$CREATED_CONTRACT_ID,\"details\":[{\"itemName\":\"L3-auto\",\"quantity\":1,\"unitPrice\":55000.00}],\"settlementName\":\"第1期结算-已修改\",\"settlementAmount\":55000.00,\"remark\":\"修改后的结算\"}"
   assert_http 2 "PUT /api/v1/subcontract/settlement/{id} 状态码"
   assert_body_code 200 "PUT /api/v1/subcontract/settlement/{id} 业务码"
 }

@@ -242,7 +242,7 @@ test_delete_purchase_contract() {
 
 test_create_inquiry() {
   log "▶ 测试：创建询价单"
-  call POST "/api/v1/purchase/inquiry" '{"title":"L3测试询价-钢筋采购","inviteMode":"PUBLIC","bidMode":"LOWEST","description":"自动化测试询价单","requirements":"Q235B HRB400 钢筋","materialSummary":"钢筋100吨"}'
+  call POST "/api/v1/purchase/inquiry" '{"title":"L3测试询价-钢筋采购","inviteMode":"PUBLIC","bidMode":"LOWEST","description":"自动化测试询价单","requirements":"Q235B HRB400 钢筋","items":[{"materialName":"钢筋","specification":"HRB400","unit":"吨","quantity":100}],"materialSummary":"钢筋100吨"}'
   assert_http 2 "POST /api/v1/purchase/inquiry 状态码"
   assert_body_code 200 "POST /api/v1/purchase/inquiry 业务码"
 }
@@ -281,7 +281,7 @@ test_update_inquiry() {
   if [ -z "$CREATED_INQUIRY_ID" ]; then
     log "  SKIP: 无询价单ID"; return 0
   fi
-  call PUT "/api/v1/purchase/inquiry/$CREATED_INQUIRY_ID" '{"title":"L3测试询价-钢筋采购-已修改","inviteMode":"PUBLIC","bidMode":"COMPREHENSIVE","description":"自动化测试询价单-修改","requirements":"Q235B HRB400E 钢筋","materialSummary":"钢筋120吨"}'
+  call PUT "/api/v1/purchase/inquiry/$CREATED_INQUIRY_ID" '{"title":"L3测试询价-钢筋采购-已修改","inviteMode":"PUBLIC","bidMode":"COMPREHENSIVE","description":"自动化测试询价单-修改","requirements":"Q235B HRB400E 钢筋","items":[{"materialName":"钢筋","specification":"HRB400","unit":"吨","quantity":100}],"materialSummary":"钢筋120吨"}'
   assert_http 2 "PUT /api/v1/purchase/inquiry/{id} 状态码"
   assert_body_code 200 "PUT /api/v1/purchase/inquiry/{id} 业务码"
 }
