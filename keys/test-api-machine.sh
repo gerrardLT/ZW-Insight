@@ -279,14 +279,17 @@ test_contract_nonexistent() {
 }
 
 test_contract_delete() {
-  log "▶ 测试：删除机械合同"
-  if [ -z "$CREATED_CONTRACT_ID" ]; then
-    log "  SKIP: 无合同ID"; return 0
-  fi
-  call DELETE "/api/v1/machine/contract/$CREATED_CONTRACT_ID"
+  log "▶ 测试：删除机械合同（仅草稿可删除）"
+  # 方案B：新建草稿再删（分页无 status 过滤，按 createdAt 降序取最新一条即刚建草稿）
+  call POST "/api/v1/machine/contract" '{"projectId":1,"contractName":"删除测试机械合同","contractNo":"MC-DEL-001","supplierName":"删除测试供应商","contractAmount":1000.00,"startDate":"2025-07-01","endDate":"2025-12-31","remark":"删除测试"}'
+  assert_body_code 200 "POST /api/v1/machine/contract 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/machine/contract/page?page=1&size=1"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿ID"; return 0; fi
+  call DELETE "/api/v1/machine/contract/$DEL_ID"
   assert_http 2 "DELETE /api/v1/machine/contract/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/machine/contract/{id} 业务码"
-  CREATED_CONTRACT_ID=""
 }
 
 # ===========================================================================

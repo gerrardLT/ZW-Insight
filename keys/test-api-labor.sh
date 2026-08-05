@@ -292,14 +292,17 @@ test_contract_nonexistent() {
 }
 
 test_contract_delete() {
-  log "▶ 测试：删除劳务合同"
-  if [ -z "$CREATED_CONTRACT_ID" ]; then
-    log "  SKIP: 无合同ID"; return 0
-  fi
-  call DELETE "/api/v1/labor/contract/$CREATED_CONTRACT_ID"
+  log "▶ 测试：删除劳务合同（仅草稿可删除）"
+  # 方案B：新建草稿再删。故意不传 contractAmount——预算切面在金额为空时直接放行，从而绕开劳务预算额度限制
+  call POST "/api/v1/labor/contract" '{"projectId":90001,"contractName":"删除测试劳务合同","contractNo":"LC-DEL-001","teamName":"测试班组","startDate":"2025-07-01","endDate":"2025-12-31","remark":"删除测试"}'
+  assert_body_code 200 "POST /api/v1/labor/contract 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/labor/contract/page?page=1&size=1&status=DRAFT"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿劳务合同ID"; return 0; fi
+  call DELETE "/api/v1/labor/contract/$DEL_ID"
   assert_http 2 "DELETE /api/v1/labor/contract/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/labor/contract/{id} 业务码"
-  CREATED_CONTRACT_ID=""
 }
 
 # ===========================================================================

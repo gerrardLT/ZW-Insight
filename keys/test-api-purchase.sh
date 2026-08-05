@@ -226,14 +226,17 @@ test_submit_purchase_contract() {
 }
 
 test_delete_purchase_contract() {
-  log "▶ 测试：删除采购合同"
-  if [ -z "$CREATED_PURCHASE_CONTRACT_ID" ]; then
-    log "  SKIP: 无采购合同ID"; return 0
-  fi
-  call DELETE "/api/v1/purchase/contract/$CREATED_PURCHASE_CONTRACT_ID"
+  log "▶ 测试：删除采购合同（仅草稿可删除）"
+  # 方案B：新建草稿再删（按 status=DRAFT 取最新一条）
+  call POST "/api/v1/purchase/contract" '{"projectId":90001,"contractName":"删除测试采购合同","partyAName":"删除测试甲方","partyBName":"删除测试供应商","supplierName":"删除测试供应商","signingDate":"2025-03-01","contractAmount":1000.00,"paymentTerms":"月结30天","status":"DRAFT"}'
+  assert_body_code 200 "POST /api/v1/purchase/contract 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/purchase/contract/page?page=1&size=1&status=DRAFT"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿ID"; return 0; fi
+  call DELETE "/api/v1/purchase/contract/$DEL_ID"
   assert_http 2 "DELETE /api/v1/purchase/contract/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/purchase/contract/{id} 业务码"
-  CREATED_PURCHASE_CONTRACT_ID=""
 }
 
 # ===========================================================================
@@ -307,14 +310,17 @@ test_get_inquiry_quotations() {
 }
 
 test_delete_inquiry() {
-  log "▶ 测试：删除询价单"
-  if [ -z "$CREATED_INQUIRY_ID" ]; then
-    log "  SKIP: 无询价单ID"; return 0
-  fi
-  call DELETE "/api/v1/purchase/inquiry/$CREATED_INQUIRY_ID"
+  log "▶ 测试：删除询价单（仅草稿可删除）"
+  # 方案B：新建草稿再删（创建即 DRAFT，按 status=DRAFT 取最新一条）
+  call POST "/api/v1/purchase/inquiry" '{"title":"删除测试询价单","inviteMode":"PUBLIC","bidMode":"LOWEST","description":"删除测试询价单","requirements":"删除测试","items":[{"materialName":"钢筋","specification":"HRB400","unit":"吨","quantity":1}],"materialSummary":"钢筋1吨"}'
+  assert_body_code 200 "POST /api/v1/purchase/inquiry 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/purchase/inquiry/page?page=1&size=1&status=DRAFT"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿询价单ID"; return 0; fi
+  call DELETE "/api/v1/purchase/inquiry/$DEL_ID"
   assert_http 2 "DELETE /api/v1/purchase/inquiry/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/purchase/inquiry/{id} 业务码"
-  CREATED_INQUIRY_ID=""
 }
 
 test_get_purchase_nonexistent() {

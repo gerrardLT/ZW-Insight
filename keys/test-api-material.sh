@@ -334,25 +334,31 @@ test_inbound_nonexistent() {
 }
 
 test_inbound_delete() {
-  log "▶ 测试：删除入库单"
-  if [ -z "$CREATED_INBOUND_ID" ]; then
-    log "  SKIP: 无入库单ID"; return 0
-  fi
-  call DELETE "/api/v1/material/inbound/$CREATED_INBOUND_ID"
+  log "▶ 测试：删除入库单（仅草稿可删除）"
+  # 方案B：新建草稿再删（分页无 status 过滤，按 createdAt 降序取最新一条）
+  call POST "/api/v1/material/inbound" '{"projectId":1,"supplierName":"删除测试供应商","inboundDate":"2025-07-01","remark":"删除测试入库单"}'
+  assert_body_code 200 "POST /api/v1/material/inbound 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/material/inbound/page?page=1&size=1"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿ID"; return 0; fi
+  call DELETE "/api/v1/material/inbound/$DEL_ID"
   assert_http 2 "DELETE /api/v1/material/inbound/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/material/inbound/{id} 业务码"
-  CREATED_INBOUND_ID=""
 }
 
 test_outbound_delete() {
-  log "▶ 测试：删除出库单"
-  if [ -z "$CREATED_OUTBOUND_ID" ]; then
-    log "  SKIP: 无出库单ID"; return 0
-  fi
-  call DELETE "/api/v1/material/outbound/$CREATED_OUTBOUND_ID"
+  log "▶ 测试：删除出库单（仅草稿可删除）"
+  # 方案B：新建草稿再删（分页无 status 过滤，按 createdAt 降序取最新一条）
+  call POST "/api/v1/material/outbound" '{"projectId":1,"outboundType":"领用","outboundDate":"2025-07-01","remark":"删除测试出库单"}'
+  assert_body_code 200 "POST /api/v1/material/outbound 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/material/outbound/page?page=1&size=1"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿ID"; return 0; fi
+  call DELETE "/api/v1/material/outbound/$DEL_ID"
   assert_http 2 "DELETE /api/v1/material/outbound/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/material/outbound/{id} 业务码"
-  CREATED_OUTBOUND_ID=""
 }
 
 # ===========================================================================

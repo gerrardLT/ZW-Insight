@@ -256,14 +256,20 @@ test_settlement_submit() {
 }
 
 test_settlement_delete() {
-  log "▶ 测试：删除分包结算单"
-  if [ -z "$CREATED_SETTLEMENT_ID" ]; then
-    log "  SKIP: 无结算单ID"; return 0
+  log "▶ 测试：删除分包结算单（仅草稿可删除）"
+  if [ -z "$CREATED_CONTRACT_ID" ]; then
+    log "  SKIP: 无分包合同ID"; return 0
   fi
-  call DELETE "/api/v1/subcontract/settlement/$CREATED_SETTLEMENT_ID"
+  # 方案B：基于主流程已提交合同新建一笔草稿结算再删（按 status=DRAFT 取最新一条）
+  call POST "/api/v1/subcontract/settlement" "{\"projectId\":1,\"contractId\":$CREATED_CONTRACT_ID,\"details\":[{\"itemName\":\"删除测试\",\"quantity\":1,\"unitPrice\":1000.00}],\"settlementName\":\"删除测试结算\",\"settlementAmount\":1000.00,\"remark\":\"删除测试\"}"
+  assert_body_code 200 "POST /api/v1/subcontract/settlement 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/subcontract/settlement/page?page=1&size=1&status=DRAFT"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿结算ID"; return 0; fi
+  call DELETE "/api/v1/subcontract/settlement/$DEL_ID"
   assert_http 2 "DELETE /api/v1/subcontract/settlement/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/subcontract/settlement/{id} 业务码"
-  CREATED_SETTLEMENT_ID=""
 }
 
 # ===========================================================================
@@ -306,14 +312,17 @@ test_contract_nonexistent() {
 }
 
 test_contract_delete() {
-  log "▶ 测试：删除分包合同"
-  if [ -z "$CREATED_CONTRACT_ID" ]; then
-    log "  SKIP: 无合同ID"; return 0
-  fi
-  call DELETE "/api/v1/subcontract/contract/$CREATED_CONTRACT_ID"
+  log "▶ 测试：删除分包合同（仅草稿可删除）"
+  # 方案B：新建草稿再删（创建即 DRAFT，按 status=DRAFT 取最新一条）
+  call POST "/api/v1/subcontract/contract" '{"projectId":1,"contractName":"删除测试分包合同","contractNo":"SC-DEL-001","subcontractorName":"删除测试分包单位","contractAmount":1000.00,"startDate":"2025-07-01","endDate":"2025-12-31","workScope":"删除测试","remark":"删除测试"}'
+  assert_body_code 200 "POST /api/v1/subcontract/contract 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/subcontract/contract/page?page=1&size=1&status=DRAFT"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿分包合同ID"; return 0; fi
+  call DELETE "/api/v1/subcontract/contract/$DEL_ID"
   assert_http 2 "DELETE /api/v1/subcontract/contract/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/subcontract/contract/{id} 业务码"
-  CREATED_CONTRACT_ID=""
 }
 
 # ===========================================================================

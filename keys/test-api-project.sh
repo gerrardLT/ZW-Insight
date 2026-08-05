@@ -269,15 +269,17 @@ test_remove_member() {
 }
 
 test_delete_project() {
-  log "▶ 测试：删除项目"
-  if [ -z "$CREATED_PROJECT_ID" ]; then
-    log "  SKIP: 无项目ID"; return 0
-  fi
-  call DELETE "/api/v1/project/$CREATED_PROJECT_ID"
+  log "▶ 测试：删除项目（仅草稿可删除）"
+  # 方案B：新建草稿项目再删（创建即 DRAFT，按 status=DRAFT 取最新一条）
+  call POST "/api/v1/project" '{"projectName":"删除测试项目","projectNature":"新建","projectType":"公共建筑","ownerCompanyName":"删除测试业主","signingCompanyName":"删除测试施工单位","projectOverview":"删除测试用项目","projectAddress":"测试地址","contactName":"测试联系人","contactPhone":"13800000001","needTender":0,"budgetAmount":100000.00}'
+  assert_body_code 200 "POST /api/v1/project 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/project/page?page=1&size=1&status=DRAFT"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿项目ID"; return 0; fi
+  call DELETE "/api/v1/project/$DEL_ID"
   assert_http 2 "DELETE /api/v1/project/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/project/{id} 业务码"
-  # 项目已删除，清理时不重复删
-  CREATED_PROJECT_ID=""
 }
 
 test_get_nonexistent() {

@@ -232,15 +232,19 @@ test_submit_contract() {
 }
 
 test_delete_contract() {
-  log "▶ 测试：删除合同"
-  if [ -z "$CREATED_CONTRACT_ID" ]; then
-    log "  SKIP: 无合同ID"; return 0
+  log "▶ 测试：删除合同（仅草稿可删除）"
+  # 方案B：删除须作用于草稿。新建一个草稿合同专用于删除测试（创建接口不返回ID，故按 status=DRAFT 取最新一条）
+  call POST "/api/v1/contract" '{"projectId":1,"contractType":"REGISTER","partyAName":"删除测试甲方","signingDate":"2025-01-15","startDate":"2025-02-01","endDate":"2025-12-31","contractAmount":1000.00,"taxRate":9.00,"amountWithoutTax":917.43,"taxAmount":82.57}'
+  assert_body_code 200 "POST /api/v1/contract 创建删除用草稿"
+  sleep 1
+  call GET "/api/v1/contract/page?page=1&size=1&status=DRAFT"
+  local DEL_ID=$(extract_first_record_id)
+  if [ -z "$DEL_ID" ]; then
+    log "  SKIP: 未取到草稿合同ID"; return 0
   fi
-  call DELETE "/api/v1/contract/$CREATED_CONTRACT_ID"
+  call DELETE "/api/v1/contract/$DEL_ID"
   assert_http 2 "DELETE /api/v1/contract/{id} 状态码"
   assert_body_code 200 "DELETE /api/v1/contract/{id} 业务码"
-  # 合同已删除，清理时不重复删
-  CREATED_CONTRACT_ID=""
 }
 
 test_get_nonexistent() {
