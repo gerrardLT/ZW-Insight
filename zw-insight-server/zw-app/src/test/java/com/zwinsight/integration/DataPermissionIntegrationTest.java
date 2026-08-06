@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 对应需求：R1 (AC 3-10), R3 (AC 7)
  */
 @DisplayName("数据权限集成测试")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DataPermissionIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
@@ -102,6 +103,32 @@ class DataPermissionIntegrationTest extends BaseIntegrationTest {
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clear();
+    }
+
+    /**
+     * 类结束后恢复基线权限状态（PER_CLASS 生命周期使 @AfterAll 可用实例字段，不受单用例事务回滚影响）。
+     * <p>
+     * 本类 setupTestData 会清空并重建 sys_user/sys_role/sys_user_role，类执行完遗留
+     * “PROJECT 范围但无任何项目”的用户 2001（恰为其他测试类的通用 USER_ID）；
+     * 单例容器下测试类执行顺序不固定，若其他类在其后运行，@DataPermission 查询会被
+     * 追加 1=0 过滤而查不到夹具数据（2026-08-06 CI 七跑 MachineSettlement 因此失败）。
+     * 重建用户 2001 + ALL 角色，使后续测试不受数据权限过滤影响。
+     * </p>
+     */
+    @AfterAll
+    void restoreBaselinePermission() {
+        jdbcTemplate.update("DELETE FROM sys_user_role WHERE user_id = ?", USER_A);
+        jdbcTemplate.update("DELETE FROM sys_role WHERE id = ?", 3999L);
+        jdbcTemplate.update("DELETE FROM sys_user WHERE id = ?", USER_A);
+        jdbcTemplate.update(
+                "INSERT INTO sys_user (id, tenant_id, username, real_name, org_id, status) VALUES (?, ?, ?, ?, ?, ?)",
+                USER_A, TENANT_ID, "user_a", "用户A", DEPT_1, 1);
+        jdbcTemplate.update(
+                "INSERT INTO sys_role (id, tenant_id, role_name, role_code, data_scope) VALUES (?, ?, ?, ?, ?)",
+                3999L, TENANT_ID, "基线管理员", "baseline_admin", "ALL");
+        jdbcTemplate.update(
+                "INSERT INTO sys_user_role (user_id, role_id, tenant_id) VALUES (?, ?, ?)",
+                USER_A, 3999L, TENANT_ID);
     }
 
     // ==================== 子任务 2：数据权限 SQL 拼接验证 ====================
