@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS biz_machine_work_settlement_detail (
     work_volume DECIMAL(14, 4) DEFAULT 0.00,
     unit_price DECIMAL(10, 2) DEFAULT 0.00,
     subtotal DECIMAL(14, 2) DEFAULT 0.00,
-    price_type VARCHAR(32) DEFAULT 'SHIFT' COMMENT 'SHIFT-台班计价 VOLUME-工作量计价',
+    pricing_type VARCHAR(32) DEFAULT 'SHIFT' COMMENT '计价方式（SHIFT-台班计价 VOLUME-工作量计价）',
     created_by BIGINT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -151,11 +151,16 @@ CREATE TABLE IF NOT EXISTS biz_machine_contract (
     project_id BIGINT,
     contract_code VARCHAR(64),
     contract_name VARCHAR(200) COMMENT '合同名称',
+    supplier_id BIGINT COMMENT '供应商ID',
+    supplier_name VARCHAR(200) COMMENT '供应商名称',
     machine_name VARCHAR(128),
     rental_type VARCHAR(32) DEFAULT 'SHIFT',
+    signing_date DATE COMMENT '签订日期',
     start_date DATE COMMENT '开始日期',
     end_date DATE COMMENT '结束日期',
+    budget_id BIGINT COMMENT '关联预算ID',
     contract_amount DECIMAL(14, 2) DEFAULT 0.00,
+    payment_terms VARCHAR(500) COMMENT '付款条款',
     settled_amount DECIMAL(14, 2) DEFAULT 0.00,
     cumulative_settlement DECIMAL(14, 2) DEFAULT 0.00,
     cumulative_paid DECIMAL(14, 2) DEFAULT 0.00,
@@ -190,6 +195,30 @@ CREATE TABLE IF NOT EXISTS biz_machine_work_log (
     KEY idx_project (project_id),
     KEY idx_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='机械工作日志表';
+
+-- 机械台账表（2026-08-06 补：L2 真跑暴露缺表；00_schema.sql 基础 + 实体补充列 brand/specification/owner_type/current_project）
+CREATE TABLE IF NOT EXISTS biz_machine_ledger (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    machine_name VARCHAR(200) NOT NULL COMMENT '机械名称',
+    machine_code VARCHAR(50) COMMENT '机械编号',
+    machine_type VARCHAR(50) COMMENT '机械类型',
+    brand VARCHAR(100) COMMENT '品牌',
+    specification VARCHAR(100) COMMENT '规格',
+    model VARCHAR(100) COMMENT '规格型号',
+    owner_type VARCHAR(20) COMMENT '所有权类型',
+    current_project BIGINT COMMENT '当前项目ID',
+    purchase_date DATE COMMENT '购置日期',
+    status VARCHAR(20) DEFAULT 'REGISTERED' COMMENT '状态（REGISTERED-已登记/IN_FIELD-在场/OUT_FIELD-退场）',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_status (status),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='机械台账表';
 
 -- 审批快照表
 CREATE TABLE IF NOT EXISTS biz_approval_snapshot (
