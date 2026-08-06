@@ -6,8 +6,6 @@ import com.zwinsight.workflow.service.rollback.RollbackResult;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.annotation.Rollback;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -70,10 +68,12 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
 
     // ==================== 子任务 6：审批快照 → 驳回 → 回滚 → 数据恢复 ====================
 
+    // 注意：本类测试不能加 @Transactional——executeRollback 内部用独立线程池执行 UPDATE，
+    // 测试事务未提交会持有夹具行锁，回滚线程等锁直到 5s 超时（自锁）。
+    // 数据隔离由 @BeforeEach 全表清理保证。
+
     @Test
     @DisplayName("保存快照 - 审批提交时记录数据快照")
-    @Transactional
-    @Rollback
     void testSaveSnapshot_recordsDataBeforeApproval() {
         Map<String, Object> snapshotData = Map.of(
                 "settlement_amount", "0.00",
@@ -91,8 +91,6 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("执行回滚 - 驳回后数据恢复到快照值")
-    @Transactional
-    @Rollback
     void testExecuteRollback_restoresDataFromSnapshot() {
         // 保存快照（提交审批时的快照：状态为草稿、金额为0；字段名必须是生产表真实列，
         // 回滚策略按字段名拼 UPDATE SQL，不存在的列会报 Unknown column）
@@ -118,8 +116,6 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("回滚记录日志 - 回滚完成后写入日志")
-    @Transactional
-    @Rollback
     void testExecuteRollback_writesRollbackLog() {
         Map<String, Object> snapshotData = Map.of("status", "0");
         approvalRollbackService.saveSnapshot(WORKFLOW_INSTANCE_ID, BIZ_TYPE, BIZ_ID, snapshotData);
@@ -137,8 +133,6 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("数据冲突检测 - 快照值与当前值不一致时标记冲突")
-    @Transactional
-    @Rollback
     void testRollbackConflict_detectsDataMismatch() {
         // 保存快照（快照记录的 settlement_amount 原始值为 "0.00"）
         Map<String, Object> snapshotData = Map.of("settlement_amount", "0.00");
@@ -164,8 +158,6 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("乐观锁冲突 - 重试机制最多3次")
-    @Transactional
-    @Rollback
     void testOptimisticLockConflict_retriesUpTo3Times() {
         // 保存快照
         Map<String, Object> snapshotData = Map.of("status", "0");

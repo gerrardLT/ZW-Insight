@@ -353,6 +353,24 @@ CREATE TABLE IF NOT EXISTS biz_labor_team (
     version INT DEFAULT 0
 );
 
+-- 班组表（2026-08-06 补：SalaryStatisticsService.getTeamMap 的 BizTeam 实体 @TableName("biz_team")，
+-- 与 biz_labor_team 是两张不同的表；结构按 BizTeam 实体 + BaseEntity 对齐）
+CREATE TABLE IF NOT EXISTS biz_team (
+    id BIGINT PRIMARY KEY,
+    tenant_id BIGINT,
+    team_name VARCHAR(64),
+    project_id BIGINT,
+    leader_name VARCHAR(64),
+    leader_phone VARCHAR(32),
+    work_type VARCHAR(64),
+    status INT DEFAULT 1,
+    created_by BIGINT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted INT DEFAULT 0,
+    version INT DEFAULT 0
+);
+
 -- 劳务花名册（引用班组，用于引用校验测试）
 CREATE TABLE IF NOT EXISTS biz_labor_roster (
     id BIGINT PRIMARY KEY,

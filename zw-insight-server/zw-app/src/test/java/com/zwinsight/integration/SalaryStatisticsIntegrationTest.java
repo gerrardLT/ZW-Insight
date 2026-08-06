@@ -51,16 +51,16 @@ class SalaryStatisticsIntegrationTest extends BaseIntegrationTest {
         SecurityContextHolder.setUserId(USER_ID);
         SecurityContextHolder.setTenantId(TENANT_ID);
 
-        // 清除残留数据
+        // 清除残留数据（BizTeam 实体 @TableName("biz_team")，非 biz_labor_team）
         jdbcTemplate.update("DELETE FROM biz_labor_payroll");
-        jdbcTemplate.update("DELETE FROM biz_labor_team");
+        jdbcTemplate.update("DELETE FROM biz_team");
 
         // 创建班组
         jdbcTemplate.update(
-                "INSERT INTO biz_labor_team (id, tenant_id, team_name, project_id, status) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO biz_team (id, tenant_id, team_name, project_id, status) VALUES (?, ?, ?, ?, ?)",
                 TEAM_A_ID, TENANT_ID, "木工班组", PROJECT_ID, 1);
         jdbcTemplate.update(
-                "INSERT INTO biz_labor_team (id, tenant_id, team_name, project_id, status) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO biz_team (id, tenant_id, team_name, project_id, status) VALUES (?, ?, ?, ?, ?)",
                 TEAM_B_ID, TENANT_ID, "钢筋班组", PROJECT_ID, 1);
 
         // 创建已审批的工资单数据 - 当月（新结构：周期+结算总额/已付/未付，总应发=total_settlement）
