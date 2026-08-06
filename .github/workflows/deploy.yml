@@ -98,14 +98,15 @@ jobs:
       # L2 集成测试（Testcontainers hermetic 体系，ubuntu runner 自带 Docker）。
       # 只跑 zw-app 的 com.zwinsight.integration.*（@EnabledIfDockerAvailable 无 Docker 自动跳过）；
       # 各模块直连服务器 DB 的 *IntegrationTest 不在 CI 跑（CI 无法访问内网服务器）。
-      # 首次跑用于验证 Testcontainers 基建可用性，失败则按受阻机制登记（spec test-maturity-upgrade 台账）。
+      # 匹配范围由根 pom integration-test profile 的 failsafe includes 限定到 com/zwinsight/integration 包；
+      # 不再用 -Dit.test：实测该通配符在 failsafe 3.1.2 零匹配，导致 L2 长期空转（2026-08-06 修复，见台账）。
       - name: L2 integration test (Testcontainers)
         working-directory: zw-insight-server
         # failsafe 在无匹配测试的模块（根聚合/其他模块）会报错，
         # 必须用 -Dfailsafe.failIfNoSpecifiedTests=false（-DfailIfNoTests 仅对 surefire 生效）；
         # -Djacoco.skip=true：verify 会触发 jacoco check 门槛（当前覆盖率未达 60%），
         # 覆盖率守护由 Build 步骤的基线比对负责，L2 步骤不重复检查
-        run: mvn -B verify -pl zw-app -am -Pintegration-test "-Dit.test=com.zwinsight.integration.*" -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -Djacoco.skip=true
+        run: mvn -B verify -pl zw-app -am -Pintegration-test -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -Djacoco.skip=true
 
   # ────────────────────────────────────────────────────
   # 2. 部署到宝塔服务器

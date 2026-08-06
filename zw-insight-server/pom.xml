@@ -449,8 +449,11 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
+                            <!-- 仅匹配 zw-app 的 com/zwinsight/integration 包（Testcontainers 基建）；
+                                 各业务模块的 com/zwinsight/{module}/integration 直连服务器DB测试不在 L2 范围（2026-08-06 修复：
+                                 原 **/*IntegrationTest.java 过宽，靠 -Dit.test=com.zwinsight.integration.* 收窄但该通配符在 failsafe 3.1.2 零匹配，导致 L2 长期空转） -->
                             <includes>
-                                <include>**/*IntegrationTest.java</include>
+                                <include>**/com/zwinsight/integration/*IntegrationTest.java</include>
                             </includes>
                             <systemPropertyVariables>
                                 <spring.profiles.active>integration-test</spring.profiles.active>
