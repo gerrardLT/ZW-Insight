@@ -261,6 +261,7 @@ CREATE TABLE IF NOT EXISTS sys_tenant (
     contact_name VARCHAR(64),
     contact_phone VARCHAR(32),
     address VARCHAR(256),
+    tenant_type_id BIGINT COMMENT '租户类型ID',
     user_type VARCHAR(32) DEFAULT 'STANDARD',
     start_date DATE,
     end_date DATE,
@@ -323,21 +324,20 @@ CREATE TABLE IF NOT EXISTS biz_labor_roster (
 );
 
 -- 工资单表（简化版，用于薪资统计测试）
+-- 2026-08-06 重写：对齐新实体 BizLaborPayroll（period_start/period_end/total_settlement/total_paid/unpaid/order_type/status），
+-- 旧结构（month/worker_name/gross_salary 等按人工资单）已演进为按班组周期工资单
 CREATE TABLE IF NOT EXISTS biz_labor_payroll (
     id BIGINT PRIMARY KEY,
     tenant_id BIGINT,
     project_id BIGINT,
     team_id BIGINT,
-    month VARCHAR(10) COMMENT '格式：YYYY-MM',
-    worker_name VARCHAR(64),
-    id_card_suffix VARCHAR(4),
-    attendance_days DECIMAL(5, 1) DEFAULT 0,
-    overtime_hours DECIMAL(6, 1) DEFAULT 0,
-    gross_salary DECIMAL(10, 2) DEFAULT 0.00,
-    deduction DECIMAL(10, 2) DEFAULT 0.00,
-    net_salary DECIMAL(10, 2) DEFAULT 0.00,
-    labor_type VARCHAR(32) DEFAULT 'OWN' COMMENT 'OWN-自有劳务 TEMP-零星用工',
-    approval_status INT DEFAULT 0 COMMENT '0-待审批 1-已审批',
+    period_start DATE COMMENT '周期开始日期',
+    period_end DATE COMMENT '周期结束日期',
+    total_settlement DECIMAL(14, 2) DEFAULT 0.00 COMMENT '结算总额',
+    total_paid DECIMAL(14, 2) DEFAULT 0.00 COMMENT '已付总额',
+    unpaid DECIMAL(14, 2) DEFAULT 0.00 COMMENT '未付金额',
+    order_type VARCHAR(32) DEFAULT 'FIXED' COMMENT '用工类型（FIXED-固定/TEMPORARY-临时）',
+    status VARCHAR(32) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/APPROVED-已审批/SETTLED-已结算）',
     created_by BIGINT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -103,8 +103,9 @@ class PurchaseContractIntegrationTest extends BaseIntegrationTest {
         BizPurchaseContract draft = newContract("集成测试采购合同-删除");
         purchaseContractService.save(draft);
         purchaseContractService.delete(draft.getId());
+        // 逻辑删除：记录仍在但 deleted=1，COUNT 需带 deleted=0 条件
         Integer remaining = jdbcTemplate.queryForObject(
-                "SELECT COUNT(1) FROM biz_purchase_contract WHERE id = ?", Integer.class, draft.getId());
+                "SELECT COUNT(1) FROM biz_purchase_contract WHERE id = ? AND deleted = 0", Integer.class, draft.getId());
         assertThat(remaining).isZero();
 
         // 非草稿（EFFECTIVE 固定夹具）拒绝删除
@@ -122,14 +123,14 @@ class PurchaseContractIntegrationTest extends BaseIntegrationTest {
         return contract;
     }
 
-    /** 直接插入一条 EFFECTIVE 合同夹具（绕过状态机，用于验证编辑/删除保护） */
+    /** 直接插入一条 EFFECTIVE 合同夹具（绕过状态机，用于验证编辑/删除保护；created_by 满足数据权限 SELF 过滤） */
     private void insertEffectiveFixture() {
         jdbcTemplate.update(
                 "INSERT INTO biz_purchase_contract (id, project_id, contract_code, contract_name, " +
                         "contract_amount, cumulative_inbound, cumulative_settlement, cumulative_paid, " +
-                        "cumulative_invoice_received, status, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        "cumulative_invoice_received, status, tenant_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 EFFECTIVE_FIXTURE_ID, PROJECT_ID, "CG-IT-FIX-001", "集成测试生效合同夹具",
                 new BigDecimal("100000.00"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, "EFFECTIVE", TEST_TENANT_ID);
+                BigDecimal.ZERO, "EFFECTIVE", TEST_TENANT_ID, TEST_USER_ID);
     }
 }

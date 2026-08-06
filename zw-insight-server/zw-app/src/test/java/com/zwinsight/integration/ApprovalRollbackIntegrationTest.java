@@ -54,11 +54,11 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
         // 创建一个结算单（模拟审批前状态）
         jdbcTemplate.update(
                 "INSERT INTO biz_machine_work_settlement (id, tenant_id, project_id, settlement_code, " +
-                        "period_start, period_end, total_amount, status, workflow_instance_id, version) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        "period_start, period_end, total_amount, status, workflow_instance_id, version, created_by) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 BIZ_ID, TENANT_ID, 5001L, "JS-ROLLBACK-001",
                 "2025-03-01", "2025-03-31",
-                new BigDecimal("30000.00"), 1, WORKFLOW_INSTANCE_ID, 1);
+                new BigDecimal("30000.00"), 1, WORKFLOW_INSTANCE_ID, 1, USER_ID);
     }
 
     @AfterEach

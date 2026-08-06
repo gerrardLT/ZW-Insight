@@ -45,7 +45,7 @@ public class MybatisPlusConfig {
      * </p>
      */
     @Bean
-    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+    public MybatisPlusInterceptor mybatisPlusInterceptor(ZwDataPermissionHandler zwDataPermissionHandler) {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
 
         // 1. 多租户插件（必须在最前面，保证 tenant_id 条件优先注入）
@@ -56,8 +56,7 @@ public class MybatisPlusConfig {
         // 在 tenant_id 条件已存在的 WHERE 子句上，通过 AND 追加角色数据范围条件
         // 最终效果：同一租户内按角色 dataScope 进一步限制数据可见性
         if (dataPermissionDataProvider != null) {
-            ZwDataPermissionHandler handler = new ZwDataPermissionHandler(dataPermissionDataProvider);
-            interceptor.addInnerInterceptor(new DataPermissionInnerInterceptor(handler));
+            interceptor.addInnerInterceptor(new DataPermissionInnerInterceptor(zwDataPermissionHandler));
         }
 
         // 3. 分页插件（在所有条件注入完成后处理分页）
@@ -69,6 +68,18 @@ public class MybatisPlusConfig {
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
 
         return interceptor;
+    }
+
+    /**
+     * 数据权限处理器
+     * <p>
+     * 暴露为 Bean 以便集成测试注入验证数据范围逻辑；下方拦截器复用同一实例。
+     * 持有 @Lazy 的 DataPermissionDataProvider，首次使用时解析，行为与原实现一致。
+     * </p>
+     */
+    @Bean
+    public ZwDataPermissionHandler zwDataPermissionHandler() {
+        return new ZwDataPermissionHandler(dataPermissionDataProvider);
     }
 
     /**

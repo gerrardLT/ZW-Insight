@@ -48,14 +48,14 @@ class MaterialInboundIntegrationTest extends BaseIntegrationTest {
         jdbcTemplate.update("DELETE FROM biz_project_material_stock WHERE tenant_id = ?", TEST_TENANT_ID);
         jdbcTemplate.update("DELETE FROM biz_purchase_contract WHERE tenant_id = ?", TEST_TENANT_ID);
 
-        // 夹具：采购合同（入库提交后回写累计入库金额）
+        // 夹具：采购合同（入库提交后回写累计入库金额；created_by 满足数据权限 SELF 过滤，否则 Mapper selectById 查不到）
         jdbcTemplate.update(
                 "INSERT INTO biz_purchase_contract (id, project_id, contract_code, contract_name, " +
                         "contract_amount, cumulative_inbound, cumulative_settlement, cumulative_paid, " +
-                        "cumulative_invoice_received, status, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        "cumulative_invoice_received, status, tenant_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 CONTRACT_ID, PROJECT_ID, "CG-IT-INB-001", "集成测试入库关联采购合同",
                 new BigDecimal("500000.00"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, "EFFECTIVE", TEST_TENANT_ID);
+                BigDecimal.ZERO, "EFFECTIVE", TEST_TENANT_ID, TEST_USER_ID);
     }
 
     @Test

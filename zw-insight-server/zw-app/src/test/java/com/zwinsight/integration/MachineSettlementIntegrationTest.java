@@ -56,24 +56,24 @@ class MachineSettlementIntegrationTest extends BaseIntegrationTest {
         jdbcTemplate.update("DELETE FROM biz_machine_ledger");
         jdbcTemplate.update("DELETE FROM biz_machine_contract");
 
-        // 机械台账（machine_name 与合同一致，结算时按名称映射机械→合同）
+        // 机械台账（machine_name 与合同一致，结算时按名称映射机械→合同；created_by 满足数据权限 SELF 过滤）
         jdbcTemplate.update(
-                "INSERT INTO biz_machine_ledger (id, tenant_id, machine_name, status) VALUES (?, ?, ?, ?)",
-                LEDGER_ID, TENANT_ID, "挖掘机", "IN_FIELD");
+                "INSERT INTO biz_machine_ledger (id, tenant_id, machine_name, status, created_by) VALUES (?, ?, ?, ?, ?)",
+                LEDGER_ID, TENANT_ID, "挖掘机", "IN_FIELD", USER_ID);
 
         // 创建机械合同（EFFECTIVE；machine_name 与台账一致）
         jdbcTemplate.update(
                 "INSERT INTO biz_machine_contract (id, tenant_id, project_id, contract_code, machine_name, " +
-                        "settled_amount, cumulative_settlement, total_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        "settled_amount, cumulative_settlement, total_amount, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 CONTRACT_ID, TENANT_ID, PROJECT_ID, "MC-2025-001", "挖掘机",
-                BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("500000.00"), "EFFECTIVE");
+                BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("500000.00"), "EFFECTIVE", USER_ID);
 
         // 结算周期内的未结算工作日志（2025-01-01~01-31 内，供创建结算单取数）
         jdbcTemplate.update(
                 "INSERT INTO biz_machine_work_log (id, tenant_id, machine_id, project_id, work_date, " +
-                        "shift_count, work_quantity, status, settlement_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        "shift_count, work_quantity, status, settlement_status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 WORK_LOG_ID, TENANT_ID, LEDGER_ID, PROJECT_ID, LocalDate.of(2025, 1, 10),
-                new BigDecimal("8.00"), new BigDecimal("100.00"), "DRAFT", "UNSETTLED");
+                new BigDecimal("8.00"), new BigDecimal("100.00"), "DRAFT", "UNSETTLED", USER_ID);
     }
 
     @AfterEach
