@@ -460,6 +460,9 @@
                             <!-- 挂起兜底（2026-08-06）：测试全部结束后若 fork JVM 因残留非守护线程
                                  （Druid 重试/调度器等）60 秒内未退出则强制结束，避免 CI 无限挂死 -->
                             <forkedProcessExitTimeoutInSeconds>60</forkedProcessExitTimeoutInSeconds>
+                            <!-- 测试执行阶段总超时 45 分钟：单个用例/类死等时强制终止 fork，
+                                 避免 CI 无限挂死（单例容器模式下 12 类正常耗时约 15~25 分钟） -->
+                            <forkedProcessTimeoutInSeconds>2700</forkedProcessTimeoutInSeconds>
                             <systemPropertyVariables>
                                 <spring.profiles.active>integration-test</spring.profiles.active>
                             </systemPropertyVariables>

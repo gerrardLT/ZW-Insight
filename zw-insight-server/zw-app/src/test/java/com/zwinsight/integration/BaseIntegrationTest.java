@@ -11,8 +11,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * 集成测试基类
@@ -33,21 +31,28 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * </p>
  */
 @SpringBootTest(classes = ZwInsightApplication.class)
-@Testcontainers
 @ActiveProfiles("test")
 @EnabledIfDockerAvailable
 public abstract class BaseIntegrationTest {
 
-    @Container
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("zw_test")
-            .withUsername("root")
-            .withPassword("test")
-            .withInitScript("db/init-test-schema.sql");
+    // 单例容器模式（Testcontainers 官方推荐）：所有测试类共享同一对 MySQL/Redis 容器，
+    // static 块启动一次，JVM 退出时由 Ryuk 回收。
+    // 2026-08-06 修复连环挂起：原 @Container 类级生命周期每个测试类销毁重建容器，
+    // 销毁后 Druid/调度器线程对失效连接重试刷屏并拖垮后续类执行。
+    static final MySQLContainer<?> mysql;
+    static final GenericContainer<?> redis;
 
-    @Container
-    static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
-            .withExposedPorts(6379);
+    static {
+        mysql = new MySQLContainer<>("mysql:8.0")
+                .withDatabaseName("zw_test")
+                .withUsername("root")
+                .withPassword("test")
+                .withInitScript("db/init-test-schema.sql");
+        redis = new GenericContainer<>("redis:7-alpine")
+                .withExposedPorts(6379);
+        mysql.start();
+        redis.start();
+    }
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
