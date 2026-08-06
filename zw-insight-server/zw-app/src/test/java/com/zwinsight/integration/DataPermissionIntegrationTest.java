@@ -61,14 +61,16 @@ class DataPermissionIntegrationTest extends BaseIntegrationTest {
         jdbcTemplate.update("DELETE FROM sys_role");
         jdbcTemplate.update("DELETE FROM sys_user");
         jdbcTemplate.update("DELETE FROM sys_dept");
+        jdbcTemplate.update("DELETE FROM sys_org");
 
-        // 创建部门
+        // 创建组织（数据权限 Provider 实际查 sys_org：getUserDeptId 取 user.org_id，
+        // getDeptAndChildIds 用 FIND_IN_SET(id, ancestors) 找子组织）
         jdbcTemplate.update(
-                "INSERT INTO sys_dept (id, tenant_id, dept_name, parent_id, ancestors) VALUES (?, ?, ?, ?, ?)",
-                DEPT_1, TENANT_ID, "研发部", 0, "0");
+                "INSERT INTO sys_org (id, tenant_id, org_name, org_type, parent_id, ancestors, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                DEPT_1, TENANT_ID, "研发部", "DEPT", 0, "0", 1);
         jdbcTemplate.update(
-                "INSERT INTO sys_dept (id, tenant_id, dept_name, parent_id, ancestors) VALUES (?, ?, ?, ?, ?)",
-                DEPT_2, TENANT_ID, "研发一组", DEPT_1, "0," + DEPT_1);
+                "INSERT INTO sys_org (id, tenant_id, org_name, org_type, parent_id, ancestors, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                DEPT_2, TENANT_ID, "研发一组", "DEPT", DEPT_1, "0," + DEPT_1, 1);
 
         // 创建角色（不同数据范围）
         jdbcTemplate.update(
@@ -78,12 +80,12 @@ class DataPermissionIntegrationTest extends BaseIntegrationTest {
                 "INSERT INTO sys_role (id, tenant_id, role_name, role_code, data_scope) VALUES (?, ?, ?, ?, ?)",
                 ROLE_ADMIN, TENANT_ID, "系统管理员", "admin", "ALL");
 
-        // 创建用户
+        // 创建用户（dept 过滤依赖 org_id：getUserDeptId 返回 user.getOrgId()）
         jdbcTemplate.update(
-                "INSERT INTO sys_user (id, tenant_id, username, real_name, dept_id, status) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO sys_user (id, tenant_id, username, real_name, org_id, status) VALUES (?, ?, ?, ?, ?, ?)",
                 USER_A, TENANT_ID, "user_a", "用户A", DEPT_1, 1);
         jdbcTemplate.update(
-                "INSERT INTO sys_user (id, tenant_id, username, real_name, dept_id, status) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO sys_user (id, tenant_id, username, real_name, org_id, status) VALUES (?, ?, ?, ?, ?, ?)",
                 USER_B, TENANT_ID, "user_b", "用户B", DEPT_2, 1);
 
         // 用户A关联角色 PROJECT_MANAGER
@@ -153,16 +155,17 @@ class DataPermissionIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("DEPT 范围 - 基于用户部门过滤")
+    @DisplayName("DEPT 范围 - 基于用户组织过滤")
     void testDeptScope_filtersByUserDept() {
-        // 用户A的部门为 DEPT_1
+        // getUserDeptId 返回用户的 org_id（USER_A 归属 DEPT_1）
         Long deptId = dataProvider.getUserDeptId(USER_A);
         assertThat(deptId).isEqualTo(DEPT_1);
     }
 
     @Test
-    @DisplayName("DEPT_AND_CHILDREN 范围 - 包含子部门")
+    @DisplayName("DEPT_AND_CHILDREN 范围 - 包含子组织")
     void testDeptAndChildrenScope_includesSubDepts() {
+        // 查 sys_org：DEPT_2 的 ancestors 包含 DEPT_1，应被 FIND_IN_SET 命中
         List<Long> deptIds = dataProvider.getDeptAndChildIds(DEPT_1);
         assertThat(deptIds).contains(DEPT_1, DEPT_2);
     }
@@ -218,10 +221,9 @@ class DataPermissionIntegrationTest extends BaseIntegrationTest {
         projectMemberService.addCreatorAsProjectManager(PROJECT_1, USER_A, "用户A");
         projectMemberService.addCreatorAsProjectManager(PROJECT_2, USER_A, "用户A");
 
-        // 另加一个 PM 到项目1（避免唯一PM保护拒绝移除）
-        jdbcTemplate.update(
-                "INSERT INTO sys_user_project (user_id, project_id, tenant_id) VALUES (?, ?, ?)",
-                USER_B, PROJECT_1, TENANT_ID);
+        // 另加一个 PM 到项目1（唯一PM保护校验的是 biz_project_member 中的 PM 数量，
+        // 必须走 addCreatorAsProjectManager 写入成员表，仅插 sys_user_project 无效）
+        projectMemberService.addCreatorAsProjectManager(PROJECT_1, USER_B, "用户B");
 
         // 移除用户A从项目1
         projectMemberService.removeMember(PROJECT_1, USER_A);

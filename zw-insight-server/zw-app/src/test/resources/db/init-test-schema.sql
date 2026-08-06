@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS sys_role (
     role_name VARCHAR(64) NOT NULL,
     role_code VARCHAR(64) NOT NULL,
     data_scope VARCHAR(32) DEFAULT 'SELF',
+    remark VARCHAR(500) COMMENT '备注（SysRole.remark，缺失导致 selectList 报 Unknown column 降级 SELF）',
     status INT DEFAULT 1,
     created_by BIGINT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -24,6 +25,8 @@ CREATE TABLE IF NOT EXISTS sys_user (
     password VARCHAR(256),
     real_name VARCHAR(64),
     phone VARCHAR(32),
+    email VARCHAR(128) COMMENT '邮箱（SysUser.email）',
+    avatar VARCHAR(512) COMMENT '头像（SysUser.avatar）',
     dept_id BIGINT,
     org_id BIGINT,
     post_id BIGINT,
@@ -121,6 +124,27 @@ CREATE TABLE IF NOT EXISTS biz_machine_work_settlement (
     deleted INT DEFAULT 0,
     version INT DEFAULT 0,
     UNIQUE KEY uk_settlement_code (settlement_code)
+);
+
+-- 机械结算表（2026-08-06 补：ApprovalRollbackIntegrationTest 回滚策略
+-- MachineSettlementRollbackStrategy 更新的表；结构取自 00_schema.sql 生产定义）
+CREATE TABLE IF NOT EXISTS biz_machine_settlement (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    project_id BIGINT NOT NULL COMMENT '项目ID',
+    contract_id BIGINT NOT NULL COMMENT '合同ID',
+    settlement_amount DECIMAL(18,2) COMMENT '本次结算金额',
+    cumulative_settlement DECIMAL(18,2) DEFAULT 0 COMMENT '累计结算金额',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/APPROVED-已审批）',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_project (project_id),
+    KEY idx_contract (contract_id),
+    KEY idx_tenant (tenant_id)
 );
 
 -- 机械结算明细表
@@ -296,6 +320,25 @@ CREATE TABLE IF NOT EXISTS sys_dept (
     deleted INT DEFAULT 0
 );
 
+-- 组织表（2026-08-06 补：数据权限 Provider 实际查 sys_org/ancestors（FIND_IN_SET），
+-- 而非 sys_dept；结构按 SysOrg 实体 + BaseEntity 对齐）
+CREATE TABLE IF NOT EXISTS sys_org (
+    id BIGINT PRIMARY KEY,
+    tenant_id BIGINT,
+    org_name VARCHAR(128),
+    org_code VARCHAR(64),
+    org_type VARCHAR(32),
+    parent_id BIGINT DEFAULT 0,
+    sort_order INT DEFAULT 0,
+    status INT DEFAULT 1,
+    ancestors VARCHAR(512),
+    created_by BIGINT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted INT DEFAULT 0,
+    version INT DEFAULT 0
+);
+
 -- 班组表（用于引用校验测试）
 CREATE TABLE IF NOT EXISTS biz_labor_team (
     id BIGINT PRIMARY KEY,
@@ -338,6 +381,30 @@ CREATE TABLE IF NOT EXISTS biz_labor_payroll (
     unpaid DECIMAL(14, 2) DEFAULT 0.00 COMMENT '未付金额',
     order_type VARCHAR(32) DEFAULT 'FIXED' COMMENT '用工类型（FIXED-固定/TEMPORARY-临时）',
     status VARCHAR(32) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/APPROVED-已审批/SETTLED-已结算）',
+    created_by BIGINT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted INT DEFAULT 0,
+    version INT DEFAULT 0
+);
+
+-- 劳务派工单表（2026-08-06 补：SalaryStatisticsIntegrationTest 的 getStatsByTeam 会查已审批工单）
+-- 结构按 BizWorkOrder 实体字段 + BaseEntity 公共列对齐
+CREATE TABLE IF NOT EXISTS biz_work_order (
+    id BIGINT PRIMARY KEY,
+    tenant_id BIGINT,
+    project_id BIGINT,
+    team_id BIGINT,
+    worker_id BIGINT,
+    worker_name VARCHAR(64),
+    work_date DATE,
+    hours DECIMAL(6, 1) DEFAULT 0.0,
+    hourly_rate DECIMAL(10, 2) DEFAULT 0.00,
+    overtime DECIMAL(6, 1) DEFAULT 0.0,
+    overtime_rate DECIMAL(10, 2) DEFAULT 0.00,
+    total_amount DECIMAL(14, 2) DEFAULT 0.00,
+    order_type VARCHAR(32) DEFAULT 'FIXED',
+    status VARCHAR(32) DEFAULT 'DRAFT',
     created_by BIGINT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

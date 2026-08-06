@@ -40,6 +40,9 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
     private static final Long BIZ_ID = 7001L;
     private static final String WORKFLOW_INSTANCE_ID = "wf-rollback-test-001";
     private static final String BIZ_TYPE = "MACHINE_SETTLEMENT";
+    // 回滚策略 MachineSettlementRollbackStrategy 实际更新的表（非 biz_machine_work_settlement，
+    // 此前表名不一致导致 UPDATE 报表不存在，回滚恒失败）
+    private static final String SETTLEMENT_TABLE = "biz_machine_settlement";
 
     @BeforeEach
     void setupTestData() {
@@ -49,16 +52,15 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
         // 清除残留数据
         jdbcTemplate.update("DELETE FROM biz_approval_snapshot");
         jdbcTemplate.update("DELETE FROM biz_approval_rollback_log");
-        jdbcTemplate.update("DELETE FROM biz_machine_work_settlement");
+        jdbcTemplate.update("DELETE FROM " + SETTLEMENT_TABLE);
 
-        // 创建一个结算单（模拟审批前状态）
+        // 创建一个结算单（模拟审批前状态；列以生产表 biz_machine_settlement 实际结构为准）
         jdbcTemplate.update(
-                "INSERT INTO biz_machine_work_settlement (id, tenant_id, project_id, settlement_code, " +
-                        "period_start, period_end, total_amount, status, workflow_instance_id, version, created_by) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                BIZ_ID, TENANT_ID, 5001L, "JS-ROLLBACK-001",
-                "2025-03-01", "2025-03-31",
-                new BigDecimal("30000.00"), 1, WORKFLOW_INSTANCE_ID, 1, USER_ID);
+                "INSERT INTO " + SETTLEMENT_TABLE + " (id, tenant_id, project_id, contract_id, " +
+                        "settlement_amount, cumulative_settlement, status, version, created_by) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                BIZ_ID, TENANT_ID, 5001L, 6001L,
+                new BigDecimal("30000.00"), BigDecimal.ZERO, "APPROVED", 1, USER_ID);
     }
 
     @AfterEach
@@ -74,8 +76,8 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
     @Rollback
     void testSaveSnapshot_recordsDataBeforeApproval() {
         Map<String, Object> snapshotData = Map.of(
-                "total_amount", "0.00",
-                "status", "0"
+                "settlement_amount", "0.00",
+                "status", "DRAFT"
         );
 
         approvalRollbackService.saveSnapshot(WORKFLOW_INSTANCE_ID, BIZ_TYPE, BIZ_ID, snapshotData);
@@ -84,7 +86,7 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(1) FROM biz_approval_snapshot WHERE workflow_instance_id = ?",
                 Integer.class, WORKFLOW_INSTANCE_ID);
-        assertThat(count).isEqualTo(2); // total_amount 和 status 两个字段
+        assertThat(count).isEqualTo(2); // settlement_amount 和 status 两个字段
     }
 
     @Test
@@ -92,9 +94,10 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
     @Transactional
     @Rollback
     void testExecuteRollback_restoresDataFromSnapshot() {
-        // 保存快照（提交审批时的快照：状态为草稿、金额为0）
+        // 保存快照（提交审批时的快照：状态为草稿、金额为0；字段名必须是生产表真实列，
+        // 回滚策略按字段名拼 UPDATE SQL，不存在的列会报 Unknown column）
         Map<String, Object> snapshotData = Map.of(
-                "total_amount", "0.00",
+                "settlement_amount", "0.00",
                 "status", "0"
         );
         approvalRollbackService.saveSnapshot(WORKFLOW_INSTANCE_ID, BIZ_TYPE, BIZ_ID, snapshotData);
@@ -106,9 +109,9 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.getStatus()).isEqualTo(1);
 
-        // 验证数据已恢复
+        // 验证数据已恢复（快照 status=0 → 回滚后应为 0）
         Integer restoredStatus = jdbcTemplate.queryForObject(
-                "SELECT status FROM biz_machine_work_settlement WHERE id = ?",
+                "SELECT status FROM " + SETTLEMENT_TABLE + " WHERE id = ?",
                 Integer.class, BIZ_ID);
         assertThat(restoredStatus).isEqualTo(0);
     }
@@ -137,14 +140,14 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
     @Transactional
     @Rollback
     void testRollbackConflict_detectsDataMismatch() {
-        // 保存快照（快照记录的 total_amount 原始值为 "0.00"）
-        Map<String, Object> snapshotData = Map.of("total_amount", "0.00");
+        // 保存快照（快照记录的 settlement_amount 原始值为 "0.00"）
+        Map<String, Object> snapshotData = Map.of("settlement_amount", "0.00");
         approvalRollbackService.saveSnapshot(WORKFLOW_INSTANCE_ID, BIZ_TYPE, BIZ_ID, snapshotData);
 
         // 模拟数据被后续操作修改（当前值 30000.00 与快照值 0.00 已不同）
         // 再次修改当前值以制造 "数据已被后续操作修改" 的情况
         jdbcTemplate.update(
-                "UPDATE biz_machine_work_settlement SET total_amount = ?, version = version + 1 WHERE id = ?",
+                "UPDATE " + SETTLEMENT_TABLE + " SET settlement_amount = ?, version = version + 1 WHERE id = ?",
                 new BigDecimal("50000.00"), BIZ_ID);
 
         // 执行回滚
@@ -170,7 +173,7 @@ class ApprovalRollbackIntegrationTest extends BaseIntegrationTest {
 
         // 人为将 version 改为不匹配的值，制造乐观锁冲突
         jdbcTemplate.update(
-                "UPDATE biz_machine_work_settlement SET version = 999 WHERE id = ?", BIZ_ID);
+                "UPDATE " + SETTLEMENT_TABLE + " SET version = 999 WHERE id = ?", BIZ_ID);
 
         // 执行回滚（应触发重试机制）
         RollbackResult result = approvalRollbackService.executeRollback(WORKFLOW_INSTANCE_ID);

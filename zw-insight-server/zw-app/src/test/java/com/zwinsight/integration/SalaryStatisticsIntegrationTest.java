@@ -11,8 +11,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 薪资统计集成测试
@@ -37,7 +39,12 @@ class SalaryStatisticsIntegrationTest extends BaseIntegrationTest {
     private static final Long TEAM_A_ID = 7001L;
     private static final Long TEAM_B_ID = 7002L;
     private static final String MONTH = "2025-03";
-    private static final String PREV_MONTH = "2025-02";
+    // 2025-03 周期：Service 按 period_start >= 月初 且 period_end <= 月末 过滤
+    private static final LocalDate PERIOD_START = LocalDate.of(2025, 3, 1);
+    private static final LocalDate PERIOD_END = LocalDate.of(2025, 3, 31);
+    private static final LocalDate PREV_PERIOD_START = LocalDate.of(2025, 2, 1);
+    private static final LocalDate PREV_PERIOD_END = LocalDate.of(2025, 2, 28);
+    private static final String EMPTY_MONTH = "2020-01";
 
     @BeforeEach
     void setupTestData() {
@@ -56,19 +63,15 @@ class SalaryStatisticsIntegrationTest extends BaseIntegrationTest {
                 "INSERT INTO biz_labor_team (id, tenant_id, team_name, project_id, status) VALUES (?, ?, ?, ?, ?)",
                 TEAM_B_ID, TENANT_ID, "钢筋班组", PROJECT_ID, 1);
 
-        // 创建已审批的工资单数据 - 当月
-        insertPayroll(10001L, PROJECT_ID, TEAM_A_ID, MONTH, "张三", "1234",
-                22, 10, "8000.00", "200.00", "7800.00", "OWN");
-        insertPayroll(10002L, PROJECT_ID, TEAM_A_ID, MONTH, "李四", "5678",
-                20, 8, "7500.00", "150.00", "7350.00", "OWN");
-        insertPayroll(10003L, PROJECT_ID, TEAM_B_ID, MONTH, "王五", "9012",
-                18, 5, "6500.00", "100.00", "6400.00", "TEMP");
+        // 创建已审批的工资单数据 - 当月（新结构：周期+结算总额/已付/未付，总应发=total_settlement）
+        // 当月总额：8000 + 7500 + 6500 = 22000，上月：7000 + 6800 = 13800
+        insertPayroll(10001L, PROJECT_ID, TEAM_A_ID, PERIOD_START, PERIOD_END, "8000.00", "7800.00", "200.00", "FIXED");
+        insertPayroll(10002L, PROJECT_ID, TEAM_A_ID, PERIOD_START, PERIOD_END, "7500.00", "7350.00", "150.00", "FIXED");
+        insertPayroll(10003L, PROJECT_ID, TEAM_B_ID, PERIOD_START, PERIOD_END, "6500.00", "6400.00", "100.00", "TEMPORARY");
 
         // 创建上月数据（用于环比计算）
-        insertPayroll(10004L, PROJECT_ID, TEAM_A_ID, PREV_MONTH, "张三", "1234",
-                20, 6, "7000.00", "100.00", "6900.00", "OWN");
-        insertPayroll(10005L, PROJECT_ID, TEAM_A_ID, PREV_MONTH, "李四", "5678",
-                19, 4, "6800.00", "80.00", "6720.00", "OWN");
+        insertPayroll(10004L, PROJECT_ID, TEAM_A_ID, PREV_PERIOD_START, PREV_PERIOD_END, "7000.00", "6900.00", "100.00", "FIXED");
+        insertPayroll(10005L, PROJECT_ID, TEAM_A_ID, PREV_PERIOD_START, PREV_PERIOD_END, "6800.00", "6720.00", "80.00", "FIXED");
     }
 
     @AfterEach
@@ -119,15 +122,12 @@ class SalaryStatisticsIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("无数据月份 - 返回空结果或提示")
+    @DisplayName("无数据月份 - 抛出业务异常提示")
     void testGetStatsByTeam_noData_returnsEmptyOrHint() {
-        SalaryStatsSummary summary = salaryStatisticsService.getStatsByTeam(PROJECT_ID, "2020-01");
-
-        // 无数据时应返回空汇总或提示信息
-        assertThat(summary).isNotNull();
-        if (summary.getTeamList() != null) {
-            assertThat(summary.getTeamList()).isEmpty();
-        }
+        // 无已审批数据时 Service 抛 BusinessException（“该月份暂无已审批的薪资数据”）
+        assertThatThrownBy(() -> salaryStatisticsService.getStatsByTeam(PROJECT_ID, EMPTY_MONTH))
+                .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                .hasMessageContaining("薪资");
     }
 
     @Test
@@ -156,18 +156,18 @@ class SalaryStatisticsIntegrationTest extends BaseIntegrationTest {
 
     // ======================== 辅助方法 ========================
 
-    private void insertPayroll(Long id, Long projectId, Long teamId, String month,
-                               String workerName, String idSuffix,
-                               int days, int overtime, String gross, String deduction,
-                               String net, String laborType) {
+    private void insertPayroll(Long id, Long projectId, Long teamId,
+                               LocalDate periodStart, LocalDate periodEnd,
+                               String totalSettlement, String totalPaid,
+                               String unpaid, String orderType) {
         jdbcTemplate.update(
-                "INSERT INTO biz_labor_payroll (id, tenant_id, project_id, team_id, month, " +
-                        "worker_name, id_card_suffix, attendance_days, overtime_hours, " +
-                        "gross_salary, deduction, net_salary, labor_type, approval_status) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                id, TENANT_ID, projectId, teamId, month,
-                workerName, idSuffix, days, overtime,
-                new BigDecimal(gross), new BigDecimal(deduction), new BigDecimal(net),
-                laborType, 1); // approval_status=1 表示已审批
+                "INSERT INTO biz_labor_payroll (id, tenant_id, project_id, team_id, " +
+                        "period_start, period_end, total_settlement, total_paid, unpaid, " +
+                        "order_type, status, created_by) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id, TENANT_ID, projectId, teamId,
+                periodStart, periodEnd,
+                new BigDecimal(totalSettlement), new BigDecimal(totalPaid), new BigDecimal(unpaid),
+                orderType, "APPROVED", USER_ID); // status=APPROVED 已审批；created_by 满足数据权限 SELF 过滤
     }
 }
