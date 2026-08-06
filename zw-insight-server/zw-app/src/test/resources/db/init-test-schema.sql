@@ -373,10 +373,12 @@ CREATE TABLE IF NOT EXISTS `biz_purchase_contract` (
     id BIGINT NOT NULL COMMENT '主键ID',
     project_id BIGINT NOT NULL COMMENT '项目ID',
     contract_code VARCHAR(50) NOT NULL COMMENT '合同编号',
+    contract_name VARCHAR(200) COMMENT '合同名称',
     party_a_id BIGINT COMMENT '甲方ID',
     party_a_name VARCHAR(200) COMMENT '甲方名称',
     party_b_id BIGINT COMMENT '乙方ID（供应商）',
     party_b_name VARCHAR(200) COMMENT '乙方名称',
+    supplier_name VARCHAR(200) COMMENT '供应商名称',
     signing_date DATE COMMENT '签订日期',
     budget_id BIGINT COMMENT '关联预算ID',
     contract_amount DECIMAL(18,2) COMMENT '合同金额',
@@ -478,4 +480,96 @@ CREATE TABLE IF NOT EXISTS `sys_post` (
     PRIMARY KEY (id),
     KEY idx_tenant_id (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='岗位表';
+
+-- ============================================================
+-- 2026-08-06 补全（阶段一收尾 1.6.3 zw-material 集成测试需要）：
+-- 结构按 zw-material 实体字段对齐（BizMaterialInbound/BizMaterialInboundDetail/BizProjectMaterialStock），
+-- 均含 BaseEntity 公共列（tenant_id 等）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `biz_material_inbound` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    project_id BIGINT COMMENT '项目ID',
+    contract_id BIGINT COMMENT '采购合同ID',
+    inbound_code VARCHAR(50) COMMENT '入库单号',
+    inbound_date DATE COMMENT '入库日期',
+    total_amount DECIMAL(18,2) DEFAULT 0.00 COMMENT '入库总金额',
+    direct_outbound INT DEFAULT 0 COMMENT '直接出库（0-否 1-是）',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/APPROVED-已审批）',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_inbound_project (project_id),
+    KEY idx_inbound_status (status),
+    KEY idx_inbound_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='材料入库表';
+
+CREATE TABLE IF NOT EXISTS `biz_material_inbound_detail` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    inbound_id BIGINT COMMENT '入库单ID',
+    material_name VARCHAR(100) COMMENT '材料名称',
+    specification VARCHAR(100) COMMENT '规格型号',
+    unit VARCHAR(20) COMMENT '单位',
+    unit_price DECIMAL(18,2) COMMENT '单价',
+    quantity DECIMAL(18,3) COMMENT '数量',
+    total_price DECIMAL(18,2) COMMENT '总价',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_inbound_detail_inbound (inbound_id),
+    KEY idx_inbound_detail_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='材料入库明细表';
+
+CREATE TABLE IF NOT EXISTS `biz_project_material_stock` (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    project_id BIGINT COMMENT '项目ID',
+    material_id BIGINT COMMENT '材料ID',
+    material_name VARCHAR(100) COMMENT '材料名称',
+    specification VARCHAR(100) COMMENT '规格型号',
+    unit VARCHAR(20) COMMENT '单位',
+    stock_quantity DECIMAL(18,3) DEFAULT 0.000 COMMENT '当前库存数量',
+    avg_unit_price DECIMAL(18,2) DEFAULT 0.00 COMMENT '加权平均单价',
+    total_inbound DECIMAL(18,3) DEFAULT 0.000 COMMENT '累计入库数量',
+    total_outbound DECIMAL(18,3) DEFAULT 0.000 COMMENT '累计出库数量',
+    total_return DECIMAL(18,3) DEFAULT 0.000 COMMENT '累计退货数量',
+    total_transfer_in DECIMAL(18,3) DEFAULT 0.000 COMMENT '累计调入数量',
+    total_transfer_out DECIMAL(18,3) DEFAULT 0.000 COMMENT '累计调出数量',
+    project_name VARCHAR(200) COMMENT '项目名称（冗余展示）',
+    min_stock DECIMAL(18,3) COMMENT '最低库存预警值',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_stock_project (project_id),
+    KEY idx_stock_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='项目材料库存表';
+
+CREATE TABLE IF NOT EXISTS serial_number_rule (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    business_type VARCHAR(50) NOT NULL COMMENT '业务类型',
+    rule_prefix VARCHAR(20) NOT NULL COMMENT '规则前缀',
+    date_format VARCHAR(20) DEFAULT 'yyyyMMdd' COMMENT '日期格式',
+    seq_length INT DEFAULT 4 COMMENT '序号长度',
+    reset_period VARCHAR(10) DEFAULT 'MONTH' COMMENT '重置周期（MONTH/YEAR）',
+    description VARCHAR(200) COMMENT '描述',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_business_tenant (business_type, tenant_id),
+    KEY idx_serial_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='编号规则表';
 

@@ -28,8 +28,8 @@
   - [x] 1.5.6 zw-material（41.6% → **72.0%**）：新增 MaterialRefund/StockWarningTask/ProjectMaterialStock/MaterialTransferApprovalListener 共 4 测试类，100/100 全绿
 - [ ] 1.6 L2 扩容与实跑验证（决策 B：延期至 CI 验证；deploy.yml backend job 已加 L2 Testcontainers 步骤，待 push 首跑）_需求: R3_
   - [x] 1.6.1 CI 首跑验证 Testcontainers 基建：`mvn verify -pl zw-app -am -Pintegration-test -Dit.test=com.zwinsight.integration.*`（存量 8 个集成测试）；首跑失败→登记台账并修复 —— 结果：一~七跑修复 7 类基建问题（台账 2026-08-05），八跑（run 30988370889）起 L2 Testcontainers 实跑通过并持续全绿（run 31028963433 确认）
-  - [ ] 1.6.2 zw-purchase 新增 1 个集成测试（前置：1.6.1 通过 + init-test-schema.sql 补 biz_purchase_contract 表；tenant=9999 + 清理）—— 前置已满足（biz_purchase_contract 已在四跑时补齐）
-  - [ ] 1.6.3 zw-material 新增 1 个集成测试（前置同上，补 biz_material_* 表）
+  - [x] 1.6.2 zw-purchase 新增 1 个集成测试 —— PurchaseContractIntegrationTest（3 用例）：save 自动编号+置 DRAFT（真实依赖 serial_number_rule+Redis 自增）、仅草稿可编辑、仅草稿可删除；不传金额/供应商走预算与黑名单切面合法放行分支。本地 mvn -pl zw-app -am test BUILD SUCCESS（无 Docker 自动跳过，2026-08-06），待 CI 实跑确认
+  - [x] 1.6.3 zw-material 新增 1 个集成测试 —— MaterialInboundIntegrationTest（3 用例）：入库单创建（明细金额自动计算+总金额汇总）、提交（置 APPROVED+项目库存新增+采购合同累计入库回写）、重复提交拒绝。schema 补 biz_material_inbound/inbound_detail/project_material_stock/serial_number_rule 4 表 + biz_purchase_contract 补 contract_name/supplier_name 列（2026-08-06）；本地验证同上，待 CI 实跑确认
 - [x] 1.7 verify 门槛验证：`mvn verify -pl zw-subcontract` 通过（jacoco:check 0.60 无告警，BUILD SUCCESS，2026-08-05）；workflow backend job 保持 package 并注释“何时切 verify”（8 核心模块全 ≥80% 后，见 3.3）_需求: R2_
 
 ### 阶段二：有效性验证与非功能（目标：证明测试能杀 bug + 性能/安全有基线）
