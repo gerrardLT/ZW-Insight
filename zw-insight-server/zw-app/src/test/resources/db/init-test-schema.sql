@@ -129,6 +129,7 @@ CREATE TABLE IF NOT EXISTS biz_machine_work_settlement_detail (
     tenant_id BIGINT,
     settlement_id BIGINT NOT NULL,
     ledger_id BIGINT NOT NULL,
+    work_log_ids JSON COMMENT '关联工作量记录ID列表（JacksonTypeHandler）',
     machine_name VARCHAR(128),
     spec_model VARCHAR(128),
     shift_count DECIMAL(10, 2) DEFAULT 0.00,
@@ -149,8 +150,11 @@ CREATE TABLE IF NOT EXISTS biz_machine_contract (
     tenant_id BIGINT,
     project_id BIGINT,
     contract_code VARCHAR(64),
+    contract_name VARCHAR(200) COMMENT '合同名称',
     machine_name VARCHAR(128),
     rental_type VARCHAR(32) DEFAULT 'SHIFT',
+    start_date DATE COMMENT '开始日期',
+    end_date DATE COMMENT '结束日期',
     contract_amount DECIMAL(14, 2) DEFAULT 0.00,
     settled_amount DECIMAL(14, 2) DEFAULT 0.00,
     cumulative_settlement DECIMAL(14, 2) DEFAULT 0.00,
@@ -163,6 +167,29 @@ CREATE TABLE IF NOT EXISTS biz_machine_contract (
     deleted INT DEFAULT 0,
     version INT DEFAULT 0
 );
+
+-- 机械工作日志表（2026-08-06 补：L2 真跑暴露缺表；结构取自 00_schema.sql + 迁移 18 的 settlement_status）
+CREATE TABLE IF NOT EXISTS biz_machine_work_log (
+    id BIGINT NOT NULL COMMENT '主键ID',
+    machine_id BIGINT NOT NULL COMMENT '机械ID',
+    project_id BIGINT NOT NULL COMMENT '项目ID',
+    work_date DATE COMMENT '工作日期',
+    shift_count DECIMAL(10,2) COMMENT '台班数',
+    work_quantity DECIMAL(18,2) COMMENT '工作量',
+    oil_consumption DECIMAL(18,2) COMMENT '油耗',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/SETTLED-已结算）',
+    settlement_status VARCHAR(20) DEFAULT 'UNSETTLED' COMMENT '结算状态（UNSETTLED-未结算/SETTLED-已结算）',
+    tenant_id BIGINT COMMENT '租户ID',
+    created_by BIGINT COMMENT '创建人ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除（0-未删除 1-已删除）',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (id),
+    KEY idx_machine (machine_id),
+    KEY idx_project (project_id),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='机械工作日志表';
 
 -- 审批快照表
 CREATE TABLE IF NOT EXISTS biz_approval_snapshot (

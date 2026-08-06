@@ -22,6 +22,14 @@ spring:
     url: jdbc:mysql://localhost:3306/zw_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
     username: root
     password: test
+    # Druid fail-fast（2026-08-06 L2 真跑暴露挂起根因）：
+    # 测试类结束后 Testcontainers 销毁容器，Druid 的 CreateConnectionThread（非守护线程）
+    # 默认对失效连接无限重试建连，fork JVM 无法退出 → Maven 挂死。
+    # break-after-acquire-failure=true：建连失败即放弃并退出重试线程；
+    # connection-error-retry-attempts=0：出错不重试。测试场景无需连接自愈。
+    druid:
+      break-after-acquire-failure: true
+      connection-error-retry-attempts: 0
   data:
     redis:
       host: localhost

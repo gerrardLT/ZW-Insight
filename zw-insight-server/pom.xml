@@ -373,12 +373,13 @@
                     <!-- EnableDynamicAgentLoading：JDK21 下 Mockito 动态自挂载 agent 需要此开关，
                          否则与 JaCoCo agent 共存时报 “unable to load MockMaker” -->
                     <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
-                    <!-- L1 边界：*IntegrationTest 属于 L2（需真实 MySQL/Redis），
-                         仅由 Failsafe 在 -Pintegration-test profile 下执行（见 tests/README.md 分层设计）。
-                         Surefire 默认 includes 会误匹配以 Test 结尾的 *IntegrationTest，此处显式排除，
-                         保证 mvn test（L1）可离线跑绿。 -->
+                    <!-- L1 边界：*IntegrationTest 与 integration.mapper 包下的 *MapperTest（Testcontainers 集成测试）
+                         属于 L2（需真实 MySQL/Redis），仅由 Failsafe 在 -Pintegration-test profile 下执行
+                         （见 tests/README.md 分层设计）。Surefire 显式排除，保证 mvn test（L1）可离线跑绿。
+                         2026-08-06：integration.mapper 的 3 个 MapperTest 此前未被排除，L2 步骤中被 surefire 重复执行。 -->
                     <excludes>
                         <exclude>**/*IntegrationTest.java</exclude>
+                        <exclude>**/com/zwinsight/integration/mapper/*MapperTest.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>
@@ -454,7 +455,11 @@
                                  原 **/*IntegrationTest.java 过宽，靠 -Dit.test=com.zwinsight.integration.* 收窄但该通配符在 failsafe 3.1.2 零匹配，导致 L2 长期空转） -->
                             <includes>
                                 <include>**/com/zwinsight/integration/*IntegrationTest.java</include>
+                                <include>**/com/zwinsight/integration/mapper/*MapperTest.java</include>
                             </includes>
+                            <!-- 挂起兜底（2026-08-06）：测试全部结束后若 fork JVM 因残留非守护线程
+                                 （Druid 重试/调度器等）60 秒内未退出则强制结束，避免 CI 无限挂死 -->
+                            <forkedProcessExitTimeoutInSeconds>60</forkedProcessExitTimeoutInSeconds>
                             <systemPropertyVariables>
                                 <spring.profiles.active>integration-test</spring.profiles.active>
                             </systemPropertyVariables>
