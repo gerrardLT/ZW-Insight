@@ -311,8 +311,12 @@ test_contract_delete() {
   call POST "/api/v1/machine/contract" '{"projectId":1,"contractName":"删除测试机械合同","contractNo":"MC-DEL-001","supplierName":"删除测试供应商","contractAmount":1000.00,"startDate":"2025-07-01","endDate":"2025-12-31","remark":"删除测试"}'
   assert_body_code 200 "POST /api/v1/machine/contract 创建删除用草稿"
   sleep 1
-  call GET "/api/v1/machine/contract/page?page=1&size=1"
-  local DEL_ID=$(extract_first_record_id)
+  # 机械合同分页接口不支持 status 过滤；created_at 秒级精度下主流程刚提交的 EFFECTIVE
+  # 合同与本草稿同秒插入，直接取首条会拿到 EFFECTIVE 导致删除被拒（历史 flaky 根因）。
+  # 故拉取 size=50 后用 jq 在客户端筛出最新一条 DRAFT，不静默降级
+  call GET "/api/v1/machine/contract/page?page=1&size=50"
+  local DEL_ID
+  DEL_ID=$(jq -r '[.data.records[] | select(.status=="DRAFT")][0].id // empty' /tmp/zwi_body 2>/dev/null)
   if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿ID"; return 0; fi
   call DELETE "/api/v1/machine/contract/$DEL_ID"
   assert_http 2 "DELETE /api/v1/machine/contract/{id} 状态码"
