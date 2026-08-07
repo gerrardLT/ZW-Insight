@@ -368,8 +368,11 @@ test_inbound_delete() {
   call POST "/api/v1/material/inbound" '{"projectId":1,"supplierName":"删除测试供应商","inboundDate":"2025-07-01","remark":"删除测试入库单"}'
   assert_body_code 200 "POST /api/v1/material/inbound 创建删除用草稿"
   sleep 1
-  call GET "/api/v1/material/inbound/page?page=1&size=1"
-  local DEL_ID=$(extract_first_record_id)
+  # 入库分页接口不支持 status 过滤；主流程 submit 的 APPROVED 单据与本草稿可能同秒插入，
+  # created_at DESC 取首条会概率拾到非草稿（历史 flaky），故拉 size=50 后 jq 筛最新 DRAFT
+  call GET "/api/v1/material/inbound/page?page=1&size=50"
+  local DEL_ID
+  DEL_ID=$(jq -r '[.data.records[] | select(.status=="DRAFT")][0].id // empty' /tmp/zwi_body 2>/dev/null)
   if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿ID"; return 0; fi
   call DELETE "/api/v1/material/inbound/$DEL_ID"
   assert_http 2 "DELETE /api/v1/material/inbound/{id} 状态码"
@@ -382,8 +385,10 @@ test_outbound_delete() {
   call POST "/api/v1/material/outbound" '{"projectId":1,"outboundType":"领用","outboundDate":"2025-07-01","remark":"删除测试出库单"}'
   assert_body_code 200 "POST /api/v1/material/outbound 创建删除用草稿"
   sleep 1
-  call GET "/api/v1/material/outbound/page?page=1&size=1"
-  local DEL_ID=$(extract_first_record_id)
+  # 同入库：出库分页无 status 过滤，拉 size=50 后 jq 筛最新 DRAFT，防同秒拾到非草稿
+  call GET "/api/v1/material/outbound/page?page=1&size=50"
+  local DEL_ID
+  DEL_ID=$(jq -r '[.data.records[] | select(.status=="DRAFT")][0].id // empty' /tmp/zwi_body 2>/dev/null)
   if [ -z "$DEL_ID" ]; then log "  SKIP: 未取到草稿ID"; return 0; fi
   call DELETE "/api/v1/material/outbound/$DEL_ID"
   assert_http 2 "DELETE /api/v1/material/outbound/{id} 状态码"
