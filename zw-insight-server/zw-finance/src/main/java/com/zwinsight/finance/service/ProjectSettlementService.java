@@ -257,8 +257,10 @@ public class ProjectSettlementService {
             BigDecimal cumulativePaid = settlementDataMapper.sumPaymentByProject(projectId);
             BigDecimal rewardPunishNet = settlementDataMapper.sumRewardPunishNetByProject(projectId);
 
-            BigDecimal otherExpense = updateDTO.getOtherExpense() != null ?
-                    updateDTO.getOtherExpense() : settlement.getOtherExpense();
+            // null 兜底：历史数据 otherExpense 可能为 null，直接参与 add 会 NPE（2026-08-07 变异测试暴露）
+            BigDecimal otherExpense = updateDTO.getOtherExpense() != null
+                    ? updateDTO.getOtherExpense()
+                    : (settlement.getOtherExpense() != null ? settlement.getOtherExpense() : BigDecimal.ZERO);
 
             BigDecimal totalExpenditure = subcontractSettled
                     .add(laborSettled)

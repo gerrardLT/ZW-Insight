@@ -37,10 +37,10 @@
 - [x] 2.1 PIT 变异测试 _需求: R5_
   - [x] 2.1.1 根 pom 增 `pitest-maven 1.15.8 + pitest-junit5-plugin 1.2.3`（`-Pmutation` profile 隔离，阿里云镜像已验证存在，2026-08-07）
   - [x] 2.1.2 对 zw-finance / zw-subcontract / zw-project 跑变异（service 层，排除 domain/dto Lombok 载体噪音）：subcontract **52%**（124杀65）/ finance **53%**（486杀256）/ project **48%**（139杀67）
-  - [ ] 2.1.3 杀死率 <70% 的测试类补断言或登记豁免理由 —— 三模块均 <70%；存活变异集中于 VoidMethodCallMutator（void 调用无验证）与 RemoveConditionalMutator（分支断言缺失），已登记受阻台账；属渐进式补强项，不阻断阶段二
+  - [x] 2.1.3 杀死率 <70% 的测试类补断言或登记豁免理由 —— 补强完成（2026-08-07）：新增 FinanceLockServiceTest 19 例/ProjectSettlementServiceMutationTest 6 例/SubcontractMutationTest 5 例/ProjectMutationTest 8 例，共 38 个针对存活变异的断言强化用例；复测：finance **53%→73%（达标）**、subcontract **52%→66%**、project **48%→61%**；顺带产出生产加固：ProjectSettlementService.updateSettlement 重新汇总 otherExpense null 兜底（变异测试暴露的真实 NPE 风险）。sub/project 未达 70% 的剩余存活集中于分页 wrapper 条件变异（需 SQL 段断言，收益/成本比低），已登记豁免
 - [x] 2.2 k6 性能基线 _需求: R6_
   - [x] 2.2.1 新建 `tests/performance/`：login.js / page-query.js / payment-submit.js + run-k6.sh（夜间低峰/并发≤20/单次≤5分钟三重约束脚本内硬校验）+ captcha-bridge.py（真实验证码桥：后端 captcha/image + Redis 真实 code，无 mock）；已上传服务器并预拉镜像，cron 每晚 23:00 自动执行
-  - [ ] 2.2.2 建立 P95/P99 基线并回填本表 —— 首轮由服务器 cron 今晚 23:00 自动执行（grafana/k6 镜像），次日回填；k6 本地/服务器均未装 → 已用备选 docker run grafana/k6
+  - [ ] 2.2.2 建立 P95/P99 基线并回填本表 —— 【用户决策 2026-08-07：延期至阶段三完成后执行】已停用服务器每晚 23:00 k6 cron（避免延期期间无人值守压生产环境）；脚本/镜像/验证码桥均就绪，届时 bash run-k6.sh 即可
 - [x] 2.3 安全扫描 _需求: R7_
   - [x] 2.3.1 新建 `.github/workflows/codeql.yml`（java + javascript-typescript，均 build-mode:none；push main + PR + 每周一 03:00 UTC cron；security-and-quality 套件）
   - [x] 2.3.2 根 pom 增 `dependency-check-maven 10.0.4`（`-Psecurity` profile）+ 新建 `.github/workflows/security-scan.yml`（每周三 04:00 UTC + 手动触发，aggregate 全模块，报告上传 artifact；本地无 key 首次需下载 37 万条 NVD 记录不可行，改 CI 执行）
@@ -57,8 +57,8 @@
 
 | 项 | 结果 | 日期 |
 |---|------|------|
-| PIT 杀死率（finance/subcontract/project） | service 层：finance 53%（486杀256）/ subcontract 52%（124杀65）/ project 48%（139杀67）；全模块口径（含 domain/dto Lombok 载体）subcontract 仅 11%，已排除载体噪音 | 2026-08-07 |
-| k6 P99 基线（登录/分页/付款） | 待今晚 23:00 服务器 cron 首轮执行后回填 | - |
+| PIT 杀死率（finance/subcontract/project） | 首轮：fin 53%/sub 52%/proj 48%；补强 38 用例后复测（2026-08-07）：**fin 73%（达标）**/sub 66%/proj 61%；全模块口径（含 domain/dto Lombok 载体）subcontract 仅 11%，已排除载体噪音 | 2026-08-07 |
+| k6 P99 基线（登录/分页/付款） | 【延期】用户决策：阶段三完成后执行；cron 已停用，脚本就绪 | - |
 | CodeQL 高危数 | 首轮（run 31138789603 success）：总告警 303（high 14/medium 51/低质 238）。高危逐项复核：12 项误报已 dismiss（10 java/tainted-arithmetic 均为分页算术 (page-1)*size，int 参数无注入面；2 java/user-controlled-bypass 为密码+验证码校验通过后的正常签发流程）；剩 2 项豁免登记（java/sensitive-log 日志内容为 deviceId/IP 非凭据；js/incomplete-sanitization 位于 e2e 测试文件） | 2026-08-07 |
 | 依赖扫描高危数 | 待 security-scan workflow 首轮（手动触发） | - |
 
@@ -93,3 +93,4 @@
 | 2026-08-07 | PIT | 三模块 service 层杀死率 48%~53% 未达 70%（任务 2.1.3） | OTHER | 存活变异集中于 VoidMethodCallMutator（finance 81 个：void 方法调用被移除后测试无感知，如日志/关联回写调用未做副作用断言）与 RemoveConditionalMutator_EQUAL_ELSE（finance 53 个：条件分支另一侧无用例覆盖）；全模块口径下 domain/dto Lombok getter/setter 变异占比 84%（subcontract 799 变异中 672 NO_COVERAGE），不反映测试有效性，已按惯例排除 | 杀死率基线：sub52%/fin53%/proj48% | 处置：登记为渐进式补强项（不阻断阶段二）；后续按"每个存活变异→补一条副作用/分支断言"逐类提升，优先 finance（存活最多）；下次变异复测对比增量 | AI变异分析 | 已登记，渐进处理 |
 | 2026-08-07 | SECURITY | dependency-check 本地无 NVD API key 首次运行需下载 37 万条记录（限速），本地不可行 | ENV | 无 key 时 NVD API 严格限速，实测 10 分钟仅下载 5% | 本地首轮扫描无法完成 | 处置：改 CI 执行（.github/workflows/security-scan.yml，GitHub runner 网络直连 NVD），报告上传 artifact 后人工登记处置；已停止本地运行避免无效占用 | AI判断 | 已转 CI |
 | 2026-08-07 | CI | 阶段二提交后 CI 三轮收敛至全绿（run 31142865822），jq 契约断言与 flaky 修复全部实证 | OTHER | 迭代过程：①83d4d95 首带 jq 断言：8 脚本均 FAIL"分页total为数字"——契约断言首跑即捕获事实：JacksonConfig 全局 Long/long→String（防前端精度丢失），PageResult.total 恒为字符串，断言放宽为 number|string 并加契约注释（1529c3b）②31137281987/31141170683 暴露两类同源 flaky：machine 合同与 material 入库删除测试 size=1 取首条，created_at 秒级精度下同秒插入的 EFFECTIVE/APPROVED 单据与删除用草稿排序不定（生产库实证同秒成对记录），"仅草稿可删除"拒绝；修复：拉 size=50 后 jq 筛最新 DRAFT（1aea237/35d2af9），出库同隐患一并修复③全量排查无其他无过滤 size=1 删除路径 | run 31142865822 全链路 success：L2 12 类全绿、L3 8/8（含每脚本 5 条 jq 契约断言全过）、L4 140✅0❌、CodeQL 连续 3 轮 success | 阶段二 2.4 契约强化真实生效（既抓出序列化契约又稳定通过）；两类 flaky 根治而非绕过 | AI模式分析 | 已完成 |
+| 2026-08-07 | PIT | subcontract/project 杀死率补强后仍未达 70%（66%/61%），剩余存活登记豁免 | OTHER | 剩余存活变异构成：①分页方法 LambdaQueryWrapper 条件变异（RemoveConditional_EQUAL_ELSE，projectId/status 为空守卫），杀掉需初始化 MyBatis-Plus TableInfo 并断言 wrapper SQL 段，单条成本高且与业务正确性弱相关②个别翻译/兜底默认返回值变异。finance 达标证明补断言方法有效，非方法问题而是收益/成本取舍 | sub 66%/proj 61%（较首轮 +14/+13 个百分点） | 豁免理由：剩余变异集中于查询条件组装层，其正确性已由 L2 集成测试（真实 MySQL 分页/过滤用例）与 L3 API 契约断言双重覆盖，单元层重复断言 SQL 段属低价值投入；后续若分页逻辑变更引入缺陷再针对性补 | AI变异分析 | 已豁免（有条件） |
