@@ -47,7 +47,7 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <!-- JaCoCo agent 占位：prepare-agent 运行时会将 -javaagent 追加到该属性，
+        <!-- JaCoCo agent 占位：prepare-agent 运行时会�?-javaagent 追加到该属性，
              surefire 通过 @{argLine} late 绑定消费；jacoco.skip 时保持空值不破坏 JVM 参数 -->
         <argLine></argLine>
 
@@ -66,8 +66,8 @@
         <jqwik.version>1.9.1</jqwik.version>
         <ip2region.version>2.7.0</ip2region.version>
         <aliyun-dysmsapi.version>3.0.0</aliyun-dysmsapi.version>
-        <!-- easyexcel-core 3.3.4 运行时需要 commons-io 2.12+（AbstractStreamBuilder），
-             而 spring-boot 3.2 BOM 管理为 2.11.0，不显式钉住会导致 Excel 导出 NoClassDefFoundError -->
+        <!-- easyexcel-core 3.3.4 运行时需�?commons-io 2.12+（AbstractStreamBuilder），
+             �?spring-boot 3.2 BOM 管理�?2.11.0，不显式钉住会导�?Excel 导出 NoClassDefFoundError -->
         <commons-io.version>2.16.1</commons-io.version>
     </properties>
 
@@ -200,14 +200,14 @@
                 <version>${mybatis-plus.version}</version>
             </dependency>
 
-            <!-- 数据库驱动 -->
+            <!-- 数据库驱�?-->
             <dependency>
                 <groupId>com.mysql</groupId>
                 <artifactId>mysql-connector-j</artifactId>
                 <version>${mysql-connector.version}</version>
             </dependency>
 
-            <!-- Druid 连接池 -->
+            <!-- Druid 连接�?-->
             <dependency>
                 <groupId>com.alibaba</groupId>
                 <artifactId>druid-spring-boot-3-starter</artifactId>
@@ -266,7 +266,7 @@
                 <version>${jwt.version}</version>
             </dependency>
 
-            <!-- Hutool 工具库 -->
+            <!-- Hutool 工具�?-->
             <dependency>
                 <groupId>cn.hutool</groupId>
                 <artifactId>hutool-all</artifactId>
@@ -292,7 +292,7 @@
                 <version>${mapstruct.version}</version>
             </dependency>
 
-            <!-- jqwik 属性测试 -->
+            <!-- jqwik 属性测�?-->
             <dependency>
                 <groupId>net.jqwik</groupId>
                 <artifactId>jqwik</artifactId>
@@ -300,21 +300,21 @@
                 <scope>test</scope>
             </dependency>
 
-            <!-- ip2region 本地 IP 归属地库（离线，避免依赖外部 API） -->
+            <!-- ip2region 本地 IP 归属地库（离线，避免依赖外部 API�?-->
             <dependency>
                 <groupId>org.lionsoul</groupId>
                 <artifactId>ip2region</artifactId>
                 <version>${ip2region.version}</version>
             </dependency>
 
-            <!-- 阿里云短信服务 SDK（dysmsapi 2017-05-25） -->
+            <!-- 阿里云短信服�?SDK（dysmsapi 2017-05-25�?-->
             <dependency>
                 <groupId>com.aliyun</groupId>
                 <artifactId>dysmsapi20170525</artifactId>
                 <version>${aliyun-dysmsapi.version}</version>
             </dependency>
 
-            <!-- 钉住 commons-io 版本：覆盖 spring-boot BOM 的 2.11.0，满足 easyexcel-core 3.3.4 运行时需求 -->
+            <!-- 钉住 commons-io 版本：覆�?spring-boot BOM �?2.11.0，满�?easyexcel-core 3.3.4 运行时需�?-->
             <dependency>
                 <groupId>commons-io</groupId>
                 <artifactId>commons-io</artifactId>
@@ -368,35 +368,35 @@
                     <threadCount>4</threadCount>
                     <forkCount>1C</forkCount>
                     <reuseForks>true</reuseForks>
-                    <!-- 消费 JaCoCo prepare-agent 注入的 -javaagent（late 绑定 @{argLine}），
-                         否则覆盖率数据文件 jacoco.exec 不会生成，report 会 Skipping 导致覆盖率始终为空 -->
-                    <!-- EnableDynamicAgentLoading：JDK21 下 Mockito 动态自挂载 agent 需要此开关，
-                         否则与 JaCoCo agent 共存时报 “unable to load MockMaker” -->
+                    <!-- 消费 JaCoCo prepare-agent 注入�?-javaagent（late 绑定 @{argLine}），
+                         否则覆盖率数据文�?jacoco.exec 不会生成，report �?Skipping 导致覆盖率始终为�?-->
+                    <!-- EnableDynamicAgentLoading：JDK21 �?Mockito 动态自挂载 agent 需要此开关，
+                         否则�?JaCoCo agent 共存时报 “unable to load MockMaker�?-->
                     <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
-                    <!-- L1 边界：*IntegrationTest 与 integration.mapper 包下的 *MapperTest（Testcontainers 集成测试）
-                         属于 L2（需真实 MySQL/Redis），仅由 Failsafe 在 -Pintegration-test profile 下执行
-                         （见 tests/README.md 分层设计）。Surefire 显式排除，保证 mvn test（L1）可离线跑绿。
-                         2026-08-06：integration.mapper 的 3 个 MapperTest 此前未被排除，L2 步骤中被 surefire 重复执行。 -->
+                    <!-- L1 边界�?IntegrationTest �?integration.mapper 包下�?*MapperTest（Testcontainers 集成测试�?
+                         属于 L2（需真实 MySQL/Redis），仅由 Failsafe �?-Pintegration-test profile 下执�?
+                         （见 tests/README.md 分层设计）。Surefire 显式排除，保�?mvn test（L1）可离线跑绿�?
+                         2026-08-06：integration.mapper �?3 �?MapperTest 此前未被排除，L2 步骤中被 surefire 重复执行�?-->
                     <excludes>
                         <exclude>**/*IntegrationTest.java</exclude>
                         <exclude>**/com/zwinsight/integration/mapper/*MapperTest.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>
-            <!-- JaCoCo 代码覆盖率插件 -->
+            <!-- JaCoCo 代码覆盖率插�?-->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
                 <executions>
-                    <!-- 准备运行时代理，用于收集覆盖率数据 -->
+                    <!-- 准备运行时代理，用于收集覆盖率数�?-->
                     <execution>
                         <id>prepare-agent</id>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
                     </execution>
-                    <!-- 生成覆盖率报告 -->
+                    <!-- 生成覆盖率报�?-->
                     <execution>
                         <id>report</id>
                         <phase>test</phase>
@@ -404,7 +404,7 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
-                    <!-- 覆盖率检查门槛 -->
+                    <!-- 覆盖率检查门�?-->
                     <execution>
                         <id>check</id>
                         <goals>
@@ -418,7 +418,7 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.60</minimum>
+                                            <minimum>0.70</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -436,7 +436,7 @@
             <properties>
                 <spring.profiles.active>integration-test</spring.profiles.active>
             </properties>
-            <!-- L2 集成测试直连真实 MySQL，各业务模块测试运行时需要驱动（仅此 profile 生效） -->
+            <!-- L2 集成测试直连真实 MySQL，各业务模块测试运行时需要驱动（仅此 profile 生效�?-->
             <dependencies>
                 <dependency>
                     <groupId>com.mysql</groupId>
@@ -450,18 +450,18 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
-                            <!-- 仅匹配 zw-app 的 com/zwinsight/integration 包（Testcontainers 基建）；
-                                 各业务模块的 com/zwinsight/{module}/integration 直连服务器DB测试不在 L2 范围（2026-08-06 修复：
-                                 原 **/*IntegrationTest.java 过宽，靠 -Dit.test=com.zwinsight.integration.* 收窄但该通配符在 failsafe 3.1.2 零匹配，导致 L2 长期空转） -->
+                            <!-- 仅匹�?zw-app �?com/zwinsight/integration 包（Testcontainers 基建）；
+                                 各业务模块的 com/zwinsight/{module}/integration 直连服务器DB测试不在 L2 范围�?026-08-06 修复�?
+                                 �?**/*IntegrationTest.java 过宽，靠 -Dit.test=com.zwinsight.integration.* 收窄但该通配符在 failsafe 3.1.2 零匹配，导致 L2 长期空转�?-->
                             <includes>
                                 <include>**/com/zwinsight/integration/*IntegrationTest.java</include>
                                 <include>**/com/zwinsight/integration/mapper/*MapperTest.java</include>
                             </includes>
-                            <!-- 挂起兜底（2026-08-06）：测试全部结束后若 fork JVM 因残留非守护线程
-                                 （Druid 重试/调度器等）60 秒内未退出则强制结束，避免 CI 无限挂死 -->
+                            <!-- 挂起兜底�?026-08-06）：测试全部结束后若 fork JVM 因残留非守护线程
+                                 （Druid 重试/调度器等�?0 秒内未退出则强制结束，避�?CI 无限挂死 -->
                             <forkedProcessExitTimeoutInSeconds>60</forkedProcessExitTimeoutInSeconds>
-                            <!-- 测试执行阶段总超时 45 分钟：单个用例/类死等时强制终止 fork，
-                                 避免 CI 无限挂死（单例容器模式下 12 类正常耗时约 15~25 分钟） -->
+                            <!-- 测试执行阶段总超�?45 分钟：单个用�?类死等时强制终止 fork�?
+                                 避免 CI 无限挂死（单例容器模式下 12 类正常耗时�?15~25 分钟�?-->
                             <forkedProcessTimeoutInSeconds>2700</forkedProcessTimeoutInSeconds>
                             <systemPropertyVariables>
                                 <spring.profiles.active>integration-test</spring.profiles.active>
@@ -480,7 +480,7 @@
             </build>
         </profile>
 
-        <!-- 变异测试（测试成熟度阶段二 2.1）：mvn test-compile org.pitest:pitest-maven:mutationCoverage -pl <module> -Pmutation
+        <!-- 变异测试（测试成熟度阶段�?2.1）：mvn test-compile org.pitest:pitest-maven:mutationCoverage -pl <module> -Pmutation
              报告：target/pit-reports/。pitest 自带增量复用（timestampedReports=false），
              变异仅针对模块自身类（targetClasses 默认=当前模块包），避免跨模块误伤 -->
         <profile>
@@ -492,7 +492,7 @@
                         <artifactId>pitest-maven</artifactId>
                         <version>1.15.8</version>
                         <dependencies>
-                            <!-- JUnit 5 支持（项目测试基于 JUnit Jupiter） -->
+                            <!-- JUnit 5 支持（项目测试基�?JUnit Jupiter�?-->
                             <dependency>
                                 <groupId>org.pitest</groupId>
                                 <artifactId>pitest-junit5-plugin</artifactId>
@@ -500,13 +500,13 @@
                             </dependency>
                         </dependencies>
                         <configuration>
-                            <!-- 默认变异当前模块的全部主代码；可用 -DtargetClasses/-DtargetTests 收窄 -->
+                            <!-- 默认变异当前模块的全部主代码；可�?-DtargetClasses/-DtargetTests 收窄 -->
                             <timestampedReports>false</timestampedReports>
                             <outputFormats>
                                 <outputFormat>HTML</outputFormat>
                                 <outputFormat>XML</outputFormat>
                             </outputFormats>
-                            <!-- 变异算子默认集（条件边界/取反/数学/返回值/空返回/void方法调用） -->
+                            <!-- 变异算子默认集（条件边界/取反/数学/返回�?空返�?void方法调用�?-->
                             <mutators>
                                 <mutator>DEFAULTS</mutator>
                             </mutators>
@@ -519,9 +519,9 @@
             </build>
         </profile>
 
-        <!-- 依赖漏洞扫描（测试成熟度阶段二 2.3.2）：mvn verify -Psecurity -DnvdApiKey=xxx（可选）
-             报告：各模块 target/dependency-check-report.html。
-             注意：NVD API 无 key 时严格限速，首次运行需较长时间下载漏洞库；
+        <!-- 依赖漏洞扫描（测试成熟度阶段�?2.3.2）：mvn verify -Psecurity -DnvdApiKey=xxx（可选）
+             报告：各模块 target/dependency-check-report.html�?
+             注意：NVD API �?key 时严格限速，首次运行需较长时间下载漏洞库；
              建议通过 -DnvdApiKey 传入（勿提交到仓库） -->
         <profile>
             <id>security</id>
@@ -536,7 +536,7 @@
                         <artifactId>dependency-check-maven</artifactId>
                         <version>10.0.4</version>
                         <configuration>
-                            <!-- CVSS ≥ 7（高危）才失败，中低危登记台账人工处置 -->
+                            <!-- CVSS �?7（高危）才失败，中低危登记台账人工处�?-->
                             <failBuildOnCVSS>7</failBuildOnCVSS>
                             <formats>
                                 <format>HTML</format>
@@ -544,7 +544,7 @@
                             </formats>
                             <skipProvidedScope>true</skipProvidedScope>
                             <skipSystemScope>true</skipSystemScope>
-                            <!-- NVD API key（可选，无 key 会限速但不阻断） -->
+                            <!-- NVD API key（可选，�?key 会限速但不阻断） -->
                             <nvdApiKey>${nvdApiKey}</nvdApiKey>
                         </configuration>
                         <executions>
