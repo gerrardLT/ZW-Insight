@@ -1,0 +1,47 @@
+# CodeQL 安全扫描（测试成熟度阶段二 2.3.1）
+# 语言：java（build-mode: none，无需编译即可提取，适合多模块 Maven 仓库）+ javascript-typescript
+# 触发：push main / PR 到 main / 每周一 03:00 UTC 定时
+name: CodeQL Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          # 默认查询套件（security-extended/security-and-quality 可按需升级）
+          queries: security-and-quality
+
+      # build-mode: none 无需 build 步骤，直接进入分析
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

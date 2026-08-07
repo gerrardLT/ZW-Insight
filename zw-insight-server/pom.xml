@@ -479,6 +479,85 @@
                 </plugins>
             </build>
         </profile>
+
+        <!-- 变异测试（测试成熟度阶段二 2.1）：mvn test-compile org.pitest:pitest-maven:mutationCoverage -pl <module> -Pmutation
+             报告：target/pit-reports/。pitest 自带增量复用（timestampedReports=false），
+             变异仅针对模块自身类（targetClasses 默认=当前模块包），避免跨模块误伤 -->
+        <profile>
+            <id>mutation</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>1.15.8</version>
+                        <dependencies>
+                            <!-- JUnit 5 支持（项目测试基于 JUnit Jupiter） -->
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>1.2.3</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <!-- 默认变异当前模块的全部主代码；可用 -DtargetClasses/-DtargetTests 收窄 -->
+                            <timestampedReports>false</timestampedReports>
+                            <outputFormats>
+                                <outputFormat>HTML</outputFormat>
+                                <outputFormat>XML</outputFormat>
+                            </outputFormats>
+                            <!-- 变异算子默认集（条件边界/取反/数学/返回值/空返回/void方法调用） -->
+                            <mutators>
+                                <mutator>DEFAULTS</mutator>
+                            </mutators>
+                            <!-- 单个变异超时与整体限流，避免 CI/本地挂死 -->
+                            <timeoutConstant>8000</timeoutConstant>
+                            <threads>4</threads>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- 依赖漏洞扫描（测试成熟度阶段二 2.3.2）：mvn verify -Psecurity -DnvdApiKey=xxx（可选）
+             报告：各模块 target/dependency-check-report.html。
+             注意：NVD API 无 key 时严格限速，首次运行需较长时间下载漏洞库；
+             建议通过 -DnvdApiKey 传入（勿提交到仓库） -->
+        <profile>
+            <id>security</id>
+            <properties>
+                <!-- 默认空：未传 -DnvdApiKey 时无 key 限速运行（不阻断） -->
+                <nvdApiKey></nvdApiKey>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>10.0.4</version>
+                        <configuration>
+                            <!-- CVSS ≥ 7（高危）才失败，中低危登记台账人工处置 -->
+                            <failBuildOnCVSS>7</failBuildOnCVSS>
+                            <formats>
+                                <format>HTML</format>
+                                <format>JSON</format>
+                            </formats>
+                            <skipProvidedScope>true</skipProvidedScope>
+                            <skipSystemScope>true</skipSystemScope>
+                            <!-- NVD API key（可选，无 key 会限速但不阻断） -->
+                            <nvdApiKey>${nvdApiKey}</nvdApiKey>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
 </project>

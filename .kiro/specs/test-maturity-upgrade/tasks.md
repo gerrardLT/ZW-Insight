@@ -34,18 +34,18 @@
 
 ### 阶段二：有效性验证与非功能（目标：证明测试能杀 bug + 性能/安全有基线）
 
-- [ ] 2.1 PIT 变异测试 _需求: R5_
-  - [ ] 2.1.1 根 pom 增 `pitest-maven 1.15.x + pitest-junit5-plugin 1.2.x`（`-Pmutation` profile 隔离）
-  - [ ] 2.1.2 对 zw-finance / zw-subcontract / zw-project 跑变异，杀死率回填本表
-  - [ ] 2.1.3 杀死率 <70% 的测试类补断言或登记豁免理由
-- [ ] 2.2 k6 性能基线 _需求: R6_
-  - [ ] 2.2.1 新建 `tests/performance/`：login.js / page-query.js / payment-submit.js（执行约束写脚本头：夜间低峰、并发≤20、单次≤5 分钟）
-  - [ ] 2.2.2 建立 P95/P99 基线并回填本表；k6 装不上→受阻登记（备选 docker run grafana/k6）
-- [ ] 2.3 安全扫描 _需求: R7_
-  - [ ] 2.3.1 新建 `.github/workflows/codeql.yml`（java + javascript-typescript，push main + 每周 cron）
-  - [ ] 2.3.2 根 pom 增 `dependency-check-maven 10.x`（`-Psecurity` profile）
-  - [ ] 2.3.3 首轮高危漏洞清单登记本表并逐项处置（修复/豁免理由），不静默忽略
-- [ ] 2.4 L3 契约强化：8 个 `keys/test-api-*.sh` 增 jq 字段结构断言（关键响应字段存在性），从状态码升级为契约校验 _需求: R2_
+- [x] 2.1 PIT 变异测试 _需求: R5_
+  - [x] 2.1.1 根 pom 增 `pitest-maven 1.15.8 + pitest-junit5-plugin 1.2.3`（`-Pmutation` profile 隔离，阿里云镜像已验证存在，2026-08-07）
+  - [x] 2.1.2 对 zw-finance / zw-subcontract / zw-project 跑变异（service 层，排除 domain/dto Lombok 载体噪音）：subcontract **52%**（124杀65）/ finance **53%**（486杀256）/ project **48%**（139杀67）
+  - [ ] 2.1.3 杀死率 <70% 的测试类补断言或登记豁免理由 —— 三模块均 <70%；存活变异集中于 VoidMethodCallMutator（void 调用无验证）与 RemoveConditionalMutator（分支断言缺失），已登记受阻台账；属渐进式补强项，不阻断阶段二
+- [x] 2.2 k6 性能基线 _需求: R6_
+  - [x] 2.2.1 新建 `tests/performance/`：login.js / page-query.js / payment-submit.js + run-k6.sh（夜间低峰/并发≤20/单次≤5分钟三重约束脚本内硬校验）+ captcha-bridge.py（真实验证码桥：后端 captcha/image + Redis 真实 code，无 mock）；已上传服务器并预拉镜像，cron 每晚 23:00 自动执行
+  - [ ] 2.2.2 建立 P95/P99 基线并回填本表 —— 首轮由服务器 cron 今晚 23:00 自动执行（grafana/k6 镜像），次日回填；k6 本地/服务器均未装 → 已用备选 docker run grafana/k6
+- [x] 2.3 安全扫描 _需求: R7_
+  - [x] 2.3.1 新建 `.github/workflows/codeql.yml`（java + javascript-typescript，均 build-mode:none；push main + PR + 每周一 03:00 UTC cron；security-and-quality 套件）
+  - [x] 2.3.2 根 pom 增 `dependency-check-maven 10.0.4`（`-Psecurity` profile）+ 新建 `.github/workflows/security-scan.yml`（每周三 04:00 UTC + 手动触发，aggregate 全模块，报告上传 artifact；本地无 key 首次需下载 37 万条 NVD 记录不可行，改 CI 执行）
+  - [ ] 2.3.3 首轮高危漏洞清单登记本表并逐项处置（修复/豁免理由），不静默忽略 —— 待 security-scan 首轮跑出报告后处置
+- [x] 2.4 L3 契约强化：8 个 `keys/test-api-*.sh` 增 jq 字段结构断言（assert_jq 辅助函数：分页 .code==200/records 数组/total 数字 + 详情 .data.id 存在，共 5 断言/脚本；jq 缺失或不满足一律 FAIL 不静默；服务器已装 jq；bash -n 语法检查 8/8 通过） _需求: R2_
 
 ### 阶段三：效率与顶级门槛（持续）
 
@@ -57,10 +57,10 @@
 
 | 项 | 结果 | 日期 |
 |---|------|------|
-| PIT 杀死率（finance/subcontract/project） | 待执行 | - |
-| k6 P99 基线（登录/分页/付款） | 待执行 | - |
-| CodeQL 高危数 | 待执行 | - |
-| 依赖扫描高危数 | 待执行 | - |
+| PIT 杀死率（finance/subcontract/project） | service 层：finance 53%（486杀256）/ subcontract 52%（124杀65）/ project 48%（139杀67）；全模块口径（含 domain/dto Lombok 载体）subcontract 仅 11%，已排除载体噪音 | 2026-08-07 |
+| k6 P99 基线（登录/分页/付款） | 待今晚 23:00 服务器 cron 首轮执行后回填 | - |
+| CodeQL 高危数 | 待首轮 workflow 运行（push 触发） | - |
+| 依赖扫描高危数 | 待 security-scan workflow 首轮（手动触发） | - |
 
 ## 受阻项登记台账
 
@@ -90,3 +90,5 @@
 | 2026-08-06 | L2/L3 | CI 八跑（run 31109990447）：L2 12 类首次全绿（Backend Build success），L3 8/8、L4 140/0 全过；workflow 因偶发 SSH 断连标红 | OTHER | Integration Test job 的 Upload test scripts 步骤 ssh-keyscan 时 kex_exchange_identification: Connection reset by peer（exit 255），L3/L4 实际未执行，后续步骤 if:always() 兜底 scp 拉回服务器残留的上一轮结果（恰与本次部署代码一致：L3 8 脚本全过、L4 140✅0❌），Test summary 判定全过但 job 因首步失败标红 | L2 全绿达成；CI 整体标红为网络偶发非代码问题 | 处理：gh workflow run 手动重跑（run 31112811288）验证全链路；若 SSH 断连复发考虑给 ssh/scp 步骤加重试 | AI模式分析 | 重跑验证中 |
 | 2026-08-06 | CI | 九~十一跑（run 31112811288/31115213295/31119808228）连续失败：GitHub Actions 基础设施故障，与代码无关 | OTHER | 三次均在 Prepare all required actions 阶段报 Failed to resolve action download info（Service Unavailable/Bad Gateway/Internal Server Error/超时），githubstatus.com 确认 Minor Service Outage（15:09 UTC 起持续 1.5h+）；L2/L3/L4 代码层面已在八跑验证：L2 12 类全绿、L3 8/8、L4 140✅0❌ | CI 无法完成全链路 | 处理：间隔等待后 gh workflow run 重试；若长期不恢复再评估是否临时移除 workflow 对第三方 action 的依赖 | AI模式分析 | 等待 GitHub 恢复后重试 |
 | 2026-08-07 | 全链路 | CI 十二跑（run 31135389613）：🎉 全链路 success，测试成熟度阶段一收尾达成 | OTHER | GitHub Actions 故障恢复后推送台账 commit 触发。实证（非空转）：L2 12 类 72 用例全部实跑 0 失败 0 跳过（MachineSettlement 4/ReferenceCheck 5/SalaryStatistics 6/TenantManagement 9/DataPermission 9/MaterialInbound 3/HrStatistics 9/BudgetOccupied 9/BizProjectMember 6/PurchaseContract 3/SystemConfig 4/ApprovalRollback 5）；L3 API 8/8 脚本通过（L3_PASS=8 L3_FAIL=0）；L4 生命周期 140✅0❌；Deploy success | CI 全绿 | 阶段一 1.6 L2 扩容与实跑验证全部达成：存量 8 类+新增 2 类（PurchaseContract/MaterialInbound）+mapper 3 类均经 CI 真实验证 | AI模式分析 | 已完成 |
+| 2026-08-07 | PIT | 三模块 service 层杀死率 48%~53% 未达 70%（任务 2.1.3） | OTHER | 存活变异集中于 VoidMethodCallMutator（finance 81 个：void 方法调用被移除后测试无感知，如日志/关联回写调用未做副作用断言）与 RemoveConditionalMutator_EQUAL_ELSE（finance 53 个：条件分支另一侧无用例覆盖）；全模块口径下 domain/dto Lombok getter/setter 变异占比 84%（subcontract 799 变异中 672 NO_COVERAGE），不反映测试有效性，已按惯例排除 | 杀死率基线：sub52%/fin53%/proj48% | 处置：登记为渐进式补强项（不阻断阶段二）；后续按"每个存活变异→补一条副作用/分支断言"逐类提升，优先 finance（存活最多）；下次变异复测对比增量 | AI变异分析 | 已登记，渐进处理 |
+| 2026-08-07 | SECURITY | dependency-check 本地无 NVD API key 首次运行需下载 37 万条记录（限速），本地不可行 | ENV | 无 key 时 NVD API 严格限速，实测 10 分钟仅下载 5% | 本地首轮扫描无法完成 | 处置：改 CI 执行（.github/workflows/security-scan.yml，GitHub runner 网络直连 NVD），报告上传 artifact 后人工登记处置；已停止本地运行避免无效占用 | AI判断 | 已转 CI |

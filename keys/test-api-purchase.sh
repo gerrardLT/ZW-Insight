@@ -83,6 +83,28 @@ assert_has_field() {
   fi
 }
 
+# assert_jq：jq 字段结构断言（阶段二 2.4 契约强化：从状态码升级为结构校验）
+# jq 表达式须求值为 true/false；jq 缺失或表达式不满足一律记 FAIL，不静默降级
+assert_jq() {
+  local expr="$1" test_name="$2" result
+  TOTAL_COUNT=$((TOTAL_COUNT + 1))
+  if ! command -v jq >/dev/null 2>&1; then
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    log "  FAIL [$TOTAL_COUNT] $test_name (jq 未安装)"
+    return 1
+  fi
+  result=$(jq -e "$expr" /tmp/zwi_body 2>/dev/null | head -1)
+  if [ "$result" = "true" ]; then
+    PASS_COUNT=$((PASS_COUNT + 1))
+    log "  PASS [$TOTAL_COUNT] $test_name"
+    return 0
+  else
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    log "  FAIL [$TOTAL_COUNT] $test_name (jq 表达式不满足: $expr)"
+    return 1
+  fi
+}
+
 # report_summary：输出测试汇总
 report_summary() {
   echo ""
@@ -147,6 +169,10 @@ test_page_purchase_contract() {
   assert_body_code 200 "GET /api/v1/purchase/contract/page 业务码"
   assert_has_field "records" "采购合同分页含 records"
   assert_has_field "total" "采购合同分页含 total"
+  # 阶段二 2.4 契约强化：jq 字段结构断言
+  assert_jq '.code == 200' "分页响应业务码200(jq)"
+  assert_jq '(.data.records | type) == "array"' "分页records为数组(jq)"
+  assert_jq '(.data.total | type) == "number"' "分页total为数字(jq)"
 
   # 提取 ID 用于后续测试
   CREATED_PURCHASE_CONTRACT_ID=$(extract_first_record_id)
@@ -177,6 +203,7 @@ test_get_purchase_contract_detail() {
     log "  SKIP: 无采购合同ID"; return 0
   fi
   call GET "/api/v1/purchase/contract/$CREATED_PURCHASE_CONTRACT_ID"
+  assert_jq '.code == 200 and (.data | has("id"))' "详情响应含id(jq)"
   assert_http 2 "GET /api/v1/purchase/contract/{id} 状态码"
   assert_body_code 200 "GET /api/v1/purchase/contract/{id} 业务码"
   assert_has_field "contractAmount" "详情含 contractAmount"
