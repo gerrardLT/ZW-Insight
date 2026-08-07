@@ -59,7 +59,7 @@
 |---|------|------|
 | PIT 杀死率（finance/subcontract/project） | service 层：finance 53%（486杀256）/ subcontract 52%（124杀65）/ project 48%（139杀67）；全模块口径（含 domain/dto Lombok 载体）subcontract 仅 11%，已排除载体噪音 | 2026-08-07 |
 | k6 P99 基线（登录/分页/付款） | 待今晚 23:00 服务器 cron 首轮执行后回填 | - |
-| CodeQL 高危数 | 待首轮 workflow 运行（push 触发） | - |
+| CodeQL 高危数 | 首轮（run 31138789603 success）：总告警 303（high 14/medium 51/低质 238）。高危逐项复核：12 项误报已 dismiss（10 java/tainted-arithmetic 均为分页算术 (page-1)*size，int 参数无注入面；2 java/user-controlled-bypass 为密码+验证码校验通过后的正常签发流程）；剩 2 项豁免登记（java/sensitive-log 日志内容为 deviceId/IP 非凭据；js/incomplete-sanitization 位于 e2e 测试文件） | 2026-08-07 |
 | 依赖扫描高危数 | 待 security-scan workflow 首轮（手动触发） | - |
 
 ## 受阻项登记台账
@@ -92,3 +92,4 @@
 | 2026-08-07 | 全链路 | CI 十二跑（run 31135389613）：🎉 全链路 success，测试成熟度阶段一收尾达成 | OTHER | GitHub Actions 故障恢复后推送台账 commit 触发。实证（非空转）：L2 12 类 72 用例全部实跑 0 失败 0 跳过（MachineSettlement 4/ReferenceCheck 5/SalaryStatistics 6/TenantManagement 9/DataPermission 9/MaterialInbound 3/HrStatistics 9/BudgetOccupied 9/BizProjectMember 6/PurchaseContract 3/SystemConfig 4/ApprovalRollback 5）；L3 API 8/8 脚本通过（L3_PASS=8 L3_FAIL=0）；L4 生命周期 140✅0❌；Deploy success | CI 全绿 | 阶段一 1.6 L2 扩容与实跑验证全部达成：存量 8 类+新增 2 类（PurchaseContract/MaterialInbound）+mapper 3 类均经 CI 真实验证 | AI模式分析 | 已完成 |
 | 2026-08-07 | PIT | 三模块 service 层杀死率 48%~53% 未达 70%（任务 2.1.3） | OTHER | 存活变异集中于 VoidMethodCallMutator（finance 81 个：void 方法调用被移除后测试无感知，如日志/关联回写调用未做副作用断言）与 RemoveConditionalMutator_EQUAL_ELSE（finance 53 个：条件分支另一侧无用例覆盖）；全模块口径下 domain/dto Lombok getter/setter 变异占比 84%（subcontract 799 变异中 672 NO_COVERAGE），不反映测试有效性，已按惯例排除 | 杀死率基线：sub52%/fin53%/proj48% | 处置：登记为渐进式补强项（不阻断阶段二）；后续按"每个存活变异→补一条副作用/分支断言"逐类提升，优先 finance（存活最多）；下次变异复测对比增量 | AI变异分析 | 已登记，渐进处理 |
 | 2026-08-07 | SECURITY | dependency-check 本地无 NVD API key 首次运行需下载 37 万条记录（限速），本地不可行 | ENV | 无 key 时 NVD API 严格限速，实测 10 分钟仅下载 5% | 本地首轮扫描无法完成 | 处置：改 CI 执行（.github/workflows/security-scan.yml，GitHub runner 网络直连 NVD），报告上传 artifact 后人工登记处置；已停止本地运行避免无效占用 | AI判断 | 已转 CI |
+| 2026-08-07 | CI | 阶段二提交后 CI 三轮收敛至全绿（run 31142865822），jq 契约断言与 flaky 修复全部实证 | OTHER | 迭代过程：①83d4d95 首带 jq 断言：8 脚本均 FAIL"分页total为数字"——契约断言首跑即捕获事实：JacksonConfig 全局 Long/long→String（防前端精度丢失），PageResult.total 恒为字符串，断言放宽为 number|string 并加契约注释（1529c3b）②31137281987/31141170683 暴露两类同源 flaky：machine 合同与 material 入库删除测试 size=1 取首条，created_at 秒级精度下同秒插入的 EFFECTIVE/APPROVED 单据与删除用草稿排序不定（生产库实证同秒成对记录），"仅草稿可删除"拒绝；修复：拉 size=50 后 jq 筛最新 DRAFT（1aea237/35d2af9），出库同隐患一并修复③全量排查无其他无过滤 size=1 删除路径 | run 31142865822 全链路 success：L2 12 类全绿、L3 8/8（含每脚本 5 条 jq 契约断言全过）、L4 140✅0❌、CodeQL 连续 3 轮 success | 阶段二 2.4 契约强化真实生效（既抓出序列化契约又稳定通过）；两类 flaky 根治而非绕过 | AI模式分析 | 已完成 |
