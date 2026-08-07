@@ -183,7 +183,9 @@ test_contract_page() {
   # 阶段二 2.4 契约强化：jq 字段结构断言
   assert_jq '.code == 200' "分页响应业务码200(jq)"
   assert_jq '(.data.records | type) == "array"' "分页records为数组(jq)"
-  assert_jq '(.data.total | type) == "number"' "分页total为数字(jq)"
+  # 契约说明：后端 JacksonConfig 全局将 Long/long 序列化为 String（防前端精度丢失），
+  # PageResult.total(long) 在 JSON 中恒为字符串，属生产有意设计
+  assert_jq '(.data.total | type) == "string" or (.data.total | type) == "number"' "分页total为数字或数字字符串(jq)"
 
   # 创建测试是预算拦截验证（未实际产生合同），分页首条为种子 EFFECTIVE 合同不可编辑/提交。
   # 故新建一个草稿（不传金额以跳过预算切面）供详情/更新/提交测试使用。
