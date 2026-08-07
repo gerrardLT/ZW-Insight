@@ -24,13 +24,23 @@ jobs:
           distribution: 'corretto'
           cache: 'maven'
 
+      - name: Build modules (reactor dependencies for aggregate)
+        working-directory: zw-insight-server
+        # aggregate 需要 reactor 内模块已构建，否则报 "could not be resolved…Try running up to package"
+        run: mvn -B package -DskipTests -Djacoco.skip=true -q
+
       - name: Run dependency-check (aggregate)
         working-directory: zw-insight-server
-        run: >
-          mvn -B org.owasp:dependency-check-maven:10.0.4:aggregate
-          -Psecurity
-          -DfailBuildOnCVSS=11
-          -DnvdApiKey="${{ secrets.NVD_API_KEY }}"
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        # 仅在 key 非空时传入：无效/空 key 传给 NVD 会 404 导致更新失败，
+        # 不传则走无 key 限速模式（慢但可用，2026-08-07 实证）
+        run: |
+          ARGS="-DfailBuildOnCVSS=11"
+          if [ -n "$NVD_API_KEY" ]; then
+            ARGS="$ARGS -DnvdApiKey=$NVD_API_KEY"
+          fi
+          mvn -B org.owasp:dependency-check-maven:10.0.4:aggregate -Psecurity $ARGS
         continue-on-error: true
 
       - name: Upload dependency-check report
@@ -38,5 +48,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
-          path: zw-insight-server/target/dependency-check-report.*
+          path: zw-insight-server/**/dependency-check-report.*
           retention-days: 30
