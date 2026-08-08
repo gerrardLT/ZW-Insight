@@ -1,40 +1,35 @@
-# AGENTS.md — AI 代理工作约定
+﻿# AGENTS.md 鈥?AI 浠ｇ悊宸ヤ綔绾﹀畾
 
-本项目使用 **Kiro**（AI 开发代理）进行 Spec 驱动开发，覆盖需求分析、设计、任务拆解、代码实现与联调验证全流程。
-
-## Spec 驱动开发
-
-项目采用 Kiro 的 Spec 工作流：**Requirements → Design → Tasks**，每个 feature 对应一个独立目录，包含 `requirements.md`、`design.md`、`tasks.md` 三个文件。
-
-### Spec 文件位置
+鏈」鐩娇鐢?**Kiro**锛圓I 寮€鍙戜唬鐞嗭級杩涜 Spec 椹卞姩寮€鍙戯紝瑕嗙洊闇€姹傚垎鏋愩€佽璁°€佷换鍔℃媶瑙ｃ€佷唬鐮佸疄鐜颁笌鑱旇皟楠岃瘉鍏ㄦ祦绋嬨€?
+## Spec 椹卞姩寮€鍙?
+椤圭洰閲囩敤 Kiro 鐨?Spec 宸ヤ綔娴侊細**Requirements 鈫?Design 鈫?Tasks**锛屾瘡涓?feature 瀵瑰簲涓€涓嫭绔嬬洰褰曪紝鍖呭惈 `requirements.md`銆乣design.md`銆乣tasks.md` 涓変釜鏂囦欢銆?
+### Spec 鏂囦欢浣嶇疆
 
 ```
 .kiro/specs/
 ```
 
-### 已完成的 Spec 列表
+### 宸插畬鎴愮殑 Spec 鍒楄〃
 
-| Spec 名称 | 说明 |
+| Spec 鍚嶇О | 璇存槑 |
 |-----------|------|
-| `zw-insight-platform` | 平台整体架构与模块划分 |
-| `p0-core-features` | P0 核心功能（CRUD、审批、流程） |
-| `p0-data-permission-overdue` | P0 数据权限 & 逾期提醒 |
-| `p1-system-integrity` | P1 系统完整性（补全缺失功能） |
-| `p1-business-completion` | P1 业务补全（劳务/分包/机械等） |
-| `p2-quick-wins` | P2 快速优化项 |
-| `p2-experience-enhancement` | P2 体验增强 |
-| `p2-business-enhance` | P2 业务增强 |
-| `p2-advanced` | P2 高级功能 |
-| `frontend-backend-integration` | 前后端联调对齐（63 项核心错位） |
-| `consistency-audit` | 一致性审计工具开发 |
+| `zw-insight-platform` | 骞冲彴鏁翠綋鏋舵瀯涓庢ā鍧楀垝鍒?|
+| `p0-core-features` | P0 鏍稿績鍔熻兘锛圕RUD銆佸鎵广€佹祦绋嬶級 |
+| `p0-data-permission-overdue` | P0 鏁版嵁鏉冮檺 & 閫炬湡鎻愰啋 |
+| `p1-system-integrity` | P1 绯荤粺瀹屾暣鎬э紙琛ュ叏缂哄け鍔熻兘锛?|
+| `p1-business-completion` | P1 涓氬姟琛ュ叏锛堝姵鍔?鍒嗗寘/鏈烘绛夛級 |
+| `p2-quick-wins` | P2 蹇€熶紭鍖栭」 |
+| `p2-experience-enhancement` | P2 浣撻獙澧炲己 |
+| `p2-business-enhance` | P2 涓氬姟澧炲己 |
+| `p2-advanced` | P2 楂樼骇鍔熻兘 |
+| `frontend-backend-integration` | 鍓嶅悗绔仈璋冨榻愶紙63 椤规牳蹇冮敊浣嶏級 |
+| `consistency-audit` | 涓€鑷存€у璁″伐鍏峰紑鍙?|
 
-## 联调验证基座
+## 鑱旇皟楠岃瘉鍩哄骇
 
-用于验证远程联调服务器上的真实接口是否正常工作。
-
+鐢ㄤ簬楠岃瘉杩滅▼鑱旇皟鏈嶅姟鍣ㄤ笂鐨勭湡瀹炴帴鍙ｆ槸鍚︽甯稿伐浣溿€?
 ```powershell
-# Windows（PowerShell）
-.\keys\verify.ps1
+# Windows锛圥owerShell锛?.\keys\verify.ps1
 ```
 
 ```bash
@@ -42,205 +37,151 @@
 bash keys/verify-base.sh
 ```
 
-验证基座会依次调用核心 API 端点，确认 HTTP 状态码和响应结构正确。凭证文件 `keys/zwinsight.pem` 已纳入 `.gitignore`。
-
-## L4 全生命周期测试（隔离租户 9999）
-
-`keys/lifecycle-sim-v2.sh` 在隔离测试租户（tenant_id=9999，账号 t9999admin）上跑通 19 个阶段的全业务闭环：报备→立项→投标→中标→施工合同→预算（含 BLOCK 拦截负向用例）→四类支出合同→材料入出库→机械/劳务/分包执行与结算→产值→开票收款→采购结算→付款闭环→驳回分支（退回重审/终止重提）→竞工结算→结项。每阶段含状态/金额硬断言，退出码严格反映结果。
-
+楠岃瘉鍩哄骇浼氫緷娆¤皟鐢ㄦ牳蹇?API 绔偣锛岀‘璁?HTTP 鐘舵€佺爜鍜屽搷搴旂粨鏋勬纭€傚嚟璇佹枃浠?`keys/zwinsight.pem` 宸茬撼鍏?`.gitignore`銆?
+## L4 鍏ㄧ敓鍛藉懆鏈熸祴璇曪紙闅旂绉熸埛 9999锛?
+`keys/lifecycle-sim-v2.sh` 鍦ㄩ殧绂绘祴璇曠鎴凤紙tenant_id=9999锛岃处鍙?t9999admin锛変笂璺戦€?19 涓樁娈电殑鍏ㄤ笟鍔￠棴鐜細鎶ュ鈫掔珛椤光啋鎶曟爣鈫掍腑鏍団啋鏂藉伐鍚堝悓鈫掗绠楋紙鍚?BLOCK 鎷︽埅璐熷悜鐢ㄤ緥锛夆啋鍥涚被鏀嚭鍚堝悓鈫掓潗鏂欏叆鍑哄簱鈫掓満姊?鍔冲姟/鍒嗗寘鎵ц涓庣粨绠椻啋浜у€尖啋寮€绁ㄦ敹娆锯啋閲囪喘缁撶畻鈫掍粯娆鹃棴鐜啋椹冲洖鍒嗘敮锛堥€€鍥為噸瀹?缁堟閲嶆彁锛夆啋绔炲伐缁撶畻鈫掔粨椤广€傛瘡闃舵鍚姸鎬?閲戦纭柇瑷€锛岄€€鍑虹爜涓ユ牸鍙嶆槧缁撴灉銆?
 ```bash
-# 首次：初始化测试租户（幂等）+ 部署 BPMN 到租户 9999
+# 棣栨锛氬垵濮嬪寲娴嬭瘯绉熸埛锛堝箓绛夛級+ 閮ㄧ讲 BPMN 鍒扮鎴?9999
 bash keys/init-test-tenant.sh
 ZWI_USER=t9999admin ZWI_PASS=123456 ZWI_TENANT_ID=9999 bash keys/deploy-bpmn.sh
 
-# 运行 L4 + 清理验收（biz_ 表 tenant 9999 残留应为 0）
-bash keys/lifecycle-sim-v2.sh
+# 杩愯 L4 + 娓呯悊楠屾敹锛坆iz_ 琛?tenant 9999 娈嬬暀搴斾负 0锛?bash keys/lifecycle-sim-v2.sh
 bash keys/verify-l4-clean.sh
 ```
 
-关键约束：测试租户编号规则用 `T9` 前缀（业务编号唯一键为全局唯一，防与租户 1 撞号）；兑底清理仅限 `biz_%` 表（严禁误删 sys_user/serial_number_rule 等含 tenant_id 的系统表）；待办驱动从 ACT_RU_TASK 取 taskId（候选组任务不入 assignee 待办，SUPER_ADMIN 可完成任意任务）。
+鍏抽敭绾︽潫锛氭祴璇曠鎴风紪鍙疯鍒欑敤 `T9` 鍓嶇紑锛堜笟鍔＄紪鍙峰敮涓€閿负鍏ㄥ眬鍞竴锛岄槻涓庣鎴?1 鎾炲彿锛夛紱鍏戝簳娓呯悊浠呴檺 `biz_%` 琛紙涓ョ璇垹 sys_user/serial_number_rule 绛夊惈 tenant_id 鐨勭郴缁熻〃锛夛紱寰呭姙椹卞姩浠?ACT_RU_TASK 鍙?taskId锛堝€欓€夌粍浠诲姟涓嶅叆 assignee 寰呭姙锛孲UPER_ADMIN 鍙畬鎴愪换鎰忎换鍔★級銆?
+## 婕旂ず绉嶅瓙鏁版嵁
 
-## 演示种子数据
-
-用于快速填充默认租户（`tenant_id=1`）的全模块演示数据，登录系统即可看到完整的项目、合同、预算、财务等业务链路。
-
-### 脚本位置
+鐢ㄤ簬蹇€熷～鍏呴粯璁ょ鎴凤紙`tenant_id=1`锛夌殑鍏ㄦā鍧楁紨绀烘暟鎹紝鐧诲綍绯荤粺鍗冲彲鐪嬪埌瀹屾暣鐨勯」鐩€佸悎鍚屻€侀绠椼€佽储鍔＄瓑涓氬姟閾捐矾銆?
+### 鑴氭湰浣嶇疆
 
 ```
 deploy/db-init/31_V2026_26__seed_demo_data.sql
 ```
 
-### 设计要点
+### 璁捐瑕佺偣
 
-- **租户**：全部记录 `tenant_id=1`，为持久化演示数据
-- **ID 段**：固定使用 `90001-99999`，避免与业务雪花 ID 及已有种子（`900001-900005` 编号规则）冲突
-- **幂等**：全部 `INSERT IGNORE`，可重复执行不报错（重复键 1062 被忽略）
-- **依赖顺序**：按 Layer 0-14 从底层到顶层插入（基础数据→项目→投标→合同→预算→产值→材料→机械→劳务→分包→现场→财务→询价→消息→评价），覆盖 55+ 张业务表
-- **数据闭环**：3 个不同生命周期项目——`90001 滨江花园一期`（施工中，全模块）、`90002 城南市政道路改造`（已竣工，结算+质保金）、`90003 高新区产业园二期`（已报备，投标）；金额按「合同→产值→开票→收款→预算→各支出合同→结算→付款」逻辑自洽
+- **绉熸埛**锛氬叏閮ㄨ褰?`tenant_id=1`锛屼负鎸佷箙鍖栨紨绀烘暟鎹?- **ID 娈?*锛氬浐瀹氫娇鐢?`90001-99999`锛岄伩鍏嶄笌涓氬姟闆姳 ID 鍙婂凡鏈夌瀛愶紙`900001-900005` 缂栧彿瑙勫垯锛夊啿绐?- **骞傜瓑**锛氬叏閮?`INSERT IGNORE`锛屽彲閲嶅鎵ц涓嶆姤閿欙紙閲嶅閿?1062 琚拷鐣ワ級
+- **渚濊禆椤哄簭**锛氭寜 Layer 0-14 浠庡簳灞傚埌椤跺眰鎻掑叆锛堝熀纭€鏁版嵁鈫掗」鐩啋鎶曟爣鈫掑悎鍚屸啋棰勭畻鈫掍骇鍊尖啋鏉愭枡鈫掓満姊扳啋鍔冲姟鈫掑垎鍖呪啋鐜板満鈫掕储鍔♀啋璇环鈫掓秷鎭啋璇勪环锛夛紝瑕嗙洊 55+ 寮犱笟鍔¤〃
+- **鏁版嵁闂幆**锛? 涓笉鍚岀敓鍛藉懆鏈熼」鐩€斺€擿90001 婊ㄦ睙鑺卞洯涓€鏈焋锛堟柦宸ヤ腑锛屽叏妯″潡锛夈€乣90002 鍩庡崡甯傛斂閬撹矾鏀归€燻锛堝凡绔ｅ伐锛岀粨绠?璐ㄤ繚閲戯級銆乣90003 楂樻柊鍖轰骇涓氬洯浜屾湡`锛堝凡鎶ュ锛屾姇鏍囷級锛涢噾棰濇寜銆屽悎鍚屸啋浜у€尖啋寮€绁ㄢ啋鏀舵鈫掗绠椻啋鍚勬敮鍑哄悎鍚屸啋缁撶畻鈫掍粯娆俱€嶉€昏緫鑷唇
 
-### 导入与验证
-
+### 瀵煎叆涓庨獙璇?
 ```bash
-# 导入种子并统计行数（幂等）
-bash keys/verify-seed.sh import
+# 瀵煎叆绉嶅瓙骞剁粺璁¤鏁帮紙骞傜瓑锛?bash keys/verify-seed.sh import
 
-# 仅 DB 行数统计 / 仅 API 抽查 / 完整验证
+# 浠?DB 琛屾暟缁熻 / 浠?API 鎶芥煡 / 瀹屾暣楠岃瘉
 bash keys/verify-seed.sh db
 bash keys/verify-seed.sh api
 bash keys/verify-seed.sh
 ```
 
-验证脚本 `keys/verify-seed.sh` 复用 `verify-base.sh` 的真实登录能力，抽查 `project/page`、`contract/page`、`finance/payment-apply/page` 等分页接口，并直连 MySQL 校验固定 ID 段行数。
-
-## 一致性审计工具
-
-位于 `tools/consistency-audit/`，是一个 Node.js CLI 工具，自动扫描后端 Controller、PC 前端 api/*.ts、移动端 api/*.ts，生成三端一致性审计报告。
-
-### 使用方法
+楠岃瘉鑴氭湰 `keys/verify-seed.sh` 澶嶇敤 `verify-base.sh` 鐨勭湡瀹炵櫥褰曡兘鍔涳紝鎶芥煡 `project/page`銆乣contract/page`銆乣finance/payment-apply/page` 绛夊垎椤垫帴鍙ｏ紝骞剁洿杩?MySQL 鏍￠獙鍥哄畾 ID 娈佃鏁般€?
+## 涓€鑷存€у璁″伐鍏?
+浣嶄簬 `tools/consistency-audit/`锛屾槸涓€涓?Node.js CLI 宸ュ叿锛岃嚜鍔ㄦ壂鎻忓悗绔?Controller銆丳C 鍓嶇 api/*.ts銆佺Щ鍔ㄧ api/*.ts锛岀敓鎴愪笁绔竴鑷存€у璁℃姤鍛娿€?
+### 浣跨敤鏂规硶
 
 ```bash
 cd tools/consistency-audit
 npm install
-npm run dev          # 运行审计（开发模式，tsx 直接执行）
-npm run build        # 编译 TypeScript
-npm test             # 运行属性测试（fast-check）
+npm run dev          # 杩愯瀹¤锛堝紑鍙戞ā寮忥紝tsx 鐩存帴鎵ц锛?npm run build        # 缂栬瘧 TypeScript
+npm test             # 杩愯灞炴€ф祴璇曪紙fast-check锛?```
+
+### 瀹¤杈撳嚭
+
+- 鎶ュ憡鑷姩鐢熸垚鍒?`audit-reports/` 鐩綍锛圝SON + Markdown 鍙屾牸寮忥級
+- 鍖呭惈妯″潡绾у埆鐨勪笉涓€鑷撮」鍒嗙被锛歚FEATURE_MISSING`銆乣HTTP_METHOD_MISMATCH`銆乣FRONTEND_EXTRA_API`銆乣BACKEND_ORPHAN_API` 绛?- 涓ラ噸绾у埆锛欳ritical > Major > Minor
+
+## Steering 瑙勫垯
+
+椤圭洰绾?Steering 瑙勫垯浣嶄簬锛?
 ```
+~/.kiro/steering/base.md        # 鍏ㄥ眬鐢ㄦ埛绾ц鍒?```
 
-### 审计输出
+褰撳墠鏃犻」鐩骇 `.kiro/steering/` 鐩綍锛岃鍒欓€氳繃鍏ㄥ眬閰嶇疆鐢熸晥銆?
+## 寮€鍙戠害瀹?
+浠ヤ笅绾﹀畾鍦?AI 浠ｇ悊鍗忎綔寮€鍙戜腑蹇呴』閬靛畧锛?
+### 1. 鐪熷疄鎺ュ彛锛屼笉鐢ㄥ亣鏁版嵁
 
-- 报告自动生成到 `audit-reports/` 目录（JSON + Markdown 双格式）
-- 包含模块级别的不一致项分类：`FEATURE_MISSING`、`HTTP_METHOD_MISMATCH`、`FRONTEND_EXTRA_API`、`BACKEND_ORPHAN_API` 等
-- 严重级别：Critical > Major > Minor
+鎵€鏈変笟鍔″紑鍙戝繀椤诲鎺ョ湡瀹炲悗绔帴鍙ｃ€傜姝娇鐢?mock 鏁版嵁鎴栭潤榛?fallback銆傚彲浠ユ湁澶囬€夋柟妗堬紝浣嗕笉鑳界敤瀹屽叏涓嶇湡瀹炵殑鏁版嵁鏉ュ疄鐜板姛鑳姐€?
+### 2. 鍚庣 Controller 涓?Source of Truth
 
-## Steering 规则
+鍓嶇 API 瀹氫箟蹇呴』涓庡悗绔?Controller 娉ㄨВ涓ユ牸涓€鑷达細
+- HTTP 鏂规硶锛圙ET/POST/PUT/DELETE锛?- 璺緞锛坄@RequestMapping` 鍊硷級
+- 璇锋眰/鍝嶅簲瀛楁鍚?
+褰撳嚭鐜板垎姝ф椂锛屼互鍚庣 Controller 涓哄噯淇敼鍓嶇銆?
+### 3. RESTful 绾﹀畾
 
-项目级 Steering 规则位于：
+- 璺緞鏍煎紡锛歚/api/v1/{module}/{resource}`
+- 鍒嗛〉鏌ヨ锛欸ET + Query Params锛坄page`銆乣size`锛?- 鍒涘缓锛歅OST
+- 鏇存柊锛歅UT `/{id}`
+- 鍒犻櫎锛欴ELETE `/{id}`
+- 璇︽儏锛欸ET `/{id}`
+- 鎵归噺鎿嶄綔锛歅OST `/{resource}/batch`
 
-```
-~/.kiro/steering/base.md        # 全局用户级规则
-```
-
-当前无项目级 `.kiro/steering/` 目录，规则通过全局配置生效。
-
-## 开发约定
-
-以下约定在 AI 代理协作开发中必须遵守：
-
-### 1. 真实接口，不用假数据
-
-所有业务开发必须对接真实后端接口。禁止使用 mock 数据或静默 fallback。可以有备选方案，但不能用完全不真实的数据来实现功能。
-
-### 2. 后端 Controller 为 Source of Truth
-
-前端 API 定义必须与后端 Controller 注解严格一致：
-- HTTP 方法（GET/POST/PUT/DELETE）
-- 路径（`@RequestMapping` 值）
-- 请求/响应字段名
-
-当出现分歧时，以后端 Controller 为准修改前端。
-
-### 3. RESTful 约定
-
-- 路径格式：`/api/v1/{module}/{resource}`
-- 分页查询：GET + Query Params（`page`、`size`）
-- 创建：POST
-- 更新：PUT `/{id}`
-- 删除：DELETE `/{id}`
-- 详情：GET `/{id}`
-- 批量操作：POST `/{resource}/batch`
-
-详细规范见 `audit-reports/rest-convention.md`。
-
-### 4. 前后端一致性检查
-
-每次涉及接口变更的开发完成后，运行一致性审计：
+璇︾粏瑙勮寖瑙?`audit-reports/rest-convention.md`銆?
+### 4. 鍓嶅悗绔竴鑷存€ф鏌?
+姣忔娑夊強鎺ュ彛鍙樻洿鐨勫紑鍙戝畬鎴愬悗锛岃繍琛屼竴鑷存€у璁★細
 
 ```bash
 cd tools/consistency-audit && npm run dev
 ```
 
-确保新增/修改的接口不引入 Critical 级别的不一致项。
+纭繚鏂板/淇敼鐨勬帴鍙ｄ笉寮曞叆 Critical 绾у埆鐨勪笉涓€鑷撮」銆?
+### 5. 鏁版嵁搴撳彉鏇?
+- 澧為噺杩佺Щ鑴氭湰鏀惧叆 `deploy/db-init/`锛屾寜搴忓彿鍛藉悕
+- 瀛楁浣跨敤瑙勮寖锛歚BigDecimal`/`DECIMAL(18,2)`锛堥噾棰濓級銆乣deleted`锛堥€昏緫鍒犻櫎锛夈€乣version`锛堜箰瑙傞攣锛夈€乣tenant_id`锛堢鎴烽殧绂伙級
 
-### 5. 数据库变更
+### 6. 鎶€鏈柟妗堣皟鐮?
+杩涜鎶€鏈柟妗堥€夊瀷鏃讹紝浼樺厛鏌ユ壘瀹樻柟鏂囨。浜嗚В鏈€鏂扮敤娉曪紝瀵绘壘绋冲畾鍙潬鐨勫紑婧愰」鐩繘琛屽姣旈€夋嫨銆?
+### 7. 鏀归€犺褰?
+杩涜椤圭洰浼樺寲鏀归€犳椂锛岄渶瀹屾暣璁板綍鏀归€犵殑璇︾粏淇℃伅锛堝彉鏇村師鍥犮€佸奖鍝嶈寖鍥淬€佸洖婊氭柟妗堬級锛岀‘淇濆悗缁兘浠庝笂涓嬫枃鎭㈠銆?
+### 8. 娴嬭瘯寮€鍙戣鍒?
+浠ヤ笅瑙勫垯鍦ㄥ紑鍙戞柊鍔熻兘鎴栦慨澶?Bug 鏃跺繀椤婚伒瀹堬細
 
-- 增量迁移脚本放入 `deploy/db-init/`，按序号命名
-- 字段使用规范：`BigDecimal`/`DECIMAL(18,2)`（金额）、`deleted`（逻辑删除）、`version`（乐观锁）、`tenant_id`（租户隔离）
+#### 鏂版ā鍧楀繀椤诲寘鍚崟鍏冩祴璇?
+- 姣忎釜鏂板缓 Service 绫荤殑 public 鏂规硶鑷冲皯缂栧啓 1 涓甯歌矾寰?+ 1 涓紓甯歌矾寰勬祴璇?- 浣跨敤 `@ExtendWith(MockitoExtension.class)` + Mockito Mock 鎵€鏈夊閮ㄤ緷璧?- 瑕嗙洊鐜囬棬妲涳細褰撳墠 pom jacoco check 涓鸿瑕嗙洊鐜?鈮?0%锛坴erify 闃舵锛孊UNDLE锛夛紝涓?`tests/coverage-baseline.json` 鍙崌涓嶉檷锛圕I 姣斿锛夛紱鏍稿績 8 妯″潡 鈮?0% 涓洪樁娈典笁鐩爣锛堣 `.kiro/specs/test-maturity-upgrade/tasks.md` 3.3锛夈€傚悇妯″潡瀹炴祴鍩虹嚎瑙?`tests/TESTING-MATURITY.md` 闄勫綍 A
 
-### 6. 技术方案调研
+#### 闆嗘垚娴嬭瘯浣跨敤 tenant_id=9999
 
-进行技术方案选型时，优先查找官方文档了解最新用法，寻找稳定可靠的开源项目进行对比选择。
+- 鎵€鏈夐泦鎴愭祴璇曟暟鎹繀椤讳娇鐢?`tenant_id=9999`锛堣嚜鍔ㄥ寲娴嬭瘯绉熸埛锛?- 涓ョ鍦ㄦ祴璇曚腑浣跨敤鐪熷疄绉熸埛 ID 鎴栨搷浣滅敓浜ф暟鎹?- `@AfterAll` 蹇呴』璋冪敤 `TestDataCleaner.cleanByTenantId(9999L)` 娓呯悊娴嬭瘯鏁版嵁
+- Redis 娴嬭瘯閿娇鐢?`test:t9999:` 鍓嶇紑锛屾祴璇曞悗娓呴櫎
 
-### 7. 改造记录
+#### PR 鍓嶈繍琛?L1 鍗曞厓娴嬭瘯
 
-进行项目优化改造时，需完整记录改造的详细信息（变更原因、影响范围、回滚方案），确保后续能从上下文恢复。
+- 鎻愪氦 PR 鍓嶅繀椤诲湪鏈湴杩愯 `mvn test` 纭鍗曞厓娴嬭瘯閫氳繃
+- CI backend job 鎵ц `mvn -B clean package`锛堣繍琛屽叏閲忓崟鍏冩祴璇?+ JaCoCo 鎶ュ憡锛夛紝骞舵瘮瀵?`tests/coverage-baseline.json`锛氫换涓€妯″潡瑕嗙洊鐜囧洖閫€鍗虫瀯寤哄け璐?- 瑕嗙洊鐜囬棬妲涳紙jacoco check 0.60锛夌粦瀹?verify 闃舵锛涢樁娈典笁鐩爣杈炬垚鍚?CI 鍒?verify 寮哄埗锛堣 spec 3.3锛?
+#### 娴嬭瘯鍙楅樆姹囨姤瑙勫垯锛堝己鍒讹紝AI 浠ｇ悊涓庝汉鍧囬€傜敤锛?
+娴嬭瘯鍥犵幆澧冩垨鍏朵粬鍘熷洜鏃犳硶鎵ц鏃讹紙Docker 鏈惎銆佺綉缁滀笉鍙揪銆佸嚟璇佸け鏁堛€佸伐鍏疯涓嶄笂銆佽鐩栫巼閲囬泦澶辫触绛夛級锛?
+1. **绂佹闈欓粯璺宠繃銆佺姝㈡爣璁颁负閫氳繃銆佺姝㈢敤 mock/鍋囨暟鎹檷绾ф浛浠ｇ湡瀹為獙璇?*锛堜笌鏈」鐩€滅湡瀹炴帴鍙ｇ湡瀹炴祦绋嬧€濆師鍒欎竴鑷达級
+2. 蹇呴』绔嬪嵆锛氣憼 鍋滄璇ラ」鎵ц 鈶?鍦?`.kiro/specs/test-maturity-upgrade/tasks.md` 鏈熬鈥滃彈闃婚」鐧昏鍙拌处鈥濊拷鍔犱竴琛岋紙鏃ユ湡/灞傜骇/娴嬭瘯椤?鍒嗙被 ENV|DEP|NET|CRED|DATA|OTHER/鍘熷洜/褰卞搷鑼冨洿/澶勭疆鍐崇瓥/鍐崇瓥浜?鐘舵€侊級 鈶?鍚戠敤鎴锋眹鎶ワ紙鍙楅樆鍘熷洜 + 褰卞搷鑼冨洿 + 涓夐€夐」锛氫慨澶嶇幆澧?寤舵湡/缂╁噺鑼冨洿锛?3. 鐢ㄦ埛鍐崇瓥鍚庡洖濉彴璐︹€滃缃喅绛?鍐崇瓥浜衡€濆垪锛涚姝?AI 鑷鍐冲畾闄嶇骇鏂规
+4. 姹囨姤妯℃澘涓庡巻鍙叉渚嬭 `tests/TESTING-MATURITY.md` 闄勫綍 B锛涙湰鏈?JaCoCo 涓枃璺緞鍧戦渶鍔?`-Djacoco.destFile=<ASCII璺緞>`
 
-### 8. 测试开发规则
+#### 娴嬭瘯浣撶郴鏂囨。
 
-以下规则在开发新功能或修复 Bug 时必须遵守：
+- 璇︾粏鐨勬祴璇曟灦鏋勩€佹墽琛屾柟寮忋€佹坊鍔犳柊娴嬭瘯鎸囧崡瑙?`tests/README.md`
+- 娴嬭瘯甯搁噺瀹氫箟瑙?`zw-common/src/test/java/com/zwinsight/common/base/TestConstants.java`
+- 缁熶竴缂栨帓鑴氭湰锛歚bash tests/run-all-tests.sh`
 
-#### 新模块必须包含单元测试
+### 9. 涓存椂鏂囦欢涓庢枃妗ｇ鐞?
+AI 浠ｇ悊鍦ㄥ紑鍙戙€佽皟璇曘€佽瘎瀹¤繃绋嬩腑浜х敓鐨勪复鏃朵骇鐗╁繀椤婚伒寰互涓嬭鍒欙細
 
-- 每个新建 Service 类的 public 方法至少编写 1 个正常路径 + 1 个异常路径测试
-- 使用 `@ExtendWith(MockitoExtension.class)` + Mockito Mock 所有外部依赖
-- 覆盖率门槛：当前 pom jacoco check 为行覆盖率 ≥60%（verify 阶段，BUNDLE），且 `tests/coverage-baseline.json` 只升不降（CI 比对）；核心 8 模块 ≥80% 为阶段三目标（见 `.kiro/specs/test-maturity-upgrade/tasks.md` 3.3）。各模块实测基线见 `tests/TESTING-MATURITY.md` 附录 A
+#### 鍛藉悕绾﹀畾
 
-#### 集成测试使用 tenant_id=9999
+- 鎵€鏈変复鏃舵枃浠跺繀椤讳互 `_` 鍓嶇紑鍛藉悕锛堝 `_review_dashboard.png`銆乣_test4.log`锛?- `.gitignore` 宸查厤缃?`keys/_*`銆乣*.log`銆乣test-results/`銆乣**/eng.traineddata` 绛夋帓闄よ鍒?- 鏂板涓存椂鏂囦欢绫诲瀷鏃讹紝鍚屾鏇存柊 `.gitignore`
 
-- 所有集成测试数据必须使用 `tenant_id=9999`（自动化测试租户）
-- 严禁在测试中使用真实租户 ID 或操作生产数据
-- `@AfterAll` 必须调用 `TestDataCleaner.cleanByTenantId(9999L)` 清理测试数据
-- Redis 测试键使用 `test:t9999:` 前缀，测试后清除
+#### 鐢熷懡鍛ㄦ湡
 
-#### PR 前运行 L1 单元测试
+- **浠诲姟缁撴潫鍗虫竻鐞?*锛氭瘡娆′换鍔★紙寮€鍙?璋冭瘯/璇勫/楠岃瘉锛夊畬鎴愬悗锛屽繀椤诲垹闄ゆ湰娆′骇鐢熺殑鎵€鏈変复鏃舵枃浠?- **涓嶅緱璺ㄤ細璇濇畫鐣?*锛氭埅鍥俱€佹棩蹇椼€佽瘖鏂緭鍑恒€侀獙璇佺爜鍥剧墖绛変笉寰楅仐鐣欏湪宸ヤ綔鍖?- **鏋勫缓浜х墿鎸夐渶淇濈暀**锛歚dist/`銆乣deploy/zw-insight-app.jar` 绛夊彲鍐嶇敓浜х墿鍙繚鐣欙紝浣嗕笉搴斾富鍔ㄥ垱寤哄啑浣欏壇鏈?
+#### 绂佹浜嬮」
 
-- 提交 PR 前必须在本地运行 `mvn test` 确认单元测试通过
-- CI backend job 执行 `mvn -B clean package`（运行全量单元测试 + JaCoCo 报告），并比对 `tests/coverage-baseline.json`：任一模块覆盖率回退即构建失败
-- 覆盖率门槛（jacoco check 0.60）绑定 verify 阶段；阶段三目标达成后 CI 切 verify 强制（见 spec 3.3）
-
-#### 测试受阻汇报规则（强制，AI 代理与人均适用）
-
-测试因环境或其他原因无法执行时（Docker 未启、网络不可达、凭证失效、工具装不上、覆盖率采集失败等）：
-
-1. **禁止静默跳过、禁止标记为通过、禁止用 mock/假数据降级替代真实验证**（与本项目“真实接口真实流程”原则一致）
-2. 必须立即：① 停止该项执行 ② 在 `.kiro/specs/test-maturity-upgrade/tasks.md` 末尾“受阻项登记台账”追加一行（日期/层级/测试项/分类 ENV|DEP|NET|CRED|DATA|OTHER/原因/影响范围/处置决策/决策人/状态） ③ 向用户汇报（受阻原因 + 影响范围 + 三选项：修复环境/延期/缩减范围）
-3. 用户决策后回填台账“处置决策/决策人”列；禁止 AI 自行决定降级方案
-4. 汇报模板与历史案例见 `tests/TESTING-MATURITY.md` 附录 B；本机 JaCoCo 中文路径坑需加 `-Djacoco.destFile=<ASCII路径>`
-
-#### 测试体系文档
-
-- 详细的测试架构、执行方式、添加新测试指南见 `tests/README.md`
-- 测试常量定义见 `zw-common/src/test/java/com/zwinsight/common/base/TestConstants.java`
-- 统一编排脚本：`bash tests/run-all-tests.sh`
-
-### 9. 临时文件与文档管理
-
-AI 代理在开发、调试、评审过程中产生的临时产物必须遵循以下规则：
-
-#### 命名约定
-
-- 所有临时文件必须以 `_` 前缀命名（如 `_review_dashboard.png`、`_test4.log`）
-- `.gitignore` 已配置 `keys/_*`、`*.log`、`test-results/`、`**/eng.traineddata` 等排除规则
-- 新增临时文件类型时，同步更新 `.gitignore`
-
-#### 生命周期
-
-- **任务结束即清理**：每次任务（开发/调试/评审/验证）完成后，必须删除本次产生的所有临时文件
-- **不得跨会话残留**：截图、日志、诊断输出、验证码图片等不得遗留在工作区
-- **构建产物按需保留**：`dist/`、`deploy/zw-insight-app.jar` 等可再生产物可保留，但不应主动创建冗余副本
-
-#### 禁止事项
-
-- 禁止在项目根目录或 `src/` 下创建任何非源码临时文件
-- 禁止将调试截图、OCR 训练数据、Playwright trace 等大体积二进制文件留在工作区
-- 禁止创建用于“跟踪进度”的 `.md` 文档（如 `TODO.md`、`PROGRESS.md`）
-
-#### 清理检查清单
-
-任务完成后自查：
+- 绂佹鍦ㄩ」鐩牴鐩綍鎴?`src/` 涓嬪垱寤轰换浣曢潪婧愮爜涓存椂鏂囦欢
+- 绂佹灏嗚皟璇曟埅鍥俱€丱CR 璁粌鏁版嵁銆丳laywright trace 绛夊ぇ浣撶Н浜岃繘鍒舵枃浠剁暀鍦ㄥ伐浣滃尯
+- 绂佹鍒涘缓鐢ㄤ簬鈥滆窡韪繘搴︹€濈殑 `.md` 鏂囨。锛堝 `TODO.md`銆乣PROGRESS.md`锛?
+#### 娓呯悊妫€鏌ユ竻鍗?
+浠诲姟瀹屾垚鍚庤嚜鏌ワ細
 
 ```
-✅ 根目录无 _*.png / _*.log 残留
-✅ keys/ 无新增 _* 诊断产物
-✅ zw-insight-web/ 无 test-results/ 或 eng.traineddata
-✅ 无新增未纳入 .gitignore 的临时文件
-```
+鉁?鏍圭洰褰曟棤 _*.png / _*.log 娈嬬暀
+鉁?keys/ 鏃犳柊澧?_* 璇婃柇浜х墿
+鉁?zw-insight-web/ 鏃?test-results/ 鎴?eng.traineddata
+鉁?鏃犳柊澧炴湭绾冲叆 .gitignore 鐨勪复鏃舵枃浠?```
