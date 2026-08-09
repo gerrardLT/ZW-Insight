@@ -366,7 +366,7 @@ jobs:
         run: |
           echo "=== 集成测试结果汇总 ==="
           HAS_FAILURE=false
-
+  
           # L3 汇总
           echo ""
           echo "--- L3 API 测试 ---"
@@ -378,20 +378,20 @@ jobs:
           else
             echo "::warning::未找到 L3 测试结果文件"
           fi
-
+  
           # L4 汇总
           echo ""
           echo "--- L4 Lifecycle 测试 ---"
           if [ -f test-results/l4-lifecycle-result.log ]; then
-            echo "成功: $(grep -c '✅' test-results/l4-lifecycle-result.log || echo 0)"
-            echo "失败: $(grep -c '❌' test-results/l4-lifecycle-result.log || echo 0)"
+            echo "成功：$(grep -c '✅' test-results/l4-lifecycle-result.log || echo 0)"
+            echo "失败：$(grep -c '❌' test-results/l4-lifecycle-result.log || echo 0)"
             if grep -q "❌" test-results/l4-lifecycle-result.log; then
               HAS_FAILURE=true
             fi
           else
             echo "::warning::未找到 L4 测试结果文件"
           fi
-
+  
           # 最终判定
           echo ""
           if [ "$HAS_FAILURE" = "true" ]; then
@@ -400,3 +400,64 @@ jobs:
           else
             echo "✅ 所有集成测试通过"
           fi
+  
+  # ────────────────────────────────────────────────────
+  # 4. 性能基准测试 (k6)
+  # ────────────────────────────────────────────────────
+  performance-test:
+    name: Performance Baseline (k6)
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()  # 仅部署成功后执行
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+  
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+  
+      - name: Run k6 performance tests
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'K6_SCRIPT'
+          set -euo pipefail
+          cd /root/zw-insight/tests/performance
+            
+          echo "=========================================="
+          echo "开始性能基准测试 (夜间低峰窗口)"
+          echo "并发限制≤20,单次测试≤5分钟"
+          echo "租户隔离：tenant_id=9999"
+          echo "=========================================="
+            
+          # 验证环境约束
+          if [[ $(whoami) != "root" ]] && ! echo "$SHELL" | grep -q "cron"; then
+            echo "⚠️ 警告：非 cron 环境执行，建议仅在夜间低峰窗口运行"
+            read -p "确认继续？(y/n) " confirm
+            [[ "$confirm" == "y" ]] || exit 1
+          fi
+            
+          # 运行三个测试脚本
+          for script in login.js page-query.js payment-submit.js; do
+            [ -f "$script" ] || continue
+            echo ""
+            echo "▶ 测试：$script"
+            echo "------------------------------------------"
+            if docker run --rm -i grafana/k6 run \
+               --scenario-concurrency-limit=20 \
+               --max-duration=5m \
+               "$script" 2>&1 | tee "k6-${script%.js}.log";
+            then
+              echo "✅ $script 完成"
+            else
+              echo "⚠️ $script 失败或超时"
+            fi
+          done
+            
+          echo ""
+          echo "=========================================="
+          echo "性能测试报告已生成至：/root/zw-insight/tests/performance/"
+          echo "=========================================="
+          K6_SCRIPT

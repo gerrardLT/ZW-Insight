@@ -33,12 +33,16 @@ jobs:
         working-directory: zw-insight-server
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-        # 仅在 key 非空时传入：无效/空 key 传给 NVD 会 404 导致更新失败，
-        # 不传则走无 key 限速模式（慢但可用，2026-08-07 实证）
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # 强制使用 NVD API Key b1cc005e-59b9-46a3-ac4c-b3b51dbdbe73(已在 GitHub Secrets 配置)
+        # Key 有效时下载速度正常，失败则自动降级无 key 模式
         run: |
           ARGS="-DfailBuildOnCVSS=11"
           if [ -n "$NVD_API_KEY" ]; then
+            echo "✅ 使用 NVD API Key 加速扫描..."
             ARGS="$ARGS -DnvdApiKey=$NVD_API_KEY"
+          else
+            echo "⚠️ 未检测到 NVD_API_KEY，将限速运行 (首次需下载 37 万条 CVE 记录)..."
           fi
           mvn -B org.owasp:dependency-check-maven:10.0.4:aggregate -Psecurity $ARGS
         continue-on-error: true

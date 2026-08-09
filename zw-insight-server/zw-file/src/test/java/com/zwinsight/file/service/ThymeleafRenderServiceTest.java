@@ -89,10 +89,117 @@ class ThymeleafRenderServiceTest {
     }
 
     @Test
-    @DisplayName("variables 为 null：按空变量处理，不抛异常")
+    @DisplayName("空 variables：按空变量处理，不抛异常")
     void renderNullVariablesTreatedAsEmpty() {
         String template = "<p>static content</p>";
         String html = service.render(template, null);
         assertTrue(html.contains("static content"));
+    }
+
+    @Test
+    @DisplayName("嵌套循环 th:each 内部使用：正确渲染多层结构")
+    void renderNestedLoops_correctRendering() {
+        // Given
+        Map<String, Object> vars = new HashMap<>();
+        Map<String, List<String>> departments = new HashMap<>();
+        departments.put("engineering", List.of("张三", "李四"));
+        departments.put("sales", List.of("王五"));
+        vars.put("departments", departments);
+
+        String template = "<table><tr th:each\"(dept, users) : ${departments}\"><td>\${dept}</td><td><span th:each=\"user : \${users}\" th:text=\"\${user}\"></span></td></tr></table>";
+
+        // When
+        String html = service.render(template, vars);
+
+        // Then
+        assertTrue(html.contains("engineering"), "应包含部门名 engineering");
+        assertTrue(html.contains("张三"), "应包含用户张三");
+        assertTrue(html.contains("李四"), "应包含用户李四");
+        assertTrue(html.contains("sales"), "应包含部门名 sales");
+        assertTrue(html.contains("王五"), "应包含用户王五");
+    }
+
+    @Test
+    @DisplayName("th:with 临时变量：正确创建和使用局部变量")
+    void renderThWithLocalVariable() {
+        String template = "<div th:with=\"total=${price * quantity}\">总计：<span th:text=\"\${total}\">0</span></div>";
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("price", 100.5);
+        vars.put("quantity", 3);
+
+        String html = service.render(template, vars);
+
+        assertTrue(html.contains("总计：301.5"), "应计算并显示正确总价");
+    }
+
+    @Test
+    @DisplayName("模板注入攻击防护：转义 HTML 标签防止 XSS")
+    void renderXssProtection_escapesHtml() {
+        String template = "<p th:text=\"${username}\">default</p>";
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("username", "<script>alert('xss')</script>");
+
+        String html = service.render(template, vars);
+
+        assertFalse(html.contains("<script>"), "应转义脚本标签防止 XSS 攻击");
+        assertTrue(html.contains("&lt;script&gt;"), "应使用 HTML 实体编码");
+    }
+
+    @Test
+    @DisplayName("条件判断 th:unless：条件为假时渲染内容")
+    void renderThUnlessCondition() {
+        String template = "<div th:unless=\"${hasPermission}\">无权限提示</div>";
+        
+        // hasPermission = false 时应显示
+        Map<String, Object> noPermission = new HashMap<>();
+        noPermission.put("hasPermission", false);
+        assertTrue(service.render(template, noPermission).contains("无权限提示"));
+
+        // hasPermission = true 时不显示
+        Map<String, Object> hasPermission = new HashMap<>();
+        hasPermission.put("hasPermission", true);
+        assertFalse(service.render(template, hasPermission).contains("无权限提示"));
+    }
+
+    @Test
+    @DisplayName("多个模板片段组合渲染")
+    void renderMultipleTemplates_combination() {
+        String template = "<html><head><title th:text=\"${title}\">Default</title></head><body><h1 th:text=\"${heading}\">Hello</h1></body></html>";
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("title", "项目管理系统");
+        vars.put("heading", "欢迎使用");
+
+        String html = service.render(template, vars);
+
+        assertTrue(html.contains("项目管理系统"), "标题应替换");
+        assertTrue(html.contains("欢迎使用"), "主标题应替换");
+    }
+
+    @Test
+    @DisplayName("复杂业务场景：合同审批通知邮件模板")
+    void renderContractApprovalEmailTemplate() {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("contractNumber", "HT-2024-001234");
+        vars.put("applicantName", "张三");
+        vars.put("approvalDate", "2024-01-15");
+        vars.put("amount", 1250000.00);
+        vars.put("status", "APPROVED");
+
+        String template = "<div>\n"
+                + "  <h2>合同审批通知</h2>\n"
+                + "  <p>合同编号：<span th:text=\"${contractNumber}\"></span></p>\n"
+                + "  <p>申请人：<span th:text=\"${applicantName}\"></span></p>\n"
+                + "  <p>审批日期：<span th:text=\"${approvalDate}\"></span></p>\n"
+                + "  <p>金额：<span th:text=\"${#numbers.formatDecimal(amount, 1, 'COMMA', 2, 'POINT')}"></span>元</p>\n"
+                + "  <p th:if=\"${status} == 'APPROVED'\">状态：<span>已批准</span></p>\n"
+                + "  <p th:if=\"${status} == 'REJECTED'\">状态：<span>已拒绝</span></p>\n"
+                + "</div>";
+
+        String html = service.render(template, vars);
+
+        assertTrue(html.contains("HT-2024-001234"), "应包含合同编号");
+        assertTrue(html.contains("张三"), "应包含申请人");
+        assertTrue(html.contains("已批准"), "应显示批准状态");
+        assertTrue(html.contains("1,250,000.00"), "应格式化金额");
     }
 }

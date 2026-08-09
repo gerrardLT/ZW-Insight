@@ -320,4 +320,32 @@ class SubcontractMutationTest {
         verify(subcontractMapper).updateById(contractCaptor.capture());
         assertThat(contractCaptor.getValue().getCumulativeOutput()).isEqualByComparingTo("5000");
     }
+
+    // ==================== SubcontractSettlementService.updateSettlement null 兜底 ====================
+
+    @Test
+    @DisplayName("更新结算单：汇总字段为 null 时回退默认值")
+    void updateSettlement_nullFallbackDefault() {
+        SubcontractSettlementService service = new SubcontractSettlementService(
+                settlementMapper, detailMapper, subcontractMapper);
+
+        BizSubcontractSettlement draft = new BizSubcontractSettlement();
+        draft.setId(1L);
+        draft.setStatus("DRAFT");
+        when(settlementMapper.selectById(1L)).thenReturn(draft);
+
+        SubcontractSettlementCreateRequest request = new SubcontractSettlementCreateRequest();
+        request.setContractId(10L);
+        request.setDetails(Collections.singletonList(
+                detailDTO("混凝土", "2", "3000", null)));
+
+        // 原有汇总字段为 null → 调用 updateSettlement 应回退 0
+        draft.setSettlementAmount(null);
+        service.updateSettlement(1L, request);
+
+        ArgumentCaptor<BizSubcontractSettlement> captor = ArgumentCaptor.forClass(BizSubcontractSettlement.class);
+        verify(settlementMapper).updateById(captor.capture());
+        // null 兜底行为：金额应计算为 6000.00（而非保留 null）
+        assertThat(captor.getValue().getSettlementAmount()).isEqualByComparingTo("6000.00");
+    }
 }

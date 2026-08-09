@@ -1,0 +1,69 @@
+# k6 性能基准测试 (阶段二 2.2 任务)
+# 夜间低峰窗口自动执行：每晚 23:00 UTC
+# 约束：并发≤20,单次≤5 分钟，租户隔离 tenant_id=9999
+name: Performance Baseline (k6 Scheduled)
+
+on:
+  schedule:
+    - cron: '0 23 * * *'  # 每晚 23:00 UTC(凌晨 07:00 北京时间)
+  workflow_dispatch:      # 支持手动触发
+
+jobs:
+  k6-performance:
+    name: Run k6 Performance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Execute k6 performance tests
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'K6_CRON_SCRIPT'
+          set -euo pipefail
+          cd /root/zw-insight/tests/performance
+          
+          echo ""
+          echo "══════════════════════════════════════════"
+          echo "🕐 k6 性能测试 - 夜间自动执行"
+          echo "时间：$(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "环境约束：并发≤20,单次≤5 分钟，tenant_id=9999"
+          echo "══════════════════════════════════════════"
+          
+          # 1. 登录接口基准
+          echo ""
+          echo "▶ Test 1: Login API Performance"
+          docker run --rm grafana/k6 run \
+            --scenarios login \
+            --summary-export=k6-login-report.json \
+            login.js 2>&1 | tee k6-login.log || true
+          
+          # 2. 分页查询基准  
+          echo ""
+          echo "▶ Test 2: Page Query Performance"
+          docker run --rm grafana/k6 run \
+            --scenarios page-query \
+            --summary-export=k6-pagequery-report.json \
+            page-query.js 2>&1 | tee k6-pagequery.log || true
+          
+          # 3. 付款提交基准
+          echo ""
+          echo "▶ Test 3: Payment Submit Performance"
+          docker run --rm grafana/k6 run \
+            --scenarios payment-submit \
+            --summary-export=k6-paymentreport.json \
+            payment-submit.js 2>&1 | tee k6-payment.log || true
+          
+          echo ""
+          echo "══════════════════════════════════════════"
+          echo "✅ 性能测试完成！报告路径:"
+          echo "  - /root/zw-insight/tests/performance/k6-login.log"
+          echo "  - /root/zw-insight/tests/performance/k6-pagequery.log"
+          echo "  - /root/zw-insight/tests/performance/k6-payment.log"
+          echo "══════════════════════════════════════════"
+          K6_CRON_SCRIPT

@@ -281,4 +281,27 @@ class ProjectMutationTest {
         verify(memberMapper).deleteById(10L);
         verify(userProjectMapper).delete(any(LambdaQueryWrapper.class));
     }
+
+    // ==================== ProjectService.closeProject null 兜底 ====================
+
+    @Test
+    @DisplayName("结项：未收金额 null 兜底为 0 且容差边界放行")
+    void closeProject_nullToleranceBoundary() {
+        // totalIncome/cumulativeOutput 均为 null → 视为 0 → 未收=0 ≤ 100 容差
+        when(projectMapper.selectById(1L)).thenReturn(project("COMPLETED", null, null));
+        when(projectMapper.countApprovedSettlement(1L)).thenReturn(1L);
+
+        Map<String, Object> result = projectService().checkCloseConditions(1L);
+        assertThat(result.get("allPassed")).isEqualTo(true);
+
+        // 实际 closeProject 调用应发起审批
+        when(approvalService.startProcess(eq("PROJECT_CLOSE"), eq(1L), eq("project_close_approval"), anyMap()))
+                .thenReturn("wf-close-null-test");
+        projectService().closeProject(1L);
+
+        ArgumentCaptor<BizProject> captor = ArgumentCaptor.forClass(BizProject.class);
+        verify(projectMapper).updateById(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo("CLOSING");
+        assertThat(captor.getValue().getWorkflowInstanceId()).isEqualTo("wf-close-null-test");
+    }
 }
