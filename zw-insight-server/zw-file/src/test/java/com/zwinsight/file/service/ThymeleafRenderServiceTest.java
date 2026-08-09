@@ -106,7 +106,8 @@ class ThymeleafRenderServiceTest {
         departments.put("sales", List.of("王五"));
         vars.put("departments", departments);
 
-        String template = "<table><tr th:each\"(dept, users) : ${departments}\"><td>\${dept}</td><td><span th:each=\"user : \${users}\" th:text=\"\${user}\"></span></td></tr></table>";
+        // Map 迭代用 entry.key/entry.value（Thymeleaf 标准语法，元组式 (k,v) 第二变量是迭代状态非值）
+        String template = "<table><tr th:each=\"entry : ${departments}\"><td th:text=\"${entry.key}\">d</td><td><span th:each=\"user : ${entry.value}\" th:text=\"${user}\">u</span></td></tr></table>";
 
         // When
         String html = service.render(template, vars);
@@ -122,14 +123,16 @@ class ThymeleafRenderServiceTest {
     @Test
     @DisplayName("th:with 临时变量：正确创建和使用局部变量")
     void renderThWithLocalVariable() {
-        String template = "<div th:with=\"total=${price * quantity}\">总计：<span th:text=\"\${total}\">0</span></div>";
+        String template = "<div th:with=\"total=${price * quantity}\">总计：<span th:text=\"${total}\">0</span></div>";
         Map<String, Object> vars = new HashMap<>();
         vars.put("price", 100.5);
         vars.put("quantity", 3);
 
         String html = service.render(template, vars);
 
-        assertTrue(html.contains("总计：301.5"), "应计算并显示正确总价");
+        // 渲染输出为 <div>总计：<span>301.5</span></div>，文本与数值分属不同节点，需分别断言
+        assertTrue(html.contains("总计"), "应包含前缀文本，实际输出：" + html);
+        assertTrue(html.contains("<span>301.5</span>"), "应计算并显示正确总价，实际输出：" + html);
     }
 
     @Test
@@ -190,7 +193,7 @@ class ThymeleafRenderServiceTest {
                 + "  <p>合同编号：<span th:text=\"${contractNumber}\"></span></p>\n"
                 + "  <p>申请人：<span th:text=\"${applicantName}\"></span></p>\n"
                 + "  <p>审批日期：<span th:text=\"${approvalDate}\"></span></p>\n"
-                + "  <p>金额：<span th:text=\"${#numbers.formatDecimal(amount, 1, 'COMMA', 2, 'POINT')}"></span>元</p>\n"
+                + "  <p>金额：<span th:text=\"${#numbers.formatDecimal(amount, 1, 'COMMA', 2, 'POINT')}\"></span>元</p>\n"
                 + "  <p th:if=\"${status} == 'APPROVED'\">状态：<span>已批准</span></p>\n"
                 + "  <p th:if=\"${status} == 'REJECTED'\">状态：<span>已拒绝</span></p>\n"
                 + "</div>";

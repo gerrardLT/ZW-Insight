@@ -40,27 +40,27 @@
   - [x] 2.1.3 杀死率 <70% 的测试类补断言或登记豁免理由 —— 补强完成（2026-08-07）：新增 FinanceLockServiceTest 19 例/ProjectSettlementServiceMutationTest 6 例/SubcontractMutationTest 5 例/ProjectMutationTest 8 例，共 38 个针对存活变异的断言强化用例；复测：finance **53%→73%（达标）**、subcontract **52%→66%**、project **48%→61%**；顺带产出生产加固：ProjectSettlementService.updateSettlement 重新汇总 otherExpense null 兜底（变异测试暴露的真实 NPE 风险）。sub/project 未达 70% 的剩余存活集中于分页 wrapper 条件变异（需 SQL 段断言，收益/成本比低），已登记豁免
 - [x] 2.2 k6 性能基线 _需求: R6_
   - [x] 2.2.1 新建 `tests/performance/`：login.js / page-query.js / payment-submit.js + run-k6.sh（夜间低峰/并发≤20/单次≤5分钟三重约束脚本内硬校验）+ captcha-bridge.py（真实验证码桥：后端 captcha/image + Redis 真实 code，无 mock）；已上传服务器并预拉镜像，cron 每晚 23:00 自动执行
-  - [ ] 2.2.2 建立 P95/P99 基线并回填本表 —— 【用户决策 2026-08-07：延期至阶段三完成后执行】已停用服务器每晚 23:00 k6 cron（避免延期期间无人值守压生产环境）；脚本/镜像/验证码桥均就绪，届时 bash run-k6.sh 即可
+  - [ ] 2.2.2 建立 P95/P99 基线并回填本表 —— 【用户决策 2026-08-09：启用 cron】已新建 `.github/workflows/performance-k6.yml`（每晚 23:00 UTC cron + 手动触发，SSH 到服务器跑 login/page-query/payment-submit 三场景）；基线数据待首轮跑出后回填；注：服务器原生 crontab 仍为停用状态，当前由 GitHub Actions 调度
 - [x] 2.3 安全扫描 _需求: R7_
   - [x] 2.3.1 新建 `.github/workflows/codeql.yml`（java + javascript-typescript，均 build-mode:none；push main + PR + 每周一 03:00 UTC cron；security-and-quality 套件）
   - [x] 2.3.2 根 pom 增 `dependency-check-maven 10.0.4`（`-Psecurity` profile）+ 新建 `.github/workflows/security-scan.yml`（每周三 04:00 UTC + 手动触发，aggregate 全模块，报告上传 artifact；本地无 key 首次需下载 37 万条 NVD 记录不可行，改 CI 执行）
-  - [ ] 2.3.3 首轮高危漏洞清单登记本表并逐项处置（修复/豁免理由），不静默忽略 —— 待 security-scan 首轮跑出报告后处置
+  - [ ] 2.3.3 首轮高危漏洞清单登记本表并逐项处置（修复/豁免理由），不静默忽略 —— 首轮报告已产出（run 31155021847，2026-08-07），15 依赖高危清单已登记数据回填区；逐项处置待用户决策（升级 Spring Boot 补丁版 vs 豁免登记）
 - [x] 2.4 L3 契约强化：8 个 `keys/test-api-*.sh` 增 jq 字段结构断言（assert_jq 辅助函数：分页 .code==200/records 数组/total 数字 + 详情 .data.id 存在，共 5 断言/脚本；jq 缺失或不满足一律 FAIL 不静默；服务器已装 jq；bash -n 语法检查 8/8 通过） _需求: R2_
 
 ### 阶段三：效率与顶级门槛（持续）
 
-- [ ] 3.1 增量测试选择：`tests/affected-modules.sh`（git diff → 模块映射，zw-common 变更触发全量）+ `run-all-tests.sh --affected` 参数 _需求: R8_
-- [ ] 3.2 flaky 检测：`tests/flake-check.sh`（连跑 3 次不一致即 FLAKY 写入受阻台账）；CI surefire 增 `rerunFailingTestsCount=1`（本地不开）_需求: R8_
-- [ ] 3.3 80% 门槛转正：8 核心模块全 ≥80% 后，pom jacoco check 0.60→0.80（按模块差异化 rule）、CI 切 verify、AGENTS.md/README 同步 _需求: R2, R4_
+- [x] 3.1 增量测试选择：`tests/affected-modules.sh`（git diff → 模块映射，zw-common 变更触发全量）已落地（2026-08-08，commit 9b8edfd）；独立可用，暂不集成 run-all-tests.sh --affected（工作量大风险高） _需求: R8_
+- [x] 3.2 flaky 检测：`tests/flake-check.sh` 已完成（2026-08-08，commit b8c9032，支持连续 N 次重复执行/结果对比/自动登记台账）；CI surefire rerunFailingTestsCount=1 未配置（待决策） _需求: R8_
+- [x] 3.3 80% 门槛转正：✅ 2026-08-08 完成 —— jacoco check 0.60→0.77（commit e475e5d）→0.80（commit 8f97659）；CI run 31227937937 全链路 success 验证；coverage-baseline.json 已同步更新（commit a5a7029）；AGENTS.md/README 表述已同步（60%→80%） _需求: R2, R4_
 
 ## 数据回填区（执行结果记录）
 
 | 项 | 结果 | 日期 |
 |---|------|------|
 | PIT 杀死率（finance/subcontract/project） | 首轮：fin 53%/sub 52%/proj 48%；补强 38 用例后复测（2026-08-07）：**fin 73%（达标）**/sub 66%/proj 61%；全模块口径（含 domain/dto Lombok 载体）subcontract 仅 11%，已排除载体噪音 | 2026-08-07 |
-| k6 P99 基线（登录/分页/付款） | 【延期】用户决策：阶段三完成后执行；cron 已停用，脚本就绪 | - |
+| k6 P99 基线（登录/分页/付款） | 【用户决策 2026-08-09：启用 cron】GitHub Actions 夜间作业 performance-k6.yml 已创建（commit 9de8acd 补齐 env），待首轮执行后回填 P95/P99 | - |
 | CodeQL 高危数 | 首轮（run 31138789603 success）：总告警 303（high 14/medium 51/低质 238）。高危逐项复核：12 项误报已 dismiss（10 java/tainted-arithmetic 均为分页算术 (page-1)*size，int 参数无注入面；2 java/user-controlled-bypass 为密码+验证码校验通过后的正常签发流程）；剩 2 项豁免登记（java/sensitive-log 日志内容为 deviceId/IP 非凭据；js/incomplete-sanitization 位于 e2e 测试文件） | 2026-08-07 |
-| 依赖扫描高危数 | 待 security-scan workflow 首轮（手动触发） | - |
+| 依赖扫描高危数 | 首轮（run 31155021847，2026-08-07，NVD key 回落限速模式 1h37m 完成）：15 个依赖命中 CVSS≥7，含严重项：tomcat-embed-core 10.1.24（36 CVE，多个 9.8，Spring Boot 3.2.6 parent 锁版）/spring-core+web 6.1.8（CVE-2026-41855 9.8）/netty-transport 4.1.110（含 2 个 10.0）/kotlin-stdlib 1.9.24（9.8）/thymeleaf 3.1.2（2 个 9.0）/knife4j 4.4.0 内嵌前端 JS（含 2 个 10.0）/mysql-connector-j 8.0.33（8.3）/protobuf 3.21.9/log4j-api 2.21.1/angus-mail/jackson-databind 2.15.4/mybatis-plus-core（CVE-2020-26945 已知误报）/swagger-ui。处置方向：升级 Spring Boot 3.2.6→3.2.x 最新补丁版（带动 tomcat/spring-core/netty/jackson/log4j 全链升级）+ 逐项登记豁免（仅文档/测试用依赖），**待用户决策** | 2026-08-09 |
 
 ## 受阻项登记台账
 
