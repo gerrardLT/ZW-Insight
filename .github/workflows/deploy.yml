@@ -407,8 +407,11 @@ jobs:
   performance-test:
     name: Performance Baseline (k6)
     runs-on: ubuntu-latest
-    needs: deploy
-    if: success()  # 仅部署成功后执行
+    # 必须串行在集成测试之后：k6 login 场景高频登录会使同账号活跃设备数超过
+    # security.max-devices(5)，淘汰最早设备 token（拉黑），导致并发运行的 L3/L4
+    # 脚本持有的 admin token 失效（run 31322829488 实证：L3 4/8 因 401 失败）
+    needs: [deploy, integration-test]
+    if: success()  # 仅部署与集成测试均成功后执行
     environment: production
     steps:
       - uses: actions/checkout@v4

@@ -26,7 +26,9 @@ set -uo pipefail
 
 BASE="${ZWI_BASE:-http://127.0.0.1:18080}"      # k6 容器用 --network host，与宿主共享回环
 BASE_HOST="${ZWI_BASE_HOST:-http://127.0.0.1:18080}"  # 本脚本(宿主)调后端用回环
-USERNAME="${ZWI_USER:-admin}"
+# 默认用测试租户 9999 专用账号：避免高频登录淘汰 admin 等业务账号的活跃设备
+# token（security.max-devices=5，超限拉黑最早设备），与 L3/L4 账号隔离
+USERNAME="${ZWI_USER:-t9999admin}"
 PASSWORD="${ZWI_PASS:-123456}"
 REDIS_CT="${ZWI_REDIS_CT:-zwi-redis}"
 BRIDGE_PORT=19191
@@ -88,7 +90,8 @@ run_k6() {
   local rc=0
   docker run --rm --network host \
     -v "$WORKDIR:/scripts" \
-    -e K6_BASE="$BASE" -e K6_BRIDGE="http://127.0.0.1:$BRIDGE_PORT" "$@" \
+    -e K6_BASE="$BASE" -e K6_BRIDGE="http://127.0.0.1:$BRIDGE_PORT" \
+    -e ZWI_USER="$USERNAME" -e ZWI_PASS="$PASSWORD" "$@" \
     "$K6_IMAGE" run "/scripts/$(basename "$script")" 2>&1 | tail -60 || rc=$?
   if [ "$rc" -ne 0 ]; then
     log "ERROR: $script 执行失败或阈值超限 (exit=$rc)"

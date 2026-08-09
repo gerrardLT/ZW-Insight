@@ -12,7 +12,9 @@ import { check } from 'k6';
 
 const BASE = __ENV.K6_BASE || 'http://127.0.0.1:18080';
 const BRIDGE = __ENV.K6_BRIDGE || 'http://127.0.0.1:19191';
-const USERNAME = __ENV.ZWI_USER || 'admin';
+// 默认测试租户 9999 专用账号：高频登录会触发 security.max-devices 设备淘汰，
+// 用专用账号避免拉黑 admin 等业务账号的活跃 token（run-k6.sh 会透传 ZWI_USER/ZWI_PASS）
+const USERNAME = __ENV.ZWI_USER || 't9999admin';
 const PASSWORD = __ENV.ZWI_PASS || '123456';
 
 export const options = {
