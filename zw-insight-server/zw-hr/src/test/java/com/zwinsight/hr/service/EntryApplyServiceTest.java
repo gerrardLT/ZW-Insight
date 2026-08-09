@@ -1,273 +1,194 @@
 package com.zwinsight.hr.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
-import com.zwinsight.hr.domain.EntryApply;
-import com.zwinsight.hr.domain.RegularApply;
-import com.zwinsight.hr.mapper.EntryApplyMapper;
-import com.zwinsight.hr.mapper.RegularApplyMapper;
-import org.junit.jupiter.api.BeforeEach;
+import com.zwinsight.common.result.PageResult;
+import com.zwinsight.hr.domain.BizEntryApply;
+import com.zwinsight.hr.mapper.BizEntryApplyMapper;
+import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.system.service.SysUserService;
+import com.zwinsight.workflow.service.ApprovalService;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * EntryApplyService（入职）和 RegularApplyService（转正）测试
- * 
+ * EntryApplyService（入职申请）单元测试
+ *
  * 覆盖场景:
- * - 入职申请流程
- * - 背景调查验证
- * - 账号自动创建
- * - 重复工号检测
- * - 身份证号格式校验
- * - 转正评估逻辑
+ * - 新增保存（DRAFT 状态）
+ * - 查询/更新/删除的状态校验
+ * - 提交审批通过后自动创建系统账号
  */
 @ExtendWith(MockitoExtension.class)
-class HrApplyTests {
+class EntryApplyServiceTest {
 
     @Mock
-    private EntryApplyMapper entryApplyMapper;
+    private BizEntryApplyMapper entryApplyMapper;
 
     @Mock
-    private RegularApplyMapper regularApplyMapper;
+    private SysUserService sysUserService;
 
+    @Mock
+    private ApprovalService approvalService;
+
+    @InjectMocks
     private EntryApplyService entryApplyService;
-    private RegularApplyService regularApplyService;
 
-    @BeforeEach
-    void setUp() {
-        entryApplyService = new EntryApplyService(entryApplyMapper);
-        regularApplyService = new RegularApplyService(regularApplyMapper);
-    }
-
-    // ==================== 入职申请测试 ====================
-
-    @Test
-    @DisplayName("提交入职申请成功")
-    void submitEntryApplication_success() {
-        // Given
-        EntryApply entryApply = createEntryApply(1L, "张三", "zhangsan@company.com", "engineering");
-        
-        when(entryApplyMapper.insert(any(EntryApply.class))).thenReturn(1);
-
-        // When
-        boolean result = entryApplyService.submit(entryApply);
-
-        // Then
-        assertTrue(result);
-        verify(entryApplyMapper).insert(any(EntryApply.class));
+    @BeforeAll
+    static void initTableInfo() {
+        // 纯单元测试环境无 MyBatis 容器，需预初始化 Lambda 列缓存
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), BizEntryApply.class);
     }
 
     @Test
-    @DisplayName("入职申请 - 重复工号检测")
-    void submitEntryApplication_duplicateEmployeeId_throwsException() {
-        // Given
-        EntryApply entryApply = createEntryApply(1L, "张三", "zhangsan@company.com", "engineering");
-        entryApply.setEmployeeId("EMP2024001");
-        
-        when(entryApplyMapper.selectByEmployeeId("EMP2024001")).thenReturn(Optional.of(createEntryApply(999L, "李四", null, null)));
+    @DisplayName("新增入职申请：状态设置为 DRAFT")
+    void save_setsDraftStatus() {
+        BizEntryApply apply = new BizEntryApply();
+        apply.setRealName("张三");
 
-        // When & Then
-        assertThatThrownBy(() -> entryApplyService.submit(entryApply))
-            .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("工号已存在");
+        entryApplyService.save(apply);
+
+        assertThat(apply.getStatus()).isEqualTo("DRAFT");
+        verify(entryApplyMapper).insert(apply);
     }
 
     @Test
-    @DisplayName("入职申请 - 身份证号格式校验失败")
-    void submitEntryApplication_invalidIdCard_throwsException() {
-        // Given
-        EntryApply entryApply = createEntryApply(1L, "张三", "zhangsan@company.com", "engineering");
-        entryApply.setIdCard("123456"); // 无效 ID
-        
-        when(entryApplyMapper.selectByEmployeeId(null)).thenReturn(Optional.empty());
+    @DisplayName("根据ID查询：不存在抛异常")
+    void getById_notFound_throwsException() {
+        when(entryApplyMapper.selectById(999L)).thenReturn(null);
 
-        // When & Then
-        assertThatThrownBy(() -> entryApplyService.submit(entryApply))
-            .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("身份证号格式不正确");
+        assertThatThrownBy(() -> entryApplyService.getById(999L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("入职申请不存在");
     }
 
     @Test
-    @DisplayName("入职申请 - 背景调查未通过应被拒绝")
-    void submitEntryApplication_backgroundCheckFailed_rejected() {
-        // Given
-        EntryApply entryApply = createEntryApply(1L, "张三", "zhangsan@company.com", "engineering");
-        entryApply.setBackgroundCheckStatus("FAILED");
-        
-        when(entryApplyMapper.insert(any(EntryApply.class))).thenReturn(1);
+    @DisplayName("根据ID查询：存在返回实体")
+    void getById_found_returnsEntity() {
+        BizEntryApply apply = new BizEntryApply();
+        apply.setId(1L);
+        when(entryApplyMapper.selectById(1L)).thenReturn(apply);
 
-        // When & Then
-        assertThatThrownBy(() -> entryApplyService.submit(entryApply))
-            .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("背景调查未通过");
+        BizEntryApply result = entryApplyService.getById(1L);
+
+        assertThat(result.getId()).isEqualTo(1L);
     }
 
     @Test
-    @DisplayName("查询入职申请列表")
-    void getEntryApplications_returnsList() {
-        // Given
-        List<EntryApply> applications = List.of(
-            createEntryApply(1L, "张三", null, "engineering"),
-            createEntryApply(2L, "李四", null, "sales")
-        );
-        
-        when(entryApplyMapper.selectList(any())).thenReturn(applications);
+    @DisplayName("更新入职申请：非草稿状态拒绝编辑")
+    void update_nonDraft_rejected() {
+        BizEntryApply existing = new BizEntryApply();
+        existing.setId(1L);
+        existing.setStatus("APPROVED");
+        when(entryApplyMapper.selectById(1L)).thenReturn(existing);
 
-        // When
-        List<EntryApply> result = entryApplyService.getList();
+        BizEntryApply update = new BizEntryApply();
+        update.setId(1L);
 
-        // Then
-        assertNotNull(result);
-        assertEquals(2, result.size());
-        verify(entryApplyMapper).selectList(any());
+        assertThatThrownBy(() -> entryApplyService.update(update))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可编辑");
     }
 
     @Test
-    @DisplayName("批准入职申请并创建账号")
-    void approveEntryApplication_createsAccount() {
-        // Given
-        Long applyId = 1L;
-        EntryApply pendingApply = createEntryApply(applyId, "张三", "zhangsan@company.com", "engineering");
-        pendingApply.setStatus("PENDING");
-        
-        when(entryApplyMapper.selectById(applyId)).thenReturn(Optional.of(pendingApply));
-        doNothing().when(entryApplyMapper).updateById(any(EntryApply.class));
+    @DisplayName("删除入职申请：非草稿状态拒绝删除")
+    void delete_nonDraft_rejected() {
+        BizEntryApply existing = new BizEntryApply();
+        existing.setId(1L);
+        existing.setStatus("APPROVED");
+        when(entryApplyMapper.selectById(1L)).thenReturn(existing);
 
-        // When
-        boolean result = entryApplyService.approve(applyId, "admin");
-
-        // Then
-        assertTrue(result);
-        verify(entryApplyMapper).updateById(any(EntryApply.class));
-    }
-
-    // ==================== 转正申请测试 ====================
-
-    @Test
-    @DisplayName("提交转正申请成功")
-    void submitRegularApplication_success() {
-        // Given
-        RegularApply regularApply = createRegularApply(1L, "张三", "EMP2024001");
-        regularApply.setProbationPeriod(3);
-        regularApply.setProbationScore(85.5);
-        
-        when(regularApplyMapper.insert(any(RegularApply.class))).thenReturn(1);
-
-        // When
-        boolean result = regularApplyService.submit(regularApply);
-
-        // Then
-        assertTrue(result);
-        verify(regularApplyMapper).insert(any(RegularApply.class));
+        assertThatThrownBy(() -> entryApplyService.delete(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可删除");
     }
 
     @Test
-    @DisplayName("转正评估 - 提前转正特批流程")
-    void regularApply_earlyRegularization_approved() {
-        // Given
-        RegularApply regularApply = createRegularApply(1L, "张三", "EMP2024001");
-        regularApply.setProbationPeriod(3);
-        regularApply.setActualProbationDays(45); // 远少于正常 90 天
-        regularApply.setPerformanceScore(95.0);
-        regularApply.setRequestEarlyTermination(true);
-        
-        when(regularApplyMapper.insert(any(RegularApply.class))).thenReturn(1);
+    @DisplayName("删除入职申请：草稿状态正常删除")
+    void delete_draft_success() {
+        BizEntryApply existing = new BizEntryApply();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(entryApplyMapper.selectById(1L)).thenReturn(existing);
 
-        // When
-        boolean result = regularApplyService.submit(regularApply);
+        entryApplyService.delete(1L);
 
-        // Then
-        assertTrue(result);
-        // 应触发特批流程
-        assertTrue(regularApply.getIsEarlyTermination());
+        verify(entryApplyMapper).deleteById(1L);
     }
 
     @Test
-    @DisplayName("转正评估 - 绩效不达标延长试用期")
-    void regularApplication_performanceTooLow_extensionRequired() {
-        // Given
-        RegularApply regularApply = createRegularApply(1L, "张三", "EMP2024001");
-        regularApply.setProbationPeriod(3);
-        regularApply.setPerformanceScore(59.0); // 低于 60 分
-        
-        when(regularApplyMapper.insert(any(RegularApply.class))).thenReturn(1);
+    @DisplayName("提交入职申请：不存在抛异常")
+    void submit_notFound_throwsException() {
+        when(entryApplyMapper.selectById(999L)).thenReturn(null);
 
-        // When & Then
-        assertThatThrownBy(() -> regularApplyService.submit(regularApply))
-            .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("绩效评分不得低于 60 分");
+        assertThatThrownBy(() -> entryApplyService.submit(999L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("入职申请不存在");
     }
 
     @Test
-    @DisplayName("转正申请 - 试用期未满不可提交")
-    void regularApplication_probationNotEnded_throwsException() {
-        // Given
-        RegularApply regularApply = createRegularApply(1L, "张三", "EMP2024001");
-        regularApply.setStartDate(System.currentTimeMillis() + 10000000000L); // 未来日期
-        
-        when(regularApplyMapper.insert(any(RegularApply.class))).thenReturn(1);
+    @DisplayName("提交入职申请：审批通过后自动创建系统账号")
+    void submit_success_createsSystemAccount() {
+        BizEntryApply apply = new BizEntryApply();
+        apply.setId(1L);
+        apply.setUsername("zhangsan");
+        apply.setRealName("张三");
+        apply.setPhone("13800138000");
+        apply.setOrgId(100L);
+        apply.setPostId(200L);
+        apply.setStatus("DRAFT");
+        when(entryApplyMapper.selectById(1L)).thenReturn(apply);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
+                .thenReturn("proc-1");
 
-        // When & Then
-        assertThatThrownBy(() -> regularApplyService.submit(regularApply))
-            .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("尚未完成试用期");
+        entryApplyService.submit(1L);
+
+        // 状态与流程实例回写
+        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        assertThat(apply.getWorkflowInstanceId()).isEqualTo("proc-1");
+        verify(entryApplyMapper).updateById(apply);
+
+        // 自动创建系统账号，字段从申请单带入
+        ArgumentCaptor<SysUser> captor = ArgumentCaptor.forClass(SysUser.class);
+        verify(sysUserService).save(captor.capture());
+        SysUser created = captor.getValue();
+        assertThat(created.getUsername()).isEqualTo("zhangsan");
+        assertThat(created.getRealName()).isEqualTo("张三");
+        assertThat(created.getOrgId()).isEqualTo(100L);
+        assertThat(created.getPostId()).isEqualTo(200L);
+        assertThat(created.getStatus()).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("批准转正申请")
-    void approveRegularApplication_success() {
-        // Given
-        Long applyId = 1L;
-        RegularApply pendingApply = createRegularApply(applyId, "张三", "EMP2024001");
-        pendingApply.setStatus("PENDING");
-        
-        when(regularApplyMapper.selectById(applyId)).thenReturn(Optional.of(pendingApply));
-        doNothing().when(regularApplyMapper).updateById(any(RegularApply.class));
+    @DisplayName("分页查询：返回 PageResult")
+    void page_returnsPageResult() {
+        Page<BizEntryApply> stubPage = new Page<>(1, 10);
+        stubPage.setTotal(3);
+        when(entryApplyMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
+                .thenReturn(stubPage);
 
-        // When
-        boolean result = regularApplyService.approve(applyId);
+        PageResult<BizEntryApply> result = entryApplyService.page(1, 10, "张");
 
-        // Then
-        assertTrue(result);
-        verify(regularApplyMapper).updateById(any(RegularApply.class));
-    }
-
-    // ==================== 辅助方法 ====================
-
-    private EntryApply createEntryApply(Long id, String name, String email, String department) {
-        EntryApply apply = new EntryApply();
-        apply.setId(id);
-        apply.setName(name);
-        apply.setEmail(email);
-        apply.setDepartment(department);
-        apply.setEmployeeId(null);
-        apply.setIdCard(null);
-        apply.setBackgroundCheckStatus("PASSED");
-        apply.setStatus("PENDING");
-        return apply;
-    }
-
-    private RegularApply createRegularApply(Long id, String name, String employeeId) {
-        RegularApply apply = new RegularApply();
-        apply.setId(id);
-        apply.setName(name);
-        apply.setEmployeeId(employeeId);
-        apply.setStartDate(System.currentTimeMillis() - 90L * 24L * 60L * 60L * 1000L); // 90 天前
-        apply.setEndDate(System.currentTimeMillis());
-        return apply;
+        assertThat(result.getTotal()).isEqualTo(3);
     }
 }

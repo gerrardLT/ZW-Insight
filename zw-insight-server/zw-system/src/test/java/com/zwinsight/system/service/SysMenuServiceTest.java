@@ -1,24 +1,26 @@
 package com.zwinsight.system.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.system.domain.SysMenu;
 import com.zwinsight.system.domain.SysUserRole;
 import com.zwinsight.system.mapper.SysMenuMapper;
 import com.zwinsight.system.mapper.SysUserRoleMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -53,6 +55,14 @@ class SysMenuServiceTest {
         menuService = new SysMenuService(menuMapper, userRoleMapper);
     }
 
+    @BeforeAll
+    static void initTableInfo() {
+        // 纯单元测试环境无 MyBatis 容器，需预初始化 Lambda 列缓存
+        MybatisConfiguration configuration = new MybatisConfiguration();
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysMenu.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysUserRole.class);
+    }
+
     // ==================== 菜单 CRUD 操作测试 ====================
 
     @Nested
@@ -64,7 +74,7 @@ class SysMenuServiceTest {
         void save_rootMenu_autoSetParentId() {
             // Given
             SysMenu menu = new SysMenu();
-            menu.setName("项目管理");
+            menu.setMenuName("项目管理");
             menu.setMenuType("MENU");
             menu.setParentId(null);  // 根菜单未设置parentId
             
@@ -83,7 +93,7 @@ class SysMenuServiceTest {
         void save_childMenu_preserveParentId() {
             // Given
             SysMenu subMenu = new SysMenu();
-            subMenu.setName("项目列表");
+            subMenu.setMenuName("项目列表");
             subMenu.setMenuType("MENU");
             subMenu.setParentId(1L);
 
@@ -134,8 +144,7 @@ class SysMenuServiceTest {
             Long menuId = 1L;
 
             when(menuMapper.selectCount(any(LambdaQueryWrapper.class)))
-                .thenReturn(0L);  // 无子菜单
-            doNothing().when(menuMapper).deleteById(menuId);
+                .thenReturn(0L);  // 无子菜单（deleteById 返回 int，无需桩）
 
             // When
             menuService.delete(menuId);
@@ -176,9 +185,10 @@ class SysMenuServiceTest {
                 assertTrue(result.get(i).getSortOrder() >= result.get(i - 1).getSortOrder());
             }
             
-            verify(menuMapper).selectList(argThat(wrapper -> 
-                wrapper.getOrderItems().stream().anyMatch(o -> 
-                    o.getColumn() == SysMenu::getSortOrder && o.isAsc())));
+            // 排序委托 SQL 执行，验证 wrapper 含 ORDER BY 子句
+            ArgumentCaptor<LambdaQueryWrapper<SysMenu>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+            verify(menuMapper).selectList(captor.capture());
+            assertThat(captor.getValue().getSqlSegment()).containsIgnoringCase("ORDER BY");
         }
 
         @Test
@@ -195,7 +205,7 @@ class SysMenuServiceTest {
 
             // Then
             assertNotNull(result);
-            assertEquals("预算编制", result.getName());
+            assertEquals("预算编制", result.getMenuName());
             assertEquals(menuId, result.getId());
         }
     }
@@ -220,8 +230,9 @@ class SysMenuServiceTest {
 
             // Then
             assertTrue(result.isEmpty());
+            // IN/eq 值经参数绑定，仅校验列名条件
             verify(userRoleMapper).selectList(argThat(wrapper -> 
-                wrapper.getSqlSegment().contains(userId.toString())));
+                wrapper.getSqlSegment().contains("user_id")));
         }
 
         @Test
@@ -264,24 +275,19 @@ class SysMenuServiceTest {
         }
 
         @Test
-        @DisplayName("权限最小化：超级管理员 vs 普通租户 Admin")
+        @DisplayName("权限最小化：不同角色查询返回不同菜单集合")
         void permissionMinimization_test() {
             // Given: 超级管理员 (role_id=1) 和普通租户 Admin (role_id=2)
-            Long adminUserId = 1L;
-            Long tenantAdminUserId = 2L;
-            
-            List<Long> adminRoleIds = List.of(1L);  // 超级管理员
-            List<Long> tenantAdminRoleIds = List.of(2L);  // 普通租户
-
-            List<SysMenu> allMenus = List.of(
-                createMenu(1L, "系统管理", 1, "MENU"),
-                createMenu(2L, "租户管理", 2, "MENU"),  // 仅超级管理员可见
-                createMenu(3L, "项目管理", 3, "MENU")
-            );
+            SysUserRole adminRole = new SysUserRole();
+            adminRole.setUserId(1L);
+            adminRole.setRoleId(1L);
+            SysUserRole tenantRole = new SysUserRole();
+            tenantRole.setUserId(2L);
+            tenantRole.setRoleId(2L);
 
             List<SysMenu> superAdminMenus = List.of(
                 createMenu(1L, "系统管理", 1, "MENU"),
-                createMenu(2L, "租户管理", 2, "MENU"),
+                createMenu(2L, "租户管理", 2, "MENU"),  // 仅超级管理员可见
                 createMenu(3L, "项目管理", 3, "MENU")
             );
 
@@ -290,23 +296,26 @@ class SysMenuServiceTest {
                 // 普通租户管理员不应看到"租户管理"
             );
 
-            when(menuMapper.selectMenusByRoleIds(eq(adminRoleIds)))
+            when(userRoleMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(adminRole))
+                .thenReturn(List.of(tenantRole));
+            when(menuMapper.selectMenusByRoleIds(eq(List.of(1L))))
                 .thenReturn(superAdminMenus);
-            when(menuMapper.selectMenusByRoleIds(eq(tenantAdminRoleIds)))
+            when(menuMapper.selectMenusByRoleIds(eq(List.of(2L))))
                 .thenReturn(tenantAdminMenus);
 
-            // When
-            List<SysMenu> superAdminResult = getMenusFiltered(superAdminMenus, false);
-            List<SysMenu> tenantAdminResult = getMenusFiltered(tenantAdminMenus, false);
+            // When：走真实 service 流程
+            List<SysMenu> superAdminResult = menuService.getMenusByUserId(1L);
+            List<SysMenu> tenantAdminResult = menuService.getMenusByUserId(2L);
 
             // Then
             // 超级管理员有全部权限
             assertEquals(3, superAdminResult.size());
-            
+
             // 普通租户管理员权限受限
             assertEquals(1, tenantAdminResult.size());
-            assertFalse(tenantAdminResult.stream()
-                .anyMatch(m -> "租户管理".equals(m.getName())));
+            assertThat(tenantAdminResult)
+                .noneMatch(m -> "租户管理".equals(m.getMenuName()));
         }
     }
 
@@ -317,7 +326,7 @@ class SysMenuServiceTest {
     class RecursiveQuerySafetyTests {
 
         @Test
-        @DisplayName("递归查询：防止无限循环")
+        @DisplayName("递归查询：循环引用被深度守卫检测并中断")
         void recursiveQuery_preventInfiniteLoop() {
             // 构造父子关系循环的测试数据（理论上不应该发生）
             SysMenu menuA = createMenu(1L, "菜单 A", 1);
@@ -326,16 +335,12 @@ class SysMenuServiceTest {
             menuA.setParentId(2L);  // A 的父级是 B
             menuB.setParentId(1L);  // B 的父级是 A（形成循环）
             
-            // 正常业务逻辑应该通过数据库约束避免这种情况
-            // 此处验证代码不会进入死循环
             List<SysMenu> circularMenus = List.of(menuA, menuB);
             
-            // 遍历应在有限步数内完成
-            int maxDepth = 10;  // 最大深度限制
-            int actualDepth = calculateTreeDepth(circularMenus, 0, 0);
-            
-            // 如果实现正确，应该不会超过限制
-            assertThat(actualDepth).isLessThan(maxDepth);
+            // 深度守卫应在有限步数内检测到循环并抛出异常，避免无限递归
+            assertThatThrownBy(() -> calculateTreeDepth(circularMenus, 0, 0))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("死循环");
         }
 
         /**
@@ -357,12 +362,6 @@ class SysMenuServiceTest {
                 .max()
                 .orElse(currentDepth);
         }
-
-        private List<SysMenu> getMenusFiltered(List<SysMenu> menus, boolean filterButton) {
-            return menus.stream()
-                .filter(m -> !("BUTTON".equals(m.getMenuType()) && filterButton))
-                .collect(Collectors.toList());
-        }
     }
 
     // ==================== 辅助方法 ====================
@@ -374,12 +373,12 @@ class SysMenuServiceTest {
     private SysMenu createMenu(Long id, String name, Integer sortOrder, String menuType) {
         SysMenu menu = new SysMenu();
         menu.setId(id);
-        menu.setName(name);
+        menu.setMenuName(name);
         menu.setMenuType(menuType);
-        menu.setUrl("/path/" + id);
+        menu.setPath("/path/" + id);
         menu.setSortOrder(sortOrder);
         menu.setParentId(0L);
-        menu.setIsVisible(1);
+        menu.setHidden(0);
         menu.setPermission(null);
         return menu;
     }

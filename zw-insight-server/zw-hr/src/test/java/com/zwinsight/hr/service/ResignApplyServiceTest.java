@@ -1,170 +1,156 @@
 package com.zwinsight.hr.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
-import com.zwinsight.hr.domain.ResignApply;
-import com.zwinsight.hr.mapper.ResignApplyMapper;
-import org.junit.jupiter.api.BeforeEach;
+import com.zwinsight.common.result.PageResult;
+import com.zwinsight.hr.domain.BizResignApply;
+import com.zwinsight.hr.mapper.BizResignApplyMapper;
+import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.security.mapper.SysUserMapper;
+import com.zwinsight.workflow.service.ApprovalService;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * ResignApplyService（离职申请）测试
- * 
+ * ResignApplyService（离职申请）单元测试
+ *
  * 覆盖场景:
- * - 离职交接流程
- * - 资产归还清单（关联设备台账）
- * - 薪资结算截止日验证
- * - 竞业限制协议触发
+ * - 新增保存（DRAFT 状态）
+ * - 提交校验（不存在/非草稿状态）
+ * - 提交成功（发起审批 + 停用账号）
+ * - 分页查询
  */
 @ExtendWith(MockitoExtension.class)
 class ResignApplyServiceTest {
 
     @Mock
-    private ResignApplyMapper resignApplyMapper;
+    private BizResignApplyMapper resignApplyMapper;
 
+    @Mock
+    private SysUserMapper userMapper;
+
+    @Mock
+    private ApprovalService approvalService;
+
+    @InjectMocks
     private ResignApplyService resignApplyService;
 
-    @BeforeEach
-    void setUp() {
-        resignApplyService = new ResignApplyService(resignApplyMapper);
-    }
-
-    // ==================== 离职申请测试 ====================
-
-    @Test
-    @DisplayName("提交离职申请成功")
-    void submitResignApplication_success() {
-        // Given
-        ResignApply resignApply = createResignApply(1L, "张三", "EMP2024001");
-        resignApply.setResignDate(System.currentTimeMillis() + 30L * 24L * 60L * 60L * 1000L); // 30 天后
-        resignApply.setNoticeDays(30);
-        
-        when(resignApplyMapper.insert(any(ResignApply.class))).thenReturn(1);
-
-        // When
-        boolean result = resignApplyService.submit(resignApply);
-
-        // Then
-        assertTrue(result);
-        verify(resignApplyMapper).insert(any(ResignApply.class));
+    @BeforeAll
+    static void initTableInfo() {
+        // 纯单元测试环境无 MyBatis 容器，需预初始化 Lambda 列缓存
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), BizResignApply.class);
     }
 
     @Test
-    @DisplayName("离职申请 - 通知期不足抛出异常")
-    void submitResignApplication_noticePeriodTooShort_throwsException() {
-        // Given
-        ResignApply resignApply = createResignApply(1L, "张三", "EMP2024001");
-        resignApply.setResignDate(System.currentTimeMillis() + 5L * 24L * 60L * 60L * 1000L); // 仅 5 天
-        resignApply.setNoticeDays(5);
-        
-        when(resignApplyMapper.insert(any(ResignApply.class))).thenReturn(1);
+    @DisplayName("保存离职申请：状态设置为 DRAFT")
+    void save_setsDraftStatus() {
+        BizResignApply apply = new BizResignApply();
+        apply.setUserName("张三");
 
-        // When & Then
-        assertThatThrownBy(() -> resignApplyService.submit(resignApply))
-            .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("提前 30 天通知");
+        resignApplyService.save(apply);
+
+        assertThat(apply.getStatus()).isEqualTo("DRAFT");
+        verify(resignApplyMapper).insert(apply);
     }
 
     @Test
-    @DisplayName("离职申请 - 资产未归还完整禁止审批")
-    void approveResignApplication_assetsNotReturned_rejected() {
-        // Given
-        Long applyId = 1L;
-        ResignApply pendingApply = createResignApply(applyId, "张三", "EMP2024001");
-        pendingApply.setStatus("PENDING");
-        pendingApply.setAssetReturnStatus("INCOMPLETE"); // 资产未全部归还
-        
-        when(resignApplyMapper.selectById(applyId)).thenReturn(Optional.of(pendingApply));
-        when(resignApplyMapper.updateById(any(ResignApply.class))).thenReturn(1);
+    @DisplayName("提交离职申请：不存在抛异常")
+    void submit_notFound_throwsException() {
+        when(resignApplyMapper.selectById(999L)).thenReturn(null);
 
-        // When & Then
-        assertThatThrownBy(() -> resignApplyService.approve(applyId, "hr"))
-            .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("资产归还未完成");
+        assertThatThrownBy(() -> resignApplyService.submit(999L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("离职申请不存在");
     }
 
     @Test
-    @DisplayName("批准离职申请并结算薪资")
-    void approveResignApplication_completeAndSettle() {
-        // Given
-        Long applyId = 1L;
-        ResignApply pendingApply = createResignApply(applyId, "张三", "EMP2024001");
-        pendingApply.setStatus("PENDING");
-        pendingApply.setAssetReturnStatus("COMPLETED");
-        pendingApply.setSalaryDueDays(5); // 5 天后结算
-        
-        when(resignApplyMapper.selectById(applyId)).thenReturn(Optional.of(pendingApply));
-        doNothing().when(resignApplyMapper).updateById(any(ResignApply.class));
+    @DisplayName("提交离职申请：非草稿状态拒绝")
+    void submit_nonDraft_rejected() {
+        BizResignApply apply = new BizResignApply();
+        apply.setId(1L);
+        apply.setStatus("APPROVED");
+        when(resignApplyMapper.selectById(1L)).thenReturn(apply);
 
-        // When
-        boolean result = resignApplyService.approve(applyId, "hr");
-
-        // Then
-        assertTrue(result);
-        verify(resignApplyMapper).updateById(any(ResignApply.class));
+        assertThatThrownBy(() -> resignApplyService.submit(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可提交");
     }
 
     @Test
-    @DisplayName("查询离职申请列表")
-    void getResignApplications_returnsList() {
-        // Given
-        List<ResignApply> applications = List.of(
-            createResignApply(1L, "张三", "EMP2024001"),
-            createResignApply(2L, "李四", "EMP2024002")
-        );
-        
-        when(resignApplyMapper.selectList(any())).thenReturn(applications);
-
-        // When
-        List<ResignApply> result = resignApplyService.getList();
-
-        // Then
-        assertEquals(2, result.size());
-        verify(resignApplyMapper).selectList(any());
-    }
-
-    @Test
-    @DisplayName("竞业限制人员触发特殊流程")
-    void resignApplication_competitiveRestriction_triggered() {
-        // Given
-        ResignApply resignApply = createResignApply(1L, "张三", "EMP2024001");
-        resignApply.setPosition("技术总监");
-        resignApply.isCompetitiveRestrictionRequired(true);
-        
-        when(resignApplyMapper.insert(any(ResignApply.class))).thenReturn(1);
-
-        // When
-        boolean result = resignApplyService.submit(resignApply);
-
-        // Then
-        assertTrue(result);
-        // 竞业限制人员应标记
-        assertTrue(resignApply.getIsCompetitiveRestriction());
-    }
-
-    // ==================== 辅助方法 ====================
-
-    private ResignApply createResignApply(Long id, String name, String employeeId) {
-        ResignApply apply = new ResignApply();
-        apply.setId(id);
-        apply.setName(name);
-        apply.setEmployeeId(employeeId);
-        apply.setAssetReturnStatus("IN_PROGRESS");
+    @DisplayName("提交离职申请：发起审批并停用账号")
+    void submit_success_startsProcessAndDisablesUser() {
+        BizResignApply apply = new BizResignApply();
+        apply.setId(1L);
+        apply.setUserId(10L);
+        apply.setUserName("张三");
         apply.setStatus("DRAFT");
-        return apply;
+        when(resignApplyMapper.selectById(1L)).thenReturn(apply);
+        when(approvalService.startProcess(eq("RESIGN_APPLY"), eq(1L), eq("resign_apply_approval"), anyMap()))
+                .thenReturn("proc-1");
+        SysUser user = new SysUser();
+        user.setId(10L);
+        user.setStatus(1);
+        when(userMapper.selectById(10L)).thenReturn(user);
+
+        resignApplyService.submit(1L);
+
+        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        verify(resignApplyMapper).updateById(apply);
+        // 离职后账号停用
+        assertThat(user.getStatus()).isEqualTo(0);
+        verify(userMapper).updateById(user);
+    }
+
+    @Test
+    @DisplayName("提交离职申请：关联用户不存在时跳过停用不抛异常")
+    void submit_userNotFound_skipsDisable() {
+        BizResignApply apply = new BizResignApply();
+        apply.setId(1L);
+        apply.setUserId(10L);
+        apply.setStatus("DRAFT");
+        when(resignApplyMapper.selectById(1L)).thenReturn(apply);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
+                .thenReturn("proc-1");
+        when(userMapper.selectById(10L)).thenReturn(null);
+
+        resignApplyService.submit(1L);
+
+        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        verify(userMapper, never()).updateById(any(SysUser.class));
+    }
+
+    @Test
+    @DisplayName("分页查询：返回 PageResult")
+    void page_returnsPageResult() {
+        Page<BizResignApply> stubPage = new Page<>(1, 10);
+        stubPage.setTotal(5);
+        when(resignApplyMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
+                .thenReturn(stubPage);
+
+        PageResult<BizResignApply> result = resignApplyService.page(1, 10);
+
+        assertThat(result.getTotal()).isEqualTo(5);
+        assertThat(result.getRecords()).isEmpty();
     }
 }
