@@ -422,42 +422,14 @@ jobs:
   
       - name: Run k6 performance tests
         run: |
-          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'K6_SCRIPT'
-          set -euo pipefail
-          cd /root/zw-insight/tests/performance
-            
-          echo "=========================================="
-          echo "开始性能基准测试 (夜间低峰窗口)"
-          echo "并发限制≤20,单次测试≤5分钟"
-          echo "租户隔离：tenant_id=9999"
-          echo "=========================================="
-            
-          # 验证环境约束
-          if [[ $(whoami) != "root" ]] && ! echo "$SHELL" | grep -q "cron"; then
-            echo "⚠️ 警告：非 cron 环境执行，建议仅在夜间低峰窗口运行"
-            read -p "确认继续？(y/n) " confirm
-            [[ "$confirm" == "y" ]] || exit 1
-          fi
-            
-          # 运行三个测试脚本
-          for script in login.js page-query.js payment-submit.js; do
-            [ -f "$script" ] || continue
-            echo ""
-            echo "▶ 测试：$script"
-            echo "------------------------------------------"
-            if docker run --rm -i grafana/k6 run \
-               --scenario-concurrency-limit=20 \
-               --max-duration=5m \
-               "$script" 2>&1 | tee "k6-${script%.js}.log";
-            then
-              echo "✅ $script 完成"
-            else
-              echo "⚠️ $script 失败或超时"
-            fi
-          done
-            
-          echo ""
-          echo "=========================================="
-          echo "性能测试报告已生成至：/root/zw-insight/tests/performance/"
-          echo "=========================================="
-          K6_SCRIPT
+          # 上传仓库内最新性能脚本（与源码保持一致，避免服务器残留旧版）
+          scp -i ~/.ssh/deploy_key -r tests/performance \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/tmp/zwi-perf"
+          # 调用真实基座 run-k6.sh（夜间窗口/并发≤20/时长≤5m 三重硬校验 +
+          # 真实验证码桥登录；任一场景失败/阈值超限 → exit 5，job 标红，不静默吞错）。
+          # ZWI_K6_FORCE=1：push 触发的部署流水线无法选择夜间时段，豁免窗口校验
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+            "mkdir -p ${{ env.DEPLOY_DIR }}/tests && rm -rf ${{ env.DEPLOY_DIR }}/tests/performance && \
+             cp -r /tmp/zwi-perf ${{ env.DEPLOY_DIR }}/tests/performance && \
+             cd ${{ env.DEPLOY_DIR }}/tests/performance && \
+             ZWI_K6_FORCE=1 bash run-k6.sh all"

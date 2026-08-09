@@ -17,6 +17,10 @@
 #
 # 用法：
 #   bash run-k6.sh [login|page|payment|all]   # 默认 all
+#
+# CI 调用：export ZWI_K6_FORCE=1 豁免夜间窗口校验（push 触发的部署流水线
+# 无法选择时段；约束 2/3 上限校验仍生效）。任一场景失败/阈值超限 → exit 5，
+# 不静默吞错。
 ###############################################################################
 set -uo pipefail
 
@@ -31,9 +35,11 @@ WORKDIR="$(cd "$(dirname "$0")" && pwd)"
 
 log() { echo "[$(date '+%F %T')] $*"; }
 
-# ---- 约束 1：夜间低峰校验（22:00-06:00）----
+# ---- 约束 1：夜间低峰校验（22:00-06:00）；ZWI_K6_FORCE=1 时豁免（CI 流水线专用）----
 HOUR=$(date +%H)
-if [ "$HOUR" -ge 6 ] && [ "$HOUR" -lt 22 ]; then
+if [ "${ZWI_K6_FORCE:-0}" = "1" ]; then
+  log "ZWI_K6_FORCE=1：CI 调用，豁免夜间窗口校验（并发/时长上限校验仍生效）"
+elif [ "$HOUR" -ge 6 ] && [ "$HOUR" -lt 22 ]; then
   log "ERROR: 仅允许夜间低峰（22:00-06:00）执行，当前 $(date '+%T')，拒绝运行"
   exit 2
 fi
@@ -79,11 +85,18 @@ fetch_token() {
 run_k6() {
   local script="$1"; shift
   log "===== 执行 $script ====="
+  local rc=0
   docker run --rm --network host \
     -v "$WORKDIR:/scripts" \
     -e K6_BASE="$BASE" -e K6_BRIDGE="http://127.0.0.1:$BRIDGE_PORT" "$@" \
-    "$K6_IMAGE" run "/scripts/$(basename "$script")" 2>&1 | tail -40
+    "$K6_IMAGE" run "/scripts/$(basename "$script")" 2>&1 | tail -60 || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    log "ERROR: $script 执行失败或阈值超限 (exit=$rc)"
+    FAILED=1
+  fi
 }
+
+FAILED=0
 
 TARGET="${1:-all}"
 case "$TARGET" in
@@ -99,6 +112,11 @@ fi
 if [ "$TARGET" = "payment" ] || [ "$TARGET" = "all" ]; then
   TOKEN=$(fetch_token) || exit 4
   run_k6 "$WORKDIR/payment-submit.js" -e TOKEN="$TOKEN"
+fi
+
+if [ "$FAILED" -ne 0 ]; then
+  log "ERROR: 存在失败场景，不静默忽略（详见上方各场景输出）"
+  exit 5
 fi
 
 log "全部场景执行完毕（P95/P99 见上方 http_req_duration 指标，回填 tasks.md 数据回填区）"

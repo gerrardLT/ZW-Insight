@@ -40,7 +40,7 @@
   - [x] 2.1.3 杀死率 <70% 的测试类补断言或登记豁免理由 —— 补强完成（2026-08-07）：新增 FinanceLockServiceTest 19 例/ProjectSettlementServiceMutationTest 6 例/SubcontractMutationTest 5 例/ProjectMutationTest 8 例，共 38 个针对存活变异的断言强化用例；复测：finance **53%→73%（达标）**、subcontract **52%→66%**、project **48%→61%**；顺带产出生产加固：ProjectSettlementService.updateSettlement 重新汇总 otherExpense null 兜底（变异测试暴露的真实 NPE 风险）。sub/project 未达 70% 的剩余存活集中于分页 wrapper 条件变异（需 SQL 段断言，收益/成本比低），已登记豁免
 - [x] 2.2 k6 性能基线 _需求: R6_
   - [x] 2.2.1 新建 `tests/performance/`：login.js / page-query.js / payment-submit.js + run-k6.sh（夜间低峰/并发≤20/单次≤5分钟三重约束脚本内硬校验）+ captcha-bridge.py（真实验证码桥：后端 captcha/image + Redis 真实 code，无 mock）；已上传服务器并预拉镜像，cron 每晚 23:00 自动执行
-  - [ ] 2.2.2 建立 P95/P99 基线并回填本表 —— 【用户决策 2026-08-09：启用 cron】已新建 `.github/workflows/performance-k6.yml`（每晚 23:00 UTC cron + 手动触发，SSH 到服务器跑 login/page-query/payment-submit 三场景）；基线数据待首轮跑出后回填；注：服务器原生 crontab 仍为停用状态，当前由 GitHub Actions 调度
+  - [ ] 2.2.2 建立 P95/P99 基线并回填本表 —— 【用户决策 2026-08-09：启用 cron】已新建 `.github/workflows/performance-k6.yml`（每晚 UTC 15:00 = 北京 23:00 cron + 手动触发）；【2026-08-09 修复】CI 首轮（run 31321128008）发现 deploy.yml/performance-k6.yml 内联脚本用了不存在的 k6 flag（--scenario-concurrency-limit/--scenarios）且 静默吞错（job 标绿实际 3 场景全失败）：已改为两 workflow 均 scp 上传仓库最新 tests/performance 后调用真实基座 run-k6.sh（真实验证码桥登录）；run-k6.sh 增 ZWI_K6_FORCE=1 CI 豁免夜间窗口 + 任一场景失败 exit 5 不静默；基线数据待真实首轮跑出后回填
 - [x] 2.3 安全扫描 _需求: R7_
   - [x] 2.3.1 新建 `.github/workflows/codeql.yml`（java + javascript-typescript，均 build-mode:none；push main + PR + 每周一 03:00 UTC cron；security-and-quality 套件）
   - [x] 2.3.2 根 pom 增 `dependency-check-maven 10.0.4`（`-Psecurity` profile）+ 新建 `.github/workflows/security-scan.yml`（每周三 04:00 UTC + 手动触发，aggregate 全模块，报告上传 artifact；本地无 key 首次需下载 37 万条 NVD 记录不可行，改 CI 执行）
