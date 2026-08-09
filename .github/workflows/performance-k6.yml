@@ -8,6 +8,10 @@ on:
     - cron: '0 23 * * *'  # 每晚 23:00 UTC(凌晨 07:00 北京时间)
   workflow_dispatch:      # 支持手动触发
 
+env:
+  SERVER_HOST: ${{ secrets.SERVER_HOST }}
+  SERVER_USER: ${{ secrets.SERVER_USER }}
+
 jobs:
   k6-performance:
     name: Run k6 Performance Tests
