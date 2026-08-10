@@ -97,6 +97,9 @@ services:
       KNIFE4J_PRODUCTION: "true"
       SPRINGDOC_API_DOCS_ENABLED: "false"
       SPRING_WEB_RESOURCES_STATIC_LOCATIONS: "[]"
+      # 代码层拦截开关（WebMvcConfig/DocsBlockInterceptor）：配置级关闭实测不彻底，
+      # 拦截器对 /doc.html、/webjars/**、/v3/api-docs/** 等直接返回 404（CI 硬断言验证）
+      SECURITY_DOCS_BLOCK_ENABLED: "true"
     ports:
       - "18080:8080"   # 仅此端口对公网；前端联调连这里
     mem_limit: 1200m

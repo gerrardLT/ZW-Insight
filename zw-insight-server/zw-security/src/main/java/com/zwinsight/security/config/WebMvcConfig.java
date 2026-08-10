@@ -1,8 +1,10 @@
 package com.zwinsight.security.config;
 
 import com.zwinsight.security.interceptor.AuthInterceptor;
+import com.zwinsight.security.interceptor.DocsBlockInterceptor;
 import com.zwinsight.security.interceptor.PermissionInterceptor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -12,6 +14,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
     private final AuthInterceptor authInterceptor;
     private final PermissionInterceptor permissionInterceptor;
+
+    /** 生产收敛开关：拦截 API 文档端点（默认 false 不影响本地/联调；
+        生产由 deploy compose SECURITY_DOCS_BLOCK_ENABLED=true 启用，见 DocsBlockInterceptor 注释） */
+    @Value("${security.docs-block-enabled:false}")
+    private boolean docsBlockEnabled;
 
     /** 认证相关免登录放行路径（AuthInterceptor 与 PermissionInterceptor 共用） */
     private static final String[] EXCLUDE_PATHS = {
@@ -37,5 +44,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**")
                 .excludePathPatterns(EXCLUDE_PATHS)
                 .order(1);
+        // 生产收敛：API 文档端点位于 /api/** 之外不受认证拦截，开关开启时直接 404
+        if (docsBlockEnabled) {
+            registry.addInterceptor(new DocsBlockInterceptor())
+                    .addPathPatterns("/doc.html", "/webjars/**", "/v3/api-docs/**",
+                            "/swagger-resources/**", "/swagger-ui/**", "/favicon.ico")
+                    .order(0);
+        }
     }
 }
