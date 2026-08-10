@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.zwinsight.com/finance"
+             xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL http://www.omg.org/spec/BPMN/20100524/MODEL/BPMN20.xsd">
+
+    <process id="retention_return_approval" name="质保金返还审批" isExecutable="true">
+
+        <!-- 开始事件 -->
+        <startEvent id="startEvent" name="提交返还申请"/>
+
+        <!-- 顺序流：开始 → 财务审核 -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="financeApproval"/>
+
+        <!-- 财务审核 -->
+        <userTask id="financeApproval" name="财务审核"
+                  flowable:assignee="${initiator}">
+            <documentation>质保金返还 - 财务确认返还金额与质保期届满情况</documentation>
+        </userTask>
+
+        <!-- 顺序流：财务审核 → 结束 -->
+        <sequenceFlow id="flow2" sourceRef="financeApproval" targetRef="endEvent"/>
+
+        <!-- 结束事件（审批完成，已返还金额已在 submit 时回写） -->
+        <endEvent id="endEvent" name="审批完成"/>
+
+    </process>
+
+</definitions>

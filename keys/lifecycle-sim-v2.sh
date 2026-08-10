@@ -486,6 +486,22 @@ assert_amount() {
   success "$desc: $field=$actual [OK]"
 }
 
+# neg_assert <desc> — 负向断言：最近一次调用必须被拒绝（code!=200 或 HTTP 4xx/5xx）
+# 若静默成功（code=200 且 HTTP 2xx）即判失败，杜绝"非法操作被放行"的假绿
+neg_assert() {
+  local desc="$1" http_code body_code
+  http_code=$(cat /tmp/zwi_last_code 2>/dev/null || echo "000")
+  body_code=$(grep -oE '"code"\s*:\s*\"?[0-9]+' /tmp/zwi_body 2>/dev/null | head -1 | grep -oE '[0-9]+$')
+  if [ "$body_code" != "200" ] || [[ "$http_code" =~ ^[45] ]]; then
+    success "$desc: 已正确拒绝 (HTTP $http_code, code=${body_code:-N/A})"
+  else
+    fail "$desc: 期望被拒绝，实际静默成功 (HTTP $http_code, code=$body_code)"
+    ABORT_REASON="$CURRENT_STAGE: $desc (负向未拒绝)"
+    record_stage_result "FAILED"
+    exit 1
+  fi
+}
+
 # ===========================================================================
 # 阶段 1: 项目报备
 # POST /api/v1/project → 创建项目 + track_resource
@@ -1213,6 +1229,109 @@ stage_9e_reject_branch() {
   record_stage_result "PASSED"
 }
 
+# ===========================================================================
+# db_latest_retention_return — 质保金返还无分页查询 API，直查租户 9999 最新一条
+# ===========================================================================
+db_latest_retention_return() {
+  docker exec "$MYSQL_CT" mysql -uroot -p"${ZWI_MYSQL_PASS:-zwinsight123}" zw_insight -N -B \
+    -e "SELECT id FROM biz_retention_return WHERE tenant_id='$TEST_TENANT_ID' AND deleted=0 ORDER BY created_at DESC, id DESC LIMIT 1;" 2>/dev/null | tr -d '\r' | head -1
+}
+
+# ===========================================================================
+# 阶段 9F: 变更签证（登记 → 提交审批 → 完成待办 → 合同累计变更金额回写）
+#   依据功能表 5.2：变更签证审批通过后合同累计变更金额累加
+#   依赖 BPMN：change_visa_approval（deploy-bpmn.sh 部署到租户 9999）
+# ===========================================================================
+stage_9f_change_visa() {
+  phase "9F" "变更签证"
+  CURRENT_STAGE="9F:变更签证"
+
+  api_call POST "/api/v1/contract/change-visa" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"changeType\":\"SITE_VISA\",\"changeReason\":\"L4现场签证-工程量变更\",\"changeContent\":\"新增墙面基层处理\",\"changeAmount\":50000.00}"
+  strict_assert "创建变更签证"
+  sleep 1
+
+  api_call GET "/api/v1/contract/change-visa?page=1&size=1&contractId=$CONTRACT_ID&changeType=SITE_VISA"
+  local visaId=$(extract_first_record_id)
+  require_id "$visaId" "变更签证 ID"
+  assert_status "/api/v1/contract/change-visa?page=1&size=1&contractId=$CONTRACT_ID&changeType=SITE_VISA" "status" "DRAFT" "变更签证初始状态"
+
+  api_call POST "/api/v1/contract/change-visa/$visaId/submit"
+  strict_assert "提交变更签证审批"
+  sleep 2
+  approve "同意变更签证" 1
+
+  # 审批后：签证 APPROVED + 合同累计变更金额回写 50000
+  assert_status "/api/v1/contract/change-visa?page=1&size=1&contractId=$CONTRACT_ID&changeType=SITE_VISA" "status" "APPROVED" "签证审批后状态"
+  assert_amount "/api/v1/contract/$CONTRACT_ID" "cumulativeChangeAmount" 50000 "合同累计变更金额回写"
+
+  # 负向：非草稿重复提交必须拒绝
+  api_call POST "/api/v1/contract/change-visa/$visaId/submit"
+  neg_assert "变更签证重复提交被拒绝"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 9G: 质保金（登记 → 到期查询 → 超额返还负向 → 全额返还审批 → RETURNED）
+#   依据功能表 5.1：质保金登记/跟踪/返还申请闭环
+#   依赖 BPMN：retention_return_approval（deploy-bpmn.sh 部署到租户 9999）
+# ===========================================================================
+stage_9g_retention() {
+  phase "9G" "质保金"
+  CURRENT_STAGE="9G:质保金"
+
+  # save 会按 startDate+retentionPeriod 月重算 expireDate：取 retentionPeriod=0
+  # 使到期日=今天，稳定落入 expiring?days=30 窗口（避免脚本跨期失效）
+  api_call POST "/api/v1/finance/retention" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"retentionRate\":2.00,\"retentionAmount\":96000.00,\"retentionPeriod\":0,\"startDate\":\"$(date +%F)\"}"
+  strict_assert "登记质保金"
+  sleep 1
+
+  api_call GET "/api/v1/finance/retention/page?page=1&size=1&projectId=$PROJECT_ID"
+  local retentionId=$(extract_first_record_id)
+  require_id "$retentionId" "质保金 ID"
+  assert_status "/api/v1/finance/retention/page?page=1&size=1&projectId=$PROJECT_ID" "status" "ACTIVE" "质保金初始状态"
+
+  # 到期跟踪：expireDate 在 30 天内，expiring 列表应包含本条
+  api_call GET "/api/v1/finance/retention/expiring?days=30"
+  strict_assert "查询即将到期质保金"
+  if grep -q "$retentionId" /tmp/zwi_body; then
+    success "到期列表包含本条质保金: $retentionId"
+  else
+    fail "到期列表未包含刚登记的质保金 $retentionId"
+    ABORT_REASON="$CURRENT_STAGE: expiring 缺本条记录"
+    record_stage_result "FAILED"
+    exit 1
+  fi
+
+  # 负向：返还金额超过可返还余额必须拒绝（先建超额草稿再提交）
+  api_call POST "/api/v1/finance/retention/return" "{\"retentionId\":$retentionId,\"returnAmount\":999999.00,\"returnDate\":\"$(date +%F)\"}"
+  strict_assert "创建超额返还申请（草稿允许）"
+  sleep 1
+  local overId=$(db_latest_retention_return)
+  require_id "$overId" "超额返还申请 ID"
+  api_call POST "/api/v1/finance/retention/return/$overId/submit"
+  neg_assert "超额返还提交被拒绝"
+
+  # 主流程：全额返还申请 → 审批 → returnedAmount=96000 且 status=RETURNED
+  api_call POST "/api/v1/finance/retention/return" "{\"retentionId\":$retentionId,\"returnAmount\":96000.00,\"returnDate\":\"$(date +%F)\"}"
+  strict_assert "创建全额返还申请"
+  sleep 1
+  local returnId=$(db_latest_retention_return)
+  require_id "$returnId" "全额返还申请 ID"
+
+  api_call POST "/api/v1/finance/retention/return/$returnId/submit"
+  strict_assert "提交返还申请审批"
+  sleep 2
+  approve "同意质保金返还" 1
+
+  api_call GET "/api/v1/finance/retention/page?page=1&size=1&projectId=$PROJECT_ID"
+  strict_assert "回查质保金"
+  assert_amount "/api/v1/finance/retention/page?page=1&size=1&projectId=$PROJECT_ID" "returnedAmount" 96000 "已返还金额回写"
+  assert_status "/api/v1/finance/retention/page?page=1&size=1&projectId=$PROJECT_ID" "status" "RETURNED" "全额返还后状态"
+
+  record_stage_result "PASSED"
+}
+
 main() {
   echo "" > "$SIM_LOG"
   divider
@@ -1248,6 +1367,8 @@ main() {
   stage_9c_purchase_settlement
   stage_9d_payment_closure
   stage_9e_reject_branch
+  stage_9f_change_visa
+  stage_9g_retention
   stage_9b_completion_settlement
   stage_10_project_close
 

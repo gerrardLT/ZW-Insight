@@ -163,9 +163,8 @@ assert_body_not_success "车辆申请-不存在记录提交被拒绝"
 call POST "/api/v1/hr/office-supply/in-out/999999999/submit" ""
 assert_body_not_success "出入库-不存在记录提交被拒绝"
 
-# 出入库负向：关联办公用品不存在必须拒绝
-call POST "/api/v1/hr/office-supply/in-out" "{\"supplyId\":999999999,\"ioType\":\"IN\",\"quantity\":1}"
-assert_body_not_success "出入库-不存在用品被拒绝"
+# 说明：「关联办公用品不存在」校验位于 submit 而非 save，覆盖该分支需先创建
+# 出入库记录，但出入库无 DELETE 端点会造成租户 1 残留，故该分支交由 L1 覆盖
 
 # ---------- 入职申请 CRUD 闭环（按 realName 查回） ----------
 call POST "/api/v1/hr/entry-apply" "{\"realName\":\"L3Tmp$TS_SUFFIX\",\"username\":\"l3tmp$TS_SUFFIX\",\"phone\":\"13800000000\"}"

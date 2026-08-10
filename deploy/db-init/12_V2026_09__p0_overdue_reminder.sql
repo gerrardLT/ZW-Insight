@@ -14,8 +14,11 @@ CREATE TABLE IF NOT EXISTS biz_reminder_config (
     escalation_days INT NOT NULL DEFAULT 7 COMMENT '升级通知阈值天数',
     long_overdue_days INT NOT NULL DEFAULT 30 COMMENT '长期超期停止催办天数',
     enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用(0-停用/1-启用)',
+    created_by BIGINT DEFAULT NULL COMMENT '创建人ID',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted INT DEFAULT 0 COMMENT '逻辑删除(0-未删除 1-已删除)',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
     UNIQUE KEY uk_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='整改催办配置表';
 
@@ -30,7 +33,11 @@ CREATE TABLE IF NOT EXISTS biz_reminder_log (
     send_status VARCHAR(20) NOT NULL COMMENT '发送状态(SENT/FAILED)',
     overdue_days INT NOT NULL COMMENT '超期天数',
     sent_at DATETIME COMMENT '发送时间',
+    created_by BIGINT DEFAULT NULL COMMENT '创建人ID',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INT DEFAULT 0 COMMENT '逻辑删除(0-未删除 1-已删除)',
+    version INT DEFAULT 0 COMMENT '乐观锁版本号',
     INDEX idx_inspection (inspection_id),
     INDEX idx_receiver (receiver_id),
     INDEX idx_tenant_created (tenant_id, created_at)

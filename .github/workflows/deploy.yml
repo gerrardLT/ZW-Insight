@@ -331,6 +331,7 @@ jobs:
           L3_SCRIPT
 
       - name: Init L4 test tenant (9999) & deploy BPMN
+        if: always()
         run: |
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'INIT_SCRIPT'
           set -uo pipefail

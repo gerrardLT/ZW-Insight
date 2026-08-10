@@ -10,7 +10,7 @@ TOKEN=$(cat /root/zwi-deploy/.zwi_token)
 BASE="http://127.0.0.1:18080"
 TENANT_ID="${ZWI_TENANT_ID:-1}"
 
-for name in output_report_approval invoice_apply_approval payment_apply_approval project_settlement_approval purchase_contract_approval completion_acceptance_approval project_close_approval machine_settlement material_transfer_approval purchase_settlement_approval construction_contract_approval; do
+for name in output_report_approval invoice_apply_approval payment_apply_approval project_settlement_approval purchase_contract_approval completion_acceptance_approval project_close_approval machine_settlement material_transfer_approval purchase_settlement_approval construction_contract_approval change_visa_approval retention_return_approval; do
   BPMN="/root/zwi-deploy/${name}.bpmn20.xml"
   if [ ! -f "$BPMN" ]; then
     echo "SKIP: $BPMN 不存在"; continue
