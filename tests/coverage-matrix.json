@@ -1,0 +1,71 @@
+{
+  "generated": "2026-08-10",
+  "spec": ".kiro/specs approved plan: L1-L5 test completion (feature-coverage criterion)",
+  "sources": {
+    "featureTable": "docs/工程项目管理系统功能表.md",
+    "controllers": 126,
+    "services": 150,
+    "l1TestClasses": 225,
+    "l3ShellScripts": 8,
+    "l4Phases": 19,
+    "l5Specs": 56
+  },
+  "status": { "OK": "covered", "PARTIAL": "partial coverage", "GAP": "missing", "EXEMPT": "exempted with reason" },
+  "l1Gaps": {
+    "zw-file": ["BatchImportExportService", "ExportScheduleService", "FilePreviewService", "PdfConvertService", "PrintTemplateService", "SerialNumberService", "StorageService", "TemplateService"],
+    "zw-hr": ["RegularApplyService", "TransferApplyService", "SealApplyService", "VehicleService", "VehicleApplyService", "VehicleMaintenanceService", "HrStatisticsService"],
+    "zw-system": ["AuditLogService", "BackupService", "SysLogService", "SysTenantTypeService", "VersionManagerService", "SystemConfigService"],
+    "zw-site": ["CompletionAcceptanceService", "RectificationService", "SchedulePlanService", "ScheduleFeedbackService", "LocationSignService", "ReminderLogService"],
+    "zw-tender": ["CompanyCertificateService", "DepositReturnService", "PersonCertificateService", "TenderFeeService", "TenderTaskService"],
+    "zw-message": ["NoticeService", "PushConfigService", "TemplateService", "UserShortcutService", "WeChatWorkService"],
+    "zw-finance": ["InvoiceReceivedService", "OtherPaymentService", "ReserveFundReturnService", "TaxRateService"],
+    "zw-security": ["AuthService", "DeviceManagerService", "LoginLocationService", "AliyunSmsService"],
+    "zw-workflow": ["ProcessDefinitionService", "UrgeConfigService", "UrgeService"],
+    "zw-machine": ["MachineOilRecordService", "MachineUsageRecordService", "MachineWorkLogService"],
+    "zw-basedata": ["CompanyService", "InspectionSchemeService", "OwnerService"],
+    "zw-dashboard": ["ProjectDashboardService"],
+    "zw-app": ["SupplierAutoScoreService"],
+    "zw-archive": ["ArchiveService"],
+    "zw-common": ["PENDING_EVALUATION"]
+  },
+  "l1FullCoverageModules": ["zw-budget", "zw-purchase", "zw-labor", "zw-material", "zw-subcontract", "zw-contract", "zw-project"],
+  "l2Gaps": [
+    { "target": "zw-budget control BLOCK", "priority": "high" },
+    { "target": "zw-tender flow", "priority": "high" },
+    { "target": "zw-security login chain", "priority": "high" },
+    { "target": "zw-workflow business-doc E2E", "priority": "medium" },
+    { "target": "zw-hr approval flow", "priority": "medium" },
+    { "target": "zw-message notification", "priority": "medium" },
+    { "target": "zw-archive aggregation", "priority": "low" },
+    { "target": "zw-dashboard aggregation", "priority": "low" }
+  ],
+  "l3Gaps": {
+    "partial": ["project", "contract", "subcontract", "purchase", "labor", "machine", "material", "finance"],
+    "missing": ["system", "auth+security", "budget", "tender", "site", "hr", "basedata", "file", "message", "workflow", "dashboard", "archive", "supplier-portal"],
+    "note": "zw-insight-web/e2e/api-tests (vitest, 20 specs, 347 cases) covers all module domains but is not wired into CI"
+  },
+  "l4Gaps": [
+    { "branch": "change-visa register->approve->contract total writeback", "featureRef": "5.2", "priority": "high" },
+    { "branch": "retention register->track->return apply", "featureRef": "5.1", "priority": "high" },
+    { "branch": "material refund (with refund branch)", "featureRef": "2.5", "priority": "medium" },
+    { "branch": "reserve fund apply->reimbursement offset->return", "featureRef": "2.9", "priority": "medium" },
+    { "branch": "tender deposit return", "featureRef": "1.4", "priority": "medium" },
+    { "branch": "contract expiry reminder trigger", "featureRef": "5.11", "priority": "low" },
+    { "branch": "hr entry approval sample", "featureRef": "2.10", "priority": "low" }
+  ],
+  "l5Gaps": {
+    "notInCI": ["api-tests", "tests (mock)", "tests/real", "consistency"],
+    "realModeSkips": { "login.spec.ts": 4, "project-crud.spec.ts": 2, "workflow.spec.ts": 6 },
+    "missingPages": ["tender", "site", "hr", "archive"]
+  },
+  "batches": [
+    { "batch": 1, "scope": "L1 finance(4)+security(4); L3 finance completion + system/auth scripts", "rationale": "money & permission core" },
+    { "batch": 2, "scope": "L1 tender(5)+workflow(3); L3 tender+budget+workflow; L2 budget BLOCK + tender flow", "rationale": "tender/approval money-sensitive" },
+    { "batch": 3, "scope": "L1 hr(7)+site(6)+machine(3); L3 hr+site; L4 change-visa + retention branches", "rationale": "high-frequency + money branches" },
+    { "batch": 4, "scope": "L1 system(6)+basedata(3)+message(5); L3 basedata+message+dashboard/archive; L2 security login + hr approval", "rationale": "master data & notification" },
+    { "batch": 5, "scope": "L1 file(8)+dashboard(1)+archive(1)+app(1)+common eval; L3 file; L4 refund/reserve/deposit-return/expiry branches", "rationale": "support functions tail" },
+    { "batch": 6, "scope": "L5: run all 56 specs, fix skips, add core pages, wire into CI", "rationale": "standalone phase" }
+  ],
+  "exemptions": [],
+  "completionLog": []
+}

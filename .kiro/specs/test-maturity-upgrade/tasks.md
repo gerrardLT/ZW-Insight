@@ -53,6 +53,18 @@
 - [x] 3.2 flaky 检测：`tests/flake-check.sh` 已完成（2026-08-08，commit b8c9032，支持连续 N 次重复执行/结果对比/自动登记台账）；CI surefire rerunFailingTestsCount=1 **已决策不配置（用户 2026-08-10，选项 B）**：项目实证每次 CI 红灯均为真问题（无纯环境抖动案例），自动重跑与“不静默”原则冲突且有掩盖真 flaky 风险，维持失败即红强制根因修复；若未来出现高频已定位的环境性抖动再重新评估 _需求: R8_
 - [x] 3.3 80% 门槛转正：✅ 2026-08-08 完成 —— jacoco check 0.60→0.77（commit e475e5d）→0.80（commit 8f97659）；CI run 31227937937 全链路 success 验证；coverage-baseline.json 已同步更新（commit a5a7029）；AGENTS.md/README 表述已同步（60%→80%） _需求: R2, R4_
 
+### 阶段四：L1-L5 功能全覆盖补全（2026-08-10 启动，用户决策：功能全覆盖口径）
+
+> 验收口径：功能表每功能点在承诺层级有真实测试映射即销项，不追覆盖率数字；追溯矩阵 tests/coverage-matrix.md/json 为唯一缺口台账，每批销项更新。
+
+- [x] 4.0 阶段 0 全量盘点：功能表 46 模块 × 126 Controller/150 Service/225 测试类/L3 8 脚本/L4 19 阶段/L5 56 spec；产出 coverage-matrix.md/json。实测缺口：**L1 57 个 Service 无单测**（7 模块已全覆盖）；**L3 约 70% Controller 无脚本覆盖**（最大缺口）；L2 缺 budget BLOCK/tender/security 登录链等 8 项；L4 缺变更签证/质保金等 7 分支；**L5 全部 56 spec 未接入 CI**，real 模式 12 skip 未定性；另发现 e2e/api-tests（vitest 347 用例）已按功能表覆盖 20 模块域但未入 CI
+- [ ] 4.1 批 1：L1 zw-finance(4)+zw-security(4) 补单测；L3 finance 补齐+system/auth 新脚本
+- [ ] 4.2 批 2：L1 zw-tender(5)+zw-workflow(3)；L3 tender/budget/workflow 新脚本；L2 budget BLOCK+tender 流转
+- [ ] 4.3 批 3：L1 zw-hr(7)+zw-site(6)+zw-machine(3)；L3 hr/site 新脚本；L4 变更签证+质保金分支
+- [ ] 4.4 批 4：L1 zw-system(6)+zw-basedata(3)+zw-message(5)；L3 basedata/message/dashboard/archive；L2 security 登录链+hr 审批
+- [ ] 4.5 批 5：L1 zw-file(8)+dashboard/archive/app/common 评估；L3 file；L4 退货/备用金/保证金退回/到期提醒分支
+- [ ] 4.6 批 6：L5 56 spec 实跑盘点→修复 skip→补核心页面→CI 接入（api-tests 接入一并评估）
+
 ## 数据回填区（执行结果记录）
 
 | 项 | 结果 | 日期 |
