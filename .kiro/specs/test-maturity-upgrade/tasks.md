@@ -50,7 +50,7 @@
 ### 阶段三：效率与顶级门槛（持续）
 
 - [x] 3.1 增量测试选择：`tests/affected-modules.sh`（git diff → 模块映射，zw-common 变更触发全量）已落地（2026-08-08，commit 9b8edfd）；独立可用，暂不集成 run-all-tests.sh --affected（工作量大风险高） _需求: R8_
-- [x] 3.2 flaky 检测：`tests/flake-check.sh` 已完成（2026-08-08，commit b8c9032，支持连续 N 次重复执行/结果对比/自动登记台账）；CI surefire rerunFailingTestsCount=1 未配置（待决策） _需求: R8_
+- [x] 3.2 flaky 检测：`tests/flake-check.sh` 已完成（2026-08-08，commit b8c9032，支持连续 N 次重复执行/结果对比/自动登记台账）；CI surefire rerunFailingTestsCount=1 **已决策不配置（用户 2026-08-10，选项 B）**：项目实证每次 CI 红灯均为真问题（无纯环境抖动案例），自动重跑与“不静默”原则冲突且有掩盖真 flaky 风险，维持失败即红强制根因修复；若未来出现高频已定位的环境性抖动再重新评估 _需求: R8_
 - [x] 3.3 80% 门槛转正：✅ 2026-08-08 完成 —— jacoco check 0.60→0.77（commit e475e5d）→0.80（commit 8f97659）；CI run 31227937937 全链路 success 验证；coverage-baseline.json 已同步更新（commit a5a7029）；AGENTS.md/README 表述已同步（60%→80%） _需求: R2, R4_
 
 ## 数据回填区（执行结果记录）
@@ -97,6 +97,7 @@
 | 2026-08-07 | PIT | subcontract/project 杀死率补强后仍未达 70%（66%/61%），剩余存活登记豁免 | OTHER | 剩余存活变异构成：①分页方法 LambdaQueryWrapper 条件变异（RemoveConditional_EQUAL_ELSE，projectId/status 为空守卫），杀掉需初始化 MyBatis-Plus TableInfo 并断言 wrapper SQL 段，单条成本高且与业务正确性弱相关②个别翻译/兜底默认返回值变异。finance 达标证明补断言方法有效，非方法问题而是收益/成本取舍 | sub 66%/proj 61%（较首轮 +14/+13 个百分点）| 豁免理由：剩余变异集中于查询条件组装层，其正确性已由 L2 集成测试（真实 MySQL 分页/过滤用例）与 L3 API 契约断言双重覆盖，单元层重复断言 SQL 段属低价值投入；后续若分页逻辑变更引入缺陷再针对性补 | AI 变异分析 | 已豁免（有条件） |
 | 2026-08-09 | PIT | subcontract/project 最终轮补强 null 兜底断言 | OTHER | 新增 SubcontractMutationTest.updateSettlement_nullFallbackDefault / ProjectMutationTest.closeProject_nullToleranceBoundary(共 2 个测试类),验证金额字段为 null 时自动回退 0 的边界行为，针对 VoidMethodCallMutator 存活变异 | 预计杀死率提升+2%: sub 68%/proj 63% | 处置：待 CI 复测确认;如仍差 2~3 个百分点则登记正式豁免 (L2+L3已覆盖查询层正确性)；**2026-08-10 复测完成：实际 sub 66%/proj 61% 与补强前持平（+0 杀死），已按预约定登记正式豁免（见 2026-08-10 行）** | AI 开发 | 已闭环 |
 | 2026-08-10 | PIT | sub/proj 最终复测（串行隔离重跑双次确认）：66%/61% 未达 70%，登记正式豁免 | OTHER | 复测事实：zw-subcontract 124 变异杀 82（**66%**，行覆盖 76%，测试强度 86%）；zw-project 139 变异杀 85（**61%**，行覆盖 66%，测试强度 91%）；与 2026-08-07 补强后数值完全一致——08-09 新增 2 个 null 兜底测试实际 +0 杀死（预估 +2% 未兑现：目标变异要么已被既有用例杀死、要么位于 NO_COVERAGE 区 sub 29/proj 46）。过程事故登记：首轮复测误启两条并发链同写一份日志致归属不可信，已删脏日志串行重跑双重确认 | sub 66%/proj 61% 定稿（较首轮 52%/48% 累计 +14/+13 个百分点） | 正式豁免：剩余存活集中于分页查询条件组装（LambdaQueryWrapper 空守卫）与 NO_COVERAGE 区，正确性已由 L2 集成测试（真实 MySQL 分页/过滤）+ L3 API 契约断言双重覆盖；PIT 任务 2.1 全部闭环 | AI 复测+豁免判定 | 已豁免（正式） |
+| 2026-08-10 | CI | deploy 流水线并发互斥（用户决策方案 A：cancel-in-progress）+ flaky 重跑决策（选项 B：不配置） | OTHER | 事故实证：2c382e1 与 b584d81 相隔 7 分钟推送致两条流水线并行，run 31346854580 跑 k6 时被 run 31347158609 部署重启干扰，登录失败率超阈值如实标红（k6 行为正确，CI 设计缺互斥）。处置：deploy.yml 增 concurrency group=deploy-production + cancel-in-progress: true（单服务器只有最新提交有意义；部署幂等，中途取消脏状态由后续 run 覆盖；performance-k6 cron 不入组——对称取消会令 cron 取消正在部署的流水线，代价更高）。rerunFailingTestsCount=1 决策不配置：项目实证每次红灯均为真问题，自动重跑属静默机制与项目原则冲突，维持失败即红 | 两项待决策全部关闭 | 取消旧 run（方案 A）+ 不配置重跑（选项 B） | 用户 | 已决策落地 |
 | 2026-08-07 | SECURITY | NVD_API_KEY 无效（HTTP 404 空响应），首轮扫描仍受阻；workflow 已加固 | ENV | 用户提供 key 配置到 GitHub secret 后触发 run 31153429651：NVD 更新报 bytes is null，本地 curl 实证该 key 请求 services.nvd.nist.gov 返回 404（不带 key 反而 200）——key 无效（复制有误或未激活）；同时暴露 workflow 两问题：aggregate 未先构建 reactor 依赖、无效 key 强传导致扫描必败 | 首轮报告未产出 | 处置：①workflow 加固——先 mvn package 构建 reactor、key 非空才传入（空/无效时回落无 key 限速模式）、报告上传路径放宽②待用户核实 key（重新申请或等待激活）后重跑；无 key 兜底模式可用但需数小时 | AI实证分析 | 待 key 核实 |
 
 

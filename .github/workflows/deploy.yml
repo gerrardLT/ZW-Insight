@@ -5,6 +5,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# 并发互斥（用户决策 2026-08-10，方案 A）：单服务器部署只有最新提交有意义，
+# 新 push 取消正在跑的旧流水线，避免两条流水线并行操作同一台服务器
+# （实证事故：2026-08-10 run 31346854580 跑 k6 时被 run 31347158609 的部署重启干扰，
+# 登录失败率超阈值标红）。部署脚本幂等（scp jar+重启），中途被取消的脏状态由后续 run 覆盖修复。
+# 注：performance-k6.yml cron 不入本组——cancel-in-progress 对称生效，
+# cron 若取消正在部署的流水线代价更高，且 23:00 低峰窗口与 push 碰撞概率极低。
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
 env:
   JAVA_VERSION: '21'
   NODE_VERSION: '20'
