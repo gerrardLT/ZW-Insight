@@ -25,8 +25,8 @@
 | zw-site | CompletionAcceptanceService, RectificationService, SchedulePlanService, ScheduleFeedbackService, LocationSignService, ReminderLogService（6） | Inspection/ConstructionLog/ReminderDedup/ReminderTask(集成) 已覆盖 |
 | zw-tender | CompanyCertificateService, DepositReturnService, PersonCertificateService, TenderFeeService, TenderTaskService（5） | TenderRegister/DepositApply/OpenBidRecord 已覆盖 |
 | zw-message | NoticeService, PushConfigService, TemplateService, UserShortcutService, WeChatWorkService（5） | Announcement/Message 已覆盖 |
-| zw-finance | InvoiceReceivedService, OtherPaymentService, ReserveFundReturnService, TaxRateService（4） | 其余 13 个已覆盖（含 Lock 19 例） |
-| zw-security | AuthService, DeviceManagerService, LoginLocationService, AliyunSmsService（4） | Captcha/PasswordReset/Token(Auth 相关)/Permission/DocsBlock 已覆盖 |
+| zw-finance | ~~InvoiceReceivedService, OtherPaymentService, ReserveFundReturnService, TaxRateService（4）~~ **已补全（批 1，4 类 28 例）** | 其余 13 个已覆盖（含 Lock 19 例） |
+| zw-security | ~~AuthService, DeviceManagerService, LoginLocationService, AliyunSmsService（4）~~ **已补全（批 1，4 类 24 例；AuthService 密码主路径原由 TokenServiceTest 覆盖，补 SMS/租户分支）** | Captcha/PasswordReset/Token(Auth 相关)/Permission/DocsBlock 已覆盖 |
 | zw-workflow | ProcessDefinitionService, UrgeConfigService, UrgeService（3） | Approval/BusinessType/Delegate/Rollback 已覆盖 |
 | zw-machine | MachineOilRecordService, MachineUsageRecordService, MachineWorkLogService（3） | Contract/Entry/Ledger/Repair/WorkSettlement 已覆盖 |
 | zw-basedata | CompanyService, InspectionSchemeService, OwnerService（3） | Material/Supplier/Blacklist/Evaluation/Category 已覆盖 |
@@ -35,7 +35,7 @@
 | zw-archive | ArchiveService（1） | 仅 ArchiveSearchFilterPropertyTest |
 | zw-common | 覆盖率 24.7%：异常体系/基类/R 包装等零散缺口 | AssertUtils/Desensitize 已覆盖，逐项评估豁免 |
 
-**L1 合计缺口：57 个 Service**（豁免评估后实际补测量预计 45~55）。
+**L1 合计缺口：57 个 Service**（批 1 已销项 8，剩 49；豁免评估后实际补测量预计 40~48）。
 已全量覆盖模块：zw-budget、zw-purchase、zw-labor、zw-material、zw-subcontract、zw-contract、zw-project。
 
 ## 二、L2 集成测试缺口
@@ -109,6 +109,6 @@
 
 | 对象 | 层级 | 豁免理由 | 日期 |
 |---|---|---|---|
-| AliyunSmsService 外呼分支 | L1 | 阿里云 SMS 外部依赖，Mock 通道配置逻辑可测、真实发送不可测（候选，补测时确认） | 待定 |
-| WeChatWorkService 推送分支 | L1 | 企业微信外部依赖，同上（候选） | 待定 |
+| AliyunSmsService 真实外呼分支 | L1 | 依赖阿里云 SMS 通道，开关分支与凭证缺失显式失败分支已测（AliyunSmsServiceTest 3 例）；真实发送链路待生产环境验证 | 2026-08-10 |
+| WeChatWorkService 推送分支 | L1 | 企业微信外部依赖，同上（候选，批 4 确认） | 待定 |
 | zw-common 框架基类 | L1 | 纯框架代码逐项评估（候选） | 待定 |

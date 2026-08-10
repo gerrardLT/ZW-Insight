@@ -18,8 +18,8 @@
     "zw-site": ["CompletionAcceptanceService", "RectificationService", "SchedulePlanService", "ScheduleFeedbackService", "LocationSignService", "ReminderLogService"],
     "zw-tender": ["CompanyCertificateService", "DepositReturnService", "PersonCertificateService", "TenderFeeService", "TenderTaskService"],
     "zw-message": ["NoticeService", "PushConfigService", "TemplateService", "UserShortcutService", "WeChatWorkService"],
-    "zw-finance": ["InvoiceReceivedService", "OtherPaymentService", "ReserveFundReturnService", "TaxRateService"],
-    "zw-security": ["AuthService", "DeviceManagerService", "LoginLocationService", "AliyunSmsService"],
+    "zw-finance": ["COMPLETED_BATCH1: InvoiceReceivedService, OtherPaymentService, ReserveFundReturnService, TaxRateService (4 classes, 28 cases)"],
+    "zw-security": ["COMPLETED_BATCH1: AuthService(SMS/tenant branches), DeviceManagerService, LoginLocationService, AliyunSmsService (4 classes, 24 cases)"],
     "zw-workflow": ["ProcessDefinitionService", "UrgeConfigService", "UrgeService"],
     "zw-machine": ["MachineOilRecordService", "MachineUsageRecordService", "MachineWorkLogService"],
     "zw-basedata": ["CompanyService", "InspectionSchemeService", "OwnerService"],
@@ -66,6 +66,10 @@
     { "batch": 5, "scope": "L1 file(8)+dashboard(1)+archive(1)+app(1)+common eval; L3 file; L4 refund/reserve/deposit-return/expiry branches", "rationale": "support functions tail" },
     { "batch": 6, "scope": "L5: run all 56 specs, fix skips, add core pages, wire into CI", "rationale": "standalone phase" }
   ],
-  "exemptions": [],
-  "completionLog": []
+  "exemptions": [
+    { "target": "AliyunSmsService real-send branch", "layer": "L1", "reason": "aliyun SMS channel dependency; switch and missing-credential branches tested (3 cases), real send verified in production", "date": "2026-08-10" }
+  ],
+  "completionLog": [
+    { "date": "2026-08-10", "batch": 1, "layer": "L1", "scope": "zw-finance 4 services (28 cases) + zw-security 4 services (24 cases)", "verification": "zw-finance 565 green / zw-security 285 green" }
+  ]
 }
