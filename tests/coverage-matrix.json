@@ -41,9 +41,10 @@
   ],
   "l3Gaps": {
     "partial": ["project", "contract", "subcontract", "purchase", "labor", "machine", "material", "finance"],
-    "missing": ["site", "hr", "basedata", "file", "message", "dashboard", "archive", "supplier-portal"],
+    "missing": ["basedata", "file", "message", "dashboard", "archive", "supplier-portal"],
     "addedBatch1": ["test-api-finance2.sh (finance completion: invoice/reimbursement/settlement/reserve/retention/tax-rate CRUD/lock)", "test-api-system.sh (system+auth: user/org/role/menu/post/dict CRUD/ops/tenant/devices/captcha)"],
     "addedBatch2": ["test-api-tender.sh (6 page contracts + register/fee/person-cert/company-cert CRUD zero-residue loops + edit-after-delete negative)", "test-api-budget.sh (budget/change/config/control-config read contracts + dynamic costCategory + @Valid negative)", "test-api-workflow.sh (todo/done/initiated/process/business-type/urge/rollback/delegate contracts + illegal start/complete negative)"],
+    "addedBatch3": ["test-api-hr.sh (10 page contracts incl. root-path paging for 4 apply types + statistics/overview + 7 submit-missing negatives + entry-apply/vehicle/office-supply CRUD zero-residue loops)", "test-api-site.sh (6 page contracts + construction-log/schedule-plan CRUD zero-residue loops + plan-tree/sign/reminder read contracts + 8 not-found negatives)"],
     "note": "zw-insight-web/e2e/api-tests (vitest, 20 specs, 347 cases) covers all module domains but is not wired into CI"
   },
   "l4Gaps": [
@@ -75,6 +76,8 @@
     { "date": "2026-08-10", "batch": 1, "layer": "L1", "scope": "zw-finance 4 services (28 cases) + zw-security 4 services (24 cases)", "verification": "zw-finance 565 green / zw-security 285 green" },
     { "date": "2026-08-10", "batch": 1, "layer": "L3", "scope": "test-api-finance2.sh (37 asserts) + test-api-system.sh (43 asserts)", "verification": "CI run 31399388581 Integration Test green: finance2 37/37, system 43/43, L3 total 10 scripts pass/0 fail. First run 31395791226 failed 12 asserts = script endpoint errors (not backend), fixed per Controller source-of-truth in db2face" },
 { "date": "2026-08-10", "batch": 2, "layer": "L1", "scope": "zw-tender 5 services (32 cases) + zw-workflow 4 services (26 cases, incl. ApprovalRollbackServiceImpl beyond plan)", "verification": "commit fa7d3fd; local green + both modules full regression 0 failures; CI run 31403596908 Backend Build green (58 new cases executed)" },
-{ "date": "2026-08-10", "batch": 2, "layer": "L3", "scope": "test-api-tender.sh (50 asserts) + test-api-budget.sh (26 asserts) + test-api-workflow.sh (24 asserts)", "verification": "CI run 31403596908 Integration Test green on first run: tender 50/50, budget 26/26, workflow 24/24, L3 total 13 scripts pass/0 fail. Scripts written after line-by-line review of all 17 Controllers (batch-1 lesson applied)" }
+{ "date": "2026-08-10", "batch": 2, "layer": "L3", "scope": "test-api-tender.sh (50 asserts) + test-api-budget.sh (26 asserts) + test-api-workflow.sh (24 asserts)", "verification": "CI run 31403596908 Integration Test green on first run: tender 50/50, budget 26/26, workflow 24/24, L3 total 13 scripts pass/0 fail. Scripts written after line-by-line review of all 17 Controllers (batch-1 lesson applied)" },
+    { "date": "2026-08-10", "batch": 3, "layer": "L1", "scope": "zw-hr 7 services (44 cases) + zw-site 6 services (50 cases) + zw-machine 3 services (21 cases)", "verification": "commit d7ecdee; three modules full regression BUILD SUCCESS (hr 74/74); fixed 1 UnfinishedStubbing in LocationSignServiceTest by pre-computing JSON before stubbing" },
+    { "date": "2026-08-10", "batch": 3, "layer": "L3", "scope": "test-api-hr.sh + test-api-site.sh (written after reviewing all method-level endpoints of 8 hr + 9 site Controllers)", "verification": "bash -n passed (Git Bash); CI auto-picks up via test-api-*.sh glob, pending CI run result" }
   ]
 }
