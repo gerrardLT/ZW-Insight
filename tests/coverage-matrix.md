@@ -41,11 +41,12 @@
 ## 二、L2 集成测试缺口
 
 现有 12 类（zw-app integration 包）+ 模块直连集成测试（contract/finance/project/system×3/site）。
+批 2 新增 BudgetBlockIntegrationTest（zw-budget）+ TenderFlowIntegrationTest（zw-tender），本地实跑 14/14 全绿、零残留。
 
 | 缺口 | 需验证的核心行为 | 优先级 |
 |---|---|---|
-| zw-budget 管控 BLOCK | 超预算禁止提交 vs 仅提醒两种强度的真实 DB 场景 | 高（金额） |
-| zw-tender 投标流转 | 报名→开标中标→项目状态联动→保证金支付/退回 | 高（金额） |
+| ~~zw-budget 管控 BLOCK~~ ✅ 批 2 完成 | 超预算禁止提交 vs 仅提醒两种强度的真实 DB 场景 | 高（金额） |
+| ~~zw-tender 投标流转~~ ✅ 批 2 完成（保证金 submit 依赖流程部署由 L4 覆盖） | 报名→开标中标→项目状态联动→保证金支付/退回 | 高（金额） |
 | zw-security 登录链 | 真实 Redis 验证码一次性+设备淘汰+锁定 | 高（权限） |
 | zw-workflow 审批链 | Flowable 已有 FlowableIntegrationTest；缺业务单据挂流程端到端（已有 ApprovalRollback 覆盖回滚） | 中 |
 | zw-hr 审批流 | 入职/离职审批→员工档案回写 | 中 |

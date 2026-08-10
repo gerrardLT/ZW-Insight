@@ -30,8 +30,8 @@
   },
   "l1FullCoverageModules": ["zw-budget", "zw-purchase", "zw-labor", "zw-material", "zw-subcontract", "zw-contract", "zw-project"],
   "l2Gaps": [
-    { "target": "zw-budget control BLOCK", "priority": "high" },
-    { "target": "zw-tender flow", "priority": "high" },
+    { "target": "zw-budget control BLOCK", "priority": "high", "status": "COMPLETED_BATCH2: BudgetBlockIntegrationTest 7 steps, local run green" },
+    { "target": "zw-tender flow", "priority": "high", "status": "COMPLETED_BATCH2: TenderFlowIntegrationTest 7 steps, local run green (deposit submit deferred to L4)" },
     { "target": "zw-security login chain", "priority": "high" },
     { "target": "zw-workflow business-doc E2E", "priority": "medium" },
     { "target": "zw-hr approval flow", "priority": "medium" },

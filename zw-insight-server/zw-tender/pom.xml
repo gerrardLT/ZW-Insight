@@ -38,6 +38,15 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!-- 集成测试基座（真实 API 模式，tenant_id=9999） -->
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-common</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>
