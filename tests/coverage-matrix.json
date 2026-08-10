@@ -16,11 +16,11 @@
     "zw-hr": ["RegularApplyService", "TransferApplyService", "SealApplyService", "VehicleService", "VehicleApplyService", "VehicleMaintenanceService", "HrStatisticsService"],
     "zw-system": ["AuditLogService", "BackupService", "SysLogService", "SysTenantTypeService", "VersionManagerService", "SystemConfigService"],
     "zw-site": ["CompletionAcceptanceService", "RectificationService", "SchedulePlanService", "ScheduleFeedbackService", "LocationSignService", "ReminderLogService"],
-    "zw-tender": ["CompanyCertificateService", "DepositReturnService", "PersonCertificateService", "TenderFeeService", "TenderTaskService"],
+    "zw-tender": ["COMPLETED_BATCH2: CompanyCertificateService, DepositReturnService, PersonCertificateService, TenderFeeService, TenderTaskService (5 classes, 32 cases, commit fa7d3fd)"],
     "zw-message": ["NoticeService", "PushConfigService", "TemplateService", "UserShortcutService", "WeChatWorkService"],
     "zw-finance": ["COMPLETED_BATCH1: InvoiceReceivedService, OtherPaymentService, ReserveFundReturnService, TaxRateService (4 classes, 28 cases)"],
     "zw-security": ["COMPLETED_BATCH1: AuthService(SMS/tenant branches), DeviceManagerService, LoginLocationService, AliyunSmsService (4 classes, 24 cases)"],
-    "zw-workflow": ["ProcessDefinitionService", "UrgeConfigService", "UrgeService"],
+    "zw-workflow": ["COMPLETED_BATCH2: ProcessDefinitionService, UrgeConfigService, UrgeService, ApprovalRollbackServiceImpl (4 classes, 26 cases, commit fa7d3fd)"],
     "zw-machine": ["MachineOilRecordService", "MachineUsageRecordService", "MachineWorkLogService"],
     "zw-basedata": ["CompanyService", "InspectionSchemeService", "OwnerService"],
     "zw-dashboard": ["ProjectDashboardService"],
@@ -41,8 +41,9 @@
   ],
   "l3Gaps": {
     "partial": ["project", "contract", "subcontract", "purchase", "labor", "machine", "material", "finance"],
-    "missing": ["budget", "tender", "site", "hr", "basedata", "file", "message", "workflow", "dashboard", "archive", "supplier-portal"],
+    "missing": ["site", "hr", "basedata", "file", "message", "dashboard", "archive", "supplier-portal"],
     "addedBatch1": ["test-api-finance2.sh (finance completion: invoice/reimbursement/settlement/reserve/retention/tax-rate CRUD/lock)", "test-api-system.sh (system+auth: user/org/role/menu/post/dict CRUD/ops/tenant/devices/captcha)"],
+    "addedBatch2": ["test-api-tender.sh (6 page contracts + register/fee/person-cert/company-cert CRUD zero-residue loops + edit-after-delete negative)", "test-api-budget.sh (budget/change/config/control-config read contracts + dynamic costCategory + @Valid negative)", "test-api-workflow.sh (todo/done/initiated/process/business-type/urge/rollback/delegate contracts + illegal start/complete negative)"],
     "note": "zw-insight-web/e2e/api-tests (vitest, 20 specs, 347 cases) covers all module domains but is not wired into CI"
   },
   "l4Gaps": [
@@ -72,6 +73,8 @@
   ],
   "completionLog": [
     { "date": "2026-08-10", "batch": 1, "layer": "L1", "scope": "zw-finance 4 services (28 cases) + zw-security 4 services (24 cases)", "verification": "zw-finance 565 green / zw-security 285 green" },
-    { "date": "2026-08-10", "batch": 1, "layer": "L3", "scope": "test-api-finance2.sh (37 asserts) + test-api-system.sh (43 asserts)", "verification": "CI run 31399388581 Integration Test green: finance2 37/37, system 43/43, L3 total 10 scripts pass/0 fail. First run 31395791226 failed 12 asserts = script endpoint errors (not backend), fixed per Controller source-of-truth in db2face" }
+    { "date": "2026-08-10", "batch": 1, "layer": "L3", "scope": "test-api-finance2.sh (37 asserts) + test-api-system.sh (43 asserts)", "verification": "CI run 31399388581 Integration Test green: finance2 37/37, system 43/43, L3 total 10 scripts pass/0 fail. First run 31395791226 failed 12 asserts = script endpoint errors (not backend), fixed per Controller source-of-truth in db2face" },
+{ "date": "2026-08-10", "batch": 2, "layer": "L1", "scope": "zw-tender 5 services (32 cases) + zw-workflow 4 services (26 cases, incl. ApprovalRollbackServiceImpl beyond plan)", "verification": "commit fa7d3fd; local green + both modules full regression 0 failures; CI run 31403596908 Backend Build green (58 new cases executed)" },
+{ "date": "2026-08-10", "batch": 2, "layer": "L3", "scope": "test-api-tender.sh (50 asserts) + test-api-budget.sh (26 asserts) + test-api-workflow.sh (24 asserts)", "verification": "CI run 31403596908 Integration Test green on first run: tender 50/50, budget 26/26, workflow 24/24, L3 total 13 scripts pass/0 fail. Scripts written after line-by-line review of all 17 Controllers (batch-1 lesson applied)" }
   ]
 }

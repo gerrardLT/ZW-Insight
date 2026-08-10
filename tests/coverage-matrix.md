@@ -23,11 +23,11 @@
 | zw-hr | RegularApplyService, TransferApplyService, SealApplyService, VehicleService, VehicleApplyService, VehicleMaintenanceService, HrStatisticsService（7） | Entry/Resign/OfficeSupply 已覆盖 |
 | zw-system | AuditLogService, BackupService, SysLogService, SysTenantTypeService, VersionManagerService, SystemConfigService（6） | Dict/Menu/Org/Post/Role/Tenant/User 已覆盖；DataPermission 有集成测试 |
 | zw-site | CompletionAcceptanceService, RectificationService, SchedulePlanService, ScheduleFeedbackService, LocationSignService, ReminderLogService（6） | Inspection/ConstructionLog/ReminderDedup/ReminderTask(集成) 已覆盖 |
-| zw-tender | CompanyCertificateService, DepositReturnService, PersonCertificateService, TenderFeeService, TenderTaskService（5） | TenderRegister/DepositApply/OpenBidRecord 已覆盖 |
+| zw-tender | ~~CompanyCertificateService, DepositReturnService, PersonCertificateService, TenderFeeService, TenderTaskService（5）~~ **已补全（批 2，5 类 32 例，commit fa7d3fd）** | TenderRegister/DepositApply/OpenBidRecord 已覆盖 |
 | zw-message | NoticeService, PushConfigService, TemplateService, UserShortcutService, WeChatWorkService（5） | Announcement/Message 已覆盖 |
 | zw-finance | ~~InvoiceReceivedService, OtherPaymentService, ReserveFundReturnService, TaxRateService（4）~~ **已补全（批 1，4 类 28 例）** | 其余 13 个已覆盖（含 Lock 19 例） |
 | zw-security | ~~AuthService, DeviceManagerService, LoginLocationService, AliyunSmsService（4）~~ **已补全（批 1，4 类 24 例；AuthService 密码主路径原由 TokenServiceTest 覆盖，补 SMS/租户分支）** | Captcha/PasswordReset/Token(Auth 相关)/Permission/DocsBlock 已覆盖 |
-| zw-workflow | ProcessDefinitionService, UrgeConfigService, UrgeService（3） | Approval/BusinessType/Delegate/Rollback 已覆盖 |
+| zw-workflow | ~~ProcessDefinitionService, UrgeConfigService, UrgeService（3）~~ **已补全（批 2，4 类 26 例含 ApprovalRollbackServiceImpl，commit fa7d3fd）** | Approval/BusinessType/Delegate/Rollback 已覆盖 |
 | zw-machine | MachineOilRecordService, MachineUsageRecordService, MachineWorkLogService（3） | Contract/Entry/Ledger/Repair/WorkSettlement 已覆盖 |
 | zw-basedata | CompanyService, InspectionSchemeService, OwnerService（3） | Material/Supplier/Blacklist/Evaluation/Category 已覆盖 |
 | zw-dashboard | ProjectDashboardService（1） | DashboardService 已覆盖；ProjectDashboard 仅属性测试 |
@@ -35,7 +35,7 @@
 | zw-archive | ArchiveService（1） | 仅 ArchiveSearchFilterPropertyTest |
 | zw-common | 覆盖率 24.7%：异常体系/基类/R 包装等零散缺口 | AssertUtils/Desensitize 已覆盖，逐项评估豁免 |
 
-**L1 合计缺口：57 个 Service**（批 1 已销项 8，剩 49；豁免评估后实际补测量预计 40~48）。
+**L1 合计缺口：57 个 Service**（批 1 已销项 8，批 2 已销项 9，剩 40；豁免评估后实际补测量预计 32~40）。
 已全量覆盖模块：zw-budget、zw-purchase、zw-labor、zw-material、zw-subcontract、zw-contract、zw-project。
 
 ## 二、L2 集成测试缺口
@@ -59,11 +59,13 @@
 
 | 已覆盖（PARTIAL/OK） | 未覆盖模块（需新脚本） |
 |---|---|
-| project（主端点）/ contract / subcontract / purchase（contract+inquiry）/ labor（contract+team+roster+work-order）/ machine（contract+ledger+部分）/ material（inbound+outbound+stock+inventory）/ finance（原 3 组 + **批 1 新增 test-api-finance2.sh：开票/收票/汇总/其他付款/报销/结算/备用金/质保金/税率 CRUD/财务锁**）/ **system+auth（批 1 新增 test-api-system.sh：用户/机构/角色/菜单/岗位/字典 CRUD/运维端点/租户/设备/验证码）** | budget / tender / site / hr / basedata / file / message / workflow / dashboard / archive + supplier-portal 公开接口 |
+| project（主端点）/ contract / subcontract / purchase（contract+inquiry）/ labor（contract+team+roster+work-order）/ machine（contract+ledger+部分）/ material（inbound+outbound+stock+inventory）/ finance（原 3 组 + **批 1 新增 test-api-finance2.sh：开票/收票/汇总/其他付款/报销/结算/备用金/质保金/税率 CRUD/财务锁**）/ **system+auth（批 1 新增 test-api-system.sh：用户/机构/角色/菜单/岗位/字典 CRUD/运维端点/租户/设备/验证码）** / **tender（批 2 新增 test-api-tender.sh：6 组分页契约 + 登记/费用/人员证书/企业证书 4 条 CRUD 零残留闭环）** / **budget（批 2 新增 test-api-budget.sh：编制/变更/管控配置/控制配置只读契约 + @Valid 负向）** / **workflow（批 2 新增 test-api-workflow.sh：待办/已办/流程定义/业务类型/催办/回滚/委托契约 + 非法流转负向）** | site / hr / basedata / file / message / dashboard / archive + supplier-portal 公开接口 |
 
 补充说明：`zw-insight-web/e2e/api-tests/`（vitest，20 spec 347 用例）已按功能表注释覆盖全部 20 个模块域的 API 功能，但**未接入 CI**——shell 脚本层仍是 CI 内唯一 L3 门禁，缺口照算；api-tests 接入 CI 列入阶段 5 一并评估。
 
 **批 1 L3 CI 实跑验证（run 31399388581）**：test-api-finance2.sh 37/37 通过、test-api-system.sh 43/43 通过，L3 共 10 脚本 通过=10 失败=0。首轮 run 31395791226 的 12 处失败经逐条对照 Controller 定位均为脚本端点写错（非后端缺陷），已按后端为准修正（db2face）。
+
+**批 2 L3 CI 实跑验证（run 31403596908，首跑一次通过）**：test-api-tender.sh 50/50、test-api-budget.sh 26/26、test-api-workflow.sh 24/24，L3 共 13 脚本 通过=13 失败=0；同 run Backend Build 实跑含批 2 新增 58 例单测全绿。脚本均先精读对应 17 个 Controller 再编写（吸收批 1 教训）。
 
 ## 四、L4 生命周期阶段缺口
 
