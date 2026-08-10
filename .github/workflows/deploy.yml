@@ -219,6 +219,29 @@ jobs:
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
             "docker logs zwi-backend --tail 30" || true
 
+      # 生产收敛硬断言（2026-08-10）：API 文档端点不得对公网免认证暴露，
+      # 对应 docker-compose.deploy.yml 的 KNIFE4J_ENABLE/KNIFE4J_PRODUCTION/SPRINGDOC_API_DOCS_ENABLED；
+      # 不静默：任一端点返回 200 则 job 标红
+      - name: Verify API docs disabled in production
+        run: |
+          # 前置：确认后端可达（避免服务未启动时 curl 000 被误判为“未暴露”的假通过）
+          PROBE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "http://${{ env.SERVER_HOST }}:18080/api/v1/captcha/image" || true)
+          if [ "$PROBE" = "000" ]; then
+            echo "❌ 后端不可达，无法验证文档收敛，拒绝假通过"
+            exit 1
+          fi
+          echo "后端可达（探针 HTTP $PROBE），开始验证文档端点收敛"
+          for path in /doc.html /v3/api-docs; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              "http://${{ env.SERVER_HOST }}:18080$path" || true)
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "❌ $path 在生产环境免认证可达 (HTTP 200)，收敛未生效"
+              exit 1
+            fi
+            echo "✅ $path → HTTP $HTTP_CODE（未暴露）"
+          done
+
   # ────────────────────────────────────────────────────
   # 3. 集成测试（L3 API + L4 端到端业务流）
   # ────────────────────────────────────────────────────

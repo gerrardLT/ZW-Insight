@@ -87,6 +87,13 @@ services:
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
       # minio.access-key/secret-key 在 dev 配置里已是 minioadmin，与本编排一致，无需覆盖；仅改 endpoint 指向服务名
       MINIO_ENDPOINT: "http://minio:9000"
+      # ── 生产收敛（2026-08-10，tasks.md 2.3.3 豁免条件落地）──
+      # 拦截器体系仅保护 /api/**，API 文档端点（/doc.html、/v3/api-docs、/webjars）
+      # 默认免认证可达，生产必须关闭文档 UI 与 OpenAPI 数据源，避免接口结构暴露公网；
+      # 本地/联调不受影响（仅本 deploy 编排生效）。CI deploy job 有对应硬断言步骤。
+      KNIFE4J_ENABLE: "false"
+      KNIFE4J_PRODUCTION: "true"
+      SPRINGDOC_API_DOCS_ENABLED: "false"
     ports:
       - "18080:8080"   # 仅此端口对公网；前端联调连这里
     mem_limit: 1200m
