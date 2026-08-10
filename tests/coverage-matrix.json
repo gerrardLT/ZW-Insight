@@ -72,6 +72,6 @@
   ],
   "completionLog": [
     { "date": "2026-08-10", "batch": 1, "layer": "L1", "scope": "zw-finance 4 services (28 cases) + zw-security 4 services (24 cases)", "verification": "zw-finance 565 green / zw-security 285 green" },
-    { "date": "2026-08-10", "batch": 1, "layer": "L3", "scope": "test-api-finance2.sh + test-api-system.sh (bash -n passed)", "verification": "pending CI integration-test real run" }
+    { "date": "2026-08-10", "batch": 1, "layer": "L3", "scope": "test-api-finance2.sh (37 asserts) + test-api-system.sh (43 asserts)", "verification": "CI run 31399388581 Integration Test green: finance2 37/37, system 43/43, L3 total 10 scripts pass/0 fail. First run 31395791226 failed 12 asserts = script endpoint errors (not backend), fixed per Controller source-of-truth in db2face" }
   ]
 }
