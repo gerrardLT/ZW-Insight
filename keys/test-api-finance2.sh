@@ -177,7 +177,7 @@ if [ -n "$CREATED_TAXRATE_ID" ]; then
 fi
 
 # ---------- 财务锁 ----------
-call GET "/api/v1/finance/lock/status"
+call GET "/api/v1/finance/lock/status?period=2026-07"
 assert_http 2 "财务锁-状态 HTTP"
 assert_body_code 200 "财务锁-状态业务码"
 

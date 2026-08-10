@@ -119,23 +119,23 @@ assert_body_code 200 "菜单-当前用户业务码"
 
 # ---------- 字典 CRUD 闭环 ----------
 TS_SUFFIX=$(date +%s)
-call POST "/api/v1/system/dict" "{\"dictName\":\"L3临时字典$TS_SUFFIX\",\"dictCode\":\"l3tmp$TS_SUFFIX\",\"sort\":99}"
+call POST "/api/v1/system/dict" "{\"dictName\":\"L3临时字典$TS_SUFFIX\",\"dictCode\":\"l3tmp$TS_SUFFIX\",\"sortOrder\":99}"
 assert_http 2 "字典-创建 HTTP"
 assert_body_code 200 "字典-创建业务码"
 
-# save 返回无 ID，按名称查回取 ID（真实查询，非伪造）
-call GET "/api/v1/system/dict?page=1&size=10&dictName=L3临时字典$TS_SUFFIX"
-assert_http 2 "字典-按名查询 HTTP"
-CREATED_DICT_ID=$(jq -r '.data.records[0].id // empty' /tmp/zwi_body 2>/dev/null)
+# save 返回无 ID，按 dictCode 查回取 ID（真实查询；ASCII 编码避免中文 query 未编码被拒）
+call GET "/api/v1/system/dict?page=1&size=500"
+assert_http 2 "字典-分页查询 HTTP"
+CREATED_DICT_ID=$(jq -r --arg code "l3tmp$TS_SUFFIX" '.data.records[] | select(.dictCode==$code) | .id' /tmp/zwi_body 2>/dev/null | head -1)
 TOTAL_COUNT=$((TOTAL_COUNT + 1))
 if [ -n "$CREATED_DICT_ID" ]; then
-  PASS_COUNT=$((PASS_COUNT + 1)); log "  PASS [$TOTAL_COUNT] 字典-创建后按名查回ID"
+  PASS_COUNT=$((PASS_COUNT + 1)); log "  PASS [$TOTAL_COUNT] 字典-创建后按dictCode查回ID"
 else
-  FAIL_COUNT=$((FAIL_COUNT + 1)); log "  FAIL [$TOTAL_COUNT] 字典-创建后按名未查回ID"
+  FAIL_COUNT=$((FAIL_COUNT + 1)); log "  FAIL [$TOTAL_COUNT] 字典-创建后按dictCode未查回ID"
 fi
 
 if [ -n "$CREATED_DICT_ID" ]; then
-  call PUT "/api/v1/system/dict/$CREATED_DICT_ID" "{\"dictName\":\"L3临时字典改$TS_SUFFIX\",\"dictCode\":\"l3tmp$TS_SUFFIX\",\"sort\":98}"
+  call PUT "/api/v1/system/dict/$CREATED_DICT_ID" "{\"dictName\":\"L3临时字典改$TS_SUFFIX\",\"dictCode\":\"l3tmp$TS_SUFFIX\",\"sortOrder\":98}"
   assert_http 2 "字典-更新 HTTP"
   assert_body_code 200 "字典-更新业务码"
 fi
@@ -151,25 +151,25 @@ if [ -n "$CREATED_DICT_ID" ]; then
 fi
 
 # ---------- 运维端点 ----------
-call GET "/api/v1/system/log?page=1&size=5"
-assert_http 2 "日志-分页 HTTP"
-assert_body_code 200 "日志-分页业务码"
+call GET "/api/v1/system/log/oper?page=1&size=5"
+assert_http 2 "操作日志-分页 HTTP"
+assert_body_code 200 "操作日志-分页业务码"
 
 call GET "/api/v1/system/audit?page=1&size=5"
 assert_http 2 "审计日志 HTTP"
 assert_body_code 200 "审计日志业务码"
 
-call GET "/api/v1/system/monitor"
-assert_http 2 "健康监控 HTTP"
-assert_body_code 200 "健康监控业务码"
+call GET "/api/v1/system/monitor/metrics"
+assert_http 2 "健康监控-指标 HTTP"
+assert_body_code 200 "健康监控-指标业务码"
 
-call GET "/api/v1/system/version"
-assert_http 2 "版本信息 HTTP"
-assert_body_code 200 "版本信息业务码"
+call GET "/api/v1/system/version/current"
+assert_http 2 "版本信息-当前版本 HTTP"
+assert_body_code 200 "版本信息-当前版本业务码"
 
-call GET "/api/v1/system/config"
-assert_http 2 "系统配置 HTTP"
-assert_body_code 200 "系统配置业务码"
+call GET "/api/v1/system/config/group/security"
+assert_http 2 "系统配置-按分组查询 HTTP"
+assert_body_code 200 "系统配置-按分组业务码"
 
 # ---------- 租户平台 ----------
 call GET "/api/v1/platform/tenant?page=1&size=5"
