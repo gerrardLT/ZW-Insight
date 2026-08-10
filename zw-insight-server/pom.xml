@@ -53,7 +53,7 @@
 
         <!-- 核心依赖版本 -->
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
-        <mysql-connector.version>8.1.0</mysql-connector.version>
+        <mysql-connector.version>8.3.0</mysql-connector.version>
         <druid.version>1.2.21</druid.version>
         <flowable.version>7.0.1</flowable.version>
         <minio.version>8.5.9</minio.version>
