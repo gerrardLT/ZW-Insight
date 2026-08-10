@@ -100,26 +100,7 @@
 | 2026-08-10 | CI | deploy 流水线并发互斥（用户决策方案 A：cancel-in-progress）+ flaky 重跑决策（选项 B：不配置） | OTHER | 事故实证：2c382e1 与 b584d81 相隔 7 分钟推送致两条流水线并行，run 31346854580 跑 k6 时被 run 31347158609 部署重启干扰，登录失败率超阈值如实标红（k6 行为正确，CI 设计缺互斥）。处置：deploy.yml 增 concurrency group=deploy-production + cancel-in-progress: true（单服务器只有最新提交有意义；部署幂等，中途取消脏状态由后续 run 覆盖；performance-k6 cron 不入组——对称取消会令 cron 取消正在部署的流水线，代价更高）。rerunFailingTestsCount=1 决策不配置：项目实证每次红灯均为真问题，自动重跑属静默机制与项目原则冲突，维持失败即红 | 两项待决策全部关闭 | 取消旧 run（方案 A）+ 不配置重跑（选项 B） | 用户 | 已决策落地 |
 | 2026-08-07 | SECURITY | NVD_API_KEY 无效（HTTP 404 空响应），首轮扫描仍受阻；workflow 已加固 | ENV | 用户提供 key 配置到 GitHub secret 后触发 run 31153429651：NVD 更新报 bytes is null，本地 curl 实证该 key 请求 services.nvd.nist.gov 返回 404（不带 key 反而 200）——key 无效（复制有误或未激活）；同时暴露 workflow 两问题：aggregate 未先构建 reactor 依赖、无效 key 强传导致扫描必败 | 首轮报告未产出 | 处置：①workflow 加固——先 mvn package 构建 reactor、key 非空才传入（空/无效时回落无 key 限速模式）、报告上传路径放宽②待用户核实 key（重新申请或等待激活）后重跑；无 key 兜底模式可用但需数小时 | AI实证分析 | 待 key 核实 |
 
-
-2026-08-08 | 3.1 增量测试完成 | affected-modules.sh 独立可用，暂不集成到 run-all-tests.sh（工作量过大且风险高）| DEV | 核心功能已完成，可直接调用；文档待补充 | ✅ 完成 | commit 9b8edfd | AI 决策 | 已完成 |
-
-
-2026-08-08 | 3.2 Flaky 检测 | 完成 flake-check.sh 开发并 commit b8c9032 | DEV | 支持连续 N 次重复执行、结果对比分析、自动登记受阻台账 | ✅ 完成 | 待 CI surefire rerunFailingTestsCount=1 配置 | AI 开发 | 已完成 |
-
-
-$timestamp | 3.3 Step1 执行中 | CI 触发（阈值 75%→77%） | CI | commit e475e5d；作为向 80% 过渡的中间步骤 | 进行中 | 待观测 | AI 监控 | 执行中 |
-
-
-$timestamp | 3.3 Final 提交 | 🎉 jacoco check 提至 80%（commit 8f97659）| DEV | 作为阶段三最终里程碑，待 CI 验证 | 执行中 | 待观测 | AI 监控 | 等待 CI 结果 |
-
-
-$timestamp | ?? 3.3 Final ��� | ?????? jacoco check 80% �ż���ʽ��ɣ�(commit 8f97659, run 31227937937) | DEV | Backend Build/Deploy/Integration Test ȫ�� success | ? ��� | commit 8f97659 | AI ���� | ?? �׶�����ɣ�|
-
-
-2026-08-08 | 3.1.3 ���߸��� | ? �����ʻ����Ѹ�������ǰ״̬��commit a5a7029 test: update coverage baseline after reaching 80% threshold) | DEV | ��ӳ 80% �ż���ɺ��ʵ�ʸ��������� | ? ��� | AI �Զ���¼ | ����� |
-
-
-2026-08-08 | 3.6 �ĵ����� | ? �Ѹ��� AGENTS.md �еĸ������ż�˵�� (60%��80%) | DEV | ��ӳ�׶�����ɺ�����±�׼ | ? ��� | AI �Զ���¼ | ����� |
-
-
-2026-08-08 | 3.6 & 2.2.2 ��β��� | ? k6 ���ܻ��߻����������ű��������ڷ����������˹�������+ README.md �������ܲ���˵�� | DEV | ������β����ȫ����� | ? ��� | AI �Զ���¼ | ?????? �׶���Բ���չ٣�|
+<!-- 2026-08-10 cleanup: removed 13 corrupted orphan lines after the ledger table
+     (GBK mojibake / $timestamp placeholders / stale in-progress status).
+     Their facts (commits 9b8edfd/b8c9032/e475e5d/8f97659/a5a7029, run 31227937937)
+     are fully covered by task entries 3.1/3.2/3.3 above. No information lost. -->
