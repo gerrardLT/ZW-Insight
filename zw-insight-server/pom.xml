@@ -69,10 +69,37 @@
         <!-- easyexcel-core 3.3.4 运行时需�?commons-io 2.12+（AbstractStreamBuilder），
              �?spring-boot 3.2 BOM 管理�?2.11.0，不显式钉住会导�?Excel 导出 NoClassDefFoundError -->
         <commons-io.version>2.16.1</commons-io.version>
+
+        <!-- CVE 修复版本覆盖�?026-08-10 依赖漏洞处置，tasks.md 2.3.3）：
+             Spring Boot 3.2.x BOM 冻结�?2024-11，以�?CVE �?BOM 锁定版本之后披露�?
+             通过 Boot 官方预留的版本属性覆盖修复；每项均有 NVD/官方公告依据 -->
+        <!-- tomcat 10.1.33�?0.1.57：CVE-2025-31651(9.8) 影响�?10.1.39 �?34 �?-->
+        <tomcat.version>10.1.57</tomcat.version>
+        <!-- jackson-databind 2.15.4�?.18.9：CVE-2026-54512/54513(8.1) NVD 确认 2.18.8+ 修复 -->
+        <jackson-bom.version>2.18.9</jackson-bom.version>
+        <!-- thymeleaf 3.1.2�?.1.5：CVE-2026-40477/40478(9.0) NVD 确认 3.1.5.RELEASE 修复�?.1.4 修复不完整） -->
+        <thymeleaf.version>3.1.5.RELEASE</thymeleaf.version>
+        <!-- netty 4.1.115�?.1.137：CVE-2026-47691(10.0) �?41 项，4.1.x 同轨道补�?-->
+        <netty.version>4.1.137.Final</netty.version>
+        <!-- log4j-api 2.21.1�?.26.1：CVE-2026-34478~34481(7.5)；项目实际日志栈�?logback，仅传递依�?-->
+        <log4j2.version>2.26.1</log4j2.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- CVE 修复钉住�?026-08-10，tasks.md 2.3.3）：protobuf-java 3.21.9�?.25.9
+                 （CVE-2024-7254/CVE-2026-0994�?.25.x �?3.x 轨道末版�?.x 包名重构不兼容）�?
+                 angus-mail 2.0.3�?.0.5（CVE-2025-7962 SMTP 注入，Kodem/NVD 确认 2.0.4+ 修复�?-->
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>3.25.9</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.angus</groupId>
+                <artifactId>angus-mail</artifactId>
+                <version>2.0.5</version>
+            </dependency>
             <!-- Testcontainers BOM -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
