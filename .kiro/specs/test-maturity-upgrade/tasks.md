@@ -58,7 +58,7 @@
 > 验收口径：功能表每功能点在承诺层级有真实测试映射即销项，不追覆盖率数字；追溯矩阵 tests/coverage-matrix.md/json 为唯一缺口台账，每批销项更新。
 
 - [x] 4.0 阶段 0 全量盘点：功能表 46 模块 × 126 Controller/150 Service/225 测试类/L3 8 脚本/L4 19 阶段/L5 56 spec；产出 coverage-matrix.md/json。实测缺口：**L1 57 个 Service 无单测**（7 模块已全覆盖）；**L3 约 70% Controller 无脚本覆盖**（最大缺口）；L2 缺 budget BLOCK/tender/security 登录链等 8 项；L4 缺变更签证/质保金等 7 分支；**L5 全部 56 spec 未接入 CI**，real 模式 12 skip 未定性；另发现 e2e/api-tests（vitest 347 用例）已按功能表覆盖 20 模块域但未入 CI
-- [ ] 4.1 批 1：L1 zw-finance(4)+zw-security(4) 补单测；L3 finance 补齐+system/auth 新脚本
+- [x] 4.1 批 1：L1 zw-finance(4)+zw-security(4) 补单测（8 类 52 例，zw-finance 565 绿/zw-security 285 绿，commit e1a00dd；AliyunSms 真实外呼分支登记豁免）；L3 新增 test-api-finance2.sh（财务 10 组补齐含税率 CRUD/负向断言）+test-api-system.sh（系统管理+认证基础含字典 CRUD），bash -n 语法通过，待 CI 实跑销项
 - [ ] 4.2 批 2：L1 zw-tender(5)+zw-workflow(3)；L3 tender/budget/workflow 新脚本；L2 budget BLOCK+tender 流转
 - [ ] 4.3 批 3：L1 zw-hr(7)+zw-site(6)+zw-machine(3)；L3 hr/site 新脚本；L4 变更签证+质保金分支
 - [ ] 4.4 批 4：L1 zw-system(6)+zw-basedata(3)+zw-message(5)；L3 basedata/message/dashboard/archive；L2 security 登录链+hr 审批

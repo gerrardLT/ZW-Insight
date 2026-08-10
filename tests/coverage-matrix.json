@@ -41,7 +41,8 @@
   ],
   "l3Gaps": {
     "partial": ["project", "contract", "subcontract", "purchase", "labor", "machine", "material", "finance"],
-    "missing": ["system", "auth+security", "budget", "tender", "site", "hr", "basedata", "file", "message", "workflow", "dashboard", "archive", "supplier-portal"],
+    "missing": ["budget", "tender", "site", "hr", "basedata", "file", "message", "workflow", "dashboard", "archive", "supplier-portal"],
+    "addedBatch1": ["test-api-finance2.sh (finance completion: invoice/reimbursement/settlement/reserve/retention/tax-rate CRUD/lock)", "test-api-system.sh (system+auth: user/org/role/menu/post/dict CRUD/ops/tenant/devices/captcha)"],
     "note": "zw-insight-web/e2e/api-tests (vitest, 20 specs, 347 cases) covers all module domains but is not wired into CI"
   },
   "l4Gaps": [
@@ -70,6 +71,7 @@
     { "target": "AliyunSmsService real-send branch", "layer": "L1", "reason": "aliyun SMS channel dependency; switch and missing-credential branches tested (3 cases), real send verified in production", "date": "2026-08-10" }
   ],
   "completionLog": [
-    { "date": "2026-08-10", "batch": 1, "layer": "L1", "scope": "zw-finance 4 services (28 cases) + zw-security 4 services (24 cases)", "verification": "zw-finance 565 green / zw-security 285 green" }
+    { "date": "2026-08-10", "batch": 1, "layer": "L1", "scope": "zw-finance 4 services (28 cases) + zw-security 4 services (24 cases)", "verification": "zw-finance 565 green / zw-security 285 green" },
+    { "date": "2026-08-10", "batch": 1, "layer": "L3", "scope": "test-api-finance2.sh + test-api-system.sh (bash -n passed)", "verification": "pending CI integration-test real run" }
   ]
 }

@@ -57,9 +57,9 @@
 
 现有 8 个 shell 脚本仅覆盖 8 个业务模块的部分端点。126 Controller 中约 **70% 无任何 L3 脚本覆盖**。
 
-| 已覆盖（PARTIAL） | 未覆盖模块（需新脚本） |
+| 已覆盖（PARTIAL/OK） | 未覆盖模块（需新脚本） |
 |---|---|
-| project（主端点）/ contract / subcontract / purchase（contract+inquiry）/ labor（contract+team+roster+work-order）/ machine（contract+ledger+部分）/ material（inbound+outbound+stock+inventory）/ finance（payment-apply+payment-received+bank-account） | system（15 Controller）/ security+auth（4）/ budget（5）/ tender（6）/ site（9）/ hr（8）/ basedata（8）/ file（8）/ message（6）/ workflow（6）/ dashboard（2）/ archive（1）+ supplier-portal 公开接口 |
+| project（主端点）/ contract / subcontract / purchase（contract+inquiry）/ labor（contract+team+roster+work-order）/ machine（contract+ledger+部分）/ material（inbound+outbound+stock+inventory）/ finance（原 3 组 + **批 1 新增 test-api-finance2.sh：开票/收票/汇总/其他付款/报销/结算/备用金/质保金/税率 CRUD/财务锁**）/ **system+auth（批 1 新增 test-api-system.sh：用户/机构/角色/菜单/岗位/字典 CRUD/运维端点/租户/设备/验证码）** | budget / tender / site / hr / basedata / file / message / workflow / dashboard / archive + supplier-portal 公开接口 |
 
 补充说明：`zw-insight-web/e2e/api-tests/`（vitest，20 spec 347 用例）已按功能表注释覆盖全部 20 个模块域的 API 功能，但**未接入 CI**——shell 脚本层仍是 CI 内唯一 L3 门禁，缺口照算；api-tests 接入 CI 列入阶段 5 一并评估。
 
