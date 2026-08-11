@@ -1363,7 +1363,7 @@ stage_9h_entry_approval() {
   # 审批后：申请 APPROVED + 自动创建系统账号（按 username 回查）
   assert_status "/api/v1/hr/entry-apply/page?page=1&size=1&realName=L4Entry$ts" "status" "APPROVED" "入职审批后状态"
 
-  api_call GET "/api/v1/system/user/page?page=1&size=1&username=$username"
+  api_call GET "/api/v1/system/user?page=1&size=1&username=$username"
   strict_assert "回查自动创建的系统账号"
   local userCount=$(extract_field "total")
   if [ "${userCount:-0}" != "0" ] && [ -n "$userCount" ]; then
