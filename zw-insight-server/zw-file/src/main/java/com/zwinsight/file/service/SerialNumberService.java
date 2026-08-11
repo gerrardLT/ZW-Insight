@@ -50,6 +50,14 @@ public class SerialNumberService {
         String redisKey = String.format("serial:%d:%s:%s", tenantId, businessType, datePart);
         Long seq = stringRedisTemplate.opsForValue().increment(redisKey);
 
+        // 号段溢出防护（2026-08-11）：seq 超出 seqLength 位数时 padPre 不截断会产出
+        // 超位编号破坏格式，fail-fast 拒绝并提示调大位数
+        long maxSeq = (long) Math.pow(10, rule.getSeqLength());
+        if (seq >= maxSeq) {
+            throw new BusinessException("编号规则[" + businessType + "]当日序号已用尽（序号位数 "
+                    + rule.getSeqLength() + " 位），请调大序号位数");
+        }
+
         // 格式化序号
         String seqStr = StrUtil.padPre(String.valueOf(seq), rule.getSeqLength(), '0');
 

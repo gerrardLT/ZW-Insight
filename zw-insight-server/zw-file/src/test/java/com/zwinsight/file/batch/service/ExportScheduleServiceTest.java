@@ -24,6 +24,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +44,16 @@ class ExportScheduleServiceTest {
 
     @Mock private BizExportScheduleMapper scheduleMapper;
     @Mock private BatchImportExportService batchImportExportService;
+    @Mock private com.zwinsight.security.service.TenantTaskRunner tenantTaskRunner;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubTenantRunner() {
+        // 逐租户执行器透传：直接执行单租户逻辑（lenient：部分用例不走扫描路径）
+        org.mockito.Mockito.lenient().doAnswer(inv -> {
+            ((java.util.function.LongConsumer) inv.getArgument(1)).accept(9999L);
+            return null;
+        }).when(tenantTaskRunner).runForActiveTenants(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+    }
 
     @InjectMocks
     private ExportScheduleService exportScheduleService;
@@ -124,5 +136,40 @@ class ExportScheduleServiceTest {
         List<Map<String, String>> modules = exportScheduleService.getAvailableModules();
         assertThat(modules).hasSize(10);
         assertThat(modules.get(0)).containsKeys("code", "name");
+    }
+
+    @Test
+    @DisplayName("定时扫描：到期启用项执行导出并推进 nextExecuteTime（原零测试，2026-08-11 补）")
+    void testScanAndExecute_dueSchedule_executesAndAdvances() {
+        BizExportSchedule schedule = new BizExportSchedule();
+        schedule.setId(1L);
+        schedule.setModuleCode("SUPPLIER");
+        schedule.setEnabled(1);
+        schedule.setCronExpression("0 0 2 * * ?");
+        schedule.setNextExecuteTime(java.time.LocalDateTime.now().minusMinutes(1));
+        when(scheduleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(schedule));
+        when(batchImportExportService.asyncExport(any(), any())).thenReturn(777L);
+
+        exportScheduleService.scanAndExecuteScheduledExports();
+
+        // 触发导出并回写推进后的下次执行时间
+        verify(batchImportExportService).asyncExport(eq("SUPPLIER"), any());
+        org.mockito.ArgumentCaptor<BizExportSchedule> captor =
+                org.mockito.ArgumentCaptor.forClass(BizExportSchedule.class);
+        verify(scheduleMapper).updateById(captor.capture());
+        assertThat(captor.getValue().getNextExecuteTime())
+                .isAfter(java.time.LocalDateTime.now().minusMinutes(1));
+        assertThat(captor.getValue().getLastExecuteTime()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("定时扫描：无到期项时不执行任何导出")
+    void testScanAndExecute_noDueSchedules_noop() {
+        when(scheduleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        exportScheduleService.scanAndExecuteScheduledExports();
+
+        verify(batchImportExportService, never()).asyncExport(any(), any());
+        verify(scheduleMapper, never()).updateById(any());
     }
 }

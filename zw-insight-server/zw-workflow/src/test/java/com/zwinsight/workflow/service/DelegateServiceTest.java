@@ -127,6 +127,31 @@ class DelegateServiceTest {
     }
 
     @Test
+    @DisplayName("创建委托：循环委托拒绝（A→B 且 B 已委托回 A）")
+    void testCreateDelegation_circularDelegate_throws() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(100L);
+
+            LocalDateTime start = LocalDateTime.now().plusHours(1);
+            LocalDateTime end = LocalDateTime.now().plusDays(7);
+
+            // 第一次查询：本人无生效委托；第二次查询（代理人 200 的委托）：200 已委托回 100
+            WfDelegateConfig reverseDelegation = new WfDelegateConfig();
+            reverseDelegation.setDelegatorId(200L);
+            reverseDelegation.setDelegateId(100L);
+            reverseDelegation.setStatus("ACTIVE");
+            when(delegateConfigMapper.selectOne(any(LambdaQueryWrapper.class)))
+                    .thenReturn(null, reverseDelegation);
+
+            assertThatThrownBy(() -> delegateService.createDelegation(200L, start, end, "test"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("循环委托");
+
+            verify(delegateConfigMapper, never()).insert(any());
+        }
+    }
+
+    @Test
     @DisplayName("取消委托：非本人操作抛异常")
     void testCancelDelegation_notOwner_throws() {
         try (var sc = mockStatic(SecurityContextHolder.class)) {

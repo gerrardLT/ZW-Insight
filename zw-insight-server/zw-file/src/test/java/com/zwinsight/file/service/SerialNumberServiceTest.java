@@ -84,6 +84,23 @@ class SerialNumberServiceTest {
     }
 
     @Test
+    @DisplayName("生成编号：号段溢出拒绝（防 padPre 不截断产出超位编号）")
+    void testGenerate_seqOverflow_rejected() {
+        SecurityContextHolder.setTenantId(9999L);
+        SerialNumberRule rule = new SerialNumberRule();
+        rule.setRulePrefix("HT");
+        rule.setDateFormat("yyyyMMdd");
+        rule.setSeqLength(3); // 上限 999
+        when(ruleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(rule);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(anyString())).thenReturn(1000L);
+
+        assertThatThrownBy(() -> serialNumberService.generate("CONTRACT"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("序号已用尽");
+    }
+
+    @Test
     @DisplayName("新增规则：业务类型重复抛异常")
     void testSave_duplicate() {
         SecurityContextHolder.setTenantId(9999L);
