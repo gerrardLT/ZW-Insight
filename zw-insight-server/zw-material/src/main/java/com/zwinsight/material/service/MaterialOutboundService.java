@@ -14,6 +14,7 @@ import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import java.util.List;
 /**
  * 材料出库服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MaterialOutboundService {
@@ -138,10 +140,39 @@ public class MaterialOutboundService {
         outboundMapper.updateById(outbound);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         BizMaterialOutbound existing = outboundMapper.selectById(id);
         if (existing == null) throw new BusinessException("出库单不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+
+        // B3 修复（2026-08-11）：save 时已扣减库存，删除必须对称回填，
+        // 否则删除草稿出库单即永久丢失库存
+        LambdaQueryWrapper<BizMaterialOutboundDetail> detailWrapper = new LambdaQueryWrapper<>();
+        detailWrapper.eq(BizMaterialOutboundDetail::getOutboundId, id);
+        List<BizMaterialOutboundDetail> details = outboundDetailMapper.selectList(detailWrapper);
+        for (BizMaterialOutboundDetail detail : details) {
+            LambdaQueryWrapper<BizProjectMaterialStock> stockWrapper = new LambdaQueryWrapper<>();
+            stockWrapper.eq(BizProjectMaterialStock::getProjectId, existing.getProjectId())
+                    .eq(BizProjectMaterialStock::getMaterialName, detail.getMaterialName())
+                    .eq(BizProjectMaterialStock::getSpecification, detail.getSpecification());
+            BizProjectMaterialStock stock = stockMapper.selectOne(stockWrapper);
+            if (stock == null) {
+                log.warn("删除出库单时未找到库存记录，跳过回填: outboundId={}, material={}",
+                        id, detail.getMaterialName());
+                continue;
+            }
+            BigDecimal qty = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
+            stock.setStockQuantity(stock.getStockQuantity().add(qty));
+            if ("PICK".equals(existing.getOutboundType())) {
+                stock.setTotalOutbound(stock.getTotalOutbound().subtract(qty));
+            } else {
+                stock.setTotalReturn(stock.getTotalReturn().subtract(qty));
+            }
+            stockMapper.updateById(stock);
+            outboundDetailMapper.deleteById(detail.getId());
+        }
+
         outboundMapper.deleteById(id);
     }
 

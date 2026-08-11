@@ -83,6 +83,17 @@ public class LaborPayrollService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizLaborPayroll payroll) {
+        // B5 修复（2026-08-11）：同班组周期重叠的工资单重复汇总同一批工单致工资双计，
+        // 拒绝与既有工资单（任意状态）周期重叠
+        LambdaQueryWrapper<BizLaborPayroll> overlapWrapper = new LambdaQueryWrapper<>();
+        overlapWrapper.eq(BizLaborPayroll::getTeamId, payroll.getTeamId())
+                .le(BizLaborPayroll::getPeriodStart, payroll.getPeriodEnd())
+                .ge(BizLaborPayroll::getPeriodEnd, payroll.getPeriodStart());
+        Long overlapCount = payrollMapper.selectCount(overlapWrapper);
+        if (overlapCount != null && overlapCount > 0) {
+            throw new BusinessException("该班组在此周期内已存在工资单，不可重复创建（周期重叠）");
+        }
+
         // 汇总该周期内该班组的已审批工单
         LambdaQueryWrapper<BizWorkOrder> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BizWorkOrder::getProjectId, payroll.getProjectId())

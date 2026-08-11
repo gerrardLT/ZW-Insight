@@ -50,6 +50,12 @@ public class PaymentReceivedService {
         BigDecimal receiveAmount = paymentReceived.getReceiveAmount() == null
                 ? BigDecimal.ZERO : paymentReceived.getReceiveAmount();
 
+        // B2 修复（2026-08-11）：负数/零金额拒绝——原仅校验上限，负数可落库并反向
+        // 扣减项目总收入与合同累计收款
+        if (receiveAmount.signum() <= 0) {
+            throw new BusinessException("回款金额必须大于0");
+        }
+
         // 校验回款金额上限：不能超过已开票未收金额（累计开票 - 累计已回款）
         BizConstructionContract contract = null;
         if (paymentReceived.getContractId() != null) {
@@ -99,10 +105,58 @@ public class PaymentReceivedService {
     }
 
     /**
-     * 更新收款记录
+     * 更新收款记录（B1 修复，2026-08-11）：原实现直接 updateById 不回冲累计字段，
+     * 改额后项目总收入与合同累计收款永久虚高/虚低。现按差额对称调整，
+     * 增额部分重新校验可回款上限（与 save 口径一致）。
      */
+    @Transactional(rollbackFor = Exception.class)
     public void update(BizPaymentReceived paymentReceived) {
+        BizPaymentReceived existing = paymentReceivedMapper.selectById(paymentReceived.getId());
+        if (existing == null) {
+            throw new BusinessException("收款记录不存在");
+        }
+        BigDecimal newAmount = paymentReceived.getReceiveAmount() == null
+                ? BigDecimal.ZERO : paymentReceived.getReceiveAmount();
+        if (newAmount.signum() <= 0) {
+            throw new BusinessException("回款金额必须大于0");
+        }
+        BigDecimal oldAmount = existing.getReceiveAmount() == null
+                ? BigDecimal.ZERO : existing.getReceiveAmount();
+        BigDecimal diff = newAmount.subtract(oldAmount);
+
+        // 增额时校验增量不超过可回款额度（原额已计入累计收款，无需扣回再校）
+        BizConstructionContract contract = null;
+        if (diff.signum() > 0 && existing.getContractId() != null) {
+            contract = contractMapper.selectById(existing.getContractId());
+            if (contract != null) {
+                BigDecimal invoiced = contract.getCumulativeInvoiceAmount() == null
+                        ? BigDecimal.ZERO : contract.getCumulativeInvoiceAmount();
+                BigDecimal received = contract.getCumulativeReceivedAmount() == null
+                        ? BigDecimal.ZERO : contract.getCumulativeReceivedAmount();
+                BigDecimal maxReceivable = invoiced.subtract(received);
+                if (diff.compareTo(maxReceivable) > 0) {
+                    throw new BusinessException("回款金额不能超过已开票未收金额，最大可回款金额：" + maxReceivable);
+                }
+            }
+        }
+
         paymentReceivedMapper.updateById(paymentReceived);
+
+        // 按差额回冲/追加项目总收入
+        if (diff.signum() != 0) {
+            BizProject project = projectMapper.selectById(existing.getProjectId());
+            if (project != null && project.getTotalIncome() != null) {
+                project.setTotalIncome(project.getTotalIncome().add(diff));
+                projectMapper.updateById(project);
+            }
+            if (contract == null && existing.getContractId() != null) {
+                contract = contractMapper.selectById(existing.getContractId());
+            }
+            if (contract != null && contract.getCumulativeReceivedAmount() != null) {
+                contract.setCumulativeReceivedAmount(contract.getCumulativeReceivedAmount().add(diff));
+                contractMapper.updateById(contract);
+            }
+        }
     }
 
     /**

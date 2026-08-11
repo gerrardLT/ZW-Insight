@@ -71,6 +71,9 @@ public class MachineWorkLogService {
         BizMachineWorkLog existing = workLogMapper.selectById(workLog.getId());
         if (existing == null) throw new BusinessException("工作日志不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        // B4 修复（2026-08-11）：结算审批后 status 仍为 DRAFT 但 settlementStatus=SETTLED，
+        // 已结算日志的台班数/工作量是结算金额依据，禁止篡改
+        if ("SETTLED".equals(existing.getSettlementStatus())) throw new BusinessException("已结算的工作日志不可编辑");
         workLogMapper.updateById(workLog);
     }
 
@@ -78,6 +81,8 @@ public class MachineWorkLogService {
         BizMachineWorkLog existing = workLogMapper.selectById(id);
         if (existing == null) throw new BusinessException("工作日志不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        // B4 修复：同上，已结算日志不可删除
+        if ("SETTLED".equals(existing.getSettlementStatus())) throw new BusinessException("已结算的工作日志不可删除");
         workLogMapper.deleteById(id);
     }
 }

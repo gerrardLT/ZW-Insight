@@ -108,6 +108,7 @@ class LaborSettlementServiceTest {
     void testSubmit_statusAndCumulativeUpdate() {
         BizLaborContract contract = new BizLaborContract();
         contract.setId(10L);
+        contract.setContractAmount(new BigDecimal("500000"));
         contract.setCumulativeSettlement(new BigDecimal("100000"));
         when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
         when(laborContractMapper.selectById(10L)).thenReturn(contract);
@@ -119,6 +120,40 @@ class LaborSettlementServiceTest {
         // 100000 + 50000 = 150000
         verify(laborContractMapper).updateById(argThat(c ->
                 c.getCumulativeSettlement().compareTo(new BigDecimal("150000")) == 0));
+    }
+
+    @Test
+    @DisplayName("提交：累计结算超合同金额拒绝（B5，对齐分包口径）")
+    void testSubmit_exceedsContractAmount_rejected() {
+        // 合同额 120000，已累计 100000，本次 50000 → 150000 > 120000 拒绝
+        BizLaborContract contract = new BizLaborContract();
+        contract.setId(10L);
+        contract.setContractAmount(new BigDecimal("120000"));
+        contract.setCumulativeSettlement(new BigDecimal("100000"));
+        when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
+        when(laborContractMapper.selectById(10L)).thenReturn(contract);
+
+        assertThatThrownBy(() -> laborSettlementService.submit(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("结算金额超出合同金额限制");
+
+        verify(settlementMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("提交：累计结算恰好等于合同金额允许（边界）")
+    void testSubmit_equalsContractAmount_allowed() {
+        // 合同额 150000，已累计 100000，本次 50000 → 恰好等于上限放行
+        BizLaborContract contract = new BizLaborContract();
+        contract.setId(10L);
+        contract.setContractAmount(new BigDecimal("150000"));
+        contract.setCumulativeSettlement(new BigDecimal("100000"));
+        when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
+        when(laborContractMapper.selectById(10L)).thenReturn(contract);
+
+        laborSettlementService.submit(1L);
+
+        assertThat(sampleSettlement.getStatus()).isEqualTo("APPROVED");
     }
 
     @Test

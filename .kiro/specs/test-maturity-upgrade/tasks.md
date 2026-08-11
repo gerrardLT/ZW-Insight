@@ -92,6 +92,7 @@
 4 组并行审计（21 个后端模块逐 Service 逐方法核对测试映射）发现 13 处真实代码缺陷 + 模块级测试缺口清单，按风险分 6 批修复：
 
 - [x] 批次1 安全级（A1-A3）：①A1 租户停用/到期 Token 清理失效（删不存在的 token:user:/token:refresh: key，实际会话 token:{token} 不受影响）→改扫描 token:* 按 value 匹配删除（复用 PasswordResetService 机制），补单测断言只删本租户会话；②A2 MessageService.markAsRead IDOR 越权→加 userId 归属条件+Controller 传当前用户，测试断言 SQL 含 user_id 条件；③A3 租户上下文 null 静默兜底——**实查核实比审计更深：6 个业务定时任务（合同到期/库存预警/质保金预警/整改催办/定时导出/供应商自动评分）因 tenant_id=0 注入长期静默失效**→新建 TenantTaskRunner 逐租户执行器并改造全部 6 任务；拦截器无上下文改显式 warn（MP 3.5.5 TenantLineHandler 无读写钩子，读/UPDATE/DELETE 注入 0 只查空/不命中为安全方向）；INSERT 防污染在 MetaObjectHandler 拦截抛异常；异步导出上下文显式传递+finally 清理（另发现 @Async 自调用实际同步执行，登记在案）。zw-contract 7/7、zw-app 4/4、zw-system+zw-message 全绿
+- [x] 批次2 金额/库存级（B1-B5）：①B1 PaymentReceivedService.update 改差额对称回冲（改大/改小/超上限拒绝/不存在拒绝 4 用例）；②B2 save/update 负数与零金额拒绝（2 用例）；③B3 MaterialOutboundService.delete 库存对称回填+明细同步删除（save 时已扣库存，原删除永久丢库存；补回填断言用例）；④B4 MachineWorkLogService.update/delete 补 settlementStatus=SETTLED 守卫（已结算日志的台班/工作量是结算依据，防篡改；2 用例）；⑤B5 LaborPayrollService.save 同班组周期重叠拒绝（防工资双计）+ LaborSettlementService.submit 补超合同额守卫对齐分包口径（超限拒绝/恰好等于边界/既有用例补 contractAmount）。zw-material 101/101、zw-machine 98/98、zw-finance 583/583、zw-labor 124/124 全绿
 
 | 项 | 结果 | 日期 |
 |---|------|------|

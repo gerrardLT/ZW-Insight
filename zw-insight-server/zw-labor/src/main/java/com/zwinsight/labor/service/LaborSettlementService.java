@@ -97,11 +97,23 @@ public class LaborSettlementService {
             throw new BusinessException("仅草稿状态可提交");
         }
 
+        // B5 修复（2026-08-11，对齐分包口径）：累计结算金额不能超过合同金额，
+        // 原实现无守卫可超合同结算
+        BizLaborContract contract = laborContractMapper.selectById(settlement.getContractId());
+        if (contract != null) {
+            BigDecimal contractAmount = contract.getContractAmount() != null ? contract.getContractAmount() : BigDecimal.ZERO;
+            BigDecimal currentCumulative = contract.getCumulativeSettlement() != null ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
+            BigDecimal newCumulative = currentCumulative.add(settlement.getSettlementAmount());
+            if (newCumulative.compareTo(contractAmount) > 0) {
+                BigDecimal maxSettlement = contractAmount.subtract(currentCumulative);
+                throw new BusinessException("结算金额超出合同金额限制，当前最大可结算金额：" + maxSettlement);
+            }
+        }
+
         settlement.setStatus("APPROVED");
         settlementMapper.updateById(settlement);
 
         // 回写合同累计结算
-        BizLaborContract contract = laborContractMapper.selectById(settlement.getContractId());
         if (contract != null) {
             BigDecimal cumulative = contract.getCumulativeSettlement() != null ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
             contract.setCumulativeSettlement(cumulative.add(settlement.getSettlementAmount()));

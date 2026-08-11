@@ -199,4 +199,32 @@ class MachineWorkLogServiceTest {
 
         verify(workLogMapper).deleteById(1L);
     }
+
+    @Test
+    @DisplayName("编辑已结算日志拒绝（B4：结算审批后 status 仍 DRAFT 但 settlementStatus=SETTLED，台班/工作量是结算依据）")
+    void update_settled_rejected() {
+        BizMachineWorkLog log = workLog("DRAFT");
+        log.setSettlementStatus("SETTLED");
+        when(workLogMapper.selectById(1L)).thenReturn(log);
+
+        assertThatThrownBy(() -> machineWorkLogService.update(log))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已结算的工作日志不可编辑");
+
+        verify(workLogMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("删除已结算日志拒绝（B4）")
+    void delete_settled_rejected() {
+        BizMachineWorkLog log = workLog("DRAFT");
+        log.setSettlementStatus("SETTLED");
+        when(workLogMapper.selectById(1L)).thenReturn(log);
+
+        assertThatThrownBy(() -> machineWorkLogService.delete(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已结算的工作日志不可删除");
+
+        verify(workLogMapper, never()).deleteById(any());
+    }
 }

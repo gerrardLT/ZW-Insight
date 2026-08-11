@@ -82,6 +82,25 @@ class LaborPayrollServiceTest {
     }
 
     @Test
+    @DisplayName("保存工资单：同班组周期重叠拒绝（B5：防重复汇总同一批工单致工资双计）")
+    void testSave_overlappingPeriod_rejected() {
+        when(payrollMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+
+        BizLaborPayroll payroll = new BizLaborPayroll();
+        payroll.setProjectId(100L);
+        payroll.setTeamId(10L);
+        payroll.setPeriodStart(LocalDate.of(2026, 1, 15));
+        payroll.setPeriodEnd(LocalDate.of(2026, 2, 15));
+
+        assertThatThrownBy(() -> laborPayrollService.save(payroll))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已存在工资单");
+
+        verify(payrollMapper, never()).insert(any());
+        verify(workOrderMapper, never()).selectList(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
     @DisplayName("保存工资单：无已审批工单时金额为零")
     void testSave_noWorkOrders_zeroTotal() {
         when(workOrderMapper.selectList(any(LambdaQueryWrapper.class)))

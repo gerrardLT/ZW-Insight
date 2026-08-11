@@ -222,4 +222,115 @@ class PaymentReceivedServiceTest {
             verify(contractMapper, never()).updateById(any());
         }
     }
+
+    @Nested
+    @DisplayName("金额有效性（B2：负数/零拒绝）")
+    class AmountValidityTests {
+        @Test
+        @DisplayName("保存：负数金额拒绝且不落库（原实现可反向扣减累计字段）")
+        void save_negativeAmount_rejected() {
+            samplePayment.setReceiveAmount(new BigDecimal("-10000"));
+
+            assertThatThrownBy(() -> paymentReceivedService.save(samplePayment))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("回款金额必须大于0");
+
+            verify(paymentReceivedMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("保存：零金额拒绝")
+        void save_zeroAmount_rejected() {
+            samplePayment.setReceiveAmount(BigDecimal.ZERO);
+
+            assertThatThrownBy(() -> paymentReceivedService.save(samplePayment))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("回款金额必须大于0");
+        }
+    }
+
+    @Nested
+    @DisplayName("更新差额回冲（B1：与 save/delete 对称）")
+    class UpdateDiffTests {
+        @Test
+        @DisplayName("改大金额：按差额追加项目收入与合同累计收款，增量校验可回款上限")
+        void update_increase_addsDiff() {
+            // 原额 50000 改 70000，差额 +20000；可回款 = 300000-150000 = 150000 充足
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            when(contractMapper.selectById(10L)).thenReturn(contract("300000", "150000"));
+            BizProject project = new BizProject();
+            project.setId(100L);
+            project.setTotalIncome(new BigDecimal("200000"));
+            when(projectMapper.selectById(100L)).thenReturn(project);
+
+            BizPaymentReceived updated = new BizPaymentReceived();
+            updated.setId(1L);
+            updated.setReceiveAmount(new BigDecimal("70000"));
+            paymentReceivedService.update(updated);
+
+            verify(paymentReceivedMapper).updateById(updated);
+            // 项目总收入 200000 + 20000 = 220000
+            verify(projectMapper).updateById(argThat(p ->
+                    p.getTotalIncome().compareTo(new BigDecimal("220000")) == 0));
+            // 合同累计收款 150000 + 20000 = 170000
+            verify(contractMapper).updateById(argThat(c ->
+                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("170000")) == 0));
+        }
+
+        @Test
+        @DisplayName("改小金额：按差额回冲（不校验上限）")
+        void update_decrease_subtractsDiff() {
+            // 原额 50000 改 30000，差额 -20000
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            BizProject project = new BizProject();
+            project.setId(100L);
+            project.setTotalIncome(new BigDecimal("200000"));
+            when(projectMapper.selectById(100L)).thenReturn(project);
+            when(contractMapper.selectById(10L)).thenReturn(contract("300000", "150000"));
+
+            BizPaymentReceived updated = new BizPaymentReceived();
+            updated.setId(1L);
+            updated.setReceiveAmount(new BigDecimal("30000"));
+            paymentReceivedService.update(updated);
+
+            // 项目总收入 200000 - 20000 = 180000
+            verify(projectMapper).updateById(argThat(p ->
+                    p.getTotalIncome().compareTo(new BigDecimal("180000")) == 0));
+            // 合同累计收款 150000 - 20000 = 130000
+            verify(contractMapper).updateById(argThat(c ->
+                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("130000")) == 0));
+        }
+
+        @Test
+        @DisplayName("改大超出可回款额度：拒绝且不更新")
+        void update_increaseExceedsCap_rejected() {
+            // 原额 50000 改 90000，差额 +40000；可回款 = 100000-90000 = 10000 不足
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            when(contractMapper.selectById(10L)).thenReturn(contract("100000", "90000"));
+
+            BizPaymentReceived updated = new BizPaymentReceived();
+            updated.setId(1L);
+            updated.setReceiveAmount(new BigDecimal("90000"));
+
+            assertThatThrownBy(() -> paymentReceivedService.update(updated))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("回款金额不能超过已开票未收金额");
+
+            verify(paymentReceivedMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("记录不存在：拒绝更新")
+        void update_notFound_throws() {
+            when(paymentReceivedMapper.selectById(999L)).thenReturn(null);
+
+            BizPaymentReceived updated = new BizPaymentReceived();
+            updated.setId(999L);
+            updated.setReceiveAmount(new BigDecimal("100"));
+
+            assertThatThrownBy(() -> paymentReceivedService.update(updated))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("收款记录不存在");
+        }
+    }
 }

@@ -126,4 +126,41 @@ class MaterialOutboundServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("出库单不存在");
     }
+
+    @Test
+    @DisplayName("删除草稿出库单：库存对称回填（B3：save 已扣减，删除不回填会永久丢库存）")
+    void testDelete_draft_restoresStock() {
+        BizMaterialOutbound outbound = new BizMaterialOutbound();
+        outbound.setId(1L);
+        outbound.setStatus("DRAFT");
+        outbound.setProjectId(100L);
+        outbound.setOutboundType("PICK");
+        when(outboundMapper.selectById(1L)).thenReturn(outbound);
+
+        BizMaterialOutboundDetail detail = new BizMaterialOutboundDetail();
+        detail.setId(11L);
+        detail.setOutboundId(1L);
+        detail.setMaterialName("钢筋");
+        detail.setSpecification("HRB400");
+        detail.setQuantity(new java.math.BigDecimal("20"));
+        when(outboundDetailMapper.selectList(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of(detail));
+
+        BizProjectMaterialStock stock = new BizProjectMaterialStock();
+        stock.setProjectId(100L);
+        stock.setStockQuantity(new java.math.BigDecimal("80"));
+        stock.setTotalOutbound(new java.math.BigDecimal("120"));
+        stock.setTotalReturn(java.math.BigDecimal.ZERO);
+        when(stockMapper.selectOne(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(stock);
+
+        materialOutboundService.delete(1L);
+
+        verify(outboundMapper).deleteById(1L);
+        verify(outboundDetailMapper).deleteById(11L);
+        // 库存 80 + 20 = 100，累计出库 120 - 20 = 100
+        verify(stockMapper).updateById(argThat(s ->
+                s.getStockQuantity().compareTo(new java.math.BigDecimal("100")) == 0
+                        && s.getTotalOutbound().compareTo(new java.math.BigDecimal("100")) == 0));
+    }
 }
