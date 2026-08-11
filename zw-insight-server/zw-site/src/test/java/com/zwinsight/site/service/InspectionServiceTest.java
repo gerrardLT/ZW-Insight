@@ -127,4 +127,77 @@ class InspectionServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("检查记录不存在");
     }
+
+    // ============ submitResults / assignRectification（原零测试，2026-08-11 补） ============
+
+    @Test
+    @DisplayName("提交检查结果：按 key 选择性更新字段并落库")
+    void testSubmitResults_updatesProvidedFields() {
+        BizInspection inspection = new BizInspection();
+        inspection.setId(1L);
+        when(inspectionMapper.selectById(1L)).thenReturn(inspection);
+
+        java.util.Map<String, Object> results = new java.util.HashMap<>();
+        results.put("hasProblem", 1);
+        results.put("problemDescription", "钢筋间距超标");
+
+        inspectionService.submitResults(1L, results);
+
+        assertThat(inspection.getHasProblem()).isEqualTo(1);
+        assertThat(inspection.getProblemDescription()).isEqualTo("钢筋间距超标");
+        verify(inspectionMapper).updateById(inspection);
+    }
+
+    @Test
+    @DisplayName("提交检查结果：记录不存在抛异常")
+    void testSubmitResults_notFound() {
+        when(inspectionMapper.selectById(999L)).thenReturn(null);
+
+        assertThatThrownBy(() -> inspectionService.submitResults(999L, java.util.Map.of()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("检查记录不存在");
+
+        verify(inspectionMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("指派整改：有问题记录写入责任人/期限并置 PENDING")
+    void testAssignRectification_success() {
+        BizInspection inspection = new BizInspection();
+        inspection.setId(1L);
+        inspection.setHasProblem(1);
+        when(inspectionMapper.selectById(1L)).thenReturn(inspection);
+
+        inspectionService.assignRectification(1L, 200L, java.time.LocalDate.of(2026, 9, 1));
+
+        assertThat(inspection.getResponsiblePersonId()).isEqualTo(200L);
+        assertThat(inspection.getRectificationDeadline()).isEqualTo(java.time.LocalDate.of(2026, 9, 1));
+        assertThat(inspection.getRectificationStatus()).isEqualTo("PENDING");
+        verify(inspectionMapper).updateById(inspection);
+    }
+
+    @Test
+    @DisplayName("指派整改：无问题记录拒绝（无需整改）")
+    void testAssignRectification_noProblem_rejected() {
+        BizInspection inspection = new BizInspection();
+        inspection.setId(1L);
+        inspection.setHasProblem(0);
+        when(inspectionMapper.selectById(1L)).thenReturn(inspection);
+
+        assertThatThrownBy(() -> inspectionService.assignRectification(1L, 200L, java.time.LocalDate.now()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("无需整改");
+
+        verify(inspectionMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("指派整改：记录不存在抛异常")
+    void testAssignRectification_notFound() {
+        when(inspectionMapper.selectById(999L)).thenReturn(null);
+
+        assertThatThrownBy(() -> inspectionService.assignRectification(999L, 200L, java.time.LocalDate.now()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("检查记录不存在");
+    }
 }

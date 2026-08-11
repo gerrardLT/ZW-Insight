@@ -1,6 +1,8 @@
 package com.zwinsight.dashboard.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.budget.domain.BizBudget;
+import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BizBudgetMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
@@ -111,5 +113,52 @@ class DashboardServiceTest {
         Map<String, Object> result = dashboardService.getInventoryAnalysis();
 
         assertThat((List<?>) result.get("projectInventory")).isEmpty();
+    }
+
+    // ============ 预算执行/偏差（原零覆盖，2026-08-11 补 NPE 防护钉住） ============
+
+    @Test
+    @DisplayName("预算执行：无审批预算时返回空明细")
+    void testGetBudgetExecution_noBudget_returnsEmpty() {
+        when(budgetMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        Map<String, Object> result = dashboardService.getBudgetExecution(1L, null, null);
+
+        assertThat((List<?>) result.get("budgetDetails")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("预算执行：totalAmount 为 null 不抛 NPE，余额按 0 计（NPE 防护钉住）")
+    void testGetBudgetExecution_totalAmountNull_noNpe() {
+        BizBudget budget = new BizBudget();
+        budget.setId(10L);
+        budget.setTotalAmount(null);
+        when(budgetMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(budget);
+        when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        when(paymentApplyMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        Map<String, Object> result = dashboardService.getBudgetExecution(1L, null, null);
+
+        // balance = 0 - 0 = 0，不抛 NPE
+        assertThat((BigDecimal) result.get("balance")).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    @DisplayName("预算偏差：明细科目为 null 不抛 NPE，兜底归入未分类（NPE 防护钉住）")
+    void testGetBudgetVariance_costCategoryNull_noNpe() {
+        BizBudget budget = new BizBudget();
+        budget.setId(10L);
+        budget.setTotalAmount(new BigDecimal("100000"));
+        when(budgetMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(budget);
+
+        BizBudgetDetail detailNullCategory = new BizBudgetDetail();
+        detailNullCategory.setCostCategory(null);
+        detailNullCategory.setBudgetTotalPrice(new BigDecimal("5000"));
+        when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(detailNullCategory));
+
+        Map<String, Object> result = dashboardService.getBudgetVariance(1L);
+
+        assertThat(result).isNotNull();
     }
 }

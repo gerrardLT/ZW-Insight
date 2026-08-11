@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 /**
  * EntryApplyService（入职申请）单元测试
@@ -177,6 +178,29 @@ class EntryApplyServiceTest {
         assertThat(created.getOrgId()).isEqualTo(100L);
         assertThat(created.getPostId()).isEqualTo(200L);
         assertThat(created.getStatus()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("提交入职申请：建账号失败（用户名已存在）异常上抛，由 @Transactional 回滚申请状态（失败不吞）")
+    void submit_accountCreationFailed_exceptionPropagates() {
+        BizEntryApply apply = new BizEntryApply();
+        apply.setId(1L);
+        apply.setUsername("zhangsan");
+        apply.setRealName("张三");
+        apply.setStatus("DRAFT");
+        when(entryApplyMapper.selectById(1L)).thenReturn(apply);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
+                .thenReturn("proc-1");
+        // 建账号失败（如用户名已存在）
+        doThrow(new com.zwinsight.common.exception.BusinessException("用户名已存在"))
+                .when(sysUserService).save(any(SysUser.class));
+
+        // 异常必须上抛（@Transactional 保证申请状态回滚，不残留 APPROVED）
+        assertThatThrownBy(() -> entryApplyService.submit(1L))
+                .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                .hasMessageContaining("用户名已存在");
+
+        verify(sysUserService).save(any(SysUser.class));
     }
 
     @Test

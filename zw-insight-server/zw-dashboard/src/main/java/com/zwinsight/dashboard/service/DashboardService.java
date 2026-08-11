@@ -169,7 +169,9 @@ public class DashboardService {
         }
         result.put("categoryExecution", executionList);
         result.put("totalPaid", totalPaid);
-        result.put("balance", budget.getTotalAmount().subtract(totalPaid));
+        // NPE 防护（2026-08-11）：totalAmount 可能为 null（上方占比分支已防，此处遗漏）
+        BigDecimal totalAmount = budget.getTotalAmount() != null ? budget.getTotalAmount() : BigDecimal.ZERO;
+        result.put("balance", totalAmount.subtract(totalPaid));
 
         return result;
     }
@@ -562,9 +564,10 @@ public class DashboardService {
                 new LambdaQueryWrapper<BizBudgetDetail>()
                         .eq(BizBudgetDetail::getBudgetId, budget.getId()));
 
+        // NPE 防护（2026-08-11）：costCategory 为 null 时 groupingBy 抛 NPE，兜底归入「未分类」
         Map<String, BigDecimal> budgetByCategory = budgetDetails.stream()
                 .collect(Collectors.groupingBy(
-                        BizBudgetDetail::getCostCategory,
+                        d -> d.getCostCategory() != null ? d.getCostCategory() : "未分类",
                         Collectors.reducing(BigDecimal.ZERO,
                                 d -> d.getBudgetTotalPrice() != null ? d.getBudgetTotalPrice() : BigDecimal.ZERO,
                                 BigDecimal::add)));
@@ -834,8 +837,9 @@ public class DashboardService {
         // 税负参考（简化：销项-进项）
         result.put("taxDifference", totalInvoiced.subtract(totalReceived));
 
-        // 按项目汇总销项
+        // 按项目汇总销项（NPE 防护，2026-08-11：projectId 为 null 的开票单无法归类，过滤跳过）
         Map<Long, BigDecimal> invoiceByProject = invoices.stream()
+                .filter(i -> i.getProjectId() != null)
                 .collect(Collectors.groupingBy(
                         BizInvoiceApply::getProjectId,
                         Collectors.reducing(BigDecimal.ZERO,
