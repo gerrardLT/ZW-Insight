@@ -21,15 +21,15 @@
 |---|---|---|
 | zw-file | BatchImportExportService, ExportScheduleService, FilePreviewService, PdfConvertService, PrintTemplateService, SerialNumberService, StorageService, TemplateService（8） | FileUpload/Minio/ThymeleafRender 已覆盖 |
 | zw-hr | ~~RegularApplyService, TransferApplyService, SealApplyService, VehicleService, VehicleApplyService, VehicleMaintenanceService, HrStatisticsService（7）~~ **已补全（批 3，7 类 44 例）** | Entry/Resign/OfficeSupply 已覆盖 |
-| zw-system | AuditLogService, BackupService, SysLogService, SysTenantTypeService, VersionManagerService, SystemConfigService（6） | Dict/Menu/Org/Post/Role/Tenant/User 已覆盖；DataPermission 有集成测试 |
+| zw-system | ~~AuditLogService, BackupService, SysLogService, SysTenantTypeService, VersionManagerService, SystemConfigService（6）~~ **已补全（批 4，6 类 33 例；Backup 真实 mysqldump 链路由生产验证，单测覆盖守卫/失败落库分支）** | Dict/Menu/Org/Post/Role/Tenant/User 已覆盖；DataPermission 有集成测试 |
 | zw-site | ~~CompletionAcceptanceService, RectificationService, SchedulePlanService, ScheduleFeedbackService, LocationSignService, ReminderLogService（6）~~ **已补全（批 3，6 类 50 例）** | Inspection/ConstructionLog/ReminderDedup/ReminderTask(集成) 已覆盖 |
 | zw-tender | ~~CompanyCertificateService, DepositReturnService, PersonCertificateService, TenderFeeService, TenderTaskService（5）~~ **已补全（批 2，5 类 32 例，commit fa7d3fd）** | TenderRegister/DepositApply/OpenBidRecord 已覆盖 |
-| zw-message | NoticeService, PushConfigService, TemplateService, UserShortcutService, WeChatWorkService（5） | Announcement/Message 已覆盖 |
+| zw-message | ~~NoticeService, PushConfigService, TemplateService, UserShortcutService, WeChatWorkService（5）~~ **已补全（批 4，5 类 27 例；WeChatWork 真实外呼分支 mockStatic 拦截 HttpUtil 覆盖）** | Announcement/Message 已覆盖 |
 | zw-finance | ~~InvoiceReceivedService, OtherPaymentService, ReserveFundReturnService, TaxRateService（4）~~ **已补全（批 1，4 类 28 例）** | 其余 13 个已覆盖（含 Lock 19 例） |
 | zw-security | ~~AuthService, DeviceManagerService, LoginLocationService, AliyunSmsService（4）~~ **已补全（批 1，4 类 24 例；AuthService 密码主路径原由 TokenServiceTest 覆盖，补 SMS/租户分支）** | Captcha/PasswordReset/Token(Auth 相关)/Permission/DocsBlock 已覆盖 |
 | zw-workflow | ~~ProcessDefinitionService, UrgeConfigService, UrgeService（3）~~ **已补全（批 2，4 类 26 例含 ApprovalRollbackServiceImpl，commit fa7d3fd）** | Approval/BusinessType/Delegate/Rollback 已覆盖 |
 | zw-machine | ~~MachineOilRecordService, MachineUsageRecordService, MachineWorkLogService（3）~~ **已补全（批 3，3 类 21 例）** | Contract/Entry/Ledger/Repair/WorkSettlement 已覆盖 |
-| zw-basedata | CompanyService, InspectionSchemeService, OwnerService（3） | Material/Supplier/Blacklist/Evaluation/Category 已覆盖 |
+| zw-basedata | ~~CompanyService, InspectionSchemeService, OwnerService（3）~~ **已补全（批 4，3 类 15 例）** | Material/Supplier/Blacklist/Evaluation/Category 已覆盖 |
 | zw-dashboard | ProjectDashboardService（1） | DashboardService 已覆盖；ProjectDashboard 仅属性测试 |
 | zw-app | SupplierAutoScoreService（1） | 其余为 Controller 测试 |
 | zw-archive | ArchiveService（1） | 仅 ArchiveSearchFilterPropertyTest |
