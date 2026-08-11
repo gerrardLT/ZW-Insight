@@ -212,7 +212,15 @@ describe('08 - 采购管理', () => {
 
   // ============ 采购合同 ============
   describe('采购合同', () => {
-    it('创建采购合同', async () => {
+    it('创建采购合同（幂等：已存在 E2E 前缀合同时复用）', async () => {
+      // 结算链零累积策略：审批后的入库单不可删除且会挂住合同删除，
+      // 故合同采用「存在即复用」（按固定 E2E_TEST_ 前缀匹配，合同名带
+      // 时间戳每轮不同），配合入库单幂等复用实现多轮运行不累积
+      const page = await client.get('/api/v1/purchase/contract/page', {
+        page: 1, size: 50,
+      })
+      const existing = (page.data?.records || []).find((r: any) => r.contractName?.startsWith('E2E_TEST_'))
+      if (existing) return
       const resp = await client.post('/api/v1/purchase/contract', {
         projectId,
         contractName: TEST_PURCHASE.contractName,
@@ -234,7 +242,8 @@ describe('08 - 采购管理', () => {
       })
       expect(resp.code).toBe(200)
       const records = resp.data?.records || []
-      const found = records.find((r: any) => r.contractName === TEST_PURCHASE.contractName)
+      // 复用模式下本轮可能未新建合同，按固定 E2E_TEST_ 前缀查找
+      const found = records.find((r: any) => r.contractName?.startsWith('E2E_TEST_'))
       expect(found).toBeDefined()
       purchaseContractId = found.id
       cleaner.add('删除采购合同', () =>
@@ -246,15 +255,23 @@ describe('08 - 采购管理', () => {
       expect(purchaseContractId).toBeTruthy()
       const resp = await client.get(`/api/v1/purchase/contract/${purchaseContractId}`)
       expect(resp.code).toBe(200)
-      expect(resp.data?.contractName).toBe(TEST_PURCHASE.contractName)
+      // 复用模式下合同可能来自历史轮次，名称按固定前缀断言
+      expect(resp.data?.contractName).toMatch(/^E2E_TEST_/)
     })
 
-    it('更新采购合同', async () => {
+    it('更新采购合同（DRAFT 可编辑，非草稿验证守卫）', async () => {
+      const detail = await client.get(`/api/v1/purchase/contract/${purchaseContractId}`)
+      const status = detail.data?.status
       const resp = await client.put(`/api/v1/purchase/contract/${purchaseContractId}`, {
-        contractName: TEST_PURCHASE.contractName,
+        contractName: detail.data?.contractName,
         paymentTerms: '更新后的付款条款',
       })
-      expectOk(resp, '更新采购合同')
+      if (status === 'DRAFT') {
+        expectOk(resp, '更新采购合同')
+      } else {
+        // 非草稿合同不可编辑，守卫必须拒绝
+        expect(resp.code).not.toBe(200)
+      }
     })
 
     it('查询采购合同明细', async () => {
@@ -275,26 +292,52 @@ describe('08 - 采购管理', () => {
     let settlementId: number
 
     it('创建采购结算单', async () => {
-      // 采购结算必须基于已审批入库单：先创建入库单并提交审批（真实业务前置流程）
-      const inboundResp = await client.post('/api/v1/material/inbound', {
-        projectId,
-        contractId: purchaseContractId,
-        inboundDate: '2026-02-25',
-        totalAmount: 100000,
-        directOutbound: 0,
-        details: [
-          { materialName: 'E2E结算钢筋', specification: 'HRB400', unit: '吨', quantity: 20, unitPrice: 5000, totalPrice: 100000 },
-        ],
+      // 采购结算必须基于已审批入库单，且一张入库单只能结算一次（结算仅草稿可删，
+      // 入库单仅草稿可删）。零累积策略：在全部同名 E2E 合同的入库单中确定性
+      // 查找「无结算记录的 APPROVED 入库单」复用（结算保持 DRAFT 每轮由 cleaner 删除）；
+      // 仅无可复用入库单时创建并提交一张新入库单（审批后不可删除，作为常驻记录）。
+      const contractPage = await client.get('/api/v1/purchase/contract/page', {
+        page: 1, size: 100,
       })
-      expectOk(inboundResp, '创建结算依据入库单')
+      const e2eContractIds = (contractPage.data?.records || [])
+        .filter((r: any) => r.contractName?.startsWith('E2E_TEST_'))
+        .map((r: any) => r.id)
+      const setPage = await client.get('/api/v1/purchase/settlement/page', {
+        page: 1, size: 100,
+      })
+      const settledInboundIds = new Set(
+        (setPage.data?.records || []).map((s: any) => s.inboundId)
+      )
       const inPage = await client.get('/api/v1/material/inbound/page', {
-        page: 1, size: 20, projectId,
+        page: 1, size: 100,
       })
-      const inbound = (inPage.data?.records || []).find((r: any) => r.contractId === purchaseContractId)
-      if (!inbound) throw new Error('入库单查回失败，无法继续结算测试')
-      cleaner.add('删除结算依据入库单', () => client.delete(`/api/v1/material/inbound/${inbound.id}`))
-      const subResp = await client.post(`/api/v1/material/inbound/${inbound.id}/submit`)
-      expectOk(subResp, '提交入库单审批')
+      let inbound = (inPage.data?.records || []).find(
+        (r: any) =>
+          r.status === 'APPROVED' &&
+          e2eContractIds.includes(r.contractId) &&
+          !settledInboundIds.has(r.id)
+      )
+      if (!inbound) {
+        const inboundResp = await client.post('/api/v1/material/inbound', {
+          projectId,
+          contractId: purchaseContractId,
+          inboundDate: '2026-02-25',
+          totalAmount: 100000,
+          directOutbound: 0,
+          details: [
+            { materialName: 'E2E结算钢筋', specification: 'HRB400', unit: '吨', quantity: 20, unitPrice: 5000, totalPrice: 100000 },
+          ],
+        })
+        expectOk(inboundResp, '创建结算依据入库单')
+        const rePage = await client.get('/api/v1/material/inbound/page', {
+          page: 1, size: 100, projectId,
+        })
+        inbound = (rePage.data?.records || []).find((r: any) => r.contractId === purchaseContractId)
+        if (!inbound) throw new Error('入库单查回失败，无法继续结算测试')
+        const subResp = await client.post(`/api/v1/material/inbound/${inbound.id}/submit`)
+        expectOk(subResp, '提交入库单审批')
+        // 注：审批后的入库单不可删除，作为唯一常驻记录保留（不注册无效清理任务）
+      }
 
       const resp = await client.post('/api/v1/purchase/settlement', {
         inboundId: inbound.id,
@@ -329,10 +372,11 @@ describe('08 - 采购管理', () => {
       expect(resp.code).toBe(200)
     })
 
-    it('提交结算单审批', async () => {
-      if (!settlementId) return
-      const resp = await client.post(`/api/v1/purchase/settlement/${settlementId}/submit`)
-      expect([200, 400, 500]).toContain(resp.code)
+    it('提交结算单审批：不存在的结算单被拒绝', async () => {
+      // 提交已创建的草稿结算会置 APPROVED（不可删除且入库单不可再结算，
+      // 造成逐轮残留），提交流程由 L4 阶段 9C/9D 覆盖；此处仅验证存在性守卫
+      const resp = await client.post('/api/v1/purchase/settlement/999999999/submit')
+      expect(resp.code).not.toBe(200)
     })
   })
 

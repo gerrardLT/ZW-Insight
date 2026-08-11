@@ -365,17 +365,20 @@ jobs:
           L4_SCRIPT
 
       - name: Setup Node.js (for L5 api-tests)
+        if: always()
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Run L5 api-tests (vitest, 356 cases against real API)
+        if: always()
         run: |
           mkdir -p test-results
           cd zw-insight-web
           npm ci --no-audit --no-fund
-          npx vitest run --config e2e/api-tests/vitest.config.ts > ../test-results/l5-api-tests.log 2>&1
-          L5_EXIT=$?
+          # bash -e 下 vitest 非零会中止步骤，用 || 捕获退出码确保日志写入
+          L5_EXIT=0
+          npx vitest run --config e2e/api-tests/vitest.config.ts > ../test-results/l5-api-tests.log 2>&1 || L5_EXIT=$?
           echo "L5_EXIT=$L5_EXIT" >> ../test-results/l5-api-tests.log
           tail -8 ../test-results/l5-api-tests.log
           exit $L5_EXIT
