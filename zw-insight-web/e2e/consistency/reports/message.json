@@ -1,6 +1,6 @@
 {
   "module": "message",
-  "generatedAt": "2026-07-23T12:46:56.769Z",
+  "generatedAt": "2026-08-11T07:16:59.124Z",
   "pages": [
     {
       "route": "/message/announcement",
@@ -27,8 +27,15 @@
       "route": "/message/center",
       "title": "消息中心",
       "api": "GET /v1/message/msg/unread",
-      "recordCount": 1,
-      "mismatches": []
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
     },
     {
       "route": "/message/push-config",

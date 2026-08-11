@@ -1,19 +1,19 @@
 {
   "module": "system",
-  "generatedAt": "2026-07-23T12:47:34.096Z",
+  "generatedAt": "2026-08-11T07:17:46.364Z",
   "pages": [
     {
       "route": "/system/user",
       "title": "用户管理",
       "api": "GET /v1/system/user",
-      "recordCount": 8,
+      "recordCount": 10,
       "mismatches": []
     },
     {
       "route": "/system/post",
       "title": "岗位管理",
       "api": "GET /v1/system/post",
-      "recordCount": 7,
+      "recordCount": 8,
       "mismatches": []
     },
     {
@@ -41,15 +41,8 @@
       "route": "/system/print-template",
       "title": "打印模板",
       "api": "GET /v1/print-template/list",
-      "recordCount": 0,
-      "mismatches": [
-        {
-          "row": -1,
-          "column": "__empty__",
-          "expected": "有种子数据",
-          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
-        }
-      ]
+      "recordCount": 1,
+      "mismatches": []
     },
     {
       "route": "/system/serial-number",
@@ -62,7 +55,7 @@
       "route": "/system/template",
       "title": "通用模板",
       "api": "GET /v1/file/template",
-      "recordCount": 5,
+      "recordCount": 6,
       "mismatches": []
     },
     {

@@ -1,20 +1,49 @@
 {
   "module": "finance",
-  "generatedAt": "2026-07-23T12:46:36.742Z",
+  "generatedAt": "2026-08-11T07:16:39.583Z",
   "pages": [
     {
       "route": "/finance/invoice-apply",
       "title": "开票申请列表",
       "api": "GET /v1/finance/invoice-apply/page",
-      "recordCount": 2,
+      "recordCount": 5,
       "mismatches": []
     },
     {
       "route": "/finance/payment-apply",
       "title": "付款申请列表",
       "api": "GET /v1/finance/payment-apply/page",
-      "recordCount": 3,
-      "mismatches": []
+      "recordCount": 10,
+      "mismatches": [
+        {
+          "row": 0,
+          "column": "状态",
+          "field": "status",
+          "expected": "SUBMITTED",
+          "actual": "审批中"
+        },
+        {
+          "row": 1,
+          "column": "状态",
+          "field": "status",
+          "expected": "SUBMITTED",
+          "actual": "审批中"
+        },
+        {
+          "row": 8,
+          "column": "状态",
+          "field": "status",
+          "expected": "SUBMITTED",
+          "actual": "审批中"
+        },
+        {
+          "row": 9,
+          "column": "状态",
+          "field": "status",
+          "expected": "SUBMITTED",
+          "actual": "审批中"
+        }
+      ]
     }
   ]
 }

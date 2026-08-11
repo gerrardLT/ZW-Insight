@@ -1,34 +1,56 @@
 {
   "module": "site",
-  "generatedAt": "2026-07-23T12:47:11.023Z",
+  "generatedAt": "2026-08-11T07:17:13.479Z",
   "pages": [
     {
       "route": "/site/construction-log",
       "title": "施工日志列表",
       "api": "GET /v1/site/construction-log/page",
-      "recordCount": 9,
-      "mismatches": []
-    },
-    {
-      "route": "/site/schedule",
-      "title": "进度计划列表",
-      "api": "GET /v1/site/schedule/page",
-      "recordCount": 0,
+      "recordCount": 10,
       "mismatches": [
         {
-          "row": -1,
-          "column": "__empty__",
-          "expected": "有种子数据",
-          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+          "row": 0,
+          "column": "施工内容",
+          "field": "workContent",
+          "expected": "",
+          "actual": "南风4级"
+        },
+        {
+          "row": 0,
+          "column": "记录人",
+          "field": "recorder",
+          "expected": "",
+          "actual": "因降雨暂停室外作业，进行室内管线预埋及材料整理"
+        },
+        {
+          "row": 1,
+          "column": "施工内容",
+          "field": "workContent",
+          "expected": "",
+          "actual": "东风2级"
+        },
+        {
+          "row": 1,
+          "column": "记录人",
+          "field": "recorder",
+          "expected": "",
+          "actual": "2#楼15层墙柱模板安装，地下车库B区顶板钢筋绑扎"
+        },
+        {
+          "row": 2,
+          "column": "施工内容",
+          "field": "workContent",
+          "expected": "",
+          "actual": "东南风3级"
+        },
+        {
+          "row": 2,
+          "column": "记录人",
+          "field": "recorder",
+          "expected": "",
+          "actual": "2#楼15层墙柱钢筋绑扎完成80%，地下车库B区顶板模板安装"
         }
       ]
-    },
-    {
-      "route": "/site/inspection",
-      "title": "质量检查列表",
-      "api": "GET /v1/site/inspection/page",
-      "recordCount": 1,
-      "mismatches": []
     }
   ]
 }

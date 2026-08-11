@@ -1,8 +1,8 @@
 # 一致性报告 - basedata
 
-生成时间：2026-07-23T12:46:29.019Z
+生成时间：2026-08-11T07:15:57.460Z
 
-共 7 个页面，不一致项 1 处。
+共 7 个页面，不一致项 0 处。
 
 ## 自持公司列表 (/basedata/company)
 - 接口：`GET /v1/basedata/company/page`
@@ -31,11 +31,8 @@
 
 ## 供应商评价列表 (/basedata/supplier-evaluation)
 - 接口：`GET /v1/basedata/supplier-evaluation`
-- 结果：发现 1 处不一致 ❌
-
-| 行 | 列 | 字段 | 期望(后端) | 实际(前端) |
-|---|---|---|---|---|
-| -1 | __apiError__ |  | code=200 | code=500 message=系统内部错误，请稍后重试 |
+- 后端记录数：2
+- 结果：一致 ✅
 
 ## 检查方案列表 (/basedata/inspection-scheme)
 - 接口：`GET /v1/basedata/inspection-scheme/page`

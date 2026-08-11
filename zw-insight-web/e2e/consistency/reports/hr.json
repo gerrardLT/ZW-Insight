@@ -1,6 +1,6 @@
 {
   "module": "hr",
-  "generatedAt": "2026-07-23T12:46:44.591Z",
+  "generatedAt": "2026-08-11T07:16:43.511Z",
   "pages": [
     {
       "route": "/hr/entry",
@@ -21,14 +21,36 @@
       "title": "车辆管理列表",
       "api": "GET /v1/hr/vehicle/page",
       "recordCount": 2,
-      "mismatches": []
-    },
-    {
-      "route": "/hr/office-supply",
-      "title": "办公用品列表",
-      "api": "GET /v1/hr/office-supply/page",
-      "recordCount": 5,
-      "mismatches": []
+      "mismatches": [
+        {
+          "row": 0,
+          "column": "车牌号",
+          "field": "plateNo",
+          "expected": "",
+          "actual": "浙A88888"
+        },
+        {
+          "row": 0,
+          "column": "状态",
+          "field": "status",
+          "expected": "维修",
+          "actual": "闲置"
+        },
+        {
+          "row": 1,
+          "column": "车牌号",
+          "field": "plateNo",
+          "expected": "",
+          "actual": "浙A66666"
+        },
+        {
+          "row": 1,
+          "column": "状态",
+          "field": "status",
+          "expected": "维修",
+          "actual": "使用中"
+        }
+      ]
     }
   ]
 }

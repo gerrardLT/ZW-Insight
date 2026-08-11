@@ -8,8 +8,8 @@
     "preview": "vite preview",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "test:e2e": "npx playwright test --project=e2e",
-    "test:e2e:real": "npx playwright test --project=e2e-real"
+    "test:e2e:real": "npx playwright test --project=e2e-real",
+    "test:e2e:consistency": "npx playwright test --project=consistency-real"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",

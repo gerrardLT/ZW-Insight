@@ -110,11 +110,11 @@
 | 资产 | 规模 | 状态 |
 |---|---|---|
 | e2e/api-tests（vitest API 功能测试） | 20 spec / 356 用例 | ✅ 批 6 修复后 356/356 全绿（23 skip 全部解除）；**已接入 CI，run 31457602750 首跑全绿** |
-| e2e/tests（Playwright UI，mock 模式） | 13 spec / 89 用例 | 未接入 CI，运行状态未验证 |
-| e2e/tests/real（真实模式打服务器） | 3 spec / 29 用例（**12 skip**：login 4 / project-crud 2 / workflow 6） | 未接入 CI |
-| e2e/consistency（一致性审计） | 20 spec / 54 用例（2 skip） | 未接入 CI |
+| ~~e2e/tests（Playwright UI，mock 模式）~~ | ~~13 spec / 89 用例~~ | ✅ 2026-08-11 归档删除：假 token + route() 拦截假数据，违反「真实接口真实流程」原则且与 real 模式冗余；UI 回归统一走真实模式 |
+| e2e/tests/real（真实模式打服务器） | 3 spec / 30 用例 | ✅ 2026-08-11 实跑盘点：27 过 / 3 条件性 skip（运行时数据依赖，非硬编码绕过；较早期记录的 12 skip 大幅改善）；未接入 CI |
+| e2e/consistency（一致性审计） | 20 spec / 54 用例 | 🔴 2026-08-11 实跑盘点：42 过 / 6 失败 / 6 未跑；失败均为真实前后端字段级不一致（budget 40 处/contract/finance/hr/vehicle/site/archive）；需修复后接入 CI |
 
-缺口：①全部未接入 CI（门禁为零）②real 模式仅 3 spec 且 41% 用例被 skip ③UI 覆盖缺投标/现场/HR/档案页面 ④skip 原因未盘点（阶段 5 逐个实跑定性）。
+缺口（2026-08-11 更新）：①api-tests 已接入 CI；real/consistency 未接入（consistency 需先修复 6 处前后端字段不一致）②mock 模式已归档删除 ③UI 覆盖缺投标/现场/HR/档案页面（需前端页面开发配合）④real 的 3 个 skip 为运行时数据依赖条件性跳过。
 
 ---
 

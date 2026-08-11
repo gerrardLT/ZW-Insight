@@ -1,19 +1,13 @@
 {
   "module": "labor",
-  "generatedAt": "2026-07-23T12:46:39.167Z",
+  "generatedAt": "2026-08-11T07:16:46.359Z",
   "pages": [
     {
       "route": "/labor/contract",
       "title": "劳务合同列表",
       "api": "GET /v1/labor/contract/page",
-      "mismatches": [
-        {
-          "row": -1,
-          "column": "__apiError__",
-          "expected": "code=200",
-          "actual": "code=500 message=系统内部错误，请稍后重试"
-        }
-      ]
+      "recordCount": 10,
+      "mismatches": []
     }
   ]
 }
