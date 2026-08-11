@@ -296,7 +296,9 @@ test_update_payment_received() {
   if [ -z "$CREATED_PAYMENT_RECEIVED_ID" ]; then
     log "  SKIP: 无收款登记ID"; return 0
   fi
-  call PUT "/api/v1/finance/payment-received/$CREATED_PAYMENT_RECEIVED_ID" '{"projectId":1,"receiveDate":"2025-04-05","amount":120000.00,"payerName":"测试付款方-已修改","remark":"L3接口测试收款-修改"}'
+  # 字段名对齐实体：receiveAmount（原脚本误写 amount 不绑定，B1 差额回冲校验后暴露）；
+  # 100000→120000 差额 +20000 在可回款额度内
+  call PUT "/api/v1/finance/payment-received/$CREATED_PAYMENT_RECEIVED_ID" '{"projectId":90002,"contractId":91002,"receiveDate":"2025-04-05","receiveAmount":120000.00,"receiver":"测试收款人-已修改","receiveType":"转账","remark":"L3接口测试收款-修改"}'
   assert_http 2 "PUT /api/v1/finance/payment-received/{id} 状态码"
   assert_body_code 200 "PUT /api/v1/finance/payment-received/{id} 业务码"
 }
