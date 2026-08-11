@@ -269,6 +269,13 @@ public class MachineWorkSettlementService {
             return;
         }
 
+        // C2 幂等守卫（2026-08-11）：重复事件会重复累加合同 cumulativeSettlement，
+        // 已审批（status=2）直接短路
+        if (settlement.getStatus() != null && settlement.getStatus() == 2) {
+            log.info("机械工作量结算审批回调重复触发，跳过, settlementId={}", settlementId);
+            return;
+        }
+
         // 更新状态为已审批
         settlement.setStatus(2);
         settlementMapper.updateById(settlement);

@@ -156,6 +156,22 @@ class BudgetChangeServiceTest {
         verify(projectMapper).updateBudgetAmount(100L, newTotal);
     }
 
+    @Test
+    @DisplayName("审批回调幂等（C1）：已 APPROVED 重复触发不重复回写，防预算双倍累加")
+    void testOnApproved_alreadyApproved_skipsWriteback() {
+        // given: 变更单已 APPROVED（重复事件）
+        sampleChange.setStatus("APPROVED");
+        when(budgetChangeMapper.selectById(1L)).thenReturn(sampleChange);
+
+        // when
+        budgetChangeService.onApproved(1L);
+
+        // then: 不回写任何金额
+        verify(budgetDetailMapper, never()).addBudgetTotalPrice(any(), any());
+        verify(projectMapper, never()).updateBudgetAmount(any(), any());
+        verify(budgetChangeMapper, never()).updateById(any());
+    }
+
     // =====================================================================
     // 3. testOnRejected_statusChangeOnly
     // =====================================================================

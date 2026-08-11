@@ -126,6 +126,22 @@ class MachineWorkSettlementOnApprovedTest {
     }
 
     @Test
+    @DisplayName("审批回调幂等（C2）：已审批结算单重复触发不重复累加合同累计结算")
+    void onApproved_alreadyApproved_skipsWriteback() {
+        // Given：结算单已 status=2（重复事件）
+        BizMachineWorkSettlement settlement = buildSettlement(100L, 2, new BigDecimal("8000.00"), 1L);
+        when(settlementMapper.selectById(100L)).thenReturn(settlement);
+
+        // When
+        settlementService.onApproved(new ApprovalCompleteEvent(this, BUSINESS_TYPE, 100L, "APPROVED"));
+
+        // Then：不重复回写
+        verify(settlementMapper, never()).updateById(any());
+        verify(contractMapper, never()).updateById(any());
+        verify(workLogMapper, never()).batchUpdateSettlementStatus(any(), any());
+    }
+
+    @Test
     @DisplayName("机械名称未匹配到合同：状态仍置 2，但不回写任何合同（金额告警不静默丢弃）")
     void onApproved_unmatchedMachine_skipContractButApprove() {
         BizMachineWorkSettlement settlement = buildSettlement(100L, 0, new BigDecimal("3000.00"), 1L);

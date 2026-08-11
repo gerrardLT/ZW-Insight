@@ -307,6 +307,14 @@ public class BudgetChangeService {
             throw new BusinessException("预算变更记录不存在");
         }
 
+        // C1 幂等守卫（2026-08-11）：重复的审批通过事件（监听器重派发/事件重放）
+        // 会双倍累加预算明细金额与项目预算额，已 APPROVED 直接短路
+        // （对齐财务模块 PaymentApply/InvoiceApply 等 onApproved 幂等模式）
+        if ("APPROVED".equals(change.getStatus())) {
+            log.info("预算变更审批回调重复触发，跳过, changeId={}", changeId);
+            return;
+        }
+
         // 更新状态为 APPROVED
         change.setStatus("APPROVED");
         budgetChangeMapper.updateById(change);

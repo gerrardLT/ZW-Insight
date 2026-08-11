@@ -137,6 +137,13 @@ public class MaterialRefundService {
             return;
         }
 
+        // C3 幂等守卫（2026-08-11）：重复事件会重复扣减合同累计已付款，
+        // 已 APPROVED 直接短路（对照 MaterialTransferService.onApproved 已有幂等模式）
+        if ("APPROVED".equals(refund.getStatus())) {
+            log.info("退款审批回调重复触发，跳过, refundId={}", refundId);
+            return;
+        }
+
         // 1. 更新退款申请状态为已审批
         refund.setStatus("APPROVED");
         refundMapper.updateById(refund);

@@ -125,6 +125,22 @@ class MaterialRefundServiceTest {
     }
 
     @Test
+    @DisplayName("onRefundApproved - 幂等（C3）：已 APPROVED 重复事件不重复扣减合同累计已付款")
+    void onRefundApproved_alreadyApproved_skipsDeduction() {
+        BizMaterialRefund refund = new BizMaterialRefund();
+        refund.setId(1L);
+        refund.setContractId(200L);
+        refund.setRefundAmount(new BigDecimal("6076.50"));
+        refund.setStatus("APPROVED");
+        when(refundMapper.selectById(1L)).thenReturn(refund);
+
+        service.onRefundApproved(new ApprovalCompleteEvent(this, "MATERIAL_REFUND", 1L, "APPROVED"));
+
+        verify(refundMapper, never()).updateById(any());
+        verify(expenseContractMapper, never()).deductPaidAmount(any(), any());
+    }
+
+    @Test
     @DisplayName("page - 分页透传")
     void page_delegates() {
         Page<BizMaterialRefund> page = new Page<>(1, 10);
