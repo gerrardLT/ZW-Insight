@@ -388,7 +388,9 @@ jobs:
         run: |
           cd zw-insight-web
           # ubuntu-latest 预装 Google Chrome，playwright config 用 channel: 'chrome'；
-          # auth-real.setup.ts 真实登录 :18081 生成 storageState（mock 模式已归档删除）
+          # auth-real.setup.ts 真实登录 :18081 生成 storageState（mock 模式已归档删除）；
+          # 登录需验证码：setup 经 SSH 读服务器 Redis 取答案，CI 上指向 deploy_key（本地默认 Windows 路径不存在）
+          export E2E_SSH_KEY="$HOME/.ssh/deploy_key"
           UI_REAL_EXIT=0
           npx playwright test --project=e2e-real > ../test-results/l5-ui-real.log 2>&1 || UI_REAL_EXIT=$?
           echo "UI_REAL_EXIT=$UI_REAL_EXIT" >> ../test-results/l5-ui-real.log
@@ -399,6 +401,8 @@ jobs:
         if: always()
         run: |
           cd zw-insight-web
+          # 复用同一 storageState 前 setup 需重登，验证码答案经 SSH 读服务器 Redis（同 UI real 步骤）
+          export E2E_SSH_KEY="$HOME/.ssh/deploy_key"
           CONS_EXIT=0
           npx playwright test --project=consistency-real > ../test-results/l5-consistency.log 2>&1 || CONS_EXIT=$?
           echo "CONS_EXIT=$CONS_EXIT" >> ../test-results/l5-consistency.log
