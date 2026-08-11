@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.zwinsight.com/material"
+             xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL http://www.omg.org/spec/BPMN/20100524/MODEL/BPMN20.xsd">
+
+    <process id="material_refund_approval" name="材料退款审批" isExecutable="true">
+
+        <!-- 开始事件 -->
+        <startEvent id="startEvent" name="提交退款申请"/>
+
+        <!-- 顺序流：开始 → 财务审批 -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="financeApproval"/>
+
+        <!-- 财务审批 -->
+        <userTask id="financeApproval" name="财务审批"
+                  flowable:assignee="${initiator}">
+            <documentation>材料退款 - 财务确认退款金额（审批通过后回调扣减合同累计已付）</documentation>
+        </userTask>
+
+        <!-- 顺序流：财务审批 → 结束 -->
+        <sequenceFlow id="flow2" sourceRef="financeApproval" targetRef="endEvent"/>
+
+        <!-- 结束事件（PROCESS_COMPLETED 触发 MATERIAL_REFUND 审批通过回调：退款置 APPROVED + 扣减合同累计已付） -->
+        <endEvent id="endEvent" name="审批完成"/>
+
+    </process>
+
+</definitions>

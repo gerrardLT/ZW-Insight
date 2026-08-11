@@ -60,7 +60,7 @@
 
 | 已覆盖（PARTIAL/OK） | 未覆盖模块（需新脚本） |
 |---|---|
-| project（主端点）/ contract / subcontract / purchase（contract+inquiry）/ labor（contract+team+roster+work-order）/ machine（contract+ledger+部分）/ material（inbound+outbound+stock+inventory）/ finance（原 3 组 + **批 1 新增 test-api-finance2.sh：开票/收票/汇总/其他付款/报销/结算/备用金/质保金/税率 CRUD/财务锁**）/ **system+auth（批 1 新增 test-api-system.sh：用户/机构/角色/菜单/岗位/字典 CRUD/运维端点/租户/设备/验证码）** / **tender（批 2 新增 test-api-tender.sh：6 组分页契约 + 登记/费用/人员证书/企业证书 4 条 CRUD 零残留闭环）** / **budget（批 2 新增 test-api-budget.sh：编制/变更/管控配置/控制配置只读契约 + @Valid 负向）** / **workflow（批 2 新增 test-api-workflow.sh：待办/已办/流程定义/业务类型/催办/回滚/委托契约 + 非法流转负向）** / **hr（批 3 新增 test-api-hr.sh：10 组分页契约 + statistics/overview + 7 条 submit 负向 + 入职/车辆/办公用品 3 条 CRUD 零残留闭环）** / **site（批 3 新增 test-api-site.sh：6 组分页契约 + 施工日志/进度计划 2 条 CRUD 零残留闭环 + 签到/催办只读契约 + 8 条不存在负向）** / **basedata（批 4 新增 test-api-basedata.sh：8 组分页契约 + 公司/甲方/检查方案/材料/供应商 5 条 CRUD 闭环 + 评价隔离闭环 + 黑名单只读）** / **message（批 4 新增 test-api-message.sh：4 组分页契约 + 公告全生命周期闭环 + 模板/推送配置 CRUD 闭环 + 站内信/快捷入口只读契约）** / **dashboard（批 4 新增 test-api-dashboard.sh：公司级+项目级看板 18 端点只读契约 + 404 负向）** / **archive（批 4 新增 test-api-archive.sh：4 类实体档案 + 3 组分页档案只读契约）** | supplier-portal 公开接口 |
+| project（主端点）/ contract / subcontract / purchase（contract+inquiry）/ labor（contract+team+roster+work-order）/ machine（contract+ledger+部分）/ material（inbound+outbound+stock+inventory）/ finance（原 3 组 + **批 1 新增 test-api-finance2.sh：开票/收票/汇总/其他付款/报销/结算/备用金/质保金/税率 CRUD/财务锁**）/ **system+auth（批 1 新增 test-api-system.sh：用户/机构/角色/菜单/岗位/字典 CRUD/运维端点/租户/设备/验证码）** / **tender（批 2 新增 test-api-tender.sh：6 组分页契约 + 登记/费用/人员证书/企业证书 4 条 CRUD 零残留闭环）** / **budget（批 2 新增 test-api-budget.sh：编制/变更/管控配置/控制配置只读契约 + @Valid 负向）** / **workflow（批 2 新增 test-api-workflow.sh：待办/已办/流程定义/业务类型/催办/回滚/委托契约 + 非法流转负向）** / **hr（批 3 新增 test-api-hr.sh：10 组分页契约 + statistics/overview + 7 条 submit 负向 + 入职/车辆/办公用品 3 条 CRUD 零残留闭环）** / **site（批 3 新增 test-api-site.sh：6 组分页契约 + 施工日志/进度计划 2 条 CRUD 零残留闭环 + 签到/催办只读契约 + 8 条不存在负向）** / **basedata（批 4 新增 test-api-basedata.sh：8 组分页契约 + 公司/甲方/检查方案/材料/供应商 5 条 CRUD 闭环 + 评价隔离闭环 + 黑名单只读）** / **message（批 4 新增 test-api-message.sh：4 组分页契约 + 公告全生命周期闭环 + 模板/推送配置 CRUD 闭环 + 站内信/快捷入口只读契约）** / **dashboard（批 4 新增 test-api-dashboard.sh：公司级+项目级看板 18 端点只读契约 + 404 负向）** / **archive（批 4 新增 test-api-archive.sh：4 类实体档案 + 3 组分页档案只读契约）** / **file（批 5 新增 test-api-file.sh：上传真实闭环 + 存储配置/编号规则/模板/打印模板/定时导出 5 条 CRUD 闭环 + 异步导出状态 + 导入模板下载）** | supplier-portal 公开接口 |
 
 补充说明：`zw-insight-web/e2e/api-tests/`（vitest，20 spec 347 用例）已按功能表注释覆盖全部 20 个模块域的 API 功能，但**未接入 CI**——shell 脚本层仍是 CI 内唯一 L3 门禁，缺口照算；api-tests 接入 CI 列入阶段 5 一并评估。
 
@@ -84,10 +84,10 @@
 |---|---|---|
 | ~~变更签证（登记→审批→合同累计变更回写）~~ ✅ 批 3 完成（阶段 9F，CI run 31441261373 绿） | 5.2 | 高 |
 | ~~质保金登记→跟踪→退还申请~~ ✅ 批 3 完成（阶段 9G，CI run 31441261373 绿） | 5.1 | 高（金额） |
-| 材料退货出库（含退货退款分支） | 2.5 | 中 |
-| 备用金申请→报销冲抵→归还 | 2.9 | 中（金额） |
-| 保证金退回登记（投标侧） | 1.4 | 中（金额） |
-| 合同到期提醒触发验证 | 5.11 | 低 |
+| ~~材料退货出库（含退货退款分支）~~ ✅ 批 5 完成（阶段 9K，待 CI 实跑） | 2.5 | 中 |
+| ~~备用金申请→报销冲抵→归还~~ ✅ 批 5 完成（阶段 9I 申请→归还回写；冲抵由 L1 ReserveFundReturnServiceTest 覆盖，待 CI 实跑） | 2.9 | 中（金额） |
+| ~~保证金退回登记（投标侧）~~ ✅ 批 5 完成（阶段 9J，待 CI 实跑） | 1.4 | 中（金额） |
+| ~~合同到期提醒触发验证~~ ✅ 批 5 评估：仅 @Scheduled 定时入口无手动触发 API，触发/去重/分级逻辑已由 L1 ContractExpiryTaskTest + DeduplicationPropertyTest 覆盖 | 5.11 | 低 |
 | ~~HR 流程（入职审批→档案）抽样~~ ✅ 批 4 提前完成（阶段 9H，CI run 31451226266 绿，账号自动创建断言通过） | 2.10 | 低 |
 
 ## 五、L5 前端 E2E 现状与缺口

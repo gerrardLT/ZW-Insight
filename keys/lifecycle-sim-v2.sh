@@ -1378,6 +1378,124 @@ stage_9h_entry_approval() {
   record_stage_result "PASSED"
 }
 
+# ===========================================================================
+# 阶段 9I: 备用金（申请→审批→归还回写 + 超额归还负向）
+#   依据功能表 2.9：备用金申请→报销冲抵→归还
+#   依赖 BPMN：reserve_fund_apply_approval（deploy-bpmn.sh 部署到租户 9999）
+# ===========================================================================
+stage_9i_reserve_fund() {
+  phase "9I" "备用金"
+  CURRENT_STAGE="9I:备用金"
+
+  api_call POST "/api/v1/finance/reserve-fund/apply" "{\"projectId\":$PROJECT_ID,\"applicant\":\"L4申请人\",\"applyDate\":\"$(date +%F)\",\"applyAmount\":2000.00}"
+  strict_assert "创建备用金申请"
+  sleep 1
+
+  api_call GET "/api/v1/finance/reserve-fund/apply?page=1&size=1&projectId=$PROJECT_ID"
+  local reserveId=$(extract_first_record_id)
+  require_id "$reserveId" "备用金申请 ID"
+  assert_status "/api/v1/finance/reserve-fund/apply?page=1&size=1&projectId=$PROJECT_ID" "status" "DRAFT" "备用金初始状态"
+
+  api_call POST "/api/v1/finance/reserve-fund/apply/$reserveId/submit"
+  strict_assert "提交备用金审批"
+  sleep 2
+  approve "同意备用金申请" 1
+
+  assert_status "/api/v1/finance/reserve-fund/apply?page=1&size=1&projectId=$PROJECT_ID" "status" "APPROVED" "备用金审批后状态"
+
+  # 负向：归还金额超过待归还金额必须拒绝
+  api_call POST "/api/v1/finance/reserve-fund/return" "{\"reserveApplyId\":$reserveId,\"returnAmount\":99999.00}"
+  local neg_http=$(cat /tmp/zwi_last_code 2>/dev/null)
+  local neg_code=$(grep -oE '"code"\s*:\s*\"?[0-9]+' /tmp/zwi_body 2>/dev/null | head -1 | grep -oE '[0-9]+$')
+  if [ "$neg_code" != "200" ] || [[ "$neg_http" == 4* ]] || [[ "$neg_http" == 5* ]]; then
+    success "超额归还被正确拒绝 (HTTP $neg_http, code=$neg_code)"
+  else
+    fail "超额归还未被拒绝 (HTTP $neg_http, code=$neg_code)"
+    ABORT_REASON="$CURRENT_STAGE: 超额归还未拒绝"
+    record_stage_result "FAILED"
+    exit 1
+  fi
+
+  # 全额归还：returnedAmount 回写 2000
+  api_call POST "/api/v1/finance/reserve-fund/return" "{\"reserveApplyId\":$reserveId,\"returnAmount\":2000.00}"
+  strict_assert "创建备用金归还"
+  assert_amount "/api/v1/finance/reserve-fund/apply?page=1&size=1&projectId=$PROJECT_ID" "returnedAmount" 2000 "备用金已归还金额回写"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 9J: 保证金退还（申请→审批置 PAID→退还登记）
+#   依据功能表 1.4：投标保证金退回登记
+#   依赖 BPMN：deposit_apply_approval（deploy-bpmn.sh 部署到租户 9999）
+# ===========================================================================
+stage_9j_deposit_return() {
+  phase "9J" "保证金退还"
+  CURRENT_STAGE="9J:保证金退还"
+
+  api_call POST "/api/v1/tender/deposit/apply" "{\"registerId\":$REGISTER_ID,\"projectId\":$PROJECT_ID,\"depositAmount\":5000.00,\"paymentDate\":\"$(date +%F)\"}"
+  strict_assert "创建保证金申请"
+  sleep 1
+
+  api_call GET "/api/v1/tender/deposit/apply?page=1&size=1&projectId=$PROJECT_ID"
+  local depositId=$(extract_first_record_id)
+  require_id "$depositId" "保证金申请 ID"
+  assert_status "/api/v1/tender/deposit/apply?page=1&size=1&projectId=$PROJECT_ID" "status" "DRAFT" "保证金初始状态"
+
+  api_call POST "/api/v1/tender/deposit/apply/$depositId/submit"
+  strict_assert "提交保证金审批"
+  sleep 2
+  approve "同意保证金缴纳" 1
+
+  assert_status "/api/v1/tender/deposit/apply?page=1&size=1&projectId=$PROJECT_ID" "status" "PAID" "保证金审批后状态"
+
+  # 退还登记（直接记录，无审批流）
+  api_call POST "/api/v1/tender/deposit/return" "{\"depositApplyId\":$depositId,\"returnAmount\":5000.00,\"returnDate\":\"$(date +%F)\"}"
+  strict_assert "创建保证金退还登记"
+  sleep 1
+
+  api_call GET "/api/v1/tender/deposit/return?page=1&size=5&depositApplyId=$depositId"
+  strict_assert "回查保证金退还记录"
+  assert_amount "/api/v1/tender/deposit/return?page=1&size=5&depositApplyId=$depositId" "returnAmount" 5000 "退还金额一致"
+
+  record_stage_result "PASSED"
+}
+
+# ===========================================================================
+# 阶段 9K: 材料退货退款（退货出库→自动生成退款申请→审批→退款 APPROVED）
+#   依据功能表 2.5：材料退货出库（含退货退款分支）
+#   依赖：阶段 7B 入库瓷砖 2000 块、NORMAL 出库 1200 块（库存余 800）
+#   依赖 BPMN：material_refund_approval（deploy-bpmn.sh 部署到租户 9999）
+# ===========================================================================
+stage_9k_material_refund() {
+  phase "9K" "材料退货退款"
+  CURRENT_STAGE="9K:材料退货退款"
+
+  api_call POST "/api/v1/material/outbound" "{\"projectId\":$PROJECT_ID,\"outboundType\":\"RETURN\",\"returnType\":\"RETURN_REFUND\",\"contractId\":$PURCHASE_CONTRACT_ID,\"outboundDate\":\"$(date +%F)\",\"operatorName\":\"L4仓管\",\"details\":[{\"materialName\":\"瓷砖\",\"specification\":\"800x800\",\"unit\":\"块\",\"quantity\":100,\"unitPrice\":50.00}]}"
+  strict_assert "创建退货出库单"
+  sleep 1
+
+  api_call GET "/api/v1/material/outbound/page?page=1&size=1&projectId=$PROJECT_ID&outboundType=RETURN"
+  local returnOutboundId=$(extract_first_record_id)
+  require_id "$returnOutboundId" "退货出库单 ID"
+
+  # 退货出库 save 时已发布事件自动生成退款申请（PENDING，已提交流程）
+  sleep 2
+  api_call GET "/api/v1/material/refund?page=1&size=5&contractId=$PURCHASE_CONTRACT_ID"
+  strict_assert "回查自动生成的退款申请"
+  local refundId=$(extract_first_record_id)
+  require_id "$refundId" "退款申请 ID（退货事件自动生成）"
+  assert_amount "/api/v1/material/refund?page=1&size=5&contractId=$PURCHASE_CONTRACT_ID" "refundAmount" 5000 "退款金额=100块×入库单价50"
+  assert_status "/api/v1/material/refund?page=1&size=5&contractId=$PURCHASE_CONTRACT_ID" "status" "PENDING" "退款申请待审批状态"
+
+  # 完成退款审批 → 回调置 APPROVED + 扣减合同累计已付
+  approve "同意材料退款" 1
+  sleep 2
+  assert_status "/api/v1/material/refund?page=1&size=5&contractId=$PURCHASE_CONTRACT_ID" "status" "APPROVED" "退款审批后状态"
+
+  record_stage_result "PASSED"
+}
+
 main() {
   echo "" > "$SIM_LOG"
   divider
@@ -1416,6 +1534,9 @@ main() {
   stage_9f_change_visa
   stage_9g_retention
   stage_9h_entry_approval
+  stage_9i_reserve_fund
+  stage_9j_deposit_return
+  stage_9k_material_refund
   stage_9b_completion_settlement
   stage_10_project_close
 
