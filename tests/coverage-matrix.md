@@ -121,5 +121,6 @@
 | 对象 | 层级 | 豁免理由 | 日期 |
 |---|---|---|---|
 | AliyunSmsService 真实外呼分支 | L1 | 依赖阿里云 SMS 通道，开关分支与凭证缺失显式失败分支已测（AliyunSmsServiceTest 3 例）；真实发送链路待生产环境验证 | 2026-08-10 |
-| WeChatWorkService 推送分支 | L1 | 企业微信外部依赖，同上（候选，批 4 确认） | 待定 |
-| zw-common 框架基类 | L1 | 纯框架代码逐项评估（候选） | 待定 |
+| WeChatWorkService 推送分支 | L1 | 批 4 已用 mockStatic(HttpUtil) 覆盖未启用/缺 webhook/errcode=0/业务失败/网络异常全部分支（5 例），不触达真实企微；豁免关闭 | 2026-08-11 |
+| ArchiveService 聚合单测 | L1 | 只读跨模块聚合（15+ Mapper，516 行），单测 mock 成本高 ROI 低；正确性由 L3 test-api-archive.sh（CI 绿）+ L4 生命周期数据链 + 生产验证覆盖；后续如需再补 L2 聚合测试（l2Gaps 低优先级） | 2026-08-11 |
+| zw-common 框架基类 | L1 | 工具/基类代码（RedisUtils/AssertUtils/TestDataCleaner/R/PageResult 等）已被全部业务模块测试间接执行；BackupService/PdfConvertService 外部进程分支、wkhtmltopdf 真实链路由生产验证 | 2026-08-11 |

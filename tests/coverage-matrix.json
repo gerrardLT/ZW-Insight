@@ -23,10 +23,10 @@
     "zw-workflow": ["COMPLETED_BATCH2: ProcessDefinitionService, UrgeConfigService, UrgeService, ApprovalRollbackServiceImpl (4 classes, 26 cases, commit fa7d3fd)"],
     "zw-machine": ["COMPLETED_BATCH3: MachineOilRecordService, MachineUsageRecordService, MachineWorkLogService (3 classes, 21 cases)"],
     "zw-basedata": ["COMPLETED_BATCH4: CompanyService, InspectionSchemeService, OwnerService (3 classes, 15 cases)"],
-    "zw-dashboard": ["ProjectDashboardService"],
-    "zw-app": ["SupplierAutoScoreService"],
-    "zw-archive": ["ArchiveService"],
-    "zw-common": ["PENDING_EVALUATION"]
+    "zw-dashboard": ["COMPLETED_BATCH5: ProjectDashboardService (1 class, 6 cases: zero branches + budget/progress/contract/output aggregation)"],
+    "zw-app": ["COMPLETED_BATCH5: SupplierAutoScoreService (1 class, 4 cases: scoring algorithm dimensions + monthly job flow)"],
+    "zw-archive": ["EXEMPT_BATCH5: ArchiveService (read-only cross-module aggregation, 15+ mappers; covered by L3 test-api-archive.sh + L4 data chain + production; see exemptions)"],
+    "zw-common": ["EXEMPT_BATCH5: utility/base classes indirectly exercised by all module tests (see exemptions)"]
   },
   "l1FullCoverageModules": ["zw-budget", "zw-purchase", "zw-labor", "zw-material", "zw-subcontract", "zw-contract", "zw-project"],
   "l2Gaps": [
@@ -71,7 +71,9 @@
     { "batch": 6, "scope": "L5: run all 56 specs, fix skips, add core pages, wire into CI", "rationale": "standalone phase" }
   ],
   "exemptions": [
-    { "target": "AliyunSmsService real-send branch", "layer": "L1", "reason": "aliyun SMS channel dependency; switch and missing-credential branches tested (3 cases), real send verified in production", "date": "2026-08-10" }
+    { "target": "AliyunSmsService real-send branch", "layer": "L1", "reason": "aliyun SMS channel dependency; switch and missing-credential branches tested (3 cases), real send verified in production", "date": "2026-08-10" },
+    { "target": "ArchiveService aggregation unit tests", "layer": "L1", "reason": "read-only cross-module aggregation (15+ mappers, 516 lines), unit-test mock cost too high for ROI; correctness covered by L3 test-api-archive.sh (CI green) + L4 lifecycle data chain + production; L2 aggregation test stays in l2Gaps as low priority", "date": "2026-08-11" },
+    { "target": "zw-common framework base classes", "layer": "L1", "reason": "utility/base code (RedisUtils/AssertUtils/TestDataCleaner/R/PageResult etc.) indirectly exercised by all business module tests; Backup/PdfConvert external-process branches and wkhtmltopdf real chain verified in production", "date": "2026-08-11" }
   ],
   "completionLog": [
     { "date": "2026-08-10", "batch": 1, "layer": "L1", "scope": "zw-finance 4 services (28 cases) + zw-security 4 services (24 cases)", "verification": "zw-finance 565 green / zw-security 285 green" },
