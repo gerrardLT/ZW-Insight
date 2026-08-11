@@ -259,7 +259,7 @@ if [ -n "$TPL_ID" ]; then
 fi
 
 # ---------- 打印模板闭环：创建返回ID → 详情 → 更新 → 删除 ----------
-call POST "/api/v1/print-template" "{\"templateName\":\"L3PT$TS_SUFFIX\",\"businessType\":\"L3BIZ\",\"templateContent\":\"<p>print</p>\"}"
+call POST "/api/v1/print-template" "{\"templateName\":\"L3PT$TS_SUFFIX\",\"moduleCode\":\"L3MOD\",\"businessType\":\"L3BIZ\",\"templateContent\":\"<p>print</p>\"}"
 assert_http 2 "打印模板-创建 HTTP"
 assert_body_code 200 "打印模板-创建业务码"
 PTPL_ID=$(jq -r '.data.id // empty' /tmp/zwi_body 2>/dev/null)
@@ -275,7 +275,7 @@ if [ -n "$PTPL_ID" ]; then
   assert_http 2 "打印模板-详情 HTTP"
   assert_jq '.code==200 and (.data.templateName!=null)' "打印模板-详情含名称"
 
-  call PUT "/api/v1/print-template/$PTPL_ID" "{\"templateName\":\"L3PTU$TS_SUFFIX\",\"businessType\":\"L3BIZ\",\"templateContent\":\"<p>print-u</p>\"}"
+  call PUT "/api/v1/print-template/$PTPL_ID" "{\"templateName\":\"L3PTU$TS_SUFFIX\",\"moduleCode\":\"L3MOD\",\"businessType\":\"L3BIZ\",\"templateContent\":\"<p>print-u</p>\"}"
   assert_http 2 "打印模板-更新 HTTP"
   assert_body_code 200 "打印模板-更新业务码"
 
@@ -288,7 +288,7 @@ if [ -n "$PTPL_ID" ]; then
 fi
 
 # 负向：打印模板名称为空被拒绝
-call POST "/api/v1/print-template" "{\"businessType\":\"L3BIZ\"}"
+call POST "/api/v1/print-template" "{\"moduleCode\":\"L3MOD\",\"businessType\":\"L3BIZ\"}"
 assert_body_not_success "打印模板-空名称被拒绝"
 
 # ---------- 异步导出任务 + 状态查询 ----------
@@ -307,7 +307,7 @@ if [ -n "$EXPORT_TASK_ID" ]; then
   sleep 3
   call GET "/api/v1/batch/export/$EXPORT_TASK_ID/status"
   assert_http 2 "异步导出-状态查询 HTTP"
-  assert_jq '.code==200 and (.data.status|IN["PENDING","PROCESSING","COMPLETED","FAILED"])' "异步导出-状态为合法枚举"
+  assert_jq '.code==200 and (.data.status|IN("PENDING","PROCESSING","COMPLETED","FAILED"))' "异步导出-状态为合法枚举"
 fi
 
 # 负向：不存在的导出任务状态查询被拒绝
@@ -315,12 +315,12 @@ call GET "/api/v1/batch/export/999999999/status"
 assert_body_not_success "异步导出-不存在任务被拒绝"
 
 # ---------- 定时导出配置闭环 ----------
-call POST "/api/v1/export-schedule" "{\"moduleCode\":\"SUPPLIER\",\"cronExpression\":\"0 0 3 * * ?\",\"recipients\":\"l3@example.com\",\"exportParams\":\"{}\"}"
+call POST "/api/v1/export-schedule" "{\"scheduleName\":\"L3Sched$TS_SUFFIX\",\"moduleCode\":\"SUPPLIER\",\"cronExpression\":\"0 0 3 * * ?\",\"recipients\":\"l3@example.com\",\"exportParams\":\"{}\"}"
 assert_http 2 "定时导出-创建 HTTP"
 assert_body_code 200 "定时导出-创建业务码"
 
 call GET "/api/v1/export-schedule/page?page=1&size=5"
-SCHED_ID=$(jq -r '.data.records[] | select(.moduleCode=="SUPPLIER" and .cronExpression=="0 0 3 * * ?") | .id' /tmp/zwi_body 2>/dev/null | head -1)
+SCHED_ID=$(jq -r --arg sn "L3Sched$TS_SUFFIX" '.data.records[] | select(.scheduleName==$sn) | .id' /tmp/zwi_body 2>/dev/null | head -1)
 TOTAL_COUNT=$((TOTAL_COUNT + 1))
 if [ -n "$SCHED_ID" ]; then
   PASS_COUNT=$((PASS_COUNT + 1)); log "  PASS [$TOTAL_COUNT] 定时导出-查回ID: $SCHED_ID"
@@ -329,7 +329,7 @@ else
 fi
 
 if [ -n "$SCHED_ID" ]; then
-  call PUT "/api/v1/export-schedule/$SCHED_ID" "{\"moduleCode\":\"SUPPLIER\",\"cronExpression\":\"0 0 4 * * ?\",\"recipients\":\"l3u@example.com\"}"
+  call PUT "/api/v1/export-schedule/$SCHED_ID" "{\"scheduleName\":\"L3Sched$TS_SUFFIX\",\"moduleCode\":\"SUPPLIER\",\"cronExpression\":\"0 0 4 * * ?\",\"recipients\":\"l3u@example.com\"}"
   assert_http 2 "定时导出-更新 HTTP"
   assert_body_code 200 "定时导出-更新业务码"
 
@@ -339,7 +339,7 @@ if [ -n "$SCHED_ID" ]; then
 fi
 
 # 负向：无效 Cron 被拒绝
-call POST "/api/v1/export-schedule" "{\"moduleCode\":\"SUPPLIER\",\"cronExpression\":\"not-a-cron\"}"
+call POST "/api/v1/export-schedule" "{\"scheduleName\":\"L3Bad$TS_SUFFIX\",\"moduleCode\":\"SUPPLIER\",\"cronExpression\":\"not-a-cron\"}"
 assert_body_not_success "定时导出-无效Cron被拒绝"
 
 report_summary
