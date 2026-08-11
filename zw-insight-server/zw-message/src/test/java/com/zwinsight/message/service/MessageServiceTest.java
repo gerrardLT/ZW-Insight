@@ -54,11 +54,15 @@ class MessageServiceTest {
     }
 
     @Test
-    @DisplayName("标记已读：更新isRead和readTime")
+    @DisplayName("标记已读：更新isRead和readTime，且带 userId 归属条件（防 IDOR）")
     void testMarkAsRead() {
-        messageService.markAsRead(1L);
+        messageService.markAsRead(1L, 100L);
 
-        verify(messageMapper).update(isNull(), any(LambdaUpdateWrapper.class));
+        verify(messageMapper).update(isNull(), argThat((LambdaUpdateWrapper<MsgMessage> w) -> {
+            // SQL 片段必须同时含主键与归属条件，缺 userId 条件即越权缺陷回归
+            String sql = w.getSqlSegment();
+            return sql.contains("id") && sql.contains("user_id");
+        }));
     }
 
     @Test

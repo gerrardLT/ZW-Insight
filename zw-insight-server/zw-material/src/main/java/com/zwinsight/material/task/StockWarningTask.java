@@ -8,6 +8,7 @@ import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
 import com.zwinsight.material.mapper.BizStockWarningConfigMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.security.service.TenantTaskRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -43,6 +44,7 @@ public class StockWarningTask {
     private final BizStockWarningConfigMapper configMapper;
     private final BizProjectMapper projectMapper;
     private final RedisUtils redisUtils;
+    private final TenantTaskRunner tenantTaskRunner;
 
     private static final String KEY_PREFIX = "stock:warning:";
     private static final long KEY_EXPIRE_SECONDS = 7 * 24 * 60 * 60; // 7天去重
@@ -56,7 +58,11 @@ public class StockWarningTask {
     @Scheduled(cron = "0 0 9 * * ?")
     public void execute() {
         log.info("库存预警定时任务开始执行");
+        // 逐租户设置上下文执行（拦截器增强后跨租户任务必须逐租户执行）
+        tenantTaskRunner.runForActiveTenants("库存预警", tenantId -> doExecute());
+    }
 
+    void doExecute() {
         // 1. 加载所有安全库存配置（按 projectId + materialId 唯一）
         List<BizStockWarningConfig> configs = configMapper.selectList(new LambdaQueryWrapper<>());
         Map<String, BigDecimal> safetyStockMap = configs.stream()

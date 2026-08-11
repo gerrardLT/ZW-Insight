@@ -56,6 +56,38 @@ class SysTenantServiceTest {
     }
 
     @Test
+    @DisplayName("停用租户：扫描真实会话 key 删除本租户用户会话（A1 修复：原实现删不存在的 token:user: key 致清理失效）")
+    void testDisableTenant_clearsRealSessionKeys() {
+        SysTenant tenant = new SysTenant();
+        tenant.setId(5L);
+        tenant.setStatus(1); // NORMAL
+        when(tenantMapper.selectById(5L)).thenReturn(tenant);
+
+        SysUser user = new SysUser();
+        user.setId(100L);
+        when(userMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of(user));
+
+        // Redis 中：本租户用户会话 token:abc(value=100)、他人会话 token:def(value=999)、黑名单 key
+        when(redisUtils.keys("token:*")).thenReturn(java.util.Set.of(
+                "token:abc", "token:def", "token:blacklist:hash1"));
+        when(redisUtils.get("token:abc")).thenReturn("100");
+        when(redisUtils.get("token:def")).thenReturn("999");
+        when(redisUtils.delete("token:abc")).thenReturn(true);
+
+        tenantService.disableTenant(5L);
+
+        // 仅删除本租户用户的真实会话 key
+        verify(redisUtils).delete("token:abc");
+        verify(redisUtils, never()).delete("token:def");
+        verify(redisUtils, never()).delete("token:blacklist:hash1");
+        // 不再使用失效的 token:user:/token:refresh: key
+        verify(redisUtils, never()).delete("token:user:100");
+        verify(redisUtils, never()).delete("token:refresh:100");
+        verify(tenantMapper).updateById(any(SysTenant.class));
+    }
+
+    @Test
     @DisplayName("更新租户：不允许修改编码和密钥")
     void testUpdate_clearsCodeAndKey() {
         SysTenant existing = new SysTenant();

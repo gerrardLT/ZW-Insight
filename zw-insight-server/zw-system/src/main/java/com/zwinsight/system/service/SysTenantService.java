@@ -25,7 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 租户管理服务（增强版）
@@ -453,19 +455,32 @@ public class SysTenantService {
         List<SysUser> users = userMapper.selectList(
                 new LambdaQueryWrapper<SysUser>().eq(SysUser::getTenantId, tenantId)
         );
-        // 按用户ID逐个删除Token（key格式: token:user:{userId}）
-        long deletedCount = 0;
-        for (SysUser user : users) {
-            String userTokenKey = "token:user:" + user.getId();
-            Boolean deleted = redisUtils.delete(userTokenKey);
-            if (Boolean.TRUE.equals(deleted)) {
-                deletedCount++;
-            }
-            // 同时清除 refresh token
-            String refreshTokenKey = "token:refresh:" + user.getId();
-            redisUtils.delete(refreshTokenKey);
+        if (users.isEmpty()) {
+            log.info("清除租户Token: tenantId={}, 无用户，跳过", tenantId);
+            return;
         }
-        log.info("清除租户Token: tenantId={}, 用户数={}, 删除Token数={}", tenantId, users.size(), deletedCount);
+        Set<String> userIds = users.stream()
+                .map(u -> u.getId().toString())
+                .collect(Collectors.toSet());
+        // 真实会话 key 为 token:{token} -> userId（与 AuthService.buildLoginResponse 一致）；
+        // 扫描 token:* 按 value 匹配删除（复用 PasswordResetService.invalidateAllUserTokens 同一机制）。
+        // 历史版本误删不存在的 token:user:{userId}/token:refresh:{userId} key，致停用/到期后
+        // 在线会话依然有效（安全缺陷，2026-08-11 修复）。
+        long deletedCount = 0;
+        Set<String> tokenKeys = redisUtils.keys("token:*");
+        for (String key : tokenKeys) {
+            // 排除黑名单自身（其 key 同样以 token: 开头）
+            if (key.startsWith("token:blacklist:")) {
+                continue;
+            }
+            Object value = redisUtils.get(key);
+            if (value != null && userIds.contains(value.toString())) {
+                if (Boolean.TRUE.equals(redisUtils.delete(key))) {
+                    deletedCount++;
+                }
+            }
+        }
+        log.info("清除租户Token: tenantId={}, 用户数={}, 删除会话数={}", tenantId, users.size(), deletedCount);
     }
 
     /**

@@ -14,6 +14,7 @@ import com.zwinsight.site.mapper.BizReminderConfigMapper;
 import com.zwinsight.site.mapper.BizReminderLogMapper;
 import com.zwinsight.site.service.ReminderConfigService;
 import com.zwinsight.site.service.ReminderDeduplicationService;
+import com.zwinsight.security.service.TenantTaskRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -41,6 +42,7 @@ public class RectificationReminderTask {
 
     private final BizInspectionMapper inspectionMapper;
     private final BizReminderConfigMapper reminderConfigMapper;
+    private final TenantTaskRunner tenantTaskRunner;
     private final BizReminderLogMapper reminderLogMapper;
     private final BizProjectMapper projectMapper;
     private final BizProjectMemberMapper projectMemberMapper;
@@ -73,7 +75,8 @@ public class RectificationReminderTask {
         }
 
         try {
-            doExecute();
+            // 逐租户设置上下文执行（拦截器增强后跨租户任务必须逐租户执行）
+            tenantTaskRunner.runForActiveTenants("整改超期催办", tenantId -> doExecute());
         } finally {
             releaseLock();
         }

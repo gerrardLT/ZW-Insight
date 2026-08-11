@@ -36,7 +36,8 @@ public class MessageController {
 
     @PutMapping("/{id}/read")
     public R<Void> markAsRead(@PathVariable Long id) {
-        messageService.markAsRead(id);
+        Long userId = SecurityContextHolder.getUserId();
+        messageService.markAsRead(id, userId);
         return R.ok();
     }
 

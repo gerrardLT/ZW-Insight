@@ -5,6 +5,7 @@ import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.metadata.WriteSheet;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.file.batch.domain.ExportStatus;
 import com.zwinsight.file.batch.domain.ImportResult;
 import com.zwinsight.file.batch.enums.ModuleCode;
@@ -98,8 +99,10 @@ public class BatchImportExportServiceImpl implements BatchImportExportService {
         String redisKey = EXPORT_TASK_KEY_PREFIX + taskId;
         redisTemplate.opsForValue().set(redisKey, status, EXPORT_TASK_EXPIRE_HOURS, TimeUnit.HOURS);
 
-        // 异步执行导出
-        executeExportAsync(taskId, moduleCode, params);
+        // 异步执行导出（显式传递租户/用户上下文：@Async 线程不继承 ThreadLocal，
+        // 且当前为同类自调用 @Async 实际同步执行，两处行为下上下文均正确）
+        executeExportAsync(taskId, moduleCode, params,
+                SecurityContextHolder.getTenantId(), SecurityContextHolder.getUserId());
 
         return taskId;
     }
@@ -168,10 +171,13 @@ public class BatchImportExportServiceImpl implements BatchImportExportService {
     // ===================== 异步导出核心逻辑 =====================
 
     /**
-     * 异步执行导出任务
+     * 异步执行导出任务（入参携带调用方租户/用户上下文，执行前设置、结束后清理）
      */
     @Async("batchExportExecutor")
-    public void executeExportAsync(Long taskId, String moduleCode, Map<String, Object> params) {
+    public void executeExportAsync(Long taskId, String moduleCode, Map<String, Object> params,
+                                   Long tenantId, Long userId) {
+        SecurityContextHolder.setTenantId(tenantId);
+        SecurityContextHolder.setUserId(userId);
         String redisKey = EXPORT_TASK_KEY_PREFIX + taskId;
         ModuleCode module = ModuleCode.fromCode(moduleCode);
 
@@ -216,6 +222,9 @@ public class BatchImportExportServiceImpl implements BatchImportExportService {
             ExportStatus failedStatus = ExportStatus.pending();
             failedStatus.failed("导出失败: " + e.getMessage());
             redisTemplate.opsForValue().set(redisKey, failedStatus, EXPORT_TASK_EXPIRE_HOURS, TimeUnit.HOURS);
+        } finally {
+            // 线程池复用，必须清理上下文防串租户
+            SecurityContextHolder.clear();
         }
     }
 

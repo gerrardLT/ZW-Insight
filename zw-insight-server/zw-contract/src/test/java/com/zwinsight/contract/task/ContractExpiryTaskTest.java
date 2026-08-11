@@ -39,8 +39,20 @@ class ContractExpiryTaskTest {
     @Mock
     private ValueOperations<String, String> valueOperations;
 
+    @Mock
+    private com.zwinsight.security.service.TenantTaskRunner tenantTaskRunner;
+
     @InjectMocks
     private ContractExpiryTask task;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubTenantRunner() {
+        // 逐租户执行器透传：直接执行单租户逻辑（lenient：部分用例未走到该分支）
+        org.mockito.Mockito.lenient().doAnswer(inv -> {
+            ((java.util.function.LongConsumer) inv.getArgument(1)).accept(9999L);
+            return null;
+        }).when(tenantTaskRunner).runForActiveTenants(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+    }
 
     private ContractExpiryDTO contract(Long id, LocalDate endDate) {
         ContractExpiryDTO dto = new ContractExpiryDTO();

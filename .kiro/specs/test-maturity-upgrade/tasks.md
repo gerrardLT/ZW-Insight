@@ -87,6 +87,12 @@
 
 ## 数据回填区（执行结果记录）
 
+### 深度审计缺陷修复（2026-08-11 启动，用户决策「按顺序修复所有」）
+
+4 组并行审计（21 个后端模块逐 Service 逐方法核对测试映射）发现 13 处真实代码缺陷 + 模块级测试缺口清单，按风险分 6 批修复：
+
+- [x] 批次1 安全级（A1-A3）：①A1 租户停用/到期 Token 清理失效（删不存在的 token:user:/token:refresh: key，实际会话 token:{token} 不受影响）→改扫描 token:* 按 value 匹配删除（复用 PasswordResetService 机制），补单测断言只删本租户会话；②A2 MessageService.markAsRead IDOR 越权→加 userId 归属条件+Controller 传当前用户，测试断言 SQL 含 user_id 条件；③A3 租户上下文 null 静默兜底——**实查核实比审计更深：6 个业务定时任务（合同到期/库存预警/质保金预警/整改催办/定时导出/供应商自动评分）因 tenant_id=0 注入长期静默失效**→新建 TenantTaskRunner 逐租户执行器并改造全部 6 任务；拦截器无上下文改显式 warn（MP 3.5.5 TenantLineHandler 无读写钩子，读/UPDATE/DELETE 注入 0 只查空/不命中为安全方向）；INSERT 防污染在 MetaObjectHandler 拦截抛异常；异步导出上下文显式传递+finally 清理（另发现 @Async 自调用实际同步执行，登记在案）。zw-contract 7/7、zw-app 4/4、zw-system+zw-message 全绿
+
 | 项 | 结果 | 日期 |
 |---|------|------|
 | PIT 杀死率（finance/subcontract/project） | 首轮：fin 53%/sub 52%/proj 48%；补强 38 用例后复测（2026-08-07）：**fin 73%（达标）**/sub 66%/proj 61%；全模块口径（含 domain/dto Lombok 载体）subcontract 仅 11%，已排除载体噪音；**最终复测（2026-08-10，串行隔离重跑）**：sub 124 变异杀 82=66%（测试强度 86%）/proj 139 变异杀 85=61%（测试强度 91%），与 08-07 持平，08-09 新增 2 例 +0 杀死，未达 70% 按预约定登记正式豁免（剩余存活为分页 wrapper 空守卫+NO_COVERAGE，正确性由 L2+L3 双重覆盖） | 2026-08-10 |

@@ -44,6 +44,7 @@ public class ExportScheduleService {
 
     private final BizExportScheduleMapper scheduleMapper;
     private final BatchImportExportService batchImportExportService;
+    private final com.zwinsight.security.service.TenantTaskRunner tenantTaskRunner;
 
     /**
      * 分页查询定时导出配置
@@ -108,6 +109,12 @@ public class ExportScheduleService {
      */
     @Scheduled(cron = "0 * * * * ?")
     public void scanAndExecuteScheduledExports() {
+        // 逐租户设置上下文执行（拦截器增强后无上下文读 SQL 注入 tenant_id=0 查空，
+        // 原实现致定时导出长期静默失效；写 nextExecuteTime 亦需上下文）
+        tenantTaskRunner.runForActiveTenants("定时导出扫描", tenantId -> doScanAndExecute());
+    }
+
+    void doScanAndExecute() {
         LocalDateTime now = LocalDateTime.now();
 
         List<BizExportSchedule> pendingList = scheduleMapper.selectList(

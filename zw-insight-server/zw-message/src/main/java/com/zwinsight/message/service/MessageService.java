@@ -46,11 +46,13 @@ public class MessageService {
     }
 
     /**
-     * 标记消息为已读
+     * 标记消息为已读（仅限本人消息：wrapper 带 userId 归属条件，
+     * 防 IDOR 越权——任意用户标记他人消息已读，2026-08-11 修复）
      */
-    public void markAsRead(Long messageId) {
+    public void markAsRead(Long messageId, Long userId) {
         LambdaUpdateWrapper<MsgMessage> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(MsgMessage::getId, messageId)
+                .eq(MsgMessage::getUserId, userId)
                 .set(MsgMessage::getIsRead, 1)
                 .set(MsgMessage::getReadTime, LocalDateTime.now());
         messageMapper.update(null, wrapper);

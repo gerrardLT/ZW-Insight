@@ -49,6 +49,7 @@ public class SupplierAutoScoreService {
     private final BizMaterialInboundMapper inboundMapper;
     private final BizMaterialRefundMapper refundMapper;
     private final BizSupplierEvaluationMapper evaluationMapper;
+    private final com.zwinsight.security.service.TenantTaskRunner tenantTaskRunner;
 
     /** 评分满分 */
     private static final int MAX_SCORE = 20;
@@ -59,6 +60,11 @@ public class SupplierAutoScoreService {
     @Scheduled(cron = "0 0 2 1 * ?")
     public void executeMonthlyAutoScore() {
         log.info("供应商自动评分定时任务开始执行");
+        // 逐租户设置上下文执行（拦截器增强后跨租户任务必须逐租户执行）
+        tenantTaskRunner.runForActiveTenants("供应商自动评分", tenantId -> doExecuteMonthlyAutoScore());
+    }
+
+    void doExecuteMonthlyAutoScore() {
         LocalDate today = LocalDate.now();
         LocalDate lastMonthStart = today.minusMonths(1).withDayOfMonth(1);
         LocalDate lastMonthEnd = today.withDayOfMonth(1).minusDays(1);

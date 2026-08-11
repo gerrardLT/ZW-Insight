@@ -55,9 +55,19 @@ class SupplierAutoScoreServiceTest {
     @Mock private BizMaterialInboundMapper inboundMapper;
     @Mock private BizMaterialRefundMapper refundMapper;
     @Mock private BizSupplierEvaluationMapper evaluationMapper;
+    @Mock private com.zwinsight.security.service.TenantTaskRunner tenantTaskRunner;
 
     @InjectMocks
     private SupplierAutoScoreService autoScoreService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubTenantRunner() {
+        // 逐租户执行器透传：直接执行单租户逻辑
+        org.mockito.Mockito.lenient().doAnswer(inv -> {
+            ((java.util.function.LongConsumer) inv.getArgument(1)).accept(9999L);
+            return null;
+        }).when(tenantTaskRunner).runForActiveTenants(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+    }
 
     private BizPurchaseContract contract(Long id, BigDecimal amount) {
         BizPurchaseContract c = new BizPurchaseContract();

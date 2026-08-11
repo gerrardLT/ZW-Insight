@@ -10,6 +10,7 @@ import com.zwinsight.finance.mapper.BizRetentionMoneyMapper;
 import com.zwinsight.finance.mapper.BizRetentionWarningLogMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.security.service.TenantTaskRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -38,6 +39,7 @@ public class RetentionWarningTask {
     private final BizProjectMapper projectMapper;
     private final BizConstructionContractMapper contractMapper;
     private final RedisUtils redisUtils;
+    private final TenantTaskRunner tenantTaskRunner;
 
     /** 去重 key 前缀：retention:warned:{retentionId}:{level} */
     private static final String WARNED_KEY_PREFIX = "retention:warned:";
@@ -66,6 +68,11 @@ public class RetentionWarningTask {
     @Scheduled(cron = "0 0 8 * * ?")
     public void execute() {
         log.info("质保金预警定时任务开始执行");
+        // 逐租户设置上下文执行（拦截器增强后跨租户任务必须逐租户执行）
+        tenantTaskRunner.runForActiveTenants("质保金预警", tenantId -> doExecute());
+    }
+
+    void doExecute() {
         LocalDate today = LocalDate.now();
         LocalDate thirtyDaysLater = today.plusDays(30);
 

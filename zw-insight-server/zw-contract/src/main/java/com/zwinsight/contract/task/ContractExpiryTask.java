@@ -2,6 +2,7 @@ package com.zwinsight.contract.task;
 
 import com.zwinsight.contract.dto.ContractExpiryDTO;
 import com.zwinsight.contract.service.ContractExpiryService;
+import com.zwinsight.security.service.TenantTaskRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,6 +28,7 @@ public class ContractExpiryTask {
 
     private final ContractExpiryService expiryService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final TenantTaskRunner tenantTaskRunner;
 
     /** 分布式锁 Key */
     private static final String LOCK_KEY = "task:contract-expiry:lock";
@@ -48,7 +50,9 @@ public class ContractExpiryTask {
         }
 
         try {
-            doExecute();
+            // 逐租户设置上下文执行（拦截器增强后无上下文写 SQL 被拒绝、
+            // 读 SQL 注入 tenant_id=0 查空，跨租户任务必须逐租户执行）
+            tenantTaskRunner.runForActiveTenants("合同到期提醒", tenantId -> doExecute());
         } finally {
             releaseLock();
         }

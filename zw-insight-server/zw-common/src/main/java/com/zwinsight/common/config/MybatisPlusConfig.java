@@ -11,6 +11,7 @@ import com.zwinsight.common.datapermission.DataPermissionDataProvider;
 import com.zwinsight.common.datapermission.DataPermissionInnerInterceptor;
 import org.springframework.context.annotation.Lazy;
 import com.zwinsight.common.datapermission.ZwDataPermissionHandler;
+import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.LongValue;
 import org.apache.ibatis.reflection.MetaObject;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 /**
  * MyBatis-Plus 配置
  */
+@Slf4j
 @Configuration
 public class MybatisPlusConfig {
 
@@ -90,7 +92,17 @@ public class MybatisPlusConfig {
             @Override
             public Expression getTenantId() {
                 Long tenantId = SecurityContextHolder.getTenantId();
-                return new LongValue(tenantId != null ? tenantId : 0L);
+                if (tenantId == null) {
+                    // 无租户上下文（定时任务/异步线程漏设）：保留 0L 兜底但显式告警，
+                    // 将静默失效暴露于日志（2026-08-11 修复 A3：原静默兜底致多个定时任务
+                    // 注入 tenant_id=0 查空数据而长期静默失效）。读/UPDATE/DELETE 注入 0
+                    // 只会查空/不命中（安全方向）；INSERT 防污染由下方 MetaObjectHandler 拦截。
+                    log.warn("租户上下文缺失下执行 SQL，已注入 tenant_id=0；线程={}。"
+                                    + "跨租户任务应逐租户设置上下文（TenantTaskRunner）",
+                            Thread.currentThread().getName());
+                    return new LongValue(0L);
+                }
+                return new LongValue(tenantId);
             }
 
             @Override
@@ -124,7 +136,16 @@ public class MybatisPlusConfig {
                 LocalDateTime now = LocalDateTime.now();
                 this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, now);
                 this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, now);
-                this.strictInsertFill(metaObject, "tenantId", Long.class, SecurityContextHolder.getTenantId());
+                // 写防护（A3 修复）：含 tenantId 字段的实体插入时必须有租户上下文，
+                // 否则拒绝，防止数据落入幽灵租户 0（MP 3.5.5 TenantLineHandler 无
+                // 读写区分钩子，拦截器只能统一注入，故在填充入口拦截 INSERT）
+                Long tenantId = SecurityContextHolder.getTenantId();
+                if (tenantId == null && metaObject.hasSetter("tenantId")) {
+                    throw new IllegalStateException(
+                            "租户上下文缺失，拒绝 INSERT（防止数据写入幽灵租户 0）；线程="
+                                    + Thread.currentThread().getName());
+                }
+                this.strictInsertFill(metaObject, "tenantId", Long.class, tenantId);
                 this.strictInsertFill(metaObject, "createdBy", Long.class, SecurityContextHolder.getUserId());
             }
 
