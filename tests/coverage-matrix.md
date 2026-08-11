@@ -92,6 +92,19 @@
 
 **批 5 L3 CI 复跑（run 31457602750）**：L3 通过=20 失败=0（全部 20 个脚本，含修复后的 test-api-file.sh）；L4 成功=88 失败=0；L5 api-tests Test Files 20 passed（356 例）；整个 run success —— **L1-L5 测试补全计划全部批次完成**。
 
+### 代码审计修复（2026-08-11，审计范围 d7ecdee..HEAD）
+
+审计结果：0 Critical / 1 Major / 1 Minor。
+
+| 级别 | 问题 | 修复 | 验证 |
+|------|------|------|------|
+| Major | 08-purchase 结算前置入库单 APPROVED 后不可删除，每轮 CI 残留累积违反零残留承诺 | 幂等复用策略：合同按 E2E_TEST_ 前缀存在即复用、入库单确定性复用无结算记录的 APPROVED 单、结算保持 DRAFT 每轮删除；仅无可复用时创建一张常驻入库单（显式声明） | 连跑入库单 76→76、合同 63→63 恒定；26/26 全绿 |
+| Minor | deploy.yml L5 两步缺 if:always()；bash -e 下 L5_EXIT 捕获失效 | 补 if:always()；改 `\|\| L5_EXIT=$?` | 日志可靠写入 |
+
+审计同时确认（无问题维度）：6 个 BPMN process id 与代码 startProcess processKey 逐一匹配、L1 测试无恒真断言/静默假绿、Flyway/db-init 幂等安全、无凭证泄露、无破坏性操作。
+
+**审计修复 CI 验证 run 31462193450（commit a9a78ae）全绿：L3 20/20、L4 成功=88 失败=0、L5_EXIT=0（Test Files 20 passed），整个 run success。**
+
 ## 五、L5 前端 E2E 现状与缺口
 
 | 资产 | 规模 | 状态 |
