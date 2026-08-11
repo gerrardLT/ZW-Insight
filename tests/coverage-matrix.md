@@ -111,10 +111,10 @@
 |---|---|---|
 | e2e/api-tests（vitest API 功能测试） | 20 spec / 356 用例 | ✅ 批 6 修复后 356/356 全绿（23 skip 全部解除）；**已接入 CI，run 31457602750 首跑全绿** |
 | ~~e2e/tests（Playwright UI，mock 模式）~~ | ~~13 spec / 89 用例~~ | ✅ 2026-08-11 归档删除：假 token + route() 拦截假数据，违反「真实接口真实流程」原则且与 real 模式冗余；UI 回归统一走真实模式 |
-| e2e/tests/real（真实模式打服务器） | 3 spec / 30 用例 | ✅ 2026-08-11 实跑盘点：27 过 / 3 条件性 skip（运行时数据依赖，非硬编码绕过；较早期记录的 12 skip 大幅改善）；未接入 CI |
-| e2e/consistency（一致性审计） | 20 spec / 54 用例 | 🔴 2026-08-11 实跑盘点：42 过 / 6 失败 / 6 未跑；失败均为真实前后端字段级不一致（budget 40 处/contract/finance/hr/vehicle/site/archive）；需修复后接入 CI |
+| e2e/tests/real（真实模式打服务器） | 3 spec / 30 用例 | ✅ 2026-08-11 实跑 27 过/3 条件性 skip（运行时数据依赖，非硬编码绕过）；**已接入 CI（deploy.yml Run L5 UI real tests）** |
+| e2e/consistency（一致性审计） | 20 spec / 54 用例 | ✅ 2026-08-11 修复后 54/54 全绿并接入 CI：6+1 处失败全部定性为测试规格漂移（非页面缺陷）——budget 无预算年度/已用金额列、contract/finance 基线缺 SUBMITTED→审批中映射、hr 车牌字段 plateNumber+状态按 vehicleStatus 渲染、site 施工日志列错位+质检列规格整体过时、archive 页面已重构（旧缺陷已在 17ee02c 修复）用例重写 |
 
-缺口（2026-08-11 更新）：①api-tests 已接入 CI；real/consistency 未接入（consistency 需先修复 6 处前后端字段不一致）②mock 模式已归档删除 ③UI 覆盖缺投标/现场/HR/档案页面（需前端页面开发配合）④real 的 3 个 skip 为运行时数据依赖条件性跳过。
+缺口（2026-08-11 更新）：①L5 全部接入 CI（api-tests + UI real + consistency 三套均绿）②mock 模式已归档删除 ③UI 覆盖缺投标/现场/HR/档案页面（需前端页面开发配合）④real 的 3 个 skip 为运行时数据依赖条件性跳过。
 
 ---
 

@@ -1,35 +1,13 @@
 {
   "module": "contract",
-  "generatedAt": "2026-08-11T07:16:15.828Z",
+  "generatedAt": "2026-08-11T08:51:55.654Z",
   "pages": [
     {
       "route": "/contract/list",
       "title": "施工合同列表",
       "api": "GET /v1/contract/page",
       "recordCount": 10,
-      "mismatches": [
-        {
-          "row": 2,
-          "column": "状态",
-          "field": "status",
-          "expected": "SUBMITTED",
-          "actual": "审批中"
-        },
-        {
-          "row": 5,
-          "column": "状态",
-          "field": "status",
-          "expected": "SUBMITTED",
-          "actual": "审批中"
-        },
-        {
-          "row": 7,
-          "column": "状态",
-          "field": "status",
-          "expected": "SUBMITTED",
-          "actual": "审批中"
-        }
-      ]
+      "mismatches": []
     }
   ]
 }

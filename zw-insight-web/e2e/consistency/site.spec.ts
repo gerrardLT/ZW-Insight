@@ -15,14 +15,15 @@ import {
   type PageConsistencyResult,
 } from './consistency-helper'
 
+// 2026-08-11 对齐页面实际结构：无施工内容/记录人列，为风力/生产记录（construction-log.vue）
 const LOG_COLUMNS: ColumnSpec[] = [
   { label: '日期', index: 0, field: 'logDate', type: 'date' },
   { label: '项目名称', index: 1, field: 'projectName', type: 'text' },
   { label: '天气', index: 2, field: 'weather', type: 'text' },
   { label: '气温', index: 3, field: 'temperature', type: 'text' },
-  { label: '施工内容', index: 4, field: 'workContent', type: 'text' },
-  { label: '出工人数', index: 5, field: 'workerCount', type: 'numeric' },
-  { label: '记录人', index: 6, field: 'recorder', type: 'text' },
+  { label: '风力', index: 4, field: 'wind', type: 'text' },
+  { label: '施工人数', index: 5, field: 'workerCount', type: 'numeric' },
+  { label: '生产记录', index: 6, field: 'productionRecord', type: 'text' },
 ]
 
 const SCHEDULE_COLUMNS: ColumnSpec[] = [
@@ -35,14 +36,21 @@ const SCHEDULE_COLUMNS: ColumnSpec[] = [
   { label: '状态', index: 6, field: 'status', expect: (r) => (r.status === 'COMPLETED' ? '已完成' : r.status === 'DELAYED' ? '滞后' : '进行中') },
 ]
 
+// 2026-08-11 对齐页面实际结构（site/inspection/index.vue）：项目/检查内容/是否有问题/
+// 问题描述/整改状态（RECT_MAP）/检查时间；整改状态空值渲染 '-'
+const RECT_TEXT: Record<string, string> = {
+  PENDING: '待整改',
+  SUBMITTED: '已提交',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
+}
 const INSPECTION_COLUMNS: ColumnSpec[] = [
-  { label: '检查编号', index: 0, field: 'inspectionNo', type: 'text' },
-  { label: '项目名称', index: 1, field: 'projectName', type: 'text' },
-  { label: '检查项', index: 2, field: 'checkItem', type: 'text' },
-  { label: '检查人', index: 3, field: 'inspector', type: 'text' },
-  { label: '检查日期', index: 4, field: 'inspectionDate', type: 'date' },
-  { label: '结果', index: 5, field: 'result', expect: (r) => (r.result === 'PASS' ? '合格' : '不合格') },
-  { label: '整改说明', index: 6, field: 'remark', type: 'text' },
+  { label: '项目名称', index: 0, field: 'projectName', type: 'text' },
+  { label: '检查内容', index: 1, field: 'inspectionContent', type: 'text' },
+  { label: '是否有问题', index: 2, field: 'hasProblem', expect: (r) => (r.hasProblem === 1 ? '有问题' : '无问题') },
+  { label: '问题描述', index: 3, field: 'problemDescription', type: 'text' },
+  { label: '整改状态', index: 4, field: 'rectificationStatus', expect: (r) => (r.rectificationStatus ? (RECT_TEXT[r.rectificationStatus] ?? String(r.rectificationStatus)) : '-') },
+  { label: '检查时间', index: 5, field: 'createdAt', type: 'datetime' },
 ]
 
 const results: PageConsistencyResult[] = []

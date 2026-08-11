@@ -383,6 +383,28 @@ jobs:
           tail -8 ../test-results/l5-api-tests.log
           exit $L5_EXIT
 
+      - name: Run L5 UI real tests (playwright e2e-real, 30 cases against deployed frontend :18081)
+        if: always()
+        run: |
+          cd zw-insight-web
+          # ubuntu-latest 预装 Google Chrome，playwright config 用 channel: 'chrome'；
+          # auth-real.setup.ts 真实登录 :18081 生成 storageState（mock 模式已归档删除）
+          UI_REAL_EXIT=0
+          npx playwright test --project=e2e-real > ../test-results/l5-ui-real.log 2>&1 || UI_REAL_EXIT=$?
+          echo "UI_REAL_EXIT=$UI_REAL_EXIT" >> ../test-results/l5-ui-real.log
+          tail -6 ../test-results/l5-ui-real.log
+          exit $UI_REAL_EXIT
+
+      - name: Run L5 consistency audit (playwright, 54 cases frontend-display vs backend-data)
+        if: always()
+        run: |
+          cd zw-insight-web
+          CONS_EXIT=0
+          npx playwright test --project=consistency-real > ../test-results/l5-consistency.log 2>&1 || CONS_EXIT=$?
+          echo "CONS_EXIT=$CONS_EXIT" >> ../test-results/l5-consistency.log
+          tail -6 ../test-results/l5-consistency.log
+          exit $CONS_EXIT
+
       - name: Download test results
         if: always()
         run: |
@@ -457,6 +479,34 @@ jobs:
             fi
           else
             echo "::warning::未找到 L5 测试结果文件"
+          fi
+  
+          # L5 UI real 汇总（playwright e2e-real 30 例，打部署前端真实登录）
+          echo ""
+          echo "--- L5 UI Real (playwright) ---"
+          if [ -f test-results/l5-ui-real.log ]; then
+            grep -E 'passed|failed|skipped' test-results/l5-ui-real.log | tail -3 || true
+            if grep -q "UI_REAL_EXIT=0" test-results/l5-ui-real.log; then
+              echo "L5 UI real 全部通过"
+            else
+              HAS_FAILURE=true
+            fi
+          else
+            echo "::warning::未找到 L5 UI real 测试结果文件"
+          fi
+  
+          # L5 consistency 汇总（playwright consistency-real 54 例，前端展示 vs 后端数据字段级比对）
+          echo ""
+          echo "--- L5 Consistency (playwright) ---"
+          if [ -f test-results/l5-consistency.log ]; then
+            grep -E 'passed|failed|skipped' test-results/l5-consistency.log | tail -3 || true
+            if grep -q "CONS_EXIT=0" test-results/l5-consistency.log; then
+              echo "L5 consistency 全部通过"
+            else
+              HAS_FAILURE=true
+            fi
+          else
+            echo "::warning::未找到 L5 consistency 测试结果文件"
           fi
   
           # 最终判定

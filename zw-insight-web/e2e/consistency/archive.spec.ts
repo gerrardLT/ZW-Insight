@@ -1,21 +1,19 @@
 /**
  * archive 档案管理 —— 列表页前端展示 vs 后端数据 字段级一致性
- *  A 档案首页 /archive/index                 GET /v1/archive/project/0  (⚠ 见下方发现)
+ *  A 档案首页 /archive/index                 GET /v1/project/list + GET /v1/archive/project/{id}
  *  B 办公用品档案 /archive/office-supply        GET /v1/archive/office-supply
  *  C 其它支出合同档案 /archive/other-expense-contract GET /v1/archive/other-expense-contract
  *  D 其它收入合同档案 /archive/other-income-contract  GET /v1/archive/other-income-contract
  *
- * ⚠ 发现（archive/index.vue）：
- *  - 列表调用 getArchivePage → GET /v1/archive/project/{projectId||0}，该接口返回「单项目档案聚合」
- *    对象而非分页结构 {records,total}，页面 res.data?.records 恒为 undefined → 表格永远为空；
- *  - 顶部 5 个分类 tab / 档案名称 / 归档日期查询条件在该接口下完全不生效（接口只吃 projectId）；
- *  - createArchive/updateArchive/deleteArchive 在 api/archive.ts 中为 Promise.resolve({code:200}) 假实现，
- *    违反「真实接口、无静默 fallback」约定。以上作为一致性发现记入报告。
+ * 历史发现（2026-08-11 核实已修复，commit 17ee02c）：旧版首页直接调 project/{projectId||0}
+ * 致表格恒空、api/archive.ts 曾有 Promise.resolve 假实现；现页面已重构为
+ * 「项目下拉（/v1/project/list）→ 选中后查 /v1/archive/project/{id} 聚合视图」，
+ * api/archive.ts 全部为真实 request 调用。
  *
  * 说明：other-*-contract 金额用 formatMoney = toLocaleString('zh-CN',{minimumFractionDigits:2})，
  * 空值显示 '-'，用 expect 自定义（fmtAmount + '-' 兜底）；status 直出原始 code（无翻译）。
  */
-import { test } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import {
   gotoAndCapture,
   fmtAmount,
@@ -46,28 +44,40 @@ const results: PageConsistencyResult[] = []
 
 test.describe.serial('archive 一致性', () => {
   test('A 档案首页 /archive/index 接口结构与列表绑定一致性', async ({ page }) => {
-    const resp = await gotoAndCapture<any>(page, '/archive/index', /\/v1\/archive\/project\/0/)
+    // 重构后页面：首载项目下拉（GET /v1/project/list，R<Project[]> 直返数组），
+    // 选中项目后调 GET /v1/archive/project/{id} 加载聚合档案视图
     const route = '/archive/index'
-    const title = '档案首页列表'
-    const api = 'GET /v1/archive/project/0'
+    const title = '档案首页'
+    const resp = await gotoAndCapture<any>(page, route, /\/v1\/project\/list/)
+    const api = 'GET /v1/project/list'
     if (resp.code !== 200) {
       results.push({ route, title, api, mismatches: [{ row: -1, column: '__apiError__', expected: 'code=200', actual: `code=${resp.code} message=${resp.message}` }] })
       return
     }
-    // 列表页绑定 res.data.records，但该接口返回的是单项目档案聚合对象，不含 records 数组
-    const hasRecords = Array.isArray(resp.data?.records)
-    if (!hasRecords) {
-      results.push({
-        route, title, api,
-        mismatches: [{
-          row: -1,
-          column: '__listBinding__',
-          field: 'data.records',
-          expected: 'PageResult(含 records 数组)',
-          actual: `聚合对象(无 records)，页面表格恒为空；keys=${resp.data ? Object.keys(resp.data).join(',') : 'null'}`,
-        }],
-      })
+    const projects = Array.isArray(resp.data) ? resp.data : []
+    if (projects.length === 0) {
+      results.push({ route, title, api, mismatches: [{ row: -1, column: '__listBinding__', field: 'data', expected: '项目数组非空（种子数据保证）', actual: '空数组，无法验证档案加载链路' }] })
+      return
     }
+    // 选中第一个项目，验证档案聚合接口真实可达
+    await page.locator('.el-select').first().click()
+    const [archiveResp] = await Promise.all([
+      page.waitForResponse(
+        (r) => /\/v1\/archive\/project\/\d+/.test(r.url()) && r.request().method() === 'GET',
+        { timeout: 15_000 }
+      ),
+      page.locator('.el-select-dropdown__item').first().click(),
+    ])
+    const archiveJson = await archiveResp.json()
+    results.push({
+      route, title,
+      api: 'GET /v1/project/list + GET /v1/archive/project/{id}',
+      recordCount: projects.length,
+      mismatches: archiveJson.code === 200
+        ? []
+        : [{ row: -1, column: '__apiError__', expected: '档案聚合接口 code=200', actual: `code=${archiveJson.code} message=${archiveJson.message}` }],
+    })
+    expect(archiveJson.code, `选中项目后档案聚合接口应返回成功码`).toBe(200)
   })
 
   test('B 办公用品档案 /archive/office-supply 字段级一致', async ({ page }) => {

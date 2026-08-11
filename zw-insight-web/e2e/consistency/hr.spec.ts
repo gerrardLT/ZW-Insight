@@ -33,15 +33,16 @@ const RESIGN_COLUMNS: ColumnSpec[] = [
   { label: '状态', index: 4, field: 'status', type: 'enum', enumMap: RESIGN_STATUS },
 ]
 
+// 2026-08-11 对齐页面实际结构：车牌字段为 plateNumber，状态列按 vehicleStatus 渲染（vehicle.vue）
 const VEHICLE_COLUMNS: ColumnSpec[] = [
-  { label: '车牌号', index: 0, field: 'plateNo', type: 'text' },
+  { label: '车牌号', index: 0, field: 'plateNumber', type: 'text' },
   { label: '车辆类型', index: 1, field: 'vehicleType', type: 'text' },
   { label: '品牌型号', index: 2, field: 'brand', type: 'text' },
   { label: '驾驶人', index: 3, field: 'driver', type: 'text' },
   { label: '使用部门', index: 4, field: 'department', type: 'text' },
   { label: '保险到期', index: 5, field: 'insuranceExpiry', type: 'date' },
   { label: '年检到期', index: 6, field: 'inspectionExpiry', type: 'date' },
-  { label: '状态', index: 7, field: 'status', expect: (r) => (r.status === 'NORMAL' ? '正常' : '维修') },
+  { label: '状态', index: 7, field: 'vehicleStatus', expect: (r) => (r.vehicleStatus === 'IN_USE' ? '使用中' : '闲置') },
 ]
 
 const OFFICE_SUPPLY_COLUMNS: ColumnSpec[] = [

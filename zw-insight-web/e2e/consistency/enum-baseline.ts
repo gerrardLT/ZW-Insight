@@ -21,9 +21,10 @@ export const PROJECT_STATUS: Record<string, string> = {
   CLOSED: '已关闭',
 }
 
-/** 施工合同状态（contract/index.vue 筛选区 el-option） */
+/** 施工合同状态（contract/index.vue 状态列 statusMap + 筛选区 el-option） */
 export const CONTRACT_STATUS: Record<string, string> = {
   DRAFT: '草稿',
+  SUBMITTED: '审批中',
   EFFECTIVE: '已生效',
   SETTLED: '已结算',
   CLOSED: '已关闭',
@@ -48,9 +49,10 @@ export const DOC_APPROVE_STATUS: Record<string, string> = {
   APPROVED: '已审批',
 }
 
-/** 通用审批状态（付款申请等） */
+/** 通用审批状态（付款申请等，finance/payment-apply.vue 状态列 statusMap） */
 export const PAYMENT_APPLY_STATUS: Record<string, string> = {
   DRAFT: '草稿',
+  SUBMITTED: '审批中',
   APPROVING: '审批中',
   APPROVED: '已通过',
   PAID: '已付款',

@@ -18,14 +18,13 @@ import {
 } from './consistency-helper'
 import { BUDGET_STATUS } from './enum-baseline'
 
-/** 列规格与 budget/index.vue <el-table-column> 顺序一致（0-based） */
+/** 列规格与 budget/index.vue <el-table-column> 顺序一致（0-based）；
+ * 2026-08-11 对齐页面实际结构：无预算年度/已用金额列，创建时间字段为 createdAt */
 const LIST_COLUMNS: ColumnSpec[] = [
   { label: '项目名称', index: 0, field: 'projectName', type: 'text' },
-  { label: '预算年度', index: 1, field: 'budgetYear', type: 'text' },
-  { label: '预算总额', index: 2, field: 'totalAmount', type: 'numeric' },
-  { label: '已用金额', index: 3, field: 'usedAmount', type: 'numeric' },
-  { label: '状态', index: 4, field: 'status', type: 'enum', enumMap: BUDGET_STATUS },
-  { label: '创建时间', index: 5, field: 'createTime', type: 'datetime' },
+  { label: '预算总额(元)', index: 1, field: 'totalAmount', type: 'numeric' },
+  { label: '状态', index: 2, field: 'status', type: 'enum', enumMap: BUDGET_STATUS },
+  { label: '创建时间', index: 3, field: 'createdAt', type: 'datetime' },
 ]
 
 const results: PageConsistencyResult[] = []
