@@ -19,7 +19,7 @@
 
 | 模块 | 缺口 Service（数量） | 已有覆盖备注 |
 |---|---|---|
-| zw-file | BatchImportExportService, ExportScheduleService, FilePreviewService, PdfConvertService, PrintTemplateService, SerialNumberService, StorageService, TemplateService（8） | FileUpload/Minio/ThymeleafRender 已覆盖 |
+| zw-file | ~~BatchImportExportService, ExportScheduleService, FilePreviewService, PdfConvertService, PrintTemplateService, SerialNumberService, StorageService, TemplateService（8）~~ **已补全（批 5，8 类 37 例；wkhtmltopdf/MinIO 真实链路由生产验证）** | FileUpload/Minio/ThymeleafRender 已覆盖 |
 | zw-hr | ~~RegularApplyService, TransferApplyService, SealApplyService, VehicleService, VehicleApplyService, VehicleMaintenanceService, HrStatisticsService（7）~~ **已补全（批 3，7 类 44 例）** | Entry/Resign/OfficeSupply 已覆盖 |
 | zw-system | ~~AuditLogService, BackupService, SysLogService, SysTenantTypeService, VersionManagerService, SystemConfigService（6）~~ **已补全（批 4，6 类 33 例；Backup 真实 mysqldump 链路由生产验证，单测覆盖守卫/失败落库分支）** | Dict/Menu/Org/Post/Role/Tenant/User 已覆盖；DataPermission 有集成测试 |
 | zw-site | ~~CompletionAcceptanceService, RectificationService, SchedulePlanService, ScheduleFeedbackService, LocationSignService, ReminderLogService（6）~~ **已补全（批 3，6 类 50 例）** | Inspection/ConstructionLog/ReminderDedup/ReminderTask(集成) 已覆盖 |
@@ -88,7 +88,7 @@
 | 备用金申请→报销冲抵→归还 | 2.9 | 中（金额） |
 | 保证金退回登记（投标侧） | 1.4 | 中（金额） |
 | 合同到期提醒触发验证 | 5.11 | 低 |
-| ~~HR 流程（入职审批→档案）抽样~~ ✅ 批 4 提前完成（阶段 9H，待 CI 实跑） | 2.10 | 低 |
+| ~~HR 流程（入职审批→档案）抽样~~ ✅ 批 4 提前完成（阶段 9H，CI run 31451226266 绿，账号自动创建断言通过） | 2.10 | 低 |
 
 ## 五、L5 前端 E2E 现状与缺口
 
