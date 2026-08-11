@@ -1332,6 +1332,52 @@ stage_9g_retention() {
   record_stage_result "PASSED"
 }
 
+# ===========================================================================
+# 阶段 9H: HR 入职审批（创建申请 → 提交 → 完成待办 → APPROVED + 自动建系统账号）
+#   依据功能表 2.10：入职审批通过后自动创建系统账号
+#   依赖 BPMN：entry_apply_approval（deploy-bpmn.sh 部署到租户 9999）
+#   残留说明：biz_entry_apply 由兜底清理；自动创建的 sys_user 账号保留在
+#   隔离测试租户 9999（sys_user 为系统表，兜底清理严禁触碰，属预期残留）
+# ===========================================================================
+stage_9h_entry_approval() {
+  phase "9H" "HR入职审批"
+  CURRENT_STAGE="9H:HR入职审批"
+
+  local ts=$(date +%s)
+  local username="l4entry${ts}"
+
+  api_call POST "/api/v1/hr/entry-apply" "{\"realName\":\"L4Entry$ts\",\"username\":\"$username\",\"phone\":\"139${ts:0:8}\"}"
+  strict_assert "创建入职申请"
+  sleep 1
+
+  api_call GET "/api/v1/hr/entry-apply/page?page=1&size=1&realName=L4Entry$ts"
+  local entryId=$(extract_first_record_id)
+  require_id "$entryId" "入职申请 ID"
+  assert_status "/api/v1/hr/entry-apply/page?page=1&size=1&realName=L4Entry$ts" "status" "DRAFT" "入职申请初始状态"
+
+  api_call POST "/api/v1/hr/entry-apply/$entryId/submit"
+  strict_assert "提交入职审批"
+  sleep 2
+  approve "同意入职" 1
+
+  # 审批后：申请 APPROVED + 自动创建系统账号（按 username 回查）
+  assert_status "/api/v1/hr/entry-apply/page?page=1&size=1&realName=L4Entry$ts" "status" "APPROVED" "入职审批后状态"
+
+  api_call GET "/api/v1/system/user/page?page=1&size=1&username=$username"
+  strict_assert "回查自动创建的系统账号"
+  local userCount=$(extract_field "total")
+  if [ "${userCount:-0}" != "0" ] && [ -n "$userCount" ]; then
+    success "系统账号已自动创建: $username (total=$userCount)"
+  else
+    fail "系统账号未自动创建: username=$username, total=$userCount"
+    ABORT_REASON="$CURRENT_STAGE: 系统账号未创建"
+    record_stage_result "FAILED"
+    exit 1
+  fi
+
+  record_stage_result "PASSED"
+}
+
 main() {
   echo "" > "$SIM_LOG"
   divider
@@ -1369,6 +1415,7 @@ main() {
   stage_9e_reject_branch
   stage_9f_change_visa
   stage_9g_retention
+  stage_9h_entry_approval
   stage_9b_completion_settlement
   stage_10_project_close
 
