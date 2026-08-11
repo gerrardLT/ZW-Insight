@@ -40,6 +40,21 @@ describe('08 - 采购管理', () => {
       cleaner.add('删除采购测试项目', () =>
         client.delete(`/api/v1/project/${projectId}`)
       )
+      // 预算管控默认 BLOCK 会拦截支出合同创建：为测试项目设置 WARN_ONLY（合法业务配置）
+      const cfgResp = await client.post('/api/v1/budget-control-configs', {
+        projectId,
+        controlMode: 'WARN_ONLY',
+        warningThreshold: 80,
+      })
+      if (cfgResp.code === 200) {
+        const effResp = await client.get(`/api/v1/budget-control-configs/project/${projectId}`)
+        const cfgId = effResp.data?.id
+        if (cfgId) {
+          cleaner.add('删除预算管控配置', () =>
+            client.delete(`/api/v1/budget-control-configs/${cfgId}`)
+          )
+        }
+      }
     }
   })
 
@@ -260,9 +275,29 @@ describe('08 - 采购管理', () => {
     let settlementId: number
 
     it('创建采购结算单', async () => {
-      const resp = await client.post('/api/v1/purchase/settlement', {
+      // 采购结算必须基于已审批入库单：先创建入库单并提交审批（真实业务前置流程）
+      const inboundResp = await client.post('/api/v1/material/inbound', {
         projectId,
         contractId: purchaseContractId,
+        inboundDate: '2026-02-25',
+        totalAmount: 100000,
+        directOutbound: 0,
+        details: [
+          { materialName: 'E2E结算钢筋', specification: 'HRB400', unit: '吨', quantity: 20, unitPrice: 5000, totalPrice: 100000 },
+        ],
+      })
+      expectOk(inboundResp, '创建结算依据入库单')
+      const inPage = await client.get('/api/v1/material/inbound/page', {
+        page: 1, size: 20, projectId,
+      })
+      const inbound = (inPage.data?.records || []).find((r: any) => r.contractId === purchaseContractId)
+      if (!inbound) throw new Error('入库单查回失败，无法继续结算测试')
+      cleaner.add('删除结算依据入库单', () => client.delete(`/api/v1/material/inbound/${inbound.id}`))
+      const subResp = await client.post(`/api/v1/material/inbound/${inbound.id}/submit`)
+      expectOk(subResp, '提交入库单审批')
+
+      const resp = await client.post('/api/v1/purchase/settlement', {
+        inboundId: inbound.id,
         settlementAmount: 100000,
         settlementDate: '2026-03-01',
         remark: 'E2E测试结算',

@@ -44,7 +44,7 @@ describe('13 - 现场管理', () => {
       })
       if (planResp.code === 200) {
         const planList = await client.get('/api/v1/site/schedule/page', { projectId })
-        const fb = (planList.data || []).find((r: any) => r.taskName === fbPlanName)
+        const fb = (planList.data?.records || []).find((r: any) => r.taskName === fbPlanName)
         if (fb) {
           planId = fb.id
           cleaner.add('删除反馈关联计划', () => client.delete(`/api/v1/site/schedule/plan/${planId}`))
@@ -76,8 +76,8 @@ describe('13 - 现场管理', () => {
         projectId,
       })
       expect(resp.code).toBe(200)
-      expect(Array.isArray(resp.data)).toBe(true)
-      const found = resp.data.find((r: any) => r.taskName === TEST_SITE.scheduleName)
+      const planRecords = resp.data?.records || []
+      const found = planRecords.find((r: any) => r.taskName === TEST_SITE.scheduleName)
       if (found) {
         planId = found.id
         cleaner.add('删除进度计划', () => client.delete(`/api/v1/site/schedule/plan/${planId}`))

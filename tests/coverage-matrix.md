@@ -94,7 +94,7 @@
 
 | 资产 | 规模 | 状态 |
 |---|---|---|
-| e2e/api-tests（vitest API 功能测试） | 20 spec / 347 用例 | 未接入 CI，运行状态未验证 |
+| e2e/api-tests（vitest API 功能测试） | 20 spec / 356 用例 | ✅ 批 6 修复后本地实跑 356/356 全绿（23 skip 全部解除）；已接入 CI（deploy.yml Integration Test L5 步骤，待首跑验证） |
 | e2e/tests（Playwright UI，mock 模式） | 13 spec / 89 用例 | 未接入 CI，运行状态未验证 |
 | e2e/tests/real（真实模式打服务器） | 3 spec / 29 用例（**12 skip**：login 4 / project-crud 2 / workflow 6） | 未接入 CI |
 | e2e/consistency（一致性审计） | 20 spec / 54 用例（2 skip） | 未接入 CI |

@@ -364,6 +364,22 @@ jobs:
           bash lifecycle-sim-v2.sh 2>&1 | tee /root/zwi-deploy/l4-lifecycle-result.log
           L4_SCRIPT
 
+      - name: Setup Node.js (for L5 api-tests)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run L5 api-tests (vitest, 356 cases against real API)
+        run: |
+          mkdir -p test-results
+          cd zw-insight-web
+          npm ci --no-audit --no-fund
+          npx vitest run --config e2e/api-tests/vitest.config.ts > ../test-results/l5-api-tests.log 2>&1
+          L5_EXIT=$?
+          echo "L5_EXIT=$L5_EXIT" >> ../test-results/l5-api-tests.log
+          tail -8 ../test-results/l5-api-tests.log
+          exit $L5_EXIT
+
       - name: Download test results
         if: always()
         run: |
@@ -424,6 +440,20 @@ jobs:
             fi
           else
             echo "::warning::未找到 L4 测试结果文件"
+          fi
+  
+          # L5 汇总（api-tests vitest 356 例，真实接口）
+          echo ""
+          echo "--- L5 API-Tests (vitest) ---"
+          if [ -f test-results/l5-api-tests.log ]; then
+            grep -E 'Test Files|Tests ' test-results/l5-api-tests.log || true
+            if grep -q "L5_EXIT=0" test-results/l5-api-tests.log; then
+              echo "L5 全部通过"
+            else
+              HAS_FAILURE=true
+            fi
+          else
+            echo "::warning::未找到 L5 测试结果文件"
           fi
   
           # 最终判定

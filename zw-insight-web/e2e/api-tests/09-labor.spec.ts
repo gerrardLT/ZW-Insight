@@ -33,6 +33,19 @@ describe('09 - 劳务管理', () => {
       if (pageResp.data?.records?.length > 0) {
         projectId = pageResp.data.records[0].id
         cleaner.add('删除劳务关联项目', () => client.delete(`/api/v1/project/${projectId}`))
+        // 预算管控默认 BLOCK 会拦截支出合同创建：为测试项目设置 WARN_ONLY（合法业务配置）
+        const cfgResp = await client.post('/api/v1/budget-control-configs', {
+          projectId,
+          controlMode: 'WARN_ONLY',
+          warningThreshold: 80,
+        })
+        if (cfgResp.code === 200) {
+          const effResp = await client.get(`/api/v1/budget-control-configs/project/${projectId}`)
+          const cfgId = effResp.data?.id
+          if (cfgId) {
+            cleaner.add('删除预算管控配置', () => client.delete(`/api/v1/budget-control-configs/${cfgId}`))
+          }
+        }
       }
     }
 
