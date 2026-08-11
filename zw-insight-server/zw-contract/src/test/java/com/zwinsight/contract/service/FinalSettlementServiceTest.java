@@ -134,4 +134,21 @@ class FinalSettlementServiceTest {
         verify(contractMapper, never()).updateById(any());
         verify(projectMapper, never()).updateById(any());
     }
+
+    @Test
+    @DisplayName("submit - 合同非生效状态拒绝置已结算（D2：DRAFT/SUBMITTED 合同不可竣工结算）")
+    void submit_contractNotEffective_rejected() {
+        BizFinalSettlement s = settlement("DRAFT");
+        when(settlementMapper.selectById(1L)).thenReturn(s);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-1");
+        BizConstructionContract contract = new BizConstructionContract();
+        contract.setStatus("DRAFT");
+        when(contractMapper.selectById(20L)).thenReturn(contract);
+
+        assertThatThrownBy(() -> service.submit(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅生效状态的合同");
+
+        verify(contractMapper, never()).updateById(any());
+    }
 }

@@ -58,6 +58,28 @@ class OpenBidRecordServiceTest {
     }
 
     @Test
+    @DisplayName("新增开标记录（中标）：终态项目拒绝（D1，防终态被改回 WON）")
+    void testSave_won_terminalProject_rejected() {
+        BizOpenBidRecord record = new BizOpenBidRecord();
+        record.setRegisterId(10L);
+        record.setProjectId(100L);
+        record.setIsWon(1);
+
+        BizProject project = new BizProject();
+        project.setId(100L);
+        project.setStatus("CLOSED");
+        when(projectMapper.selectById(100L)).thenReturn(project);
+
+        assertThatThrownBy(() -> openBidRecordService.save(record))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不可登记中标");
+
+        // fail-fast：开标记录/登记均不落库
+        verify(openBidRecordMapper, never()).insert(any());
+        verify(registerMapper, never()).updateById(any());
+    }
+
+    @Test
     @DisplayName("新增开标记录（未中标）：投标登记状态→LOST，项目不变")
     void testSave_lost_updatesRegisterOnly() {
         BizOpenBidRecord record = new BizOpenBidRecord();

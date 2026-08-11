@@ -122,6 +122,27 @@ class TenderRegisterServiceTest {
         }
 
         @Test
+        @DisplayName("新增：终态项目（已关闭/竣工）拒绝投标登记（D1，防终态被改回投标中）")
+        void testSave_terminalProject_rejected() {
+            for (String terminalStatus : new String[]{"CLOSED", "COMPLETED", "CLOSING"}) {
+                BizTenderRegister register = new BizTenderRegister();
+                register.setProjectId(100L);
+
+                BizProject project = new BizProject();
+                project.setId(100L);
+                project.setStatus(terminalStatus);
+                when(projectMapper.selectById(100L)).thenReturn(project);
+
+                assertThatThrownBy(() -> tenderRegisterService.save(register))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("不可新增投标登记");
+            }
+            // fail-fast：登记不落库、项目状态不变
+            verify(registerMapper, never()).insert(any());
+            verify(projectMapper, never()).updateById(any());
+        }
+
+        @Test
         @DisplayName("新增：项目不存在时跳过项目状态回写")
         void testSave_projectNotFound_skipsProjectUpdate() {
             BizTenderRegister register = new BizTenderRegister();

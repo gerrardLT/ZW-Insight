@@ -28,6 +28,17 @@ public class OpenBidRecordService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizOpenBidRecord record) {
+        // D1 守卫（2026-08-11）：中标时终态项目禁止被改回 WON，先校验再落库（fail-fast）
+        boolean won = record.getIsWon() != null && record.getIsWon() == 1;
+        BizProject project = null;
+        if (won) {
+            project = projectMapper.selectById(record.getProjectId());
+            if (project != null && ("CLOSED".equals(project.getStatus())
+                    || "COMPLETED".equals(project.getStatus()) || "CLOSING".equals(project.getStatus()))) {
+                throw new BusinessException("项目已关闭/竣工，不可登记中标");
+            }
+        }
+
         openBidRecordMapper.insert(record);
 
         // 更新投标登记状态
@@ -36,13 +47,12 @@ public class OpenBidRecordService {
             throw new BusinessException("投标登记不存在");
         }
 
-        if (record.getIsWon() != null && record.getIsWon() == 1) {
+        if (won) {
             // 中标
             register.setStatus("WON");
             registerMapper.updateById(register);
 
             // 更新项目状态为WON
-            BizProject project = projectMapper.selectById(record.getProjectId());
             if (project != null) {
                 project.setStatus("WON");
                 projectMapper.updateById(project);

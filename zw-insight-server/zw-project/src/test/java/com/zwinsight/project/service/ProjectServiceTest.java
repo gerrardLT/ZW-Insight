@@ -261,6 +261,22 @@ class ProjectServiceTest {
                 .hasMessageContaining("项目不存在");
     }
 
+    @Test
+    @DisplayName("更新状态：终态项目（CLOSED/COMPLETED）拒绝变更（D1 状态机守卫）")
+    void testUpdateStatus_terminalProject_rejected() {
+        for (String terminalStatus : new String[]{"CLOSED", "COMPLETED"}) {
+            BizProject project = new BizProject();
+            project.setId(2L);
+            project.setStatus(terminalStatus);
+            when(projectMapper.selectById(2L)).thenReturn(project);
+
+            assertThatThrownBy(() -> projectService.updateStatus(2L, "TENDERING"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("不可变更状态");
+        }
+        verify(projectMapper, never()).updateById(any());
+    }
+
     // =====================================================================
     // closeProject
     // =====================================================================

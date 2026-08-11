@@ -185,12 +185,15 @@ public class ProjectService {
     }
 
     /**
-     * 更新项目状态
+     * 更新项目状态（D1 守卫，2026-08-11：终态项目 CLOSED/COMPLETED 禁止被改回任意状态）
      */
     public void updateStatus(Long id, String newStatus) {
         BizProject existing = projectMapper.selectById(id);
         if (existing == null) {
             throw new BusinessException("项目不存在");
+        }
+        if ("CLOSED".equals(existing.getStatus()) || "COMPLETED".equals(existing.getStatus())) {
+            throw new BusinessException("项目已关闭/竣工，不可变更状态");
         }
         existing.setStatus(newStatus);
         projectMapper.updateById(existing);

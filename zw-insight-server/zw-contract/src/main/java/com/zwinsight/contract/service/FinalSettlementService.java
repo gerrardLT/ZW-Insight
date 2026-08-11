@@ -75,9 +75,13 @@ public class FinalSettlementService {
         settlement.setStatus("APPROVED");
         settlementMapper.updateById(settlement);
 
-        // 更新合同状态为 SETTLED
+        // 更新合同状态为 SETTLED（D2 守卫，2026-08-11：仅生效合同可置已结算，
+        // 原实现 DRAFT/SUBMITTED 合同也会被直接置 SETTLED）
         BizConstructionContract contract = contractMapper.selectById(settlement.getContractId());
         if (contract != null) {
+            if (!"EFFECTIVE".equals(contract.getStatus()) && !"SETTLED".equals(contract.getStatus())) {
+                throw new BusinessException("仅生效状态的合同可进行竣工结算，当前合同状态：" + contract.getStatus());
+            }
             contract.setStatus("SETTLED");
             contractMapper.updateById(contract);
         }

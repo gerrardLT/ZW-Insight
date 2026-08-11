@@ -39,11 +39,17 @@ public class TenderRegisterService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizTenderRegister register) {
+        // D1 守卫（2026-08-11）：终态项目禁止被改回投标中，先校验再落库（fail-fast）
+        BizProject project = projectMapper.selectById(register.getProjectId());
+        if (project != null && ("CLOSED".equals(project.getStatus())
+                || "COMPLETED".equals(project.getStatus()) || "CLOSING".equals(project.getStatus()))) {
+            throw new BusinessException("项目已关闭/竣工，不可新增投标登记");
+        }
+
         register.setStatus("REGISTERED");
         registerMapper.insert(register);
 
         // 更新项目状态为TENDERING
-        BizProject project = projectMapper.selectById(register.getProjectId());
         if (project != null) {
             project.setStatus("TENDERING");
             projectMapper.updateById(project);
