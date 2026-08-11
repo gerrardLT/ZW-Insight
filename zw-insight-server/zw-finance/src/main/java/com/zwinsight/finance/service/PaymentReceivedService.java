@@ -106,9 +106,34 @@ public class PaymentReceivedService {
     }
 
     /**
-     * 删除收款记录
+     * 删除收款记录（回冲项目 totalIncome + 合同 cumulativeReceivedAmount，与 save 回写对称；
+     * 否则删除后合同可回款额度不恢复，逐轮消耗致数据不一致）
      */
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
+        BizPaymentReceived existing = paymentReceivedMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("收款记录不存在");
+        }
+        BigDecimal receiveAmount = existing.getReceiveAmount() == null
+                ? BigDecimal.ZERO : existing.getReceiveAmount();
         paymentReceivedMapper.deleteById(id);
+
+        // 回冲项目总收入
+        BizProject project = projectMapper.selectById(existing.getProjectId());
+        if (project != null && project.getTotalIncome() != null) {
+            project.setTotalIncome(project.getTotalIncome().subtract(receiveAmount));
+            projectMapper.updateById(project);
+        }
+
+        // 回冲合同累计收款金额
+        if (existing.getContractId() != null) {
+            BizConstructionContract contract = contractMapper.selectById(existing.getContractId());
+            if (contract != null && contract.getCumulativeReceivedAmount() != null) {
+                contract.setCumulativeReceivedAmount(
+                        contract.getCumulativeReceivedAmount().subtract(receiveAmount));
+                contractMapper.updateById(contract);
+            }
+        }
     }
 }

@@ -167,4 +167,59 @@ class PaymentReceivedServiceTest {
                     .hasMessageContaining("收款记录不存在");
         }
     }
+
+    @Nested
+    @DisplayName("删除回冲（与 save 回写对称）")
+    class DeleteRollbackTests {
+        @Test
+        @DisplayName("删除：回冲项目总收入与合同累计收款")
+        void delete_rollsBackProjectAndContract() {
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            BizProject project = new BizProject();
+            project.setId(100L);
+            project.setTotalIncome(new BigDecimal("200000"));
+            when(projectMapper.selectById(100L)).thenReturn(project);
+            when(contractMapper.selectById(10L)).thenReturn(contract("300000", "150000"));
+
+            paymentReceivedService.delete(1L);
+
+            verify(paymentReceivedMapper).deleteById(1L);
+            // 项目总收入 200000 - 50000 = 150000
+            verify(projectMapper).updateById(argThat(p ->
+                    p.getTotalIncome().compareTo(new BigDecimal("150000")) == 0));
+            // 合同累计收款 150000 - 50000 = 100000
+            verify(contractMapper).updateById(argThat(c ->
+                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("100000")) == 0));
+        }
+
+        @Test
+        @DisplayName("删除：记录不存在抛异常且不删除")
+        void delete_notFound_throws() {
+            when(paymentReceivedMapper.selectById(999L)).thenReturn(null);
+
+            assertThatThrownBy(() -> paymentReceivedService.delete(999L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("收款记录不存在");
+
+            verify(paymentReceivedMapper, never()).deleteById(any());
+        }
+
+        @Test
+        @DisplayName("删除：无合同关联时仅回冲项目收入")
+        void delete_noContract_rollsBackProjectOnly() {
+            samplePayment.setContractId(null);
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            BizProject project = new BizProject();
+            project.setId(100L);
+            project.setTotalIncome(new BigDecimal("80000"));
+            when(projectMapper.selectById(100L)).thenReturn(project);
+
+            paymentReceivedService.delete(1L);
+
+            verify(paymentReceivedMapper).deleteById(1L);
+            verify(projectMapper).updateById(argThat(p ->
+                    p.getTotalIncome().compareTo(new BigDecimal("30000")) == 0));
+            verify(contractMapper, never()).updateById(any());
+        }
+    }
 }

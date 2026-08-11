@@ -251,7 +251,9 @@ test_delete_payment_apply() {
 test_create_payment_received() {
   log "▶ 测试：创建收款登记"
   # 字段对齐后端契约：receive_amount NOT NULL，收款人/收款方式为 receiver/receiveType
-  call POST "/api/v1/finance/payment-received" '{"projectId":90001,"contractId":91001,"receiveDate":"2025-04-01","receiveAmount":100000.00,"receiver":"测试收款人","receiveType":"转账"}'
+  # 回款上限=合同已开票未收金额：91001 额度已耗尽（历史测试未回冲），改用 91002（已竣工合同，
+  # 已开票 3200 万>已收 3100 万，余额 100 万）；后端 delete 已修复回冲累计收款（与 save 对称），循环净变化为零
+  call POST "/api/v1/finance/payment-received" '{"projectId":90002,"contractId":91002,"receiveDate":"2025-04-01","receiveAmount":100000.00,"receiver":"测试收款人","receiveType":"转账"}'
   assert_http 2 "POST /api/v1/finance/payment-received 状态码"
   assert_body_code 200 "POST /api/v1/finance/payment-received 业务码"
 }
