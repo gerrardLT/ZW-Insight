@@ -1,6 +1,7 @@
 package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizOtherPayment;
@@ -142,5 +143,16 @@ class OtherPaymentServiceTest {
                 .isInstanceOf(BusinessException.class).hasMessageContaining("付款金额必须大于0");
 
         verify(otherPaymentMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("save 挂载 @BudgetCheck — 超预算拦截由切面执行（P1 FIN-OPT-06 注解钉住）")
+    void save_hasBudgetCheckAnnotation() throws NoSuchMethodException {
+        // 拦截行为由 BudgetControlAspectTest.block_throws + BudgetBlockIntegrationTest 覆盖；
+        // 此处钉住注解挂载不丢失（防重构误删导致其他付款绕过预算管控）
+        BudgetCheck check = OtherPaymentService.class
+                .getMethod("save", BizOtherPayment.class)
+                .getAnnotation(BudgetCheck.class);
+        assertThat(check).as("save 必须保留 @BudgetCheck 注解").isNotNull();
     }
 }

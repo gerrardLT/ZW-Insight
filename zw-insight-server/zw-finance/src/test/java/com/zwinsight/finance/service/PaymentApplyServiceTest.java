@@ -1,6 +1,9 @@
 package com.zwinsight.finance.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizPaymentApply;
@@ -20,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -392,6 +396,97 @@ class PaymentApplyServiceTest {
             assertThat(apply.getStatus()).isEqualTo("REJECTED");
             verify(otherContractMapper, never()).addCumulativePaid(anyLong(), any());
             verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+        }
+    }
+
+    // ============ CRUD 草稿守卫 + onRejected 幂等（P1 FIN-PAY-01~03/08/09/20） ============
+
+    @Nested
+    @DisplayName("CRUD 草稿守卫与驳回幂等")
+    class CrudGuardTests {
+
+        private BizPaymentApply apply(Long id, String status) {
+            BizPaymentApply a = new BizPaymentApply();
+            a.setId(id);
+            a.setProjectId(10L);
+            a.setStatus(status);
+            a.setPaymentAmount(new BigDecimal("1000"));
+            return a;
+        }
+
+        @Test
+        @DisplayName("save 置 DRAFT（FIN-PAY-01）")
+        void save_setsDraft() {
+            BizPaymentApply a = apply(1L, null);
+            paymentApplyService.save(a);
+            assertThat(a.getStatus()).isEqualTo("DRAFT");
+            verify(paymentApplyMapper).insert(a);
+        }
+
+        @Test
+        @DisplayName("update 仅 DRAFT 可编辑（FIN-PAY-02/08）")
+        void update_draftOnly() {
+            when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "DRAFT"));
+            BizPaymentApply updated = apply(1L, "DRAFT");
+            paymentApplyService.update(updated);
+            verify(paymentApplyMapper).updateById(updated);
+
+            when(paymentApplyMapper.selectById(2L)).thenReturn(apply(2L, "SUBMITTED"));
+            assertThatThrownBy(() -> paymentApplyService.update(apply(2L, "DRAFT")))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("仅草稿状态可编辑");
+
+            when(paymentApplyMapper.selectById(99L)).thenReturn(null);
+            assertThatThrownBy(() -> paymentApplyService.update(apply(99L, "DRAFT")))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("付款申请不存在");
+        }
+
+        @Test
+        @DisplayName("delete 仅 DRAFT 可删除（FIN-PAY-03/09）")
+        void delete_draftOnly() {
+            when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "DRAFT"));
+            paymentApplyService.delete(1L);
+            verify(paymentApplyMapper).deleteById(1L);
+
+            when(paymentApplyMapper.selectById(2L)).thenReturn(apply(2L, "APPROVED"));
+            assertThatThrownBy(() -> paymentApplyService.delete(2L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("仅草稿状态可删除");
+
+            when(paymentApplyMapper.selectById(99L)).thenReturn(null);
+            assertThatThrownBy(() -> paymentApplyService.delete(99L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("付款申请不存在");
+        }
+
+        @Test
+        @DisplayName("onRejected 幂等：非 SUBMITTED 静默返回（FIN-PAY-20）")
+        void onRejected_idempotent() {
+            when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "REJECTED"));
+            paymentApplyService.onRejected(1L);
+            verify(paymentApplyMapper, never()).updateById(any());
+
+            when(paymentApplyMapper.selectById(99L)).thenReturn(null);
+            paymentApplyService.onRejected(99L);
+            verify(paymentApplyMapper, never()).updateById(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("分页查询")
+    class PageTests {
+
+        @Test
+        @DisplayName("分页筛选透传（FIN-PAY-21）")
+        void page_delegates() {
+            Page<BizPaymentApply> page = new Page<>(1, 10);
+            BizPaymentApply a = new BizPaymentApply();
+            a.setId(1L);
+            page.setRecords(List.of(a));
+            page.setTotal(1);
+            when(paymentApplyMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+            PageResult<BizPaymentApply> result = paymentApplyService.page(1, 10, 5L, 100L, "APPROVED");
+
+            assertThat(result.getRecords()).hasSize(1);
+            assertThat(result.getTotal()).isEqualTo(1);
         }
     }
 }

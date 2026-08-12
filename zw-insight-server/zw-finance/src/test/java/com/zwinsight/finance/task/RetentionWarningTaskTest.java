@@ -1,22 +1,33 @@
 package com.zwinsight.finance.task;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.finance.domain.BizRetentionMoney;
+import com.zwinsight.finance.domain.BizRetentionWarningLog;
 import com.zwinsight.finance.mapper.BizRetentionMoneyMapper;
 import com.zwinsight.finance.mapper.BizRetentionWarningLogMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.security.service.TenantTaskRunner;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.LongConsumer;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -39,6 +50,9 @@ class RetentionWarningTaskTest {
 
     @Mock
     private RedisUtils redisUtils;
+
+    @Mock
+    private TenantTaskRunner tenantTaskRunner;
 
     @InjectMocks
     private RetentionWarningTask retentionWarningTask;
@@ -162,5 +176,61 @@ class RetentionWarningTaskTest {
         verify(redisUtils).delete("retention:warned:" + retentionId + ":OVERDUE");
         verify(redisUtils).delete("retention:overdue:last:" + retentionId);
         verifyNoMoreInteractions(redisUtils);
+    }
+
+    // ============ doExecute 端到端 SENT/FAILED + 逐租户（P1 FIN-RWR-07/08/09） ============
+
+    @Test
+    @DisplayName("doExecute — 发送成功记 SENT 日志 + 标记去重 key（P1 FIN-RWR-07）")
+    void doExecute_sendSuccess_sentLogAndDedupMark() {
+        BizRetentionMoney record = buildRecord(1L, LocalDate.now().plusDays(20));
+        when(retentionMoneyMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(record));
+        when(redisUtils.hasKey(anyString())).thenReturn(false);
+
+        RetentionWarningTask spyTask = spy(retentionWarningTask);
+        doReturn(true).when(spyTask).sendWarning(any(BizRetentionMoney.class), anyString());
+
+        spyTask.doExecute();
+
+        ArgumentCaptor<BizRetentionWarningLog> captor = ArgumentCaptor.forClass(BizRetentionWarningLog.class);
+        verify(warningLogMapper).insert(captor.capture());
+        BizRetentionWarningLog log = captor.getValue();
+        assertEquals("SENT", log.getNotifyStatus());
+        assertEquals(RetentionWarningTask.LEVEL_UPCOMING, log.getWarningLevel());
+        assertNotNull(log.getSentAt());
+        // 成功后标记去重 key（30 天过期）
+        verify(redisUtils).set(eq(spyTask.buildWarnedKey(1L, RetentionWarningTask.LEVEL_UPCOMING)),
+                eq("1"), anyLong(), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    @DisplayName("doExecute — 通知失败记 FAILED 日志且不标记去重 key（P1 FIN-RWR-09）")
+    void doExecute_sendFailure_failedLogWithoutDedupMark() {
+        BizRetentionMoney record = buildRecord(2L, LocalDate.now().plusDays(20));
+        when(retentionMoneyMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(record));
+        when(redisUtils.hasKey(anyString())).thenReturn(false);
+
+        RetentionWarningTask spyTask = spy(retentionWarningTask);
+        doReturn(false).when(spyTask).sendWarning(any(BizRetentionMoney.class), anyString());
+
+        spyTask.doExecute();
+
+        ArgumentCaptor<BizRetentionWarningLog> captor = ArgumentCaptor.forClass(BizRetentionWarningLog.class);
+        verify(warningLogMapper).insert(captor.capture());
+        assertEquals("FAILED", captor.getValue().getNotifyStatus());
+        assertNull(captor.getValue().getSentAt());
+        // 失败不标记去重 key，下次扫描可重试
+        verify(redisUtils, never()).set(anyString(), any(), anyLong(), any(TimeUnit.class));
+        verify(redisUtils, never()).set(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("execute — 委托逐租户上下文执行（P1 FIN-RWR-08）")
+    void execute_delegatesToTenantRunner() {
+        retentionWarningTask.execute();
+
+        verify(tenantTaskRunner).runForActiveTenants(eq("质保金预警"), any(LongConsumer.class));
     }
 }

@@ -109,6 +109,33 @@ class BudgetChangeServiceTest {
                 .hasMessageContaining("预算余额不足以支撑调减");
     }
 
+    @Test
+    @DisplayName("提交前校验：调减后调整后金额恰等于已占用应放行（P1 BUD-CHG-06：>= 判定边界）")
+    void testValidateBeforeSubmit_adjustedEqualsOccupied_allowed() {
+        when(budgetChangeMapper.selectById(1L)).thenReturn(sampleChange);
+
+        // 分包费从 100000 调减 50000（调整后 = 50000）
+        BizBudgetChangeDetail detail = new BizBudgetChangeDetail();
+        detail.setId(10L);
+        detail.setChangeId(1L);
+        detail.setBudgetDetailId(301L);
+        detail.setCostCategory("SUBCONTRACT");
+        detail.setItemName("土建分包");
+        detail.setOriginalAmount(new BigDecimal("100000"));
+        detail.setAdjustAmount(new BigDecimal("-50000"));
+        detail.setAdjustedAmount(new BigDecimal("50000"));
+
+        when(budgetChangeDetailMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.singletonList(detail));
+
+        // 已占用预算 = 50000（恰等于调整后的 50000）
+        when(budgetOccupiedMapper.sumSubcontractAmount(100L))
+                .thenReturn(new BigDecimal("50000"));
+
+        // 恰等于应放行不抛异常
+        budgetChangeService.validateBeforeSubmit(1L);
+    }
+
     // =====================================================================
     // 2. testOnApproved_updatesCorrectly
     // =====================================================================

@@ -85,6 +85,18 @@
   - **CI 红灯排查与后端缺陷修复（2026-08-11，run 31469765151 L3 19/1）**：test-api-finance.sh 收款登记创建 code=500「回款金额不能超过已开票未收金额，最大可回款 0.00」。定性：合法业务拦截，但暴露真实后端数据一致性缺陷——PaymentReceivedService.save 回写项目 totalIncome + 合同 cumulativeReceivedAmount，而 delete 仅删记录不回冲，历史多轮测试逐轮消耗合同 91001 可回款额度至 0。修复：①delete 补对称回冲（+不存在报错，@Transactional，补 3 个单测：回冲项目与合同/不存在拒绝/无合同仅回冲项目），zw-finance 571/571 全绿；②L3 脚本改用 91002（已竣工合同余额 100 万），修复后创建→删除循环净变化为零。③CI 首跑（run 31478010110）又暴露 auth-real.setup 登录失败：验证码答案经 SSH 读服务器 Redis，默认密钥路径为 Windows 本地路径 CI 上不存在→deploy.yml 两 L5 步骤注入 E2E_SSH_KEY=$HOME/.ssh/deploy_key（commit 41d05bb）。**最终验证 run 31484110007 全链路 success：L3 20/20、L4 成功=88 失败=0、api-tests L5_EXIT=0（356 例）、UI real 27 过/3 条件性 skip（UI_REAL_EXIT=0）、consistency 52 过+2 flaky 重试过（dashboard 看板/machine 合同，CONS_EXIT=0）、k6 性能基线过。L5 三套资产全部接入 CI 并首跑全绿**
   - **代码审计发现及修复（2026-08-11，审计范围 d7ecdee..HEAD）**：0 Critical/1 Major/1 Minor。①Major：08-purchase 结算前置入库单 APPROVED 后不可删除，每轮 CI 残留累积违反零残留承诺→修复为幂等复用策略：合同按固定 E2E_TEST_ 前缀「存在即复用」，入库单在全部 E2E 合同的入库单中确定性查找「无结算记录的 APPROVED 入库单」复用，结算保持 DRAFT 每轮由 cleaner 删除，仅无可复用时创建一张常驻入库单（显式声明）；详情/更新用例改为前缀断言+状态守卫双向断言。连跑验证：入库单 76→76、合同 63→63 恒定，26/26 全绿，全量 356/356 全绿。②Minor：deploy.yml L5 两步缺 if:always()（前序失败时 L5 静默跳过）→补 if:always()；bash -e 下 L5_EXIT 捕获失效→改 || L5_EXIT=$? 确保日志写入。**审计修复 CI 验证 run 31462193450（commit a9a78ae）全绿：L3 20/20、L4 成功=88 失败=0、L5_EXIT=0（Test Files 20 passed），整个 run success**
 
+### 阶段五：颗粒级业务流程测试补全（2026-08-12 启动，用户确认：颗粒度=用户流程级，按风险分批：资金链→执行链→支撑模块）
+
+> 验收口径：功能表每功能点枚举用户流程（正向主流程+异常/边界/联动/幂等），每条流程必须有测试映射或豁免理由；追溯矩阵 tests/flow-matrix.json 为唯一缺口台账，每批销项更新；每批要求 status 全部 covered 或 exempt。
+
+- [x] 5.1 批次一取证枚举（2026-08-12）：4 组并行子代理逐模块读码取证（Controller→Service→状态迁移→审批回调，同步核对 8 类经典风险），枚举 zw-finance/zw-budget/zw-contract/zw-purchase + 17 条 BPMN 审批流共 **410 条流程**（covered 211/partial 20/gap 93；审批流 covered 16/partial 1），产出 tests/flow-matrix.json 颗粒级追溯矩阵（每流程含 flowId/类型/代码证据位置/测试映射/状态）
+- [x] 5.2 批次一 P0 代码缺陷修复（commit f167ba2）：枚举取证暴露 **13 项真实缺陷**——金额负零无校验 7 处（收票/其他付款/项目报销/个人报销/备用金/质保金登记）+ null NPE 4 处（备用金归还/质保金退还/竣工结算/变更签证）+ 质保金退还 RETURNED 未联动清理预警 key + 银行账户删除无存在性校验 + 项目结算 onApproved 无幂等守卫；逐项修复+钉住用例，zw-finance 601/zw-contract 223 全绿
+- [x] 5.3 批次一 P1 边界/分支补测与缺口清零（2026-08-13）：新建 6 测试类（BudgetControlAspectTest 切面降级分支+BLOCK/WARN/PASS、BudgetWarningResponseAdviceTest X-Budget-Warning 响应头+ThreadLocal 清理、OutputReportApprovalListenerTest 产值事件分发、ContractExpiryNotifyTest 到期提醒 SENT/FAILED/无负责人、BoqServiceUploadFlowTest BOQ 上传主链路真实 xlsx 解析（空结果/行校验/删旧→插入→顶层合计回写合同额）、SupplierBlacklistAspectTest 黑名单提取失败降级）+ 扩展 14 测试类（付款 CRUD 草稿守卫/驳回幂等/分页、开票生效前重校+回调幂等容错、收款负零拒绝、结算 REJECTED 回 DRAFT、预算调减恰等于边界/执行率恰 100% 边界、项目 FILED→CONSTRUCTION、产值提交守卫/重提/复验失败/容错/保存、询价编辑先删后插/非草稿拒绝、工程量/BOM 导入正向链路、质保金预警 doExecute SENT/FAILED+逐租户、到期窗口双闭区间 SQL 段断言、@BudgetCheck 注解钉住）。处置结果：**62 缺口 covered（含 P0 钉住 14）+ 30 豁免登记**（并发类 9 需乐观锁/唯一索引架构改造转专项、无删除入口 3 待产品决策、事务回滚 2 属 L2 容器级专项、设计观察/功能缺口 8、越权类 2 由 SecurityBoundaryIntegrationTest 体系覆盖、其余 6，均附理由），**批次一 gap=0**（covered 365/partial 15/exempt 30/总 410）。回归全绿：zw-finance 626/zw-contract 263/zw-budget 370/zw-purchase 122/zw-basedata 51
+- [ ] 5.4 批次一 L4 补强：stage_9L 材料调拨审批端到端（双向库存断言，销项审批流 partial）+ stage_9B 竣工验收 approve 断言强化（隔离租户 9999 零残留）
+- [ ] 5.5 批次一 CI 全链路验证 + 台账收尾
+- [ ] 5.6 批次二：项目与执行链路（zw-project 状态机全迁移矩阵/zw-tender/zw-labor 工资单闭环/zw-machine 工作日志联动/zw-subcontract/zw-material 库存联动）
+- [ ] 5.7 批次三：支撑与外围模块（zw-hr 多步状态闭环/zw-site 质安检整改闭环/zw-archive/zw-dashboard/zw-system 租户停用链路集成级/zw-security/zw-workflow/zw-message/zw-file/zw-basedata/zw-common）
+
 ## 数据回填区（执行结果记录）
 
 ### 深度审计缺陷修复（2026-08-11 启动，用户决策「按顺序修复所有」）

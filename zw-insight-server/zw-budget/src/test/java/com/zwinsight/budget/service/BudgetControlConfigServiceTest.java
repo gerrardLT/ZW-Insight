@@ -127,6 +127,28 @@ class BudgetControlConfigServiceTest {
         assertTrue(result.getMessage().contains("超预算"));
     }
 
+    @Test
+    @DisplayName("testCheckBudget_exactlyAt100Percent — 执行率恰好 100% 应 PASS（P1 BUD-CTL-13：>100 才 BLOCK/WARN 判定边界）")
+    void testCheckBudget_exactlyAt100Percent_pass() {
+        SysBudgetControlConfig blockConfig = buildConfig(PROJECT_ID, "BLOCK", 80, 0);
+        when(configMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(blockConfig);
+
+        // 预算额度 100000
+        when(budgetDetailMapper.sumBudgetByProjectAndCategory(eq(PROJECT_ID), eq(COST_CATEGORY)))
+                .thenReturn(new BigDecimal("100000"));
+        // 已签合同 80000 + 已审批付款 10000 + 本次 10000 = 100000 → 执行率恰 100%
+        when(budgetOccupiedMapper.sumContractAmountForMaterial(eq(PROJECT_ID)))
+                .thenReturn(new BigDecimal("80000"));
+        when(budgetOccupiedMapper.sumApprovedPaymentByCategory(eq(PROJECT_ID), eq(COST_CATEGORY)))
+                .thenReturn(new BigDecimal("10000"));
+
+        BudgetCheckResult result = budgetControlConfigService.checkBudget(
+                PROJECT_ID, COST_CATEGORY, new BigDecimal("10000"));
+
+        // 恰 100% 不超 → PASS
+        assertEquals(BudgetCheckResult.Status.PASS, result.getStatus());
+    }
+
     // ======================== getEffectiveConfig 测试 ========================
 
     @Test

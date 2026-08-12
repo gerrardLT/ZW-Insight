@@ -370,5 +370,67 @@ class InvoiceApplyServiceTest {
             assertThat(invoiceApply.getStatus()).isEqualTo("REJECTED");
             verify(contractMapper, never()).addCumulativeInvoiceAmount(anyLong(), any());
         }
+
+        @Test
+        @DisplayName("审批驳回幂等（FIN-INV-15）— 非 SUBMITTED 静默返回不重复置状态")
+        void onRejected_idempotent() {
+            Long id = 1L;
+            BizInvoiceApply invoiceApply = new BizInvoiceApply();
+            invoiceApply.setId(id);
+            invoiceApply.setStatus("REJECTED");
+            when(invoiceApplyMapper.selectById(id)).thenReturn(invoiceApply);
+
+            invoiceApplyService.onRejected(id);
+
+            verify(invoiceApplyMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("生效前重校失败（FIN-INV-14）— 审批期间额度被占用→置 REJECTED+通知不回写")
+        void onApproved_limitConsumedDuringApproval_rejectsWithNotify() {
+            Long id = 1L;
+            Long contractId = 100L;
+            BizInvoiceApply invoiceApply = new BizInvoiceApply();
+            invoiceApply.setId(id);
+            invoiceApply.setContractId(contractId);
+            invoiceApply.setInvoiceAmount(new BigDecimal("50000.00"));
+            invoiceApply.setStatus("SUBMITTED");
+            invoiceApply.setCreatedBy(9L);
+            invoiceApply.setWorkflowInstanceId("proc-1");
+
+            // 提交时可开 50000；审批期间另一笔已开票 40000 生效 → 可开仅剩 10000 < 本笔 50000
+            BizConstructionContract contract = new BizConstructionContract();
+            contract.setId(contractId);
+            contract.setCumulativeOutput(new BigDecimal("100000.00"));
+            contract.setCumulativeInvoiceAmount(new BigDecimal("90000.00"));
+
+            when(invoiceApplyMapper.selectById(id)).thenReturn(invoiceApply);
+            when(contractMapper.selectById(contractId)).thenReturn(contract);
+
+            invoiceApplyService.onApproved(id);
+
+            assertThat(invoiceApply.getStatus()).isEqualTo("REJECTED");
+            verify(contractMapper, never()).addCumulativeInvoiceAmount(anyLong(), any());
+            // 通知发起人（UrgeNotifyEvent）
+            verify(eventPublisher).publishEvent(any());
+        }
+
+        @Test
+        @DisplayName("回调容错（FIN-INV-16）— 申请/合同不存在仅记日志不抛错")
+        void onApproved_missingRefs_logsAndReturns() {
+            when(invoiceApplyMapper.selectById(99L)).thenReturn(null);
+            invoiceApplyService.onApproved(99L);
+            verify(invoiceApplyMapper, never()).updateById(any());
+
+            BizInvoiceApply invoiceApply = new BizInvoiceApply();
+            invoiceApply.setId(2L);
+            invoiceApply.setContractId(100L);
+            invoiceApply.setStatus("SUBMITTED");
+            when(invoiceApplyMapper.selectById(2L)).thenReturn(invoiceApply);
+            when(contractMapper.selectById(100L)).thenReturn(null);
+            invoiceApplyService.onApproved(2L);
+            verify(invoiceApplyMapper, never()).updateById(any());
+            verify(contractMapper, never()).addCumulativeInvoiceAmount(anyLong(), any());
+        }
     }
 }

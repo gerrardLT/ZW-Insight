@@ -1,14 +1,19 @@
 package com.zwinsight.finance.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizRetentionMoney;
 import com.zwinsight.finance.mapper.BizRetentionMoneyMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,6 +33,12 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 class RetentionMoneyServiceTest {
+
+    @BeforeAll
+    static void initTableInfo() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), BizRetentionMoney.class);
+    }
 
     @Mock
     private BizRetentionMoneyMapper retentionMoneyMapper;
@@ -95,6 +106,25 @@ class RetentionMoneyServiceTest {
                 .thenReturn(Collections.singletonList(m));
 
         assertThat(service.getExpiring(30)).hasSize(1);
+    }
+
+    @SuppressWarnings("rawtypes")
+    @Test
+    @DisplayName("getExpiring - 窗口边界：今天≤到期日≤今天+N 双闭区间 + ACTIVE 过滤（P1 FIN-RTN-05）")
+    void getExpiring_windowBoundaries() {
+        when(retentionMoneyMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.emptyList());
+
+        service.getExpiring(30);
+
+        ArgumentCaptor<LambdaQueryWrapper> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(retentionMoneyMapper).selectList(captor.capture());
+        String sql = captor.getValue().getSqlSegment();
+        // 双闭区间：到期日 >= 今天 且 <= 今天+30，且仅 ACTIVE
+        assertThat(sql).contains("expire_date >=").contains("expire_date <=").contains("status =");
+        java.util.Collection<Object> params = captor.getValue().getParamNameValuePairs().values();
+        LocalDate now = LocalDate.now();
+        assertThat(params).contains(now, now.plusDays(30), "ACTIVE");
     }
 
     @Test

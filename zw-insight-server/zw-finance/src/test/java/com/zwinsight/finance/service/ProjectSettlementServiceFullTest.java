@@ -229,6 +229,18 @@ class ProjectSettlementServiceFullTest {
         }
 
         @Test
+        @DisplayName("驳回后编辑：状态回 DRAFT（P1 FIN-SET-09）")
+        void rejectedEdit_backToDraft() {
+            BizProjectSettlement s = settlement(1L, "REJECTED");
+            when(settlementMapper.selectById(1L)).thenReturn(s);
+
+            service.updateSettlement(1L, new ProjectSettlementUpdateDTO());
+
+            assertThat(s.getStatus()).isEqualTo("DRAFT");
+            verify(settlementMapper).updateById(s);
+        }
+
+        @Test
         @DisplayName("手动调整（不重新汇总）：改最终结算金额与其他支出后重算支出/利润/利润率")
         void manualAdjust_recalculates() {
             BizProjectSettlement s = settlement(1L, "REJECTED");

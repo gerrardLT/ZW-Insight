@@ -104,6 +104,56 @@ class OutputReportServiceTest {
 
             verify(approvalService, never()).startProcess(anyString(), anyLong(), anyString(), anyMap());
         }
+
+        @Test
+        @DisplayName("提交守卫：不存在/非草稿非驳回/合同不存在拒绝（P1 OUT-04）")
+        void submit_guardCases_throws() {
+            when(outputReportMapper.selectById(99L)).thenReturn(null);
+            assertThatThrownBy(() -> outputReportService.submit(99L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("产值报告不存在");
+
+            BizOutputReport approved = new BizOutputReport();
+            approved.setId(1L);
+            approved.setStatus("APPROVED");
+            when(outputReportMapper.selectById(1L)).thenReturn(approved);
+            assertThatThrownBy(() -> outputReportService.submit(1L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("仅草稿或已驳回状态可提交");
+
+            BizOutputReport draft = new BizOutputReport();
+            draft.setId(2L);
+            draft.setContractId(100L);
+            draft.setStatus("DRAFT");
+            when(outputReportMapper.selectById(2L)).thenReturn(draft);
+            when(contractMapper.selectById(100L)).thenReturn(null);
+            assertThatThrownBy(() -> outputReportService.submit(2L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("关联合同不存在");
+        }
+
+        @Test
+        @DisplayName("REJECTED 重新提交放行（P1 OUT-05）")
+        void submit_rejectedReport_resubmittable() {
+            Long id = 3L;
+            Long contractId = 300L;
+            BizOutputReport report = new BizOutputReport();
+            report.setId(id);
+            report.setContractId(contractId);
+            report.setProjectId(10L);
+            report.setCurrentOutput(new BigDecimal("10000.00"));
+            report.setStatus("REJECTED");
+
+            BizConstructionContract contract = new BizConstructionContract();
+            contract.setId(contractId);
+            contract.setContractAmount(new BigDecimal("100000.00"));
+            contract.setCumulativeOutput(new BigDecimal("50000.00"));
+
+            when(outputReportMapper.selectById(id)).thenReturn(report);
+            when(contractMapper.selectById(contractId)).thenReturn(contract);
+            when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-2");
+
+            outputReportService.submit(id);
+
+            assertThat(report.getStatus()).isEqualTo("SUBMITTED");
+        }
     }
 
     @Nested
@@ -172,6 +222,108 @@ class OutputReportServiceTest {
 
             assertThat(report.getStatus()).isEqualTo("REJECTED");
             verify(contractMapper, never()).addCumulativeOutput(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("驳回回调守卫：不存在/非 SUBMITTED 不处理（P1 OUT-11）")
+        void onRejected_guardCases() {
+            when(outputReportMapper.selectById(99L)).thenReturn(null);
+            outputReportService.onRejected(99L);
+            verify(outputReportMapper, never()).updateById(any());
+
+            BizOutputReport draft = new BizOutputReport();
+            draft.setId(1L);
+            draft.setStatus("DRAFT");
+            when(outputReportMapper.selectById(1L)).thenReturn(draft);
+            outputReportService.onRejected(1L);
+            verify(outputReportMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("生效前上限复验失败 — 置 REJECTED+通知不回写（P1 OUT-08）")
+        void onApproved_limitConsumedDuringApproval_rejectsWithNotify() {
+            Long id = 5L;
+            Long contractId = 500L;
+            BizOutputReport report = new BizOutputReport();
+            report.setId(id);
+            report.setContractId(contractId);
+            report.setProjectId(10L);
+            report.setCurrentOutput(new BigDecimal("50000.00"));
+            report.setStatus("SUBMITTED");
+            report.setCreatedBy(9L);
+            report.setWorkflowInstanceId("proc-1");
+
+            // 提交时可报 50000；审批期间另一笔已报 40000 生效 → 可报仅剩 10000 < 本笔 50000
+            BizConstructionContract contract = new BizConstructionContract();
+            contract.setId(contractId);
+            contract.setContractAmount(new BigDecimal("100000.00"));
+            contract.setCumulativeOutput(new BigDecimal("90000.00"));
+
+            when(outputReportMapper.selectById(id)).thenReturn(report);
+            when(contractMapper.selectById(contractId)).thenReturn(contract);
+
+            outputReportService.onApproved(id);
+
+            assertThat(report.getStatus()).isEqualTo("REJECTED");
+            verify(contractMapper, never()).addCumulativeOutput(anyLong(), any());
+            verify(projectMapper, never()).addCumulativeOutput(anyLong(), any());
+            // 通知发起人
+            verify(eventPublisher).publishEvent(any());
+        }
+
+        @Test
+        @DisplayName("回调容错：报告/合同不存在仅记日志不抛错（P1 OUT-09）")
+        void onApproved_missingRefs_logsAndReturns() {
+            when(outputReportMapper.selectById(99L)).thenReturn(null);
+            outputReportService.onApproved(99L);
+            verify(outputReportMapper, never()).updateById(any());
+
+            BizOutputReport report = new BizOutputReport();
+            report.setId(6L);
+            report.setContractId(600L);
+            report.setStatus("SUBMITTED");
+            when(outputReportMapper.selectById(6L)).thenReturn(report);
+            when(contractMapper.selectById(600L)).thenReturn(null);
+            outputReportService.onApproved(6L);
+            verify(outputReportMapper, never()).updateById(any());
+            verify(contractMapper, never()).addCumulativeOutput(anyLong(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("save() 保存草稿")
+    class SaveTests {
+
+        @Test
+        @DisplayName("保存草稿 + 明细行持久化（P1 OUT-01）")
+        void save_setsDraftAndPersistsDetails() {
+            BizOutputReport report = new BizOutputReport();
+            report.setContractId(100L);
+            report.setCurrentOutput(new BigDecimal("1000"));
+            BizOutputReportDetail detail = new BizOutputReportDetail();
+            detail.setId(555L);
+            report.setDetails(List.of(detail));
+
+            outputReportService.save(report);
+
+            assertThat(report.getStatus()).isEqualTo("DRAFT");
+            verify(outputReportMapper).insert(report);
+            verify(reportDetailMapper).insert(detail);
+            assertThat(detail.getId()).as("明细 id 应清空重新生成").isNull();
+            assertThat(detail.getReportId()).isEqualTo(report.getId());
+        }
+
+        @Test
+        @DisplayName("保存草稿无明细 — 不插明细行（P1 OUT-01 边界）")
+        void save_noDetails_skipsDetailInsert() {
+            BizOutputReport report = new BizOutputReport();
+            report.setContractId(100L);
+
+            outputReportService.save(report);
+
+            assertThat(report.getStatus()).isEqualTo("DRAFT");
+            verify(outputReportMapper).insert(report);
+            verify(reportDetailMapper, never()).insert(any());
         }
     }
 }

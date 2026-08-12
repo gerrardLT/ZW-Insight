@@ -320,6 +320,26 @@ class PaymentReceivedServiceTest {
         }
 
         @Test
+        @DisplayName("编辑金额为负/零拒绝（P1 FIN-RCV-10）")
+        void update_invalidAmount_rejected() {
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+
+            BizPaymentReceived neg = new BizPaymentReceived();
+            neg.setId(1L);
+            neg.setReceiveAmount(new BigDecimal("-100"));
+            assertThatThrownBy(() -> paymentReceivedService.update(neg))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("回款金额必须大于0");
+
+            BizPaymentReceived zero = new BizPaymentReceived();
+            zero.setId(1L);
+            zero.setReceiveAmount(BigDecimal.ZERO);
+            assertThatThrownBy(() -> paymentReceivedService.update(zero))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("回款金额必须大于0");
+
+            verify(paymentReceivedMapper, never()).updateById(any());
+        }
+
+        @Test
         @DisplayName("记录不存在：拒绝更新")
         void update_notFound_throws() {
             when(paymentReceivedMapper.selectById(999L)).thenReturn(null);

@@ -1,7 +1,11 @@
 package com.zwinsight.contract.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizConstructionContract;
+import com.zwinsight.contract.domain.BizContractDetail;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.contract.mapper.BizContractDetailMapper;
 import com.zwinsight.file.service.SerialNumberService;
@@ -18,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
@@ -392,6 +397,53 @@ class ConstructionContractServiceTest {
         }
 
         @Test
+        @DisplayName("审批通过 — 项目 FILED→CONSTRUCTION 分支（P1 CON-09）")
+        void onApproved_filedProject_advancesToConstruction() {
+            Long contractId = 100L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("SUBMITTED");
+            existing.setContractAmount(new BigDecimal("500000"));
+            existing.setProjectId(1L);
+
+            BizProject project = new BizProject();
+            project.setId(1L);
+            project.setStatus("FILED");
+
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(1L)).thenReturn(project);
+
+            contractService.onApproved(contractId);
+
+            ArgumentCaptor<BizProject> projectCaptor = ArgumentCaptor.forClass(BizProject.class);
+            verify(projectMapper).updateById(projectCaptor.capture());
+            assertThat(projectCaptor.getValue().getStatus()).isEqualTo("CONSTRUCTION");
+        }
+
+        @Test
+        @DisplayName("审批通过 — 项目其他状态不流转（如 DRAFT 保持）")
+        void onApproved_otherProjectStatus_noAdvance() {
+            Long contractId = 100L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("SUBMITTED");
+            existing.setContractAmount(new BigDecimal("500000"));
+            existing.setProjectId(1L);
+
+            BizProject project = new BizProject();
+            project.setId(1L);
+            project.setStatus("COMPLETED");
+
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(1L)).thenReturn(project);
+
+            contractService.onApproved(contractId);
+
+            // COMPLETED 不流转，不调用 updateById（或状态不变）
+            assertThat(project.getStatus()).isEqualTo("COMPLETED");
+        }
+
+        @Test
         @DisplayName("审批通过：已生效幂等跳过")
         void onApproved_idempotent() {
             Long contractId = 100L;
@@ -459,6 +511,65 @@ class ConstructionContractServiceTest {
             assertThatThrownBy(() -> contractService.getById(contractId))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("合同不存在");
+        }
+    }
+
+    // ============ 分页/明细（P1 CON-14/15） ============
+
+    @Nested
+    @DisplayName("page()/getDetails()/saveDetails() - 查询与明细维护")
+    class PageAndDetailTests {
+
+        @Test
+        @DisplayName("分页查询透传（P1 CON-14）")
+        void page_delegates() {
+            Page<BizConstructionContract> page = new Page<>(1, 10);
+            BizConstructionContract c = new BizConstructionContract();
+            c.setId(1L);
+            page.setRecords(List.of(c));
+            page.setTotal(1);
+            when(contractMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+            PageResult<BizConstructionContract> result = contractService.page(1, 10, 5L, "EFFECTIVE");
+
+            assertThat(result.getRecords()).hasSize(1);
+            assertThat(result.getTotal()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("明细查询透传（P1 CON-14）")
+        void getDetails_delegates() {
+            BizContractDetail d = new BizContractDetail();
+            d.setSortOrder(1);
+            when(detailMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(d));
+
+            assertThat(contractService.getDetails(100L)).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("明细保存：先删后增 + sortOrder 递增 + 挂合同ID（P1 CON-15）")
+        void saveDetails_deleteThenInsertWithSortOrder() {
+            BizContractDetail d1 = new BizContractDetail();
+            d1.setItemName("土建");
+            BizContractDetail d2 = new BizContractDetail();
+            d2.setItemName("安装");
+
+            contractService.saveDetails(100L, List.of(d1, d2));
+
+            verify(detailMapper).delete(any(LambdaQueryWrapper.class));
+            verify(detailMapper, times(2)).insert(any(BizContractDetail.class));
+            assertThat(d1.getContractId()).isEqualTo(100L);
+            assertThat(d1.getSortOrder()).isEqualTo(1);
+            assertThat(d2.getSortOrder()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("明细保存：空列表仅删旧不插入（P1 CON-15 边界）")
+        void saveDetails_emptyList_deleteOnly() {
+            contractService.saveDetails(100L, List.of());
+
+            verify(detailMapper).delete(any(LambdaQueryWrapper.class));
+            verify(detailMapper, never()).insert(any(BizContractDetail.class));
         }
     }
 }
