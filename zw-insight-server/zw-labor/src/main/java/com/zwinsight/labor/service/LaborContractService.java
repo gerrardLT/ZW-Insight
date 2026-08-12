@@ -94,6 +94,12 @@ public class LaborContractService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
+        // P1 修复（2026-08-12，批次二取证枚举）：防 PUT 体携带 status/累计字段直接落库
+        // （状态经 submit 流转，累计结算/已付由审批/付款链路回写）
+        contract.setStatus(null);
+        contract.setCumulativeOutput(null);
+        contract.setCumulativeSettlement(null);
+        contract.setCumulativePaid(null);
         laborContractMapper.updateById(contract);
     }
 

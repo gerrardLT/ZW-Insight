@@ -34,6 +34,11 @@ public class TenderFeeService {
      * 新增费用
      */
     public void save(BizTenderFee fee) {
+        // P2 修复（2026-08-12，批次二 TND-21）：费用金额必须大于 0，
+        // 原无校验负数/零/超大值可入库污染费用统计
+        if (fee.getFeeAmount() == null || fee.getFeeAmount().signum() <= 0) {
+            throw new BusinessException("费用金额必须大于0");
+        }
         fee.setStatus("DRAFT");
         feeMapper.insert(fee);
     }

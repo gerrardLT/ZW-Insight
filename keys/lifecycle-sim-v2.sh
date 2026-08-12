@@ -1432,8 +1432,9 @@ stage_9i_reserve_fund() {
 }
 
 # ===========================================================================
-# 阶段 9J: 保证金退还（申请→审批置 PAID→退还登记）
+# 阶段 9J: 保证金退还（申请→提交 SUBMITTED→审批通过置 PAID→退还登记）
 #   依据功能表 1.4：投标保证金退回登记
+#   2026-08-12 批次二修复：提交不再即置 PAID，审批通过由 DepositApplyApprovalListener 置 PAID
 #   依赖 BPMN：deposit_apply_approval（deploy-bpmn.sh 部署到租户 9999）
 # ===========================================================================
 stage_9j_deposit_return() {
@@ -1451,7 +1452,9 @@ stage_9j_deposit_return() {
 
   api_call POST "/api/v1/tender/deposit/apply/$depositId/submit"
   strict_assert "提交保证金审批"
-  sleep 2
+  sleep 1
+  assert_status "/api/v1/tender/deposit/apply?page=1&size=1&projectId=$PROJECT_ID" "status" "SUBMITTED" "保证金提交后中间态（未等审批不得 PAID）"
+  sleep 1
   approve "同意保证金缴纳" 1
 
   assert_status "/api/v1/tender/deposit/apply?page=1&size=1&projectId=$PROJECT_ID" "status" "PAID" "保证金审批后状态"

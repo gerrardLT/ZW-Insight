@@ -148,6 +148,8 @@ public class SubcontractSettlementService {
         BizSubcontractSettlement existing = settlementMapper.selectById(settlement.getId());
         if (existing == null) throw new BusinessException("结算记录不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        // P1 修复（2026-08-12，批次二取证枚举）：防 PUT 体携带 status 直接落库绕过 submit
+        settlement.setStatus(null);
         settlementMapper.updateById(settlement);
     }
 

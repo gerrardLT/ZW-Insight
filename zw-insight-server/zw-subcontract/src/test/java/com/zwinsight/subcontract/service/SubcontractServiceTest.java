@@ -1160,6 +1160,8 @@ class SubcontractServiceTest {
                 BizSubcontractRewardPunish record = new BizSubcontractRewardPunish();
                 record.setProjectId(100L);
                 record.setContractId(10L);
+                record.setRpType("REWARD");
+                record.setAmount(new java.math.BigDecimal("1000"));
 
                 when(rewardPunishMapper.insert(any(BizSubcontractRewardPunish.class))).thenReturn(1);
 
@@ -1168,6 +1170,26 @@ class SubcontractServiceTest {
 
                 // then
                 verify(rewardPunishMapper).insert(record);
+            }
+
+            @Test
+            @DisplayName("保存奖罚记录 - 非法类型/负零金额拒绝（P2 金额守卫）")
+            void save_invalidTypeOrAmount_rejected() {
+                BizSubcontractRewardPunish badType = new BizSubcontractRewardPunish();
+                badType.setRpType("HACKED");
+                badType.setAmount(new java.math.BigDecimal("100"));
+                assertThatThrownBy(() -> rewardPunishService.save(badType))
+                        .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                        .hasMessageContaining("非法的奖罚类型");
+
+                BizSubcontractRewardPunish badAmount = new BizSubcontractRewardPunish();
+                badAmount.setRpType("PUNISH");
+                badAmount.setAmount(new java.math.BigDecimal("-500"));
+                assertThatThrownBy(() -> rewardPunishService.save(badAmount))
+                        .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                        .hasMessageContaining("奖罚金额必须大于0");
+
+                verify(rewardPunishMapper, never()).insert(any(BizSubcontractRewardPunish.class));
             }
         }
 

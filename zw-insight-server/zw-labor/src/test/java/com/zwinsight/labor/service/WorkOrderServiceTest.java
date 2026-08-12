@@ -164,4 +164,45 @@ class WorkOrderServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("仅草稿状态可提交");
     }
+
+    @Test
+    @DisplayName("保存：负工时/负单价拒绝（D7-② 金额守卫）")
+    void testSave_negativeAmountsRejected() {
+        BizWorkOrder negativeHours = new BizWorkOrder();
+        negativeHours.setHours(new BigDecimal("-8"));
+        negativeHours.setHourlyRate(new BigDecimal("100"));
+        assertThatThrownBy(() -> workOrderService.save(negativeHours))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("工时/单价不可为负数");
+
+        BizWorkOrder negativeRate = new BizWorkOrder();
+        negativeRate.setHours(new BigDecimal("8"));
+        negativeRate.setHourlyRate(new BigDecimal("-100"));
+        assertThatThrownBy(() -> workOrderService.save(negativeRate))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("工时/单价不可为负数");
+
+        verify(workOrderMapper, never()).insert(any(BizWorkOrder.class));
+    }
+
+    @Test
+    @DisplayName("更新：负加班工时拒绝（D7-② 金额守卫）")
+    void testUpdate_negativeOvertimeRejected() {
+        BizWorkOrder existing = new BizWorkOrder();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(workOrderMapper.selectById(1L)).thenReturn(existing);
+
+        BizWorkOrder update = new BizWorkOrder();
+        update.setId(1L);
+        update.setHours(new BigDecimal("8"));
+        update.setHourlyRate(new BigDecimal("100"));
+        update.setOvertime(new BigDecimal("-2"));
+
+        assertThatThrownBy(() -> workOrderService.update(update))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("工时/单价不可为负数");
+
+        verify(workOrderMapper, never()).updateById(any(BizWorkOrder.class));
+    }
 }

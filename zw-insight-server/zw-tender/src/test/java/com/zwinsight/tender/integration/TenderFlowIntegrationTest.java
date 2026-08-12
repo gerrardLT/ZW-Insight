@@ -251,11 +251,11 @@ class TenderFlowIntegrationTest extends IntegrationTestBase {
 
     @Test
     @Order(7)
-    @DisplayName("负向：非草稿状态的保证金申请禁止删除")
+    @DisplayName("负向：保证金申请 update 不可篡改 status + 非草稿禁止删除")
     void step7_depositDeleteGuardForNonDraftStatus() {
         assertThat(createdDepositApplyId).as("前置保证金申请必须已创建").isNotNull();
 
-        // 先经 update 置为 PAID（updateById 仅更新非空字段）
+        // ① 防篡改钉住（2026-08-12 批次二修复）：PUT 体携带 status=PAID 不得落库
         Map<String, Object> updateBody = new LinkedHashMap<>();
         updateBody.put("registerId", createdRegisterId);
         updateBody.put("projectId", createdProjectId);
@@ -268,7 +268,13 @@ class TenderFlowIntegrationTest extends IntegrationTestBase {
                 new ParameterizedTypeReference<>() {});
         AssertUtils.assertApiSuccess(updateResponse);
 
-        // PAID 状态删除必须被拒绝
+        String statusAfterTamper = jdbcTemplate.queryForObject(
+                "SELECT status FROM biz_deposit_apply WHERE id = ?", String.class, createdDepositApplyId);
+        assertThat(statusAfterTamper).as("PUT 携带 status 不得落库（防篡改）").isEqualTo("DRAFT");
+
+        // ② 删除守卫：直置 PAID 后删除必须被拒绝（真实 DB 状态构造，不依赖 update 漏洞）
+        jdbcTemplate.update("UPDATE biz_deposit_apply SET status = 'PAID' WHERE id = ?", createdDepositApplyId);
+
         ResponseEntity<Map<String, Object>> deleteResponse = getRestTemplate().exchange(
                 DEPOSIT_APPLY_URL + "/" + createdDepositApplyId, HttpMethod.DELETE,
                 new HttpEntity<>(buildAuthHeaders()),
@@ -285,11 +291,7 @@ class TenderFlowIntegrationTest extends IntegrationTestBase {
         log.info("保证金删除状态守卫验证通过: {}", msg);
 
         // 还原为 DRAFT，便于后续清理
-        updateBody.put("status", "DRAFT");
-        getRestTemplate().exchange(
-                DEPOSIT_APPLY_URL + "/" + createdDepositApplyId, HttpMethod.PUT,
-                new HttpEntity<>(updateBody, buildAuthHeaders()),
-                new ParameterizedTypeReference<Map<String, Object>>() {});
+        jdbcTemplate.update("UPDATE biz_deposit_apply SET status = 'DRAFT' WHERE id = ?", createdDepositApplyId);
     }
 
     // ==================== 辅助方法 ====================

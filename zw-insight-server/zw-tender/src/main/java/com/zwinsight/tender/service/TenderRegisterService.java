@@ -39,11 +39,14 @@ public class TenderRegisterService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizTenderRegister register) {
-        // D1 守卫（2026-08-11）：终态项目禁止被改回投标中，先校验再落库（fail-fast）
+        // D1 守卫（2026-08-11）：终态项目禁止被改回投标中，先校验再落库（fail-fast）。
+        // P2 强化（2026-08-12，批次二 D3）：已中标/施工中项目新增登记会把状态回退为
+        // TENDERING（状态回退漏洞），一并拦截
         BizProject project = projectMapper.selectById(register.getProjectId());
         if (project != null && ("CLOSED".equals(project.getStatus())
-                || "COMPLETED".equals(project.getStatus()) || "CLOSING".equals(project.getStatus()))) {
-            throw new BusinessException("项目已关闭/竣工，不可新增投标登记");
+                || "COMPLETED".equals(project.getStatus()) || "CLOSING".equals(project.getStatus())
+                || "WON".equals(project.getStatus()) || "CONSTRUCTION".equals(project.getStatus()))) {
+            throw new BusinessException("项目已中标/竣工/关闭，不可新增投标登记");
         }
 
         register.setStatus("REGISTERED");
@@ -73,6 +76,10 @@ public class TenderRegisterService {
     public void update(BizTenderRegister register) {
         BizTenderRegister existing = registerMapper.selectById(register.getId());
         if (existing == null) throw new BusinessException("投标登记不存在");
+        // P1 修复（2026-08-12，批次二取证枚举 TND-08）：status/projectId 由登记/开标链路
+        // 维护，置 null 后 updateById（NOT_NULL 策略）不落库，防 PUT 篡改状态/换绑项目
+        register.setStatus(null);
+        register.setProjectId(null);
         registerMapper.updateById(register);
     }
 
@@ -92,6 +99,8 @@ public class TenderRegisterService {
     public void submit(Long id) {
         BizTenderRegister register = registerMapper.selectById(id);
         if (register == null) throw new BusinessException("投标登记不存在");
+        // P2 修复（2026-08-12，批次二 D3）：仅报名状态可提交，防 WON/LOST/SUBMITTED 被重提回退
+        if (!"REGISTERED".equals(register.getStatus())) throw new BusinessException("仅报名状态可提交");
         register.setStatus("SUBMITTED");
         registerMapper.updateById(register);
     }

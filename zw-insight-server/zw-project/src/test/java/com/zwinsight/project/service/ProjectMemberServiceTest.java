@@ -204,4 +204,62 @@ class ProjectMemberServiceTest {
 
         assertThat(members).hasSize(1);
     }
+
+    // =====================================================================
+    // addMember (BizProjectMember 旧接口，D8 角色校验)
+    // =====================================================================
+
+    @Test
+    @DisplayName("添加成员（旧接口）：非法角色拒绝（D8）")
+    void testAddMemberEntity_invalidRole_throws() {
+        BizProjectMember member = new BizProjectMember();
+        member.setProjectId(1L);
+        member.setUserId(300L);
+        member.setProjectRoles(List.of("HACKED_ROLE"));
+
+        assertThatThrownBy(() -> memberService.addMember(member))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("无效的项目角色");
+
+        verify(memberMapper, never()).insert(any(BizProjectMember.class));
+    }
+
+    @Test
+    @DisplayName("添加成员（旧接口）：角色为空拒绝（D8）")
+    void testAddMemberEntity_emptyRoles_throws() {
+        BizProjectMember member = new BizProjectMember();
+        member.setProjectId(1L);
+        member.setUserId(300L);
+        member.setProjectRoles(null);
+
+        assertThatThrownBy(() -> memberService.addMember(member))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("角色不能为空");
+
+        verify(memberMapper, never()).insert(any(BizProjectMember.class));
+    }
+
+    @Test
+    @DisplayName("添加成员（旧接口）：活跃成员重复拒绝；停用成员（status=2）不阻断重新加入（D7）")
+    void testAddMemberEntity_duplicateActiveOnly() {
+        BizProjectMember member = new BizProjectMember();
+        member.setProjectId(1L);
+        member.setUserId(300L);
+        member.setProjectRoles(List.of("CONSTRUCTOR"));
+
+        // 活跃成员已存在 → 拒绝
+        when(memberMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+        assertThatThrownBy(() -> memberService.addMember(member))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已是本项目成员");
+
+        // 仅存在停用成员（status=1 计数为 0，唯一性查询带 status=1 过滤）→ 允许重新加入
+        when(memberMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(memberMapper.insert(any(BizProjectMember.class))).thenReturn(1);
+        when(userProjectMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+
+        memberService.addMember(member);
+
+        verify(memberMapper).insert(any(BizProjectMember.class));
+    }
 }

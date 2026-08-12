@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -156,6 +157,31 @@ public class LaborPayrollService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
+
+        // P1 修复（2026-08-12，批次二取证枚举 LAB-46）：update 重跑周期重叠守卫，
+        // 防经 PUT 修改周期/班组绕行 save 的 B5 守卫；未提交的字段回退现有值
+        Long teamId = payroll.getTeamId() != null ? payroll.getTeamId() : existing.getTeamId();
+        LocalDate periodStart = payroll.getPeriodStart() != null ? payroll.getPeriodStart() : existing.getPeriodStart();
+        LocalDate periodEnd = payroll.getPeriodEnd() != null ? payroll.getPeriodEnd() : existing.getPeriodEnd();
+        if (teamId != null && periodStart != null && periodEnd != null) {
+            LambdaQueryWrapper<BizLaborPayroll> overlapWrapper = new LambdaQueryWrapper<>();
+            overlapWrapper.eq(BizLaborPayroll::getTeamId, teamId)
+                    .le(BizLaborPayroll::getPeriodStart, periodEnd)
+                    .ge(BizLaborPayroll::getPeriodEnd, periodStart)
+                    .ne(BizLaborPayroll::getId, payroll.getId());
+            Long overlapCount = payrollMapper.selectCount(overlapWrapper);
+            if (overlapCount != null && overlapCount > 0) {
+                throw new BusinessException("该班组在此周期内已存在工资单，不可重复创建（周期重叠）");
+            }
+        }
+
+        // P1 修复（LAB-47）：状态与汇总字段由服务端维护（save 聚合/submit 流转），
+        // 置 null 后 updateById（NOT_NULL 策略）不落库，防客户端篡改破坏工单-工资单金额一致性
+        payroll.setStatus(null);
+        payroll.setTotalSettlement(null);
+        payroll.setTotalPaid(null);
+        payroll.setUnpaid(null);
+
         payrollMapper.updateById(payroll);
     }
 

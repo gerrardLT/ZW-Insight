@@ -67,6 +67,8 @@ public class LaborSettlementService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
+        // P1 修复（2026-08-12，批次二取证枚举）：防 PUT 体携带 status 直接落库绕过 submit
+        settlement.setStatus(null);
         settlementMapper.updateById(settlement);
     }
 
@@ -95,6 +97,13 @@ public class LaborSettlementService {
         }
         if (!"DRAFT".equals(settlement.getStatus())) {
             throw new BusinessException("仅草稿状态可提交");
+        }
+
+        // P1 修复（2026-08-12，批次二取证枚举）：结算金额 null 时后续 add 抛 NPE（500），
+        // 负数可回退合同累计结算；对齐财务模块金额>0 口径
+        if (settlement.getSettlementAmount() == null
+                || settlement.getSettlementAmount().signum() <= 0) {
+            throw new BusinessException("结算金额必须大于0");
         }
 
         // B5 修复（2026-08-11，对齐分包口径）：累计结算金额不能超过合同金额，

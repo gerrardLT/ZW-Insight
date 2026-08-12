@@ -277,6 +277,39 @@ class ProjectServiceTest {
         verify(projectMapper, never()).updateById(any());
     }
 
+    @Test
+    @DisplayName("更新状态：结项审批中（CLOSING）拒绝变更（D4 状态机守卫）")
+    void testUpdateStatus_closingRejected() {
+        BizProject project = new BizProject();
+        project.setId(3L);
+        project.setStatus("CLOSING");
+        when(projectMapper.selectById(3L)).thenReturn(project);
+
+        assertThatThrownBy(() -> projectService.updateStatus(3L, "CONSTRUCTION"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("结项审批中");
+
+        verify(projectMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("更新状态：非法目标状态拒绝（D4 目标白名单）")
+    void testUpdateStatus_invalidTargetRejected() {
+        BizProject project = new BizProject();
+        project.setId(4L);
+        project.setStatus("FILED");
+        when(projectMapper.selectById(4L)).thenReturn(project);
+
+        assertThatThrownBy(() -> projectService.updateStatus(4L, "HACKED_STATUS"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("非法的项目状态");
+        assertThatThrownBy(() -> projectService.updateStatus(4L, null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("非法的项目状态");
+
+        verify(projectMapper, never()).updateById(any());
+    }
+
     // =====================================================================
     // closeProject
     // =====================================================================

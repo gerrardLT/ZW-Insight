@@ -99,6 +99,11 @@ public class SubcontractService {
         BizSubcontract existing = subcontractMapper.selectById(contract.getId());
         if (existing == null) throw new BusinessException("分包合同不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        // P1 修复（2026-08-12，批次二取证枚举）：防 PUT 体携带 status/累计字段直接落库
+        contract.setStatus(null);
+        contract.setCumulativeOutput(null);
+        contract.setCumulativeSettlement(null);
+        contract.setCumulativePaid(null);
         subcontractMapper.updateById(contract);
     }
 

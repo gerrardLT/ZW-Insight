@@ -41,6 +41,9 @@ public class MachineLedgerService {
     public void update(BizMachineLedger ledger) {
         BizMachineLedger existing = ledgerMapper.selectById(ledger.getId());
         if (existing == null) throw new BusinessException("机械台账不存在");
+        // P2 修复（2026-08-12，批次二 MAC-06）：台账状态由进出场状态机维护，
+        // 置 null 防 PUT 直接改状态绕过退场结算校验
+        ledger.setStatus(null);
         ledgerMapper.updateById(ledger);
     }
 

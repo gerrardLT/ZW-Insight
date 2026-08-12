@@ -189,4 +189,51 @@ class LaborSettlementServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("结算记录不存在");
     }
+
+    // ============ 批次二 P1 修复钉住（2026-08-12） ============
+
+    @Test
+    @DisplayName("提交：结算金额 null 拒绝（原 add(null) 抛 NPE 500）")
+    void testSubmit_nullAmount_rejected() {
+        sampleSettlement.setSettlementAmount(null);
+        when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
+
+        assertThatThrownBy(() -> laborSettlementService.submit(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("结算金额必须大于0");
+        verify(settlementMapper, never()).updateById(any());
+        verify(laborContractMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("提交：负数/零金额拒绝（防合同累计结算被回退）")
+    void testSubmit_nonPositiveAmount_rejected() {
+        when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
+
+        sampleSettlement.setSettlementAmount(new BigDecimal("-100"));
+        assertThatThrownBy(() -> laborSettlementService.submit(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("结算金额必须大于0");
+
+        sampleSettlement.setSettlementAmount(BigDecimal.ZERO);
+        assertThatThrownBy(() -> laborSettlementService.submit(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("结算金额必须大于0");
+
+        verify(settlementMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("更新：PUT 体携带 status 被置 null 不落库（防绕过 submit 守卫）")
+    void testUpdate_statusStripped() {
+        when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
+
+        BizLaborSettlement body = new BizLaborSettlement();
+        body.setId(1L);
+        body.setStatus("APPROVED");
+        laborSettlementService.update(body);
+
+        assertThat(body.getStatus()).as("status 应被服务端置 null 防落库").isNull();
+        verify(settlementMapper).updateById(body);
+    }
 }

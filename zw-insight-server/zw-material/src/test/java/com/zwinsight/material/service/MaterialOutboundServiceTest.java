@@ -3,9 +3,11 @@ package com.zwinsight.material.service;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.material.domain.BizMaterialOutbound;
 import com.zwinsight.material.domain.BizMaterialOutboundDetail;
+import com.zwinsight.material.domain.BizMaterialRefund;
 import com.zwinsight.material.domain.BizProjectMaterialStock;
 import com.zwinsight.material.mapper.BizMaterialOutboundDetailMapper;
 import com.zwinsight.material.mapper.BizMaterialOutboundMapper;
+import com.zwinsight.material.mapper.BizMaterialRefundMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +30,7 @@ class MaterialOutboundServiceTest {
     @Mock private BizMaterialOutboundMapper outboundMapper;
     @Mock private BizMaterialOutboundDetailMapper outboundDetailMapper;
     @Mock private BizProjectMaterialStockMapper stockMapper;
+    @Mock private BizMaterialRefundMapper refundMapper;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -162,5 +165,49 @@ class MaterialOutboundServiceTest {
         verify(stockMapper).updateById(argThat(s ->
                 s.getStockQuantity().compareTo(new java.math.BigDecimal("100")) == 0
                         && s.getTotalOutbound().compareTo(new java.math.BigDecimal("100")) == 0));
+    }
+
+    @Test
+    @DisplayName("删除退货草稿出库单：同步作废已生成的 PENDING 退款申请（P1 D1：单删钱退联动断裂）")
+    void testDelete_returnDraft_cancelsPendingRefund() {
+        BizMaterialOutbound outbound = new BizMaterialOutbound();
+        outbound.setId(2L);
+        outbound.setStatus("DRAFT");
+        outbound.setProjectId(100L);
+        outbound.setOutboundType("RETURN");
+        when(outboundMapper.selectById(2L)).thenReturn(outbound);
+        when(outboundDetailMapper.selectList(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of());
+
+        BizMaterialRefund refund = new BizMaterialRefund();
+        refund.setId(55L);
+        refund.setOutboundId(2L);
+        refund.setStatus("PENDING");
+        when(refundMapper.selectList(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of(refund));
+
+        materialOutboundService.delete(2L);
+
+        verify(outboundMapper).deleteById(2L);
+        assertThat(refund.getStatus()).as("退款申请应同步作废，防继续审批扣款").isEqualTo("CANCELED");
+        verify(refundMapper).updateById(refund);
+    }
+
+    @Test
+    @DisplayName("删除领料出库单：不触发退款作废查询（仅 RETURN 类型联动）")
+    void testDelete_pickDraft_noRefundInteraction() {
+        BizMaterialOutbound outbound = new BizMaterialOutbound();
+        outbound.setId(3L);
+        outbound.setStatus("DRAFT");
+        outbound.setProjectId(100L);
+        outbound.setOutboundType("PICK");
+        when(outboundMapper.selectById(3L)).thenReturn(outbound);
+        when(outboundDetailMapper.selectList(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of());
+
+        materialOutboundService.delete(3L);
+
+        verify(outboundMapper).deleteById(3L);
+        verify(refundMapper, never()).selectList(any());
     }
 }

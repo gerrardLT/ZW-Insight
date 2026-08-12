@@ -2,7 +2,9 @@ package com.zwinsight.material.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.contract.domain.BizExpenseContract;
 import com.zwinsight.contract.mapper.BizExpenseContractMapper;
 import com.zwinsight.material.domain.BizMaterialRefund;
 import com.zwinsight.material.domain.BizMaterialRefundDetail;
@@ -26,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -105,11 +108,37 @@ class MaterialRefundServiceTest {
         refund.setRefundAmount(new BigDecimal("6076.50"));
         refund.setStatus("PENDING");
         when(refundMapper.selectById(1L)).thenReturn(refund);
+        BizExpenseContract contract = new BizExpenseContract();
+        contract.setId(200L);
+        contract.setCumulativePaid(new BigDecimal("80000"));
+        when(expenseContractMapper.selectById(200L)).thenReturn(contract);
 
         service.onRefundApproved(new ApprovalCompleteEvent(this, "MATERIAL_REFUND", 1L, "APPROVED"));
 
         assertThat(refund.getStatus()).isEqualTo("APPROVED");
         verify(expenseContractMapper).deductPaidAmount(200L, new BigDecimal("6076.50"));
+    }
+
+    @Test
+    @DisplayName("onRefundApproved - 退款额超过合同累计已付款时拒绝（MAT-37/D3 扣减下限守卫）")
+    void onRefundApproved_exceedsCumulativePaid_rejected() {
+        BizMaterialRefund refund = new BizMaterialRefund();
+        refund.setId(1L);
+        refund.setContractId(200L);
+        refund.setRefundAmount(new BigDecimal("90000"));
+        refund.setStatus("PENDING");
+        when(refundMapper.selectById(1L)).thenReturn(refund);
+        BizExpenseContract contract = new BizExpenseContract();
+        contract.setId(200L);
+        contract.setCumulativePaid(new BigDecimal("80000"));
+        when(expenseContractMapper.selectById(200L)).thenReturn(contract);
+
+        assertThatThrownBy(() -> service.onRefundApproved(
+                new ApprovalCompleteEvent(this, "MATERIAL_REFUND", 1L, "APPROVED")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("退款金额超过合同累计已付款");
+
+        verify(expenseContractMapper, never()).deductPaidAmount(any(), any());
     }
 
     @Test

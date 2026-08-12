@@ -185,8 +185,12 @@ public class ProjectService {
     }
 
     /**
-     * 更新项目状态（D1 守卫，2026-08-11：终态项目 CLOSED/COMPLETED 禁止被改回任意状态）
+     * 更新项目状态（D1 守卫，2026-08-11：终态项目 CLOSED/COMPLETED 禁止被改回任意状态；
+     * D4 守卫，2026-08-12：目标状态白名单 + 结项审批中（CLOSING）仅允许审批回调流转）
      */
+    private static final java.util.Set<String> VALID_PROJECT_STATUSES = java.util.Set.of(
+            "DRAFT", "FILED", "TENDERING", "WON", "CONSTRUCTION", "COMPLETED", "CLOSING", "CLOSED");
+
     public void updateStatus(Long id, String newStatus) {
         BizProject existing = projectMapper.selectById(id);
         if (existing == null) {
@@ -194,6 +198,12 @@ public class ProjectService {
         }
         if ("CLOSED".equals(existing.getStatus()) || "COMPLETED".equals(existing.getStatus())) {
             throw new BusinessException("项目已关闭/竣工，不可变更状态");
+        }
+        if ("CLOSING".equals(existing.getStatus())) {
+            throw new BusinessException("项目结项审批中，不可变更状态");
+        }
+        if (newStatus == null || !VALID_PROJECT_STATUSES.contains(newStatus)) {
+            throw new BusinessException("非法的项目状态：" + newStatus);
         }
         existing.setStatus(newStatus);
         projectMapper.updateById(existing);

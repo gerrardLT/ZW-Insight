@@ -66,7 +66,7 @@ class DepositApplyServiceTest {
     }
 
     @Test
-    @DisplayName("提交：发起审批流程 + 更新状态")
+    @DisplayName("提交：发起审批流程 + 置 SUBMITTED 中间态（未等审批不得 PAID，2026-08-12 修复）")
     void testSubmit_startProcessAndUpdateStatus() {
         BizDepositApply apply = new BizDepositApply();
         apply.setId(1L);
@@ -80,7 +80,7 @@ class DepositApplyServiceTest {
 
         depositApplyService.submit(1L);
 
-        assertThat(apply.getStatus()).isEqualTo("PAID");
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
         assertThat(apply.getWorkflowInstanceId()).isEqualTo("pi-001");
         verify(depositApplyMapper).updateById(apply);
     }
@@ -106,5 +106,83 @@ class DepositApplyServiceTest {
         assertThatThrownBy(() -> depositApplyService.submit(1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("仅草稿状态可提交");
+    }
+
+    // ============ 批次二 P1 修复钉住（2026-08-12） ============
+
+    @Test
+    @DisplayName("更新：仅 DRAFT 可编辑；不存在抛异常（原裸 updateById 致 PAID 金额可篡改）")
+    void testUpdate_draftGuard() {
+        BizDepositApply existing = new BizDepositApply();
+        existing.setId(1L);
+        existing.setStatus("PAID");
+        when(depositApplyMapper.selectById(1L)).thenReturn(existing);
+        assertThatThrownBy(() -> depositApplyService.update(existing))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可编辑");
+        verify(depositApplyMapper, never()).updateById(any());
+
+        when(depositApplyMapper.selectById(999L)).thenReturn(null);
+        BizDepositApply missing = new BizDepositApply();
+        missing.setId(999L);
+        assertThatThrownBy(() -> depositApplyService.update(missing))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("保证金申请不存在");
+    }
+
+    @Test
+    @DisplayName("更新：PUT 体携带 status 被置 null 不落库（防篡改）")
+    void testUpdate_statusStripped() {
+        BizDepositApply existing = new BizDepositApply();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(depositApplyMapper.selectById(1L)).thenReturn(existing);
+
+        BizDepositApply body = new BizDepositApply();
+        body.setId(1L);
+        body.setStatus("PAID");
+        depositApplyService.update(body);
+
+        assertThat(body.getStatus()).as("status 应被服务端置 null 防落库").isNull();
+        verify(depositApplyMapper).updateById(body);
+    }
+
+    @Test
+    @DisplayName("审批通过回调：SUBMITTED→PAID；非 SUBMITTED 幂等短路")
+    void testOnApproved_transitionsAndIdempotent() {
+        BizDepositApply submitted = new BizDepositApply();
+        submitted.setId(1L);
+        submitted.setStatus("SUBMITTED");
+        when(depositApplyMapper.selectById(1L)).thenReturn(submitted);
+        depositApplyService.onApproved(1L);
+        assertThat(submitted.getStatus()).isEqualTo("PAID");
+
+        BizDepositApply paid = new BizDepositApply();
+        paid.setId(2L);
+        paid.setStatus("PAID");
+        when(depositApplyMapper.selectById(2L)).thenReturn(paid);
+        depositApplyService.onApproved(2L);
+        verify(depositApplyMapper, times(1)).updateById(any());
+
+        depositApplyService.onApproved(999L);
+        verify(depositApplyMapper, times(1)).updateById(any());
+    }
+
+    @Test
+    @DisplayName("审批驳回回调：SUBMITTED→DRAFT；非 SUBMITTED 忽略（未付款无资金回冲）")
+    void testOnRejected_backToDraft() {
+        BizDepositApply submitted = new BizDepositApply();
+        submitted.setId(1L);
+        submitted.setStatus("SUBMITTED");
+        when(depositApplyMapper.selectById(1L)).thenReturn(submitted);
+        depositApplyService.onRejected(1L);
+        assertThat(submitted.getStatus()).isEqualTo("DRAFT");
+
+        BizDepositApply draft = new BizDepositApply();
+        draft.setId(2L);
+        draft.setStatus("DRAFT");
+        when(depositApplyMapper.selectById(2L)).thenReturn(draft);
+        depositApplyService.onRejected(2L);
+        verify(depositApplyMapper, times(1)).updateById(any());
     }
 }

@@ -63,8 +63,21 @@ public class MachineWorkLogService {
         BizMachineLedger ledger = ledgerMapper.selectById(workLog.getMachineId());
         if (ledger == null) throw new BusinessException("机械不存在");
         if (!"IN_FIELD".equals(ledger.getStatus())) throw new BusinessException("仅在场机械可记录工作日志");
+        // P2 修复（2026-08-12，批次二 MAC-23）：台班/工作量非负校验，
+        // 负值会经结算汇总扣减合同累计结算
+        validateQuantities(workLog.getShiftCount(), workLog.getWorkQuantity());
+        // P2 修复（MAC-22）：结算状态由结算链路维护，防创建时伪造 SETTLED 绕过退场守卫
+        workLog.setSettlementStatus(null);
         workLog.setStatus("DRAFT");
         workLogMapper.insert(workLog);
+    }
+
+    /** 台班数/工作量非负校验（null 视同 0 放行，兼容工作量计价模式） */
+    private void validateQuantities(java.math.BigDecimal shiftCount, java.math.BigDecimal workQuantity) {
+        if ((shiftCount != null && shiftCount.signum() < 0)
+                || (workQuantity != null && workQuantity.signum() < 0)) {
+            throw new BusinessException("台班数/工作量不可为负数");
+        }
     }
 
     public void update(BizMachineWorkLog workLog) {
@@ -74,6 +87,9 @@ public class MachineWorkLogService {
         // B4 修复（2026-08-11）：结算审批后 status 仍为 DRAFT 但 settlementStatus=SETTLED，
         // 已结算日志的台班数/工作量是结算金额依据，禁止篡改
         if ("SETTLED".equals(existing.getSettlementStatus())) throw new BusinessException("已结算的工作日志不可编辑");
+        // P2 修复（2026-08-12，MAC-22/23）：结算状态置 null 防伪造；台班/工作量非负校验
+        validateQuantities(workLog.getShiftCount(), workLog.getWorkQuantity());
+        workLog.setSettlementStatus(null);
         workLogMapper.updateById(workLog);
     }
 

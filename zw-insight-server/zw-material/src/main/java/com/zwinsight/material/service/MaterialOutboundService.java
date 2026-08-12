@@ -6,10 +6,12 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.material.domain.BizMaterialOutbound;
 import com.zwinsight.material.domain.BizMaterialOutboundDetail;
+import com.zwinsight.material.domain.BizMaterialRefund;
 import com.zwinsight.material.domain.BizProjectMaterialStock;
 import com.zwinsight.material.event.MaterialReturnCreatedEvent;
 import com.zwinsight.material.mapper.BizMaterialOutboundDetailMapper;
 import com.zwinsight.material.mapper.BizMaterialOutboundMapper;
+import com.zwinsight.material.mapper.BizMaterialRefundMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.util.ProjectNameFiller;
@@ -34,6 +36,7 @@ public class MaterialOutboundService {
     private final BizMaterialOutboundMapper outboundMapper;
     private final BizMaterialOutboundDetailMapper outboundDetailMapper;
     private final BizProjectMaterialStockMapper stockMapper;
+    private final BizMaterialRefundMapper refundMapper;
     private final BizProjectMapper projectMapper;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -73,6 +76,12 @@ public class MaterialOutboundService {
 
             BigDecimal qty = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
 
+            // P2 修复（2026-08-12，批次二 MAT-16/D4）：数量必须大于 0，
+            // 负数量经 subtract 反向加库存且污染出入库统计
+            if (qty.signum() <= 0) {
+                throw new BusinessException("材料[" + detail.getMaterialName() + "]出库数量必须大于0");
+            }
+
             if ("PICK".equals(outbound.getOutboundType())) {
                 if (stock == null || stock.getStockQuantity().compareTo(qty) < 0) {
                     throw new BusinessException("材料[" + detail.getMaterialName() + "]库存不足");
@@ -105,11 +114,13 @@ public class MaterialOutboundService {
             // unitPrice 作为入库单价使用（退货时按入库价计算退款）
             BigDecimal inboundUnitPrice = detail.getUnitPrice() != null
                     ? detail.getUnitPrice() : BigDecimal.ZERO;
+            // P2 修复（D8）：quantity null 归一为 0，防下游 multiply 抛 NPE 连带出库事务回滚
+            BigDecimal qty = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
             eventDetails.add(new MaterialReturnCreatedEvent.OutboundDetailItem(
                     detail.getMaterialName(),
                     detail.getSpecification(),
                     detail.getUnit(),
-                    detail.getQuantity(),
+                    qty,
                     inboundUnitPrice
             ));
         }
@@ -171,6 +182,21 @@ public class MaterialOutboundService {
             }
             stockMapper.updateById(stock);
             outboundDetailMapper.deleteById(detail.getId());
+        }
+
+        // P1 修复（2026-08-12，批次二取证枚举）：退货出库 save 时已自动生成并启动
+        // PENDING 退款申请，删除出库单必须同步作废退款，否则退款仍可被审批通过
+        // 并扣减合同累计已付款（单删钱退的联动断裂）
+        if ("RETURN".equals(existing.getOutboundType())) {
+            LambdaQueryWrapper<BizMaterialRefund> refundWrapper = new LambdaQueryWrapper<>();
+            refundWrapper.eq(BizMaterialRefund::getOutboundId, id)
+                    .eq(BizMaterialRefund::getStatus, "PENDING");
+            List<BizMaterialRefund> refunds = refundMapper.selectList(refundWrapper);
+            for (BizMaterialRefund refund : refunds) {
+                refund.setStatus("CANCELED");
+                refundMapper.updateById(refund);
+                log.info("删除退货出库单同步作废退款申请: outboundId={}, refundId={}", id, refund.getId());
+            }
         }
 
         outboundMapper.deleteById(id);

@@ -27,6 +27,7 @@ public interface BizMachineWorkSettlementMapper extends BaseMapper<BizMachineWor
             "SELECT COUNT(1) FROM biz_machine_work_settlement " +
             "WHERE project_id = #{projectId} " +
             "AND deleted = 0 " +
+            "AND status != 3 " +
             "AND period_start &lt;= #{periodEnd} " +
             "AND period_end &gt;= #{periodStart} " +
             "<if test='excludeId != null'> AND id != #{excludeId} </if>" +

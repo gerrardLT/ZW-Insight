@@ -2,6 +2,7 @@ package com.zwinsight.material.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.mapper.BizExpenseContractMapper;
 import com.zwinsight.material.domain.BizMaterialRefund;
@@ -138,9 +139,11 @@ public class MaterialRefundService {
         }
 
         // C3 幂等守卫（2026-08-11）：重复事件会重复扣减合同累计已付款，
-        // 已 APPROVED 直接短路（对照 MaterialTransferService.onApproved 已有幂等模式）
-        if ("APPROVED".equals(refund.getStatus())) {
-            log.info("退款审批回调重复触发，跳过, refundId={}", refundId);
+        // 已 APPROVED 直接短路（对照 MaterialTransferService.onApproved 已有幂等模式）。
+        // P1 强化（2026-08-12）：仅 PENDING 可生效——已作废（CANCELED，退货出库单被删除时
+        // 同步作废）/已驳回单据收到事件不得扣款
+        if (!"PENDING".equals(refund.getStatus())) {
+            log.info("退款审批回调：非待审批状态跳过, refundId={}, status={}", refundId, refund.getStatus());
             return;
         }
 
@@ -148,7 +151,17 @@ public class MaterialRefundService {
         refund.setStatus("APPROVED");
         refundMapper.updateById(refund);
 
-        // 2. 扣减采购合同的累计付款金额
+        // 2. 扣减采购合同的累计付款金额（P2 修复 MAT-37/D3：退款额不得超过累计已付，
+        // 原 SQL 直接相减无下限守卫，cumulative_paid 可变负）
+        if (refund.getRefundAmount() != null && refund.getContractId() != null) {
+            com.zwinsight.contract.domain.BizExpenseContract contract =
+                    expenseContractMapper.selectById(refund.getContractId());
+            java.math.BigDecimal cumulativePaid = contract != null && contract.getCumulativePaid() != null
+                    ? contract.getCumulativePaid() : java.math.BigDecimal.ZERO;
+            if (refund.getRefundAmount().compareTo(cumulativePaid) > 0) {
+                throw new BusinessException("退款金额超过合同累计已付款，无法退款");
+            }
+        }
         expenseContractMapper.deductPaidAmount(refund.getContractId(), refund.getRefundAmount());
 
         log.info("退款审批通过，合同已付款金额已扣减: refundId={}, contractId={}, refundAmount={}",

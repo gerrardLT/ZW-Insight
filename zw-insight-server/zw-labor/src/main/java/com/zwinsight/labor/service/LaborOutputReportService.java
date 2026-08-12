@@ -67,6 +67,8 @@ public class LaborOutputReportService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
+        // P1 修复（2026-08-12，批次二取证枚举）：防 PUT 体携带 status 直接落库绕过 submit
+        report.setStatus(null);
         outputReportMapper.updateById(report);
     }
 

@@ -55,10 +55,11 @@ public class ProjectMemberService {
         // 校验角色合法性
         validateRoles(request.getProjectRoles());
 
-        // 唯一性校验：同项目同用户不可重复
+        // 唯一性校验：同项目同用户不可重复（仅活跃成员，D7 修复：停用成员可重新加入）
         LambdaQueryWrapper<BizProjectMember> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BizProjectMember::getProjectId, projectId)
-                .eq(BizProjectMember::getUserId, request.getUserId());
+                .eq(BizProjectMember::getUserId, request.getUserId())
+                .eq(BizProjectMember::getStatus, 1);
         Long count = memberMapper.selectCount(wrapper);
         if (count > 0) {
             throw new BusinessException(400, "该用户已是本项目成员");
@@ -85,10 +86,14 @@ public class ProjectMemberService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void addMember(BizProjectMember member) {
-        // 唯一性校验
+        // P2 修复（2026-08-12，批次二 D8）：旧接口同样校验角色合法性，防绕过新接口伪造角色
+        validateRoles(member.getProjectRoles());
+
+        // 唯一性校验（仅活跃成员，D7 修复：停用成员可重新加入）
         LambdaQueryWrapper<BizProjectMember> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BizProjectMember::getProjectId, member.getProjectId())
-                .eq(BizProjectMember::getUserId, member.getUserId());
+                .eq(BizProjectMember::getUserId, member.getUserId())
+                .eq(BizProjectMember::getStatus, 1);
         Long count = memberMapper.selectCount(wrapper);
         if (count > 0) {
             throw new BusinessException(400, "该用户已是本项目成员");
@@ -268,12 +273,13 @@ public class ProjectMemberService {
     }
 
     /**
-     * 查找项目成员
+     * 查找项目成员（D7 修复：仅查活跃成员，已停用成员不可被移除/变更角色）
      */
     private BizProjectMember findMember(Long projectId, Long userId) {
         LambdaQueryWrapper<BizProjectMember> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BizProjectMember::getProjectId, projectId)
-                .eq(BizProjectMember::getUserId, userId);
+                .eq(BizProjectMember::getUserId, userId)
+                .eq(BizProjectMember::getStatus, 1);
         BizProjectMember member = memberMapper.selectOne(wrapper);
         if (member == null) {
             throw new BusinessException(400, "该用户不是本项目成员");

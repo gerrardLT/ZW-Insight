@@ -43,12 +43,30 @@ class TenderFeeServiceTest {
     @DisplayName("新增：状态初始化为 DRAFT")
     void testSave_initializesDraft() {
         BizTenderFee fee = new BizTenderFee();
+        fee.setFeeAmount(new java.math.BigDecimal("500"));
         when(feeMapper.insert(fee)).thenReturn(1);
 
         tenderFeeService.save(fee);
 
         assertThat(fee.getStatus()).isEqualTo("DRAFT");
         verify(feeMapper).insert(fee);
+    }
+
+    @Test
+    @DisplayName("新增：费用金额负/零/null 拒绝（P2 TND-21）")
+    void testSave_invalidAmount_rejected() {
+        BizTenderFee nullFee = new BizTenderFee();
+        assertThatThrownBy(() -> tenderFeeService.save(nullFee))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("费用金额必须大于0");
+
+        BizTenderFee negFee = new BizTenderFee();
+        negFee.setFeeAmount(new java.math.BigDecimal("-100"));
+        assertThatThrownBy(() -> tenderFeeService.save(negFee))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("费用金额必须大于0");
+
+        verify(feeMapper, never()).insert(any());
     }
 
     @Test

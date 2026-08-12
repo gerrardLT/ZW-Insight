@@ -28,14 +28,16 @@ public class OpenBidRecordService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizOpenBidRecord record) {
-        // D1 守卫（2026-08-11）：中标时终态项目禁止被改回 WON，先校验再落库（fail-fast）
+        // D1 守卫（2026-08-11）：中标时终态项目禁止被改回 WON，先校验再落库（fail-fast）。
+        // P2 强化（2026-08-12，批次二 D3）：施工中项目被中标登记回退为 WON，一并拦截
         boolean won = record.getIsWon() != null && record.getIsWon() == 1;
         BizProject project = null;
         if (won) {
             project = projectMapper.selectById(record.getProjectId());
             if (project != null && ("CLOSED".equals(project.getStatus())
-                    || "COMPLETED".equals(project.getStatus()) || "CLOSING".equals(project.getStatus()))) {
-                throw new BusinessException("项目已关闭/竣工，不可登记中标");
+                    || "COMPLETED".equals(project.getStatus()) || "CLOSING".equals(project.getStatus())
+                    || "CONSTRUCTION".equals(project.getStatus()))) {
+                throw new BusinessException("项目已竣工/关闭/施工中，不可登记中标");
             }
         }
 

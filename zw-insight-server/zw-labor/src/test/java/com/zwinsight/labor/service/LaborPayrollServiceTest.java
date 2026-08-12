@@ -325,4 +325,45 @@ class LaborPayrollServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("工资单不存在");
     }
+
+    // ============ 批次二 P1 修复钉住（2026-08-12） ============
+
+    @Test
+    @DisplayName("更新工资单：修改周期至与他单重叠拒绝（LAB-46：防 PUT 绕行 B5 守卫）")
+    void testUpdate_overlappingPeriod_rejected() {
+        when(payrollMapper.selectById(1L)).thenReturn(samplePayroll);
+        when(payrollMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+
+        BizLaborPayroll update = new BizLaborPayroll();
+        update.setId(1L);
+        update.setPeriodStart(LocalDate.of(2026, 2, 1));
+        update.setPeriodEnd(LocalDate.of(2026, 2, 28));
+
+        assertThatThrownBy(() -> laborPayrollService.update(update))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已存在工资单");
+        verify(payrollMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("更新工资单：状态与汇总字段被置 null 不落库（LAB-47：防篡改金额一致性）")
+    void testUpdate_protectedFieldsStripped() {
+        when(payrollMapper.selectById(1L)).thenReturn(samplePayroll);
+        when(payrollMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+
+        BizLaborPayroll update = new BizLaborPayroll();
+        update.setId(1L);
+        update.setStatus("APPROVED");
+        update.setTotalSettlement(new java.math.BigDecimal("999999"));
+        update.setTotalPaid(new java.math.BigDecimal("888888"));
+        update.setUnpaid(new java.math.BigDecimal("111111"));
+
+        laborPayrollService.update(update);
+
+        assertThat(update.getStatus()).isNull();
+        assertThat(update.getTotalSettlement()).isNull();
+        assertThat(update.getTotalPaid()).isNull();
+        assertThat(update.getUnpaid()).isNull();
+        verify(payrollMapper).updateById(update);
+    }
 }

@@ -38,6 +38,15 @@ public class MachineSettlementController {
     }
 
     /**
+     * 删除结算单（仅草稿/已驳回可删，级联删明细）
+     */
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        machineWorkSettlementService.delete(id);
+        return R.ok();
+    }
+
+    /**
      * 结算单分页列表
      */
     @GetMapping

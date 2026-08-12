@@ -38,6 +38,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.zwinsight.workflow.listener.ApprovalRejectEvent;
 import com.zwinsight.workflow.listener.ProcessCompleteListener.ApprovalCompleteEvent;
 
 /**
@@ -361,6 +362,56 @@ public class MachineWorkSettlementService {
         }
 
         log.info("机械结算单审批通过, settlementId={}, totalAmount={}", settlementId, settlement.getTotalAmount());
+    }
+
+    /**
+     * 审批驳回/撤回回调 —— 置已驳回（status=3），释放结算周期供重建
+     * <p>P1 修复（2026-08-12，批次二取证枚举）：原实现无任何驳回回调，结算单被驳回后
+     * 永久停留审批中（status=1），且 countOverlapping 不区分状态致该周期被永久占用。
+     * 审批通过前未回写合同累计，驳回无需资金回冲。</p>
+     */
+    @EventListener
+    @Transactional(rollbackFor = Exception.class)
+    public void onRejected(ApprovalRejectEvent event) {
+        if (!BUSINESS_TYPE.equals(event.getBizType())) {
+            return;
+        }
+        Long settlementId = event.getBizId();
+        BizMachineWorkSettlement settlement = settlementMapper.selectById(settlementId);
+        if (settlement == null) {
+            log.warn("审批驳回回调：结算单不存在, id={}", settlementId);
+            return;
+        }
+        // 幂等守卫：仅审批中（status=1）可置驳回，防重复事件/已审批单被回退
+        if (settlement.getStatus() == null || settlement.getStatus() != 1) {
+            log.info("机械结算驳回回调：非审批中状态跳过, id={}, status={}", settlementId, settlement.getStatus());
+            return;
+        }
+        settlement.setStatus(3);
+        settlementMapper.updateById(settlement);
+        log.info("机械结算单审批驳回, settlementId={}, rejectType={}", settlementId, event.getRejectType());
+    }
+
+    /**
+     * 删除结算单（仅草稿/已驳回可删，级联删明细）
+     * <p>P1 修复（2026-08-12，批次二取证枚举）：原无 DELETE 端点，草稿单无法清理；
+     * 已审批（status=2）单日志已 SETTLED 且合同累计已回写，禁删防资金失配。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long settlementId) {
+        BizMachineWorkSettlement settlement = settlementMapper.selectById(settlementId);
+        if (settlement == null) {
+            throw new BusinessException("结算单不存在");
+        }
+        if (settlement.getStatus() == null
+                || (settlement.getStatus() != 0 && settlement.getStatus() != 3)) {
+            throw new BusinessException("仅草稿或已驳回状态的结算单可删除");
+        }
+        LambdaQueryWrapper<BizMachineWorkSettlementDetail> detailWrapper = new LambdaQueryWrapper<>();
+        detailWrapper.eq(BizMachineWorkSettlementDetail::getSettlementId, settlementId);
+        detailMapper.delete(detailWrapper);
+        settlementMapper.deleteById(settlementId);
+        log.info("机械结算单已删除, settlementId={}, status={}", settlementId, settlement.getStatus());
     }
 
     /**

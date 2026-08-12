@@ -8,6 +8,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.machine.domain.*;
 import com.zwinsight.machine.dto.*;
 import com.zwinsight.machine.mapper.*;
+import com.zwinsight.workflow.listener.ApprovalRejectEvent;
 import com.zwinsight.workflow.service.ApprovalService;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -591,5 +592,100 @@ class MachineWorkSettlementServiceTest {
         settlement.setTotalAmount(totalAmount);
         settlement.setCreatedAt(LocalDateTime.now());
         return settlement;
+    }
+
+    // ==================== 审批驳回回调（P1 修复钉住，2026-08-12） ====================
+
+    @Nested
+    @DisplayName("onRejected 审批驳回回调")
+    class OnRejectedTests {
+
+        @Test
+        @DisplayName("审批中（status=1）置已驳回（status=3），释放结算周期")
+        void onRejected_submitted_setsRejected() {
+            BizMachineWorkSettlement settlement = buildSettlement(1L, 1, new BigDecimal("5000"));
+            when(settlementMapper.selectById(1L)).thenReturn(settlement);
+
+            settlementService.onRejected(new ApprovalRejectEvent(this, "wf-001", "machine_settlement", 1L, "REJECT"));
+
+            assertThat(settlement.getStatus()).isEqualTo(3);
+            verify(settlementMapper).updateById(settlement);
+        }
+
+        @Test
+        @DisplayName("非审批中状态幂等跳过（已审批/已驳回不得回退）")
+        void onRejected_nonSubmitted_skips() {
+            BizMachineWorkSettlement approved = buildSettlement(2L, 2, new BigDecimal("5000"));
+            when(settlementMapper.selectById(2L)).thenReturn(approved);
+            settlementService.onRejected(new ApprovalRejectEvent(this, "wf-002", "machine_settlement", 2L, "REJECT"));
+            assertThat(approved.getStatus()).isEqualTo(2);
+
+            BizMachineWorkSettlement rejected = buildSettlement(3L, 3, new BigDecimal("5000"));
+            when(settlementMapper.selectById(3L)).thenReturn(rejected);
+            settlementService.onRejected(new ApprovalRejectEvent(this, "wf-003", "machine_settlement", 3L, "WITHDRAW"));
+            assertThat(rejected.getStatus()).isEqualTo(3);
+
+            verify(settlementMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("非机械结算业务类型/单据不存在忽略")
+        void onRejected_otherTypeOrNotFound_ignored() {
+            settlementService.onRejected(new ApprovalRejectEvent(this, "wf-004", "OTHER_TYPE", 4L, "REJECT"));
+            verify(settlementMapper, never()).selectById(any());
+
+            when(settlementMapper.selectById(999L)).thenReturn(null);
+            settlementService.onRejected(new ApprovalRejectEvent(this, "wf-005", "machine_settlement", 999L, "REJECT"));
+            verify(settlementMapper, never()).updateById(any());
+        }
+    }
+
+    // ==================== 删除结算单（P1 修复钉住，2026-08-12） ====================
+
+    @Nested
+    @DisplayName("delete 删除结算单")
+    class DeleteTests {
+
+        @Test
+        @DisplayName("草稿/已驳回可删，级联删明细")
+        void delete_draftAndRejected_allowed() {
+            BizMachineWorkSettlement draft = buildSettlement(1L, 0, new BigDecimal("1000"));
+            when(settlementMapper.selectById(1L)).thenReturn(draft);
+            settlementService.delete(1L);
+            verify(detailMapper).delete(any(LambdaQueryWrapper.class));
+            verify(settlementMapper).deleteById(1L);
+
+            BizMachineWorkSettlement rejected = buildSettlement(2L, 3, new BigDecimal("1000"));
+            when(settlementMapper.selectById(2L)).thenReturn(rejected);
+            settlementService.delete(2L);
+            verify(settlementMapper).deleteById(2L);
+        }
+
+        @Test
+        @DisplayName("审批中/已审批禁删（日志已 SETTLED/合同累计已回写，防资金失配）")
+        void delete_pendingAndApproved_rejected() {
+            BizMachineWorkSettlement pending = buildSettlement(3L, 1, new BigDecimal("1000"));
+            when(settlementMapper.selectById(3L)).thenReturn(pending);
+            assertThatThrownBy(() -> settlementService.delete(3L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅草稿或已驳回状态的结算单可删除");
+
+            BizMachineWorkSettlement approved = buildSettlement(4L, 2, new BigDecimal("1000"));
+            when(settlementMapper.selectById(4L)).thenReturn(approved);
+            assertThatThrownBy(() -> settlementService.delete(4L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅草稿或已驳回状态的结算单可删除");
+
+            verify(settlementMapper, never()).deleteById(any());
+        }
+
+        @Test
+        @DisplayName("不存在抛异常")
+        void delete_notFound_throws() {
+            when(settlementMapper.selectById(999L)).thenReturn(null);
+            assertThatThrownBy(() -> settlementService.delete(999L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("结算单不存在");
+        }
     }
 }

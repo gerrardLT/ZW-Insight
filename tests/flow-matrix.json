@@ -18,6 +18,16 @@
     "gap": 0,
     "exempt": 30,
     "approvalFlows": "17 条：covered 17（material_transfer_approval 由 L4 stage_9L 销项，2026-08-13）"
+   },
+   "batch2": {
+    "flowsTotal": 161,
+    "covered": 161,
+    "partial": 0,
+    "gap": 0,
+    "exempt": 2,
+    "exemptDetail": "MAC-SET 审批回调乐观锁并发窗口（并发专项豁免）+ MAC-PRJ 结算不回写项目 totalExpense（业务口径待确认）登记于 gapSummary.batch2_disposition.exemptions",
+    "scope": "zw-project / zw-tender / zw-labor / zw-subcontract / zw-machine / zw-material",
+    "approvalFlows": "批次二范围 5 条（project_close/machine_settlement/material_refund/material_transfer 已在 batch1 登记，新增 deposit_apply_approval）"
    }
   },
   "updated": "2026-08-13",
@@ -3578,6 +3588,364 @@
      ]
     }
    ]
+  },
+  {
+   "module": "zw-project",
+   "batch": "batch2",
+   "stats": { "flows": 26, "covered": 26, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "项目登记",
+     "flows": [
+      { "id": "PRJ-PRJ-01", "name": "新建项目（自动编号+DRAFT+零金额初始化+创建人为项目经理）", "type": "正向", "ev": "ProjectService.save/saveFromRequest", "map": "ProjectServiceTest.testSave_autoNumberingAndDefaults/testSave_existingAmountsPreserved/testSave_addCreatorAsManager", "st": "covered" },
+      { "id": "PRJ-PRJ-02", "name": "查询详情：存在返回/不存在抛异常", "type": "正向", "ev": "ProjectService.getById", "map": "ProjectServiceTest.testGetById_found/testGetById_notFound", "st": "covered" },
+      { "id": "PRJ-PRJ-03", "name": "编辑项目（仅DRAFT可编辑）", "type": "正向", "ev": "ProjectService.update/updateFromRequest", "map": "ProjectServiceTest.testUpdate_draftAllowed/testUpdate_nonDraftRejected", "st": "covered" },
+      { "id": "PRJ-PRJ-04", "name": "删除项目（仅DRAFT；不存在抛异常）", "type": "正向", "ev": "ProjectService.delete", "map": "ProjectServiceTest.testDelete_draftAllowed/testDelete_nonDraftRejected/testDelete_notFound", "st": "covered" },
+      { "id": "PRJ-PRJ-05", "name": "批量删除（逐条复用DRAFT守卫）", "type": "正向", "ev": "ProjectService.batchDelete", "map": "ProjectServiceTest.testDelete系列（委托 delete 守卫）", "st": "covered" },
+      { "id": "PRJ-PRJ-06", "name": "提交项目 DRAFT→FILED", "type": "正向", "ev": "ProjectService.submit", "map": "ProjectServiceTest.testSubmit_draftToFiled/testSubmit_nonDraftRejected", "st": "covered" },
+      { "id": "PRJ-PRJ-07", "name": "手动更新状态：终态 CLOSED/COMPLETED 拒绝改回（D1）", "type": "负向", "ev": "ProjectService.updateStatus", "map": "ProjectServiceTest.testUpdateStatus_terminalProject_rejected", "st": "covered" },
+      { "id": "PRJ-PRJ-08", "name": "手动更新状态：结项审批中 CLOSING 拒绝变更（D4）", "type": "负向", "ev": "ProjectService.updateStatus", "map": "ProjectServiceTest.testUpdateStatus_closingRejected", "st": "covered" },
+      { "id": "PRJ-PRJ-09", "name": "手动更新状态：目标状态白名单（非法值/null 拒绝，D4）", "type": "负向", "ev": "ProjectService.updateStatus", "map": "ProjectServiceTest.testUpdateStatus_invalidTargetRejected", "st": "covered" },
+      { "id": "PRJ-PRJ-10", "name": "结项条件校验（COMPLETED+款项结清容差+施工阶段+已批最终结算）", "type": "负向", "ev": "ProjectService.closeProject/checkCloseConditions", "map": "ProjectServiceTest.testCloseProject_statusNotCompleted/testCloseProject_draftStatus/testCloseProject_notFound", "st": "covered" },
+      { "id": "PRJ-PRJ-11", "name": "结项发起审批（COMPLETED→CLOSING+记录流程实例ID）", "type": "正向", "ev": "ProjectService.closeProject", "map": "ProjectServiceTest.testCloseProject_startsApproval", "st": "covered" },
+      { "id": "PRJ-PRJ-12", "name": "结项审批通过 CLOSING→CLOSED", "type": "正向", "ev": "ProjectService.onCloseApproved", "map": "ProjectServiceTest.testOnCloseApproved_toClosed/testOnCloseApproved_notFound; ProjectCloseListener", "st": "covered" },
+      { "id": "PRJ-PRJ-13", "name": "结项审批驳回 CLOSING→COMPLETED 回退", "type": "异常", "ev": "ProjectService.onCloseRejected", "map": "ProjectServiceTest.testOnCloseRejected_backToCompleted", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "项目成员",
+     "flows": [
+      { "id": "PRJ-MEM-01", "name": "成员列表（仅活跃 status=1）", "type": "正向", "ev": "ProjectMemberService.getMembers", "map": "ProjectMemberServiceTest.testGetMembers", "st": "covered" },
+      { "id": "PRJ-MEM-02", "name": "添加成员（新接口）：角色为空/非法拒绝", "type": "负向", "ev": "ProjectMemberService.addMember(request)/validateRoles", "map": "ProjectMemberServiceTest.testAddMember_emptyRoles_throws", "st": "covered" },
+      { "id": "PRJ-MEM-03", "name": "添加成员：同项目同用户活跃成员重复拒绝", "type": "负向", "ev": "ProjectMemberService.addMember(request)", "map": "ProjectMemberServiceTest.testAddMember_duplicate_throws", "st": "covered" },
+      { "id": "PRJ-MEM-04", "name": "添加成员成功并同步 sys_user_project", "type": "正向", "ev": "ProjectMemberService.addMember(request)+syncAddUserProject", "map": "ProjectMemberServiceTest.testAddMember_success", "st": "covered" },
+      { "id": "PRJ-MEM-05", "name": "添加成员（旧接口）：角色合法性校验（D8 防绕过新接口伪造角色）", "type": "负向", "ev": "ProjectMemberService.addMember(entity)", "map": "ProjectMemberServiceTest.testAddMemberEntity_invalidRole_throws/testAddMemberEntity_emptyRoles_throws", "st": "covered" },
+      { "id": "PRJ-MEM-06", "name": "添加成员（旧接口）：仅活跃成员阻断重复，停用成员可重新加入（D7）", "type": "边界", "ev": "ProjectMemberService.addMember(entity)", "map": "ProjectMemberServiceTest.testAddMemberEntity_duplicateActiveOnly", "st": "covered" },
+      { "id": "PRJ-MEM-07", "name": "移除成员：非成员拒绝（仅活跃成员可被操作，D7）", "type": "负向", "ev": "ProjectMemberService.removeMember(projectId,userId)/findMember", "map": "ProjectMemberServiceTest.testRemoveMember_notFound_throws", "st": "covered" },
+      { "id": "PRJ-MEM-08", "name": "移除成员：唯一项目经理保护", "type": "负向", "ev": "ProjectMemberService.removeMember", "map": "ProjectMemberServiceTest.testRemoveMember_lastPmProtected", "st": "covered" },
+      { "id": "PRJ-MEM-09", "name": "移除成员成功并同步删除 sys_user_project", "type": "正向", "ev": "ProjectMemberService.removeMember", "map": "ProjectMemberServiceTest.testRemoveMember_nonPm_success", "st": "covered" },
+      { "id": "PRJ-MEM-10", "name": "变更角色：空角色拒绝/移除唯一PM拒绝/正常更新", "type": "负向", "ev": "ProjectMemberService.updateRoles", "map": "ProjectMemberServiceTest.testUpdateRoles_emptyRoles_throws/testUpdateRoles_removeLastPm_throws/testUpdateRoles_success", "st": "covered" },
+      { "id": "PRJ-MEM-11", "name": "用户停用→全部项目成员标记失效并清 sys_user_project", "type": "联动", "ev": "ProjectMemberService.deactivateByUserId", "map": "ProjectMemberServiceTest.deactivateByUserId用例", "st": "covered" },
+      { "id": "PRJ-MEM-12", "name": "项目创建时创建人自动加为项目经理", "type": "联动", "ev": "ProjectMemberService.addCreatorAsProjectManager", "map": "ProjectServiceTest.testSave_addCreatorAsManager", "st": "covered" },
+      { "id": "PRJ-MEM-13", "name": "成员分页+角色筛选+数据权限取用户项目ID", "type": "正向", "ev": "ProjectMemberService.listMembers/getUserProjectIds", "map": "ProjectMemberServiceTest.listMembers/getUserProjectIds用例", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-tender",
+   "batch": "batch2",
+   "stats": { "flows": 35, "covered": 35, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "投标登记",
+     "flows": [
+      { "id": "TND-REG-01", "name": "分页查询（projectId 可选过滤）", "type": "正向", "ev": "TenderRegisterService.page", "map": "TenderRegisterServiceTest.PageTests", "st": "covered" },
+      { "id": "TND-REG-02", "name": "新增投标登记：REGISTERED 初始化+项目回写 TENDERING", "type": "正向", "ev": "TenderRegisterService.save", "map": "TenderRegisterServiceTest.testSave_initializesStatusAndUpdatesProject", "st": "covered" },
+      { "id": "TND-REG-03", "name": "新增登记：已关闭/竣工/结项中项目拒绝（D1）", "type": "负向", "ev": "TenderRegisterService.save", "map": "TenderRegisterServiceTest.testSave_terminalProject_rejected", "st": "covered" },
+      { "id": "TND-REG-04", "name": "新增登记：已中标/施工中项目拒绝（D3 防状态回退 TENDERING）", "type": "负向", "ev": "TenderRegisterService.save", "map": "TenderRegisterServiceTest.testSave_wonOrConstructionProject_rejected", "st": "covered" },
+      { "id": "TND-REG-05", "name": "详情查询（不存在抛异常）", "type": "正向", "ev": "TenderRegisterService.getById", "map": "TenderRegisterServiceTest.GetByIdTests", "st": "covered" },
+      { "id": "TND-REG-06", "name": "编辑登记：status/projectId 置 null 防 PUT 篡改/换绑（TND-08）", "type": "负向", "ev": "TenderRegisterService.update", "map": "TenderRegisterServiceTest.update保护字段剥离用例", "st": "covered" },
+      { "id": "TND-REG-07", "name": "删除登记（仅 REGISTERED 可删）", "type": "正向", "ev": "TenderRegisterService.delete", "map": "TenderRegisterServiceTest.DeleteTests", "st": "covered" },
+      { "id": "TND-REG-08", "name": "提交登记（仅 REGISTERED，防 WON/SUBMITTED 重提回退，D3）", "type": "负向", "ev": "TenderRegisterService.submit", "map": "TenderRegisterServiceTest.submit非REGISTERED拒绝用例", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "开标记录",
+     "flows": [
+      { "id": "TND-OPB-01", "name": "登记中标：登记置 WON+项目回写 WON", "type": "正向", "ev": "OpenBidRecordService.registerWin", "map": "OpenBidRecordServiceTest.中标登记系列", "st": "covered" },
+      { "id": "TND-OPB-02", "name": "中标登记：项目已关闭/竣工拒绝", "type": "负向", "ev": "OpenBidRecordService.registerWin", "map": "OpenBidRecordServiceTest.终态项目拒绝用例", "st": "covered" },
+      { "id": "TND-OPB-03", "name": "中标登记：项目已竣工/关闭/施工中拒绝（D3 补 CONSTRUCTION）", "type": "负向", "ev": "OpenBidRecordService.registerWin", "map": "OpenBidRecordServiceTest.施工中项目拒绝用例", "st": "covered" },
+      { "id": "TND-OPB-04", "name": "开标记录分页/删除", "type": "正向", "ev": "OpenBidRecordService.page/delete", "map": "OpenBidRecordServiceTest.page/delete系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "保证金申请",
+     "flows": [
+      { "id": "TND-DEP-01", "name": "新建保证金申请（DRAFT）", "type": "正向", "ev": "DepositApplyService.save", "map": "DepositApplyServiceTest.save系列", "st": "covered" },
+      { "id": "TND-DEP-02", "name": "编辑：仅 DRAFT 可编辑+不存在拒绝", "type": "负向", "ev": "DepositApplyService.update", "map": "DepositApplyServiceTest.update守卫用例", "st": "covered" },
+      { "id": "TND-DEP-03", "name": "编辑：PUT 体 status 剥离防篡改", "type": "负向", "ev": "DepositApplyService.update", "map": "DepositApplyServiceTest.update剥离用例", "st": "covered" },
+      { "id": "TND-DEP-04", "name": "提交审批：DRAFT→SUBMITTED 中间态（修复提交即 PAID 漏洞）", "type": "正向", "ev": "DepositApplyService.submit", "map": "DepositApplyServiceTest.submit断言SUBMITTED; TenderFlowIntegrationTest.step7", "st": "covered" },
+      { "id": "TND-DEP-05", "name": "审批通过回调 SUBMITTED→PAID（幂等）", "type": "正向", "ev": "DepositApplyService.onApproved + DepositApplyApprovalListener", "map": "DepositApplyServiceTest.onApproved系列; TenderFlowIntegrationTest.step7", "st": "covered" },
+      { "id": "TND-DEP-06", "name": "审批驳回回调 SUBMITTED→DRAFT", "type": "异常", "ev": "DepositApplyService.onRejected + DepositApplyApprovalListener", "map": "DepositApplyServiceTest.onRejected用例", "st": "covered" },
+      { "id": "TND-DEP-07", "name": "删除：已 PAID 保证金拒绝删除（JdbcTemplate 直置钉住）", "type": "负向", "ev": "DepositApplyService.delete", "map": "TenderFlowIntegrationTest.step7删除守卫", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "保证金退还",
+     "flows": [
+      { "id": "TND-RTN-01", "name": "分页查询（depositApplyId 可选过滤/null 不报错）", "type": "正向", "ev": "DepositReturnService.page", "map": "DepositReturnServiceTest.testPage_withFilter_returnsResult/testPage_nullFilter_returnsResult", "st": "covered" },
+      { "id": "TND-RTN-02", "name": "新增退还：金额≤可退余额正常落库", "type": "正向", "ev": "DepositReturnService.save", "map": "DepositReturnServiceTest.testSave_withinBalance_inserts", "st": "covered" },
+      { "id": "TND-RTN-03", "name": "新增退还：超额/负零金额/申请不存在拒绝（TND-36/37）", "type": "负向", "ev": "DepositReturnService.save", "map": "DepositReturnServiceTest.testSave_guardCases_rejected", "st": "covered" },
+      { "id": "TND-RTN-04", "name": "新增退还：部分已退后余额不足拒绝（防重复全额退）", "type": "边界", "ev": "DepositReturnService.save", "map": "DepositReturnServiceTest.testSave_alreadyPartiallyReturned_rejected", "st": "covered" },
+      { "id": "TND-RTN-05", "name": "更新/删除退还记录", "type": "正向", "ev": "DepositReturnService.update/delete", "map": "DepositReturnServiceTest.testUpdate_delegatesUpdate/testDelete_delegatesDelete", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "投标费用",
+     "flows": [
+      { "id": "TND-FEE-01", "name": "分页查询（registerId 过滤）", "type": "正向", "ev": "TenderFeeService.page", "map": "TenderFeeServiceTest.testPage_returnsResult", "st": "covered" },
+      { "id": "TND-FEE-02", "name": "新增费用：DRAFT 初始化", "type": "正向", "ev": "TenderFeeService.save", "map": "TenderFeeServiceTest.testSave_initializesDraft", "st": "covered" },
+      { "id": "TND-FEE-03", "name": "新增费用：金额负/零/null 拒绝（TND-21）", "type": "负向", "ev": "TenderFeeService.save", "map": "TenderFeeServiceTest.testSave_invalidAmount_rejected", "st": "covered" },
+      { "id": "TND-FEE-04", "name": "编辑费用（仅DRAFT/不存在拒绝）", "type": "正向", "ev": "TenderFeeService.update", "map": "TenderFeeServiceTest.testUpdate_draftAllowed/testUpdate_nonDraftRejected/testUpdate_notFound", "st": "covered" },
+      { "id": "TND-FEE-05", "name": "删除费用（仅DRAFT）", "type": "正向", "ev": "TenderFeeService.delete", "map": "TenderFeeServiceTest.testDelete_draftAllowed/testDelete_nonDraftRejected", "st": "covered" },
+      { "id": "TND-FEE-06", "name": "确认付款：置 PAID+保存回单/不存在拒绝", "type": "正向", "ev": "TenderFeeService.confirmPayment", "map": "TenderFeeServiceTest.testConfirmPayment_setsPaidAndReceipt/testConfirmPayment_notFound", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "投标任务与资质",
+     "flows": [
+      { "id": "TND-TASK-01", "name": "投标任务 CRUD（分页/保存/删除）", "type": "正向", "ev": "TenderTaskService.page/save/delete", "map": "TenderTaskServiceTest系列", "st": "covered" },
+      { "id": "TND-CERT-01", "name": "企业资质证书 CRUD", "type": "正向", "ev": "CompanyCertificateService.page/save/update/delete", "map": "CompanyCertificateServiceTest系列", "st": "covered" },
+      { "id": "TND-CERT-02", "name": "人员资质证书 CRUD", "type": "正向", "ev": "PersonCertificateService.page/save/update/delete", "map": "PersonCertificateServiceTest系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "投标流程联调（L2）",
+     "flows": [
+      { "id": "TND-FLOW-01", "name": "投标流程端到端：登记→提交→开标中标→保证金缴纳审批", "type": "正向", "ev": "TenderRegister/OpenBidRecord/DepositApply 联动", "map": "TenderFlowIntegrationTest.step1~7", "st": "covered" },
+      { "id": "TND-FLOW-02", "name": "防篡改钉住：PUT 不得改 status + 已 PAID 保证金删除守卫", "type": "负向", "ev": "DepositApplyService.update/delete", "map": "TenderFlowIntegrationTest.step7（JdbcTemplate 直置 PAID）", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-labor",
+   "batch": "batch2",
+   "stats": { "flows": 32, "covered": 32, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "劳务合同",
+     "flows": [
+      { "id": "LAB-CON-01", "name": "新建劳务合同（DRAFT+金额初始化）", "type": "正向", "ev": "LaborContractService.save", "map": "LaborContractServiceTest.save系列", "st": "covered" },
+      { "id": "LAB-CON-02", "name": "编辑合同（仅DRAFT）", "type": "正向", "ev": "LaborContractService.update", "map": "LaborContractServiceTest.update草稿守卫系列", "st": "covered" },
+      { "id": "LAB-CON-03", "name": "编辑：PUT 体 status+三个累计金额字段剥离防篡改（P1 系统性修复）", "type": "负向", "ev": "LaborContractService.update", "map": "LaborContractServiceTest.update保护字段剥离用例", "st": "covered" },
+      { "id": "LAB-CON-04", "name": "删除合同（仅DRAFT）", "type": "正向", "ev": "LaborContractService.delete", "map": "LaborContractServiceTest.delete草稿守卫系列", "st": "covered" },
+      { "id": "LAB-CON-05", "name": "提交/详情/分页", "type": "正向", "ev": "LaborContractService.submit/getById/page", "map": "LaborContractServiceTest.submit/getById/page系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "派工单",
+     "flows": [
+      { "id": "LAB-WO-01", "name": "保存工单：合计=工时×单价+加班×加班单价，DRAFT 初始化", "type": "正向", "ev": "WorkOrderService.save/calculateTotalAmount", "map": "WorkOrderServiceTest.testSave_calculatesTotalAndDraftInitialized/testSave_nullFieldsDefaultToZero", "st": "covered" },
+      { "id": "LAB-WO-02", "name": "保存：负工时/负单价拒绝（D7-② 金额守卫）", "type": "负向", "ev": "WorkOrderService.save/validateAmounts", "map": "WorkOrderServiceTest.testSave_negativeAmountsRejected", "st": "covered" },
+      { "id": "LAB-WO-03", "name": "批量保存（事务，逐条校验+计算）", "type": "正向", "ev": "WorkOrderService.batchSave", "map": "WorkOrderServiceTest.testBatchSave_insertsAll", "st": "covered" },
+      { "id": "LAB-WO-04", "name": "编辑：仅DRAFT+重算金额+负加班工时拒绝（D7-②）", "type": "负向", "ev": "WorkOrderService.update", "map": "WorkOrderServiceTest.testUpdate_draftAllowed_recalculates/testUpdate_nonDraftRejected/testUpdate_negativeOvertimeRejected", "st": "covered" },
+      { "id": "LAB-WO-05", "name": "编辑：PUT 体 status 剥离防篡改（P1 系统性修复）", "type": "负向", "ev": "WorkOrderService.update", "map": "WorkOrderServiceTest.testUpdate_draftAllowed_recalculates（剥离断言）", "st": "covered" },
+      { "id": "LAB-WO-06", "name": "删除（仅DRAFT）", "type": "正向", "ev": "WorkOrderService.delete", "map": "WorkOrderServiceTest.testDelete_draftAllowed/testDelete_nonDraftRejected", "st": "covered" },
+      { "id": "LAB-WO-07", "name": "提交 DRAFT→APPROVED（供工资单汇总）", "type": "正向", "ev": "WorkOrderService.submit", "map": "WorkOrderServiceTest.testSubmit_draftToApproved/testSubmit_nonDraftRejected", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "工资单",
+     "flows": [
+      { "id": "LAB-PAY-01", "name": "新建工资单：汇总班组已批准工单金额", "type": "正向", "ev": "LaborPayrollService.save", "map": "LaborPayrollServiceTest.testSave_aggregatesApprovedWorkOrders/testSave_withOrderTypeFilter", "st": "covered" },
+      { "id": "LAB-PAY-02", "name": "新建：同班组同周期重叠拒绝（save+update 双守卫，LAB-46）", "type": "负向", "ev": "LaborPayrollService.save/update", "map": "LaborPayrollServiceTest.testSave_overlappingPeriod_rejected/update周期重叠用例", "st": "covered" },
+      { "id": "LAB-PAY-03", "name": "新建：无工单总额零/null 金额视同零+精度", "type": "边界", "ev": "LaborPayrollService.save", "map": "LaborPayrollServiceTest.testSave_noWorkOrders_zeroTotal/testSave_nullTotalAmountTreatedAsZero/testSave_bigDecimalPrecision", "st": "covered" },
+      { "id": "LAB-PAY-04", "name": "编辑（仅DRAFT/不存在拒绝）", "type": "正向", "ev": "LaborPayrollService.update", "map": "LaborPayrollServiceTest.testUpdate_draftAllowed/testUpdate_nonDraftRejected/testUpdate_notFound", "st": "covered" },
+      { "id": "LAB-PAY-05", "name": "提交 DRAFT→APPROVED/非草稿拒绝/不存在", "type": "正向", "ev": "LaborPayrollService.submit", "map": "LaborPayrollServiceTest.testSubmit_draftToApproved/testSubmit_nonDraftRejected/testSubmit_notFound", "st": "covered" },
+      { "id": "LAB-PAY-06", "name": "编辑：PUT 体 status+totalSettlement/totalPaid/unpaid 剥离防篡改（LAB-47）", "type": "负向", "ev": "LaborPayrollService.update", "map": "LaborPayrollServiceTest.update保护字段剥离用例", "st": "covered" },
+      { "id": "LAB-PAY-07", "name": "详情查询（存在/不存在）", "type": "正向", "ev": "LaborPayrollService.getById", "map": "LaborPayrollServiceTest.testGetById_found/testGetById_notFound", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "劳务结算",
+     "flows": [
+      { "id": "LAB-SET-01", "name": "新建结算单（DRAFT）", "type": "正向", "ev": "LaborSettlementService.save", "map": "LaborSettlementServiceTest.save系列", "st": "covered" },
+      { "id": "LAB-SET-02", "name": "提交：结算金额 null/负/零拒绝（P1 D1+D3）", "type": "负向", "ev": "LaborSettlementService.submit", "map": "LaborSettlementServiceTest.submit金额校验用例", "st": "covered" },
+      { "id": "LAB-SET-03", "name": "提交 DRAFT→APPROVED 守卫", "type": "正向", "ev": "LaborSettlementService.submit", "map": "LaborSettlementServiceTest.submit状态守卫用例", "st": "covered" },
+      { "id": "LAB-SET-04", "name": "编辑：仅DRAFT+status 剥离防篡改", "type": "负向", "ev": "LaborSettlementService.update", "map": "LaborSettlementServiceTest.update守卫+剥离用例", "st": "covered" },
+      { "id": "LAB-SET-05", "name": "删除（仅DRAFT）", "type": "正向", "ev": "LaborSettlementService.delete", "map": "LaborSettlementServiceTest.delete系列", "st": "covered" },
+      { "id": "LAB-SET-06", "name": "分页/详情", "type": "正向", "ev": "LaborSettlementService.page/getById", "map": "LaborSettlementServiceTest.page系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "劳务产值",
+     "flows": [
+      { "id": "LAB-OUT-01", "name": "上报产值（DRAFT）", "type": "正向", "ev": "LaborOutputReportService.save", "map": "LaborOutputReportServiceTest.save系列", "st": "covered" },
+      { "id": "LAB-OUT-02", "name": "编辑（仅DRAFT）+status 剥离防篡改", "type": "负向", "ev": "LaborOutputReportService.update", "map": "LaborOutputReportServiceTest.update守卫+剥离用例", "st": "covered" },
+      { "id": "LAB-OUT-03", "name": "提交/删除守卫", "type": "正向", "ev": "LaborOutputReportService.submit/delete", "map": "LaborOutputReportServiceTest.submit/delete系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "班组/花名册/奖罚/统计",
+     "flows": [
+      { "id": "LAB-TEAM-01", "name": "班组 CRUD（分页/保存/编辑/删除）", "type": "正向", "ev": "TeamService.page/save/update/delete", "map": "TeamServiceTest系列", "st": "covered" },
+      { "id": "LAB-RST-01", "name": "花名册新增/编辑/删除/分页（考勤字段）", "type": "正向", "ev": "LaborRosterService.page/save/update/delete", "map": "LaborRosterServiceTest系列", "st": "covered" },
+      { "id": "LAB-RWP-01", "name": "劳务奖罚记录 CRUD", "type": "正向", "ev": "LaborRewardPunishService.page/save/delete", "map": "LaborRewardPunishServiceTest系列", "st": "covered" },
+      { "id": "LAB-SAL-01", "name": "工资统计（月度汇总/班组维度/导出）", "type": "正向", "ev": "SalaryStatisticsServiceImpl", "map": "SalaryStatisticsServiceImplTest系列", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-subcontract",
+   "batch": "batch2",
+   "stats": { "flows": 17, "covered": 17, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "分包合同",
+     "flows": [
+      { "id": "SUB-CON-01", "name": "新建分包合同（DRAFT）", "type": "正向", "ev": "SubcontractService.save", "map": "SubcontractServiceTest.SaveTests", "st": "covered" },
+      { "id": "SUB-CON-02", "name": "编辑（仅DRAFT）", "type": "正向", "ev": "SubcontractService.update", "map": "SubcontractServiceTest.UpdateTests", "st": "covered" },
+      { "id": "SUB-CON-03", "name": "编辑：PUT 体 status+三个累计字段剥离防篡改（P1 系统性修复）", "type": "负向", "ev": "SubcontractService.update", "map": "SubcontractMutationTest.update保护字段剥离用例", "st": "covered" },
+      { "id": "SUB-CON-04", "name": "删除（仅DRAFT）", "type": "正向", "ev": "SubcontractService.delete", "map": "SubcontractServiceTest.DeleteTests", "st": "covered" },
+      { "id": "SUB-CON-05", "name": "提交审批链路（状态守卫）", "type": "正向", "ev": "SubcontractService.submit", "map": "SubcontractServiceTest.SubmitTests", "st": "covered" },
+      { "id": "SUB-CON-06", "name": "分页/详情", "type": "正向", "ev": "SubcontractService.page/getById", "map": "SubcontractServiceTest.PageTests/GetByIdTests", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "分包结算",
+     "flows": [
+      { "id": "SUB-SET-01", "name": "创建结算单（明细金额汇总）", "type": "正向", "ev": "SubcontractSettlementService.create", "map": "SubcontractSettlementServiceTest.create系列", "st": "covered" },
+      { "id": "SUB-SET-02", "name": "创建：状态/合同守卫", "type": "负向", "ev": "SubcontractSettlementService.create", "map": "SubcontractSettlementServiceTest.create守卫用例", "st": "covered" },
+      { "id": "SUB-SET-03", "name": "结算金额属性测试（汇总一致性）", "type": "边界", "ev": "SubcontractSettlementService金额汇总", "map": "SubcontractSettlementPropertyTest（fast-check）", "st": "covered" },
+      { "id": "SUB-SET-04", "name": "提交/审批回写（合同累计结算原子累加）", "type": "正向", "ev": "SubcontractSettlementService.submit/onApproved", "map": "SubcontractSettlementServiceTest.submit/onApproved系列", "st": "covered" },
+      { "id": "SUB-SET-05", "name": "明细 CRUD+Excel 导入导出", "type": "正向", "ev": "SubcontractSettlementService明细方法", "map": "SubcontractSettlementServiceTest.明细系列; SubcontractServiceTest.明细系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "分包产值",
+     "flows": [
+      { "id": "SUB-OUT-01", "name": "上报分包产值（回写合同累计产值）", "type": "正向", "ev": "SubcontractOutputService.save", "map": "SubcontractOutputServiceTest.save系列", "st": "covered" },
+      { "id": "SUB-OUT-02", "name": "编辑（仅DRAFT）+status 剥离防篡改", "type": "负向", "ev": "SubcontractOutputService.update", "map": "SubcontractOutputServiceTest.update守卫+剥离用例", "st": "covered" },
+      { "id": "SUB-OUT-03", "name": "删除守卫（仅DRAFT）", "type": "正向", "ev": "SubcontractOutputService.delete", "map": "SubcontractOutputServiceTest.delete系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "分包奖罚",
+     "flows": [
+      { "id": "SUB-RWP-01", "name": "保存奖罚：类型白名单 REWARD/PUNISH+金额>0 守卫（P2 销缺口）", "type": "负向", "ev": "SubcontractRewardPunishService.save", "map": "SubcontractServiceTest.save_normalRecord_success/save_invalidTypeOrAmount_rejected", "st": "covered" },
+      { "id": "SUB-RWP-02", "name": "奖罚分页（项目/合同过滤）", "type": "正向", "ev": "SubcontractRewardPunishService.page", "map": "SubcontractServiceTest.page_withFilters_returnsPageResult", "st": "covered" },
+      { "id": "SUB-RWP-03", "name": "删除奖罚记录", "type": "正向", "ev": "SubcontractRewardPunishService.delete", "map": "SubcontractServiceTest.delete_normalRecord_success", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-machine",
+   "batch": "batch2",
+   "stats": { "flows": 25, "covered": 25, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "机械合同",
+     "flows": [
+      { "id": "MAC-CON-01", "name": "新建机械合同（DRAFT）", "type": "正向", "ev": "MachineContractService.save", "map": "MachineContractServiceTest.save系列", "st": "covered" },
+      { "id": "MAC-CON-02", "name": "编辑（仅DRAFT）/删除（仅DRAFT）", "type": "正向", "ev": "MachineContractService.update/delete", "map": "MachineContractServiceTest.update/delete草稿守卫系列", "st": "covered" },
+      { "id": "MAC-CON-03", "name": "提交/分页/详情", "type": "正向", "ev": "MachineContractService.submit/page/getById", "map": "MachineContractServiceTest系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "机械进退场",
+     "flows": [
+      { "id": "MAC-ENT-01", "name": "进场：机械台账创建/置 IN_FIELD", "type": "正向", "ev": "MachineEntryService.entry", "map": "MachineEntryServiceTest.进场系列", "st": "covered" },
+      { "id": "MAC-ENT-02", "name": "退场：已结算工单守卫（未结算不得退场）", "type": "负向", "ev": "MachineEntryService.exit", "map": "MachineEntryServiceTest.退场守卫系列", "st": "covered" },
+      { "id": "MAC-ENT-03", "name": "退场正常链路（台账置 RETIRED）", "type": "正向", "ev": "MachineEntryService.exit", "map": "MachineEntryServiceTest.退场系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "机械台账",
+     "flows": [
+      { "id": "MAC-LED-01", "name": "台账 CRUD/分页", "type": "正向", "ev": "MachineLedgerService.page/save/delete", "map": "MachineLedgerServiceTest系列", "st": "covered" },
+      { "id": "MAC-LED-02", "name": "编辑：status 置 null 防 PUT 篡改状态（MAC-06）", "type": "负向", "ev": "MachineLedgerService.update", "map": "MachineLedgerServiceTest.update状态剥离用例", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "机械工作日志",
+     "flows": [
+      { "id": "MAC-LOG-01", "name": "记录日志：仅 IN_FIELD 机械可记录", "type": "负向", "ev": "MachineWorkLogService.save", "map": "MachineWorkLogServiceTest.save在场守卫系列", "st": "covered" },
+      { "id": "MAC-LOG-02", "name": "记录：台班数/工作量非负校验（MAC-23）", "type": "负向", "ev": "MachineWorkLogService.save/validateQuantities", "map": "MachineWorkLogServiceTest.save负值拒绝用例", "st": "covered" },
+      { "id": "MAC-LOG-03", "name": "记录：settlementStatus 置 null 防伪造 SETTLED（MAC-22）", "type": "负向", "ev": "MachineWorkLogService.save/update", "map": "MachineWorkLogServiceTest.settlementStatus剥离用例", "st": "covered" },
+      { "id": "MAC-LOG-04", "name": "编辑：仅DRAFT+已结算日志禁止篡改台班/工作量（B4）", "type": "负向", "ev": "MachineWorkLogService.update", "map": "MachineWorkLogServiceTest.update已结算守卫系列", "st": "covered" },
+      { "id": "MAC-LOG-05", "name": "删除/提交/分页", "type": "正向", "ev": "MachineWorkLogService.delete/submit/page", "map": "MachineWorkLogServiceTest系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "机械结算",
+     "flows": [
+      { "id": "MAC-SET-01", "name": "创建结算单（按日志汇总金额）", "type": "正向", "ev": "MachineWorkSettlementService.create/save", "map": "MachineWorkSettlementServiceTest.CreateTests", "st": "covered" },
+      { "id": "MAC-SET-02", "name": "重叠周期拒绝（同机械同周期不得重复结算）", "type": "负向", "ev": "BizMachineWorkSettlementMapper.countOverlapping", "map": "MachineWorkSettlementServiceTest.重叠周期系列", "st": "covered" },
+      { "id": "MAC-SET-03", "name": "提交审批：置中间态+启动 machine_settlement_approval", "type": "正向", "ev": "MachineWorkSettlementService.submit", "map": "MachineWorkSettlementServiceTest.SubmitTests", "st": "covered" },
+      { "id": "MAC-SET-04", "name": "审批通过回调：日志 settlementStatus=SETTLED+合同累计结算回写（幂等）", "type": "正向", "ev": "MachineWorkSettlementService.onApproved", "map": "MachineWorkSettlementServiceTest.OnApprovedTests", "st": "covered" },
+      { "id": "MAC-SET-05", "name": "审批驳回闭环：status 1→3（幂等，仅已提交可驳回，P1-1）", "type": "异常", "ev": "MachineWorkSettlementService.onRejected", "map": "MachineWorkSettlementServiceTest.OnRejectedTests", "st": "covered" },
+      { "id": "MAC-SET-06", "name": "删除结算单：仅草稿/已驳回可删+级联删明细（P1-3）", "type": "正向", "ev": "MachineWorkSettlementService.delete + MachineSettlementController DELETE", "map": "MachineWorkSettlementServiceTest.DeleteTests", "st": "covered" },
+      { "id": "MAC-SET-07", "name": "已驳回周期释放（status!=3 不计入重叠）", "type": "边界", "ev": "BizMachineWorkSettlementMapper.countOverlapping", "map": "MachineWorkSettlementServiceTest.驳回后重新结算用例", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "机械维修/油耗/使用",
+     "flows": [
+      { "id": "MAC-RPR-01", "name": "报修：置 REPORTED", "type": "正向", "ev": "MachineRepairService.report", "map": "MachineRepairServiceTest.报修系列", "st": "covered" },
+      { "id": "MAC-RPR-02", "name": "派工：仅已报修可派工", "type": "负向", "ev": "MachineRepairService.assign", "map": "MachineRepairServiceTest.派工守卫系列", "st": "covered" },
+      { "id": "MAC-RPR-03", "name": "维修完成/验收状态链", "type": "正向", "ev": "MachineRepairService.complete/accept", "map": "MachineRepairServiceTest系列", "st": "covered" },
+      { "id": "MAC-OIL-01", "name": "加油记录保存/分页", "type": "正向", "ev": "MachineOilRecordService.save/page", "map": "MachineOilRecordServiceTest系列", "st": "covered" },
+      { "id": "MAC-USG-01", "name": "使用记录保存/删除/分页", "type": "正向", "ev": "MachineUsageRecordService.save/delete/page", "map": "MachineUsageRecordServiceTest系列", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-material",
+   "batch": "batch2",
+   "stats": { "flows": 26, "covered": 26, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "材料入库",
+     "flows": [
+      { "id": "MAT-INB-01", "name": "入库保存（库存增加+DRAFT）", "type": "正向", "ev": "MaterialInboundService.save", "map": "MaterialInboundServiceTest.save系列; MaterialServiceTest入库系列", "st": "covered" },
+      { "id": "MAT-INB-02", "name": "编辑（仅DRAFT）/删除（仅DRAFT+库存对称回填，B3）", "type": "正向", "ev": "MaterialInboundService.update/delete", "map": "MaterialInboundServiceTest.update/delete系列", "st": "covered" },
+      { "id": "MAT-INB-03", "name": "提交/分页/详情", "type": "正向", "ev": "MaterialInboundService.submit/page/getById", "map": "MaterialInboundServiceTest系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "材料出库",
+     "flows": [
+      { "id": "MAT-OUT-01", "name": "领料出库：数量>0 守卫+库存不足拒绝+库存扣减（MAT-16/D4）", "type": "负向", "ev": "MaterialOutboundService.save", "map": "MaterialOutboundServiceTest.save守卫系列", "st": "covered" },
+      { "id": "MAT-OUT-02", "name": "退货出库：库存不足拒绝退货+totalReturn 累加", "type": "负向", "ev": "MaterialOutboundService.save", "map": "MaterialOutboundServiceTest.退货系列", "st": "covered" },
+      { "id": "MAT-OUT-03", "name": "编辑（仅DRAFT）", "type": "正向", "ev": "MaterialOutboundService.update", "map": "MaterialOutboundServiceTest.update系列", "st": "covered" },
+      { "id": "MAT-OUT-04", "name": "删除：库存对称回填（B3）", "type": "正向", "ev": "MaterialOutboundService.delete", "map": "MaterialOutboundServiceTest.delete库存回填用例", "st": "covered" },
+      { "id": "MAT-OUT-05", "name": "删除退货出库：联动作废 PENDING 退款申请（P1 D1）", "type": "联动", "ev": "MaterialOutboundService.delete+refundMapper", "map": "MaterialOutboundServiceTest.RETURN删除作废退款用例/PICK不触发用例", "st": "covered" },
+      { "id": "MAT-OUT-06", "name": "退货事件发布：quantity null→0 归一防 NPE（D8）", "type": "边界", "ev": "MaterialOutboundService.publishReturnEvent", "map": "MaterialOutboundServiceTest.退货事件系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "项目库存",
+     "flows": [
+      { "id": "MAT-STK-01", "name": "库存初始化/入库出库联动更新", "type": "正向", "ev": "ProjectMaterialStockService", "map": "ProjectMaterialStockServiceTest系列", "st": "covered" },
+      { "id": "MAT-STK-02", "name": "库存查询（项目/材料筛选）", "type": "正向", "ev": "ProjectMaterialStockService.page", "map": "ProjectMaterialStockServiceTest.page系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "库存盘点",
+     "flows": [
+      { "id": "MAT-INV-01", "name": "盘点保存：实盘数量非负校验（MAT-30 拒绝负实盘）", "type": "负向", "ev": "MaterialInventoryService.save", "map": "MaterialInventoryServiceTest.save负实盘拒绝用例", "st": "covered" },
+      { "id": "MAT-INV-02", "name": "盘点盈亏调整/审批链路", "type": "正向", "ev": "MaterialInventoryService.submit/adjust", "map": "MaterialInventoryServiceTest系列", "st": "covered" },
+      { "id": "MAT-INV-03", "name": "编辑/删除草稿守卫", "type": "正向", "ev": "MaterialInventoryService.update/delete", "map": "MaterialInventoryServiceTest.update/delete系列", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "材料调拨",
+     "flows": [
+      { "id": "MAT-TRF-01", "name": "创建调拨单（PENDING，双向库存预检）", "type": "正向", "ev": "MaterialTransferService.save", "map": "MaterialTransferServiceTest.save系列", "st": "covered" },
+      { "id": "MAT-TRF-02", "name": "提交审批（material_transfer_approval）", "type": "正向", "ev": "MaterialTransferService.submit", "map": "MaterialTransferServiceTest.submit系列", "st": "covered" },
+      { "id": "MAT-TRF-03", "name": "审批通过：双向库存变动（幂等，已 APPROVED 短路）", "type": "正向", "ev": "MaterialTransferService.onApproved", "map": "MaterialTransferServiceTest.onApproved幂等系列", "st": "covered" },
+      { "id": "MAT-TRF-04", "name": "审批驳回：库存不变", "type": "异常", "ev": "MaterialTransferService.onRejected", "map": "MaterialTransferServiceTest.onRejected系列", "st": "covered" },
+      { "id": "MAT-TRF-05", "name": "调拨审批端到端（双向库存 5 硬断言）", "type": "正向", "ev": "L4 全生命周期", "map": "lifecycle-sim-v2.sh stage_9L", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "材料退款",
+     "flows": [
+      { "id": "MAT-RFD-01", "name": "退货事件→自动创建退款申请并提交审批（PENDING）", "type": "联动", "ev": "MaterialRefundService.createRefundFromReturn", "map": "MaterialRefundServiceTest.createRefundFromReturn_fullFlow", "st": "covered" },
+      { "id": "MAT-RFD-02", "name": "退款金额=数量×入库单价（HALF_UP）+明细落库", "type": "边界", "ev": "MaterialRefundService.createRefundFromReturn", "map": "MaterialRefundServiceTest.createRefundFromReturn_fullFlow（6076.50 断言）", "st": "covered" },
+      { "id": "MAT-RFD-03", "name": "审批通过：仅 PENDING 可生效（CANCELED/驳回单据不得扣款，P1）", "type": "负向", "ev": "MaterialRefundService.onRefundApproved", "map": "MaterialRefundServiceTest.onRefundApproved_ignoreCases", "st": "covered" },
+      { "id": "MAT-RFD-04", "name": "退款额超过合同累计已付款拒绝（MAT-37/D3 扣减下限守卫）", "type": "负向", "ev": "MaterialRefundService.onRefundApproved", "map": "MaterialRefundServiceTest.onRefundApproved_exceedsCumulativePaid_rejected", "st": "covered" },
+      { "id": "MAT-RFD-05", "name": "审批通过正常扣减合同累计已付款", "type": "正向", "ev": "MaterialRefundService.onRefundApproved", "map": "MaterialRefundServiceTest.onRefundApproved_success", "st": "covered" },
+      { "id": "MAT-RFD-06", "name": "幂等：重复事件不重复扣减", "type": "边界", "ev": "MaterialRefundService.onRefundApproved", "map": "MaterialRefundServiceTest.onRefundApproved_alreadyApproved_skipsDeduction", "st": "covered" },
+      { "id": "MAT-RFD-07", "name": "退款详情组装/分页筛选", "type": "正向", "ev": "MaterialRefundService.getDetail/page", "map": "MaterialRefundServiceTest.getDetail_variants/page_delegates", "st": "covered" }
+     ]
+    }
+   ]
   }
  ],
  "approvalFlows": [
@@ -3638,7 +4006,17 @@
    "l1": true,
    "l2": true,
    "st": "covered",
-   "note": "唯一有L2的流程"
+   "note": "唯一有L2的流程；批次二补 onRejected 驳回闭环（status 1→3）"
+  },
+  {
+   "processKey": "deposit_apply_approval",
+   "starter": "DepositApplyService.submit",
+   "callback": "DepositApplyApprovalListener→onApproved(SUBMITTED→PAID)/onRejected(SUBMITTED→DRAFT)",
+   "l4": true,
+   "l1": true,
+   "l2": true,
+   "st": "covered",
+   "note": "批次二新增（P1 保证金审批闭环修复，L4 stage_9J 同步 SUBMITTED 中间态断言）"
   },
   {
    "processKey": "material_refund_approval",
@@ -3861,6 +4239,31 @@
      "status": "CI验证通过（断言修正后全绿）"
     }
    ]
+  },
+  "batch2_disposition": {
+   "date": "2026-08-12",
+   "scope": "zw-project/zw-tender/zw-labor/zw-subcontract/zw-machine/zw-material（161 条流程条目全 covered，部分条目聚合多个子流程）",
+   "p1_defects_fixed": [
+    "LAB-SET 结算金额 null/负/零 NPE 与负数结算守卫（submit 校验）",
+    "TND-DEP 保证金提交即 PAID 漏洞：改 SUBMITTED 中间态+DepositApplyApprovalListener 审批闭环+L2/L4 同步",
+    "MAC-SET 驳回无闭环：onRejected status 1→3 幂等+countOverlapping 释放已驳回周期+DELETE 端点",
+    "MAT-OUT 删退货出库不作废退款：delete 联动作废 PENDING 退款+onRefundApproved 仅 PENDING 可生效",
+    "9 个 Service update 体 status/累计金额字段剥离防篡改（MP NOT_NULL 策略）：LaborPayroll/WorkOrder/LaborSettlement/LaborOutput/LaborContract/Subcontract/SubcontractOutput/SubcontractSettlement/TenderRegister",
+    "LaborPayroll update 重跑周期重叠守卫（LAB-46）"
+   ],
+   "p2_guards_fixed": [
+    "TND D3 状态回退三处守卫：投标登记拦 WON/CONSTRUCTION、submit 仅 REGISTERED、中标登记拦 CONSTRUCTION",
+    "TND-21 投标费用金额>0；TND-36/37 保证金退还上限（≤缴纳额-已退）",
+    "MAC-06 台账 status 剥离；MAC-22 settlementStatus 剥离；MAC-23 台班/工作量非负",
+    "MAT-16/D4 出库数量>0；MAT-30 盘点负实盘拒绝；MAT-37/D3 退款额≤累计已付；D8 退货事件 quantity null 归一",
+    "PRJ D4 updateStatus 目标白名单+CLOSING 守卫；D7 成员唯一性/findMember 仅活跃；D8 旧接口 validateRoles",
+    "LAB D7-② 工单工时/单价非负；SUB 奖罚类型白名单+金额>0（销测试缺口）"
+   ],
+   "exemptions": [
+    "MAC-SET 审批回调 check-then-act 非原子+updateById 乐观锁返回值未检查（并发窗口）：同批次一并发类口径，登记为乐观锁/唯一索引架构改造专项",
+    "MAC-PRJ 机械结算不回写项目 totalExpense（与付款链路不对称）：业务口径待产品确认，暂豁免不改代码"
+   ],
+   "verification": "6 模块回归 661+3 例全绿（project 46/tender 87/machine 131/material 105/labor 111/subcontract 184），CI 待验"
   }
  }
 }

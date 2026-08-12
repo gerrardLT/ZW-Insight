@@ -40,6 +40,7 @@ public class WorkOrderService {
      * 保存工单
      */
     public void save(BizWorkOrder workOrder) {
+        validateAmounts(workOrder);
         calculateTotalAmount(workOrder);
         workOrder.setStatus("DRAFT");
         workOrderMapper.insert(workOrder);
@@ -51,9 +52,24 @@ public class WorkOrderService {
     @Transactional(rollbackFor = Exception.class)
     public void batchSave(List<BizWorkOrder> workOrders) {
         for (BizWorkOrder workOrder : workOrders) {
+            validateAmounts(workOrder);
             calculateTotalAmount(workOrder);
             workOrder.setStatus("DRAFT");
             workOrderMapper.insert(workOrder);
+        }
+    }
+
+    /**
+     * P2 修复（2026-08-12，批次二 D7-②）：工时/单价非负校验，
+     * 负值会使 totalAmount 为负并在工资核算中反向扣减
+     */
+    private void validateAmounts(BizWorkOrder workOrder) {
+        BigDecimal[] values = {workOrder.getHours(), workOrder.getHourlyRate(),
+                workOrder.getOvertime(), workOrder.getOvertimeRate()};
+        for (BigDecimal value : values) {
+            if (value != null && value.signum() < 0) {
+                throw new BusinessException("工时/单价不可为负数");
+            }
         }
     }
 
@@ -68,6 +84,9 @@ public class WorkOrderService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
+        // P1 修复（2026-08-12，批次二取证枚举）：防 PUT 体携带 status 直接落库绕过 submit
+        workOrder.setStatus(null);
+        validateAmounts(workOrder);
         calculateTotalAmount(workOrder);
         workOrderMapper.updateById(workOrder);
     }

@@ -63,6 +63,12 @@ public class MaterialInventoryService {
                 BigDecimal book = stock.getStockQuantity() == null ? BigDecimal.ZERO : stock.getStockQuantity();
                 BigDecimal actual = entry.getValue() == null ? BigDecimal.ZERO : entry.getValue();
 
+                // P2 修复（2026-08-12，批次二 MAT-30）：实盘数量非负校验，
+                // 负值审批后会把库存直接覆写为负
+                if (actual.signum() < 0) {
+                    throw new BusinessException("材料[" + stock.getMaterialName() + "]实盘数量不可为负数");
+                }
+
                 BizMaterialInventoryDetail detail = new BizMaterialInventoryDetail();
                 detail.setInventoryId(inventory.getId());
                 detail.setStockId(stock.getId());

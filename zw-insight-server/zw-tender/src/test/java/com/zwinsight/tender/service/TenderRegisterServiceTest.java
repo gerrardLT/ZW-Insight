@@ -143,6 +143,25 @@ class TenderRegisterServiceTest {
         }
 
         @Test
+        @DisplayName("新增：已中标/施工中项目拒绝登记（P2 D3：防状态回退为 TENDERING）")
+        void testSave_wonOrConstructionProject_rejected() {
+            for (String status : new String[]{"WON", "CONSTRUCTION"}) {
+                BizTenderRegister register = new BizTenderRegister();
+                register.setProjectId(100L);
+
+                BizProject project = new BizProject();
+                project.setId(100L);
+                project.setStatus(status);
+                when(projectMapper.selectById(100L)).thenReturn(project);
+
+                assertThatThrownBy(() -> tenderRegisterService.save(register))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("不可新增投标登记");
+            }
+            verify(registerMapper, never()).insert(any());
+        }
+
+        @Test
         @DisplayName("新增：项目不存在时跳过项目状态回写")
         void testSave_projectNotFound_skipsProjectUpdate() {
             BizTenderRegister register = new BizTenderRegister();
@@ -323,6 +342,22 @@ class TenderRegisterServiceTest {
             assertThatThrownBy(() -> tenderRegisterService.submit(999L))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("投标登记不存在");
+        }
+
+        @Test
+        @DisplayName("提交：非报名状态拒绝（P2 D3：防 WON/LOST/SUBMITTED 被重提回退）")
+        void testSubmit_nonRegistered_rejected() {
+            for (String status : new String[]{"WON", "LOST", "SUBMITTED"}) {
+                BizTenderRegister register = new BizTenderRegister();
+                register.setId(1L);
+                register.setStatus(status);
+                when(registerMapper.selectById(1L)).thenReturn(register);
+
+                assertThatThrownBy(() -> tenderRegisterService.submit(1L))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("仅报名状态可提交");
+            }
+            verify(registerMapper, never()).updateById(any());
         }
     }
 }
