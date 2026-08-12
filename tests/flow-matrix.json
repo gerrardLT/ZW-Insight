@@ -3655,7 +3655,7 @@
    "l4": true,
    "l1": true,
    "st": "covered",
-   "note": "L4 stage_9L 端到端已补（2026-08-13）：创建调入项目→调拨单DRAFT→SUBMITTED→审批前库存不变→approve→APPROVED→双向库存硬断言（源500/调出200/调入200/调入200），待CI验证"
+   "note": "L4 stage_9L 端到端 CI 验证通过（run 31598717907，双向库存硬断言全部命中）"
   },
   {
    "processKey": "completion_acceptance_approval",
@@ -3848,16 +3848,17 @@
   },
   "l4_disposition": {
    "date": "2026-08-13",
+   "ciRun": "31598717907",
    "items": [
     {
      "id": "stage_9L",
-     "desc": "材料调拨审批端到端（创建调入项目+双向库存 5 断言+审批前库存不变断言）",
-     "status": "脚本已写入，待 CI 验证"
+     "desc": "材料调拨审批端到端（创建调入项目+审批前库存不变+双向库存5硬断言）",
+     "status": "CI验证通过（首跑即过）"
     },
     {
      "id": "stage_9B",
-     "desc": "竣工验收/最终结算 approve 改 required=1 + 验收单 APPROVED/结算单 SETTLED 状态断言",
-     "status": "脚本已写入，待 CI 验证"
+     "desc": "竣工验收/最终结算approve required=1+验收单APPROVED+结算单APPROVED+施工合同SETTLED流转断言",
+     "status": "CI验证通过（断言修正后全绿）"
     }
    ]
   }
