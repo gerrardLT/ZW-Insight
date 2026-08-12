@@ -905,8 +905,9 @@ stage_9b_completion_settlement() {
   sleep 2
   approve "最终结算通过" 1
 
-  # 结算单审批后状态断言（onApproved 置 SETTLED）
-  assert_status "/api/v1/project-settlements/$settlement_id" "status" "SETTLED" "最终结算单状态"
+  # 结算单审批后状态断言（onApproved 置 APPROVED）+ 施工合同 EFFECTIVE→SETTLED 流转断言
+  assert_status "/api/v1/project-settlements/$settlement_id" "status" "APPROVED" "最终结算单状态"
+  assert_status "/api/v1/contract/$CONTRACT_ID" "status" "SETTLED" "施工合同结算后状态"
 
   record_stage_result "PASSED"
 }
