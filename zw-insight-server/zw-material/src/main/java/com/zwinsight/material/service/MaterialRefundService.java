@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
-import com.zwinsight.contract.mapper.BizExpenseContractMapper;
+import com.zwinsight.purchase.mapper.PurchaseContractPayMapper;
 import com.zwinsight.material.domain.BizMaterialRefund;
 import com.zwinsight.material.domain.BizMaterialRefundDetail;
 import com.zwinsight.material.dto.MaterialRefundDetailVO;
@@ -46,7 +46,7 @@ public class MaterialRefundService {
     private final BizMaterialRefundMapper refundMapper;
     private final BizMaterialRefundDetailMapper refundDetailMapper;
     private final ApprovalService approvalService;
-    private final BizExpenseContractMapper expenseContractMapper;
+    private final PurchaseContractPayMapper purchaseContractPayMapper;
 
     /**
      * 根据退货出库事件创建退款申请，并自动提交 Flowable 审批流程
@@ -151,18 +151,19 @@ public class MaterialRefundService {
         refund.setStatus("APPROVED");
         refundMapper.updateById(refund);
 
-        // 2. 扣减采购合同的累计付款金额（P2 修复 MAT-37/D3：退款额不得超过累计已付，
-        // 原 SQL 直接相减无下限守卫，cumulative_paid 可变负）
-        if (refund.getRefundAmount() != null && refund.getContractId() != null) {
-            com.zwinsight.contract.domain.BizExpenseContract contract =
-                    expenseContractMapper.selectById(refund.getContractId());
-            java.math.BigDecimal cumulativePaid = contract != null && contract.getCumulativePaid() != null
-                    ? contract.getCumulativePaid() : java.math.BigDecimal.ZERO;
-            if (refund.getRefundAmount().compareTo(cumulativePaid) > 0) {
-                throw new BusinessException("退款金额超过合同累计已付款，无法退款");
-            }
+        // 2. 扣减采购合同的累计付款金额。
+        // 修复（2026-08-13，批次二 L4 stage_9K 500 事故）：原实现经 BizExpenseContractMapper
+        // 扣减 biz_expense_contract，而采购付款回写的是 biz_purchase_contract（见
+        // PaymentApplyService.addCumulativePaid 路由），扣减长期命中 0 行静默无效；
+        // 新守卫又因查错表（cumulativePaid 恒为 0）把合法退款全部拒绝成 500。
+        // 现改走 PurchaseContractPayMapper 原子扣减（WHERE 条件含下限守卫，并发安全）。
+        if (refund.getRefundAmount() == null || refund.getContractId() == null) {
+            throw new BusinessException("退款申请缺少退款金额或合同信息，无法扣减");
         }
-        expenseContractMapper.deductPaidAmount(refund.getContractId(), refund.getRefundAmount());
+        int rows = purchaseContractPayMapper.deductPaid(refund.getContractId(), refund.getRefundAmount());
+        if (rows == 0) {
+            throw new BusinessException("退款失败：采购合同不存在或退款金额超过合同累计已付款");
+        }
 
         log.info("退款审批通过，合同已付款金额已扣减: refundId={}, contractId={}, refundAmount={}",
                 refundId, refund.getContractId(), refund.getRefundAmount());

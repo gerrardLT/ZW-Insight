@@ -181,10 +181,11 @@ describe('12 - 分包管理', () => {
     let rpId: number
 
     it('创建分包奖罚记录', async () => {
+      // 字段名以后端实体为准：rpType（REWARD/PUNISH），amount 必须 > 0（P2 守卫，2026-08-13）
       const resp = await client.post('/api/v1/subcontract/reward-punish', {
         projectId,
         contractId: subcontractId,
-        type: 'PUNISH',
+        rpType: 'PUNISH',
         amount: 10000,
         reason: 'E2E测试：质量问题罚款',
       })

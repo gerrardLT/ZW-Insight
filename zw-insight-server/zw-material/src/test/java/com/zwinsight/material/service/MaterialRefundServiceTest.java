@@ -4,8 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
-import com.zwinsight.contract.domain.BizExpenseContract;
-import com.zwinsight.contract.mapper.BizExpenseContractMapper;
+import com.zwinsight.purchase.mapper.PurchaseContractPayMapper;
 import com.zwinsight.material.domain.BizMaterialRefund;
 import com.zwinsight.material.domain.BizMaterialRefundDetail;
 import com.zwinsight.material.dto.MaterialRefundDetailVO;
@@ -52,7 +51,7 @@ class MaterialRefundServiceTest {
     private ApprovalService approvalService;
 
     @Mock
-    private BizExpenseContractMapper expenseContractMapper;
+    private PurchaseContractPayMapper purchaseContractPayMapper;
 
     @InjectMocks
     private MaterialRefundService service;
@@ -100,7 +99,7 @@ class MaterialRefundServiceTest {
     }
 
     @Test
-    @DisplayName("onRefundApproved - APPROVED 时置已审批并扣减合同已付款")
+    @DisplayName("onRefundApproved - APPROVED 时置已审批并原子扣减采购合同累计已付款")
     void onRefundApproved_success() {
         BizMaterialRefund refund = new BizMaterialRefund();
         refund.setId(1L);
@@ -108,37 +107,47 @@ class MaterialRefundServiceTest {
         refund.setRefundAmount(new BigDecimal("6076.50"));
         refund.setStatus("PENDING");
         when(refundMapper.selectById(1L)).thenReturn(refund);
-        BizExpenseContract contract = new BizExpenseContract();
-        contract.setId(200L);
-        contract.setCumulativePaid(new BigDecimal("80000"));
-        when(expenseContractMapper.selectById(200L)).thenReturn(contract);
+        when(purchaseContractPayMapper.deductPaid(200L, new BigDecimal("6076.50"))).thenReturn(1);
 
         service.onRefundApproved(new ApprovalCompleteEvent(this, "MATERIAL_REFUND", 1L, "APPROVED"));
 
         assertThat(refund.getStatus()).isEqualTo("APPROVED");
-        verify(expenseContractMapper).deductPaidAmount(200L, new BigDecimal("6076.50"));
+        verify(purchaseContractPayMapper).deductPaid(200L, new BigDecimal("6076.50"));
     }
 
     @Test
-    @DisplayName("onRefundApproved - 退款额超过合同累计已付款时拒绝（MAT-37/D3 扣减下限守卫）")
-    void onRefundApproved_exceedsCumulativePaid_rejected() {
+    @DisplayName("onRefundApproved - 合同不存在或退款额超累计已付时拒绝（扣减命中 0 行，MAT-37/D3）")
+    void onRefundApproved_deductMiss_rejected() {
         BizMaterialRefund refund = new BizMaterialRefund();
         refund.setId(1L);
         refund.setContractId(200L);
         refund.setRefundAmount(new BigDecimal("90000"));
         refund.setStatus("PENDING");
         when(refundMapper.selectById(1L)).thenReturn(refund);
-        BizExpenseContract contract = new BizExpenseContract();
-        contract.setId(200L);
-        contract.setCumulativePaid(new BigDecimal("80000"));
-        when(expenseContractMapper.selectById(200L)).thenReturn(contract);
+        when(purchaseContractPayMapper.deductPaid(200L, new BigDecimal("90000"))).thenReturn(0);
 
         assertThatThrownBy(() -> service.onRefundApproved(
                 new ApprovalCompleteEvent(this, "MATERIAL_REFUND", 1L, "APPROVED")))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("退款金额超过合同累计已付款");
+                .hasMessageContaining("退款失败");
+    }
 
-        verify(expenseContractMapper, never()).deductPaidAmount(any(), any());
+    @Test
+    @DisplayName("onRefundApproved - 退款金额/合同ID 缺失拒绝扣减（不静默放过）")
+    void onRefundApproved_missingAmountOrContract_rejected() {
+        BizMaterialRefund refund = new BizMaterialRefund();
+        refund.setId(1L);
+        refund.setContractId(null);
+        refund.setRefundAmount(new BigDecimal("100"));
+        refund.setStatus("PENDING");
+        when(refundMapper.selectById(1L)).thenReturn(refund);
+
+        assertThatThrownBy(() -> service.onRefundApproved(
+                new ApprovalCompleteEvent(this, "MATERIAL_REFUND", 1L, "APPROVED")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("缺少退款金额或合同信息");
+
+        verify(purchaseContractPayMapper, never()).deductPaid(any(), any());
     }
 
     @Test
@@ -150,7 +159,7 @@ class MaterialRefundServiceTest {
         service.onRefundApproved(new ApprovalCompleteEvent(this, "MATERIAL_REFUND", 2L, "APPROVED"));
 
         verify(refundMapper, never()).updateById(any());
-        verify(expenseContractMapper, never()).deductPaidAmount(any(), any());
+        verify(purchaseContractPayMapper, never()).deductPaid(any(), any());
     }
 
     @Test
@@ -166,7 +175,7 @@ class MaterialRefundServiceTest {
         service.onRefundApproved(new ApprovalCompleteEvent(this, "MATERIAL_REFUND", 1L, "APPROVED"));
 
         verify(refundMapper, never()).updateById(any());
-        verify(expenseContractMapper, never()).deductPaidAmount(any(), any());
+        verify(purchaseContractPayMapper, never()).deductPaid(any(), any());
     }
 
     @Test

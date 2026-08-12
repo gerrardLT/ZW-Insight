@@ -5,9 +5,7 @@ import com.zwinsight.contract.domain.BizExpenseContract;
 import com.zwinsight.contract.dto.ContractExpiryDTO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Update;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -17,18 +15,9 @@ import java.util.List;
 @Mapper
 public interface BizExpenseContractMapper extends BaseMapper<BizExpenseContract> {
 
-    /**
-     * 扣减合同累计付款金额（退款审批通过后使用）
-     *
-     * @param contractId   合同ID
-     * @param refundAmount 退款金额
-     */
-    @Update("UPDATE biz_expense_contract " +
-            "SET cumulative_paid = cumulative_paid - #{refundAmount}, " +
-            "    updated_at = NOW() " +
-            "WHERE id = #{contractId} AND deleted = 0")
-    void deductPaidAmount(@Param("contractId") Long contractId,
-                          @Param("refundAmount") BigDecimal refundAmount);
+    // 注：退款扣减累计已付款原在本 Mapper（deductPaidAmount），2026-08-13 已移除：
+    // 退款关联的是采购合同，付款回写 biz_purchase_contract，扣减改由 zw-purchase
+    // PurchaseContractPayMapper.deductPaid 原子执行（批次二 L4 stage_9K 修复）。
 
     /**
      * 查询即将到期的合同（所有类型）

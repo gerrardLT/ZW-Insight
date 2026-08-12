@@ -1502,6 +1502,9 @@ stage_9k_material_refund() {
   approve "同意材料退款" 1
   sleep 2
   assert_status "/api/v1/material/refund?page=1&size=5&contractId=$PURCHASE_CONTRACT_ID" "status" "APPROVED" "退款审批后状态"
+  # 硬断言：退款审批通过后采购合同累计已付 80000→75000（钉住 2026-08-13 修复：
+  # 扣减原误作 biz_expense_contract 静默无效，现原子扣减 biz_purchase_contract）
+  assert_amount "/api/v1/purchase/contract/$PURCHASE_CONTRACT_ID" "cumulativePaid" 75000 "退款审批后采购合同累计已付扣减（80000-5000）"
 
   record_stage_result "PASSED"
 }
