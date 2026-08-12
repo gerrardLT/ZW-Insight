@@ -4263,7 +4263,7 @@
     "MAC-SET 审批回调 check-then-act 非原子+updateById 乐观锁返回值未检查（并发窗口）：同批次一并发类口径，登记为乐观锁/唯一索引架构改造专项",
     "MAC-PRJ 机械结算不回写项目 totalExpense（与付款链路不对称）：业务口径待产品确认，暂豁免不改代码"
    ],
-   "verification": "6 模块回归 661+3 例全绿（project 46/tender 87/machine 131/material 105/labor 111/subcontract 184），CI 待验"
+   "verification": "6 模块回归全绿（project 46/tender 87/machine 131/material 106/labor 111/subcontract 184）+ CI run 31622551219 全链路 success（L3 20/20、L4 209✅含退款扣减硬断言、L5 三套 EXIT=0、k6 过）"
   }
  }
 }
