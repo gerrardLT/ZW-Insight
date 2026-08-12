@@ -41,16 +41,21 @@ class TenantManagementIntegrationTest extends BaseIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     private static final Long TENANT_ID = 8001L;
-    private static final Long USER_ID = 2001L;
+    /**
+     * 用户 ID 避开 2001：DataPermissionIntegrationTest 的 @AfterAll 会重建
+     * sys_user id=2001（tenant_id=1000）作为权限基线，本类若复用 2001 则
+     * 两类先后运行时主键冲突（CI run 31592042590 实证 9 例全错）
+     */
+    private static final Long USER_ID = 9201L;
 
     @BeforeEach
     void setupTestData() {
         SecurityContextHolder.setUserId(USER_ID);
         SecurityContextHolder.setTenantId(TENANT_ID);
 
-        // 清除残留数据
+        // 清除残留数据（含按主键清理，保证 setup 幂等）
         jdbcTemplate.update("DELETE FROM sys_tenant WHERE id = ?", TENANT_ID);
-        jdbcTemplate.update("DELETE FROM sys_user WHERE tenant_id = ?", TENANT_ID);
+        jdbcTemplate.update("DELETE FROM sys_user WHERE tenant_id = ? OR id = ?", TENANT_ID, USER_ID);
         jdbcTemplate.update("DELETE FROM sys_tenant_menu WHERE tenant_id = ?", TENANT_ID);
 
         // 创建正常状态的租户
