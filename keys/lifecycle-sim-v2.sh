@@ -882,7 +882,10 @@ stage_9b_completion_settlement() {
   api_call POST "/api/v1/site/completion/$acceptance_id/submit"
   strict_assert "提交竣工验收"
   sleep 2
-  approve "竣工验收通过"
+  approve "竣工验收通过" 1
+
+  # 竣工验收单状态断言（提交即置 APPROVED，审批流完成为硬要求）
+  assert_status "/api/v1/site/completion/page?page=1&size=1&projectId=$PROJECT_ID" "status" "APPROVED" "竣工验收单状态"
 
   # 最终结算：创建（RequestParam projectId）+ 提交审批（project_settlement_approval）
   assert_status "/api/v1/project/$PROJECT_ID" "status" "COMPLETED" "completion-project-status"
@@ -900,7 +903,10 @@ stage_9b_completion_settlement() {
   api_call POST "/api/v1/project-settlements/$settlement_id/submit"
   strict_assert "提交最终结算审批"
   sleep 2
-  approve "最终结算通过"
+  approve "最终结算通过" 1
+
+  # 结算单审批后状态断言（onApproved 置 SETTLED）
+  assert_status "/api/v1/project-settlements/$settlement_id" "status" "SETTLED" "最终结算单状态"
 
   record_stage_result "PASSED"
 }
@@ -1496,6 +1502,62 @@ stage_9k_material_refund() {
   record_stage_result "PASSED"
 }
 
+# ===========================================================================
+# 阶段 9L: 材料调拨审批（审批后生效，双向库存联动）
+#   依据功能表 2.5：材料调拨（material_transfer_approval 审批流端到端，销项审批流 partial）
+#   依赖：阶段 7B 入库瓷砖 2000 块、NORMAL 出库 1200 块、9K 退货 100 块 → 源库存 700
+#   依赖 BPMN：material_transfer_approval（deploy-bpmn.sh 部署到租户 9999）
+# ===========================================================================
+stage_9l_material_transfer() {
+  phase "9L" "材料调拨审批"
+  CURRENT_STAGE="9L:材料调拨审批"
+
+  # 调入项目（调拨双向库存断言需两个项目）
+  api_call POST "/api/v1/project" "{\"projectName\":\"[测试]材料调拨目标项目\",\"projectNature\":\"新建\",\"projectType\":\"公共建筑\",\"ownerCompanyName\":\"城市建设投资集团\",\"signingCompanyName\":\"中维建设有限公司\",\"projectOverview\":\"L4 材料调拨端到端调入项目\",\"projectAddress\":\"广州市天河区\",\"contactName\":\"李四\",\"contactPhone\":\"13800138002\",\"needTender\":0,\"budgetAmount\":1000000.00}"
+  strict_assert "创建调入项目"
+  sleep 1
+  api_call GET "/api/v1/project/page?page=1&size=1&projectName=%5B%E6%B5%8B%E8%AF%95%5D%E6%9D%90%E6%96%99%E8%B0%83%E6%8B%A8"
+  local to_project_id=$(extract_first_record_id)
+  require_id "$to_project_id" "调入项目 ID"
+  success "调入项目 ID: $to_project_id"
+  track_resource "DELETE" "/api/v1/project/$to_project_id"
+
+  # 调拨前源项目库存 = 700（2000 入库 - 1200 出库 - 100 退货）
+  assert_amount "/api/v1/material/stock/page?page=1&size=1&projectId=$PROJECT_ID&materialName=%E7%93%B7%E7%A0%96" "stockQuantity" 700 "调拨前源库存"
+
+  # 创建调拨单：源项目 → 调入项目，瓷砖 200 块
+  api_call POST "/api/v1/material/transfer" "{\"fromProjectId\":$PROJECT_ID,\"toProjectId\":$to_project_id,\"transferDate\":\"$(date +%F)\",\"details\":[{\"materialName\":\"瓷砖\",\"specification\":\"800x800\",\"unit\":\"块\",\"quantity\":200,\"unitPrice\":50.00}]}"
+  strict_assert "创建材料调拨单"
+  sleep 1
+
+  api_call GET "/api/v1/material/transfer/page?page=1&size=1&fromProjectId=$PROJECT_ID"
+  local transfer_id=$(extract_first_record_id)
+  require_id "$transfer_id" "调拨单 ID"
+  success "调拨单 ID: $transfer_id"
+  track_resource "DELETE" "/api/v1/material/transfer/$transfer_id"
+  assert_status "/api/v1/material/transfer/$transfer_id" "status" "DRAFT" "调拨单初始状态"
+
+  api_call POST "/api/v1/material/transfer/$transfer_id/submit"
+  strict_assert "提交材料调拨审批"
+  sleep 1
+  assert_status "/api/v1/material/transfer/$transfer_id" "status" "SUBMITTED" "调拨单提交后状态"
+
+  # 审批后生效：审批前源库存不变（仍 700）
+  assert_amount "/api/v1/material/stock/page?page=1&size=1&projectId=$PROJECT_ID&materialName=%E7%93%B7%E7%A0%96" "stockQuantity" 700 "审批前源库存不变"
+
+  approve "同意材料调拨" 1
+  sleep 2
+  assert_status "/api/v1/material/transfer/$transfer_id" "status" "APPROVED" "调拨单审批后状态"
+
+  # 双向库存断言：源 700-200=500 且累计调出 200；调入方新增 200 且累计调入 200
+  assert_amount "/api/v1/material/stock/page?page=1&size=1&projectId=$PROJECT_ID&materialName=%E7%93%B7%E7%A0%96" "stockQuantity" 500 "调拨后源库存"
+  assert_amount "/api/v1/material/stock/page?page=1&size=1&projectId=$PROJECT_ID&materialName=%E7%93%B7%E7%A0%96" "totalTransferOut" 200 "源累计调出"
+  assert_amount "/api/v1/material/stock/page?page=1&size=1&projectId=$to_project_id&materialName=%E7%93%B7%E7%A0%96" "stockQuantity" 200 "调拨后调入方库存"
+  assert_amount "/api/v1/material/stock/page?page=1&size=1&projectId=$to_project_id&materialName=%E7%93%B7%E7%A0%96" "totalTransferIn" 200 "调入方累计调入"
+
+  record_stage_result "PASSED"
+}
+
 main() {
   echo "" > "$SIM_LOG"
   divider
@@ -1537,6 +1599,7 @@ main() {
   stage_9i_reserve_fund
   stage_9j_deposit_return
   stage_9k_material_refund
+  stage_9l_material_transfer
   stage_9b_completion_settlement
   stage_10_project_close
 
