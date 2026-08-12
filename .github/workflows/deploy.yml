@@ -142,6 +142,36 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
+      # 磁盘防护①（2026-08-13，run 31613613775 磁盘满事故后新增）：
+      # rsync 前先清理 docker 无用资源并检查剩余空间，不足则快速失败（附诊断），
+      # 避免传到一半报 No space left on device 留下半截 jar
+      - name: Pre-deploy disk guard & docker cleanup
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'DISK_GUARD'
+          set -uo pipefail
+          MIN_FREE_MB=1024
+          df_line=$(df -mP / | tail -1)
+          avail_mb=$(echo "$df_line" | awk '{print $4}')
+          echo "部署前磁盘可用空间: ${avail_mb}MB（阈值 ${MIN_FREE_MB}MB）"
+          if [ "$avail_mb" -lt "$MIN_FREE_MB" ]; then
+            echo "空间不足，先自动清理 docker 无用资源（停止容器/悬空镜像/无用网络/构建缓存）..."
+            docker container prune -f || true
+            docker image prune -f || true
+            docker network prune -f || true
+            docker builder prune -f || true
+            avail_mb=$(df -mP / | tail -1 | awk '{print $4}')
+            echo "清理后可用空间: ${avail_mb}MB"
+            echo "--- docker system df ---"
+            docker system df || true
+            echo "--- / 占用 Top10 ---"
+            du -x -m --max-depth=2 / 2>/dev/null | sort -rn | head -10 || true
+          fi
+          if [ "$avail_mb" -lt "$MIN_FREE_MB" ]; then
+            echo "::error::部署目录可用空间 ${avail_mb}MB 低于 ${MIN_FREE_MB}MB，自动清理后仍不足，拒绝部署（防半截 jar）"
+            exit 1
+          fi
+          DISK_GUARD
+
       - name: Sync project to server
         run: |
           rsync -avz --delete \
@@ -190,8 +220,18 @@ jobs:
           docker compose -f docker-compose.deploy.yml build --no-cache backend frontend
           docker compose -f docker-compose.deploy.yml up -d backend frontend
 
-          echo "=== [5/5] 清理旧镜像 ==="
-          docker image prune -f
+          echo "=== [5/5] 清理 docker 无用资源（镜像/容器/网络/构建缓存） ==="
+          # 2026-08-13 强化：每次部署 build --no-cache 会累积旧镜像层与构建缓存，
+          # 原来仅 docker image prune -f（悬空镜像）不足以防磁盘满（run 31613613775 事故）。
+          # 不用 system prune -a：避免误删其他 compose 栈镜像；prune 只清未被运行容器引用的资源，
+          # 正在运行的 mysql/redis/minio/rabbitmq/backend/frontend 不受影响。清理失败不阻断部署。
+          docker container prune -f || true
+          docker image prune -f || true
+          docker network prune -f || true
+          docker builder prune -f || true
+          echo "--- 清理后磁盘与 docker 占用 ---"
+          df -h / | tail -1
+          docker system df || true
 
           echo ""
           echo "=== 部署完成 ==="
