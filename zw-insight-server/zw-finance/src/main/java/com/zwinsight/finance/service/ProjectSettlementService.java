@@ -430,6 +430,12 @@ public class ProjectSettlementService {
         if (settlement == null) {
             throw new BusinessException("结算单不存在");
         }
+        // P0 幂等守卫（FIN-SET-14，2026-08-12）：重复审批回调短路，防重复执行合同 SETTLED，
+        // 对齐财务模块 InvoiceApply/PaymentApply onApproved 幂等模式
+        if ("APPROVED".equals(settlement.getStatus())) {
+            log.info("结算单审批回调重复触发，跳过, settlementId={}", settlementId);
+            return;
+        }
 
         // 更新结算单状态为 APPROVED
         settlement.setStatus("APPROVED");

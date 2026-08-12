@@ -1,0 +1,591 @@
+{
+  "meta": {
+    "title": "颗粒级业务流程追溯矩阵（用户流程级）",
+    "created": "2026-08-12",
+    "standard": "每个功能点枚举用户流程=正向主流程+关键异常/边界流程；每条流程必须有测试映射或豁免理由",
+    "statusValues": ["covered", "partial", "gap", "exempt"],
+    "batch1Scope": "zw-finance / zw-budget / zw-contract / zw-purchase + 17 条 BPMN 审批流",
+    "statistics": {
+      "batch1": { "flowsTotal": 324, "covered": 211, "partial": 20, "gap": 93, "approvalFlows": "17 条：covered 16 / partial 1（material_transfer_approval）" }
+    }
+  },
+  "modules": [
+    {
+      "module": "zw-finance",
+      "stats": { "flows": 117, "covered": 79, "partial": 8, "gap": 30 },
+      "entities": [
+        { "entity": "开票申请", "flows": [
+          { "id": "FIN-INV-01", "name": "创建开票申请（DRAFT）", "type": "正向", "ev": "InvoiceApplyService.save/saveFromRequest", "map": "InvoiceApplyServiceTest.save_normalPath; FinanceIntegrationTest.step4", "st": "covered" },
+          { "id": "FIN-INV-02", "name": "编辑开票申请（仅DRAFT）", "type": "正向", "ev": "InvoiceApplyService.update", "map": "InvoiceApplyServiceTest.update_draftStatus", "st": "covered" },
+          { "id": "FIN-INV-03", "name": "删除开票申请（仅DRAFT）", "type": "正向", "ev": "InvoiceApplyService.delete", "map": "InvoiceApplyServiceTest.delete_draftStatus", "st": "covered" },
+          { "id": "FIN-INV-04", "name": "提交开票（金额校验→审批→SUBMITTED）", "type": "正向", "ev": "InvoiceApplyService.submit", "map": "InvoiceApplyServiceTest.submit_normalPath; FinanceIntegrationTest.step7", "st": "covered" },
+          { "id": "FIN-INV-05", "name": "审批通过回调：APPROVED+合同累计开票原子累加", "type": "正向", "ev": "InvoiceApplyService.onApproved", "map": "InvoiceApplyServiceTest.onApproved_writesBackContract", "st": "covered" },
+          { "id": "FIN-INV-06", "name": "审批驳回回调：REJECTED不回写", "type": "异常", "ev": "InvoiceApplyService.onRejected", "map": "InvoiceApplyServiceTest.onRejected_setsRejected", "st": "covered" },
+          { "id": "FIN-INV-07", "name": "驳回后重新提交（REJECTED放行）", "type": "正向", "ev": "InvoiceApplyService.submit", "map": "守卫仅断言APPROVED拒绝，未断言REJECTED放行", "st": "partial" },
+          { "id": "FIN-INV-08", "name": "非DRAFT编辑拒绝", "type": "异常", "ev": "InvoiceApplyService.update", "map": "InvoiceApplyServiceTest.update_nonDraftStatus", "st": "covered" },
+          { "id": "FIN-INV-09", "name": "非DRAFT删除拒绝", "type": "异常", "ev": "InvoiceApplyService.delete", "map": "InvoiceApplyServiceTest.delete_nonDraftStatus", "st": "covered" },
+          { "id": "FIN-INV-10", "name": "非DRAFT/REJECTED提交拒绝（含重复提交）", "type": "异常", "ev": "InvoiceApplyService.submit", "map": "InvoiceApplyServiceTest.submit_nonDraftStatus", "st": "covered" },
+          { "id": "FIN-INV-11", "name": "开票额>累计产值-已开票拒绝", "type": "边界", "ev": "InvoiceApplyService.validateInvoiceLimit", "map": "InvoiceApplyServiceTest.submit_amountExceedsLimit; FinanceIntegrationTest.step7", "st": "covered" },
+          { "id": "FIN-INV-12", "name": "关联合同不存在提交拒绝", "type": "异常", "ev": "InvoiceApplyService.submit", "map": "InvoiceApplyServiceTest.submit_contractNotExists", "st": "covered" },
+          { "id": "FIN-INV-13", "name": "onApproved幂等：已APPROVED跳过", "type": "幂等", "ev": "InvoiceApplyService.onApproved", "map": "InvoiceApplyServiceTest.onApproved_idempotent", "st": "covered" },
+          { "id": "FIN-INV-14", "name": "生效前重校失败：审批期间额度被占用→REJECTED+通知", "type": "并发", "ev": "InvoiceApplyService.onApproved L183-191", "map": null, "st": "gap" },
+          { "id": "FIN-INV-15", "name": "onRejected幂等：非SUBMITTED驳回静默返回", "type": "异常", "ev": "InvoiceApplyService.onRejected L212", "map": null, "st": "gap" },
+          { "id": "FIN-INV-16", "name": "回调容错：申请/合同不存在仅记日志", "type": "异常", "ev": "InvoiceApplyService.onApproved L167-180", "map": null, "st": "gap" },
+          { "id": "FIN-INV-17", "name": "分页查询（筛选+项目名回填）", "type": "正向", "ev": "InvoiceApplyService.page", "map": "FinanceIntegrationTest.step8", "st": "covered" },
+          { "id": "FIN-INV-18", "name": "封账期间写入拦截", "type": "异常", "ev": "InvoiceApplyController @FinanceLockCheck", "map": "FinanceLockPropertyTest.property6（切面级）", "st": "partial" },
+          { "id": "FIN-INV-19", "name": "无权限拒绝（@RequiresPermission）", "type": "越权", "ev": "InvoiceApplyController", "map": null, "st": "gap" }
+        ]},
+        { "entity": "回款登记", "flows": [
+          { "id": "FIN-RCV-01", "name": "新增回款（APPROVED+项目收入+合同累计收款回写）", "type": "正向", "ev": "PaymentReceivedService.save", "map": "PaymentReceivedServiceTest.save_writesBackProjectAndContract", "st": "covered" },
+          { "id": "FIN-RCV-02", "name": "回款>已开票未收拒绝", "type": "边界", "ev": "PaymentReceivedService.save", "map": "PaymentReceivedServiceTest.save_exceedsCap", "st": "covered" },
+          { "id": "FIN-RCV-03", "name": "恰等于可回款上限允许", "type": "边界", "ev": "PaymentReceivedService.save", "map": "PaymentReceivedServiceTest.save_equalsCap_allowed", "st": "covered" },
+          { "id": "FIN-RCV-04", "name": "负数/零金额拒绝（B2修复）", "type": "边界", "ev": "PaymentReceivedService.save", "map": "PaymentReceivedServiceTest.save_negativeAmount/save_zeroAmount", "st": "covered" },
+          { "id": "FIN-RCV-05", "name": "contractId为null/合同不存在跳过校验回写", "type": "边界", "ev": "PaymentReceivedService.save", "map": "PaymentReceivedServiceTest.save_contractIdNull/save_contractNotFound", "st": "covered" },
+          { "id": "FIN-RCV-06", "name": "项目不存在跳过项目回写仍回写合同", "type": "边界", "ev": "PaymentReceivedService.save", "map": "PaymentReceivedServiceTest.save_projectNotFound", "st": "covered" },
+          { "id": "FIN-RCV-07", "name": "编辑增额按差额追加+校验增额上限（B1修复）", "type": "正向", "ev": "PaymentReceivedService.update", "map": "PaymentReceivedServiceTest.update_increase_addsDiff", "st": "covered" },
+          { "id": "FIN-RCV-08", "name": "编辑减额按差额对称回冲", "type": "正向", "ev": "PaymentReceivedService.update", "map": "PaymentReceivedServiceTest.update_decrease_subtractsDiff", "st": "covered" },
+          { "id": "FIN-RCV-09", "name": "编辑增额超上限拒绝数据不变", "type": "边界", "ev": "PaymentReceivedService.update", "map": "PaymentReceivedServiceTest.update_increaseExceedsCap", "st": "covered" },
+          { "id": "FIN-RCV-10", "name": "编辑金额为负/零拒绝", "type": "边界", "ev": "PaymentReceivedService.update L120", "map": null, "st": "gap" },
+          { "id": "FIN-RCV-11", "name": "删除回冲项目收入+合同累计收款", "type": "正向", "ev": "PaymentReceivedService.delete", "map": "PaymentReceivedServiceTest.delete_rollsBack系列", "st": "covered" },
+          { "id": "FIN-RCV-12", "name": "不存在记录查/编/删拒绝", "type": "异常", "ev": "PaymentReceivedService.getById/update/delete", "map": "PaymentReceivedServiceTest各notFound用例", "st": "covered" },
+          { "id": "FIN-RCV-13", "name": "并发两笔回款同时通过上限校验超额", "type": "并发", "ev": "PaymentReceivedService.save（select-then-insert无锁）", "map": null, "st": "gap" },
+          { "id": "FIN-RCV-14", "name": "回写阶段失败整体事务回滚", "type": "事务", "ev": "PaymentReceivedService.save @Transactional", "map": null, "st": "gap" },
+          { "id": "FIN-RCV-15", "name": "封账期间新增/编辑拦截", "type": "异常", "ev": "PaymentReceivedController @FinanceLockCheck", "map": "FinanceLockPropertyTest.property6（切面级）", "st": "partial" }
+        ]},
+        { "entity": "收票登记", "flows": [
+          { "id": "FIN-RCI-01", "name": "新增收票（APPROVED+其他合同累计收票回写）", "type": "正向", "ev": "InvoiceReceivedService.save", "map": "InvoiceReceivedServiceTest.save_writesBack系列", "st": "covered" },
+          { "id": "FIN-RCI-02", "name": "无contractId/合同不存在仅落记录", "type": "边界", "ev": "InvoiceReceivedService.save", "map": "InvoiceReceivedServiceTest.save_noContract系列", "st": "covered" },
+          { "id": "FIN-RCI-03", "name": "金额为负/零无校验污染累计字段", "type": "边界", "ev": "InvoiceReceivedService.save（无金额校验）", "map": null, "st": "gap", "fix": "补金额>0校验+用例" },
+          { "id": "FIN-RCI-04", "name": "金额null时累计回写NPE", "type": "边界", "ev": "InvoiceReceivedService.save L57", "map": null, "st": "gap", "fix": "补null防护+用例" },
+          { "id": "FIN-RCI-05", "name": "无编辑/删除入口错误收票无法回冲", "type": "联动", "ev": "InvoiceReceivedService（仅page/save）", "map": null, "st": "gap", "fix": "登记豁免或补删除入口（产品决策）" },
+          { "id": "FIN-RCI-06", "name": "分页查询+项目名回填", "type": "正向", "ev": "InvoiceReceivedService.page", "map": "InvoiceReceivedServiceTest.page系列", "st": "covered" },
+          { "id": "FIN-RCI-07", "name": "封账期间新增拦截", "type": "异常", "ev": "InvoiceReceivedController @FinanceLockCheck", "map": "FinanceLockPropertyTest.property6（切面级）", "st": "partial" }
+        ]},
+        { "entity": "付款申请", "flows": [
+          { "id": "FIN-PAY-01", "name": "创建付款申请（DRAFT）", "type": "正向", "ev": "PaymentApplyService.save", "map": null, "st": "gap" },
+          { "id": "FIN-PAY-02", "name": "编辑付款申请（仅DRAFT）", "type": "正向", "ev": "PaymentApplyService.update", "map": null, "st": "gap" },
+          { "id": "FIN-PAY-03", "name": "删除付款申请（仅DRAFT）", "type": "正向", "ev": "PaymentApplyService.delete", "map": null, "st": "gap" },
+          { "id": "FIN-PAY-04", "name": "提交付款（限额+预算校验→SUBMITTED）", "type": "正向", "ev": "PaymentApplyService.submit", "map": "PaymentApplyServiceTest.submit_normalPath", "st": "covered" },
+          { "id": "FIN-PAY-05", "name": "审批通过：APPROVED+合同累计已付+项目支出回写", "type": "正向", "ev": "PaymentApplyService.onApproved", "map": "PaymentApplyServiceTest.onApproved_writesBack", "st": "covered" },
+          { "id": "FIN-PAY-06", "name": "审批驳回：REJECTED不回写", "type": "异常", "ev": "PaymentApplyService.onRejected", "map": "PaymentApplyServiceTest.onRejected_setsRejected", "st": "covered" },
+          { "id": "FIN-PAY-07", "name": "非DRAFT/REJECTED提交拒绝", "type": "异常", "ev": "PaymentApplyService.submit", "map": "PaymentApplyServiceTest.submit_nonDraft", "st": "covered" },
+          { "id": "FIN-PAY-08", "name": "非DRAFT编辑拒绝", "type": "异常", "ev": "PaymentApplyService.update L97", "map": null, "st": "gap" },
+          { "id": "FIN-PAY-09", "name": "非DRAFT删除拒绝", "type": "异常", "ev": "PaymentApplyService.delete L111", "map": null, "st": "gap" },
+          { "id": "FIN-PAY-10", "name": "付款>（累计结算+净奖惩）-已付拒绝", "type": "边界", "ev": "PaymentApplyService.validatePaymentLimit", "map": "PaymentApplyServiceTest.submit_exceedsLimit", "st": "covered" },
+          { "id": "FIN-PAY-11", "name": "恰等于可付上限允许", "type": "边界", "ev": "PaymentApplyService.validatePaymentLimit", "map": "PaymentApplyServiceTest.submit_amountEqualsLimit", "st": "covered" },
+          { "id": "FIN-PAY-12", "name": "超出0.01元拒绝", "type": "边界", "ev": "PaymentApplyService.validatePaymentLimit", "map": "PaymentApplyServiceTest.submit_amountExceedsLimitByOneCent", "st": "covered" },
+          { "id": "FIN-PAY-13", "name": "累计结算/已付null视为0", "type": "边界", "ev": "PaymentApplyService.validatePaymentLimit", "map": "PaymentApplyServiceTest.submit_nullSettlementFields", "st": "covered" },
+          { "id": "FIN-PAY-14", "name": "净奖惩压缩可付额度边界", "type": "边界", "ev": "PaymentApplyService.validatePaymentLimit", "map": "PaymentApplyServiceTest.submit_punishmentShrinksLimit", "st": "covered" },
+          { "id": "FIN-PAY-15", "name": "合同类型路由PURCHASE/LABOR/MACHINE/SUBCONTRACT", "type": "正向", "ev": "PaymentApplyService.resolvePayable", "map": "PaymentApplyServiceTest.ContractCategoryRoutingTests", "st": "covered" },
+          { "id": "FIN-PAY-16", "name": "其他/空类型回退biz_other_contract", "type": "正向", "ev": "PaymentApplyService.resolvePayable", "map": "PaymentApplyServiceTest.submit_normalPath", "st": "covered" },
+          { "id": "FIN-PAY-17", "name": "关联合同不存在提交拒绝", "type": "异常", "ev": "PaymentApplyService.submit", "map": "PaymentApplyServiceTest.submit_purchaseNotFound", "st": "covered" },
+          { "id": "FIN-PAY-18", "name": "onApproved幂等已APPROVED跳过", "type": "幂等", "ev": "PaymentApplyService.onApproved", "map": "PaymentApplyServiceTest.onApproved_idempotent", "st": "covered" },
+          { "id": "FIN-PAY-19", "name": "生效前重校失败→REJECTED+通知不回写", "type": "并发", "ev": "PaymentApplyService.onApproved", "map": "PaymentApplyServiceTest.onApproved_limitConsumedDuringApproval", "st": "covered" },
+          { "id": "FIN-PAY-20", "name": "onRejected幂等：非SUBMITTED静默返回", "type": "异常", "ev": "PaymentApplyService.onRejected L204", "map": null, "st": "gap" },
+          { "id": "FIN-PAY-21", "name": "分页查询（筛选）", "type": "正向", "ev": "PaymentApplyService.page", "map": null, "st": "gap" },
+          { "id": "FIN-PAY-22", "name": "封账期间新增/编辑拦截", "type": "异常", "ev": "PaymentApplyController @FinanceLockCheck", "map": "FinanceLockPropertyTest.property6（切面级）", "st": "partial" }
+        ]},
+        { "entity": "其他费用付款", "flows": [
+          { "id": "FIN-OPT-01", "name": "新增其他支付（APPROVED+项目其他总支付回写）", "type": "正向", "ev": "OtherPaymentService.save", "map": "OtherPaymentServiceTest.save_writesBack系列", "st": "covered" },
+          { "id": "FIN-OPT-02", "name": "项目不存在落库不回写", "type": "边界", "ev": "OtherPaymentService.save", "map": "OtherPaymentServiceTest.save_projectMissing", "st": "covered" },
+          { "id": "FIN-OPT-03", "name": "金额负/零/null无校验污染总额（null时NPE）", "type": "边界", "ev": "OtherPaymentService.save L53", "map": null, "st": "gap", "fix": "补金额>0校验+null防护+用例" },
+          { "id": "FIN-OPT-04", "name": "无编辑/删除入口错误付款无法回冲", "type": "联动", "ev": "OtherPaymentService（仅page/save）", "map": null, "st": "gap", "fix": "登记豁免或补删除入口（产品决策）" },
+          { "id": "FIN-OPT-05", "name": "分页查询", "type": "正向", "ev": "OtherPaymentService.page", "map": "OtherPaymentServiceTest.page系列", "st": "covered" },
+          { "id": "FIN-OPT-06", "name": "@BudgetCheck超预算拒绝", "type": "异常", "ev": "OtherPaymentService.save @BudgetCheck", "map": null, "st": "gap" },
+          { "id": "FIN-OPT-07", "name": "封账期间新增拦截", "type": "异常", "ev": "OtherPaymentController @FinanceLockCheck", "map": "FinanceLockPropertyTest.property6（切面级）", "st": "partial" }
+        ]},
+        { "entity": "项目报销", "flows": [
+          { "id": "FIN-PRJ-01", "name": "创建项目报销（DRAFT）", "type": "正向", "ev": "ProjectReimbursementService.save", "map": "ProjectReimbursementServiceTest.save_setsDraft", "st": "covered" },
+          { "id": "FIN-PRJ-02", "name": "提交报销（审批+同步APPROVED）", "type": "正向", "ev": "ProjectReimbursementService.submit", "map": "ProjectReimbursementServiceTest.submit_noOffset", "st": "covered" },
+          { "id": "FIN-PRJ-03", "name": "提交时冲抵备用金（累加offsetAmount）", "type": "联动", "ev": "ProjectReimbursementService.submit", "map": "ProjectReimbursementServiceTest.submit_withOffset", "st": "covered" },
+          { "id": "FIN-PRJ-04", "name": "冲抵但备用金申请不存在跳过", "type": "异常", "ev": "ProjectReimbursementService.submit", "map": "ProjectReimbursementServiceTest.submit_withOffsetButReserveMissing", "st": "covered" },
+          { "id": "FIN-PRJ-05", "name": "非DRAFT提交拒绝", "type": "异常", "ev": "ProjectReimbursementService.submit", "map": "ProjectReimbursementServiceTest.submit_guardCases", "st": "covered" },
+          { "id": "FIN-PRJ-06", "name": "金额负零无校验", "type": "边界", "ev": "ProjectReimbursementService.submit", "map": null, "st": "gap", "fix": "补金额>0校验+用例" },
+          { "id": "FIN-PRJ-07", "name": "冲抵额超备用金待冲抵余额仍可累加", "type": "边界", "ev": "ProjectReimbursementService.submit L80-85", "map": null, "st": "gap", "fix": "补冲抵上限校验+用例" },
+          { "id": "FIN-PRJ-08", "name": "并发两笔报销超额冲抵同一备用金", "type": "并发", "ev": "ProjectReimbursementService.submit（select-then-update无锁）", "map": null, "st": "gap" },
+          { "id": "FIN-PRJ-09", "name": "分页查询", "type": "正向", "ev": "ProjectReimbursementService.page", "map": "ProjectReimbursementServiceTest.page_delegates", "st": "covered" },
+          { "id": "FIN-PRJ-10", "name": "封账期间新增拦截", "type": "异常", "ev": "ProjectReimbursementController @FinanceLockCheck", "map": "FinanceLockPropertyTest.property6（切面级）", "st": "partial" }
+        ]},
+        { "entity": "个人报销", "flows": [
+          { "id": "FIN-PRB-01", "name": "创建个人报销（DRAFT）", "type": "正向", "ev": "PersonalReimbursementService.save", "map": "PersonalReimbursementServiceTest.save_setsDraft", "st": "covered" },
+          { "id": "FIN-PRB-02", "name": "提交个人报销（审批+同步APPROVED）", "type": "正向", "ev": "PersonalReimbursementService.submit", "map": "PersonalReimbursementServiceTest.submit_success", "st": "covered" },
+          { "id": "FIN-PRB-03", "name": "不存在/非DRAFT提交拒绝", "type": "异常", "ev": "PersonalReimbursementService.submit", "map": "PersonalReimbursementServiceTest.submit_guardCases", "st": "covered" },
+          { "id": "FIN-PRB-04", "name": "金额负/零无校验直接生效", "type": "边界", "ev": "PersonalReimbursementService.submit", "map": null, "st": "gap", "fix": "补金额>0校验+用例" },
+          { "id": "FIN-PRB-05", "name": "提交即APPROVED无驳回回调状态不回退", "type": "联动", "ev": "PersonalReimbursementService（无onRejected）", "map": null, "st": "gap" },
+          { "id": "FIN-PRB-06", "name": "分页查询", "type": "正向", "ev": "PersonalReimbursementService.page", "map": "PersonalReimbursementServiceTest.page_delegates", "st": "covered" },
+          { "id": "FIN-PRB-07", "name": "封账期间新增拦截", "type": "异常", "ev": "PersonalReimbursementController @FinanceLockCheck", "map": "FinanceLockPropertyTest.property6（切面级）", "st": "partial" }
+        ]},
+        { "entity": "备用金申请", "flows": [
+          { "id": "FIN-RFA-01", "name": "创建备用金（DRAFT+已还/已冲抵初始化0）", "type": "正向", "ev": "ReserveFundApplyService.save", "map": "ReserveFundApplyServiceTest.save_initializesAmounts", "st": "covered" },
+          { "id": "FIN-RFA-02", "name": "提交备用金（审批+同步APPROVED）", "type": "正向", "ev": "ReserveFundApplyService.submit", "map": "ReserveFundApplyServiceTest.submit_success", "st": "covered" },
+          { "id": "FIN-RFA-03", "name": "不存在/非DRAFT提交拒绝", "type": "异常", "ev": "ReserveFundApplyService.submit", "map": "ReserveFundApplyServiceTest.submit_guardCases", "st": "covered" },
+          { "id": "FIN-RFA-04", "name": "金额负/零无校验", "type": "边界", "ev": "ReserveFundApplyService.save/submit", "map": null, "st": "gap", "fix": "补金额>0校验+用例" },
+          { "id": "FIN-RFA-05", "name": "提交即APPROVED无驳回回调", "type": "联动", "ev": "ReserveFundApplyService（无onRejected）", "map": null, "st": "gap" },
+          { "id": "FIN-RFA-06", "name": "分页查询（项目筛选）", "type": "正向", "ev": "ReserveFundApplyService.page", "map": "ReserveFundApplyServiceTest.page_delegates", "st": "covered" }
+        ]},
+        { "entity": "备用金归还", "flows": [
+          { "id": "FIN-RFR-01", "name": "新增归还：校验≤待归还并累加returnedAmount", "type": "正向", "ev": "ReserveFundReturnService.save", "map": "ReserveFundReturnServiceTest.save_exactlyPending_allowed", "st": "covered" },
+          { "id": "FIN-RFR-02", "name": "归还>待归还拒绝", "type": "边界", "ev": "ReserveFundReturnService.save", "map": "ReserveFundReturnServiceTest.save_exceedsPending", "st": "covered" },
+          { "id": "FIN-RFR-03", "name": "恰等于待归还允许（边界）", "type": "边界", "ev": "ReserveFundReturnService.save", "map": "ReserveFundReturnServiceTest.save_exactlyPending_allowed", "st": "covered" },
+          { "id": "FIN-RFR-04", "name": "申请/已还/已冲抵null按0处理", "type": "边界", "ev": "ReserveFundReturnService.save", "map": "ReserveFundReturnServiceTest.save_nullAmounts系列", "st": "covered" },
+          { "id": "FIN-RFR-05", "name": "关联备用金申请不存在拒绝", "type": "异常", "ev": "ReserveFundReturnService.save", "map": "ReserveFundReturnServiceTest.save_applyNotFound", "st": "covered" },
+          { "id": "FIN-RFR-06", "name": "returnAmount为null时compareTo NPE", "type": "边界", "ev": "ReserveFundReturnService.save L40", "map": null, "st": "gap", "fix": "补null防护+用例" },
+          { "id": "FIN-RFR-07", "name": "并发两笔归还超额归还", "type": "并发", "ev": "ReserveFundReturnService.save（select-then-update无锁）", "map": null, "st": "gap" },
+          { "id": "FIN-RFR-08", "name": "无删除入口错误归还无法回冲", "type": "联动", "ev": "ReserveFundReturnService（仅save）", "map": null, "st": "gap", "fix": "登记豁免或补删除入口（产品决策）" }
+        ]},
+        { "entity": "质保金登记", "flows": [
+          { "id": "FIN-RTN-01", "name": "新增质保金：到期日计算+缺省初始化", "type": "正向", "ev": "RetentionMoneyService.save", "map": "RetentionMoneyServiceTest.save_computesExpireDate", "st": "covered" },
+          { "id": "FIN-RTN-02", "name": "无开始日期不计算到期日", "type": "边界", "ev": "RetentionMoneyService.save", "map": "RetentionMoneyServiceTest.save_noStartDate", "st": "covered" },
+          { "id": "FIN-RTN-03", "name": "查询即将到期（ACTIVE+窗口内升序）", "type": "正向", "ev": "RetentionMoneyService.getExpiring", "map": "RetentionMoneyServiceTest.getExpiring_delegates", "st": "covered" },
+          { "id": "FIN-RTN-04", "name": "金额负/零无校验", "type": "边界", "ev": "RetentionMoneyService.save", "map": null, "st": "gap", "fix": "补金额>0校验+用例" },
+          { "id": "FIN-RTN-05", "name": "getExpiring窗口边界（今天≤到期≤今天+N）", "type": "边界", "ev": "RetentionMoneyService.getExpiring", "map": null, "st": "gap" },
+          { "id": "FIN-RTN-06", "name": "分页查询（项目/合同筛选）", "type": "正向", "ev": "RetentionMoneyService.page", "map": "RetentionMoneyServiceTest.page_delegates", "st": "covered" }
+        ]},
+        { "entity": "质保金退还", "flows": [
+          { "id": "FIN-RTR-01", "name": "创建退还申请（DRAFT）", "type": "正向", "ev": "RetentionReturnService.save", "map": "RetentionReturnServiceTest.save_setsDraft", "st": "covered" },
+          { "id": "FIN-RTR-02", "name": "提交退还：校验≤剩余可返+APPROVED+累加returnedAmount", "type": "正向", "ev": "RetentionReturnService.submit", "map": "RetentionReturnServiceTest.submit_partialReturn", "st": "covered" },
+          { "id": "FIN-RTR-03", "name": "全额返还是质保金置RETURNED", "type": "正向", "ev": "RetentionReturnService.submit", "map": "RetentionReturnServiceTest.submit_fullReturn_marksReturned", "st": "covered" },
+          { "id": "FIN-RTR-04", "name": "返还>剩余可返拒绝", "type": "边界", "ev": "RetentionReturnService.submit", "map": "RetentionReturnServiceTest.submit_exceedsMaxReturn", "st": "covered" },
+          { "id": "FIN-RTR-05", "name": "不存在/非DRAFT/质保金不存在拒绝", "type": "异常", "ev": "RetentionReturnService.submit", "map": "RetentionReturnServiceTest.submit_guardCases", "st": "covered" },
+          { "id": "FIN-RTR-06", "name": "并发两笔退还超额返还", "type": "并发", "ev": "RetentionReturnService.submit（select-then-update无锁）", "map": null, "st": "gap" },
+          { "id": "FIN-RTR-07", "name": "退还RETURNED后未调用预警key清理（联动断链）", "type": "联动", "ev": "RetentionReturnService.submit（未引用RetentionWarningTask）", "map": "RetentionWarningTaskTest仅单测方法未测调用链", "st": "partial", "fix": "补调用链联动+用例" },
+          { "id": "FIN-RTR-08", "name": "retentionAmount为null时maxReturn NPE", "type": "边界", "ev": "RetentionReturnService.submit L57", "map": null, "st": "gap", "fix": "补null防护+用例" },
+          { "id": "FIN-RTR-09", "name": "提交即APPROVED无驳回回调returnedAmount不回冲", "type": "状态", "ev": "RetentionReturnService.submit", "map": null, "st": "gap" }
+        ]},
+        { "entity": "质保金跟踪预警", "flows": [
+          { "id": "FIN-RWR-01", "name": "分级判定8-30天UPCOMING/1-7天URGENT", "type": "正向", "ev": "RetentionWarningTask.processRecord", "map": "RetentionWarningTaskTest.processRecord系列+边界用例", "st": "covered" },
+          { "id": "FIN-RWR-02", "name": "到期当天/已逾期→OVERDUE", "type": "边界", "ev": "RetentionWarningTask.processRecord", "map": "RetentionWarningTaskTest.processRecord_overdueWhenExpired", "st": "covered" },
+          { "id": "FIN-RWR-03", "name": "逾期超180天停止催办", "type": "边界", "ev": "RetentionWarningTask.processRecord", "map": "RetentionWarningTaskTest.processRecord_nullWhenOverdue200Days", "st": "covered" },
+          { "id": "FIN-RWR-04", "name": "非逾期同级去重跳过", "type": "幂等", "ev": "RetentionWarningTask.shouldSendNotification", "map": "RetentionWarningTaskTest+RetentionDeduplicationPropertyTest", "st": "covered" },
+          { "id": "FIN-RWR-05", "name": "逾期催办频率3天控制", "type": "边界", "ev": "RetentionWarningTask.shouldSendOverdueReminder", "map": "RetentionDeduplicationPropertyTest系列", "st": "covered" },
+          { "id": "FIN-RWR-06", "name": "退还后清理全部去重key", "type": "正向", "ev": "RetentionWarningTask.onRetentionReturned", "map": "RetentionWarningTaskTest.onRetentionReturned_clearsAllKeys", "st": "covered" },
+          { "id": "FIN-RWR-07", "name": "扫描端到端doExecute记SENT/FAILED+markAsSent", "type": "正向", "ev": "RetentionWarningTask.doExecute", "map": null, "st": "gap" },
+          { "id": "FIN-RWR-08", "name": "execute逐租户上下文执行", "type": "租户", "ev": "RetentionWarningTask.execute", "map": null, "st": "gap" },
+          { "id": "FIN-RWR-09", "name": "通知失败记FAILED日志不标记去重key", "type": "异常", "ev": "RetentionWarningTask.doExecute", "map": null, "st": "gap" }
+        ]},
+        { "entity": "银行账户管理", "flows": [
+          { "id": "FIN-BNK-01", "name": "新增银行账户（status缺省1）", "type": "正向", "ev": "BankAccountService.save", "map": null, "st": "gap" },
+          { "id": "FIN-BNK-02", "name": "编辑银行账户（存在性校验）", "type": "正向", "ev": "BankAccountService.update", "map": null, "st": "gap" },
+          { "id": "FIN-BNK-03", "name": "删除银行账户", "type": "正向", "ev": "BankAccountService.delete", "map": null, "st": "gap" },
+          { "id": "FIN-BNK-04", "name": "分页查询（账户类型/项目筛选）", "type": "正向", "ev": "BankAccountService.page", "map": null, "st": "gap" },
+          { "id": "FIN-BNK-05", "name": "编辑不存在账户拒绝", "type": "异常", "ev": "BankAccountService.update", "map": null, "st": "gap" },
+          { "id": "FIN-BNK-06", "name": "删除无存在性校验静默删除", "type": "异常", "ev": "BankAccountService.delete", "map": null, "st": "gap", "fix": "补存在性校验+用例" },
+          { "id": "FIN-BNK-07", "name": "无权限拒绝", "type": "越权", "ev": "BankAccountController @RequiresPermission", "map": null, "st": "gap" }
+        ]},
+        { "entity": "财务封账/期末锁定", "flows": [
+          { "id": "FIN-LCK-01", "name": "月度封账成功写LOCKED+刷Redis", "type": "正向", "ev": "FinanceLockService.createLock", "map": "FinanceLockServiceTest.createLock_monthly_success", "st": "covered" },
+          { "id": "FIN-LCK-02", "name": "季度封账展开3个自然月", "type": "正向", "ev": "FinanceLockService.resolvePeriodsToLock", "map": "FinanceLockServiceTest.createLock_quarterly_expandsThreePeriods", "st": "covered" },
+          { "id": "FIN-LCK-03", "name": "越权：非FINANCE_ADMIN/ADMIN拒绝403", "type": "越权", "ev": "FinanceLockService.checkFinanceAdminRole", "map": "FinanceLockServiceTest.createLock系列403用例", "st": "covered" },
+          { "id": "FIN-LCK-04", "name": "非法封账类型拒绝", "type": "异常", "ev": "FinanceLockService.createLock", "map": "FinanceLockServiceTest.createLock_invalidLockType", "st": "covered" },
+          { "id": "FIN-LCK-05", "name": "未来期间封账拒绝", "type": "边界", "ev": "FinanceLockService.createLock", "map": "FinanceLockServiceTest.createLock_futurePeriod", "st": "covered" },
+          { "id": "FIN-LCK-06", "name": "期间格式非法拒绝", "type": "异常", "ev": "FinanceLockService.parsePeriod", "map": "FinanceLockServiceTest.createLock_badPeriodFormat", "st": "covered" },
+          { "id": "FIN-LCK-07", "name": "期间已封账重复操作拒绝", "type": "幂等", "ev": "FinanceLockService.createLock", "map": "FinanceLockServiceTest.createLock_alreadyLocked+PropertyTest.property9", "st": "covered" },
+          { "id": "FIN-LCK-08", "name": "解封成功UNLOCKED+刷Redis", "type": "正向", "ev": "FinanceLockService.unlock", "map": "FinanceLockServiceTest.unlock_success", "st": "covered" },
+          { "id": "FIN-LCK-09", "name": "解封守卫不存在/非LOCKED拒绝", "type": "异常", "ev": "FinanceLockService.unlock", "map": "FinanceLockServiceTest.unlock_notFound/unlock_notLocked", "st": "covered" },
+          { "id": "FIN-LCK-10", "name": "LOCKED期间@FinanceLockCheck拦截写操作", "type": "正向", "ev": "FinanceLockAspect.checkFinanceLock", "map": "FinanceLockPropertyTest.property6", "st": "covered" },
+          { "id": "FIN-LCK-11", "name": "未封账期间写入放行", "type": "正向", "ev": "FinanceLockAspect.checkFinanceLock", "map": "FinanceLockPropertyTest.property7/property8", "st": "covered" },
+          { "id": "FIN-LCK-12", "name": "业务日期为空/不可解析拦截", "type": "异常", "ev": "FinanceLockAspect.extractBizPeriod", "map": "FinanceLockPropertyTest.property10", "st": "covered" },
+          { "id": "FIN-LCK-13", "name": "封账→解封往返一致性", "type": "正向", "ev": "FinanceLockService.createLock/unlock", "map": "FinanceLockPropertyTest.property11", "st": "covered" },
+          { "id": "FIN-LCK-14", "name": "状态查询Redis命中/回源DB/无记录null", "type": "正向", "ev": "FinanceLockService.getStatus", "map": "FinanceLockServiceTest.getStatus系列", "st": "covered" },
+          { "id": "FIN-LCK-15", "name": "分页边界pageSize/pageNum钳制", "type": "边界", "ev": "FinanceLockService.getPage", "map": "FinanceLockServiceTest.getPage系列+property21", "st": "covered" },
+          { "id": "FIN-LCK-16", "name": "Redis与DB均不可用返回503拒绝写入", "type": "异常", "ev": "FinanceLockAspect.checkFinanceLock", "map": null, "st": "gap" },
+          { "id": "FIN-LCK-17", "name": "并发同期封账（selectCount-then-insert无唯一约束）", "type": "并发", "ev": "FinanceLockService.createLock", "map": null, "st": "gap" }
+        ]},
+        { "entity": "税率配置", "flows": [
+          { "id": "FIN-TAX-01", "name": "新增税率（合法→ENABLED）", "type": "正向", "ev": "TaxRateService.create", "map": "TaxRateServiceTest.create_success", "st": "covered" },
+          { "id": "FIN-TAX-02", "name": "编辑税率", "type": "正向", "ev": "TaxRateService.update", "map": "TaxRateServiceTest.update_success", "st": "covered" },
+          { "id": "FIN-TAX-03", "name": "停用税率（逻辑删除置DISABLED）", "type": "正向", "ev": "TaxRateService.delete", "map": "TaxRateServiceTest.delete_disablesRecord", "st": "covered" },
+          { "id": "FIN-TAX-04", "name": "名称null/空白/超30字符拒绝", "type": "边界", "ev": "TaxRateService.validateName", "map": "TaxRateServiceTest.create_invalidName", "st": "covered" },
+          { "id": "FIN-TAX-05", "name": "数值<0.01/>99.99/超2位小数/null拒绝", "type": "边界", "ev": "TaxRateService.validateRateValue", "map": "TaxRateServiceTest.create_invalidRate", "st": "covered" },
+          { "id": "FIN-TAX-06", "name": "0.01与99.99恰好合法", "type": "边界", "ev": "TaxRateService.validateRateValue", "map": "TaxRateServiceTest.create_boundaryValues", "st": "covered" },
+          { "id": "FIN-TAX-07", "name": "名称重复（含停用记录）拒绝；编辑排除自身", "type": "幂等", "ev": "TaxRateService.checkNameUniqueness", "map": "TaxRateServiceTest.create/update_duplicateName", "st": "covered" },
+          { "id": "FIN-TAX-08", "name": "记录不存在编辑/停用拒绝", "type": "异常", "ev": "TaxRateService.update/delete", "map": "TaxRateServiceTest.update/delete_notFound", "st": "covered" },
+          { "id": "FIN-TAX-09", "name": "listEnabled/listAll按创建时间升序", "type": "正向", "ev": "TaxRateService.listEnabled/listAll", "map": "TaxRateServiceTest.list_mapsToDto", "st": "covered" },
+          { "id": "FIN-TAX-10", "name": "停用后唯一性含停用记录致同名无法重建", "type": "状态", "ev": "TaxRateService.checkNameUniqueness", "map": null, "st": "gap" }
+        ]},
+        { "entity": "项目结算", "flows": [
+          { "id": "FIN-SET-01", "name": "创建结算单：竣工项目汇总收支+利润+合同明细", "type": "正向", "ev": "ProjectSettlementService.createSettlement", "map": "ProjectSettlementServiceFullTest.success_fullAggregation", "st": "covered" },
+          { "id": "FIN-SET-02", "name": "项目不存在/未竣工拒绝创建", "type": "异常", "ev": "ProjectSettlementService.createSettlement", "map": "ProjectSettlementServiceFullTest.guardCases", "st": "covered" },
+          { "id": "FIN-SET-03", "name": "已存在DRAFT/SUBMITTED结算单拒绝重复创建", "type": "幂等", "ev": "ProjectSettlementService.createSettlement", "map": "ProjectSettlementServiceFullTest.guardCases", "st": "covered" },
+          { "id": "FIN-SET-04", "name": "全null金额汇总为0利润率0", "type": "边界", "ev": "ProjectSettlementService.createSettlement", "map": "ProjectSettlementServiceMutationTest.nullAmountsSkipped", "st": "covered" },
+          { "id": "FIN-SET-05", "name": "利润等式恒成立property", "type": "边界", "ev": "ProjectSettlementService.createSettlement", "map": "SettlementProfitPropertyTest.testProfitCalculation", "st": "covered" },
+          { "id": "FIN-SET-06", "name": "编辑手动调整金额重算总支出与利润", "type": "正向", "ev": "ProjectSettlementService.updateSettlement", "map": "ProjectSettlementServiceFullTest.manualAdjust系列", "st": "covered" },
+          { "id": "FIN-SET-07", "name": "编辑重新汇总（重算+删旧明细重建）", "type": "正向", "ev": "ProjectSettlementService.updateSettlement", "map": "ProjectSettlementServiceFullTest.resummarize_fullRecalc", "st": "covered" },
+          { "id": "FIN-SET-08", "name": "不存在/非DRAFT非REJECTED拒绝编辑", "type": "异常", "ev": "ProjectSettlementService.updateSettlement", "map": "ProjectSettlementServiceFullTest.guardCases", "st": "covered" },
+          { "id": "FIN-SET-09", "name": "REJECTED编辑后回DRAFT", "type": "状态", "ev": "ProjectSettlementService.updateSettlement L345-347", "map": null, "st": "gap" },
+          { "id": "FIN-SET-10", "name": "提交结算审批（DRAFT/REJECTED→SUBMITTED）", "type": "正向", "ev": "ProjectSettlementService.submit", "map": "ProjectSettlementServiceFullTest.submit系列", "st": "covered" },
+          { "id": "FIN-SET-11", "name": "审批通过：APPROVED+合同批量SETTLED不关项目", "type": "联动", "ev": "ProjectSettlementService.onApproved", "map": "ProjectSettlementServiceFullTest.onApproved_success", "st": "covered" },
+          { "id": "FIN-SET-12", "name": "审批驳回：REJECTED项目状态不变", "type": "异常", "ev": "ProjectSettlementService.onRejected", "map": "ProjectSettlementServiceFullTest.onRejected_success", "st": "covered" },
+          { "id": "FIN-SET-13", "name": "回调容错：结算单不存在抛异常", "type": "异常", "ev": "ProjectSettlementService.onApproved/onRejected", "map": "ProjectSettlementServiceFullTest.callbacks_notFound", "st": "covered" },
+          { "id": "FIN-SET-14", "name": "onApproved无幂等守卫重复回调重复SETTLED", "type": "幂等", "ev": "ProjectSettlementService.onApproved", "map": null, "st": "gap", "fix": "补幂等守卫+用例" },
+          { "id": "FIN-SET-15", "name": "未结清合同查询", "type": "正向", "ev": "ProjectSettlementService.getUnsettledContracts", "map": "ProjectSettlementServiceFullTest.getUnsettledContracts", "st": "covered" },
+          { "id": "FIN-SET-16", "name": "导出Excel双Sheet+中文翻译", "type": "正向", "ev": "ProjectSettlementService.exportExcel", "map": "ProjectSettlementServiceFullTest.export_success", "st": "covered" },
+          { "id": "FIN-SET-17", "name": "导出不存在拒绝/IO异常包装", "type": "异常", "ev": "ProjectSettlementService.exportExcel", "map": "ProjectSettlementServiceFullTest.export_notFound/ioException", "st": "covered" },
+          { "id": "FIN-SET-18", "name": "并发重复创建结算单", "type": "并发", "ev": "ProjectSettlementService.createSettlement", "map": null, "st": "gap" },
+          { "id": "FIN-SET-19", "name": "分页/详情查询", "type": "正向", "ev": "ProjectSettlementService.page/getById", "map": "ProjectSettlementServiceFullTest.pageAndGetById", "st": "covered" }
+        ]},
+        { "entity": "发票汇总", "flows": [
+          { "id": "FIN-ISU-01", "name": "按项目合并开票/收票汇总缺省0", "type": "正向", "ev": "InvoiceSummaryService.summary", "map": "InvoiceSummaryServiceTest.summary_mergesBothSides", "st": "covered" },
+          { "id": "FIN-ISU-02", "name": "单侧数据另一侧缺省0", "type": "边界", "ev": "InvoiceSummaryService.summary", "map": "InvoiceSummaryServiceTest.summary_oneSideOnly", "st": "covered" },
+          { "id": "FIN-ISU-03", "name": "空数据返回空列表", "type": "边界", "ev": "InvoiceSummaryService.summary", "map": "InvoiceSummaryServiceTest.summary_empty", "st": "covered" },
+          { "id": "FIN-ISU-04", "name": "多项目保持插入顺序", "type": "正向", "ev": "InvoiceSummaryService.summary", "map": "InvoiceSummaryServiceTest.summary_distinctProjects", "st": "covered" },
+          { "id": "FIN-ISU-05", "name": "日期区间过滤", "type": "边界", "ev": "InvoiceSummaryService.summary", "map": null, "st": "gap" }
+        ]},
+        { "entity": "资金调度", "flows": [
+          { "id": "FIN-FTF-01", "name": "创建调度单（金额>0+进出项目不同+编号+DRAFT）", "type": "正向", "ev": "FundTransferService.save", "map": "FundTransferServiceTest.save_variants", "st": "covered" },
+          { "id": "FIN-FTF-02", "name": "金额null/≤0拒绝；调出=调入拒绝", "type": "边界", "ev": "FundTransferService.save", "map": "FundTransferServiceTest.save_variants", "st": "covered" },
+          { "id": "FIN-FTF-03", "name": "提交审批：APPROVED+双向项目资金回写", "type": "联动", "ev": "FundTransferService.submit", "map": "FundTransferServiceTest.submit_success_writesBackBothProjects", "st": "covered" },
+          { "id": "FIN-FTF-04", "name": "公司资金池只回写调入项目", "type": "边界", "ev": "FundTransferService.writeBackProjectFund", "map": "FundTransferServiceTest.submit_poolSource", "st": "covered" },
+          { "id": "FIN-FTF-05", "name": "提交/删除仅DRAFT；不存在拒绝", "type": "异常", "ev": "FundTransferService.submit/delete", "map": "FundTransferServiceTest.submit_guardCases/delete_variants", "st": "covered" },
+          { "id": "FIN-FTF-06", "name": "资金池总览汇总", "type": "正向", "ev": "FundTransferService.getFundPoolOverview", "map": "FundTransferServiceTest.getFundPoolOverview", "st": "covered" },
+          { "id": "FIN-FTF-07", "name": "提交即回写无审批驳回回冲路径", "type": "状态", "ev": "FundTransferService.submit", "map": null, "st": "gap" },
+          { "id": "FIN-FTF-08", "name": "分页查询", "type": "正向", "ev": "FundTransferService.page", "map": "FundTransferServiceTest.page_delegates", "st": "covered" }
+        ]}
+      ]
+    },
+    {
+      "module": "zw-budget",
+      "stats": { "flows": 64, "covered": 44, "partial": 10, "gap": 10 },
+      "entities": [
+        { "entity": "目标成本编制", "flows": [
+          { "id": "BUD-ORG-01", "name": "分页查询（仅ORIGINAL，筛选+项目名回填）", "type": "正向", "ev": "BudgetService.page", "map": "BudgetServiceTest.page系列", "st": "covered" },
+          { "id": "BUD-ORG-02", "name": "按ID查询预算详情", "type": "正向", "ev": "BudgetService.getById", "map": "BudgetServiceTest.getById系列", "st": "covered" },
+          { "id": "BUD-ORG-03", "name": "查询预算全部明细", "type": "正向", "ev": "BudgetService.getDetailsByBudgetId", "map": null, "st": "gap" },
+          { "id": "BUD-ORG-04", "name": "创建ORIGINAL预算：唯一性+DRAFT+changeSeq=0+总额默认0", "type": "正向", "ev": "BudgetService.save", "map": "BudgetServiceTest.save系列5用例", "st": "covered" },
+          { "id": "BUD-ORG-05", "name": "DTO创建预算", "type": "正向", "ev": "BudgetService.saveFromRequest", "map": "BudgetServiceTest.saveFromRequest", "st": "covered" },
+          { "id": "BUD-ORG-06", "name": "提交生效：汇总明细→APPROVED→项目预算额回写", "type": "正向", "ev": "BudgetService.submit", "map": "BudgetServiceTest.submit系列", "st": "covered" },
+          { "id": "BUD-ORG-07", "name": "提交守卫不存在/非DRAFT拒绝", "type": "异常", "ev": "BudgetService.submit", "map": "BudgetServiceTest.submit守卫用例", "st": "covered" },
+          { "id": "BUD-ORG-08", "name": "明细为空/金额null合计ZERO", "type": "边界", "ev": "BudgetService.submit", "map": "BudgetServiceTest.submit_noDetails/nullAmount", "st": "covered" },
+          { "id": "BUD-ORG-09", "name": "项目不存在仍生效跳过回写", "type": "边界", "ev": "BudgetService.submit", "map": "BudgetServiceTest.submit_projectNotFound", "st": "covered" },
+          { "id": "BUD-ORG-10", "name": "编辑仅DRAFT/不存在报错", "type": "异常", "ev": "BudgetService.update", "map": "BudgetServiceTest.update系列", "st": "covered" },
+          { "id": "BUD-ORG-11", "name": "删除仅DRAFT/不存在报错", "type": "异常", "ev": "BudgetService.delete", "map": "BudgetServiceTest.delete系列", "st": "covered" },
+          { "id": "BUD-ORG-12", "name": "按项目查ORIGINAL预算", "type": "正向", "ev": "BudgetService.getByProject", "map": "BudgetServiceTest.getByProject系列", "st": "covered" },
+          { "id": "BUD-ORG-13", "name": "编制提交不走审批流直置APPROVED（设计观察）", "type": "设计观察", "ev": "BudgetService.submit", "map": null, "st": "gap" }
+        ]},
+        { "entity": "目标成本变更", "flows": [
+          { "id": "BUD-CHG-01", "name": "变更单分页与变更轨迹查询", "type": "正向", "ev": "BudgetChangeService.page/getChangeTraceByProject", "map": "BudgetChangeServiceFullTest.query_variants", "st": "covered" },
+          { "id": "BUD-CHG-02", "name": "创建变更单：总额汇总+调整后金额+DRAFT", "type": "正向", "ev": "BudgetChangeService.save", "map": "BudgetChangeServiceTest.testSave+AmountPropertyTest", "st": "covered" },
+          { "id": "BUD-CHG-03", "name": "编辑仅DRAFT重算删旧明细重建", "type": "异常", "ev": "BudgetChangeService.update", "map": "BudgetChangeServiceFullTest.update_variants", "st": "covered" },
+          { "id": "BUD-CHG-04", "name": "删除仅DRAFT连同明细", "type": "异常", "ev": "BudgetChangeService.delete", "map": "BudgetChangeServiceFullTest.delete_variants", "st": "covered" },
+          { "id": "BUD-CHG-05", "name": "提交前调减校验：调整后<已占用拒绝", "type": "异常", "ev": "BudgetChangeService.validateBeforeSubmit", "map": "BudgetChangeServiceTest.testValidateBeforeSubmit", "st": "covered" },
+          { "id": "BUD-CHG-06", "name": "调减边界：调整后恰等于已占用应放行", "type": "边界", "ev": "BudgetChangeService.validateBeforeSubmit", "map": null, "st": "gap", "fix": "补恰等于边界用例" },
+          { "id": "BUD-CHG-07", "name": "已占用预算四表科目映射null/未知返回0", "type": "正向", "ev": "BudgetChangeService.calculateOccupiedBudget", "map": "BudgetChangeServiceFullTest.calculateOccupiedBudget", "st": "covered" },
+          { "id": "BUD-CHG-08", "name": "提交审批：守卫→余额校验→SUBMITTED", "type": "正向", "ev": "BudgetChangeService.submit", "map": "BudgetChangeServiceFullTest.submit系列", "st": "covered" },
+          { "id": "BUD-CHG-09", "name": "提交时校验失败事务回滚流程未启动", "type": "异常", "ev": "BudgetChangeService.submit", "map": "部分（validateBeforeSubmit单测，submit链路未测）", "st": "partial" },
+          { "id": "BUD-CHG-10", "name": "审批通过回调：APPROVED+逐明细累加+项目额回写", "type": "正向", "ev": "BudgetChangeService.onApproved", "map": "BudgetChangeServiceTest.testOnApproved_updatesCorrectly", "st": "covered" },
+          { "id": "BUD-CHG-11", "name": "重复审批幂等短路（C1守卫）", "type": "幂等", "ev": "BudgetChangeService.onApproved", "map": "BudgetChangeServiceTest.testOnApproved_alreadyApproved", "st": "covered" },
+          { "id": "BUD-CHG-12", "name": "审批驳回仅置REJECTED不动预算", "type": "正向", "ev": "BudgetChangeService.onRejected", "map": "BudgetChangeServiceTest.testOnRejected", "st": "covered" },
+          { "id": "BUD-CHG-13", "name": "撤回仅SUBMITTED置WITHDRAWN", "type": "正向", "ev": "BudgetChangeService.withdraw", "map": "BudgetChangeServiceFullTest.withdraw系列", "st": "covered" },
+          { "id": "BUD-CHG-14", "name": "监听器事件分发过滤", "type": "正向", "ev": "BudgetChangeApprovalListener", "map": "BudgetChangeApprovalListenerTest系列4用例", "st": "covered" },
+          { "id": "BUD-CHG-15", "name": "端到端变更链路（真实Flowable→事件→回写）", "type": "集成", "ev": "BudgetChangeService.submit+Listener", "map": null, "st": "gap" },
+          { "id": "BUD-CHG-16", "name": "onApproved未回写biz_budget.total_amount主表总额不一致", "type": "联动", "ev": "BudgetChangeService.onApproved", "map": null, "st": "gap", "fix": "产品确认口径后补回写或登记豁免" },
+          { "id": "BUD-CHG-17", "name": "onApproved并发依赖状态短路无乐观锁", "type": "并发", "ev": "BudgetChangeService.onApproved/addBudgetTotalPrice", "map": null, "st": "gap" }
+        ]},
+        { "entity": "BudgetControlAspect管控切面", "flows": [
+          { "id": "BUD-ASP-01", "name": "BLOCK模式超预算拦截", "type": "异常", "ev": "BudgetControlAspect.checkBudget", "map": "BudgetBlockIntegrationTest.step5", "st": "covered" },
+          { "id": "BUD-ASP-02", "name": "WARN_ONLY模式超预算放行", "type": "正向", "ev": "BudgetControlAspect.checkBudget", "map": "BudgetBlockIntegrationTest.step7", "st": "covered" },
+          { "id": "BUD-ASP-03", "name": "预算内提交正常通过", "type": "正向", "ev": "BudgetControlAspect.checkBudget", "map": "BudgetBlockIntegrationTest.step4", "st": "covered" },
+          { "id": "BUD-ASP-04", "name": "无projectId跳过校验降级", "type": "降级", "ev": "BudgetControlAspect.checkBudget", "map": null, "st": "gap", "fix": "补切面单测" },
+          { "id": "BUD-ASP-05", "name": "金额null/<=0跳过校验", "type": "降级", "ev": "BudgetControlAspect.checkBudget", "map": null, "st": "gap", "fix": "补切面单测" },
+          { "id": "BUD-ASP-06", "name": "projectId反射提取", "type": "正向", "ev": "BudgetControlAspect.extractProjectId", "map": "间接（集成测试劳务合同路径）", "st": "partial" },
+          { "id": "BUD-ASP-07", "name": "金额提取优先级链", "type": "正向", "ev": "BudgetControlAspect.extractAmount", "map": "部分（仅getContractAmount路径）", "st": "partial" },
+          { "id": "BUD-ASP-08", "name": "WARN→ThreadLocal→X-Budget-Warning响应头→清理", "type": "正向", "ev": "BudgetControlAspect+BudgetWarningResponseAdvice", "map": null, "st": "gap", "fix": "补响应头断言（扩展集成测试step7）" },
+          { "id": "BUD-ASP-09", "name": "category=空挂载点行为（付款/其他费用）", "type": "跨模块", "ev": "BudgetControlConfigService.checkBudget", "map": null, "st": "gap" }
+        ]},
+        { "entity": "预算控制配置", "flows": [
+          { "id": "BUD-CTL-01", "name": "创建配置：枚举校验+阈值50-99+强制非默认", "type": "正向", "ev": "BudgetControlConfigService.save", "map": "BudgetControlCheckFullTest.save_validates", "st": "covered" },
+          { "id": "BUD-CTL-02", "name": "编辑配置守卫链", "type": "异常", "ev": "BudgetControlConfigService.update", "map": "BudgetControlCheckFullTest.update_validates", "st": "covered" },
+          { "id": "BUD-CTL-03", "name": "默认配置不允许删除", "type": "异常", "ev": "BudgetControlConfigService.delete", "map": "BudgetControlConfigServiceTest.testDelete_rejectsDefaultConfig", "st": "covered" },
+          { "id": "BUD-CTL-04", "name": "分页项目名解析过滤无匹配空页", "type": "正向", "ev": "BudgetControlConfigService.page", "map": "BudgetControlCheckFullTest.page系列", "st": "covered" },
+          { "id": "BUD-CTL-05", "name": "降级链1：项目级配置优先", "type": "正向", "ev": "BudgetControlConfigService.getEffectiveConfig", "map": "BudgetControlConfigServiceTest+MonotonicityPropertyTest", "st": "covered" },
+          { "id": "BUD-CTL-06", "name": "降级链2：回落is_default默认配置", "type": "降级", "ev": "BudgetControlConfigService.getEffectiveConfig", "map": "BudgetControlConfigServiceTest.testGetEffectiveConfig_fallbackToDefault", "st": "covered" },
+          { "id": "BUD-CTL-07", "name": "降级链3：异常/无数据硬编码BLOCK/80", "type": "降级", "ev": "BudgetControlConfigService.getEffectiveConfig", "map": "BudgetControlCheckFullTest+MonotonicityPropertyTest系列", "st": "covered" },
+          { "id": "BUD-CTL-08", "name": "配置修改实时生效（无缓存）", "type": "正向", "ev": "BudgetControlConfigService.getEffectiveConfig", "map": "BudgetBlockIntegrationTest.step3/step6", "st": "covered" },
+          { "id": "BUD-CTL-09", "name": "EXEMPT模式直接放行", "type": "正向", "ev": "BudgetControlConfigService.checkBudget", "map": "BudgetControlConfigServiceTest.testCheckBudget_passWhenExemptMode", "st": "covered" },
+          { "id": "BUD-CTL-10", "name": "科目无预算额度BLOCK/WARN", "type": "异常", "ev": "BudgetControlConfigService.checkBudget", "map": "BudgetControlCheckFullTest.checkBudget_noBudget", "st": "covered" },
+          { "id": "BUD-CTL-11", "name": "执行率低于阈值PASS", "type": "正向", "ev": "BudgetControlConfigService.checkBudget", "map": "BudgetControlCheckFullTest.checkBudget_belowThreshold", "st": "covered" },
+          { "id": "BUD-CTL-12", "name": "执行率[阈值,100%)预警区间PASS", "type": "边界", "ev": "BudgetControlConfigService.checkBudget", "map": "BudgetControlCheckFullTest.checkBudget_inWarningZone", "st": "covered" },
+          { "id": "BUD-CTL-13", "name": "执行率恰100%应PASS边界", "type": "边界", "ev": "BudgetControlConfigService.checkBudget L248", "map": null, "st": "gap", "fix": "补恰100%用例" },
+          { "id": "BUD-CTL-14", "name": "执行率>100%按模式BLOCK/WARN", "type": "异常", "ev": "BudgetControlConfigService.checkBudget", "map": "BudgetControlConfigServiceTest+CheckFullTest+IntegrationTest.step5", "st": "covered" },
+          { "id": "BUD-CTL-15", "name": "已发生额=已签合同+已审批付款", "type": "正向", "ev": "BudgetControlConfigService.calculateUsedAmount", "map": "BudgetControlConfigServiceTest.testCheckBudget_blockWhenOver100Percent", "st": "covered" },
+          { "id": "BUD-CTL-16", "name": "MATERIAL科目含调拨净占用", "type": "正向", "ev": "BudgetControlConfigService.getContractAmountByCategory", "map": "BudgetControlCheckFullTest.checkBudget_material_includesTransferNet", "st": "covered" },
+          { "id": "BUD-CTL-17", "name": "未知科目已发生额按0告警", "type": "边界", "ev": "BudgetControlConfigService.getContractAmountByCategory", "map": "BudgetControlCheckFullTest.checkBudget_unknownCategory", "st": "covered" },
+          { "id": "BUD-CTL-18", "name": "预警站内信（当前仅日志占位）", "type": "联动", "ev": "BudgetControlConfigService.sendWarningNotification", "map": null, "st": "gap" },
+          { "id": "BUD-CTL-19", "name": "配置表sys_前缀跨租户全局共享", "type": "租户", "ev": "BudgetControlConfigService.save+ignoreTable", "map": null, "st": "gap" }
+        ]},
+        { "entity": "预算管控配置", "flows": [
+          { "id": "BUD-CFG-01", "name": "查询全部配置", "type": "正向", "ev": "BudgetConfigService.listAll", "map": "BudgetConfigServiceTest.listAll_delegates", "st": "covered" },
+          { "id": "BUD-CFG-02", "name": "获取配置项目级优先", "type": "正向", "ev": "BudgetConfigService.getConfig", "map": "BudgetConfigServiceTest.getConfig_projectLevelFirst", "st": "covered" },
+          { "id": "BUD-CFG-03", "name": "项目级缺失降级全局配置", "type": "降级", "ev": "BudgetConfigService.getConfig", "map": "BudgetConfigServiceTest.getConfig_fallback系列", "st": "covered" },
+          { "id": "BUD-CFG-04", "name": "增删改委托", "type": "正向", "ev": "BudgetConfigService.save/update/delete", "map": "BudgetConfigServiceTest.crud_delegates", "st": "covered" }
+        ]},
+        { "entity": "二级科目", "flows": [
+          { "id": "BUD-SUB-01", "name": "按费用类别查询子类", "type": "正向", "ev": "CostSubcategoryService.list", "map": "CostSubcategoryServiceTest.list_delegates", "st": "covered" },
+          { "id": "BUD-SUB-02", "name": "新增费用子类", "type": "正向", "ev": "CostSubcategoryService.save", "map": "CostSubcategoryServiceTest.save_delegates", "st": "covered" },
+          { "id": "BUD-SUB-03", "name": "编辑不存在报错", "type": "异常", "ev": "CostSubcategoryService.update", "map": "CostSubcategoryServiceTest.update_variants", "st": "covered" },
+          { "id": "BUD-SUB-04", "name": "删除不存在报错", "type": "异常", "ev": "CostSubcategoryService.delete", "map": "CostSubcategoryServiceTest.delete_variants", "st": "covered" }
+        ]}
+      ]
+    },
+    {
+      "module": "zw-contract",
+      "stats": { "flows": 75, "covered": 44, "partial": 2, "gap": 28 },
+      "entities": [
+        { "entity": "施工合同", "flows": [
+          { "id": "CON-01", "name": "合同登记：编号+税金+累计初始化+DRAFT", "type": "正向", "ev": "ConstructionContractService.save", "map": "ConstructionContractServiceTest.save系列", "st": "covered" },
+          { "id": "CON-02", "name": "税金计算不含税额", "type": "边界", "ev": "ConstructionContractService.calculateTax", "map": "ConstructionContractServiceTest.save_taxCalculation", "st": "covered" },
+          { "id": "CON-03", "name": "草稿编辑重算税金", "type": "正向", "ev": "ConstructionContractService.update", "map": "ConstructionContractServiceTest.update_draftStatus", "st": "covered" },
+          { "id": "CON-04", "name": "非草稿编辑拒绝", "type": "异常", "ev": "ConstructionContractService.update", "map": "ConstructionContractServiceTest.update_nonDraftStatus", "st": "covered" },
+          { "id": "CON-05", "name": "编/删/查不存在抛异常", "type": "异常", "ev": "ConstructionContractService.update/delete/getById", "map": "ConstructionContractServiceTest系列notExists", "st": "covered" },
+          { "id": "CON-06", "name": "提交审批：启动流程+SUBMITTED不回写", "type": "正向", "ev": "ConstructionContractService.submit", "map": "ConstructionContractServiceTest.submit_happyPath", "st": "covered" },
+          { "id": "CON-07", "name": "非草稿/不存在提交拒绝", "type": "异常", "ev": "ConstructionContractService.submit", "map": "ConstructionContractServiceTest.submit系列", "st": "covered" },
+          { "id": "CON-08", "name": "审批通过：EFFECTIVE+项目合同额原子累加+WON→CONSTRUCTION", "type": "正向", "ev": "ConstructionContractService.onApproved", "map": "ConstructionContractServiceTest.onApproved_writesBack", "st": "covered" },
+          { "id": "CON-09", "name": "项目FILED→CONSTRUCTION分支", "type": "边界", "ev": "ConstructionContractService.advanceToConstruction", "map": null, "st": "gap", "fix": "补FILED分支用例" },
+          { "id": "CON-10", "name": "审批通过重复回调幂等", "type": "幂等", "ev": "ConstructionContractService.onApproved", "map": "ConstructionContractServiceTest.onApproved_idempotent", "st": "covered" },
+          { "id": "CON-11", "name": "驳回/撤回回DRAFT可重提", "type": "正向", "ev": "ConstructionContractService.onRejected", "map": "ConstructionContractServiceTest.onRejected_backToDraft", "st": "covered" },
+          { "id": "CON-12", "name": "监听器事件分发过滤", "type": "正向", "ev": "ConstructionContractApprovalListener", "map": "ConstructionContractApprovalListenerTest系列4用例", "st": "covered" },
+          { "id": "CON-13", "name": "草稿删除/非草稿拒绝", "type": "正向", "ev": "ConstructionContractService.delete", "map": "ConstructionContractServiceTest.delete系列", "st": "covered" },
+          { "id": "CON-14", "name": "分页查询与明细查询", "type": "正向", "ev": "ConstructionContractService.page/getDetails", "map": null, "st": "gap" },
+          { "id": "CON-15", "name": "合同明细保存（先删后增+sortOrder）", "type": "正向", "ev": "ConstructionContractService.saveDetails", "map": null, "st": "gap" },
+          { "id": "CON-16", "name": "DTO创建/更新", "type": "正向", "ev": "ConstructionContractService.saveFromRequest/updateFromRequest", "map": null, "st": "gap" },
+          { "id": "CON-17", "name": "HTTP端到端创建→提交审批", "type": "正向", "ev": "ContractController", "map": "ContractIntegrationTest.step1-5", "st": "covered" }
+        ]},
+        { "entity": "工程量清单BOQ", "flows": [
+          { "id": "BOQ-01", "name": "上传守卫：合同状态非EFFECTIVE拒绝", "type": "异常", "ev": "BoqService.uploadBoq", "map": "BoqServiceTest+BoqServiceUploadTest系列", "st": "covered" },
+          { "id": "BOQ-02", "name": "文件为空/超20MB拒绝", "type": "边界", "ev": "BoqService.uploadBoq", "map": "BoqServiceTest.testUploadBoq_rejectWhenFileExceedsMaxSize", "st": "covered" },
+          { "id": "BOQ-03", "name": "被产值引用拒绝覆盖", "type": "异常", "ev": "BoqService.hasOutputReportReference", "map": "BoqServiceTest.testUploadBoq_rejectWhenOutputReportExists", "st": "covered" },
+          { "id": "BOQ-04", "name": "IO异常包装业务异常", "type": "异常", "ev": "BoqService.uploadBoq", "map": "BoqServiceUploadTest.uploadBoq_ioException", "st": "covered" },
+          { "id": "BOQ-05", "name": "Excel解析行校验/错误上限/行数上限", "type": "边界", "ev": "BoqReadListener.invoke", "map": "BoqReadListenerTest系列5用例", "st": "covered" },
+          { "id": "BOQ-06", "name": "解析结果为空拒绝导入", "type": "异常", "ev": "BoqService.uploadBoq", "map": null, "st": "gap" },
+          { "id": "BOQ-07", "name": "层级构建：段数定级/父编码推导/孤儿兜底", "type": "正向", "ev": "BoqService.buildHierarchyAndInsert", "map": "BoqServiceUploadTest+BoqHierarchyPropertyTest系列", "st": "covered" },
+          { "id": "BOQ-08", "name": "上传主链路：删旧→插入→顶层合计回写合同额", "type": "正向", "ev": "BoqService.uploadBoq", "map": null, "st": "gap", "fix": "补端到端上传用例断言合计回写" },
+          { "id": "BOQ-09", "name": "树形/平铺查询", "type": "正向", "ev": "BoqService.getBoqTree/getBoqFlat", "map": "BoqServiceUploadTest.query_delegates", "st": "covered" },
+          { "id": "BOQ-10", "name": "删除守卫链+正常删除", "type": "异常", "ev": "BoqService.deleteBoq", "map": "BoqServiceUploadTest.deleteBoq系列", "st": "covered" }
+        ]},
+        { "entity": "清单条目", "flows": [
+          { "id": "QTL-01", "name": "新增/编辑自动计算金额=数量×单价", "type": "正向", "ev": "QuantityListService.save/update", "map": "QuantityListServiceTest.save_computesAmount", "st": "covered" },
+          { "id": "QTL-02", "name": "更新/删除不存在抛异常", "type": "异常", "ev": "QuantityListService.update/delete", "map": "QuantityListServiceTest系列", "st": "covered" },
+          { "id": "QTL-03", "name": "批量导入守卫+IO异常包装", "type": "异常", "ev": "QuantityListService.batchImport", "map": "QuantityListServiceTest.batchImport系列", "st": "covered" },
+          { "id": "QTL-04", "name": "批量导入正向逐行插入+金额计算", "type": "正向", "ev": "QuantityListService.batchImport", "map": null, "st": "gap" },
+          { "id": "QTL-05", "name": "BomItem增删改查金额计算", "type": "正向", "ev": "BomItemService", "map": "BomItemServiceTest系列", "st": "covered" },
+          { "id": "QTL-06", "name": "BomItem批量导入正向", "type": "正向", "ev": "BomItemService.batchImport", "map": null, "st": "gap" }
+        ]},
+        { "entity": "产值上报", "flows": [
+          { "id": "OUT-01", "name": "产值报告保存草稿+明细行", "type": "正向", "ev": "OutputReportService.save/saveDetails", "map": null, "st": "gap" },
+          { "id": "OUT-02", "name": "提交：上限校验→SUBMITTED不回写", "type": "正向", "ev": "OutputReportService.submit", "map": "OutputReportServiceTest.submit_normalPath", "st": "covered" },
+          { "id": "OUT-03", "name": "累计产值超合同额（含变更）拒绝", "type": "边界", "ev": "OutputReportService.validateOutputLimit", "map": "OutputReportServiceTest.submit_exceedsContract", "st": "covered" },
+          { "id": "OUT-04", "name": "提交守卫不存在/非草稿/合同不存在", "type": "异常", "ev": "OutputReportService.submit", "map": null, "st": "gap" },
+          { "id": "OUT-05", "name": "REJECTED重新提交", "type": "边界", "ev": "OutputReportService.submit", "map": null, "st": "gap" },
+          { "id": "OUT-06", "name": "审批通过：合同/项目累计产值+BOQ完成量回写", "type": "正向", "ev": "OutputReportService.onApproved", "map": "OutputReportServiceTest.onApproved_writesBackWithBoq", "st": "covered" },
+          { "id": "OUT-07", "name": "审批通过重复回调幂等", "type": "幂等", "ev": "OutputReportService.onApproved", "map": "OutputReportServiceTest.onApproved_idempotent", "st": "covered" },
+          { "id": "OUT-08", "name": "生效前上限复验失败→REJECTED+站内信通知", "type": "异常", "ev": "OutputReportService.onApproved(catch分支)", "map": null, "st": "gap", "fix": "补复验失败用例（镜像付款侧）" },
+          { "id": "OUT-09", "name": "回调时合同不存在记日志跳过", "type": "异常", "ev": "OutputReportService.onApproved", "map": null, "st": "gap" },
+          { "id": "OUT-10", "name": "驳回回调置REJECTED不回写", "type": "正向", "ev": "OutputReportService.onRejected", "map": "OutputReportServiceTest.onRejected_setsRejected", "st": "covered" },
+          { "id": "OUT-11", "name": "驳回回调守卫不存在/非SUBMITTED", "type": "边界", "ev": "OutputReportService.onRejected", "map": null, "st": "gap" },
+          { "id": "OUT-12", "name": "产值监听器事件分发", "type": "正向", "ev": "OutputReportApprovalListener", "map": null, "st": "gap" },
+          { "id": "OUT-13", "name": "开票上限联动（累计产值为开票上限基准）", "type": "联动", "ev": "addCumulativeInvoiceAmount+onApproved", "map": "部分（产值回写覆盖，开票消费在finance）", "st": "partial" }
+        ]},
+        { "entity": "项目最终结算", "flows": [
+          { "id": "SET-01", "name": "结算保存草稿", "type": "正向", "ev": "FinalSettlementService.save", "map": "FinalSettlementServiceTest.save_setsDraft", "st": "covered" },
+          { "id": "SET-02", "name": "提交：APPROVED+合同SETTLED+项目结算额累加", "type": "正向", "ev": "FinalSettlementService.submit", "map": "FinalSettlementServiceTest.submit_success_fullWriteBack", "st": "covered" },
+          { "id": "SET-03", "name": "提交守卫不存在/非草稿", "type": "异常", "ev": "FinalSettlementService.submit", "map": "FinalSettlementServiceTest.submit_guardCases", "st": "covered" },
+          { "id": "SET-04", "name": "仅EFFECTIVE/SETTLED合同可置已结算（D2守卫）", "type": "异常", "ev": "FinalSettlementService.submit", "map": "FinalSettlementServiceTest.submit_contractNotEffective", "st": "covered" },
+          { "id": "SET-05", "name": "合同/项目不存在跳过回写", "type": "边界", "ev": "FinalSettlementService.submit", "map": "FinalSettlementServiceTest.submit_missingRefs", "st": "covered" },
+          { "id": "SET-06", "name": "结算金额null时累加NPE", "type": "边界", "ev": "FinalSettlementService.submit", "map": null, "st": "gap", "fix": "补null防护+用例" },
+          { "id": "SET-07", "name": "项目结算额并发回写非原子", "type": "并发", "ev": "FinalSettlementService.submit", "map": null, "st": "gap" },
+          { "id": "SET-08", "name": "中途异常事务回滚", "type": "事务", "ev": "FinalSettlementService.submit", "map": null, "st": "gap" }
+        ]},
+        { "entity": "变更签证", "flows": [
+          { "id": "VIS-01", "name": "签证保存草稿", "type": "正向", "ev": "ChangeVisaService.save", "map": "ChangeVisaServiceTest.save_setsDraft", "st": "covered" },
+          { "id": "VIS-02", "name": "提交：APPROVED+合同累计变更累加", "type": "正向", "ev": "ChangeVisaService.submit", "map": "ChangeVisaServiceTest.submit_success", "st": "covered" },
+          { "id": "VIS-03", "name": "提交守卫不存在/非草稿", "type": "异常", "ev": "ChangeVisaService.submit", "map": "ChangeVisaServiceTest.submit_guardCases", "st": "covered" },
+          { "id": "VIS-04", "name": "合同不存在仍APPROVED不回写", "type": "边界", "ev": "ChangeVisaService.submit", "map": "ChangeVisaServiceTest.submit_contractMissing", "st": "covered" },
+          { "id": "VIS-05", "name": "变更金额null时累计回写NPE", "type": "边界", "ev": "ChangeVisaService.submit", "map": null, "st": "gap", "fix": "补null防护+用例" },
+          { "id": "VIS-06", "name": "累计变更并发回写非原子", "type": "并发", "ev": "ChangeVisaService.submit", "map": null, "st": "gap" },
+          { "id": "VIS-07", "name": "签证无审批回调监听器（BPMN存在但提交即决）", "type": "联动", "ev": "ChangeVisaService.submit+change_visa_approval.bpmn20.xml", "map": null, "st": "gap", "fix": "登记设计差异或补监听器" }
+        ]},
+        { "entity": "其他收入/支出合同", "flows": [
+          { "id": "OTH-01", "name": "新增：DRAFT+四累计字段初始化0", "type": "正向", "ev": "OtherContractService.save", "map": "OtherContractServiceTest.save_initializesCumulativeFields", "st": "covered" },
+          { "id": "OTH-02", "name": "编辑守卫仅草稿/不存在", "type": "异常", "ev": "OtherContractService.update", "map": "OtherContractServiceTest.update_variants", "st": "covered" },
+          { "id": "OTH-03", "name": "删除守卫仅草稿/不存在", "type": "异常", "ev": "OtherContractService.delete", "map": "OtherContractServiceTest.delete_variants", "st": "covered" },
+          { "id": "OTH-04", "name": "分页与详情", "type": "正向", "ev": "OtherContractService.page/getById", "map": "OtherContractServiceTest.page/getById系列", "st": "covered" }
+        ]},
+        { "entity": "合同到期提醒任务", "flows": [
+          { "id": "EXP-01", "name": "分级≤0不通知/≤7URGENT/≤30UPCOMING/>30不通知", "type": "边界", "ev": "ContractExpiryService.determineLevel", "map": "ContractExpiryLevelPropertyTest系列5用例", "st": "covered" },
+          { "id": "EXP-02", "name": "终态合同跳过提醒", "type": "异常", "ev": "ContractExpiryService.shouldSkip", "map": "ContractExpiryLevelPropertyTest.closedSettledTerminated", "st": "covered" },
+          { "id": "EXP-03", "name": "Redis去重首次允许二次跳过", "type": "幂等", "ev": "ContractExpiryService.shouldSendNotification", "map": "ContractExpiryDeduplicationPropertyTest.deduplication", "st": "covered" },
+          { "id": "EXP-04", "name": "去重独立性不同合同/级别", "type": "边界", "ev": "ContractExpiryService.buildWarnedKey", "map": "ContractExpiryDeduplicationPropertyTest系列", "st": "covered" },
+          { "id": "EXP-05", "name": "通知内容五要素完整", "type": "正向", "ev": "ContractExpiryService.buildNotificationContent", "map": "ContractExpiryDeduplicationPropertyTest.notificationContent", "st": "covered" },
+          { "id": "EXP-06", "name": "无负责人跳过通知", "type": "边界", "ev": "ContractExpiryService.sendExpiryNotification", "map": "ContractExpiryDeduplicationPropertyTest.noResponsibleUser", "st": "covered" },
+          { "id": "EXP-07", "name": "通知失败记FAILED日志不中断", "type": "异常", "ev": "ContractExpiryService.sendExpiryNotification(catch)", "map": null, "st": "gap", "fix": "补失败分支用例" },
+          { "id": "EXP-08", "name": "发送成功记SENT日志落库", "type": "正向", "ev": "ContractExpiryService.saveExpiryLog", "map": "部分（mock了logMapper未断言SENT字段）", "st": "partial" },
+          { "id": "EXP-09", "name": "分布式锁未获取跳过/Redis异常优雅跳过/执行后释放", "type": "并发", "ev": "ContractExpiryTask.execute", "map": "ContractExpiryTaskTest系列3用例", "st": "covered" },
+          { "id": "EXP-10", "name": "无到期合同提前返回", "type": "边界", "ev": "ContractExpiryTask.doExecute", "map": "ContractExpiryTaskTest.doExecute_noContracts", "st": "covered" },
+          { "id": "EXP-11", "name": "单合同异常不影响其余", "type": "异常", "ev": "ContractExpiryTask.doExecute", "map": "ContractExpiryTaskTest.doExecute_singleFailure", "st": "covered" },
+          { "id": "EXP-12", "name": "processContract三分支跳过+正常发送", "type": "正向", "ev": "ContractExpiryTask.processContract", "map": "ContractExpiryTaskTest.processContract系列", "st": "covered" },
+          { "id": "EXP-13", "name": "逐租户执行上下文切换", "type": "租户", "ev": "ContractExpiryTask.execute→TenantTaskRunner", "map": "部分（仅stub透传未断言租户切换）", "st": "partial" },
+          { "id": "EXP-14", "name": "到期扫描SQL窗口+终态排除", "type": "正向", "ev": "BizExpenseContractMapper.xml selectExpiringContracts", "map": null, "st": "gap" }
+        ]},
+        { "entity": "合同模板", "flows": [
+          { "id": "TPL-01", "name": "新增模板：编码唯一+usageCount初始化", "type": "正向", "ev": "ContractTemplateService.save", "map": "ContractTemplateServiceTest.save_variants", "st": "covered" },
+          { "id": "TPL-02", "name": "编/删不存在抛异常", "type": "异常", "ev": "ContractTemplateService.update/delete", "map": "ContractTemplateServiceTest.updateAndDelete_notFound", "st": "covered" },
+          { "id": "TPL-03", "name": "渲染占位替换+未提供变量保留", "type": "正向", "ev": "ContractTemplateService.renderTemplate", "map": "ContractTemplateServiceTest.renderTemplate_replacesVariables", "st": "covered" },
+          { "id": "TPL-04", "name": "渲染空内容抛异常", "type": "异常", "ev": "ContractTemplateService.renderTemplate", "map": "ContractTemplateServiceTest.renderTemplate_emptyContent", "st": "covered" },
+          { "id": "TPL-05", "name": "示例数据预览", "type": "正向", "ev": "ContractTemplateService.previewTemplate", "map": "ContractTemplateServiceTest.previewTemplate", "st": "covered" },
+          { "id": "TPL-06", "name": "分页仅启用模板按使用次数排序", "type": "正向", "ev": "ContractTemplateService.page", "map": "ContractTemplateServiceTest.page_delegates", "st": "covered" }
+        ]}
+      ]
+    },
+    {
+      "module": "zw-purchase",
+      "stats": { "flows": 68, "covered": 65, "partial": 0, "gap": 3 },
+      "entities": [
+        { "entity": "采购合同", "flows": [
+          { "id": "PUR-CON-01", "name": "新建采购合同（编号+草稿）", "type": "正向", "ev": "PurchaseContractService.save", "map": "PurchaseContractServiceTest.save_generatesCode", "st": "covered" },
+          { "id": "PUR-CON-02", "name": "累计字段缺省初始0且不覆盖", "type": "正向", "ev": "PurchaseContractService.save", "map": "PurchaseContractServiceTest.save_nullCumulative系列", "st": "covered" },
+          { "id": "PUR-CON-03", "name": "大金额/高精度不丢精度", "type": "正向", "ev": "PurchaseContractService.save", "map": "PurchaseContractServiceTest.save_largeAmount系列", "st": "covered" },
+          { "id": "PUR-CON-04", "name": "黑名单供应商拦截（@BlacklistCheck）", "type": "负向", "ev": "PurchaseContractService.save(@BlacklistCheck)", "map": null, "st": "gap", "fix": "补切面拦截用例" },
+          { "id": "PUR-CON-05", "name": "预算管控BLOCK拦截（@BudgetCheck）", "type": "负向", "ev": "PurchaseContractService.save(@BudgetCheck)", "map": "lifecycle-sim-v2.sh stage_5", "st": "covered" },
+          { "id": "PUR-CON-06", "name": "草稿编辑", "type": "正向", "ev": "PurchaseContractService.update", "map": "PurchaseContractServiceTest.update_draftStatus", "st": "covered" },
+          { "id": "PUR-CON-07", "name": "非草稿/不存在编辑拒绝", "type": "负向", "ev": "PurchaseContractService.update", "map": "PurchaseContractServiceTest.update系列", "st": "covered" },
+          { "id": "PUR-CON-08", "name": "提交审批→EFFECTIVE（同步模式）", "type": "正向", "ev": "PurchaseContractService.submit", "map": "PurchaseContractServiceTest.submit_draftContract", "st": "covered" },
+          { "id": "PUR-CON-09", "name": "非草稿/不存在提交拒绝", "type": "负向", "ev": "PurchaseContractService.submit", "map": "PurchaseContractServiceTest.submit系列", "st": "covered" },
+          { "id": "PUR-CON-10", "name": "删除草稿合同", "type": "正向", "ev": "PurchaseContractService.delete", "map": "PurchaseContractServiceTest.delete_draftStatus", "st": "covered" },
+          { "id": "PUR-CON-11", "name": "非草稿/不存在删除拒绝", "type": "负向", "ev": "PurchaseContractService.delete", "map": "PurchaseContractServiceTest.delete系列", "st": "covered" },
+          { "id": "PUR-CON-12", "name": "分页查询（筛选）", "type": "正向", "ev": "PurchaseContractService.page", "map": "PurchaseContractServiceTest.page系列", "st": "covered" },
+          { "id": "PUR-CON-13", "name": "详情与明细查询", "type": "正向", "ev": "PurchaseContractService.getById/getDetails", "map": "PurchaseContractServiceTest.getById/getDetails系列", "st": "covered" },
+          { "id": "PUR-CON-14", "name": "DB级集成（保存/编辑/删除保护）", "type": "正向", "ev": "PurchaseContractService", "map": "PurchaseContractIntegrationTest", "st": "covered" }
+        ]},
+        { "entity": "材料合同结算", "flows": [
+          { "id": "PUR-SET-01", "name": "创建结算关联已审批入库单", "type": "正向", "ev": "PurchaseSettlementService.create", "map": "PurchaseSettlementServiceTest.create_success", "st": "covered" },
+          { "id": "PUR-SET-02", "name": "创建守卫链（5种拒绝）", "type": "负向", "ev": "PurchaseSettlementService.create", "map": "PurchaseSettlementServiceTest.create_guardCases", "st": "covered" },
+          { "id": "PUR-SET-03", "name": "防重复结算", "type": "负向", "ev": "PurchaseSettlementService.create", "map": "PurchaseSettlementServiceTest.create_duplicateAndOverAmount", "st": "covered" },
+          { "id": "PUR-SET-04", "name": "结算额超入库额拒绝", "type": "负向", "ev": "PurchaseSettlementService.create", "map": "PurchaseSettlementServiceTest.create_duplicateAndOverAmount", "st": "covered" },
+          { "id": "PUR-SET-05", "name": "累计结算=已审批合计+本次", "type": "正向", "ev": "PurchaseSettlementService.create", "map": "PurchaseSettlementServiceTest.create_success_fullWriteBack", "st": "covered" },
+          { "id": "PUR-SET-06", "name": "编辑草稿（仅金额/日期/备注）", "type": "正向", "ev": "PurchaseSettlementService.update", "map": "PurchaseSettlementServiceTest.update_success", "st": "covered" },
+          { "id": "PUR-SET-07", "name": "编辑守卫+金额重校验", "type": "负向", "ev": "PurchaseSettlementService.update", "map": "PurchaseSettlementServiceTest.update_guardCases", "st": "covered" },
+          { "id": "PUR-SET-08", "name": "删除仅草稿", "type": "正向", "ev": "PurchaseSettlementService.delete", "map": "PurchaseSettlementServiceTest.delete_draftOnly", "st": "covered" },
+          { "id": "PUR-SET-09", "name": "提交→APPROVED→合同累计结算回写", "type": "正向", "ev": "PurchaseSettlementService.submit", "map": "PurchaseSettlementServiceTest.submit_success", "st": "covered" },
+          { "id": "PUR-SET-10", "name": "提交守卫非草稿/不存在", "type": "负向", "ev": "PurchaseSettlementService.submit", "map": "PurchaseSettlementServiceTest.submit_guardCases", "st": "covered" },
+          { "id": "PUR-SET-11", "name": "合同不存在跳过回写", "type": "正向", "ev": "PurchaseSettlementService.submit", "map": "PurchaseSettlementServiceTest.submit_contractMissing", "st": "covered" },
+          { "id": "PUR-SET-12", "name": "可选入库单剔除已结算", "type": "正向", "ev": "PurchaseSettlementService.availableInbounds", "map": "PurchaseSettlementServiceTest.availableInbounds_filtersSettled", "st": "covered" },
+          { "id": "PUR-SET-13", "name": "分页/详情字段填充", "type": "正向", "ev": "PurchaseSettlementService.page/getById", "map": "PurchaseSettlementServiceTest.page_fillsDisplayFields", "st": "covered" }
+        ]},
+        { "entity": "询价公告", "flows": [
+          { "id": "PUR-INQ-01", "name": "新建询价单（DRAFT+明细+供应商）", "type": "正向", "ev": "InquiryService.save", "map": "InquiryServiceTest.testSave", "st": "covered" },
+          { "id": "PUR-INQ-02", "name": "编辑询价单（先删后插替换）", "type": "正向", "ev": "InquiryService.update", "map": null, "st": "gap", "fix": "补update用例" },
+          { "id": "PUR-INQ-03", "name": "非草稿编辑拒绝", "type": "负向", "ev": "InquiryService.update", "map": null, "st": "gap", "fix": "补守卫用例" },
+          { "id": "PUR-INQ-04", "name": "发布询价（仅草稿）", "type": "正向", "ev": "InquiryService.publish", "map": "InquiryServiceTest.testPublish_success", "st": "covered" },
+          { "id": "PUR-INQ-05", "name": "无物料发布拒绝", "type": "负向", "ev": "InquiryService.publish", "map": "InquiryServiceTest.testPublish_noItems", "st": "covered" },
+          { "id": "PUR-INQ-06", "name": "定向无供应商发布拒绝", "type": "负向", "ev": "InquiryService.publish", "map": "InquiryServiceTest.testPublish_directed_noSupplier", "st": "covered" },
+          { "id": "PUR-INQ-07", "name": "删除非草稿拒绝", "type": "负向", "ev": "InquiryService.delete", "map": "InquiryServiceTest.testDelete_nonDraft", "st": "covered" },
+          { "id": "PUR-INQ-08", "name": "详情不存在抛异常", "type": "负向", "ev": "InquiryService.getById", "map": "InquiryServiceTest.testGetById_notFound", "st": "covered" },
+          { "id": "PUR-INQ-09", "name": "公开列表仅公开且进行中（property）", "type": "正向", "ev": "PublicQuotationService.listPublicInquiries", "map": "PublicInquiryFilterPropertyTest系列3用例", "st": "covered" }
+        ]},
+        { "entity": "供应商报价", "flows": [
+          { "id": "PUR-QUO-01", "name": "后台报价提交（守卫+汇总+PUBLISHED→QUOTED）", "type": "正向", "ev": "QuotationService.submitQuote", "map": "QuotationServiceTest.submitQuote_success", "st": "covered" },
+          { "id": "PUR-QUO-02", "name": "不存在/非法状态报价拒绝", "type": "负向", "ev": "QuotationService.submitQuote", "map": "QuotationServiceTest.submitQuote系列", "st": "covered" },
+          { "id": "PUR-QUO-03", "name": "已报价重复不回退状态", "type": "正向", "ev": "QuotationService.submitQuote", "map": "QuotationServiceTest.submitQuote_alreadyQuoted", "st": "covered" },
+          { "id": "PUR-QUO-04", "name": "公开列表脱敏", "type": "正向", "ev": "PublicQuotationService.listPublicInquiries", "map": "PublicQuotationServiceTest.listPublicInquiries_sanitizedFields", "st": "covered" },
+          { "id": "PUR-QUO-05", "name": "公开详情查询", "type": "正向", "ev": "PublicQuotationService.getPublicInquiryDetail", "map": "PublicQuotationServiceTest.getPublicInquiryDetail", "st": "covered" },
+          { "id": "PUR-QUO-06", "name": "公开报价提交", "type": "正向", "ev": "PublicQuotationService.submitPublicQuotation", "map": "PublicQuotationServiceTest.submitPublicQuotation_success", "st": "covered" },
+          { "id": "PUR-QUO-07", "name": "非公开询价报价拒绝", "type": "负向", "ev": "PublicQuotationService.submitPublicQuotation", "map": "PublicQuotationServiceTest.submitPublicQuotation_inquiryGuards", "st": "covered" },
+          { "id": "PUR-QUO-08", "name": "截止守卫（恰好截止时刻仍可报）", "type": "负向", "ev": "PublicQuotationService.submitPublicQuotation", "map": "PublicInquiryFilterPropertyTest.quoteSubmission系列", "st": "covered" },
+          { "id": "PUR-QUO-09", "name": "手机号/名称空输入守卫", "type": "负向", "ev": "PublicQuotationService.submitPublicQuotation", "map": "PublicQuotationServiceTest.submitPublicQuotation_inputGuards", "st": "covered" },
+          { "id": "PUR-QUO-10", "name": "同手机号重复报价守卫", "type": "负向", "ev": "PublicQuotationService.submitPublicQuotation", "map": "PublicQuotationServiceTest.submitPublicQuotation_inputGuards", "st": "covered" },
+          { "id": "PUR-QUO-11", "name": "我的报价查询", "type": "正向", "ev": "PublicQuotationService.getMyQuotation", "map": "PublicQuotationServiceTest.getMyQuotation_variants", "st": "covered" },
+          { "id": "PUR-QUO-12", "name": "门户报价（deadline守卫+7天兜底+总额计算）", "type": "正向", "ev": "SupplierQuotationService.submitQuotation", "map": "SupplierQuotationServiceTest.submitQuotation_success", "st": "covered" },
+          { "id": "PUR-QUO-13", "name": "门户报价通用守卫", "type": "负向", "ev": "SupplierQuotationService.submitQuotation", "map": "SupplierQuotationServiceTest.submitQuotation_guardCases", "st": "covered" },
+          { "id": "PUR-QUO-14", "name": "被邀请守卫+重复报价守卫", "type": "负向", "ev": "SupplierQuotationService.submitQuotation", "map": "SupplierQuotationServiceTest.submitQuotation_invitationAndDuplicate", "st": "covered" },
+          { "id": "PUR-QUO-15", "name": "已报价再报不重复更新", "type": "正向", "ev": "SupplierQuotationService.submitQuotation", "map": "SupplierQuotationServiceTest.submitQuotation_alreadyQuoted", "st": "covered" },
+          { "id": "PUR-QUO-16", "name": "公开报价自动关联供应商", "type": "正向", "ev": "SupplierQuotationService.submitPublicQuotation", "map": "SupplierQuotationServiceTest.submitPublicQuotation_success", "st": "covered" },
+          { "id": "PUR-QUO-17", "name": "公开报价守卫+不重复关联", "type": "负向", "ev": "SupplierQuotationService.submitPublicQuotation", "map": "SupplierQuotationServiceTest.submitPublicQuotation系列", "st": "covered" },
+          { "id": "PUR-QUO-18", "name": "我的报价分页", "type": "正向", "ev": "SupplierQuotationService.myQuotations", "map": "SupplierQuotationServiceTest.myQuotations_pages", "st": "covered" },
+          { "id": "PUR-QUO-19", "name": "短信验证码发送守卫链", "type": "负向", "ev": "SupplierAuthService.sendCode", "map": "SupplierAuthServiceTest+SupplierSmsServiceTest系列", "st": "covered" },
+          { "id": "PUR-QUO-20", "name": "供应商登录（验证码+账户守卫）", "type": "负向", "ev": "SupplierAuthService.login", "map": "SupplierAuthServiceTest.login系列4用例", "st": "covered" },
+          { "id": "PUR-QUO-21", "name": "手机号自动建档", "type": "正向", "ev": "SupplierAuthService.getOrCreateSupplierByPhone", "map": "SupplierAuthServiceTest.getOrCreate系列", "st": "covered" }
+        ]},
+        { "entity": "报价汇总排名", "flows": [
+          { "id": "PUR-RANK-01", "name": "报价汇总排名按总额升序", "type": "正向", "ev": "QuotationService.getRanking", "map": "QuotationServiceTest.getRanking_sortedByTotalAmountAsc", "st": "covered" },
+          { "id": "PUR-RANK-02", "name": "排名计算清旧重排", "type": "正向", "ev": "BidRankingService.calculateRanking", "map": "BidRankingServiceTest.calculateRanking_success", "st": "covered" },
+          { "id": "PUR-RANK-03", "name": "不存在/非法状态排名拒绝", "type": "负向", "ev": "BidRankingService.calculateRanking", "map": "BidRankingServiceTest.calculateRanking系列", "st": "covered" },
+          { "id": "PUR-RANK-04", "name": "无报价排名拒绝", "type": "负向", "ev": "BidRankingService.calculateRanking", "map": "BidRankingServiceTest.calculateRanking_noQuotations", "st": "covered" }
+        ]},
+        { "entity": "中标结果", "flows": [
+          { "id": "PUR-BID-01", "name": "确认中标（清零+置1+AWARDED）", "type": "正向", "ev": "BidRankingService.confirmWinner", "map": "BidRankingServiceTest.confirmWinner_success", "st": "covered" },
+          { "id": "PUR-BID-02", "name": "未参与排名确认中标拒绝", "type": "负向", "ev": "BidRankingService.confirmWinner", "map": "BidRankingServiceTest.confirmWinner_notFoundCases", "st": "covered" },
+          { "id": "PUR-BID-03", "name": "中标公告状态守卫", "type": "正向", "ev": "PublicQuotationService.getAwardAnnouncement", "map": "PublicQuotationServiceTest.getAwardAnnouncement", "st": "covered" }
+        ]},
+        { "entity": "供应商门户询价", "flows": [
+          { "id": "PUR-SUP-01", "name": "我的询价列表（无邀请空/有邀请分页）", "type": "正向", "ev": "SupplierInquiryService.listMyInquiries", "map": "SupplierInquiryServiceTest.listMyInquiries系列", "st": "covered" },
+          { "id": "PUR-SUP-02", "name": "询价详情未邀请守卫", "type": "负向", "ev": "SupplierInquiryService.getInquiryDetail", "map": "SupplierInquiryServiceTest.getInquiryDetail系列", "st": "covered" },
+          { "id": "PUR-SUP-03", "name": "门户公开列表/详情", "type": "正向", "ev": "SupplierInquiryService.listPublicInquiries", "map": "SupplierInquiryServiceTest.listPublicInquiries系列", "st": "covered" },
+          { "id": "PUR-SUP-04", "name": "截止时间检查（7天兜底）", "type": "负向", "ev": "SupplierInquiryService.checkDeadline", "map": "SupplierInquiryServiceTest.checkDeadline系列", "st": "covered" }
+        ]}
+      ]
+    }
+  ],
+  "approvalFlows": [
+    { "processKey": "construction_contract_approval", "starter": "ConstructionContractService.submit", "callback": "ConstructionContractApprovalListener→onApproved/onRejected", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "output_report_approval", "starter": "OutputReportService.submit", "callback": "OutputReportApprovalListener→onApproved/onRejected", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "invoice_apply_approval", "starter": "InvoiceApplyService.submit", "callback": "InvoiceApplyApprovalListener→onApproved/onRejected", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "payment_apply_approval", "starter": "PaymentApplyService.submit", "callback": "PaymentApplyApprovalListener→onApproved/onRejected", "l4": true, "l1": true, "st": "covered", "note": "L4 stage_9D+9E驳回分支" },
+    { "processKey": "project_settlement_approval", "starter": "ProjectSettlementService.submit", "callback": "SettlementApprovalListener→onApproved/onRejected", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "project_close_approval", "starter": "ProjectService.close", "callback": "ProjectCloseListener→onCloseApproved", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "machine_settlement", "starter": "MachineWorkSettlementService.submit", "callback": "内联@EventListener onApproved", "l4": true, "l1": true, "l2": true, "st": "covered", "note": "唯一有L2的流程" },
+    { "processKey": "material_refund_approval", "starter": "MaterialRefundService（退货事件触发）", "callback": "内联@EventListener onRefundApproved", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "material_transfer_approval", "starter": "MaterialTransferService.submit", "callback": "MaterialTransferApprovalListener→onApproved（双向库存幂等）/onRejected", "l4": false, "l1": true, "st": "partial", "note": "L4端到端缺失，批次一补 stage_9L" },
+    { "processKey": "completion_acceptance_approval", "starter": "CompletionAcceptanceService.submit", "callback": "无（同步submit即决：验收单APPROVED+项目COMPLETED）", "l4": true, "l1": true, "st": "covered", "note": "L4 stage_9B approve存在但非required空转，业务效果同步完成；补强：approve改required+状态断言" },
+    { "processKey": "change_visa_approval", "starter": "ChangeVisaService.submit", "callback": "无（同步submit即决）", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "purchase_contract_approval", "starter": "PurchaseContractService.submit", "callback": "无（同步置EFFECTIVE）", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "purchase_settlement_approval", "starter": "PurchaseSettlementService.submit", "callback": "无（同步APPROVED+回写）", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "reserve_fund_apply_approval", "starter": "ReserveFundApplyService.submit", "callback": "无（同步APPROVED）", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "retention_return_approval", "starter": "RetentionReturnService.submit", "callback": "无（同步APPROVED+回写）", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "entry_apply_approval", "starter": "EntryApplyService.submit", "callback": "无（同步APPROVED+自动建账号）", "l4": true, "l1": true, "st": "covered" },
+    { "processKey": "deposit_apply_approval", "starter": "DepositApplyService.submit", "callback": "无（同步PAID）", "l4": true, "l1": true, "st": "covered" }
+  ],
+  "gapSummary": {
+    "batch1Total": 93,
+    "p0_codeDefects": [
+      { "id": "FIN-RCI-03/04", "desc": "收票登记金额负零无校验+null NPE", "fix": "补金额>0校验+null防护" },
+      { "id": "FIN-OPT-03", "desc": "其他付款金额负零/null无校验", "fix": "补金额>0校验+null防护" },
+      { "id": "FIN-PRJ-06/07", "desc": "项目报销金额无校验+冲抵额超备用金余额", "fix": "补金额校验+冲抵上限" },
+      { "id": "FIN-PRB-04", "desc": "个人报销金额负零无校验", "fix": "补金额>0校验" },
+      { "id": "FIN-RFA-04", "desc": "备用金申请金额负零无校验", "fix": "补金额>0校验" },
+      { "id": "FIN-RFR-06", "desc": "备用金归还returnAmount null NPE", "fix": "补null防护" },
+      { "id": "FIN-RTN-04", "desc": "质保金登记金额负零无校验", "fix": "补金额>0校验" },
+      { "id": "FIN-RTR-08", "desc": "质保金退还retentionAmount null NPE", "fix": "补null防护" },
+      { "id": "FIN-RTR-07", "desc": "质保金退还RETURNED未联动清理预警key", "fix": "补调用链联动" },
+      { "id": "FIN-BNK-06", "desc": "银行账户删除无存在性校验", "fix": "补存在性校验" },
+      { "id": "FIN-SET-14", "desc": "项目结算onApproved无幂等守卫", "fix": "补幂等守卫" },
+      { "id": "SET-06", "desc": "竣工结算金额null NPE", "fix": "补null防护" },
+      { "id": "VIS-05", "desc": "变更签证金额null NPE", "fix": "补null防护" }
+    ],
+    "p1_boundaryAndBranches": [
+      "FIN-INV-14 开票生效前重校失败→REJECTED+通知（镜像付款侧）",
+      "FIN-INV-15/16 开票回调幂等守卫与容错",
+      "FIN-PAY-20 付款onRejected幂等",
+      "FIN-RCV-10 收款编辑负零拒绝",
+      "FIN-PAY-01/02/03/08/09 付款申请CRUD草稿守卫",
+      "FIN-BNK-01~05 银行账户CRUD",
+      "OUT-04/05/08/09/11/12 产值提交守卫/REJECTED重提/复验失败/容错/驳回守卫/监听器",
+      "BUD-CTL-13 执行率恰100%边界",
+      "BUD-CHG-06 调减恰等于已占用边界",
+      "BUD-ASP-04/05/08 切面降级分支+WARN响应头",
+      "CON-09 项目FILED→CONSTRUCTION分支",
+      "EXP-07 到期提醒通知失败FAILED分支",
+      "FIN-SET-09 结算REJECTED编辑回DRAFT",
+      "PUR-INQ-02/03 询价单编辑",
+      "PUR-CON-04 黑名单切面拦截"
+    ],
+    "p2_l4EndToEnd": [
+      "stage_9L 材料调拨审批端到端（双向库存断言）",
+      "stage_9B 竣工验收approve改required+验收单/项目状态断言"
+    ],
+    "exemptCandidates": [
+      "FIN-RCI-05/FIN-OPT-04/FIN-RFR-08 无删除入口无法回冲（产品决策：补删除入口或豁免）",
+      "并发类 gap（FIN-RCV-13/FIN-RFR-07/FIN-RTR-06/FIN-PRJ-08/FIN-LCK-17/FIN-SET-18/SET-07/VIS-06/BUD-CHG-17）：需乐观锁/唯一索引架构改造，登记为后续专项",
+      "越权类 gap（FIN-INV-19/FIN-BNK-07）：@RequiresPermission依赖zw-security层拦截器，由SecurityBoundaryIntegrationTest体系统一覆盖，登记豁免"
+    ]
+  }
+}

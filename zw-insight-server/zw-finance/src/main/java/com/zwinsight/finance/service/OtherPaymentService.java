@@ -1,6 +1,7 @@
 package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.exception.BusinessException;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.common.result.PageResult;
@@ -42,6 +43,12 @@ public class OtherPaymentService {
     @BudgetCheck(category = "")
     @Transactional(rollbackFor = Exception.class)
     public void save(BizOtherPayment otherPayment) {
+        // P0 修复（FIN-OPT-03，2026-08-12）：付款金额必须>0，
+        // 原实现负/零/null 可落库并污染项目其他总支付（null 时 add NPE）
+        if (otherPayment.getPaymentAmount() == null
+                || otherPayment.getPaymentAmount().signum() <= 0) {
+            throw new BusinessException("付款金额必须大于0");
+        }
         otherPayment.setStatus("APPROVED");
         otherPaymentMapper.insert(otherPayment);
 

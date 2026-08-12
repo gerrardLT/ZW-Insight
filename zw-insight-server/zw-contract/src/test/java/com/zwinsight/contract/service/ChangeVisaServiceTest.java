@@ -110,6 +110,23 @@ class ChangeVisaServiceTest {
     }
 
     @Test
+    @DisplayName("submit - 变更金额 null 时不抛 NPE 按 0 累加（P0 VIS-05）")
+    void submit_nullChangeAmount_noNpe() {
+        BizChangeVisa v = visa("DRAFT");
+        v.setChangeAmount(null);
+        when(changeVisaMapper.selectById(1L)).thenReturn(v);
+        BizConstructionContract contract = new BizConstructionContract();
+        contract.setCumulativeChangeAmount(new BigDecimal("500"));
+        when(contractMapper.selectById(20L)).thenReturn(contract);
+
+        service.submit(1L);
+
+        // 累计变更 500 + 0 = 500，无 NPE
+        verify(contractMapper).updateById(argThat(c ->
+                c.getCumulativeChangeAmount().compareTo(new BigDecimal("500")) == 0));
+    }
+
+    @Test
     @DisplayName("submit - 合同不存在时不回写但不报错")
     void submit_contractMissing_skipsWriteBack() {
         BizChangeVisa v = visa("DRAFT");

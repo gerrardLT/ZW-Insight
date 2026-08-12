@@ -41,6 +41,10 @@ public class ReserveFundApplyService {
      * 新增备用金申请
      */
     public void save(BizReserveFundApply apply) {
+        // P0 修复（FIN-RFA-04，2026-08-12）：申请金额必须>0，原实现负/零无校验
+        if (apply.getApplyAmount() == null || apply.getApplyAmount().signum() <= 0) {
+            throw new BusinessException("备用金申请金额必须大于0");
+        }
         apply.setStatus("DRAFT");
         if (apply.getReturnedAmount() == null) {
             apply.setReturnedAmount(BigDecimal.ZERO);

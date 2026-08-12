@@ -55,6 +55,10 @@ public class PersonalReimbursementService {
         if (!"DRAFT".equals(reimbursement.getStatus())) {
             throw new BusinessException("仅草稿状态可提交");
         }
+        // P0 修复（FIN-PRB-04，2026-08-12）：报销金额必须>0，原实现负/零无校验直接生效
+        if (reimbursement.getTotalAmount() == null || reimbursement.getTotalAmount().signum() <= 0) {
+            throw new BusinessException("报销金额必须大于0");
+        }
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("totalAmount", reimbursement.getTotalAmount());

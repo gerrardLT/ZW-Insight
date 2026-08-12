@@ -60,6 +60,10 @@ public class ProjectReimbursementService {
         if (!"DRAFT".equals(reimbursement.getStatus())) {
             throw new BusinessException("仅草稿状态可提交");
         }
+        // P0 修复（FIN-PRJ-06，2026-08-12）：报销金额必须>0，原实现负/零无校验直接生效
+        if (reimbursement.getTotalAmount() == null || reimbursement.getTotalAmount().signum() <= 0) {
+            throw new BusinessException("报销金额必须大于0");
+        }
 
         // 发起审批
         Map<String, Object> variables = new HashMap<>();
@@ -81,6 +85,22 @@ public class ProjectReimbursementService {
                         ? BigDecimal.ZERO : reserveApply.getOffsetAmount();
                 BigDecimal offsetAmount = reimbursement.getOffsetAmount() == null
                         ? BigDecimal.ZERO : reimbursement.getOffsetAmount();
+                // P0 修复（FIN-PRJ-07，2026-08-12）：冲抵额必须≥0、不超报销额、
+                // 且不超备用金待冲抵余额（申请-已还-已冲抵），原实现可超额冲抵
+                if (offsetAmount.signum() < 0) {
+                    throw new BusinessException("冲抵金额不能为负数");
+                }
+                if (offsetAmount.compareTo(reimbursement.getTotalAmount()) > 0) {
+                    throw new BusinessException("冲抵金额不能超过报销金额");
+                }
+                BigDecimal applyAmount = reserveApply.getApplyAmount() == null
+                        ? BigDecimal.ZERO : reserveApply.getApplyAmount();
+                BigDecimal returnedAmount = reserveApply.getReturnedAmount() == null
+                        ? BigDecimal.ZERO : reserveApply.getReturnedAmount();
+                BigDecimal pendingOffset = applyAmount.subtract(returnedAmount).subtract(currentOffset);
+                if (offsetAmount.compareTo(pendingOffset) > 0) {
+                    throw new BusinessException("冲抵金额超过备用金待冲抵余额：" + pendingOffset);
+                }
                 reserveApply.setOffsetAmount(currentOffset.add(offsetAmount));
                 reserveFundApplyMapper.updateById(reserveApply);
             }

@@ -365,6 +365,18 @@ class ProjectSettlementServiceFullTest {
         }
 
         @Test
+        @DisplayName("onApproved - 幂等：已 APPROVED 重复回调短路不重复 SETTLED（P0 FIN-SET-14）")
+        void onApproved_idempotent() {
+            BizProjectSettlement s = settlement(1L, "APPROVED");
+            when(settlementMapper.selectById(1L)).thenReturn(s);
+
+            service.onApproved(1L);
+
+            verify(settlementMapper, never()).updateById(any());
+            verify(constructionContractMapper, never()).settleByProjectId(any());
+        }
+
+        @Test
         @DisplayName("onApproved/onRejected - 结算单不存在抛异常")
         void callbacks_notFound_throws() {
             when(settlementMapper.selectById(99L)).thenReturn(null);

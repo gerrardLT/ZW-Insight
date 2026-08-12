@@ -1,6 +1,7 @@
 package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.exception.BusinessException;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizRetentionMoney;
@@ -38,6 +39,10 @@ public class RetentionMoneyService {
      * 新增质保金（自动计算到期日期 = startDate + retentionPeriod月）
      */
     public void save(BizRetentionMoney retentionMoney) {
+        // P0 修复（FIN-RTN-04，2026-08-12）：质保金金额必须>0，原实现负/零无校验
+        if (retentionMoney.getRetentionAmount() == null || retentionMoney.getRetentionAmount().signum() <= 0) {
+            throw new BusinessException("质保金金额必须大于0");
+        }
         // 计算到期日期
         if (retentionMoney.getStartDate() != null && retentionMoney.getRetentionPeriod() != null) {
             retentionMoney.setExpireDate(

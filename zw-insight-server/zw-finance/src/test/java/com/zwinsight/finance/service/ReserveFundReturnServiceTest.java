@@ -51,7 +51,7 @@ class ReserveFundReturnServiceTest {
     private BizReserveFundReturn fundReturn(String amount) {
         BizReserveFundReturn r = new BizReserveFundReturn();
         r.setReserveApplyId(10L);
-        r.setReturnAmount(new BigDecimal(amount));
+        r.setReturnAmount(amount == null ? null : new BigDecimal(amount));
         return r;
     }
 
@@ -110,5 +110,20 @@ class ReserveFundReturnServiceTest {
 
         assertThatThrownBy(() -> service.save(fundReturn("0.01")))
                 .isInstanceOf(BusinessException.class).hasMessageContaining("不能超过待归还金额");
+    }
+
+    @Test
+    @DisplayName("save - 归还金额负/零/null 拒绝（P0 FIN-RFR-06：防 NPE 与错误冲减）")
+    void save_invalidReturnAmount_rejected() {
+        when(applyMapper.selectById(10L)).thenReturn(apply("1000", null, null));
+
+        assertThatThrownBy(() -> service.save(fundReturn("-100")))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("归还金额必须大于0");
+        assertThatThrownBy(() -> service.save(fundReturn("0")))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("归还金额必须大于0");
+        assertThatThrownBy(() -> service.save(fundReturn(null)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("归还金额必须大于0");
+
+        verify(returnMapper, never()).insert(any());
     }
 }

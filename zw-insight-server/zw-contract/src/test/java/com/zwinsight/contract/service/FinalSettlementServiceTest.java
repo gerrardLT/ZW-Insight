@@ -151,4 +151,25 @@ class FinalSettlementServiceTest {
 
         verify(contractMapper, never()).updateById(any());
     }
+
+    @Test
+    @DisplayName("submit - 结算金额 null 不抛 NPE 按 0 累加（P0 SET-06）")
+    void submit_nullSettlementAmount_noNpe() {
+        BizFinalSettlement s = settlement("DRAFT");
+        s.setSettlementAmount(null);
+        when(settlementMapper.selectById(1L)).thenReturn(s);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-1");
+        BizConstructionContract contract = new BizConstructionContract();
+        contract.setStatus("EFFECTIVE");
+        when(contractMapper.selectById(20L)).thenReturn(contract);
+        BizProject project = new BizProject();
+        project.setSettlementAmount(new BigDecimal("100"));
+        when(projectMapper.selectById(10L)).thenReturn(project);
+
+        service.submit(1L);
+
+        // 项目结算额 100 + 0 = 100，无 NPE
+        verify(projectMapper).updateById(argThat(p ->
+                p.getSettlementAmount().compareTo(new BigDecimal("100")) == 0));
+    }
 }

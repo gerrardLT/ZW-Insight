@@ -31,6 +31,12 @@ public class ReserveFundReturnService {
             throw new BusinessException("备用金申请不存在");
         }
 
+        // P0 修复（FIN-RFR-06，2026-08-12）：归还金额必须>0，原实现 null 时 compareTo NPE，
+        // 且负/零可落库错误冲减待归还余额
+        if (fundReturn.getReturnAmount() == null || fundReturn.getReturnAmount().signum() <= 0) {
+            throw new BusinessException("归还金额必须大于0");
+        }
+
         // 计算待归还金额 = 申请金额 - 已归还 - 已冲抵
         BigDecimal applyAmount = apply.getApplyAmount() == null ? BigDecimal.ZERO : apply.getApplyAmount();
         BigDecimal returned = apply.getReturnedAmount() == null ? BigDecimal.ZERO : apply.getReturnedAmount();

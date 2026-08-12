@@ -38,6 +38,9 @@ class RetentionReturnServiceTest {
     @Mock
     private ApprovalService approvalService;
 
+    @Mock
+    private com.zwinsight.finance.task.RetentionWarningTask retentionWarningTask;
+
     @InjectMocks
     private RetentionReturnService service;
 
@@ -46,7 +49,7 @@ class RetentionReturnServiceTest {
         r.setId(id);
         r.setStatus(status);
         r.setRetentionId(retentionId);
-        r.setReturnAmount(new BigDecimal(amount));
+        r.setReturnAmount(amount == null ? null : new BigDecimal(amount));
         return r;
     }
 
@@ -113,10 +116,11 @@ class RetentionReturnServiceTest {
     }
 
     @Test
-    @DisplayName("submit - 全部返还（含 returnedAmount 为 null 视 0）：标记 RETURNED")
+    @DisplayName("submit - 全部返还（含 returnedAmount 为 null 视 0）：标记 RETURNED 并联动清理预警 key（P0 FIN-RTR-07）")
     void submit_fullReturn_marksReturned() {
         when(retentionReturnMapper.selectById(1L)).thenReturn(ret(1L, "DRAFT", 5L, "10000"));
         BizRetentionMoney m = money("10000", null);
+        m.setId(5L);
         when(retentionMoneyMapper.selectById(5L)).thenReturn(m);
         when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-1");
 
@@ -124,5 +128,39 @@ class RetentionReturnServiceTest {
 
         assertThat(m.getReturnedAmount()).isEqualByComparingTo("10000");
         assertThat(m.getStatus()).isEqualTo("RETURNED");
+        // P0 联动断言：全额退还后清理预警去重 key
+        verify(retentionWarningTask).onRetentionReturned(5L);
+    }
+
+    @Test
+    @DisplayName("submit - 部分返还不触发预警 key 清理")
+    void submit_partialReturn_noWarningCleanup() {
+        when(retentionReturnMapper.selectById(1L)).thenReturn(ret(1L, "DRAFT", 5L, "3000"));
+        BizRetentionMoney m = money("10000", null);
+        m.setId(5L);
+        when(retentionMoneyMapper.selectById(5L)).thenReturn(m);
+        when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-1");
+
+        service.submit(1L);
+
+        assertThat(m.getStatus()).isNotEqualTo("RETURNED");
+        verify(retentionWarningTask, never()).onRetentionReturned(any());
+    }
+
+    @Test
+    @DisplayName("submit - 返还金额负/零/null 拒绝（P0 FIN-RTR-08）")
+    void submit_invalidReturnAmount_rejected() {
+        BizRetentionMoney m = money("10000", null);
+        when(retentionMoneyMapper.selectById(5L)).thenReturn(m);
+
+        when(retentionReturnMapper.selectById(1L)).thenReturn(ret(1L, "DRAFT", 5L, "-100"));
+        assertThatThrownBy(() -> service.submit(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("返还金额必须大于0");
+
+        when(retentionReturnMapper.selectById(2L)).thenReturn(ret(2L, "DRAFT", 5L, null));
+        assertThatThrownBy(() -> service.submit(2L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("返还金额必须大于0");
+
+        verify(retentionReturnMapper, never()).updateById(any());
     }
 }

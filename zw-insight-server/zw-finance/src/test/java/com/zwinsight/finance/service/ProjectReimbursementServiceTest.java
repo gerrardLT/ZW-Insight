@@ -114,6 +114,9 @@ class ProjectReimbursementServiceTest {
         when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-1");
         BizReserveFundApply reserve = new BizReserveFundApply();
         reserve.setId(50L);
+        // 申请 1000、已还 0、已冲抵 200 → 待冲抵余额 800 ≥ 本次冲抵 300
+        reserve.setApplyAmount(new BigDecimal("1000"));
+        reserve.setReturnedAmount(BigDecimal.ZERO);
         reserve.setOffsetAmount(new BigDecimal("200"));
         when(reserveFundApplyMapper.selectById(50L)).thenReturn(reserve);
 
@@ -121,6 +124,61 @@ class ProjectReimbursementServiceTest {
 
         assertThat(reserve.getOffsetAmount()).isEqualByComparingTo("500"); // 200+300
         verify(reserveFundApplyMapper).updateById(reserve);
+    }
+
+    @Test
+    @DisplayName("submit - 冲抵额超备用金待冲抵余额拒绝（P0 FIN-PRJ-07）")
+    void submit_offsetExceedsPending_rejected() {
+        BizProjectReimbursement r = reimbursement(1L, "DRAFT", 1, 50L, "900");
+        when(reimbursementMapper.selectById(1L)).thenReturn(r);
+        // 申请 1000、已还 500、已冲抵 200 → 待冲抵余额 300 < 本次冲抵 900
+        BizReserveFundApply reserve = new BizReserveFundApply();
+        reserve.setId(50L);
+        reserve.setApplyAmount(new BigDecimal("1000"));
+        reserve.setReturnedAmount(new BigDecimal("500"));
+        reserve.setOffsetAmount(new BigDecimal("200"));
+        when(reserveFundApplyMapper.selectById(50L)).thenReturn(reserve);
+
+        assertThatThrownBy(() -> service.submit(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("冲抵金额超过备用金待冲抵余额");
+
+        verify(reserveFundApplyMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("submit - 冲抵额超报销额拒绝（P0 FIN-PRJ-07）")
+    void submit_offsetExceedsReimbursement_rejected() {
+        // 报销额 300，冲抵 500 > 300
+        BizProjectReimbursement r = reimbursement(1L, "DRAFT", 1, 50L, "500");
+        r.setTotalAmount(new BigDecimal("300"));
+        when(reimbursementMapper.selectById(1L)).thenReturn(r);
+        BizReserveFundApply reserve = new BizReserveFundApply();
+        reserve.setId(50L);
+        reserve.setApplyAmount(new BigDecimal("10000"));
+        when(reserveFundApplyMapper.selectById(50L)).thenReturn(reserve);
+
+        assertThatThrownBy(() -> service.submit(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("冲抵金额不能超过报销金额");
+    }
+
+    @Test
+    @DisplayName("submit - 报销金额负/零/null 拒绝（P0 FIN-PRJ-06）")
+    void submit_invalidAmount_rejected() {
+        BizProjectReimbursement neg = reimbursement(1L, "DRAFT", 0, null, null);
+        neg.setTotalAmount(new BigDecimal("-100"));
+        when(reimbursementMapper.selectById(1L)).thenReturn(neg);
+        assertThatThrownBy(() -> service.submit(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("报销金额必须大于0");
+
+        BizProjectReimbursement nullAmount = reimbursement(2L, "DRAFT", 0, null, null);
+        nullAmount.setTotalAmount(null);
+        when(reimbursementMapper.selectById(2L)).thenReturn(nullAmount);
+        assertThatThrownBy(() -> service.submit(2L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("报销金额必须大于0");
+
+        verify(reimbursementMapper, never()).updateById(any());
     }
 
     @Test

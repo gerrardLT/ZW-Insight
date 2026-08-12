@@ -102,4 +102,25 @@ class ReserveFundApplyServiceTest {
         assertThat(a.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(reserveFundApplyMapper).updateById(a);
     }
+
+    @Test
+    @DisplayName("save - 申请金额负/零/null 拒绝（P0 FIN-RFA-04）")
+    void save_invalidAmount_rejected() {
+        BizReserveFundApply neg = apply(1L, "DRAFT");
+        neg.setApplyAmount(new java.math.BigDecimal("-500"));
+        assertThatThrownBy(() -> service.save(neg))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("备用金申请金额必须大于0");
+
+        BizReserveFundApply zero = apply(2L, "DRAFT");
+        zero.setApplyAmount(java.math.BigDecimal.ZERO);
+        assertThatThrownBy(() -> service.save(zero))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("备用金申请金额必须大于0");
+
+        BizReserveFundApply nullAmount = apply(3L, "DRAFT");
+        nullAmount.setApplyAmount(null);
+        assertThatThrownBy(() -> service.save(nullAmount))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("备用金申请金额必须大于0");
+
+        verify(reserveFundApplyMapper, never()).insert(any());
+    }
 }

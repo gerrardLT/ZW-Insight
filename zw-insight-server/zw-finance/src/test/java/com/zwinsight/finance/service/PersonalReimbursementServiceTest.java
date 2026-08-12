@@ -96,4 +96,22 @@ class PersonalReimbursementServiceTest {
         assertThat(r.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(personalReimbursementMapper).updateById(r);
     }
+
+    @Test
+    @DisplayName("submit - 报销金额负/零/null 拒绝（P0 FIN-PRB-04）")
+    void submit_invalidAmount_rejected() {
+        BizPersonalReimbursement neg = reimbursement(1L, "DRAFT");
+        neg.setTotalAmount(new java.math.BigDecimal("-100"));
+        when(personalReimbursementMapper.selectById(1L)).thenReturn(neg);
+        assertThatThrownBy(() -> service.submit(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("报销金额必须大于0");
+
+        BizPersonalReimbursement nullAmount = reimbursement(2L, "DRAFT");
+        nullAmount.setTotalAmount(null);
+        when(personalReimbursementMapper.selectById(2L)).thenReturn(nullAmount);
+        assertThatThrownBy(() -> service.submit(2L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("报销金额必须大于0");
+
+        verify(personalReimbursementMapper, never()).updateById(any());
+    }
 }

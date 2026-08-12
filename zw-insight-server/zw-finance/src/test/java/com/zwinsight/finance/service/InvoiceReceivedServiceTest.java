@@ -1,6 +1,7 @@
 package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
@@ -21,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -146,5 +148,26 @@ class InvoiceReceivedServiceTest {
 
         verify(invoiceReceivedMapper).insert(invoice);
         verify(otherContractMapper, never()).selectById(any());
+    }
+
+    @Test
+    @DisplayName("save - 金额负/零/null 拒绝（P0 FIN-RCI-03/04：防污染累计收票与 NPE）")
+    void save_invalidAmount_rejected() {
+        BizInvoiceReceived neg = new BizInvoiceReceived();
+        neg.setInvoiceAmount(new BigDecimal("-100"));
+        assertThatThrownBy(() -> service.save(neg))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("收票金额必须大于0");
+
+        BizInvoiceReceived zero = new BizInvoiceReceived();
+        zero.setInvoiceAmount(BigDecimal.ZERO);
+        assertThatThrownBy(() -> service.save(zero))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("收票金额必须大于0");
+
+        BizInvoiceReceived nullAmount = new BizInvoiceReceived();
+        nullAmount.setInvoiceAmount(null);
+        assertThatThrownBy(() -> service.save(nullAmount))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("收票金额必须大于0");
+
+        verify(invoiceReceivedMapper, never()).insert(any());
     }
 }

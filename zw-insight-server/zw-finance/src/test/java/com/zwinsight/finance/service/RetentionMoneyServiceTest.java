@@ -2,6 +2,7 @@ package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizRetentionMoney;
 import com.zwinsight.finance.mapper.BizRetentionMoneyMapper;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -93,5 +95,26 @@ class RetentionMoneyServiceTest {
                 .thenReturn(Collections.singletonList(m));
 
         assertThat(service.getExpiring(30)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("save - 质保金金额负/零/null 拒绝（P0 FIN-RTN-04）")
+    void save_invalidAmount_rejected() {
+        BizRetentionMoney neg = money(1L);
+        neg.setRetentionAmount(new java.math.BigDecimal("-1000"));
+        assertThatThrownBy(() -> service.save(neg))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("质保金金额必须大于0");
+
+        BizRetentionMoney zero = money(2L);
+        zero.setRetentionAmount(java.math.BigDecimal.ZERO);
+        assertThatThrownBy(() -> service.save(zero))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("质保金金额必须大于0");
+
+        BizRetentionMoney nullAmount = money(3L);
+        nullAmount.setRetentionAmount(null);
+        assertThatThrownBy(() -> service.save(nullAmount))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("质保金金额必须大于0");
+
+        verify(retentionMoneyMapper, never()).insert(any());
     }
 }

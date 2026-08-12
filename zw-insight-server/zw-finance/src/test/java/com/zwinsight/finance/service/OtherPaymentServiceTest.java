@@ -1,6 +1,7 @@
 package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizOtherPayment;
 import com.zwinsight.finance.mapper.BizOtherPaymentMapper;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -119,5 +121,26 @@ class OtherPaymentServiceTest {
 
         verify(otherPaymentMapper).insert(payment);
         verify(projectMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("save - 金额负/零/null 拒绝（P0 FIN-OPT-03：防污染项目其他总支付与 NPE）")
+    void save_invalidAmount_rejected() {
+        BizOtherPayment neg = new BizOtherPayment();
+        neg.setPaymentAmount(new BigDecimal("-50"));
+        assertThatThrownBy(() -> service.save(neg))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("付款金额必须大于0");
+
+        BizOtherPayment zero = new BizOtherPayment();
+        zero.setPaymentAmount(BigDecimal.ZERO);
+        assertThatThrownBy(() -> service.save(zero))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("付款金额必须大于0");
+
+        BizOtherPayment nullAmount = new BizOtherPayment();
+        nullAmount.setPaymentAmount(null);
+        assertThatThrownBy(() -> service.save(nullAmount))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("付款金额必须大于0");
+
+        verify(otherPaymentMapper, never()).insert(any());
     }
 }

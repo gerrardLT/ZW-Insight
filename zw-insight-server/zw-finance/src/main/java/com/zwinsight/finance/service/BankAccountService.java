@@ -53,9 +53,12 @@ public class BankAccountService {
     }
 
     /**
-     * 删除
+     * 删除（P0 修复 FIN-BNK-06，2026-08-12：补存在性校验，原实现任意 id 静默删除）
      */
     public void delete(Long id) {
+        if (bankAccountMapper.selectById(id) == null) {
+            throw new BusinessException("银行账户不存在");
+        }
         bankAccountMapper.deleteById(id);
     }
 }

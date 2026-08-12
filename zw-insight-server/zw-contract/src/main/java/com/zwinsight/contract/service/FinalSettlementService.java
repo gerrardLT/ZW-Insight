@@ -63,6 +63,9 @@ public class FinalSettlementService {
         if (!"DRAFT".equals(settlement.getStatus())) {
             throw new BusinessException("仅草稿状态可提交");
         }
+        // P0 修复（SET-06，2026-08-12）：结算金额为 null 时原实现累加 NPE
+        BigDecimal settlementAmount = settlement.getSettlementAmount() != null
+                ? settlement.getSettlementAmount() : BigDecimal.ZERO;
 
         // 发起审批流程
         Map<String, Object> variables = new HashMap<>();
@@ -90,7 +93,7 @@ public class FinalSettlementService {
         BizProject project = projectMapper.selectById(settlement.getProjectId());
         if (project != null) {
             BigDecimal currentSettlement = project.getSettlementAmount() != null ? project.getSettlementAmount() : BigDecimal.ZERO;
-            project.setSettlementAmount(currentSettlement.add(settlement.getSettlementAmount()));
+            project.setSettlementAmount(currentSettlement.add(settlementAmount));
             projectMapper.updateById(project);
         }
     }

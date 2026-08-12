@@ -75,12 +75,14 @@ public class ChangeVisaService {
         changeVisa.setStatus("APPROVED");
         changeVisaMapper.updateById(changeVisa);
 
-        // 回写合同累计变更金额
+        // 回写合同累计变更金额（P0 修复 VIS-05，2026-08-12：changeAmount null 时原实现 add NPE）
         BizConstructionContract contract = contractMapper.selectById(changeVisa.getContractId());
         if (contract != null) {
             BigDecimal cumulative = contract.getCumulativeChangeAmount() == null
                     ? BigDecimal.ZERO : contract.getCumulativeChangeAmount();
-            contract.setCumulativeChangeAmount(cumulative.add(changeVisa.getChangeAmount()));
+            BigDecimal changeAmount = changeVisa.getChangeAmount() != null
+                    ? changeVisa.getChangeAmount() : BigDecimal.ZERO;
+            contract.setCumulativeChangeAmount(cumulative.add(changeAmount));
             contractMapper.updateById(contract);
         }
     }

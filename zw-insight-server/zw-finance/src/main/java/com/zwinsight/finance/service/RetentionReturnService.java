@@ -5,8 +5,10 @@ import com.zwinsight.finance.domain.BizRetentionMoney;
 import com.zwinsight.finance.domain.BizRetentionReturn;
 import com.zwinsight.finance.mapper.BizRetentionMoneyMapper;
 import com.zwinsight.finance.mapper.BizRetentionReturnMapper;
+import com.zwinsight.finance.task.RetentionWarningTask;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,8 @@ public class RetentionReturnService {
     private final BizRetentionReturnMapper retentionReturnMapper;
     private final BizRetentionMoneyMapper retentionMoneyMapper;
     private final ApprovalService approvalService;
+    @Lazy
+    private final RetentionWarningTask retentionWarningTask;
 
     /**
      * 新增返还申请
@@ -51,10 +55,16 @@ public class RetentionReturnService {
             throw new BusinessException("关联质保金记录不存在");
         }
 
-        // 校验返还金额
+        // 校验返还金额（P0 修复 FIN-RTR-08，2026-08-12：retentionAmount/returnAmount null 时
+        // 原实现 NPE，且返还额必须>0）
+        if (retentionReturn.getReturnAmount() == null || retentionReturn.getReturnAmount().signum() <= 0) {
+            throw new BusinessException("返还金额必须大于0");
+        }
+        BigDecimal retentionAmount = retentionMoney.getRetentionAmount() != null
+                ? retentionMoney.getRetentionAmount() : BigDecimal.ZERO;
         BigDecimal returnedAmount = retentionMoney.getReturnedAmount() != null
                 ? retentionMoney.getReturnedAmount() : BigDecimal.ZERO;
-        BigDecimal maxReturn = retentionMoney.getRetentionAmount().subtract(returnedAmount);
+        BigDecimal maxReturn = retentionAmount.subtract(returnedAmount);
         if (retentionReturn.getReturnAmount().compareTo(maxReturn) > 0) {
             throw new BusinessException("返还金额不能超过剩余可返还金额：" + maxReturn);
         }
@@ -74,9 +84,15 @@ public class RetentionReturnService {
         retentionMoney.setReturnedAmount(returnedAmount.add(retentionReturn.getReturnAmount()));
 
         // 判断是否全部返还
-        if (retentionMoney.getReturnedAmount().compareTo(retentionMoney.getRetentionAmount()) >= 0) {
+        if (retentionMoney.getReturnedAmount().compareTo(retentionAmount) >= 0) {
             retentionMoney.setStatus("RETURNED");
         }
         retentionMoneyMapper.updateById(retentionMoney);
+
+        // P0 修复（FIN-RTR-07，2026-08-12）：全额退还置 RETURNED 后联动清理预警去重 key，
+        // 原实现未调用导致退还后预警任务仍可能重复发送
+        if ("RETURNED".equals(retentionMoney.getStatus())) {
+            retentionWarningTask.onRetentionReturned(retentionMoney.getId());
+        }
     }
 }

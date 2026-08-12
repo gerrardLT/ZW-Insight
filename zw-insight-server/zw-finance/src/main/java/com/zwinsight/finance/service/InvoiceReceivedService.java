@@ -1,6 +1,7 @@
 package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.exception.BusinessException;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
@@ -45,6 +46,12 @@ public class InvoiceReceivedService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizInvoiceReceived invoiceReceived) {
+        // P0 修复（FIN-RCI-03/04，2026-08-12）：收票金额必须>0，
+        // 原实现负/零/null 可落库并污染合同累计收票（null 时 add NPE）
+        if (invoiceReceived.getInvoiceAmount() == null
+                || invoiceReceived.getInvoiceAmount().signum() <= 0) {
+            throw new BusinessException("收票金额必须大于0");
+        }
         invoiceReceived.setStatus("APPROVED");
         invoiceReceivedMapper.insert(invoiceReceived);
 
