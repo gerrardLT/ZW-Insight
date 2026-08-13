@@ -12,6 +12,8 @@
 #   2. sys_user t9999admin/123456（与 99_data-menu.sql admin 同 BCrypt 哈希）
 #   3. sys_user_role：绑定全局 SUPER_ADMIN(role_id=1)
 #      —— 权限拦截器对 SUPER_ADMIN 豁免；37 号迁移已置 data_scope=ALL
+#   3c. t9999user/123456 低权限用户（无任何权限点的 T9999_LIMITED 角色，
+#       data_scope=SELF）——供 test-api-authz.sh 越权 403 负向断言
 #   4. serial_number_rule：动态复制租户 1 全部规则到 9999（id+95000 偏移，
 #      uk_business_tenant 唯一键 + INSERT IGNORE 保证幂等）
 #
@@ -79,6 +81,26 @@ SELECT id + 95000, business_type, CONCAT('T9', rule_prefix), date_format, seq_le
        description, 9999, 1, NOW(), NOW(), 0, 0
 FROM serial_number_rule
 WHERE tenant_id = 1 AND deleted = 0;
+
+-- 5. 越权负向测试专用低权限用户（2026-08-13）：
+--    绑定无任何权限点的受限角色（data_scope=SELF），供 test-api-authz.sh 断言
+--    @RequiresPermission 接口返回 403（SUPER_ADMIN 豁免机制的反面验证）。
+INSERT IGNORE INTO sys_role
+  (id, role_name, role_code, remark, status, tenant_id, data_scope,
+   created_by, created_at, updated_at, deleted, version)
+VALUES
+  (9999900, 'T9999受限角色', 'T9999_LIMITED', '自动化测试低权限角色：无任何权限点，供越权403负向断言',
+   1, 9999, 'SELF', 1, NOW(), NOW(), 0, 0);
+INSERT IGNORE INTO sys_user
+  (id, username, password, real_name, phone, email, avatar, status,
+   org_id, post_id, tenant_id, created_by, created_at, updated_at, deleted, version)
+VALUES
+  (9999002, 't9999user', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi',
+   'T9999 Limited User', '13900009998', NULL, NULL, 1,
+   NULL, NULL, 9999, 1, NOW(), NOW(), 0, 0);
+INSERT IGNORE INTO sys_user_role (id, user_id, role_id) VALUES (9999002, 9999002, 9999900);
+-- 确保受限角色无任何权限点（幂等清理，防历史残留授权干扰 403 断言）
+DELETE FROM sys_role_menu WHERE role_id = 9999900;
 SQL
 
 echo "=== verify ==="
@@ -88,7 +110,7 @@ FROM sys_tenant WHERE id = 9999;
 SELECT id, username, tenant_id, status FROM sys_user WHERE id = 9999001;
 SELECT ur.user_id, ur.role_id, r.role_code, r.data_scope
 FROM sys_user_role ur JOIN sys_role r ON r.id = ur.role_id
-WHERE ur.user_id = 9999001;
+WHERE ur.user_id IN (9999001, 9999002);
 SELECT COUNT(*) AS serial_rule_cnt FROM serial_number_rule WHERE tenant_id = 9999 AND deleted = 0;
 SQL
 
