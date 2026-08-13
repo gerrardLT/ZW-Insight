@@ -51,7 +51,7 @@
 
 - [x] 3.1 增量测试选择：`tests/affected-modules.sh`（git diff → 模块映射，zw-common 变更触发全量）已落地（2026-08-08，commit 9b8edfd）；独立可用，暂不集成 run-all-tests.sh --affected（工作量大风险高） _需求: R8_
 - [x] 3.2 flaky 检测：`tests/flake-check.sh` 已完成（2026-08-08，commit b8c9032，支持连续 N 次重复执行/结果对比/自动登记台账）；CI surefire rerunFailingTestsCount=1 **已决策不配置（用户 2026-08-10，选项 B）**：项目实证每次 CI 红灯均为真问题（无纯环境抖动案例），自动重跑与“不静默”原则冲突且有掩盖真 flaky 风险，维持失败即红强制根因修复；若未来出现高频已定位的环境性抖动再重新评估 _需求: R8_
-- [x] 3.3 80% 门槛转正：✅ 2026-08-08 完成 —— jacoco check 0.60→0.77（commit e475e5d）→0.80（commit 8f97659）；CI run 31227937937 全链路 success 验证；coverage-baseline.json 已同步更新（commit a5a7029）；AGENTS.md/README 表述已同步（60%→80%） _需求: R2, R4_
+- [x] 3.3 80% 门槛转正：✅ 2026-08-08 完成 —— jacoco check 0.60→0.77（commit e475e5d）→0.80（commit 8f97659）；CI run 31227937937 全链路 success 验证；coverage-baseline.json 已同步更新（commit a5a7029）；AGENTS.md/README 表述已同步（60%→80%） _需求: R2, R4_ —— ⚠️ **2026-08-13 实测校准**：pom check 0.80 绑定 verify 阶段，而 CI backend job 跑 `mvn package` 不触发 verify，故 80% 门槛实际未强制执行（run 31227937937 的"验证通过"是 package 不触发 check 的假象）；实际生效门槛=基线对比只升不降。各模块实际行覆盖率 14.9%~85%，距 80% 目标尚有差距；另查实 zw-app/zw-archive 基线登记为 0（实际 850‰/175‰，基线未随测试增长更新，已修正入 baseline JSON）
 
 ### 阶段四：L1-L5 功能全覆盖补全（2026-08-10 启动，用户决策：功能全覆盖口径）
 

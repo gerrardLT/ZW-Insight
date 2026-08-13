@@ -181,7 +181,7 @@ cd tools/consistency-audit && npm run dev
 
 - 每个新建 Service 类的 public 方法至少编写 1 个正常路径 + 1 个异常路径测试
 - 使用 `@ExtendWith(MockitoExtension.class)` + Mockito Mock 所有外部依赖
-- 覆盖率门槛：当前 pom jacoco check 为行覆盖率 ≥ 80%（verify 阶段，BUNDLE），与 `tests/coverage-baseline.json` 只升不降（CI 对比）；核心 8 模块 ≥ 80% 为阶段三目标（见 `.kiro/specs/test-maturity-upgrade/tasks.md` 3.3）。各模块实测基线见 `tests/TESTING-MATURITY.md` 附录 A
+- 覆盖率治理（2026-08-13 实测校准）：**实际生效的门槛是 `tests/coverage-baseline.json` 基线对比（只升不降，CI 逐模块比对，回落即构建失败）**。pom 中 jacoco check 0.80 绑定 verify 阶段，但 CI 跑 `mvn package` 不触发 verify，故 80% 门槛目前未实际强制执行（目标值，待阶段三达成后将 CI 命令切到 verify 启用）。各模块实际行覆盖率 14.9%~85%（基线 JSON 为千分比），实测明细见 `tests/TESTING-MATURITY.md` 附录 A
 
 #### 集成测试使用 tenant_id=9999
 
@@ -194,7 +194,7 @@ cd tools/consistency-audit && npm run dev
 
 - 提交 PR 前必须在本地运行 `mvn test` 确认单元测试通过
 - CI backend job 执行 `mvn -B clean package`（运行全量单元测试 + JaCoCo 报告），并与 `tests/coverage-baseline.json` 对比：任一模块覆盖率回落即构建失败
-- 覆盖率门槛（jacoco check 0.60）绑定 verify 阶段；阶段三目标达成后 CI 到 verify 强制（见 spec 3.3）
+- pom jacoco check（minimum 0.80，BUNDLE LINE）绑定 verify 阶段，CI 当前跑 package 不触发；阶段三目标达成后 CI 切到 verify 强制（见 spec 3.3）
 
 #### L3 API 契约验证
 
@@ -254,6 +254,7 @@ AI 代理在开发、调试、评审过程中产生的临时产物必须遵循�
 ---
 
 **测试开发约定**：
-- 当前覆盖率门槛为 **80%** (pom jacoco check, verify 阶段)
-- 新增模块必须达到 80% 覆盖率才允许合并
-- 存量模块按阶段目标逐步提升：60% → 70% → 80%
+- **实际生效门槛：覆盖率基线只升不降**（CI 逐模块比对 coverage-baseline.json，回落即失败）
+- pom jacoco check 0.80（verify 阶段）为目标门槛，当前 CI 跑 package 未触发，阶段三达成后启用
+- 新增模块必须同步登记覆盖率基线（实测值入 baseline JSON）才允许合并
+- 存量模块按阶段目标逐步提升：当前实际 14.9%~85%，目标 80%
