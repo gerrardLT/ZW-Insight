@@ -236,13 +236,15 @@ describe('08 - 采购管理', () => {
     })
 
     it('分页查询采购合同', async () => {
+      // 2026-08-13 健壮性修复：复用模式下复用的是历史轮次旧合同（createdAt 旧），
+      // 租户合同总量增长后 size=20 首页翻不到→改用 contractName 过滤精确定位
       const resp = await client.get('/api/v1/purchase/contract/page', {
         page: 1,
         size: 20,
+        contractName: 'E2E_TEST_',
       })
       expect(resp.code).toBe(200)
       const records = resp.data?.records || []
-      // 复用模式下本轮可能未新建合同，按固定 E2E_TEST_ 前缀查找
       const found = records.find((r: any) => r.contractName?.startsWith('E2E_TEST_'))
       expect(found).toBeDefined()
       purchaseContractId = found.id
