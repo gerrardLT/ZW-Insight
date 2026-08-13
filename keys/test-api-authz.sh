@@ -73,18 +73,18 @@ raw_call() {
 }
 
 # login_as <username> <password>：切换用户真实登录（先清旧 token，防复用他人会话）
+#   单次尝试不重试：本脚本的登录失败会计入共享 IP 失败计数（与其他脚本同源 127.0.0.1），
+#   重试会加速触发 IP 锁定连锁拖垮后续脚本；verify-base.sh 已在每次登录前清锁。
 login_as() {
-  local u="$1" p="$2" i
+  local u="$1" p="$2"
   rm -f "$TOKEN_FILE"
   export ZWI_USER="$u" ZWI_PASS="$p"
-  for ((i=1; i<=3; i++)); do
-    # verify-base.sh 每次 source 按当前 ZWI_USER/ZWI_PASS 执行登录
-    if bash "$SCRIPT_DIR/verify-base.sh" login >/dev/null 2>&1; then
-      log "  登录成功: $u"
-      return 0
-    fi
-  done
-  log "  登录失败: $u（3 次重试均失败）" >&2
+  export ZWI_MAX_RETRY=1
+  if bash "$SCRIPT_DIR/verify-base.sh" login >/dev/null 2>&1; then
+    log "  登录成功: $u"
+    return 0
+  fi
+  log "  登录失败: $u" >&2
   return 1
 }
 

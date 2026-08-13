@@ -3,6 +3,15 @@ name: CI/CD Deploy to BaoTa Server
 on:
   push:
     branches: [main]
+    # 纯文档提交跳过全链路（2026-08-13，用户反馈等待时间过长）：
+    # 仅当一次 push 的全部文件都在白名单内才跳过；任何代码/脚本/配置改动照常全链路。
+    # 安全边界：tests/coverage-baseline.json 影响 CI 比对逻辑不在白名单；
+    # keys/**（L3/L4/L5 脚本）不在白名单（脚本改动必须实跑验证）。
+    paths-ignore:
+      - '**.md'
+      - '.kiro/**'
+      - 'audit-reports/**'
+      - 'docs/**'
   workflow_dispatch:
 
 # 并发互斥（用户决策 2026-08-10，方案 A）：单服务器部署只有最新提交有意义，
@@ -331,6 +340,28 @@ jobs:
           chmod +x *.sh
           FIX_SCRIPT
 
+      - name: Init L4 test tenant (9999) & deploy BPMN
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'INIT_SCRIPT'
+          set -uo pipefail
+          cd /root/zwi-deploy/test-scripts
+          # 1) 初始化隔离测试租户 9999 + t9999admin + t9999user（低权限，供 authz 负向测试）
+          #    + 编号规则（幂等，自包含 docker exec SQL）
+          #    2026-08-13 提前至 L3 之前：test-api-authz.sh 依赖 t9999user 种子，
+          #    原顺序（L3 先跑）导致 authz 登录不存在用户触发 IP 锁定连锁事故
+          bash init-test-tenant.sh
+          # 2) 准备 deploy-bpmn 运行环境：verify-base.sh + 从 rsync 仓库汇集全部 BPMN 到 /root/zwi-deploy
+          cp -f verify-base.sh /root/zwi-deploy/verify-base.sh
+          cp -f deploy-bpmn.sh /root/zwi-deploy/deploy-bpmn.sh
+          find "${DEPLOY_DIR:-/root/zw-insight}" -path '*/src/main/resources/processes/*.bpmn20.xml' -exec cp -f {} /root/zwi-deploy/ \; 2>/dev/null || true
+          # 3) 部署全部 BPMN 到租户 9999（幂等；BPMN 持久化于 ACT_RE_PROCDEF，重复部署只增版本）
+          cd /root/zwi-deploy
+          ZWI_USER=t9999admin ZWI_PASS=123456 ZWI_TENANT_ID=9999 bash deploy-bpmn.sh || true
+          INIT_SCRIPT
+        env:
+          DEPLOY_DIR: ${{ env.DEPLOY_DIR }}
+
       - name: Run L3 API tests
         id: l3_test
         run: |
@@ -369,25 +400,6 @@ jobs:
 
           [ "$L3_FAIL" -eq 0 ]
           L3_SCRIPT
-
-      - name: Init L4 test tenant (9999) & deploy BPMN
-        if: always()
-        run: |
-          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'INIT_SCRIPT'
-          set -uo pipefail
-          cd /root/zwi-deploy/test-scripts
-          # 1) 初始化隔离测试租户 9999 + t9999admin + 编号规则（幂等，自包含 docker exec SQL）
-          bash init-test-tenant.sh
-          # 2) 准备 deploy-bpmn 运行环境：verify-base.sh + 从 rsync 仓库汇集全部 BPMN 到 /root/zwi-deploy
-          cp -f verify-base.sh /root/zwi-deploy/verify-base.sh
-          cp -f deploy-bpmn.sh /root/zwi-deploy/deploy-bpmn.sh
-          find "${DEPLOY_DIR:-/root/zw-insight}" -path '*/src/main/resources/processes/*.bpmn20.xml' -exec cp -f {} /root/zwi-deploy/ \; 2>/dev/null || true
-          # 3) 部署全部 BPMN 到租户 9999（幂等；BPMN 持久化于 ACT_RE_PROCDEF，重复部署只增版本）
-          cd /root/zwi-deploy
-          ZWI_USER=t9999admin ZWI_PASS=123456 ZWI_TENANT_ID=9999 bash deploy-bpmn.sh || true
-          INIT_SCRIPT
-        env:
-          DEPLOY_DIR: ${{ env.DEPLOY_DIR }}
 
       - name: Run L4 lifecycle test
         id: l4_test
