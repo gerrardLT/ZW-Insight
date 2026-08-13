@@ -24,10 +24,14 @@ on:
 # 测试套件触发策略（2026-08-13 用户决策：全量套件约 40 分钟，每次部署都跑等待过长）：
 #   - push 默认只跑：Backend Build（L1 单测 + 覆盖率基线对比）→ Deploy → 部署冒烟
 #     （健康检查 + API 文档收敛硬断言）
-#   - Integration Test（L3/L4/L5）与 k6 默认不跑，两个显式触发入口：
-#     ① 手动 workflow_dispatch 选 run_tests=true（gh workflow run deploy.yml -f run_tests=true）
-#     ② 提交信息含 [full-test]（关键改动需全链路验证时随 push 自动带上）
-#   - 历史全量回归记录不受影响：需要时显式触发即可复跑
+#   - Integration Test（L3/L4/L5）与 k6 默认不跑，唯一触发入口：
+#     手动 workflow_dispatch 选 run_tests=true
+#     （gh workflow run deploy.yml -f run_tests=true）
+#   - 废弃方案备忘（勿再引入同类机制）：
+#     ① commit message 关键字——提交信息自身描述该关键字时会被 contains() 自匹配
+#       误触发（run 31697219500 实证）
+#     ② github.event.repository.labels——push 事件 payload 的 repository 对象
+#       不携带 labels 字段，表达式恒为假，不可用
 
 # 并发互斥（用户决策 2026-08-10，方案 A）：单服务器部署只有最新提交有意义，
 # 新 push 取消正在跑的旧流水线，避免两条流水线并行操作同一台服务器
@@ -314,13 +318,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy
     # 默认不跑（2026-08-13 用户决策，全量套件约 40 分钟）。
-    # 触发：① 手动 dispatch + run_tests=true ② 提交信息含 [full-test]
+    # 唯一触发入口：手动 dispatch + run_tests=true（commit message/label
+    # 方案均已废弃，原因见文件头部注释）。
     # 显式检查 needs.deploy.result：自定义 if 会覆盖默认 success() 语义，
     # 不写明则部署失败时本 job 仍会被评估
     if: |
       needs.deploy.result == 'success' &&
-      ((github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true') ||
-       contains(github.event.head_commit.message, '[full-test]'))
+      github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -610,8 +614,7 @@ jobs:
     # 与 integration-test 同门控（默认不跑）；显式要求两个依赖均成功
     if: |
       needs.deploy.result == 'success' && needs.integration-test.result == 'success' &&
-      ((github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true') ||
-       contains(github.event.head_commit.message, '[full-test]'))
+      github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true'
     environment: production
     steps:
       - uses: actions/checkout@v4
