@@ -44,10 +44,14 @@ public class ProcessDefinitionService {
         String resourceName = name + ".bpmn20.xml";
 
         // 部署流程到Flowable
+        // enableDuplicateFiltering：BPMN 内容未变化时复用已有部署，不产生新版本
+        // （2026-08-13 事故：CI 每轮全量跑 deploy-bpmn.sh 重复部署 23 个流程，
+        // 累积 ACT_RE_DEPLOYMENT 992 行 / ACT_GE_BYTEARRAY 11万+行）
         Deployment deployment = repositoryService.createDeployment()
                 .addBytes(resourceName, bpmnBytes)
                 .name(name)
                 .tenantId(String.valueOf(tenantId))
+                .enableDuplicateFiltering()
                 .deploy();
 
         // 获取流程定义
@@ -59,8 +63,12 @@ public class ProcessDefinitionService {
             throw new BusinessException("流程部署失败，未找到流程定义");
         }
 
-        // 保存到扩展表
-        WfProcessDef processDef = new WfProcessDef();
+        // 保存到扩展表：同一流程定义 ID 幂等 upsert（重复部署被过滤时
+        // deployment 指向已有部署，避免 wf_process_def 重复插入）
+        WfProcessDef existing = processDefMapper.selectOne(new LambdaQueryWrapper<WfProcessDef>()
+                .eq(WfProcessDef::getProcessDefinitionId, processDefinition.getId())
+                .last("LIMIT 1"));
+        WfProcessDef processDef = existing != null ? existing : new WfProcessDef();
         processDef.setProcessKey(processDefinition.getKey());
         processDef.setProcessName(name);
         processDef.setResourceName(resourceName);
@@ -68,7 +76,11 @@ public class ProcessDefinitionService {
         processDef.setProcessDefinitionId(processDefinition.getId());
         processDef.setVersionNum(processDefinition.getVersion());
         processDef.setStatus(1);
-        processDefMapper.insert(processDef);
+        if (existing != null) {
+            processDefMapper.updateById(processDef);
+        } else {
+            processDefMapper.insert(processDef);
+        }
 
         log.info("流程部署成功, deploymentId={}, processKey={}, version={}",
                 deployment.getId(), processDefinition.getKey(), processDefinition.getVersion());

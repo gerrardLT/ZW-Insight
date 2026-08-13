@@ -112,6 +112,29 @@ export const TEST_HOME = {
 
 // ============ 数据清理器 ============
 
+/**
+ * 审批流回收（2026-08-13 堵增量）：按 businessId 定位当前用户待办并终止流程。
+ * 背景：L5 用例提交单据进审批流后不清理，admin 待办持续堆积（事故当天
+ * ACT_RU_TASK 6万+行致 /todo 超时/500）。terminate 会发布 ApprovalRejectEvent，
+ * 单据置 REJECTED（不回写累计金额）且流程实例被引擎删除，待办不再残留。
+ * 失败仅告警不抛出（清理语义，不遮蔽业务断言）。
+ */
+export async function terminateApprovalByBusiness(client: ApiClient, businessId: number | string): Promise<void> {
+  try {
+    const resp: any = await client.get('/api/v1/workflow/approval/todo', { page: 1, size: 50 })
+    const records = resp?.data?.records || []
+    const task = records.find((r: any) => String(r.businessId) === String(businessId))
+    if (!task) return // 提交未成功或无流程定义时无待办可收
+    await client.post('/api/v1/workflow/approval/terminate', {
+      taskId: task.taskId,
+      comment: 'E2E自动化回收',
+    })
+  } catch (e: any) {
+    console.warn(`[清理] 终止审批流失败 businessId=${businessId}: ${e?.message || e}`)
+  }
+}
+
+
 interface CleanupTask {
   label: string
   fn: () => Promise<any>

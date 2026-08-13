@@ -8,7 +8,11 @@
 // 数据策略（与 L3 test-api-finance.sh 同口径，真实演示租户）：
 //   - 关联真实种子采购合同 91501（项目 90001），单笔 1000 元小额，
 //     避免累计付款快速逼近合同额触发预算/应付 BLOCK
-//   - 提交后记录进入审批流，不做回滚（与 L3 行为一致，历史数据可追溯）
+//   - 提交后立即 terminate 回收审批流（2026-08-13 堵增量）：
+//     旧策略「提交后不回滚」致 admin 待办 4 天堆积 6 万条（ACT_RU_TASK
+//     60K/ACT_RU_VARIABLE 300K），拖垮 /todo 接口与本场景自身。
+//     terminate 发 ApprovalRejectEvent → 单据置 REJECTED（不回写累计金额）
+//     且流程实例被引擎删除，运行态零残留；回收请求不计入阈值指标。
 // 指标：http_req_duration P95/P99（submit 为核心写路径）。
 
 import http from 'k6/http';
@@ -84,4 +88,31 @@ export default function () {
       }
     },
   });
+
+  // 3. 回收：定位本笔待办并 terminate（单据转 REJECTED，流程实例删除，
+  //    运行态零残留；未打 name 标签不计入阈值指标）。失败不阻断——
+  //    下次全量清理兑底，但会记 check 失败供监控。
+  reclaimApproval(headers, id);
+}
+
+function reclaimApproval(headers, businessId) {
+  const todo = http.get(`${BASE}/api/v1/workflow/approval/todo?page=1&size=20`, {
+    headers,
+    tags: { name: 'GET /approval/todo (reclaim)' },
+  });
+  let taskId = null;
+  try {
+    const body = JSON.parse(todo.body);
+    const records = (body.data && body.data.records) || [];
+    const hit = records.find((r) => String(r.businessId) === String(businessId));
+    taskId = hit ? hit.taskId : null;
+  } catch (e) {
+    return;
+  }
+  if (!taskId) return;
+  http.post(
+    `${BASE}/api/v1/workflow/approval/terminate`,
+    JSON.stringify({ taskId, comment: 'k6性能基线回收' }),
+    { headers, tags: { name: 'POST /approval/terminate (reclaim)' } }
+  );
 }

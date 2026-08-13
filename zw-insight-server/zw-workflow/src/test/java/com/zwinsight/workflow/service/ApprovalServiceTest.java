@@ -440,22 +440,27 @@ class ApprovalServiceTest {
     // =====================================================================
 
     @Test
-    @DisplayName("我的待办：分页查询返回正确结构")
+    @DisplayName("我的待办：分页查询返回正确结构（变量随查询批量携带，无 N+1）")
     void testGetMyTodoTasks() {
         TaskQuery taskQuery = mock(TaskQuery.class);
         when(taskService.createTaskQuery()).thenReturn(taskQuery);
         when(taskQuery.taskAssignee("100")).thenReturn(taskQuery);
         when(taskQuery.count()).thenReturn(1L);
+        when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
         when(taskQuery.orderByTaskCreateTime()).thenReturn(taskQuery);
         when(taskQuery.desc()).thenReturn(taskQuery);
         when(taskQuery.listPage(0, 10)).thenReturn(List.of(mockTask));
-        when(taskService.getVariables("task-001")).thenReturn(Map.of("businessType", "CONTRACT", "businessId", 1L));
+        // includeProcessVariables 后变量由 Task 自身携带，不再逐任务 getVariables
+        when(mockTask.getProcessVariables())
+                .thenReturn(Map.of("businessType", "CONTRACT", "businessId", 1L));
 
         PageResult<Map<String, Object>> result = approvalService.getMyTodoTasks(100L, 1, 10);
 
         assertThat(result.getTotal()).isEqualTo(1);
         assertThat(result.getRecords()).hasSize(1);
         assertThat(result.getRecords().get(0).get("taskId")).isEqualTo("task-001");
+        assertThat(result.getRecords().get(0).get("businessType")).isEqualTo("CONTRACT");
+        verify(taskService, never()).getVariables(anyString());
     }
 
     @Test

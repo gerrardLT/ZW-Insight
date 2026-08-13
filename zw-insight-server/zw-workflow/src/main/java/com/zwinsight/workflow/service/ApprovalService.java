@@ -337,8 +337,12 @@ public class ApprovalService {
                 .taskAssignee(String.valueOf(userId))
                 .count();
 
+        // includeProcessVariables：随分页查询一次性携带流程变量，
+        // 替代原 taskToMap 内逐任务 getVariables 的 N+1 查询
+        // （2026-08-13 事故：ACT_RU_TASK 6万+行时 N+1 致 /todo 超时/500）
         List<Task> tasks = taskService.createTaskQuery()
                 .taskAssignee(String.valueOf(userId))
+                .includeProcessVariables()
                 .orderByTaskCreateTime()
                 .desc()
                 .listPage((page - 1) * size, size);
@@ -486,8 +490,11 @@ public class ApprovalService {
         map.put("createTime", task.getCreateTime());
         map.put("processDefinitionId", task.getProcessDefinitionId());
 
-        // 获取流程变量中的业务信息
-        Map<String, Object> processVariables = taskService.getVariables(task.getId());
+        // 流程变量随查询批量携带（includeProcessVariables），不再逐任务查库
+        Map<String, Object> processVariables = task.getProcessVariables();
+        if (processVariables == null) {
+            processVariables = java.util.Collections.emptyMap();
+        }
         map.put("businessType", processVariables.get("businessType"));
         map.put("businessId", processVariables.get("businessId"));
         return map;

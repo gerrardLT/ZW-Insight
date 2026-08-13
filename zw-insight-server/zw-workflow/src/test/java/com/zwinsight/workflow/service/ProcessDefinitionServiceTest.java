@@ -78,6 +78,7 @@ class ProcessDefinitionServiceTest {
         when(builder.addBytes(anyString(), any(byte[].class))).thenReturn(builder);
         when(builder.name(anyString())).thenReturn(builder);
         when(builder.tenantId(anyString())).thenReturn(builder);
+        when(builder.enableDuplicateFiltering()).thenReturn(builder);
         when(builder.deploy()).thenReturn(deployment);
         when(deployment.getId()).thenReturn("dep-1");
 
@@ -103,6 +104,7 @@ class ProcessDefinitionServiceTest {
         when(builder.addBytes(anyString(), any(byte[].class))).thenReturn(builder);
         when(builder.name(anyString())).thenReturn(builder);
         when(builder.tenantId(anyString())).thenReturn(builder);
+        when(builder.enableDuplicateFiltering()).thenReturn(builder);
         when(builder.deploy()).thenReturn(deployment);
         when(deployment.getId()).thenReturn("dep-1");
 
@@ -119,5 +121,40 @@ class ProcessDefinitionServiceTest {
         assertThat(result.getProcessKey()).isEqualTo("budget_approval");
         assertThat(result.getStatus()).isEqualTo(1);
         verify(processDefMapper).insert(any(WfProcessDef.class));
+    }
+
+    @Test
+    @DisplayName("部署流程：重复部署被过滤时幂等更新扩展表不重复插入（2026-08-13 防 ACT_RE 膨胀）")
+    void testDeploy_duplicateFiltered_upsertsExt() {
+        DeploymentBuilder builder = mock(DeploymentBuilder.class);
+        Deployment deployment = mock(Deployment.class);
+        ProcessDefinition pd = mock(ProcessDefinition.class);
+        when(repositoryService.createDeployment()).thenReturn(builder);
+        when(builder.addBytes(anyString(), any(byte[].class))).thenReturn(builder);
+        when(builder.name(anyString())).thenReturn(builder);
+        when(builder.tenantId(anyString())).thenReturn(builder);
+        when(builder.enableDuplicateFiltering()).thenReturn(builder);
+        when(builder.deploy()).thenReturn(deployment);
+        when(deployment.getId()).thenReturn("dep-1");
+
+        ProcessDefinitionQuery query = mock(ProcessDefinitionQuery.class);
+        when(repositoryService.createProcessDefinitionQuery()).thenReturn(query);
+        when(query.deploymentId("dep-1")).thenReturn(query);
+        when(query.singleResult()).thenReturn(pd);
+        when(pd.getKey()).thenReturn("budget_approval");
+        when(pd.getId()).thenReturn("pd-1");
+        when(pd.getVersion()).thenReturn(1);
+
+        // 扩展表已存在同流程定义 ID 的记录（重复部署场景）
+        WfProcessDef existing = new WfProcessDef();
+        existing.setId(9L);
+        existing.setProcessDefinitionId("pd-1");
+        when(processDefMapper.selectOne(any())).thenReturn(existing);
+
+        WfProcessDef result = processDefinitionService.deploy("预算审批", 1L, "<bpmn/>".getBytes());
+
+        assertThat(result.getId()).isEqualTo(9L);
+        verify(processDefMapper).updateById(any(WfProcessDef.class));
+        verify(processDefMapper, never()).insert(any(WfProcessDef.class));
     }
 }

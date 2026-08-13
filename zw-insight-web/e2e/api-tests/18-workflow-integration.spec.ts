@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createAuthedClient, createCleaner } from './setup'
+import { terminateApprovalByBusiness } from './test-data'
 import type { ApiClient } from './api-client'
 import type { TestDataCleaner } from './test-data'
 
@@ -123,6 +124,11 @@ describe('18 - 审批联动', () => {
         const submitResp = await client.post(`/api/v1/contract/${contractId}/submit`)
         // 提交可能成功（进入审批）或失败（无流程定义）
         expect([200, 400, 500]).toContain(submitResp.code)
+        // 提交成功则回收审批流（terminate → 防待办堆积，2026-08-13）；
+        // 后注册先执行，保证在删除合同之前终止流程
+        if (submitResp.code === 200) {
+          cleaner.add('回收合同审批流', () => terminateApprovalByBusiness(client, contractId))
+        }
       }
     })
 
