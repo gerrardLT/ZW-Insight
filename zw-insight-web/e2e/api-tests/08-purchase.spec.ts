@@ -215,9 +215,10 @@ describe('08 - 采购管理', () => {
     it('创建采购合同（幂等：已存在 E2E 前缀合同时复用）', async () => {
       // 结算链零累积策略：审批后的入库单不可删除且会挂住合同删除，
       // 故合同采用「存在即复用」（按固定 E2E_TEST_ 前缀匹配，合同名带
-      // 时间戳每轮不同），配合入库单幂等复用实现多轮运行不累积
+      // 时间戳每轮不同），配合入库单幂等复用实现多轮运行不累积。
+      // 2026-08-13 健壮性修复：contractName 过滤精确定位，不依赖翻页容量
       const page = await client.get('/api/v1/purchase/contract/page', {
-        page: 1, size: 50,
+        page: 1, size: 50, contractName: 'E2E_TEST_',
       })
       const existing = (page.data?.records || []).find((r: any) => r.contractName?.startsWith('E2E_TEST_'))
       if (existing) return
@@ -298,20 +299,22 @@ describe('08 - 采购管理', () => {
       // 入库单仅草稿可删）。零累积策略：在全部同名 E2E 合同的入库单中确定性
       // 查找「无结算记录的 APPROVED 入库单」复用（结算保持 DRAFT 每轮由 cleaner 删除）；
       // 仅无可复用入库单时创建并提交一张新入库单（审批后不可删除，作为常驻记录）。
+      // 2026-08-13 健壮性修复：四处翻页查找全部改为服务端过滤精确定位，
+      // 消除租户数据累积超 size 阈值后翻不到的脆弱性（本轮 size=20 爆红同源）
       const contractPage = await client.get('/api/v1/purchase/contract/page', {
-        page: 1, size: 100,
+        page: 1, size: 50, contractName: 'E2E_TEST_',
       })
       const e2eContractIds = (contractPage.data?.records || [])
         .filter((r: any) => r.contractName?.startsWith('E2E_TEST_'))
         .map((r: any) => r.id)
       const setPage = await client.get('/api/v1/purchase/settlement/page', {
-        page: 1, size: 100,
+        page: 1, size: 100, projectId,
       })
       const settledInboundIds = new Set(
         (setPage.data?.records || []).map((s: any) => s.inboundId)
       )
       const inPage = await client.get('/api/v1/material/inbound/page', {
-        page: 1, size: 100,
+        page: 1, size: 100, projectId,
       })
       let inbound = (inPage.data?.records || []).find(
         (r: any) =>
