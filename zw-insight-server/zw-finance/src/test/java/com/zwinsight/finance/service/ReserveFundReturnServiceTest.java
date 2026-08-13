@@ -126,4 +126,43 @@ class ReserveFundReturnServiceTest {
 
         verify(returnMapper, never()).insert(any());
     }
+
+    @Test
+    @DisplayName("delete - 删除归还并回冲申请 returnedAmount（FIN-RFR-08 收尾，与 save 对称）")
+    void delete_reversesApplyReturnedAmount() {
+        BizReserveFundReturn existing = new BizReserveFundReturn();
+        existing.setId(1L);
+        existing.setReserveApplyId(10L);
+        existing.setReturnAmount(new BigDecimal("800"));
+        when(returnMapper.selectById(1L)).thenReturn(existing);
+        when(applyMapper.selectById(10L)).thenReturn(apply("5000", "2000", null));
+
+        service.delete(1L);
+
+        verify(returnMapper).deleteById(1L);
+        ArgumentCaptor<BizReserveFundApply> captor = ArgumentCaptor.forClass(BizReserveFundApply.class);
+        verify(applyMapper).updateById(captor.capture());
+        // 2000 - 800 = 1200，恢复待归还余额
+        assertThat(captor.getValue().getReturnedAmount()).isEqualByComparingTo("1200");
+    }
+
+    @Test
+    @DisplayName("delete - 不存在抛异常；申请不存在时仅删记录不回冲")
+    void delete_guards() {
+        when(returnMapper.selectById(999L)).thenReturn(null);
+        assertThatThrownBy(() -> service.delete(999L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("归还记录不存在");
+
+        BizReserveFundReturn existing = new BizReserveFundReturn();
+        existing.setId(2L);
+        existing.setReserveApplyId(20L);
+        existing.setReturnAmount(new BigDecimal("500"));
+        when(returnMapper.selectById(2L)).thenReturn(existing);
+        when(applyMapper.selectById(20L)).thenReturn(null);
+
+        service.delete(2L);
+
+        verify(returnMapper).deleteById(2L);
+        verify(applyMapper, never()).updateById(any());
+    }
 }

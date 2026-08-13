@@ -49,4 +49,10 @@ public class ReserveFundController {
         returnService.save(fundReturn);
         return R.ok();
     }
+
+    @DeleteMapping("/return/{id}")
+    public R<Void> deleteReturn(@PathVariable Long id) {
+        returnService.delete(id);
+        return R.ok();
+    }
 }

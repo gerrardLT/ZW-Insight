@@ -61,4 +61,29 @@ public class OtherPaymentService {
             projectMapper.updateById(project);
         }
     }
+
+    /**
+     * 删除其他支付记录（回冲项目 totalOtherPayment，与 save 回写对称）
+     * <p>
+     * FIN-OPT-04 收尾（2026-08-13，待决策#2 选 A）：原无删除入口，错录付款
+     * 使项目其他总支出虚高无法回冲；对齐 PaymentReceivedService.delete 模式。
+     * </p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long id) {
+        BizOtherPayment existing = otherPaymentMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("其他支付记录不存在");
+        }
+        BigDecimal paymentAmount = existing.getPaymentAmount() == null
+                ? BigDecimal.ZERO : existing.getPaymentAmount();
+        otherPaymentMapper.deleteById(id);
+
+        // 回冲项目其他总支付
+        BizProject project = projectMapper.selectById(existing.getProjectId());
+        if (project != null && project.getTotalOtherPayment() != null) {
+            project.setTotalOtherPayment(project.getTotalOtherPayment().subtract(paymentAmount));
+            projectMapper.updateById(project);
+        }
+    }
 }

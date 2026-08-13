@@ -53,4 +53,31 @@ public class ReserveFundReturnService {
         apply.setReturnedAmount(returned.add(fundReturn.getReturnAmount()));
         applyMapper.updateById(apply);
     }
+
+    /**
+     * 删除归还记录（回冲申请 returnedAmount，与 save 回写对称）
+     * <p>
+     * FIN-RFR-08 收尾（2026-08-13，待决策#2 选 A）：原无删除入口，错录归还
+     * 使未还余额错误减少无法回冲；对齐 PaymentReceivedService.delete 模式。
+     * </p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long id) {
+        BizReserveFundReturn existing = returnMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("归还记录不存在");
+        }
+        BigDecimal returnAmount = existing.getReturnAmount() == null
+                ? BigDecimal.ZERO : existing.getReturnAmount();
+        returnMapper.deleteById(id);
+
+        // 回冲申请已归还金额（恢复待归还余额）
+        if (existing.getReserveApplyId() != null) {
+            BizReserveFundApply apply = applyMapper.selectById(existing.getReserveApplyId());
+            if (apply != null && apply.getReturnedAmount() != null) {
+                apply.setReturnedAmount(apply.getReturnedAmount().subtract(returnAmount));
+                applyMapper.updateById(apply);
+            }
+        }
+    }
 }

@@ -59,10 +59,10 @@
    "module": "zw-finance",
    "stats": {
     "flows": 191,
-    "covered": 163,
+    "covered": 166,
     "partial": 9,
     "gap": 0,
-    "exempt": 19
+    "exempt": 16
    },
    "entities": [
     {
@@ -387,12 +387,12 @@
       },
       {
        "id": "FIN-RCI-05",
-       "name": "无编辑/删除入口错误收票无法回冲",
+       "name": "删除收票回冲合同累计收票（对称回冲）",
        "type": "联动",
-       "ev": "InvoiceReceivedService（仅page/save）",
-       "map": null,
-       "st": "exempt",
-       "reason": "无删除入口无法回冲：当前产品无收票删除API，待产品决策补入口或豁免"
+       "ev": "InvoiceReceivedService.delete + InvoiceReceivedController DELETE /{id}",
+       "map": "InvoiceReceivedServiceTest.delete_reversesContractCumulativeInvoice/delete_guards",
+       "st": "covered",
+       "reason": "待决策#2 选 A 已实施（2026-08-13）：补 delete+对称回冲合同 cumulativeInvoice，对齐 PaymentReceived.delete 模式"
       },
       {
        "id": "FIN-RCI-06",
@@ -622,12 +622,12 @@
       },
       {
        "id": "FIN-OPT-04",
-       "name": "无编辑/删除入口错误付款无法回冲",
+       "name": "删除其他付款回冲项目 totalOtherPayment（对称回冲）",
        "type": "联动",
-       "ev": "OtherPaymentService（仅page/save）",
-       "map": null,
-       "st": "exempt",
-       "reason": "无删除入口无法回冲：当前产品无其他付款删除API，待产品决策补入口或豁免"
+       "ev": "OtherPaymentService.delete + OtherPaymentController DELETE /{id}",
+       "map": "OtherPaymentServiceTest.delete_reversesProjectTotalOtherPayment/delete_guards",
+       "st": "covered",
+       "reason": "待决策#2 选 A 已实施（2026-08-13）：补 delete+对称回冲项目 totalOtherPayment，对齐 PaymentReceived.delete 模式"
       },
       {
        "id": "FIN-OPT-05",
@@ -919,12 +919,12 @@
       },
       {
        "id": "FIN-RFR-08",
-       "name": "无删除入口错误归还无法回冲",
+       "name": "删除备用金归还回冲申请 returnedAmount（对称回冲）",
        "type": "联动",
-       "ev": "ReserveFundReturnService（仅save）",
-       "map": null,
-       "st": "exempt",
-       "reason": "无删除入口无法回冲：当前产品无备用金归还删除API，待产品决策补入口或豁免"
+       "ev": "ReserveFundReturnService.delete + ReserveFundController DELETE /return/{id}",
+       "map": "ReserveFundReturnServiceTest.delete_reversesApplyReturnedAmount/delete_guards",
+       "st": "covered",
+       "reason": "待决策#2 选 A 已实施（2026-08-13）：补 delete+对称回冲申请 returnedAmount，对齐 PaymentReceived.delete 模式"
       }
      ]
     },
@@ -4501,7 +4501,7 @@
    "stage_9B 竣工验收approve改required+验收单/项目状态断言"
   ],
   "exemptCandidates": [
-   "FIN-RCI-05/FIN-OPT-04/FIN-RFR-08 无删除入口无法回冲（产品决策：补删除入口或豁免）",
+   "FIN-RCI-05/FIN-OPT-04/FIN-RFR-08 收票/其他付款/备用金归还无删除入口——待决策#2 选 A 已实施（2026-08-13），三者补 delete+对称回冲+端点+单测，已转 covered",
    "并发类 gap（FIN-RCV-13/FIN-RFR-07/FIN-RTR-06/FIN-PRJ-08/FIN-LCK-17/FIN-SET-18/SET-07/VIS-06/BUD-CHG-17）：需乐观锁/唯一索引架构改造，登记为后续专项",
    "越权类 gap（FIN-INV-19/FIN-BNK-07）：@RequiresPermission依赖zw-security层拦截器，由SecurityBoundaryIntegrationTest体系统一覆盖，登记豁免"
   ],
@@ -4570,7 +4570,7 @@
    ],
    "exemptions": [
     "MAC-SET 审批回调 check-then-act 非原子+updateById 乐观锁返回值未检查（并发窗口）：同批次一并发类口径，登记为乐观锁/唯一索引架构改造专项",
-    "MAC-PRJ 机械结算不回写项目 totalExpense（与付款链路不对称）：业务口径待产品确认，暂豁免不改代码"
+    "MAC-PRJ 机械结算不回写项目 totalExpense（与付款链路不对称）：待决策#1 选 A（2026-08-13）——核验为全系统 totalExpense=已付口径的一致设计（所有结算类型均不回写），维持豁免并转为设计确认"
    ],
    "verification": "6 模块回归全绿（project 46/tender 87/machine 131/material 106/labor 111/subcontract 184）+ CI run 31622551219 全链路 success（L3 20/20、L4 209✅含退款扣减硬断言、L5 三套 EXIT=0、k6 过）"
   }

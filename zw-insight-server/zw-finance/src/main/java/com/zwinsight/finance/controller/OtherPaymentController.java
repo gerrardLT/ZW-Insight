@@ -32,4 +32,10 @@ public class OtherPaymentController {
         otherPaymentService.save(otherPayment);
         return R.ok();
     }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        otherPaymentService.delete(id);
+        return R.ok();
+    }
 }

@@ -155,4 +155,45 @@ class OtherPaymentServiceTest {
                 .getAnnotation(BudgetCheck.class);
         assertThat(check).as("save 必须保留 @BudgetCheck 注解").isNotNull();
     }
+
+    @Test
+    @DisplayName("delete - 删除其他付款并回冲项目 totalOtherPayment（FIN-OPT-04 收尾，与 save 对称）")
+    void delete_reversesProjectTotalOtherPayment() {
+        BizOtherPayment existing = new BizOtherPayment();
+        existing.setId(1L);
+        existing.setProjectId(10L);
+        existing.setPaymentAmount(new BigDecimal("3000"));
+        when(otherPaymentMapper.selectById(1L)).thenReturn(existing);
+        BizProject project = new BizProject();
+        project.setId(10L);
+        project.setTotalOtherPayment(new BigDecimal("10000"));
+        when(projectMapper.selectById(10L)).thenReturn(project);
+
+        service.delete(1L);
+
+        verify(otherPaymentMapper).deleteById(1L);
+        ArgumentCaptor<BizProject> captor = ArgumentCaptor.forClass(BizProject.class);
+        verify(projectMapper).updateById(captor.capture());
+        assertThat(captor.getValue().getTotalOtherPayment()).isEqualByComparingTo("7000");
+    }
+
+    @Test
+    @DisplayName("delete - 不存在抛异常；项目不存在时仅删记录不回冲")
+    void delete_guards() {
+        when(otherPaymentMapper.selectById(999L)).thenReturn(null);
+        assertThatThrownBy(() -> service.delete(999L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("其他支付记录不存在");
+
+        BizOtherPayment existing = new BizOtherPayment();
+        existing.setId(2L);
+        existing.setProjectId(20L);
+        existing.setPaymentAmount(new BigDecimal("1000"));
+        when(otherPaymentMapper.selectById(2L)).thenReturn(existing);
+        when(projectMapper.selectById(20L)).thenReturn(null);
+
+        service.delete(2L);
+
+        verify(otherPaymentMapper).deleteById(2L);
+        verify(projectMapper, never()).updateById(any());
+    }
 }

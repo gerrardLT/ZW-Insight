@@ -32,4 +32,10 @@ public class InvoiceReceivedController {
         invoiceReceivedService.save(invoiceReceived);
         return R.ok();
     }
+
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@PathVariable Long id) {
+        invoiceReceivedService.delete(id);
+        return R.ok();
+    }
 }

@@ -170,4 +170,45 @@ class InvoiceReceivedServiceTest {
 
         verify(invoiceReceivedMapper, never()).insert(any());
     }
+
+    @Test
+    @DisplayName("delete - 删除收票并回冲合同累计收票（FIN-RCI-05 收尾，与 save 对称）")
+    void delete_reversesContractCumulativeInvoice() {
+        BizInvoiceReceived existing = new BizInvoiceReceived();
+        existing.setId(1L);
+        existing.setContractId(10L);
+        existing.setInvoiceAmount(new BigDecimal("5000"));
+        when(invoiceReceivedMapper.selectById(1L)).thenReturn(existing);
+        BizOtherContract contract = new BizOtherContract();
+        contract.setId(10L);
+        contract.setCumulativeInvoice(new BigDecimal("20000"));
+        when(otherContractMapper.selectById(10L)).thenReturn(contract);
+
+        service.delete(1L);
+
+        verify(invoiceReceivedMapper).deleteById(1L);
+        ArgumentCaptor<BizOtherContract> captor = ArgumentCaptor.forClass(BizOtherContract.class);
+        verify(otherContractMapper).updateById(captor.capture());
+        assertThat(captor.getValue().getCumulativeInvoice()).isEqualByComparingTo("15000");
+    }
+
+    @Test
+    @DisplayName("delete - 不存在抛异常；合同不存在时仅删记录不回冲")
+    void delete_guards() {
+        when(invoiceReceivedMapper.selectById(999L)).thenReturn(null);
+        assertThatThrownBy(() -> service.delete(999L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("收票记录不存在");
+
+        BizInvoiceReceived existing = new BizInvoiceReceived();
+        existing.setId(2L);
+        existing.setContractId(20L);
+        existing.setInvoiceAmount(new BigDecimal("1000"));
+        when(invoiceReceivedMapper.selectById(2L)).thenReturn(existing);
+        when(otherContractMapper.selectById(20L)).thenReturn(null);
+
+        service.delete(2L);
+
+        verify(invoiceReceivedMapper).deleteById(2L);
+        verify(otherContractMapper, never()).updateById(any());
+    }
 }

@@ -245,10 +245,22 @@ class ProjectServiceTest {
     @DisplayName("更新状态：正常更新")
     void testUpdateStatus_success() {
         when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
 
         projectService.updateStatus(1L, "COMPLETED");
 
         verify(projectMapper).updateById(argThat(p -> "COMPLETED".equals(p.getStatus())));
+    }
+
+    @Test
+    @DisplayName("更新状态：乐观锁返回0行（并发修改）时抛错不丢失更新（待决策#4B）")
+    void testUpdateStatus_concurrentConflict_throws() {
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(0);
+
+        assertThatThrownBy(() -> projectService.updateStatus(1L, "CONSTRUCTION"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("并发修改");
     }
 
     @Test

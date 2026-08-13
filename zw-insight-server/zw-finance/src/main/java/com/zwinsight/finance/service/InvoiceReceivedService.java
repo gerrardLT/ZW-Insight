@@ -66,4 +66,31 @@ public class InvoiceReceivedService {
             }
         }
     }
+
+    /**
+     * 删除收票记录（回冲合同累计收票，与 save 回写对称）
+     * <p>
+     * FIN-RCI-05 收尾（2026-08-13，待决策#2 选 A）：原无删除入口，错录收票
+     * 使合同收票虚高无法回冲；对齐 PaymentReceivedService.delete 模式。
+     * </p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long id) {
+        BizInvoiceReceived existing = invoiceReceivedMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("收票记录不存在");
+        }
+        BigDecimal invoiceAmount = existing.getInvoiceAmount() == null
+                ? BigDecimal.ZERO : existing.getInvoiceAmount();
+        invoiceReceivedMapper.deleteById(id);
+
+        // 回冲合同累计收票金额
+        if (existing.getContractId() != null) {
+            BizOtherContract contract = otherContractMapper.selectById(existing.getContractId());
+            if (contract != null && contract.getCumulativeInvoice() != null) {
+                contract.setCumulativeInvoice(contract.getCumulativeInvoice().subtract(invoiceAmount));
+                otherContractMapper.updateById(contract);
+            }
+        }
+    }
 }

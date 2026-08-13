@@ -186,7 +186,8 @@ public class ProjectService {
 
     /**
      * 更新项目状态（D1 守卫，2026-08-11：终态项目 CLOSED/COMPLETED 禁止被改回任意状态；
-     * D4 守卫，2026-08-12：目标状态白名单 + 结项审批中（CLOSING）仅允许审批回调流转）
+     * D4 守卫，2026-08-12：目标状态白名单 + 结项审批中（CLOSING）仅允许审批回调流转；
+     * 待决策#4B，2026-08-13：检查乐观锁返回值，并发修改时 fail-fast 而非静默丢失更新）
      */
     private static final java.util.Set<String> VALID_PROJECT_STATUSES = java.util.Set.of(
             "DRAFT", "FILED", "TENDERING", "WON", "CONSTRUCTION", "COMPLETED", "CLOSING", "CLOSED");
@@ -206,7 +207,12 @@ public class ProjectService {
             throw new BusinessException("非法的项目状态：" + newStatus);
         }
         existing.setStatus(newStatus);
-        projectMapper.updateById(existing);
+        // 乐观锁（BaseEntity @Version）：updateById 会附加 AND version=? 并自增；
+        // 并发修改时受影响行数为 0，显式抛错避免丢失更新被静默吞掉
+        int affected = projectMapper.updateById(existing);
+        if (affected == 0) {
+            throw new BusinessException("项目已被并发修改，请刷新后重试");
+        }
     }
 
     /**
