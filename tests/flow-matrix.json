@@ -37,7 +37,8 @@
     "exempt": 0,
     "scope": "zw-hr / zw-site（批次三前半；zw-system/zw-security/zw-workflow/zw-message/zw-file/zw-dashboard/zw-archive/zw-basedata/zw-common 待后半枚举）",
     "approvalFlows": "新增 5 条 HR 审批流（resign/regular/transfer/seal/vehicle_apply_approval，BPMN 新建+deploy-bpmn.sh 清单纳入）",
-    "note": "hr/site 模块级缺陷修复：8 处提交即生效→审批后生效（SUBMITTED 中间态+监听器）、整改提交对不存在流程的 startProcess 必然 500 已移除、update 无守卫+status 篡改已修"
+    "note": "hr/site 模块级缺陷修复：8 处提交即生效→审批后生效（SUBMITTED 中间态+监听器）、整改提交对不存在流程的 startProcess 必然 500 已移除、update 无守卫+status 篡改已修",
+    "verification": "zw-hr 83 例/zw-site 187 例全绿 + CI run 31657409066 全链路 success（L3 20/20、L4 209✅含 stage_9B SUBMITTED 中间态实证、L5 三套 EXIT=0、k6 过）"
    }
   },
   "updated": "2026-08-13",
