@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 
 /**
  * EntryApplyService（入职申请）单元测试
@@ -148,8 +149,8 @@ class EntryApplyServiceTest {
     }
 
     @Test
-    @DisplayName("提交入职申请：审批通过后自动创建系统账号")
-    void submit_success_createsSystemAccount() {
+    @DisplayName("提交入职申请：置 SUBMITTED 中间态，不提前创建账号（P1 审批后生效修复）")
+    void submit_success_setsSubmittedOnly() {
         BizEntryApply apply = new BizEntryApply();
         apply.setId(1L);
         apply.setUsername("zhangsan");
@@ -164,12 +165,29 @@ class EntryApplyServiceTest {
 
         entryApplyService.submit(1L);
 
-        // 状态与流程实例回写
-        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        // 中间态与流程实例回写；未审批不得 APPROVED、不得建账号
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
         assertThat(apply.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(entryApplyMapper).updateById(apply);
+        verify(sysUserService, never()).save(any(SysUser.class));
+    }
 
-        // 自动创建系统账号，字段从申请单带入
+    @Test
+    @DisplayName("审批通过回调：SUBMITTED→APPROVED 并创建系统账号（字段从申请单带入）")
+    void onApproved_success_createsSystemAccount() {
+        BizEntryApply apply = new BizEntryApply();
+        apply.setId(1L);
+        apply.setUsername("zhangsan");
+        apply.setRealName("张三");
+        apply.setPhone("13800138000");
+        apply.setOrgId(100L);
+        apply.setPostId(200L);
+        apply.setStatus("SUBMITTED");
+        when(entryApplyMapper.selectById(1L)).thenReturn(apply);
+
+        entryApplyService.onApproved(1L);
+
+        assertThat(apply.getStatus()).isEqualTo("APPROVED");
         ArgumentCaptor<SysUser> captor = ArgumentCaptor.forClass(SysUser.class);
         verify(sysUserService).save(captor.capture());
         SysUser created = captor.getValue();
@@ -181,26 +199,54 @@ class EntryApplyServiceTest {
     }
 
     @Test
-    @DisplayName("提交入职申请：建账号失败（用户名已存在）异常上抛，由 @Transactional 回滚申请状态（失败不吞）")
-    void submit_accountCreationFailed_exceptionPropagates() {
+    @DisplayName("审批通过回调：幂等（非 SUBMITTED 跳过，不重复建账号）")
+    void onApproved_idempotent_skips() {
+        BizEntryApply apply = new BizEntryApply();
+        apply.setId(1L);
+        apply.setStatus("APPROVED");
+        when(entryApplyMapper.selectById(1L)).thenReturn(apply);
+
+        entryApplyService.onApproved(1L);
+
+        verify(sysUserService, never()).save(any(SysUser.class));
+        verify(entryApplyMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("审批通过回调：建账号失败（用户名已存在）异常上抛，@Transactional 回滚不残留 APPROVED")
+    void onApproved_accountCreationFailed_exceptionPropagates() {
         BizEntryApply apply = new BizEntryApply();
         apply.setId(1L);
         apply.setUsername("zhangsan");
-        apply.setRealName("张三");
-        apply.setStatus("DRAFT");
+        apply.setStatus("SUBMITTED");
         when(entryApplyMapper.selectById(1L)).thenReturn(apply);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
-                .thenReturn("proc-1");
-        // 建账号失败（如用户名已存在）
         doThrow(new com.zwinsight.common.exception.BusinessException("用户名已存在"))
                 .when(sysUserService).save(any(SysUser.class));
 
-        // 异常必须上抛（@Transactional 保证申请状态回滚，不残留 APPROVED）
-        assertThatThrownBy(() -> entryApplyService.submit(1L))
+        assertThatThrownBy(() -> entryApplyService.onApproved(1L))
                 .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
                 .hasMessageContaining("用户名已存在");
 
         verify(sysUserService).save(any(SysUser.class));
+    }
+
+    @Test
+    @DisplayName("审批驳回回调：SUBMITTED→DRAFT；非 SUBMITTED 幂等跳过")
+    void onRejected_backToDraft() {
+        BizEntryApply apply = new BizEntryApply();
+        apply.setId(1L);
+        apply.setStatus("SUBMITTED");
+        when(entryApplyMapper.selectById(1L)).thenReturn(apply);
+
+        entryApplyService.onRejected(1L);
+        assertThat(apply.getStatus()).isEqualTo("DRAFT");
+
+        BizEntryApply approved = new BizEntryApply();
+        approved.setId(2L);
+        approved.setStatus("APPROVED");
+        when(entryApplyMapper.selectById(2L)).thenReturn(approved);
+        entryApplyService.onRejected(2L);
+        assertThat(approved.getStatus()).isEqualTo("APPROVED");
     }
 
     @Test

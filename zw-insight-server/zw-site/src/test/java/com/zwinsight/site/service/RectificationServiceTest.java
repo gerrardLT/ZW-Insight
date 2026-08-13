@@ -7,7 +7,6 @@ import com.zwinsight.site.domain.BizInspection;
 import com.zwinsight.site.domain.BizRectification;
 import com.zwinsight.site.mapper.BizInspectionMapper;
 import com.zwinsight.site.mapper.BizRectificationMapper;
-import com.zwinsight.workflow.service.ApprovalService;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -21,10 +20,6 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,9 +40,6 @@ class RectificationServiceTest {
 
     @Mock
     private BizInspectionMapper inspectionMapper;
-
-    @Mock
-    private ApprovalService approvalService;
 
     @Mock
     private ReminderDeduplicationService reminderDeduplicationService;
@@ -95,34 +87,28 @@ class RectificationServiceTest {
     }
 
     @Test
-    @DisplayName("提交整改：回写 SUBMITTED 状态并发起审批流程")
-    void submit_success_updatesBothAndStartsProcess() {
+    @DisplayName("提交整改：回写 SUBMITTED 状态（端点审批模式，不发起流程）")
+    void submit_success_updatesBoth() {
         BizInspection inspection = pendingInspection(1L);
         when(inspectionMapper.selectById(1L)).thenReturn(inspection);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
-                .thenReturn("proc-1");
         BizRectification rectification = new BizRectification();
         rectification.setId(2L);
 
         rectificationService.submit(1L, rectification);
 
-        // 整改记录：关联字段 + SUBMITTED + 流程实例回写
+        // 整改记录：关联字段 + SUBMITTED（P1 修复：移除对不存在的 rectification_approval 流程调用）
         assertThat(rectification.getInspectionId()).isEqualTo(1L);
         assertThat(rectification.getProjectId()).isEqualTo(10L);
         assertThat(rectification.getStatus()).isEqualTo("SUBMITTED");
-        assertThat(rectification.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(rectificationMapper).insert(rectification);
-        verify(rectificationMapper).updateById(rectification);
 
         // 检查记录：整改状态 SUBMITTED + 整改日期
         assertThat(inspection.getRectificationStatus()).isEqualTo("SUBMITTED");
         assertThat(inspection.getRectificationDate()).isEqualTo(LocalDate.now());
         verify(inspectionMapper).updateById(inspection);
 
-        // 催办标记清除 + 审批流程
+        // 催办标记清除
         verify(reminderDeduplicationService).clearMarks(1L);
-        verify(approvalService).startProcess(eq("RECTIFICATION"), eq(2L),
-                eq("rectification_approval"), org.mockito.ArgumentMatchers.anyMap());
     }
 
     @Test
@@ -132,15 +118,12 @@ class RectificationServiceTest {
         when(inspectionMapper.selectById(1L)).thenReturn(inspection);
         doThrow(new RuntimeException("redis down"))
                 .when(reminderDeduplicationService).clearMarks(1L);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
-                .thenReturn("proc-1");
         BizRectification rectification = new BizRectification();
         rectification.setId(2L);
 
         rectificationService.submit(1L, rectification);
 
         assertThat(rectification.getStatus()).isEqualTo("SUBMITTED");
-        assertThat(rectification.getWorkflowInstanceId()).isEqualTo("proc-1");
     }
 
     @Test

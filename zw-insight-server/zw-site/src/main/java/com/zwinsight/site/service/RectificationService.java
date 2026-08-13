@@ -5,18 +5,19 @@ import com.zwinsight.site.domain.BizInspection;
 import com.zwinsight.site.domain.BizRectification;
 import com.zwinsight.site.mapper.BizInspectionMapper;
 import com.zwinsight.site.mapper.BizRectificationMapper;
-import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * 整改服务
+ * <p>
+ * 整改审批为检查人现场确认模式：提交整改（SUBMITTED）→ 检查人经
+ * /{id}/approve 端点验收（APPROVED），前端 approveRectification 即走此端点。
+ * </p>
  */
 @Slf4j
 @Service
@@ -25,7 +26,6 @@ public class RectificationService {
 
     private final BizRectificationMapper rectificationMapper;
     private final BizInspectionMapper inspectionMapper;
-    private final ApprovalService approvalService;
     private final ReminderDeduplicationService reminderDeduplicationService;
 
     /**
@@ -60,15 +60,9 @@ public class RectificationService {
         } catch (Exception e) {
             log.warn("清除催办标记失败(SUBMITTED), inspectionId={}: {}", inspectionId, e.getMessage());
         }
-
-        // 发起整改审批流程
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("inspectionId", inspectionId);
-        variables.put("projectId", inspection.getProjectId());
-        String processInstanceId = approvalService.startProcess(
-                "RECTIFICATION", rectification.getId(), "rectification_approval", variables);
-        rectification.setWorkflowInstanceId(processInstanceId);
-        rectificationMapper.updateById(rectification);
+        // P1 修复（2026-08-13，批次三取证枚举）：移除对 rectification_approval 的 startProcess
+        // 调用——该流程定义从未存在（无 BPMN、不在 deploy-bpmn.sh 清单、spec 无定义），
+        // 导致提交整改必然 500。整改验收走 /{id}/approve 端点（前端一致）。
     }
 
     /**

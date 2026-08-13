@@ -89,7 +89,7 @@ class OfficeSupplyAndSealApplyServiceTest {
         }
 
         @Test
-        @DisplayName("提交：DRAFT→APPROVED")
+        @DisplayName("提交：DRAFT→SUBMITTED 中间态（P1 审批后生效修复，APPROVED 由审批回调置）")
         void testSubmit() {
             BizSealApply apply = new BizSealApply();
             apply.setId(1L);
@@ -101,7 +101,7 @@ class OfficeSupplyAndSealApplyServiceTest {
 
             sealApplyService.submit(1L);
 
-            assertThat(apply.getStatus()).isEqualTo("APPROVED");
+            assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
         }
     }
 }

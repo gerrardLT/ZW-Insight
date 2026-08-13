@@ -10,6 +10,7 @@ import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 /**
  * 调动申请服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TransferApplyService {
@@ -47,9 +49,14 @@ public class TransferApplyService {
     }
 
     /**
-     * 更新调动申请
+     * 更新调动申请（仅 DRAFT；P1 修复：原实现无状态守卫且可经 PUT 体篡改 status）
      */
     public void update(BizTransferApply apply) {
+        BizTransferApply existing = transferApplyMapper.selectById(apply.getId());
+        if (existing == null) throw new BusinessException("调动申请不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        // 防 PUT 体携带 status 直接落库绕过审批（MP NOT_NULL 策略置 null 不落库）
+        apply.setStatus(null);
         transferApplyMapper.updateById(apply);
     }
 
@@ -65,7 +72,11 @@ public class TransferApplyService {
     }
 
     /**
-     * 提交调动申请（审批→更新员工orgId/postId）
+     * 提交调动申请（DRAFT→SUBMITTED 中间态，审批通过后由 onApproved 更新员工部门/岗位）
+     * <p>
+     * P1 修复（2026-08-13，批次三取证枚举）：原实现提交即置 APPROVED 且未等审批
+     * 直接变更员工部门/岗位，审批驳回后调动无法回退。改为审批后生效模式。
+     * </p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
@@ -81,9 +92,27 @@ public class TransferApplyService {
         variables.put("userName", apply.getUserName());
         variables.put("toOrgId", apply.getToOrgId());
         variables.put("toPostId", apply.getToPostId());
-        String processInstanceId = approvalService.startProcess(
+        approvalService.startProcess(
                 "TRANSFER_APPLY", id, "transfer_apply_approval", variables);
 
+        apply.setStatus("SUBMITTED");
+        transferApplyMapper.updateById(apply);
+    }
+
+    /**
+     * 审批通过回调：SUBMITTED→APPROVED 并更新员工部门/岗位（幂等：非 SUBMITTED 跳过）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onApproved(Long id) {
+        BizTransferApply apply = transferApplyMapper.selectById(id);
+        if (apply == null) {
+            log.warn("调动审批通过回调：申请不存在, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(apply.getStatus())) {
+            log.info("调动审批通过回调：非待审批状态跳过, id={}, status={}", id, apply.getStatus());
+            return;
+        }
         apply.setStatus("APPROVED");
         transferApplyMapper.updateById(apply);
 
@@ -93,6 +122,22 @@ public class TransferApplyService {
             user.setOrgId(apply.getToOrgId());
             user.setPostId(apply.getToPostId());
             userMapper.updateById(user);
+        } else {
+            log.warn("调动审批通过：员工账号不存在, userId={}", apply.getUserId());
         }
+        log.info("调动审批通过，员工部门/岗位已更新: applyId={}, userId={}", id, apply.getUserId());
+    }
+
+    /**
+     * 审批驳回回调：SUBMITTED→DRAFT（幂等：非 SUBMITTED 跳过）
+     */
+    public void onRejected(Long id) {
+        BizTransferApply apply = transferApplyMapper.selectById(id);
+        if (apply == null || !"SUBMITTED".equals(apply.getStatus())) {
+            return;
+        }
+        apply.setStatus("DRAFT");
+        transferApplyMapper.updateById(apply);
+        log.info("调动审批驳回，申请回退草稿: applyId={}", id);
     }
 }

@@ -98,8 +98,8 @@ class ResignApplyServiceTest {
     }
 
     @Test
-    @DisplayName("提交离职申请：发起审批并停用账号")
-    void submit_success_startsProcessAndDisablesUser() {
+    @DisplayName("提交离职申请：置 SUBMITTED 中间态，不提前停用账号（P1 审批后生效修复）")
+    void submit_success_setsSubmittedOnly() {
         BizResignApply apply = new BizResignApply();
         apply.setId(1L);
         apply.setUserId(10L);
@@ -108,36 +108,53 @@ class ResignApplyServiceTest {
         when(resignApplyMapper.selectById(1L)).thenReturn(apply);
         when(approvalService.startProcess(eq("RESIGN_APPLY"), eq(1L), eq("resign_apply_approval"), anyMap()))
                 .thenReturn("proc-1");
+
+        resignApplyService.submit(1L);
+
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        verify(resignApplyMapper).updateById(apply);
+        // 未审批不得停用账号
+        verify(userMapper, never()).updateById(any(SysUser.class));
+    }
+
+    @Test
+    @DisplayName("审批通过回调：SUBMITTED→APPROVED 并停用账号")
+    void onApproved_success_disablesUser() {
+        BizResignApply apply = new BizResignApply();
+        apply.setId(1L);
+        apply.setUserId(10L);
+        apply.setStatus("SUBMITTED");
+        when(resignApplyMapper.selectById(1L)).thenReturn(apply);
         SysUser user = new SysUser();
         user.setId(10L);
         user.setStatus(1);
         when(userMapper.selectById(10L)).thenReturn(user);
 
-        resignApplyService.submit(1L);
+        resignApplyService.onApproved(1L);
 
         assertThat(apply.getStatus()).isEqualTo("APPROVED");
-        verify(resignApplyMapper).updateById(apply);
-        // 离职后账号停用
         assertThat(user.getStatus()).isEqualTo(0);
         verify(userMapper).updateById(user);
     }
 
     @Test
-    @DisplayName("提交离职申请：关联用户不存在时跳过停用不抛异常")
-    void submit_userNotFound_skipsDisable() {
+    @DisplayName("审批通过回调：关联用户不存在时仅告警不抛异常；幂等（非 SUBMITTED 跳过）")
+    void onApproved_userNotFoundAndIdempotent() {
         BizResignApply apply = new BizResignApply();
         apply.setId(1L);
         apply.setUserId(10L);
-        apply.setStatus("DRAFT");
+        apply.setStatus("SUBMITTED");
         when(resignApplyMapper.selectById(1L)).thenReturn(apply);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
-                .thenReturn("proc-1");
         when(userMapper.selectById(10L)).thenReturn(null);
 
-        resignApplyService.submit(1L);
+        resignApplyService.onApproved(1L);
 
         assertThat(apply.getStatus()).isEqualTo("APPROVED");
         verify(userMapper, never()).updateById(any(SysUser.class));
+
+        // 幂等：重复事件不重复置状态
+        resignApplyService.onApproved(1L);
+        verify(resignApplyMapper, org.mockito.Mockito.times(1)).updateById(any());
     }
 
     @Test

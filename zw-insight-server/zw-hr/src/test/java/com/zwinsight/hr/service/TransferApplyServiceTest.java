@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -74,14 +75,31 @@ class TransferApplyServiceTest {
     }
 
     @Test
-    @DisplayName("更新调动申请：直接透传 updateById")
-    void update_delegatesToMapper() {
+    @DisplayName("更新调动申请：仅 DRAFT 可编辑 + status 剥离防篡改（P1 修复）")
+    void update_draftGuardAndStatusStripped() {
+        BizTransferApply existing = new BizTransferApply();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(transferApplyMapper.selectById(1L)).thenReturn(existing);
+
         BizTransferApply apply = new BizTransferApply();
         apply.setId(1L);
+        apply.setStatus("APPROVED"); // 恶意携带 status
 
         transferApplyService.update(apply);
 
-        verify(transferApplyMapper).updateById(apply);
+        verify(transferApplyMapper).updateById(argThat(a -> a.getStatus() == null));
+
+        // 非草稿拒绝
+        BizTransferApply submitted = new BizTransferApply();
+        submitted.setId(2L);
+        submitted.setStatus("SUBMITTED");
+        when(transferApplyMapper.selectById(2L)).thenReturn(submitted);
+        BizTransferApply upd2 = new BizTransferApply();
+        upd2.setId(2L);
+        assertThatThrownBy(() -> transferApplyService.update(upd2))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可编辑");
     }
 
     @Test
@@ -134,8 +152,8 @@ class TransferApplyServiceTest {
     }
 
     @Test
-    @DisplayName("提交调动申请：发起审批流程并同步更新员工部门/岗位")
-    void submit_success_updatesUserOrgAndPost() {
+    @DisplayName("提交调动申请：置 SUBMITTED 中间态，不提前变更员工部门/岗位（P1 审批后生效修复）")
+    void submit_success_setsSubmittedOnly() {
         BizTransferApply apply = new BizTransferApply();
         apply.setId(1L);
         apply.setUserName("张三");
@@ -146,20 +164,36 @@ class TransferApplyServiceTest {
         when(transferApplyMapper.selectById(1L)).thenReturn(apply);
         when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
                 .thenReturn("proc-1");
+
+        transferApplyService.submit(1L);
+
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        verify(transferApplyMapper).updateById(apply);
+        verify(approvalService).startProcess(eq("TRANSFER_APPLY"), eq(1L),
+                eq("transfer_apply_approval"), anyMap());
+        // 未审批不得变更员工部门/岗位
+        verify(userMapper, org.mockito.Mockito.never()).updateById(any(SysUser.class));
+    }
+
+    @Test
+    @DisplayName("审批通过回调：SUBMITTED→APPROVED 并同步更新员工部门/岗位")
+    void onApproved_success_updatesUserOrgAndPost() {
+        BizTransferApply apply = new BizTransferApply();
+        apply.setId(1L);
+        apply.setUserId(100L);
+        apply.setToOrgId(200L);
+        apply.setToPostId(300L);
+        apply.setStatus("SUBMITTED");
+        when(transferApplyMapper.selectById(1L)).thenReturn(apply);
         SysUser user = new SysUser();
         user.setId(100L);
         user.setOrgId(10L);
         user.setPostId(20L);
         when(userMapper.selectById(100L)).thenReturn(user);
 
-        transferApplyService.submit(1L);
+        transferApplyService.onApproved(1L);
 
-        // 申请单状态与流程
         assertThat(apply.getStatus()).isEqualTo("APPROVED");
-        verify(transferApplyMapper).updateById(apply);
-        verify(approvalService).startProcess(eq("TRANSFER_APPLY"), eq(1L),
-                eq("transfer_apply_approval"), anyMap());
-
         // 员工部门/岗位按申请单目标值回写
         ArgumentCaptor<SysUser> captor = ArgumentCaptor.forClass(SysUser.class);
         verify(userMapper).updateById(captor.capture());
@@ -168,21 +202,23 @@ class TransferApplyServiceTest {
     }
 
     @Test
-    @DisplayName("提交调动申请：员工不存在时不回写用户信息")
-    void submit_userNotFound_skipsUserUpdate() {
+    @DisplayName("审批通过回调：员工不存在时仅告警不回写；幂等（非 SUBMITTED 跳过）")
+    void onApproved_userNotFoundAndIdempotent() {
         BizTransferApply apply = new BizTransferApply();
         apply.setId(1L);
         apply.setUserId(100L);
-        apply.setStatus("DRAFT");
+        apply.setStatus("SUBMITTED");
         when(transferApplyMapper.selectById(1L)).thenReturn(apply);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
-                .thenReturn("proc-1");
         when(userMapper.selectById(100L)).thenReturn(null);
 
-        transferApplyService.submit(1L);
+        transferApplyService.onApproved(1L);
 
         assertThat(apply.getStatus()).isEqualTo("APPROVED");
         verify(userMapper, org.mockito.Mockito.never()).updateById(any(SysUser.class));
+
+        // 幂等：非 SUBMITTED 跳过
+        transferApplyService.onApproved(1L);
+        verify(transferApplyMapper, org.mockito.Mockito.times(1)).updateById(any());
     }
 
     @Test

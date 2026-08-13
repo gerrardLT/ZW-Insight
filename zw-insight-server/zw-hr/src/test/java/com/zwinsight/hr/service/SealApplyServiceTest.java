@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -68,14 +69,30 @@ class SealApplyServiceTest {
     }
 
     @Test
-    @DisplayName("更新用印申请：直接透传 updateById")
-    void update_delegatesToMapper() {
+    @DisplayName("更新用印申请：仅 DRAFT 可编辑 + status 剥离防篡改（P1 修复）")
+    void update_draftGuardAndStatusStripped() {
+        BizSealApply existing = new BizSealApply();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(sealApplyMapper.selectById(1L)).thenReturn(existing);
+
         BizSealApply apply = new BizSealApply();
         apply.setId(1L);
+        apply.setStatus("APPROVED"); // 恶意携带 status
 
         sealApplyService.update(apply);
 
-        verify(sealApplyMapper).updateById(apply);
+        verify(sealApplyMapper).updateById(argThat(a -> a.getStatus() == null));
+
+        BizSealApply submitted = new BizSealApply();
+        submitted.setId(2L);
+        submitted.setStatus("SUBMITTED");
+        when(sealApplyMapper.selectById(2L)).thenReturn(submitted);
+        BizSealApply upd2 = new BizSealApply();
+        upd2.setId(2L);
+        assertThatThrownBy(() -> sealApplyService.update(upd2))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可编辑");
     }
 
     @Test
@@ -128,8 +145,8 @@ class SealApplyServiceTest {
     }
 
     @Test
-    @DisplayName("提交用印申请：发起审批流程并回写 APPROVED")
-    void submit_success_startsProcessAndApproves() {
+    @DisplayName("提交用印申请：置 SUBMITTED 中间态（P1 审批后生效修复，提交不得直接 APPROVED）")
+    void submit_success_setsSubmittedOnly() {
         BizSealApply apply = new BizSealApply();
         apply.setId(1L);
         apply.setSealType("公章");
@@ -141,10 +158,31 @@ class SealApplyServiceTest {
 
         sealApplyService.submit(1L);
 
-        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
         verify(sealApplyMapper).updateById(apply);
         verify(approvalService).startProcess(eq("SEAL_APPLY"), eq(1L),
                 eq("seal_apply_approval"), anyMap());
+    }
+
+    @Test
+    @DisplayName("审批回调：通过 SUBMITTED→APPROVED；驳回 SUBMITTED→DRAFT；均幂等")
+    void approvalCallbacks_transitionAndIdempotent() {
+        BizSealApply apply = new BizSealApply();
+        apply.setId(1L);
+        apply.setStatus("SUBMITTED");
+        when(sealApplyMapper.selectById(1L)).thenReturn(apply);
+
+        sealApplyService.onApproved(1L);
+        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        sealApplyService.onApproved(1L);
+        verify(sealApplyMapper, org.mockito.Mockito.times(1)).updateById(any());
+
+        BizSealApply submitted2 = new BizSealApply();
+        submitted2.setId(2L);
+        submitted2.setStatus("SUBMITTED");
+        when(sealApplyMapper.selectById(2L)).thenReturn(submitted2);
+        sealApplyService.onRejected(2L);
+        assertThat(submitted2.getStatus()).isEqualTo("DRAFT");
     }
 
     @Test

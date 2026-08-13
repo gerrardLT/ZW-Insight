@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.zwinsight.com/hr"
+             xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL http://www.omg.org/spec/BPMN/20100524/MODEL/BPMN20.xsd">
+
+    <process id="resign_apply_approval" name="离职申请审批" isExecutable="true">
+
+        <!-- 开始事件 -->
+        <startEvent id="startEvent" name="提交离职申请"/>
+
+        <!-- 顺序流：开始 → 人事审批 -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="hrApproval"/>
+
+        <!-- 人事审批 -->
+        <userTask id="hrApproval" name="人事审批"
+                  flowable:assignee="${initiator}">
+            <documentation>离职申请 - 人事确认离职信息与交接安排</documentation>
+        </userTask>
+
+        <!-- 顺序流：人事审批 → 结束 -->
+        <sequenceFlow id="flow2" sourceRef="hrApproval" targetRef="endEvent"/>
+
+        <!-- 结束事件（审批通过后由 ResignApplyService.onApproved 停用账号） -->
+        <endEvent id="endEvent" name="审批完成"/>
+
+    </process>
+
+</definitions>

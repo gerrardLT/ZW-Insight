@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -68,14 +69,30 @@ class RegularApplyServiceTest {
     }
 
     @Test
-    @DisplayName("更新转正申请：直接透传 updateById")
-    void update_delegatesToMapper() {
+    @DisplayName("更新转正申请：仅 DRAFT 可编辑 + status 剥离防篡改（P1 修复）")
+    void update_draftGuardAndStatusStripped() {
+        BizRegularApply existing = new BizRegularApply();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(regularApplyMapper.selectById(1L)).thenReturn(existing);
+
         BizRegularApply apply = new BizRegularApply();
         apply.setId(1L);
+        apply.setStatus("APPROVED"); // 恶意携带 status
 
         regularApplyService.update(apply);
 
-        verify(regularApplyMapper).updateById(apply);
+        verify(regularApplyMapper).updateById(argThat(a -> a.getStatus() == null));
+
+        BizRegularApply submitted = new BizRegularApply();
+        submitted.setId(2L);
+        submitted.setStatus("SUBMITTED");
+        when(regularApplyMapper.selectById(2L)).thenReturn(submitted);
+        BizRegularApply upd2 = new BizRegularApply();
+        upd2.setId(2L);
+        assertThatThrownBy(() -> regularApplyService.update(upd2))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可编辑");
     }
 
     @Test
@@ -128,8 +145,8 @@ class RegularApplyServiceTest {
     }
 
     @Test
-    @DisplayName("提交转正申请：发起审批流程并回写 APPROVED")
-    void submit_success_startsProcessAndApproves() {
+    @DisplayName("提交转正申请：置 SUBMITTED 中间态（P1 审批后生效修复，提交不得直接 APPROVED）")
+    void submit_success_setsSubmittedOnly() {
         BizRegularApply apply = new BizRegularApply();
         apply.setId(1L);
         apply.setUserName("张三");
@@ -141,10 +158,32 @@ class RegularApplyServiceTest {
 
         regularApplyService.submit(1L);
 
-        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
         verify(regularApplyMapper).updateById(apply);
         verify(approvalService).startProcess(eq("REGULAR_APPLY"), eq(1L),
                 eq("regular_apply_approval"), anyMap());
+    }
+
+    @Test
+    @DisplayName("审批回调：通过 SUBMITTED→APPROVED；驳回 SUBMITTED→DRAFT；均幂等")
+    void approvalCallbacks_transitionAndIdempotent() {
+        BizRegularApply apply = new BizRegularApply();
+        apply.setId(1L);
+        apply.setStatus("SUBMITTED");
+        when(regularApplyMapper.selectById(1L)).thenReturn(apply);
+
+        regularApplyService.onApproved(1L);
+        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        // 幂等：重复事件不重复处理
+        regularApplyService.onApproved(1L);
+        verify(regularApplyMapper, org.mockito.Mockito.times(1)).updateById(any());
+
+        BizRegularApply submitted2 = new BizRegularApply();
+        submitted2.setId(2L);
+        submitted2.setStatus("SUBMITTED");
+        when(regularApplyMapper.selectById(2L)).thenReturn(submitted2);
+        regularApplyService.onRejected(2L);
+        assertThat(submitted2.getStatus()).isEqualTo("DRAFT");
     }
 
     @Test

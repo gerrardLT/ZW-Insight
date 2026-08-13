@@ -10,6 +10,7 @@ import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.system.service.SysUserService;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 /**
  * 入职申请服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EntryApplyService {
@@ -63,6 +65,8 @@ public class EntryApplyService {
         BizEntryApply existing = entryApplyMapper.selectById(apply.getId());
         if (existing == null) throw new BusinessException("入职申请不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        // 防 PUT 体携带 status 直接落库绕过审批（MP NOT_NULL 策略置 null 不落库）
+        apply.setStatus(null);
         entryApplyMapper.updateById(apply);
     }
 
@@ -77,7 +81,11 @@ public class EntryApplyService {
     }
 
     /**
-     * 提交入职申请（审批通过→自动创建系统账号）
+     * 提交入职申请（DRAFT→SUBMITTED 中间态，审批通过后由 onApproved 创建系统账号）
+     * <p>
+     * P1 修复（2026-08-13，批次三取证枚举）：原实现提交即置 APPROVED 且未等审批
+     * 直接创建系统账号，审批驳回后账号无法回收。改为审批后生效模式。
+     * </p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
@@ -97,10 +105,28 @@ public class EntryApplyService {
                 "ENTRY_APPLY", id, "entry_apply_approval", variables);
 
         apply.setWorkflowInstanceId(processInstanceId);
+        apply.setStatus("SUBMITTED");
+        entryApplyMapper.updateById(apply);
+    }
+
+    /**
+     * 审批通过回调：SUBMITTED→APPROVED 并自动创建系统账号（幂等：非 SUBMITTED 跳过）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onApproved(Long id) {
+        BizEntryApply apply = entryApplyMapper.selectById(id);
+        if (apply == null) {
+            log.warn("入职审批通过回调：申请不存在, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(apply.getStatus())) {
+            log.info("入职审批通过回调：非待审批状态跳过, id={}, status={}", id, apply.getStatus());
+            return;
+        }
         apply.setStatus("APPROVED");
         entryApplyMapper.updateById(apply);
 
-        // 自动创建系统账号
+        // 自动创建系统账号（字段从申请单带入；失败抛异常回滚申请状态，不静默）
         SysUser user = new SysUser();
         user.setUsername(apply.getUsername());
         user.setPassword("123456"); // 默认密码，由SysUserService加密
@@ -110,5 +136,19 @@ public class EntryApplyService {
         user.setPostId(apply.getPostId());
         user.setStatus(1);
         sysUserService.save(user);
+        log.info("入职审批通过，系统账号已创建: applyId={}, username={}", id, apply.getUsername());
+    }
+
+    /**
+     * 审批驳回回调：SUBMITTED→DRAFT（幂等：非 SUBMITTED 跳过）
+     */
+    public void onRejected(Long id) {
+        BizEntryApply apply = entryApplyMapper.selectById(id);
+        if (apply == null || !"SUBMITTED".equals(apply.getStatus())) {
+            return;
+        }
+        apply.setStatus("DRAFT");
+        entryApplyMapper.updateById(apply);
+        log.info("入职审批驳回，申请回退草稿: applyId={}", id);
     }
 }

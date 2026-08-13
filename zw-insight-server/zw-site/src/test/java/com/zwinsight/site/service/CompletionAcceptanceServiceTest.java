@@ -97,8 +97,8 @@ class CompletionAcceptanceServiceTest {
     }
 
     @Test
-    @DisplayName("提交竣工验收：发起审批流程并将项目置为 COMPLETED")
-    void submit_success_completesProject() {
+    @DisplayName("提交竣工验收：置 SUBMITTED 中间态，不提前置项目 COMPLETED（P1 审批后生效修复）")
+    void submit_success_setsSubmittedOnly() {
         BizCompletionAcceptance acceptance = new BizCompletionAcceptance();
         acceptance.setId(1L);
         acceptance.setProjectId(10L);
@@ -106,40 +106,70 @@ class CompletionAcceptanceServiceTest {
         when(acceptanceMapper.selectById(1L)).thenReturn(acceptance);
         when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
                 .thenReturn("proc-1");
+
+        completionAcceptanceService.submit(1L);
+
+        assertThat(acceptance.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(acceptance.getWorkflowInstanceId()).isEqualTo("proc-1");
+        verify(acceptanceMapper).updateById(acceptance);
+        verify(approvalService).startProcess(eq("COMPLETION_ACCEPTANCE"), eq(1L),
+                eq("completion_acceptance_approval"), anyMap());
+        // 未审批不得置项目 COMPLETED
+        verify(projectMapper, org.mockito.Mockito.never()).updateById(any(BizProject.class));
+    }
+
+    @Test
+    @DisplayName("审批通过回调：SUBMITTED→APPROVED 并将项目置为 COMPLETED")
+    void onApproved_success_completesProject() {
+        BizCompletionAcceptance acceptance = new BizCompletionAcceptance();
+        acceptance.setId(1L);
+        acceptance.setProjectId(10L);
+        acceptance.setStatus("SUBMITTED");
+        when(acceptanceMapper.selectById(1L)).thenReturn(acceptance);
         BizProject project = new BizProject();
         project.setId(10L);
         project.setStatus("CONSTRUCTION");
         when(projectMapper.selectById(10L)).thenReturn(project);
 
-        completionAcceptanceService.submit(1L);
+        completionAcceptanceService.onApproved(1L);
 
         assertThat(acceptance.getStatus()).isEqualTo("APPROVED");
-        assertThat(acceptance.getWorkflowInstanceId()).isEqualTo("proc-1");
-        verify(acceptanceMapper).updateById(acceptance);
-        verify(approvalService).startProcess(eq("COMPLETION_ACCEPTANCE"), eq(1L),
-                eq("completion_acceptance_approval"), anyMap());
-
         ArgumentCaptor<BizProject> captor = ArgumentCaptor.forClass(BizProject.class);
         verify(projectMapper).updateById(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo("COMPLETED");
     }
 
     @Test
-    @DisplayName("提交竣工验收：项目不存在时不更新项目状态")
-    void submit_projectNotFound_skipsProjectUpdate() {
+    @DisplayName("审批通过回调：项目不存在时仅告警；幂等（非 SUBMITTED 跳过）")
+    void onApproved_projectNotFoundAndIdempotent() {
         BizCompletionAcceptance acceptance = new BizCompletionAcceptance();
         acceptance.setId(1L);
         acceptance.setProjectId(10L);
-        acceptance.setStatus("DRAFT");
+        acceptance.setStatus("SUBMITTED");
         when(acceptanceMapper.selectById(1L)).thenReturn(acceptance);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
-                .thenReturn("proc-1");
         when(projectMapper.selectById(10L)).thenReturn(null);
 
-        completionAcceptanceService.submit(1L);
+        completionAcceptanceService.onApproved(1L);
 
         assertThat(acceptance.getStatus()).isEqualTo("APPROVED");
         verify(projectMapper, org.mockito.Mockito.never()).updateById(any(BizProject.class));
+
+        // 幂等：重复事件不重复处理
+        completionAcceptanceService.onApproved(1L);
+        verify(acceptanceMapper, org.mockito.Mockito.times(1)).updateById(any());
+    }
+
+    @Test
+    @DisplayName("审批驳回回调：SUBMITTED→DRAFT")
+    void onRejected_backToDraft() {
+        BizCompletionAcceptance acceptance = new BizCompletionAcceptance();
+        acceptance.setId(1L);
+        acceptance.setStatus("SUBMITTED");
+        when(acceptanceMapper.selectById(1L)).thenReturn(acceptance);
+
+        completionAcceptanceService.onRejected(1L);
+
+        assertThat(acceptance.getStatus()).isEqualTo("DRAFT");
     }
 
     @Test

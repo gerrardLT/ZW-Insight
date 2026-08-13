@@ -28,6 +28,16 @@
     "exemptDetail": "MAC-SET 审批回调乐观锁并发窗口（并发专项豁免）+ MAC-PRJ 结算不回写项目 totalExpense（业务口径待确认）登记于 gapSummary.batch2_disposition.exemptions",
     "scope": "zw-project / zw-tender / zw-labor / zw-subcontract / zw-machine / zw-material",
     "approvalFlows": "批次二范围 5 条（project_close/machine_settlement/material_refund/material_transfer 已在 batch1 登记，新增 deposit_apply_approval）"
+   },
+   "batch3_part1": {
+    "flowsTotal": 27,
+    "covered": 27,
+    "partial": 0,
+    "gap": 0,
+    "exempt": 0,
+    "scope": "zw-hr / zw-site（批次三前半；zw-system/zw-security/zw-workflow/zw-message/zw-file/zw-dashboard/zw-archive/zw-basedata/zw-common 待后半枚举）",
+    "approvalFlows": "新增 5 条 HR 审批流（resign/regular/transfer/seal/vehicle_apply_approval，BPMN 新建+deploy-bpmn.sh 清单纳入）",
+    "note": "hr/site 模块级缺陷修复：8 处提交即生效→审批后生效（SUBMITTED 中间态+监听器）、整改提交对不存在流程的 startProcess 必然 500 已移除、update 无守卫+status 篡改已修"
    }
   },
   "updated": "2026-08-13",
@@ -3946,6 +3956,82 @@
      ]
     }
    ]
+  },
+  {
+   "module": "zw-hr",
+   "batch": "batch3",
+   "stats": { "flows": 16, "covered": 16, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "入职申请",
+     "flows": [
+      { "id": "HR-ENT-01", "name": "新建入职申请（DRAFT）/分页/详情", "type": "正向", "ev": "EntryApplyService.save/page/getById", "map": "EntryApplyServiceTest.save/getById系列", "st": "covered" },
+      { "id": "HR-ENT-02", "name": "编辑：仅 DRAFT+status 剥离防篡改（P1 批次三）", "type": "负向", "ev": "EntryApplyService.update", "map": "EntryApplyServiceTest.update系列", "st": "covered" },
+      { "id": "HR-ENT-03", "name": "删除（仅 DRAFT）", "type": "正向", "ev": "EntryApplyService.delete", "map": "EntryApplyServiceTest.delete系列", "st": "covered" },
+      { "id": "HR-ENT-04", "name": "提交：DRAFT→SUBMITTED 中间态，不提前建账号（P1 修复提交即生效）", "type": "正向", "ev": "EntryApplyService.submit", "map": "EntryApplyServiceTest.submit_success_setsSubmittedOnly", "st": "covered" },
+      { "id": "HR-ENT-05", "name": "审批通过回调：SUBMITTED→APPROVED+创建系统账号（幂等，失败回滚）", "type": "正向", "ev": "EntryApplyService.onApproved + HrApplyApprovalListener", "map": "EntryApplyServiceTest.onApproved系列（3例）", "st": "covered" },
+      { "id": "HR-ENT-06", "name": "审批驳回回调：SUBMITTED→DRAFT（幂等）", "type": "异常", "ev": "EntryApplyService.onRejected + HrApplyApprovalListener", "map": "EntryApplyServiceTest.onRejected_backToDraft", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "转正/调动/离职/用印/车辆申请（同模式）",
+     "flows": [
+      { "id": "HR-REG-01", "name": "转正：save/update（守卫+剥离）/delete/提交 SUBMITTED/审批回调双向（P1 修复）", "type": "正向", "ev": "RegularApplyService全套", "map": "RegularApplyServiceTest（9例）", "st": "covered" },
+      { "id": "HR-TRF-01", "name": "调动：save/update（守卫+剥离）/delete/提交 SUBMITTED/onApproved 回写员工部门岗位/onRejected（P1 修复）", "type": "正向", "ev": "TransferApplyService全套", "map": "TransferApplyServiceTest（10例）", "st": "covered" },
+      { "id": "HR-RSG-01", "name": "离职：save/提交 SUBMITTED/onApproved 停用账号（用户不存在仅告警）/onRejected（P1 修复）", "type": "正向", "ev": "ResignApplyService全套", "map": "ResignApplyServiceTest（7例）", "st": "covered" },
+      { "id": "HR-SEAL-01", "name": "用印：save/update（守卫+剥离）/delete/提交 SUBMITTED/审批回调双向（P1 修复）", "type": "正向", "ev": "SealApplyService全套", "map": "SealApplyServiceTest（9例）+OfficeSupplyAndSealApplyServiceTest", "st": "covered" },
+      { "id": "HR-VEH-01", "name": "车辆申请：save/提交 SUBMITTED/onApproved 车辆置 IN_USE/onRejected（P1 修复）", "type": "正向", "ev": "VehicleApplyService全套", "map": "VehicleApplyServiceTest（7例）", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "审批事件分发",
+     "flows": [
+      { "id": "HR-LST-01", "name": "HrApplyApprovalListener：6 类业务 ApprovalCompleteEvent 分发（仅 APPROVED）", "type": "联动", "ev": "HrApplyApprovalListener.onApprovalComplete", "map": "各 Service.onApproved 单测间接覆盖；CI 部署后 entry_apply_approval 等 6 流程 BPMN 可实跑", "st": "covered" },
+      { "id": "HR-LST-02", "name": "HrApplyApprovalListener：6 类业务 ApprovalRejectEvent 分发（回退 DRAFT）", "type": "联动", "ev": "HrApplyApprovalListener.onApprovalReject", "map": "各 Service.onRejected 单测间接覆盖", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "车辆/办公用品/统计",
+     "flows": [
+      { "id": "HR-VCL-01", "name": "车辆台账 CRUD+维保记录 CRUD", "type": "正向", "ev": "VehicleService/VehicleMaintenanceService", "map": "VehicleServiceTest（6例）/VehicleMaintenanceServiceTest（3例）", "st": "covered" },
+      { "id": "HR-OFS-01", "name": "办公用品：save 库存默认0/update 存在性/delete；出入库 APPROVED+库存增减+负向", "type": "正向", "ev": "OfficeSupplyService/OfficeSupplyInOutService", "map": "OfficeSupplyAndSealApplyServiceTest/OfficeSupplyInOutServiceTest（7例）", "st": "covered" },
+      { "id": "HR-STA-01", "name": "人事统计 overview 结构+租户隔离分区属性测试", "type": "正向", "ev": "HrStatisticsService", "map": "HrStatisticsServiceTest（4例）/HrStatisticsPartitionPropertyTest（2例）", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-site",
+   "batch": "batch3",
+   "stats": { "flows": 11, "covered": 11, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "质安检与整改",
+     "flows": [
+      { "id": "SITE-INS-01", "name": "检查计划生成/检查记录创建/指派整改责任人（PENDING）", "type": "正向", "ev": "InspectionSchemeService/InspectionService.assignResponsible", "map": "InspectionSchemeServiceTest（4例）/InspectionServiceTest（11例）", "st": "covered" },
+      { "id": "SITE-RECT-01", "name": "提交整改：仅 PENDING 可提→SUBMITTED+催办标记清除（P1 移除不存在的 rectification_approval 流程调用，修复必然 500）", "type": "正向", "ev": "RectificationService.submit", "map": "RectificationServiceTest.submit系列（4例）", "st": "covered" },
+      { "id": "SITE-RECT-02", "name": "整改验收（端点审批）：仅 SUBMITTED 可批→APPROVED+检查记录回写+催办清除", "type": "正向", "ev": "RectificationService.approve（前端 approveRectification 一致）", "map": "RectificationServiceTest.approve系列（4例）", "st": "covered" },
+      { "id": "SITE-RECT-03", "name": "催办：配置/日志/去重（Redis 正常+降级+频控属性测试）", "type": "正向", "ev": "ReminderConfigService/ReminderLogService/ReminderDeduplicationService", "map": "ReminderDeduplicationServiceTest（11例）/ReminderLogServiceImplTest（4例）/FrequencyControlPropertyTest（4例）", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "竣工验收",
+     "flows": [
+      { "id": "SITE-ACC-01", "name": "新建竣工验收（DRAFT）/分页", "type": "正向", "ev": "CompletionAcceptanceService.save/page", "map": "CompletionAcceptanceServiceTest.save/page系列", "st": "covered" },
+      { "id": "SITE-ACC-02", "name": "提交：DRAFT→SUBMITTED 中间态，不提前置项目 COMPLETED（P1 修复提交即生效）", "type": "正向", "ev": "CompletionAcceptanceService.submit", "map": "CompletionAcceptanceServiceTest.submit_success_setsSubmittedOnly; L4 stage_9B 中间态断言", "st": "covered" },
+      { "id": "SITE-ACC-03", "name": "审批通过回调：SUBMITTED→APPROVED+项目 COMPLETED（幂等，项目不存在仅告警）", "type": "正向", "ev": "CompletionAcceptanceService.onApproved + CompletionAcceptanceApprovalListener", "map": "CompletionAcceptanceServiceTest.onApproved系列（2例）; L4 stage_9B", "st": "covered" },
+      { "id": "SITE-ACC-04", "name": "审批驳回回调：SUBMITTED→DRAFT", "type": "异常", "ev": "CompletionAcceptanceService.onRejected", "map": "CompletionAcceptanceServiceTest.onRejected_backToDraft", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "进度/施工日志/定位打卡",
+     "flows": [
+      { "id": "SITE-SCH-01", "name": "进度计划 CRUD+版本/反馈 DRAFT→APPROVED", "type": "正向", "ev": "SchedulePlanService/ScheduleFeedbackService", "map": "SchedulePlanServiceTest/ScheduleFeedbackServiceTest（7例）", "st": "covered" },
+      { "id": "SITE-LOG-01", "name": "施工日志 save/update（守卫）/page", "type": "正向", "ev": "ConstructionLogService", "map": "ConstructionLogServiceTest（7例）", "st": "covered" },
+      { "id": "SITE-SGN-01", "name": "定位打卡：打卡校验/位置距离判定", "type": "正向", "ev": "LocationSignService", "map": "LocationSignServiceTest（12例）", "st": "covered" }
+     ]
+    }
+   ]
   }
  ],
  "approvalFlows": [
@@ -4019,6 +4105,46 @@
    "note": "批次二新增（P1 保证金审批闭环修复，L4 stage_9J 同步 SUBMITTED 中间态断言）"
   },
   {
+   "processKey": "resign_apply_approval",
+   "starter": "ResignApplyService.submit",
+   "callback": "HrApplyApprovalListener→onApproved(SUBMITTED→APPROVED+停用账号)/onRejected(SUBMITTED→DRAFT)",
+   "l1": true,
+   "st": "covered",
+   "note": "批次三新增（BPMN 新建，P1 提交即停用账号漏洞修复）"
+  },
+  {
+   "processKey": "regular_apply_approval",
+   "starter": "RegularApplyService.submit",
+   "callback": "HrApplyApprovalListener→onApproved/onRejected",
+   "l1": true,
+   "st": "covered",
+   "note": "批次三新增（BPMN 新建，P1 提交即生效修复）"
+  },
+  {
+   "processKey": "transfer_apply_approval",
+   "starter": "TransferApplyService.submit",
+   "callback": "HrApplyApprovalListener→onApproved(SUBMITTED→APPROVED+回写员工部门岗位)/onRejected",
+   "l1": true,
+   "st": "covered",
+   "note": "批次三新增（BPMN 新建，P1 提交即调动漏洞修复）"
+  },
+  {
+   "processKey": "seal_apply_approval",
+   "starter": "SealApplyService.submit",
+   "callback": "HrApplyApprovalListener→onApproved/onRejected",
+   "l1": true,
+   "st": "covered",
+   "note": "批次三新增（BPMN 新建，P1 提交即生效修复）"
+  },
+  {
+   "processKey": "vehicle_apply_approval",
+   "starter": "VehicleApplyService.submit",
+   "callback": "HrApplyApprovalListener→onApproved(SUBMITTED→APPROVED+车辆置 IN_USE)/onRejected",
+   "l1": true,
+   "st": "covered",
+   "note": "批次三新增（BPMN 新建，P1 提交即占车漏洞修复）"
+  },
+  {
    "processKey": "material_refund_approval",
    "starter": "MaterialRefundService（退货事件触发）",
    "callback": "内联@EventListener onRefundApproved",
@@ -4038,11 +4164,11 @@
   {
    "processKey": "completion_acceptance_approval",
    "starter": "CompletionAcceptanceService.submit",
-   "callback": "无（同步submit即决：验收单APPROVED+项目COMPLETED）",
+   "callback": "CompletionAcceptanceApprovalListener→onApproved(SUBMITTED→APPROVED+项目COMPLETED)/onRejected(SUBMITTED→DRAFT)",
    "l4": true,
    "l1": true,
    "st": "covered",
-   "note": "L4 stage_9B approve存在但非required空转，业务效果同步完成；补强：approve改required+状态断言"
+   "note": "批次三修复（2026-08-13）：原提交即置 APPROVED+项目 COMPLETED，改为 SUBMITTED 中间态+审批回调闭环；L4 stage_9B 补提交后中间态断言"
   },
   {
    "processKey": "change_visa_approval",

@@ -8,6 +8,7 @@ import com.zwinsight.hr.domain.BizRegularApply;
 import com.zwinsight.hr.mapper.BizRegularApplyMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.Map;
 /**
  * 转正申请服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RegularApplyService {
@@ -44,9 +46,14 @@ public class RegularApplyService {
     }
 
     /**
-     * 更新转正申请
+     * 更新转正申请（仅 DRAFT；P1 修复：原实现无状态守卫且可经 PUT 体篡改 status）
      */
     public void update(BizRegularApply apply) {
+        BizRegularApply existing = regularApplyMapper.selectById(apply.getId());
+        if (existing == null) throw new BusinessException("转正申请不存在");
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        // 防 PUT 体携带 status 直接落库绕过审批（MP NOT_NULL 策略置 null 不落库）
+        apply.setStatus(null);
         regularApplyMapper.updateById(apply);
     }
 
@@ -62,7 +69,11 @@ public class RegularApplyService {
     }
 
     /**
-     * 提交转正申请（审批→更新员工档案）
+     * 提交转正申请（DRAFT→SUBMITTED 中间态，审批通过后由 onApproved 置 APPROVED）
+     * <p>
+     * P1 修复（2026-08-13，批次三取证枚举）：原实现提交即置 APPROVED，审批驳回后
+     * 单据永久停留 APPROVED。改为审批后生效模式。
+     * </p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
@@ -77,10 +88,36 @@ public class RegularApplyService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("userName", apply.getUserName());
         variables.put("userId", apply.getUserId());
-        String processInstanceId = approvalService.startProcess(
+        approvalService.startProcess(
                 "REGULAR_APPLY", id, "regular_apply_approval", variables);
 
+        apply.setStatus("SUBMITTED");
+        regularApplyMapper.updateById(apply);
+    }
+
+    /**
+     * 审批通过回调：SUBMITTED→APPROVED（幂等：非 SUBMITTED 跳过）
+     */
+    public void onApproved(Long id) {
+        BizRegularApply apply = regularApplyMapper.selectById(id);
+        if (apply == null || !"SUBMITTED".equals(apply.getStatus())) {
+            return;
+        }
         apply.setStatus("APPROVED");
         regularApplyMapper.updateById(apply);
+        log.info("转正审批通过: applyId={}", id);
+    }
+
+    /**
+     * 审批驳回回调：SUBMITTED→DRAFT（幂等：非 SUBMITTED 跳过）
+     */
+    public void onRejected(Long id) {
+        BizRegularApply apply = regularApplyMapper.selectById(id);
+        if (apply == null || !"SUBMITTED".equals(apply.getStatus())) {
+            return;
+        }
+        apply.setStatus("DRAFT");
+        regularApplyMapper.updateById(apply);
+        log.info("转正审批驳回，申请回退草稿: applyId={}", id);
     }
 }

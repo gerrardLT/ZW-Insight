@@ -99,8 +99,8 @@ class VehicleApplyServiceTest {
     }
 
     @Test
-    @DisplayName("提交车辆申请：发起审批流程并将车辆置为 IN_USE")
-    void submit_success_setsVehicleInUse() {
+    @DisplayName("提交车辆申请：置 SUBMITTED 中间态，不提前置车辆 IN_USE（P1 审批后生效修复）")
+    void submit_success_setsSubmittedOnly() {
         BizVehicleApply apply = new BizVehicleApply();
         apply.setId(1L);
         apply.setVehicleId(10L);
@@ -109,39 +109,56 @@ class VehicleApplyServiceTest {
         when(vehicleApplyMapper.selectById(1L)).thenReturn(apply);
         when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
                 .thenReturn("proc-1");
+
+        vehicleApplyService.submit(1L);
+
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        verify(vehicleApplyMapper).updateById(apply);
+        verify(approvalService).startProcess(eq("VEHICLE_APPLY"), eq(1L),
+                eq("vehicle_apply_approval"), anyMap());
+        // 未审批不得置车辆 IN_USE
+        verify(vehicleMapper, org.mockito.Mockito.never()).updateById(any(BizVehicle.class));
+    }
+
+    @Test
+    @DisplayName("审批通过回调：SUBMITTED→APPROVED 并将车辆置为 IN_USE")
+    void onApproved_success_setsVehicleInUse() {
+        BizVehicleApply apply = new BizVehicleApply();
+        apply.setId(1L);
+        apply.setVehicleId(10L);
+        apply.setStatus("SUBMITTED");
+        when(vehicleApplyMapper.selectById(1L)).thenReturn(apply);
         BizVehicle vehicle = new BizVehicle();
         vehicle.setId(10L);
         vehicle.setVehicleStatus("IDLE");
         when(vehicleMapper.selectById(10L)).thenReturn(vehicle);
 
-        vehicleApplyService.submit(1L);
+        vehicleApplyService.onApproved(1L);
 
         assertThat(apply.getStatus()).isEqualTo("APPROVED");
-        verify(vehicleApplyMapper).updateById(apply);
-        verify(approvalService).startProcess(eq("VEHICLE_APPLY"), eq(1L),
-                eq("vehicle_apply_approval"), anyMap());
-
         ArgumentCaptor<BizVehicle> captor = ArgumentCaptor.forClass(BizVehicle.class);
         verify(vehicleMapper).updateById(captor.capture());
         assertThat(captor.getValue().getVehicleStatus()).isEqualTo("IN_USE");
     }
 
     @Test
-    @DisplayName("提交车辆申请：车辆不存在时不更新车辆状态")
-    void submit_vehicleNotFound_skipsVehicleUpdate() {
+    @DisplayName("审批通过回调：车辆不存在时仅告警；幂等（非 SUBMITTED 跳过）")
+    void onApproved_vehicleNotFoundAndIdempotent() {
         BizVehicleApply apply = new BizVehicleApply();
         apply.setId(1L);
         apply.setVehicleId(10L);
-        apply.setStatus("DRAFT");
+        apply.setStatus("SUBMITTED");
         when(vehicleApplyMapper.selectById(1L)).thenReturn(apply);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
-                .thenReturn("proc-1");
         when(vehicleMapper.selectById(10L)).thenReturn(null);
 
-        vehicleApplyService.submit(1L);
+        vehicleApplyService.onApproved(1L);
 
         assertThat(apply.getStatus()).isEqualTo("APPROVED");
         verify(vehicleMapper, org.mockito.Mockito.never()).updateById(any(BizVehicle.class));
+
+        // 幂等：非 SUBMITTED 跳过
+        vehicleApplyService.onApproved(1L);
+        verify(vehicleApplyMapper, org.mockito.Mockito.times(1)).updateById(any());
     }
 
     @Test

@@ -881,10 +881,12 @@ stage_9b_completion_settlement() {
 
   api_call POST "/api/v1/site/completion/$acceptance_id/submit"
   strict_assert "提交竣工验收"
-  sleep 2
+  sleep 1
+  # 提交后中间态断言（未等审批不得 APPROVED，2026-08-13 审批后生效修复钉住）
+  assert_status "/api/v1/site/completion/page?page=1&size=1&projectId=$PROJECT_ID" "status" "SUBMITTED" "竣工验收提交后中间态（未等审批不得 APPROVED）"
   approve "竣工验收通过" 1
 
-  # 竣工验收单状态断言（提交即置 APPROVED，审批流完成为硬要求）
+  # 竣工验收单状态断言（审批通过回调置 APPROVED，审批流完成为硬要求）
   assert_status "/api/v1/site/completion/page?page=1&size=1&projectId=$PROJECT_ID" "status" "APPROVED" "竣工验收单状态"
 
   # 最终结算：创建（RequestParam projectId）+ 提交审批（project_settlement_approval）
