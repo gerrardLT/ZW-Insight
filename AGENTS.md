@@ -194,6 +194,7 @@ cd tools/consistency-audit && npm run dev
 
 - 提交 PR 前必须在本地运行 `mvn test` 确认单元测试通过
 - CI backend job 执行 `mvn -B clean package`（运行全量单元测试 + JaCoCo 报告），并与 `tests/coverage-baseline.json` 对比：任一模块覆盖率回落即构建失败
+- **CI 测试套件触发策略（2026-08-13 用户决策）**：push 默认只跑 Backend Build（L1 单测 + 覆盖率基线）→ Deploy → 部署冒烟（健康检查 + API 文档收敛断言），**Integration Test（L3/L4/L5）与 k6 默认不跑**（全量约 40 分钟）。全量套件两个显式入口：① 手动 workflow_dispatch 选 `run_tests=true` ② 提交信息含 `[full-test]`
 - pom jacoco check（minimum 0.80，BUNDLE LINE）绑定 verify 阶段，CI 当前跑 package 不触发；阶段三目标达成后 CI 切到 verify 强制（见 spec 3.3）
 
 #### L3 API 契约验证

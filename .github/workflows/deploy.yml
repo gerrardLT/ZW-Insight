@@ -3,16 +3,31 @@ name: CI/CD Deploy to BaoTa Server
 on:
   push:
     branches: [main]
-    # 纯文档提交跳过全链路（2026-08-13，用户反馈等待时间过长）：
-    # 仅当一次 push 的全部文件都在白名单内才跳过；任何代码/脚本/配置改动照常全链路。
-    # 安全边界：tests/coverage-baseline.json 影响 CI 比对逻辑不在白名单；
-    # keys/**（L3/L4/L5 脚本）不在白名单（脚本改动必须实跑验证）。
+    # 纯文档提交跳过整条流水线（2026-08-13）：
+    # 仅当一次 push 的全部文件都在白名单内才跳过；任何代码/脚本/配置改动触发 build + deploy。
     paths-ignore:
       - '**.md'
       - '.kiro/**'
       - 'audit-reports/**'
       - 'docs/**'
   workflow_dispatch:
+    inputs:
+      run_tests:
+        description: '是否跑全量测试套件（L3/L4/L5 + k6）？默认否，仅 build + deploy + 冒烟'
+        required: true
+        type: choice
+        default: 'false'
+        options:
+          - 'false'
+          - 'true'
+
+# 测试套件触发策略（2026-08-13 用户决策：全量套件约 40 分钟，每次部署都跑等待过长）：
+#   - push 默认只跑：Backend Build（L1 单测 + 覆盖率基线对比）→ Deploy → 部署冒烟
+#     （健康检查 + API 文档收敛硬断言）
+#   - Integration Test（L3/L4/L5）与 k6 默认不跑，两个显式触发入口：
+#     ① 手动 workflow_dispatch 选 run_tests=true（gh workflow run deploy.yml -f run_tests=true）
+#     ② 提交信息含 [full-test]（关键改动需全链路验证时随 push 自动带上）
+#   - 历史全量回归记录不受影响：需要时显式触发即可复跑
 
 # 并发互斥（用户决策 2026-08-10，方案 A）：单服务器部署只有最新提交有意义，
 # 新 push 取消正在跑的旧流水线，避免两条流水线并行操作同一台服务器
@@ -298,6 +313,14 @@ jobs:
     name: Integration Test
     runs-on: ubuntu-latest
     needs: deploy
+    # 默认不跑（2026-08-13 用户决策，全量套件约 40 分钟）。
+    # 触发：① 手动 dispatch + run_tests=true ② 提交信息含 [full-test]
+    # 显式检查 needs.deploy.result：自定义 if 会覆盖默认 success() 语义，
+    # 不写明则部署失败时本 job 仍会被评估
+    if: |
+      needs.deploy.result == 'success' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true') ||
+       contains(github.event.head_commit.message, '[full-test]'))
     steps:
       - uses: actions/checkout@v4
 
@@ -584,7 +607,11 @@ jobs:
     # security.max-devices(5)，淘汰最早设备 token（拉黑），导致并发运行的 L3/L4
     # 脚本持有的 admin token 失效（run 31322829488 实证：L3 4/8 因 401 失败）
     needs: [deploy, integration-test]
-    if: success()  # 仅部署与集成测试均成功后执行
+    # 与 integration-test 同门控（默认不跑）；显式要求两个依赖均成功
+    if: |
+      needs.deploy.result == 'success' && needs.integration-test.result == 'success' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true') ||
+       contains(github.event.head_commit.message, '[full-test]'))
     environment: production
     steps:
       - uses: actions/checkout@v4
