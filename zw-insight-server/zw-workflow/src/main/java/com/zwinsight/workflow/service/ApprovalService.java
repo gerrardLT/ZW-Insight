@@ -271,6 +271,49 @@ public class ApprovalService {
     }
 
     /**
+     * 按业务单据撤回流程（自动化回收专用，O(1) businessKey 定位）
+     * <p>
+     * 背景（2026-08-13 二次事故）：高速提交下（~30 笔/秒）基于待办分页扫描的
+     * 回收因窗口失配大量失效，20 分钟堆积 7000+ 任务。本方法按
+     * businessKey=businessType:businessId 直接定位运行中任务，与提交速率无关。
+     * 仅流程发起人可撤回；无运行中流程时幂等返回 false（不报错，清理语义）。
+     *
+     * @param businessType 业务类型（如 PAYMENT_APPLY）
+     * @param businessId   业务单据ID
+     * @return true=已撤回；false=无运行中流程
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean withdrawByBusiness(String businessType, Long businessId) {
+        String businessKey = businessType + ":" + businessId;
+        List<Task> tasks = taskService.createTaskQuery()
+                .processInstanceBusinessKey(businessKey)
+                .listPage(0, 1);
+        if (tasks.isEmpty()) {
+            return false;
+        }
+        Task task = tasks.get(0);
+        Long userId = SecurityContextHolder.getUserId();
+
+        // 仅发起人可撤回（防越权终止他人流程）
+        HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
+                .processInstanceId(task.getProcessInstanceId())
+                .singleResult();
+        if (instance != null && instance.getStartUserId() != null
+                && !instance.getStartUserId().equals(String.valueOf(userId))) {
+            throw new BusinessException("仅流程发起人可撤回");
+        }
+
+        // 删除流程实例并发布撤回事件（单据置 REJECTED，不回写累计金额）
+        runtimeService.deleteProcessInstance(task.getProcessInstanceId(), "自动化撤回：" + businessKey);
+        saveApprovalRecord(task, String.valueOf(userId), "TERMINATE", "自动化撤回");
+        eventPublisher.publishEvent(new ApprovalRejectEvent(
+                this, task.getProcessInstanceId(), businessType, businessId, "WITHDRAW"));
+
+        log.info("流程已按业务撤回, businessKey={}, processInstanceId={}", businessKey, task.getProcessInstanceId());
+        return true;
+    }
+
+    /**
      * 转办
      *
      * @param taskId       任务ID

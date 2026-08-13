@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createAuthedClient, createCleaner, expectOk } from './setup'
-import { TEST_FINANCE, TEST_PROJECT, terminateApprovalByBusiness } from './test-data'
+import { TEST_FINANCE, TEST_PROJECT, withdrawApprovalByBusiness } from './test-data'
 import type { ApiClient } from './api-client'
 import type { TestDataCleaner } from './test-data'
 
@@ -102,9 +102,9 @@ describe('14 - 财务管理', () => {
       if (!invoiceId) return
       const resp = await client.post(`/api/v1/finance/invoice-apply/${invoiceId}/submit`)
       expect([200, 400, 500]).toContain(resp.code)
-      // 提交成功则回收审批流（terminate → REJECTED，防待办堆积，2026-08-13）
+      // 提交成功则回收审批流（withdraw → REJECTED，防待办堆积，2026-08-13）
       if (resp.code === 200) {
-        cleaner.add('回收开票审批流', () => terminateApprovalByBusiness(client, invoiceId))
+        cleaner.add('回收开票审批流', () => withdrawApprovalByBusiness(client, 'INVOICE_APPLY', invoiceId))
       }
     })
   })
@@ -148,9 +148,9 @@ describe('14 - 财务管理', () => {
       if (!paymentId) return
       const resp = await client.post(`/api/v1/finance/payment-apply/${paymentId}/submit`)
       expect([200, 400, 500]).toContain(resp.code)
-      // 提交成功则回收审批流（terminate → REJECTED，防待办堆积，2026-08-13）
+      // 提交成功则回收审批流（withdraw → REJECTED，防待办堆积，2026-08-13）
       if (resp.code === 200) {
-        cleaner.add('回收付款审批流', () => terminateApprovalByBusiness(client, paymentId))
+        cleaner.add('回收付款审批流', () => withdrawApprovalByBusiness(client, 'PAYMENT_APPLY', paymentId))
       }
     })
   })

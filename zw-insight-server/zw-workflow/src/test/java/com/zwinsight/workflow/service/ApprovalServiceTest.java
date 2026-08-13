@@ -16,6 +16,8 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricActivityInstanceQuery;
+import org.flowable.engine.history.HistoricProcessInstance;
+import org.flowable.engine.history.HistoricProcessInstanceQuery;
 import org.flowable.engine.runtime.ChangeActivityStateBuilder;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
@@ -487,5 +489,83 @@ class ApprovalServiceTest {
         assertThat(result.getTotal()).isEqualTo(2);
         assertThat(result.getRecords()).hasSize(1);
         assertThat(result.getRecords().get(0).get("taskName")).isEqualTo("已审批任务");
+    }
+
+    // =====================================================================
+    // withdrawByBusiness（2026-08-13 二次事故：高速提交下待办扫描回收失配，
+    // 改用 businessKey O(1) 定位撤回）
+    // =====================================================================
+
+    @Test
+    @DisplayName("按业务撤回：发起人定位运行中任务并终止+发撤回事件")
+    void testWithdrawByBusiness_success() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.processInstanceBusinessKey("PAYMENT_APPLY:77")).thenReturn(taskQuery);
+            when(taskQuery.listPage(0, 1)).thenReturn(List.of(mockTask));
+
+            HistoricProcessInstanceQuery hpiQuery = mock(HistoricProcessInstanceQuery.class);
+            HistoricProcessInstance hpi = mock(HistoricProcessInstance.class);
+            when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
+            when(hpiQuery.processInstanceId("pi-001")).thenReturn(hpiQuery);
+            when(hpiQuery.singleResult()).thenReturn(hpi);
+            // 发起人 = 当前用户（200）
+            when(hpi.getStartUserId()).thenReturn("200");
+
+            boolean result = approvalService.withdrawByBusiness("PAYMENT_APPLY", 77L);
+
+            assertThat(result).isTrue();
+            verify(runtimeService).deleteProcessInstance(eq("pi-001"), contains("自动化撤回"));
+            verify(eventPublisher).publishEvent(any(ApprovalRejectEvent.class));
+            verify(approvalRecordMapper).insert(any(WfApprovalRecord.class));
+        }
+    }
+
+    @Test
+    @DisplayName("按业务撤回：无运行中流程幂等返回 false（清理语义不报错）")
+    void testWithdrawByBusiness_noRunningProcess_returnsFalse() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.processInstanceBusinessKey("PAYMENT_APPLY:88")).thenReturn(taskQuery);
+            when(taskQuery.listPage(0, 1)).thenReturn(List.of());
+
+            boolean result = approvalService.withdrawByBusiness("PAYMENT_APPLY", 88L);
+
+            assertThat(result).isFalse();
+            verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
+    }
+
+    @Test
+    @DisplayName("按业务撤回：非发起人拒绝（防越权终止他人流程）")
+    void testWithdrawByBusiness_notInitiator_throws() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.processInstanceBusinessKey("PAYMENT_APPLY:99")).thenReturn(taskQuery);
+            when(taskQuery.listPage(0, 1)).thenReturn(List.of(mockTask));
+
+            HistoricProcessInstanceQuery hpiQuery = mock(HistoricProcessInstanceQuery.class);
+            HistoricProcessInstance hpi = mock(HistoricProcessInstance.class);
+            when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
+            when(hpiQuery.processInstanceId("pi-001")).thenReturn(hpiQuery);
+            when(hpiQuery.singleResult()).thenReturn(hpi);
+            // 发起人 = 999，非当前用户 200
+            when(hpi.getStartUserId()).thenReturn("999");
+
+            assertThatThrownBy(() -> approvalService.withdrawByBusiness("PAYMENT_APPLY", 99L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅流程发起人可撤回");
+            verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
+        }
     }
 }

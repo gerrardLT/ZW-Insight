@@ -113,24 +113,23 @@ export const TEST_HOME = {
 // ============ 数据清理器 ============
 
 /**
- * 审批流回收（2026-08-13 堵增量）：按 businessId 定位当前用户待办并终止流程。
- * 背景：L5 用例提交单据进审批流后不清理，admin 待办持续堆积（事故当天
- * ACT_RU_TASK 6万+行致 /todo 超时/500）。terminate 会发布 ApprovalRejectEvent，
- * 单据置 REJECTED（不回写累计金额）且流程实例被引擎删除，待办不再残留。
- * 失败仅告警不抛出（清理语义，不遮蔽业务断言）。
+ * 审批流回收（2026-08-13 堵增量，二次升级）：按 businessType+businessId 调
+ * withdraw-by-business 端点撤回流程。后端按 businessKey O(1) 定位运行中任务，
+ * 免待办分页扫描（旧版扫描在高速提交下窗口失配大量失效，20 分钟堆 7000+ 任务）。
+ * 撤回后单据置 REJECTED（不回写累计金额）且流程实例被引擎删除，待办零残留。
+ * 幂等：无运行中流程返回 false 不报错。失败仅告警不抛出（清理语义，不遮蔽业务断言）。
  */
-export async function terminateApprovalByBusiness(client: ApiClient, businessId: number | string): Promise<void> {
+export async function withdrawApprovalByBusiness(
+  client: ApiClient,
+  businessType: string,
+  businessId: number | string
+): Promise<void> {
   try {
-    const resp: any = await client.get('/api/v1/workflow/approval/todo', { page: 1, size: 50 })
-    const records = resp?.data?.records || []
-    const task = records.find((r: any) => String(r.businessId) === String(businessId))
-    if (!task) return // 提交未成功或无流程定义时无待办可收
-    await client.post('/api/v1/workflow/approval/terminate', {
-      taskId: task.taskId,
-      comment: 'E2E自动化回收',
-    })
+    await client.post(
+      `/api/v1/workflow/approval/withdraw-by-business?businessType=${encodeURIComponent(businessType)}&businessId=${businessId}`
+    )
   } catch (e: any) {
-    console.warn(`[清理] 终止审批流失败 businessId=${businessId}: ${e?.message || e}`)
+    console.warn(`[清理] 撤回审批流失败 ${businessType}:${businessId}: ${e?.message || e}`)
   }
 }
 

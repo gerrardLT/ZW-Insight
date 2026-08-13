@@ -73,6 +73,16 @@ public class ApprovalController {
     }
 
     /**
+     * 按业务单据撤回流程（自动化回收专用，O(1) businessKey 定位，
+     * 免待办分页扫描；仅发起人可撤回，无运行中流程幂等返回 false）
+     */
+    @PostMapping("/withdraw-by-business")
+    public R<Boolean> withdrawByBusiness(@RequestParam String businessType,
+                                         @RequestParam Long businessId) {
+        return R.ok(approvalService.withdrawByBusiness(businessType, businessId));
+    }
+
+    /**
      * 转办
      */
     @PostMapping("/transfer")

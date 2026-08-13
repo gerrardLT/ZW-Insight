@@ -8,11 +8,13 @@
 // 数据策略（与 L3 test-api-finance.sh 同口径，真实演示租户）：
 //   - 关联真实种子采购合同 91501（项目 90001），单笔 1000 元小额，
 //     避免累计付款快速逼近合同额触发预算/应付 BLOCK
-//   - 提交后立即 terminate 回收审批流（2026-08-13 堵增量）：
-//     旧策略「提交后不回滚」致 admin 待办 4 天堆积 6 万条（ACT_RU_TASK
-//     60K/ACT_RU_VARIABLE 300K），拖垮 /todo 接口与本场景自身。
-//     terminate 发 ApprovalRejectEvent → 单据置 REJECTED（不回写累计金额）
-//     且流程实例被引擎删除，运行态零残留；回收请求不计入阈值指标。
+//   - 提交后立即调 withdraw-by-business 端点回收审批流（2026-08-13 堵增量，
+//     二次升级）：旧版基于待办分页扫描的回收在高速提交下（系统健康后迭代
+//     速率从 0.4/s 飙到 32/s）窗口失配大量失效，20 分钟堆 7000+ 任务。
+//     现改为 businessKey O(1) 定位撤回（与提交速率无关），单据置 REJECTED
+//     （不回写累计金额）且流程实例被引擎删除，运行态零残留。
+//   - 恒定到达率限速（1 迭代/秒）：基线目的是测单请求延迟而非吃满吞吐，
+//     无上限 vus/duration 模式在系统变快后迭代数失控（实证 49→3916）。
 // 指标：http_req_duration P95/P99（submit 为核心写路径）。
 
 import http from 'k6/http';
@@ -22,8 +24,16 @@ const BASE = __ENV.K6_BASE || 'http://127.0.0.1:18080';
 const TOKEN = __ENV.TOKEN;
 
 export const options = {
-  vus: 3,                // 写路径 + 真实审批流，保守并发（约束 ≤20）
-  duration: '2m',        // 约束：≤5m
+  scenarios: {
+    payment_submit: {
+      executor: 'constant-arrival-rate',
+      rate: 1,               // 恒定 1 迭代/秒：迭代总数有界（~120），不随系统变快失控
+      timeUnit: '1s',
+      duration: '2m',        // 约束：≤5m（run-k6.sh 校验本字段）
+      preAllocatedVUs: 3,
+      maxVUs: 5,             // 约束：≤20
+    },
+  },
   thresholds: {
     'http_req_duration{name:POST /payment-apply/submit}': ['p(95)<2000', 'p(99)<4000'],
     'http_req_duration{name:POST /payment-apply}': ['p(95)<1500', 'p(99)<3000'],
@@ -89,30 +99,15 @@ export default function () {
     },
   });
 
-  // 3. 回收：定位本笔待办并 terminate（单据转 REJECTED，流程实例删除，
-  //    运行态零残留；未打 name 标签不计入阈值指标）。失败不阻断——
-  //    下次全量清理兑底，但会记 check 失败供监控。
+  // 3. 回收：businessKey O(1) 定位撤回（单据转 REJECTED，流程实例删除，
+  //    运行态零残留；未打 name 标签不计入阈值指标）。幂等：无流程返回 false。
   reclaimApproval(headers, id);
 }
 
 function reclaimApproval(headers, businessId) {
-  const todo = http.get(`${BASE}/api/v1/workflow/approval/todo?page=1&size=20`, {
-    headers,
-    tags: { name: 'GET /approval/todo (reclaim)' },
-  });
-  let taskId = null;
-  try {
-    const body = JSON.parse(todo.body);
-    const records = (body.data && body.data.records) || [];
-    const hit = records.find((r) => String(r.businessId) === String(businessId));
-    taskId = hit ? hit.taskId : null;
-  } catch (e) {
-    return;
-  }
-  if (!taskId) return;
   http.post(
-    `${BASE}/api/v1/workflow/approval/terminate`,
-    JSON.stringify({ taskId, comment: 'k6性能基线回收' }),
-    { headers, tags: { name: 'POST /approval/terminate (reclaim)' } }
+    `${BASE}/api/v1/workflow/approval/withdraw-by-business?businessType=PAYMENT_APPLY&businessId=${businessId}`,
+    null,
+    { headers, tags: { name: 'POST /approval/withdraw-by-business (reclaim)' } }
   );
 }
