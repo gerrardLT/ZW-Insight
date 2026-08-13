@@ -93,12 +93,18 @@ public class SerialNumberService {
 
     /**
      * 更新规则
+     * <p>
+     * P2 修复（2026-08-13，批次三）：businessType/tenantId 为规则键，
+     * 防 PUT 体改 businessType 破坏唯一性/改 tenantId 跨租户越权（MP NOT_NULL 置 null 不落库）。
+     * </p>
      */
     public void update(SerialNumberRule rule) {
         SerialNumberRule existing = ruleMapper.selectById(rule.getId());
         if (existing == null) {
             throw new BusinessException("编号规则不存在");
         }
+        rule.setBusinessType(null);
+        rule.setTenantId(null);
         ruleMapper.updateById(rule);
     }
 

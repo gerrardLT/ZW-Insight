@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -123,6 +124,24 @@ class SerialNumberServiceTest {
         assertThatThrownBy(() -> serialNumberService.update(rule))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("编号规则不存在");
+    }
+
+    @Test
+    @DisplayName("更新规则：businessType/tenantId 剥离防跨租户越权与唯一性破坏（P2）")
+    void testUpdate_stripsRuleKeys() {
+        SerialNumberRule existing = new SerialNumberRule();
+        existing.setId(1L);
+        when(ruleMapper.selectById(1L)).thenReturn(existing);
+
+        SerialNumberRule rule = new SerialNumberRule();
+        rule.setId(1L);
+        rule.setBusinessType("HACKED_TYPE"); // 恶意改规则键
+        rule.setTenantId(8888L);             // 恶意跨租户
+
+        serialNumberService.update(rule);
+
+        verify(ruleMapper).updateById(argThat(r ->
+                r.getBusinessType() == null && r.getTenantId() == null));
     }
 
     @Test

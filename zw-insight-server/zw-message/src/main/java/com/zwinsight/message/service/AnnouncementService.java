@@ -55,30 +55,45 @@ public class AnnouncementService {
     }
 
     /**
-     * 更新公告
+     * 更新公告（P2 修复：仅草稿/已撤回可编辑；status/publishTime 剥离防绕过发布状态机）
      */
     public void update(MsgAnnouncement announcement) {
         MsgAnnouncement existing = announcementMapper.selectById(announcement.getId());
         if (existing == null) {
             throw new BusinessException("公告不存在");
         }
+        if (!"DRAFT".equals(existing.getStatus()) && !"REVOKED".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿/已撤回公告可编辑");
+        }
+        announcement.setStatus(null);
+        announcement.setPublishTime(null);
         announcementMapper.updateById(announcement);
     }
 
     /**
-     * 删除公告
+     * 删除公告（P2 修复：仅草稿/已撤回可删，已发布公告须先撤回）
      */
     public void delete(Long id) {
+        MsgAnnouncement existing = announcementMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("公告不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus()) && !"REVOKED".equals(existing.getStatus())) {
+            throw new BusinessException("已发布公告不可直接删除，请先撤回");
+        }
         announcementMapper.deleteById(id);
     }
 
     /**
-     * 发布公告
+     * 发布公告（P2 修复：仅草稿/已撤回可发布，防重复发布覆盖发布时间）
      */
     public void publish(Long id) {
         MsgAnnouncement announcement = announcementMapper.selectById(id);
         if (announcement == null) {
             throw new BusinessException("公告不存在");
+        }
+        if (!"DRAFT".equals(announcement.getStatus()) && !"REVOKED".equals(announcement.getStatus())) {
+            throw new BusinessException("仅草稿/已撤回公告可发布");
         }
         announcement.setStatus("PUBLISHED");
         announcement.setPublishTime(LocalDateTime.now());
@@ -86,12 +101,15 @@ public class AnnouncementService {
     }
 
     /**
-     * 撤回公告
+     * 撤回公告（P2 修复：仅已发布可撤回）
      */
     public void revoke(Long id) {
         MsgAnnouncement announcement = announcementMapper.selectById(id);
         if (announcement == null) {
             throw new BusinessException("公告不存在");
+        }
+        if (!"PUBLISHED".equals(announcement.getStatus())) {
+            throw new BusinessException("仅已发布公告可撤回");
         }
         announcement.setStatus("REVOKED");
         announcementMapper.updateById(announcement);

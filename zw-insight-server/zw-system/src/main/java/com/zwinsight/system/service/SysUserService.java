@@ -92,9 +92,14 @@ public class SysUserService {
 
     /**
      * 删除用户
+     * <p>
+     * P1 修复（2026-08-13，批次三取证枚举）：管理员（ADMIN/SUPER_ADMIN）不可被删除，
+     * 防止系统失去管理员入口。
+     * </p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
+        assertNotAdmin(id);
         userMapper.deleteById(id);
         // 删除用户角色关联
         userRoleMapper.delete(
@@ -102,13 +107,26 @@ public class SysUserService {
     }
 
     /**
-     * 批量删除
+     * 批量删除（管理员保护同 delete）
      */
     @Transactional(rollbackFor = Exception.class)
     public void batchDelete(List<Long> ids) {
+        for (Long id : ids) {
+            assertNotAdmin(id);
+        }
         userMapper.deleteBatchIds(ids);
         userRoleMapper.delete(
                 new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getUserId, ids));
+    }
+
+    /**
+     * 管理员保护：拥有 ADMIN/SUPER_ADMIN 角色的用户不可被删除
+     */
+    private void assertNotAdmin(Long userId) {
+        List<String> roleCodes = userMapper.selectRoleCodesByUserId(userId);
+        if (roleCodes != null && (roleCodes.contains("ADMIN") || roleCodes.contains("SUPER_ADMIN"))) {
+            throw new BusinessException("管理员账号不可删除");
+        }
     }
 
     /**
@@ -141,9 +159,16 @@ public class SysUserService {
     }
 
     /**
-     * 重置密码
+     * 重置密码（P2 修复：目标用户存在性+新密码非空校验，原实现 null 密码 NPE/静默写不存在用户）
      */
     public void resetPassword(Long userId, String newPassword) {
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new BusinessException("新密码不能为空");
+        }
+        SysUser existing = userMapper.selectById(userId);
+        if (existing == null) {
+            throw new BusinessException("用户不存在");
+        }
         SysUser user = new SysUser();
         user.setId(userId);
         user.setPassword(passwordEncoder.encode(newPassword));
@@ -174,15 +199,18 @@ public class SysUserService {
             throw new BusinessException("文件读取失败: " + e.getMessage());
         }
 
+        int inserted = 0;
         for (SysUser user : users) {
-            // 跳过已存在的用户名
+            // 跳过已存在的用户名（增量导入语义）
             long count = userMapper.selectCount(
                     new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, user.getUsername()));
             if (count == 0) {
                 userMapper.insert(user);
+                inserted++;
             }
         }
-        return users.size();
+        // P2 修复：返回实际插入条数（原实现含被跳过的重复用户名，计数失真）
+        return inserted;
     }
 
     /**

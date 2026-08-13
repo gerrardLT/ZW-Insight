@@ -140,12 +140,42 @@ class SysUserServiceTest {
     @Test
     @DisplayName("重置密码：密码被加密")
     void testResetPassword() {
+        when(userMapper.selectById(1L)).thenReturn(new SysUser());
         when(passwordEncoder.encode("newpwd")).thenReturn("$2a$newpwd");
 
         userService.resetPassword(1L, "newpwd");
 
         verify(userMapper).updateById(argThat(u ->
                 "$2a$newpwd".equals(((SysUser) u).getPassword())));
+    }
+
+    @Test
+    @DisplayName("重置密码：空密码/用户不存在拒绝（P2 修复）")
+    void testResetPassword_guards() {
+        assertThatThrownBy(() -> userService.resetPassword(1L, " "))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("新密码不能为空");
+        when(userMapper.selectById(999L)).thenReturn(null);
+        assertThatThrownBy(() -> userService.resetPassword(999L, "newpwd"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("用户不存在");
+        verify(userMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("删除用户：管理员（ADMIN/SUPER_ADMIN）不可删除（P1 管理员保护）")
+    void testDelete_adminProtected() {
+        when(userMapper.selectRoleCodesByUserId(1L)).thenReturn(List.of("SUPER_ADMIN"));
+        assertThatThrownBy(() -> userService.delete(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("管理员账号不可删除");
+        verify(userMapper, never()).deleteById(anyLong());
+
+        when(userMapper.selectRoleCodesByUserId(2L)).thenReturn(List.of("ADMIN"));
+        assertThatThrownBy(() -> userService.batchDelete(List.of(2L)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("管理员账号不可删除");
+        verify(userMapper, never()).deleteBatchIds(any());
     }
 
     // ==================== 安全测试场景 ====================

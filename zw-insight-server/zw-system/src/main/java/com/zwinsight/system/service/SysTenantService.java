@@ -84,17 +84,27 @@ public class SysTenantService {
         // 不允许修改租户编码和密钥
         tenant.setTenantCode(null);
         tenant.setSecretKey(null);
+        // P2 修复（2026-08-13，批次三）：status 由 disableTenant/enableTenant 专职管理
+        // （停用链路含清除在线 token），防 PUT 体绕过状态机
+        tenant.setStatus(null);
         tenantMapper.updateById(tenant);
     }
 
     /**
      * 删除租户
+     * <p>
+     * P1 修复（2026-08-13，批次三取证枚举）：仅已停用租户可删除，正常租户直接删除
+     * 会使其名下用户与业务数据成为孤儿且在线会话无感知。必须先停用（清 token）再删除。
+     * </p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         SysTenant existing = tenantMapper.selectById(id);
         if (existing == null) {
             throw new BusinessException("租户不存在");
+        }
+        if (!Integer.valueOf(TenantStatusEnum.DISABLED.getCode()).equals(existing.getStatus())) {
+            throw new BusinessException("仅已停用租户可删除，请先停用租户");
         }
         tenantMapper.deleteById(id);
         // 同时删除租户菜单权限关联

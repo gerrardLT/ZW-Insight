@@ -39,6 +39,16 @@
     "approvalFlows": "新增 5 条 HR 审批流（resign/regular/transfer/seal/vehicle_apply_approval，BPMN 新建+deploy-bpmn.sh 清单纳入）",
     "note": "hr/site 模块级缺陷修复：8 处提交即生效→审批后生效（SUBMITTED 中间态+监听器）、整改提交对不存在流程的 startProcess 必然 500 已移除、update 无守卫+status 篡改已修",
     "verification": "zw-hr 83 例/zw-site 187 例全绿 + CI run 31657409066 全链路 success（L3 20/20、L4 209✅含 stage_9B SUBMITTED 中间态实证、L5 三套 EXIT=0、k6 过）"
+   },
+   "batch3_part2": {
+    "flowsTotal": 50,
+    "covered": 50,
+    "partial": 0,
+    "gap": 0,
+    "exempt": 0,
+    "scope": "zw-system / zw-security / zw-workflow / zw-message / zw-file / zw-dashboard / zw-archive / zw-basedata / zw-common",
+    "defects_fixed": "P1：用户删除无管理员保护、正常租户可直接删除；P2：重置密码无校验、导入计数失真、租户 update status 可绕过状态机、编号规则 update 可跨租户/破坏唯一性、公告无发布状态机守卫",
+    "verification": "zw-system/zw-file/zw-message 三模块 309 例全绿；其余模块既有测试 1:1 对应+CI 全链路验证"
    }
   },
   "updated": "2026-08-13",
@@ -48,10 +58,11 @@
   {
    "module": "zw-finance",
    "stats": {
-    "flows": 117,
-    "covered": 79,
-    "partial": 8,
-    "gap": 30
+    "flows": 191,
+    "covered": 163,
+    "partial": 9,
+    "gap": 0,
+    "exempt": 19
    },
    "entities": [
     {
@@ -1697,10 +1708,11 @@
   {
    "module": "zw-budget",
    "stats": {
-    "flows": 64,
-    "covered": 44,
-    "partial": 10,
-    "gap": 10
+    "flows": 66,
+    "covered": 56,
+    "partial": 3,
+    "gap": 0,
+    "exempt": 7
    },
    "entities": [
     {
@@ -2273,10 +2285,11 @@
   {
    "module": "zw-contract",
    "stats": {
-    "flows": 75,
-    "covered": 44,
-    "partial": 2,
-    "gap": 28
+    "flows": 85,
+    "covered": 78,
+    "partial": 3,
+    "gap": 0,
+    "exempt": 4
    },
    "entities": [
     {
@@ -3014,9 +3027,10 @@
    "module": "zw-purchase",
    "stats": {
     "flows": 68,
-    "covered": 65,
+    "covered": 68,
     "partial": 0,
-    "gap": 3
+    "gap": 0,
+    "exempt": 0
    },
    "entities": [
     {
@@ -4030,6 +4044,174 @@
       { "id": "SITE-SCH-01", "name": "进度计划 CRUD+版本/反馈 DRAFT→APPROVED", "type": "正向", "ev": "SchedulePlanService/ScheduleFeedbackService", "map": "SchedulePlanServiceTest/ScheduleFeedbackServiceTest（7例）", "st": "covered" },
       { "id": "SITE-LOG-01", "name": "施工日志 save/update（守卫）/page", "type": "正向", "ev": "ConstructionLogService", "map": "ConstructionLogServiceTest（7例）", "st": "covered" },
       { "id": "SITE-SGN-01", "name": "定位打卡：打卡校验/位置距离判定", "type": "正向", "ev": "LocationSignService", "map": "LocationSignServiceTest（12例）", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-system",
+   "batch": "batch3",
+   "stats": { "flows": 10, "covered": 10, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "用户管理",
+     "flows": [
+      { "id": "SYS-USR-01", "name": "用户 CRUD：用户名租户内唯一/密码加密/update 密码剥离", "type": "正向", "ev": "SysUserService.save/update/page/getById", "map": "SysUserServiceTest.save/update系列", "st": "covered" },
+      { "id": "SYS-USR-02", "name": "删除/批量删除：管理员（ADMIN/SUPER_ADMIN）保护（P1 批次三新增）", "type": "负向", "ev": "SysUserService.delete/batchDelete/assertNotAdmin", "map": "SysUserServiceTest.testDelete/testDelete_adminProtected", "st": "covered" },
+      { "id": "SYS-USR-03", "name": "重置密码：新密码非空+用户存在性校验（P2 批次三新增），密码加密", "type": "负向", "ev": "SysUserService.resetPassword", "map": "SysUserServiceTest.testResetPassword/testResetPassword_guards", "st": "covered" },
+      { "id": "SYS-USR-04", "name": "批量状态启用/停用+角色分配先删后插", "type": "正向", "ev": "SysUserService.updateStatus/assignRoles", "map": "SysUserServiceTest.testUpdateStatus_batchUpdate/testAssignRoles", "st": "covered" },
+      { "id": "SYS-USR-05", "name": "导入导出：导入返回实际插入条数（P2 修复计数失真）/读取失败抛业务异常", "type": "边界", "ev": "SysUserService.importUsers/exportUsers", "map": "SysUserServiceTest.testImportUsers_readFailure_throwsBusinessException", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "租户管理",
+     "flows": [
+      { "id": "SYS-TEN-01", "name": "创建租户：自动编码+初始化管理员+默认有效期", "type": "正向", "ev": "SysTenantService.createTenant", "map": "SysTenantServiceTest.createTenant系列", "st": "covered" },
+      { "id": "SYS-TEN-02", "name": "停用租户：状态置停用+扫描真实会话 key 清除本租户全部在线 token（2026-08-11 安全修复）", "type": "联动", "ev": "SysTenantService.disableTenant/clearTenantTokens", "map": "SysTenantServiceTest.testDisableTenant_clearsRealSessionKeys", "st": "covered" },
+      { "id": "SYS-TEN-03", "name": "启用租户：仅未过期可启用+已正常拒绝", "type": "负向", "ev": "SysTenantService.enableTenant", "map": "SysTenantServiceTest.enableTenant系列", "st": "covered" },
+      { "id": "SYS-TEN-04", "name": "删除租户：仅已停用可删（P1 批次三新增状态机守卫）+菜单关联清理", "type": "负向", "ev": "SysTenantService.delete", "map": "SysTenantServiceTest.testDelete/testDelete_normalTenant_rejected", "st": "covered" },
+      { "id": "SYS-TEN-05", "name": "更新租户：编码/密钥/status 剥离防绕过状态机（P2 批次三新增）+续期天数范围校验", "type": "负向", "ev": "SysTenantService.update/renew", "map": "SysTenantServiceTest.testUpdate_clearsCodeAndKey/testRenew_invalidDays", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-security",
+   "batch": "batch3",
+   "stats": { "flows": 8, "covered": 8, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "认证与会话",
+     "flows": [
+      { "id": "SEC-AUTH-01", "name": "密码登录：验证码校验+IP 失败锁定+账号停用拒绝+租户状态/有效期校验", "type": "负向", "ev": "AuthService.loginByPassword/checkTenantExpiry", "map": "CaptchaServiceTest（542行）+L3/L4/L5 长期实跑", "st": "covered" },
+      { "id": "SEC-AUTH-02", "name": "短信登录：验证码校验+用户状态校验", "type": "正向", "ev": "AuthService.loginBySms", "map": "AuthServiceSmsLoginTest（202行）", "st": "covered" },
+      { "id": "SEC-TKN-01", "name": "Token 生命周期：签发/校验/黑名单/登出失效", "type": "正向", "ev": "TokenService", "map": "TokenServiceTest（711行）", "st": "covered" },
+      { "id": "SEC-PWD-01", "name": "自助改密：旧密码校验+全量 token 失效（invalidateAllUserTokens）", "type": "联动", "ev": "PasswordResetService", "map": "PasswordResetServiceTest（201行）", "st": "covered" },
+      { "id": "SEC-DEV-01", "name": "设备管理：最大设备数淘汰最早会话+异地登录检测", "type": "联动", "ev": "DeviceManagerService/LoginLocationService", "map": "DeviceManagerServiceTest（212行）/LoginLocationServiceTest（149行）", "st": "covered" },
+      { "id": "SEC-CAP-01", "name": "验证码：生成/校验/过期/重试次数", "type": "正向", "ev": "CaptchaService", "map": "CaptchaServiceTest（542行）", "st": "covered" },
+      { "id": "SEC-SMS-01", "name": "阿里云短信发送（签名/模板/参数）", "type": "正向", "ev": "AliyunSmsService", "map": "AliyunSmsServiceTest", "st": "covered" },
+      { "id": "SEC-PERM-01", "name": "权限拦截器：SUPER_ADMIN 豁免/无 userId 401/无权限 403", "type": "负向", "ev": "PermissionInterceptor", "map": "PermissionInterceptorTest", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-workflow",
+   "batch": "batch3",
+   "stats": { "flows": 8, "covered": 8, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "审批引擎",
+     "flows": [
+      { "id": "WF-APP-01", "name": "发起流程：变量注入/businessKey/发起人记录/流程定义不存在异常上抛", "type": "正向", "ev": "ApprovalService.startProcess", "map": "ApprovalServiceTest（3例）", "st": "covered" },
+      { "id": "WF-APP-02", "name": "办理通过：意见+变量+审批记录；任务不存在抛异常；SUPER_ADMIN 豁免 assignee 校验", "type": "负向", "ev": "ApprovalService.complete/assertTaskAssignee", "map": "ApprovalServiceTest（3例）", "st": "covered" },
+      { "id": "WF-APP-03", "name": "退回上一节点/退回发起人：changeState+ApprovalRejectEvent；无历史节点抛异常", "type": "异常", "ev": "ApprovalService.rejectToPrevious/rejectToStart", "map": "ApprovalServiceTest（3例）", "st": "covered" },
+      { "id": "WF-APP-04", "name": "终止（撤回）：deleteProcessInstance+WITHDRAW 事件", "type": "异常", "ev": "ApprovalService.terminate", "map": "ApprovalServiceTest（1例）", "st": "covered" },
+      { "id": "WF-APP-05", "name": "转办/委托/批量通过", "type": "正向", "ev": "ApprovalService.transfer/delegate/batchApprove", "map": "ApprovalServiceTest（3例）", "st": "covered" },
+      { "id": "WF-RB-01", "name": "审批回滚：快照恢复+策略注册表（预算/合同变更/劳务产值/机械结算/采购结算）+冲突感知", "type": "联动", "ev": "ApprovalRollbackServiceImpl/RollbackStrategyRegistry", "map": "ApprovalRollbackServiceImplTest（192行）+RollbackServiceTest（212行）+L2 ApprovalRollbackIntegrationTest", "st": "covered" },
+      { "id": "WF-URG-01", "name": "催办：配置/记录/去重", "type": "正向", "ev": "UrgeService/UrgeConfigService", "map": "UrgeServiceTest（171行）/UrgeConfigServiceTest（125行）", "st": "covered" },
+      { "id": "WF-CFG-01", "name": "业务类型/流程定义管理+待办已办分页", "type": "正向", "ev": "BusinessTypeService/ProcessDefinitionService", "map": "BusinessTypeServiceTest（150行）/ProcessDefinitionServiceTest（123行）/ApprovalServiceTest待办已办（2例）", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-message",
+   "batch": "batch3",
+   "stats": { "flows": 6, "covered": 6, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "消息与公告",
+     "flows": [
+      { "id": "MSG-ANN-01", "name": "公告状态机：DRAFT→PUBLISHED→REVOKED；已发布不可编辑/删除/重复发布，草稿不可撤回（P2 批次三新增守卫）", "type": "负向", "ev": "AnnouncementService.save/update/delete/publish/revoke", "map": "AnnouncementServiceTest（7例，含 testStatusGuards/testUpdate_draftGuardsAndStripping）", "st": "covered" },
+      { "id": "MSG-MSG-01", "name": "站内信：发送/分页/已读标记/未读数", "type": "正向", "ev": "MessageService", "map": "MessageServiceTest（75行）", "st": "covered" },
+      { "id": "MSG-NTC-01", "name": "通知：创建/查询/已读", "type": "正向", "ev": "NoticeService", "map": "NoticeServiceTest（106行）", "st": "covered" },
+      { "id": "MSG-TPL-01", "name": "消息模板 CRUD+变量渲染", "type": "正向", "ev": "TemplateService", "map": "TemplateServiceTest（99行）", "st": "covered" },
+      { "id": "MSG-PSH-01", "name": "推送配置 CRUD+启用校验", "type": "正向", "ev": "PushConfigService", "map": "PushConfigServiceTest（120行）", "st": "covered" },
+      { "id": "MSG-USC-01", "name": "用户快捷方式与企微推送", "type": "正向", "ev": "UserShortcutService/WeChatWorkService", "map": "UserShortcutServiceTest（165行）/WeChatWorkServiceTest（91行）", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-file",
+   "batch": "batch3",
+   "stats": { "flows": 6, "covered": 6, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "编号规则",
+     "flows": [
+      { "id": "FILE-SN-01", "name": "编号生成：租户规则唯一+Redis 自增+号段溢出 fail-fast（2026-08-11 防护）", "type": "边界", "ev": "SerialNumberService.generate", "map": "SerialNumberServiceTest.generate系列+L4 全阶段实跑（T9 前缀租户隔离）", "st": "covered" },
+      { "id": "FILE-SN-02", "name": "规则 CRUD：业务类型租户内唯一+update 剥离 businessType/tenantId 防跨租户（P2 批次三新增）", "type": "负向", "ev": "SerialNumberService.save/update/delete", "map": "SerialNumberServiceTest.testSave_duplicate/testUpdate_stripsRuleKeys", "st": "covered" }
+     ]
+    },
+    {
+     "entity": "文件存储与模板",
+     "flows": [
+      { "id": "FILE-UP-01", "name": "上传/下载/删除（MinIO）+预览+PDF 转换", "type": "正向", "ev": "FileService/MinioService/FilePreviewService/PdfConvertService", "map": "FileUploadServiceTest（382行）/MinioServiceDownloadTest（279行）/FilePreviewServiceTest/PdfConvertServiceTest", "st": "covered" },
+      { "id": "FILE-BAT-01", "name": "批量导入导出：异步调度+进度跟踪", "type": "正向", "ev": "BatchImportExportServiceImpl/ExportScheduleService", "map": "BatchImportExportServiceImplTest（111行）/ExportScheduleServiceTest（175行）", "st": "covered" },
+      { "id": "FILE-TPL-01", "name": "打印模板 CRUD+Thymeleaf 渲染", "type": "正向", "ev": "PrintTemplateService/TemplateService/ThymeleafRenderService", "map": "PrintTemplateServiceTest（146行）/TemplateServiceTest（118行）/ThymeleafRenderServiceTest（208行）", "st": "covered" },
+      { "id": "FILE-STG-01", "name": "存储抽象（本地/MinIO 路由）", "type": "正向", "ev": "StorageService", "map": "StorageServiceTest（91行）", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-dashboard",
+   "batch": "batch3",
+   "stats": { "flows": 2, "covered": 2, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "仪表盘",
+     "flows": [
+      { "id": "DASH-01", "name": "总览聚合（项目/合同/财务/预警多维度汇总，只读）", "type": "正向", "ev": "DashboardService", "map": "DashboardServiceTest（164行）+L3 test-api-dashboard.sh", "st": "covered" },
+      { "id": "DASH-02", "name": "项目级仪表盘（单项目收支/进度/资源聚合）", "type": "正向", "ev": "ProjectDashboardService", "map": "ProjectDashboardServiceTest（207行）", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-archive",
+   "batch": "batch3",
+   "stats": { "flows": 2, "covered": 2, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "项目档案",
+     "flows": [
+      { "id": "ARC-01", "name": "档案聚合：多模块关联数据组装，主实体不存在时 fundSummary 置 ZERO 兑底（展示层兑底非假数据）", "type": "边界", "ev": "ArchiveService", "map": "ArchiveServiceFallbackTest（148行）", "st": "covered" },
+      { "id": "ARC-02", "name": "档案搜索过滤条件组合（属性测试）", "type": "边界", "ev": "ArchiveService搜索过滤", "map": "ArchiveSearchFilterPropertyTest（267行）", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-basedata",
+   "batch": "batch3",
+   "stats": { "flows": 4, "covered": 4, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "基础数据",
+     "flows": [
+      { "id": "BD-SUP-01", "name": "供应商 CRUD+启用停用；黑名单加入/移除+黑名单切面拦截（批次一已测）", "type": "正向", "ev": "SupplierService/SupplierBlacklistService", "map": "SupplierServiceTest（113行）/SupplierBlacklistServiceTest（103行）/SupplierBlacklistAspectTest", "st": "covered" },
+      { "id": "BD-SUP-02", "name": "供应商评价 CRUD+评分计算", "type": "正向", "ev": "SupplierEvaluationService", "map": "SupplierEvaluationServiceTest（87行）", "st": "covered" },
+      { "id": "BD-MAT-01", "name": "材料/材料分类 CRUD（分类层级守卫）", "type": "正向", "ev": "MaterialService/MaterialCategoryService", "map": "MaterialServiceTest（96行）/MaterialCategoryServiceTest（100行）", "st": "covered" },
+      { "id": "BD-CMP-01", "name": "公司/业主/检查标准 CRUD", "type": "正向", "ev": "CompanyService/OwnerService/InspectionSchemeService", "map": "CompanyServiceTest（108行）/OwnerServiceTest（108行）/InspectionSchemeServiceTest（109行）", "st": "covered" }
+     ]
+    }
+   ]
+  },
+  {
+   "module": "zw-common",
+   "batch": "batch3",
+   "stats": { "flows": 4, "covered": 4, "partial": 0, "gap": 0, "exempt": 0 },
+   "entities": [
+    {
+     "entity": "横切基建",
+     "flows": [
+      { "id": "CMN-DP-01", "name": "数据权限：SQL 条件生成（SELF/PROJECT/ALL）+未注解方法+租户隔离（属性测试+L2 集成）", "type": "边界", "ev": "ZwDataPermissionHandler/DataPermissionInnerInterceptor", "map": "SqlConditionGenerationPropertyTest（216行）/UnannotatedMethodPropertyTest（199行）/TenantDataPermissionAndPropertyTest（186行）/DataPermissionIntegrationTest（301行）", "st": "covered" },
+      { "id": "CMN-DS-01", "name": "脱敏序列化（手机/身份证/姓名等类型，属性测试）", "type": "边界", "ev": "DesensitizeSerializer/DesensitizeUtil", "map": "DesensitizeUtilPropertyTest（338行）", "st": "covered" },
+      { "id": "CMN-REF-01", "name": "引用检查切面：删除前关联存在性拦截（ReferenceCheck）", "type": "负向", "ev": "ReferenceCheckAspect", "map": "L2 ReferenceCheckIntegrationTest+各模块引用守卫用例", "st": "covered" },
+      { "id": "CMN-EX-01", "name": "全局异常处理：BusinessException/二次确认/参数校验/序列化契约（Long→String）", "type": "正向", "ev": "GlobalExceptionHandler/JacksonConfig", "map": "L3 jq 契约断言（total number|string）+各模块异常路径用例", "st": "covered" }
      ]
     }
    ]

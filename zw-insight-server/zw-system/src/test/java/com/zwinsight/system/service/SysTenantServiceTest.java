@@ -98,23 +98,40 @@ class SysTenantServiceTest {
         update.setId(1L);
         update.setTenantCode("SHOULD_BE_CLEARED");
         update.setSecretKey("SHOULD_BE_CLEARED");
+        update.setStatus(2); // 恶意携带 status
         tenantService.update(update);
 
         assertThat(update.getTenantCode()).isNull();
         assertThat(update.getSecretKey()).isNull();
+        assertThat(update.getStatus()).isNull(); // P2：status 剥离防绕过停用/启用状态机
     }
 
     @Test
-    @DisplayName("删除租户：同时删除菜单关联")
+    @DisplayName("删除租户：仅已停用租户可删+同时删除菜单关联（P1 状态机守卫）")
     void testDelete() {
         SysTenant existing = new SysTenant();
         existing.setId(1L);
+        existing.setStatus(2); // DISABLED
         when(tenantMapper.selectById(1L)).thenReturn(existing);
 
         tenantService.delete(1L);
 
         verify(tenantMapper).deleteById(1L);
         verify(tenantMenuMapper).delete(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    @DisplayName("删除租户：正常租户拒绝删除（须先停用清 token，P1 状态机守卫）")
+    void testDelete_normalTenant_rejected() {
+        SysTenant existing = new SysTenant();
+        existing.setId(2L);
+        existing.setStatus(1); // NORMAL
+        when(tenantMapper.selectById(2L)).thenReturn(existing);
+
+        assertThatThrownBy(() -> tenantService.delete(2L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅已停用租户可删除");
+        verify(tenantMapper, never()).deleteById(anyLong());
     }
 
     @Test
