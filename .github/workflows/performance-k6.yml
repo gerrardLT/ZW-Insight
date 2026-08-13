@@ -31,6 +31,10 @@ jobs:
       - name: Execute k6 performance tests
         run: |
           # 上传仓库内最新性能脚本（与源码保持一致，避免服务器残留旧版）
+          # 必须先清空远端 /tmp/zwi-perf：scp -r 对已存在目录会嵌套复制，
+          # 旧版脚本残留在目录根部遮蔽新版（2026-08-14 实证，同 deploy.yml）
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+            "rm -rf /tmp/zwi-perf"
           scp -i ~/.ssh/deploy_key -r tests/performance \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/tmp/zwi-perf"
           # 调用真实基座 run-k6.sh；低峰窗口由本 cron 调度保证（北京 23:00），
