@@ -159,6 +159,18 @@
 | 2026-08-07 | SECURITY | NVD_API_KEY 无效（HTTP 404 空响应），首轮扫描仍受阻；workflow 已加固 | ENV | 用户提供 key 配置到 GitHub secret 后触发 run 31153429651：NVD 更新报 bytes is null，本地 curl 实证该 key 请求 services.nvd.nist.gov 返回 404（不带 key 反而 200）——key 无效（复制有误或未激活）；同时暴露 workflow 两问题：aggregate 未先构建 reactor 依赖、无效 key 强传导致扫描必败 | 首轮报告未产出 | 处置：①workflow 加固——先 mvn package 构建 reactor、key 非空才传入（空/无效时回落无 key 限速模式）、报告上传路径放宽②待用户核实 key（重新申请或等待激活）后重跑；无 key 兜底模式可用但需数小时。**2026-08-10 闭环：日志实证 key 已生效**（run 31351614081：成功走 key 分支，8 分钟更新 374,413 条 NVD 记录；仅 2 条无害告警：CVE-2026-6785/6786 参考 URL 超 H2 列长 1000 入库失败，与本项目依赖无关） | AI实证分析 | 已核实生效 |
 | 2026-08-13 | L3/L4/L5 | 批次二 CI（run 31613613775）：Backend Build 全绿后 Deploy to Server 失败，L3/L4/k6 未执行 | ENV | 部署服务器磁盘满：rsync 写 deploy/zw-insight-app.jar 报 `No space left on device (28)`，exit 11；Backend Build 全量单测+基线比对已 success（非代码缺陷）；另定时 k6 run 31615089365 同因失败 | 批次二 CI 全链路验证受阻（本地 6 模块 664 例全绿已自证代码层） | 用户决策：用户自行清理服务器磁盘（2026-08-13 已完成）；根防加固：deploy.yml 新增①Pre-deploy disk guard（rsync 前查可用空间<1GB 则先自动 docker prune 四类资源，仍不足则快速失败附诊断，防半截 jar）②部署后清理从仅 image prune 扩为 container/image/network/builder 四类 prune（不用 system prune -a 避免误删其他栈镜像）+磁盘/docker 占用日志（d499a46，Deploy 已过）。重跑 run 31617910519 暴露 3 项真实缺陷并已修复：①L4 stage_9K 退款审批 500——**退款扣减长期打错表**：deductPaidAmount 作用于 biz_expense_contract 而采购付款回写 biz_purchase_contract（扣减命中 0 行静默无效，新守卫查错表又把合法退款拒成 500）→新建 PurchaseContractPayMapper 原子扣减（WHERE 含下限守卫，无 @DataPermission 防回调上下文行条件）+L4 补 cumulativePaid 80000→75000 硬断言②L3 project 成员添加载荷 roleType 字段名错误（D8 角色校验生效后被正确拒绝）→改 projectRoles 数组③L5 分包奖罚载荷 type→rpType（后端实体字段为准）；本地 contract 263/purchase 122/material 106 全绿 | 用户 | **已解决（run 31622551219 全链路 success）** |
 
+## 待决策清单（2026-08-13 颗粒级测试计划收尾登记，等待用户拍板）
+
+> 三批次计划已闭环（737 条目 gap=0 + 23 审批流），以下为取证枚举中发现、已在 flow-matrix.json 登记豁免、但**需用户决策后续处置**的项。决策后回填本表并同步 flow-matrix 豁免状态。
+
+| # | 项 | 背景事实 | 选项 | 状态 |
+|---|-----|---------|------|------|
+| 1 | MAC-PRJ：机械结算不回写项目 totalExpense | 付款审批会原子累加项目 totalExpense（PaymentApplyService.onApproved），但机械结算审批通过不回写——两条链路不对称。若总支出应含机械结算，则项目成本统计长期偏低 | A. 补回写（结算审批回调加 projectMapper.addTotalExpense）；B. 确认设计如此（结算不计入总支出，付款时已计），维持豁免 | 待决策（暂豁免不改代码） |
+| 2 | FIN-RCI-05/FIN-OPT-04/FIN-RFR-08：收款/其他付款/备用金归还无删除入口，审批通过后无法回冲 | 三类单据审批通过后累计金额已回写合同/项目，但无删除/作废入口，错误录入只能改数据 | A. 补删除（仅已生效且无后续引用可删）+金额回冲；B. 维持现状，用反向单据冲销（需补冲销单据类型）；C. 维持豁免 | 待决策 |
+| 3 | 生产 dev profile 下 auth.captcha-enabled=false（验证码关闭） | 2026-08-10 knife4j 收敛时发现；全部自动化脚本（L3/L4/L5）依赖验证码关闭或走 Redis 取答案路径，开启后需验证脚本兼容性 | A. 上线前开启（同步验证 L3/L4/L5 兼容）；B. 维持关闭（接受弱安全） | 待决策（上线前专项） |
+| 4 | 并发类 10 项：乐观锁/唯一索引架构改造专项 | 批次一 9 项（FIN-RCV-13/FIN-RFR-07/FIN-RTR-06/FIN-PRJ-08/FIN-LCK-17/FIN-SET-18/SET-07/VIS-06/BUD-CHG-17）+批次二 MAC-SET：金额原子累加/check-then-act 竞态，单测无法根治，需实体 @Version+updateById 返回值检查/唯一索引 | A. 启动专项（逐模块加乐观锁+回归）；B. 评估后只对高金额链路（付款/结算）优先 | 待决策专项启动时机 |
+| 5 | L5 脚本慢变量债务（2 处） | 08-purchase.spec.ts 创建合同复用查找（size=50）与结算单找可复用入库单（size=100）仍为翻页查找，租户数据持续累积后可能超阈值重演本轮 size=20 爆红 | A. 统一改过滤条件精确定位（contractName/status 过滤）；B. 观察至爆红再修 | 待决策（建议 A，低风险） |
+
 <!-- 2026-08-10 cleanup: removed 13 corrupted orphan lines after the ledger table
      (GBK mojibake / $timestamp placeholders / stale in-progress status).
      Their facts (commits 9b8edfd/b8c9032/e475e5d/8f97659/a5a7029, run 31227937937)
