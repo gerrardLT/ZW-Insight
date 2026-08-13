@@ -48,7 +48,7 @@
     "exempt": 0,
     "scope": "zw-system / zw-security / zw-workflow / zw-message / zw-file / zw-dashboard / zw-archive / zw-basedata / zw-common",
     "defects_fixed": "P1：用户删除无管理员保护、正常租户可直接删除；P2：重置密码无校验、导入计数失真、租户 update status 可绕过状态机、编号规则 update 可跨租户/破坏唯一性、公告无发布状态机守卫",
-    "verification": "zw-system/zw-file/zw-message 三模块 309 例全绿；其余模块既有测试 1:1 对应+CI 全链路验证"
+    "verification": "zw-system/zw-file/zw-message 三模块 309 例全绿 + CI run 31663600669 全链路 success（L3 20/20、L4 209✅/0❌、L5 三套 EXIT=0、k6 过；首跑 L5 采购分页脆弱性已改 contractName 过滤修复）"
    }
   },
   "updated": "2026-08-13",
