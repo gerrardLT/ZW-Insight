@@ -165,11 +165,11 @@
 
 | # | 项 | 背景事实 | 选项 | 状态 |
 |---|-----|---------|------|------|
-| 1 | MAC-PRJ：机械结算不回写项目 totalExpense | 付款审批会原子累加项目 totalExpense（PaymentApplyService.onApproved），但机械结算审批通过不回写——两条链路不对称。若总支出应含机械结算，则项目成本统计长期偏低 | A. 补回写（结算审批回调加 projectMapper.addTotalExpense）；B. 确认设计如此（结算不计入总支出，付款时已计），维持豁免 | 待决策（暂豁免不改代码） |
-| 2 | FIN-RCI-05/FIN-OPT-04/FIN-RFR-08：收款/其他付款/备用金归还无删除入口，审批通过后无法回冲 | 三类单据审批通过后累计金额已回写合同/项目，但无删除/作废入口，错误录入只能改数据 | A. 补删除（仅已生效且无后续引用可删）+金额回冲；B. 维持现状，用反向单据冲销（需补冲销单据类型）；C. 维持豁免 | 待决策 |
+| 1 | MAC-PRJ：机械结算不回写项目 totalExpense | 全仓核验：totalExpense 唯一回写点是付款申请审批通过（PaymentApplyService.onApproved）；**所有结算类型（机械/劳务/分包）均不回写**——非机械独有遗漏，而是全系统 totalExpense=「已付」口径的一致设计。决策点：若要求项目成本含「已结算未付款」部分，不能简单加回写（结算后再付款会重复计入），需单独聚合字段/查询 | A. 维持现状（已付口径，结算口径另查累计结算）；B. 新增「项目总成本=已付+未付结算」聚合（需设计防重复计入） | 待决策（倾向 A，暂豁免） |
+| 2 | FIN-RCI-05/FIN-OPT-04/FIN-RFR-08：收票/其他付款/备用金归还无删除入口，录入后回写无法回冲 | 核验：①收票 save 回写合同累计收票额，无删除，错录使合同收票虚高②其他付款 save 回写项目其他总支出（P0 已修金额校验），无删除③备用金归还 save 回写申请单未还余额，无删除。对比：同类的收款（PaymentReceived）已在批次一补了对称回冲 delete，三者未对齐 | A. 补齐三个 delete（无后续引用可删）+金额对称回冲，对齐 PaymentReceived.delete 模式；B. 反向单据冲销（需新单据类型，复杂）；C. 维持豁免 | 待决策（建议 A） |
 | 3 | 生产 dev profile 下 auth.captcha-enabled=false（验证码关闭） | 2026-08-10 knife4j 收敛时发现；全部自动化脚本（L3/L4/L5）依赖验证码关闭或走 Redis 取答案路径，开启后需验证脚本兼容性 | A. 上线前开启（同步验证 L3/L4/L5 兼容）；B. 维持关闭（接受弱安全） | 待决策（上线前专项） |
 | 4 | 并发类 10 项：乐观锁/唯一索引架构改造专项 | 批次一 9 项（FIN-RCV-13/FIN-RFR-07/FIN-RTR-06/FIN-PRJ-08/FIN-LCK-17/FIN-SET-18/SET-07/VIS-06/BUD-CHG-17）+批次二 MAC-SET：金额原子累加/check-then-act 竞态，单测无法根治，需实体 @Version+updateById 返回值检查/唯一索引 | A. 启动专项（逐模块加乐观锁+回归）；B. 评估后只对高金额链路（付款/结算）优先 | 待决策专项启动时机 |
-| 5 | L5 脚本慢变量债务（2 处） | 08-purchase.spec.ts 创建合同复用查找（size=50）与结算单找可复用入库单（size=100）仍为翻页查找，租户数据持续累积后可能超阈值重演本轮 size=20 爆红 | A. 统一改过滤条件精确定位（contractName/status 过滤）；B. 观察至爆红再修 | 待决策（建议 A，低风险） |
+| 5 | L5 脚本慢变量债务（2 处） | 08-purchase.spec.ts 创建合同复用查找（size=50）与结算单找可复用入库单（size=100）仍为翻页查找，租户数据持续累积后可能超阈值重演本轮 size=20 爆红 | A. 统一改过滤条件精确定位（contractName/status 过滤）；B. 观察至爆红再修 | **已决策 A，已实施（e37f770）：四处翻页查找改服务端过滤（contractName/projectId），CI 验证中** |
 
 <!-- 2026-08-10 cleanup: removed 13 corrupted orphan lines after the ledger table
      (GBK mojibake / $timestamp placeholders / stale in-progress status).
