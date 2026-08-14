@@ -1,3 +1,4 @@
+import { computed } from 'vue'
 import { usePermissionStore } from '@/stores/permission'
 
 /**
@@ -29,8 +30,10 @@ export function usePermission() {
 
   /**
    * 判断是否为超级管理员
+   * （computed 包装保证响应性：直接读 store 属性得到的是快照值，
+   * 权限变更后不会更新，2026-08-14 深度补测时修正）
    */
-  const isSuperAdmin = permissionStore.isSuperAdmin
+  const isSuperAdmin = computed(() => permissionStore.isSuperAdmin)
 
   return { hasPermission, hasAnyPermission, isSuperAdmin }
 }

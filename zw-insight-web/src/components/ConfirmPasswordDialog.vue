@@ -78,6 +78,12 @@ const open: ConfirmOpener = (msg: string) => {
 
 async function handleConfirm() {
   if (!formRef.value) return
+  // 显式空密码守卫：安全关键对话框不得依赖单一校验机制，
+  // 任何环境下都不允许提交空密码（2026-08-14 组件测试钉住）
+  if (!form.password) {
+    await formRef.value.validate().catch(() => undefined)
+    return
+  }
   try {
     await formRef.value.validate()
   } catch {
@@ -86,7 +92,6 @@ async function handleConfirm() {
   confirmed = true
   const pwd = form.password
   visible.value = false
-  // resolve 在 closed 钩子里统一处理，确保对话框完成关闭动画后再返回
   resolveOnce(pwd)
 }
 
