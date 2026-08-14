@@ -56,6 +56,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getDashboardStats, getProjectStatusDistribution, getIncomeExpenseComparison } from '@/api/dashboard'
+import { formatWan } from '@/utils/chart-format'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -84,11 +85,6 @@ const todayText = computed(() => {
   const week = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${week[d.getDay()]}`
 })
-
-function formatWan(val: number) {
-  if (!val && val !== 0) return '0'
-  return (val / 10000).toFixed(1)
-}
 
 const statCards = computed(() => [
   { key: 'project', label: '项目总数', value: stats.value.projectCount || 0, icon: 'Briefcase', color: '#3370ff', bg: 'rgba(51,112,255,0.12)' },

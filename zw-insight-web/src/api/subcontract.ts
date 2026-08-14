@@ -22,7 +22,8 @@ export function deleteSubcontract(id: number) {
 }
 
 export function submitSubcontract(id: number) {
-  return request.put(`/v1/subcontract/contract/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/subcontract/contract/${id}/submit`)
 }
 
 // ======================== 产值上报 ========================

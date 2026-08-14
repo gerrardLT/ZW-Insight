@@ -22,7 +22,8 @@ export function deleteMachineContract(id: number) {
 }
 
 export function submitMachineContract(id: number) {
-  return request.put(`/v1/machine/contract/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/machine/contract/${id}/submit`)
 }
 
 // ======================== 使用记录 ========================

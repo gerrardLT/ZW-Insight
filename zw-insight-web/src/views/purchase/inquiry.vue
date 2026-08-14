@@ -105,10 +105,15 @@ function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }
 // 将单物料表单字段组装为后端期望的 items 数组（后端持久化到 biz_inquiry_item），保持前后端一致
 function buildInquiryPayload() {
   const f = formData.value
+  // deadline 归一化为 datetime：后端 BizInquiry.deadline 为 LocalDateTime，
+  // 日期控件 value-format=YYYY-MM-DD 纯日期会致 Jackson 解析 500（P2 实跑实证缺陷修复）
+  const deadline = f.deadline
+    ? (f.deadline.includes('T') ? f.deadline : `${f.deadline}T00:00:00`)
+    : undefined
   return {
     id: f.id,
     title: f.title,
-    deadline: f.deadline,
+    deadline,
     description: f.requirement,
     materialSummary: f.materialName,
     items: [

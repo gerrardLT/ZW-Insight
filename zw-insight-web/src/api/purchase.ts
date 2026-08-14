@@ -22,7 +22,8 @@ export function deletePurchaseContract(id: number) {
 }
 
 export function submitPurchaseContract(id: number) {
-  return request.put(`/v1/purchase/contract/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/purchase/contract/${id}/submit`)
 }
 
 // ======================== 采购结算 ========================
@@ -47,7 +48,8 @@ export function deletePurchaseSettlement(id: number) {
 }
 
 export function submitPurchaseSettlement(id: number) {
-  return request.put(`/v1/purchase/settlement/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/purchase/settlement/${id}/submit`)
 }
 
 // 查询指定合同下可结算的入库单（已审批且未结算）
@@ -77,7 +79,8 @@ export function deleteInquiry(id: number) {
 }
 
 export function publishInquiry(id: number) {
-  return request.put(`/v1/purchase/inquiry/${id}/publish`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/purchase/inquiry/${id}/publish`)
 }
 
 // ======================== 三方比价 - 报价 ========================

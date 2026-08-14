@@ -5,9 +5,10 @@
  *
  * 两页均以图表/卡片而非表格呈现，故对可断言的 KPI 数字做字段级校验。
  *
- * ⚠ 发现（dashboard/index.vue）：loadStats / 饼图 / 柱图 三处 catch 均静默兜底为空数据
- *  （`catch { stats.value = {} }` 等），接口异常时页面无任何错误提示，违反「无静默 fallback」约定。
- *  对比 project-dashboard.vue 使用 loadDimension 逐维度 state.error 显式报错，为正确范式。
+ * 历史记录（2026-08-14 P2 修复）：本 spec 曾硬编码 __silentFallback__ 假缺陷记录
+ *（当时 index.vue 三处 catch 静默兜底）；源码已修复为显式 ElMessage.error
+ *（dashboard-index.component.test.ts C-29-5/7/8 钉住），假缺陷记录与容忍 filter 已移除。
+ * fmtWan 与 src/utils/chart-format.ts 同源（e2e tsconfig 限制不可 import，见下方注释）。
  */
 import { test, expect } from '@playwright/test'
 import {
@@ -17,10 +18,14 @@ import {
   type Mismatch,
 } from './consistency-helper'
 
-/** formatWan 独立复刻：空值→'0'，否则 (val/10000).toFixed(1) */
+/**
+ * formatWan 复刻（单一事实源：src/utils/chart-format.ts formatWan，
+ * e2e tsconfig 未覆盖 src 相对导入，无法直接 import；源码变更时须同步本函数）：
+ * 空值/NaN → '0'，否则 (val/10000).toFixed(1)
+ */
 function fmtWan(val: unknown): string {
   const n = Number(val)
-  if ((!val && val !== 0) || Number.isNaN(n)) return '0'
+  if ((val === null || val === undefined || val === '') || Number.isNaN(n)) return '0'
   return (n / 10000).toFixed(1)
 }
 
@@ -33,15 +38,6 @@ test.describe.serial('dashboard 一致性', () => {
     const title = '首页驾驶舱'
     const api = 'GET /v1/dashboard/company-overview'
     const mismatches: Mismatch[] = []
-
-    // 静默 fallback 属静态代码事实，固定记入发现
-    mismatches.push({
-      row: -1,
-      column: '__silentFallback__',
-      field: 'loadStats/pie/bar catch',
-      expected: '接口异常应显式提示',
-      actual: 'index.vue 三处 catch 静默兜底空数据，无错误提示（违反无静默 fallback 约定）',
-    })
 
     if (resp.code !== 200) {
       mismatches.push({ row: -1, column: '__apiError__', expected: 'code=200', actual: `code=${resp.code} message=${resp.message}` })
@@ -76,9 +72,8 @@ test.describe.serial('dashboard 一致性', () => {
     }
 
     results.push({ route, title, api, mismatches })
-    // KPI 不一致（排除固定的静默 fallback 记录）才让用例失败
-    const kpiMismatches = mismatches.filter((m) => m.column !== '__silentFallback__')
-    expect(kpiMismatches, `KPI 卡片存在 ${kpiMismatches.length} 处不一致：\n${JSON.stringify(kpiMismatches, null, 2)}`).toHaveLength(0)
+    // KPI 不一致即用例失败（无容忍项：原 __silentFallback__ 假缺陷已随源码修复移除）
+    expect(mismatches, `KPI 卡片存在 ${mismatches.length} 处不一致：\n${JSON.stringify(mismatches, null, 2)}`).toHaveLength(0)
   })
 
   test('B 项目看板 /project-dashboard 数据源与错误处理', async ({ page }) => {

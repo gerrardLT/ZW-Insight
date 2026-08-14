@@ -27,7 +27,8 @@ export function deleteHrEntry(id: number) {
 }
 
 export function submitHrEntry(id: number) {
-  return request.put(`/v1/hr/entry-apply/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/hr/entry-apply/${id}/submit`)
 }
 
 // ======================== 转正 ========================

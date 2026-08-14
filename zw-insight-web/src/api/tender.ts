@@ -22,7 +22,8 @@ export function deleteTenderRegister(id: number) {
 }
 
 export function submitTenderRegister(id: number) {
-  return request.put(`/v1/tender/register/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/tender/register/${id}/submit`)
 }
 
 // ======================== 任务分配 ========================

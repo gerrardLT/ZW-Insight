@@ -119,6 +119,7 @@ import {
   type ContractReceiptDTO,
   type OutputTrendDTO
 } from '@/api/dashboard'
+import { toAmount2, toWan, clampPercent, nonNegativeRemaining } from '@/utils/chart-format'
 
 // 当前选中的项目 ID
 const selectedProjectId = ref<number>()
@@ -205,16 +206,6 @@ let progressChart: echarts.ECharts | null = null
 let contractChart: echarts.ECharts | null = null
 let outputChart: echarts.ECharts | null = null
 
-/** 金额保留两位小数 */
-function toAmount2(val: number): number {
-  return Math.round((val || 0) * 100) / 100
-}
-
-/** 金额转万元（保留两位小数） */
-function toWan(val: number): number {
-  return Math.round(((val || 0) / 10000) * 100) / 100
-}
-
 /**
  * 获取或初始化某个容器对应的 ECharts 实例。
  * 容器使用 v-show 控制，DOM 始终存在但可能尺寸为 0，故在 render 时机由 nextTick 保证布局完成。
@@ -233,8 +224,8 @@ function renderBudgetChart(data: BudgetExecutionDTO) {
   budgetChart = ensureChart(budgetChart, budgetChartRef.value)
   if (!budgetChart) return
   const used = toAmount2(data.usedAmount)
-  // 剩余预算不为负：超预算时剩余按 0 处理
-  const remaining = toAmount2(Math.max((data.totalBudget || 0) - (data.usedAmount || 0), 0))
+  // 剩余预算不为负：超预算时剩余按 0 处理（nonNegativeRemaining 语义，chart-format 单一事实源）
+  const remaining = toAmount2(nonNegativeRemaining(data.totalBudget, data.usedAmount))
   budgetChart.setOption(
     {
       tooltip: {
@@ -266,7 +257,7 @@ function renderProgressChart(data: ProgressDTO) {
   progressChart = ensureChart(progressChart, progressChartRef.value)
   if (!progressChart) return
   // 后端 completionRate 为 0~1 的比率（保留4位小数）→ 转百分比整数，显示区间裁剪到 0–100
-  const percent = Math.min(Math.max(Math.round((data.completionRate || 0) * 100), 0), 100)
+  const percent = clampPercent(data.completionRate)
   progressChart.setOption(
     {
       series: [

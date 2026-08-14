@@ -81,6 +81,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getHrStatisticsOverview } from '@/api/hr'
 
@@ -100,17 +101,23 @@ let seniorityChart: echarts.ECharts | null = null
 let trendChart: echarts.ECharts | null = null
 
 async function loadData() {
-  const res: any = await getHrStatisticsOverview()
-  const data = res.data || {}
-  overview.value = {
-    totalActive: data.totalActive || 0,
-    monthlyEntry: data.monthlyEntry || 0,
-    monthlyResign: data.monthlyResign || 0
+  try {
+    const res: any = await getHrStatisticsOverview()
+    const data = res.data || {}
+    overview.value = {
+      totalActive: data.totalActive || 0,
+      monthlyEntry: data.monthlyEntry || 0,
+      monthlyResign: data.monthlyResign || 0
+    }
+    renderDeptChart(data.byDept || [])
+    renderPostChart(data.byPost || [])
+    renderSeniorityChart(data.bySeniority || [])
+    renderTrendChart(data.monthlyTrend || [])
+  } catch (e: any) {
+    // C-20-7 修复（2026-08-14 P2 补测）：不静默处理，接口失败显式提示
+    //（对齐 dashboard/index.vue loadStats 范式）
+    ElMessage.error('加载人事统计数据失败：' + (e?.message || '接口异常'))
   }
-  renderDeptChart(data.byDept || [])
-  renderPostChart(data.byPost || [])
-  renderSeniorityChart(data.bySeniority || [])
-  renderTrendChart(data.monthlyTrend || [])
 }
 
 function renderDeptChart(byDept: Array<{ deptName: string; count: number }>) {

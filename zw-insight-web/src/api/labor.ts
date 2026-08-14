@@ -22,7 +22,8 @@ export function deleteLaborContract(id: number) {
 }
 
 export function submitLaborContract(id: number) {
-  return request.put(`/v1/labor/contract/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/labor/contract/${id}/submit`)
 }
 
 // ======================== 产值上报 ========================
@@ -60,7 +61,8 @@ export function deleteLaborSettlement(id: number) {
 }
 
 export function submitLaborSettlement(id: number) {
-  return request.put(`/v1/labor/settlement/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/labor/settlement/${id}/submit`)
 }
 
 // ======================== 奖惩 ========================
@@ -128,7 +130,8 @@ export function deleteWorkOrder(id: number) {
 }
 
 export function submitWorkOrder(id: number) {
-  return request.put(`/v1/labor/work-order/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/labor/work-order/${id}/submit`)
 }
 
 // ======================== 工资单 ========================
@@ -149,7 +152,8 @@ export function deletePayroll(id: number) {
 }
 
 export function submitPayroll(id: number) {
-  return request.put(`/v1/labor/payroll/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/labor/payroll/${id}/submit`)
 }
 
 // ======================== 薪资统计 ========================

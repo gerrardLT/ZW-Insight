@@ -22,7 +22,8 @@ export function deleteMaterialInbound(id: number) {
 }
 
 export function submitMaterialInbound(id: number) {
-  return request.put(`/v1/material/inbound/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/material/inbound/${id}/submit`)
 }
 
 // ======================== 出库管理 ========================
@@ -47,7 +48,8 @@ export function deleteMaterialOutbound(id: number) {
 }
 
 export function submitMaterialOutbound(id: number) {
-  return request.put(`/v1/material/outbound/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/material/outbound/${id}/submit`)
 }
 
 // ======================== 调拨管理 ========================
@@ -72,7 +74,8 @@ export function deleteMaterialTransfer(id: number) {
 }
 
 export function submitMaterialTransfer(id: number) {
-  return request.put(`/v1/material/transfer/${id}/submit`)
+  // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
+  return request.post(`/v1/material/transfer/${id}/submit`)
 }
 
 // ======================== 盘点管理 ========================
