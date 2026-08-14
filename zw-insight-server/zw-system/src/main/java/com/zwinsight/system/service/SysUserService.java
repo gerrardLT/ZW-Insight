@@ -6,6 +6,7 @@ import com.alibaba.excel.read.listener.PageReadListener;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.security.domain.SysUser;
@@ -48,16 +49,24 @@ public class SysUserService {
                 .like(StrUtil.isNotBlank(realName), SysUser::getRealName, realName)
                 .eq(orgId != null, SysUser::getOrgId, orgId)
                 .eq(status != null, SysUser::getStatus, status)
+                // 跨租户水平越权修复（2026-08-14，探针钉住）：sys_* 表免 TenantLine
+                // 拦截器过滤，此处显式按当前租户过滤；条件化写法保证无租户上下文
+                // 的内部调用零回归
+                .eq(SecurityContextHolder.getTenantId() != null,
+                        SysUser::getTenantId, SecurityContextHolder.getTenantId())
                 .orderByDesc(SysUser::getCreatedAt);
         Page<SysUser> result = userMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);
     }
 
     /**
-     * 根据ID查询
+     * 根据ID查询（含租户过滤，防跨租户 ID 枚举直查；仅 Controller 调用）
      */
     public SysUser getById(Long id) {
-        return userMapper.selectById(id);
+        return userMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getId, id)
+                .eq(SecurityContextHolder.getTenantId() != null,
+                        SysUser::getTenantId, SecurityContextHolder.getTenantId()));
     }
 
     /**
@@ -222,7 +231,10 @@ public class SysUserService {
         wrapper.like(StrUtil.isNotBlank(username), SysUser::getUsername, username)
                 .like(StrUtil.isNotBlank(realName), SysUser::getRealName, realName)
                 .eq(orgId != null, SysUser::getOrgId, orgId)
-                .eq(status != null, SysUser::getStatus, status);
+                .eq(status != null, SysUser::getStatus, status)
+                // 跨租户水平越权修复（2026-08-14）：导出同 page 口径按租户过滤
+                .eq(SecurityContextHolder.getTenantId() != null,
+                        SysUser::getTenantId, SecurityContextHolder.getTenantId());
         List<SysUser> users = userMapper.selectList(wrapper);
 
         List<SysUserExcelDTO> exportList = users.stream().map(user -> {

@@ -38,16 +38,23 @@ public class SysRoleService {
         LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(roleName), SysRole::getRoleName, roleName)
                 .eq(status != null, SysRole::getStatus, status)
+                // 跨租户水平越权修复（2026-08-14，探针钉住）：sys_* 表免 TenantLine
+                // 拦截器过滤，显式按当前租户过滤；无上下文内部调用零回归
+                .eq(SecurityContextHolder.getTenantId() != null,
+                        SysRole::getTenantId, SecurityContextHolder.getTenantId())
                 .orderByDesc(SysRole::getCreatedAt);
         Page<SysRole> result = roleMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);
     }
 
     /**
-     * 根据ID查询
+     * 根据ID查询（含租户过滤，防跨租户 ID 枚举直查；仅 Controller 调用）
      */
     public SysRole getById(Long id) {
-        return roleMapper.selectById(id);
+        return roleMapper.selectOne(new LambdaQueryWrapper<SysRole>()
+                .eq(SysRole::getId, id)
+                .eq(SecurityContextHolder.getTenantId() != null,
+                        SysRole::getTenantId, SecurityContextHolder.getTenantId()));
     }
 
     /**

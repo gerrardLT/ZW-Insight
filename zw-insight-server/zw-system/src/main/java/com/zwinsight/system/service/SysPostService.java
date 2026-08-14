@@ -3,6 +3,7 @@ package com.zwinsight.system.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.system.domain.SysPost;
@@ -30,16 +31,23 @@ public class SysPostService {
         LambdaQueryWrapper<SysPost> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(postName), SysPost::getPostName, postName)
                 .eq(status != null, SysPost::getStatus, status)
+                // 跨租户水平越权修复（2026-08-14）：sys_* 免拦截器过滤，
+                // 显式按当前租户条件化过滤（无上下文内部调用零回归）
+                .eq(SecurityContextHolder.getTenantId() != null,
+                        SysPost::getTenantId, SecurityContextHolder.getTenantId())
                 .orderByAsc(SysPost::getSortOrder);
         Page<SysPost> result = postMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);
     }
 
     /**
-     * 根据ID查询
+     * 根据ID查询（含租户过滤，防跨租户 ID 枚举直查；仅 Controller 调用）
      */
     public SysPost getById(Long id) {
-        return postMapper.selectById(id);
+        return postMapper.selectOne(new LambdaQueryWrapper<SysPost>()
+                .eq(SysPost::getId, id)
+                .eq(SecurityContextHolder.getTenantId() != null,
+                        SysPost::getTenantId, SecurityContextHolder.getTenantId()));
     }
 
     /**

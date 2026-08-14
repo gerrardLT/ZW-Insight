@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.security.domain.SysUser;
@@ -49,17 +50,53 @@ class SysUserServiceTest {
     }
 
     @Test
-    @DisplayName("根据ID查询：返回用户")
+    @DisplayName("根据ID查询：返回用户（selectOne 含租户条件）")
     void testGetById() {
         SysUser user = new SysUser();
         user.setId(1L);
         user.setUsername("admin");
-        when(userMapper.selectById(1L)).thenReturn(user);
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(user);
 
         SysUser result = userService.getById(1L);
 
         assertThat(result).isNotNull();
         assertThat(result.getUsername()).isEqualTo("admin");
+    }
+
+    @Test
+    @DisplayName("分页查询：有租户上下文时 wrapper 含 tenant_id 过滤（跨租户越权修复 2026-08-14）")
+    @SuppressWarnings("unchecked")
+    void testPage_withTenantContext_filtersByTenant() {
+        SecurityContextHolder.setTenantId(1L);
+        try {
+            Page<SysUser> page = new Page<>(1, 10);
+            page.setRecords(List.of());
+            when(userMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+            userService.page(1, 10, null, null, null, null);
+
+            ArgumentCaptor<LambdaQueryWrapper<SysUser>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+            verify(userMapper).selectPage(any(Page.class), captor.capture());
+            assertThat(captor.getValue().getSqlSegment()).contains("tenant_id");
+        } finally {
+            SecurityContextHolder.clear();
+        }
+    }
+
+    @Test
+    @DisplayName("分页查询：无租户上下文时不加租户条件（内部调用零回归）")
+    @SuppressWarnings("unchecked")
+    void testPage_withoutTenantContext_noTenantFilter() {
+        SecurityContextHolder.clear();
+        Page<SysUser> page = new Page<>(1, 10);
+        page.setRecords(List.of());
+        when(userMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        userService.page(1, 10, null, null, null, null);
+
+        ArgumentCaptor<LambdaQueryWrapper<SysUser>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(userMapper).selectPage(any(Page.class), captor.capture());
+        assertThat(captor.getValue().getSqlSegment()).doesNotContain("tenant_id");
     }
 
     @Test

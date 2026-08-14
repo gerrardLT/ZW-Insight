@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.system.domain.SysAuditLog;
 import com.zwinsight.system.mapper.SysAuditLogMapper;
@@ -72,5 +73,42 @@ class AuditLogServiceTest {
         assertThat(saved.getOldValue()).isEqualTo("100");
         assertThat(saved.getNewValue()).isEqualTo("200");
         assertThat(saved.getOperTime()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("记录审计日志：写入租户与操作人上下文（跨租户越权修复配套 2026-08-14）")
+    void testSave_capturesTenantContext() {
+        SecurityContextHolder.setTenantId(9999L);
+        SecurityContextHolder.setUserId(200L);
+        try {
+            auditLogService.save("biz_contract", 1L, "amount", "1", "2");
+
+            ArgumentCaptor<SysAuditLog> captor = ArgumentCaptor.forClass(SysAuditLog.class);
+            verify(auditLogMapper).insert(captor.capture());
+            assertThat(captor.getValue().getTenantId()).isEqualTo(9999L);
+            assertThat(captor.getValue().getOperUserId()).isEqualTo(200L);
+        } finally {
+            SecurityContextHolder.clear();
+        }
+    }
+
+    @Test
+    @DisplayName("分页查询：有租户上下文时 wrapper 含 tenant_id 过滤（跨租户越权修复 2026-08-14）")
+    @SuppressWarnings("unchecked")
+    void testPage_withTenantContext_filtersByTenant() {
+        SecurityContextHolder.setTenantId(1L);
+        try {
+            Page<SysAuditLog> page = new Page<>(1, 10);
+            page.setRecords(List.of());
+            when(auditLogMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+            auditLogService.page(1, 10, null, null);
+
+            ArgumentCaptor<LambdaQueryWrapper<SysAuditLog>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+            verify(auditLogMapper).selectPage(any(Page.class), captor.capture());
+            assertThat(captor.getValue().getSqlSegment()).contains("tenant_id");
+        } finally {
+            SecurityContextHolder.clear();
+        }
     }
 }
