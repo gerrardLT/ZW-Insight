@@ -250,6 +250,12 @@ describe('30 - 安全机制端到端', () => {
   describe('D-2 忘记密码（t9999user，严禁对 admin 执行）', () => {
     let smsCode = ''
 
+    beforeAll(() => {
+      // 清理短信日限/频控键：同一天多遍全量实跑会打满 sms:daily 上限（10 次/日实证），
+      // 测试账号配额属测试基建，清理不影响真实业务
+      delRedisKeys(`sms:daily:${RESET_PHONE}`, `sms:freq:${RESET_PHONE}`)
+    })
+
     // @matrix D-2
     it('发送重置验证码成功（sms 模拟模式码仍写 Redis）', async () => {
       const resp = await admin.post('/api/v1/auth/password-reset/send-code', {

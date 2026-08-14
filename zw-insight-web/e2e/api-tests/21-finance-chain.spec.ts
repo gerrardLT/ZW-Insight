@@ -69,6 +69,18 @@ describe('21 - 资金链端到端（租户 9999）', () => {
       }
     } catch { /* 兜底失败不遮蔽 */ }
     await cleaner.cleanup(client)
+    // 兜底：API 删除受状态守卫限制（项目 COMPLETED/合同 EFFECTIVE 不可删实证，
+    // 竞工验收→结案链会使项目 COMPLETED），SSH 直删 fixture 项目及其合同（仅 biz_% tenant 9999）
+    try {
+      const pid = fixture.projectId
+      execMysql(`DELETE FROM biz_labor_contract WHERE tenant_id=9999 AND project_id=${pid}`)
+      execMysql(`DELETE FROM biz_construction_contract WHERE tenant_id=9999 AND project_id=${pid}`)
+      execMysql(`DELETE FROM biz_purchase_contract WHERE tenant_id=9999 AND project_id=${pid}`)
+      execMysql(`DELETE FROM biz_machine_contract WHERE tenant_id=9999 AND project_id=${pid}`)
+      execMysql(`DELETE FROM biz_subcontract WHERE tenant_id=9999 AND project_id=${pid}`)
+      execMysql(`DELETE FROM biz_other_contract WHERE tenant_id=9999 AND project_id=${pid}`)
+      execMysql(`DELETE FROM biz_project WHERE tenant_id=9999 AND id=${pid}`)
+    } catch { /* 兜底失败不遮蔽，残留核查兼底 */ }
     try {
       execMysql(`DELETE FROM sys_user_role WHERE id=9999003`)
       execMysql(`DELETE FROM sys_role WHERE id=${FINANCE_ADMIN_ROLE_ID}`)
@@ -248,6 +260,10 @@ describe('21 - 资金链端到端（租户 9999）', () => {
       cleaner.add('删除采购结算', () => client.delete(`/api/v1/purchase/settlement/${st.id}`))
       const stSubmit = await client.post(`/api/v1/purchase/settlement/${st.id}/submit`)
       expect(stSubmit.code, '采购结算提交（启动流程并回写累计结算）').toBe(200)
+      // 采购结算提交启动 PURCHASE_SETTLEMENT 流程（PurchaseSettlementService L198 实证），
+      // 注册回收防 ACT_RU_TASK 残留（实证：曾残留「项目负责人审批」任务）
+      cleaner.add('回收采购结算审批流', () =>
+        client.post(`/api/v1/workflow/approval/withdraw-by-business?businessType=PURCHASE_SETTLEMENT&businessId=${st.id}`))
     })
 
     // ---- 结算前置：机械（合同生效→进场→台班→结算审批链） ----

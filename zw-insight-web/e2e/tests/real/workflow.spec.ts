@@ -258,16 +258,251 @@ test.describe('审批流 — 流程定义', () => {
   })
 })
 
+test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix D-32/D-33-12）', () => {
+  // 数据准备：API 创建并提交施工合同（租户 1 已部署 construction_contract_approval 实证），
+  // 返回 contractId；审批流由用例内清理（withdraw/terminate + 合同删除）
+  async function prepareSubmittedContract(request: any): Promise<number> {
+    const ts = Date.now()
+    const prjName = `E2E审批UI_${ts}`
+    const prjResp = await request.post(`${API_BASE}/api/v1/project`, {
+      data: { projectName: prjName, projectType: 'BUILDING', projectAddress: 'P1 UI测试', needTender: 0 },
+    })
+    expect(prjResp.ok(), '创建项目').toBeTruthy()
+    const prjPage = await request.get(`${API_BASE}/api/v1/project/page`, {
+      params: { page: 1, size: 10, projectName: prjName },
+    })
+    const prj = (await prjPage.json()).data?.records?.find((p: any) => p.projectName === prjName)
+    expect(prj, '项目应可查到').toBeTruthy()
+    createdContractIds.push(prj.id) // 项目也登记清理（合同删后才能删项目）
+
+    const cResp = await request.post(`${API_BASE}/api/v1/contract`, {
+      data: {
+        projectId: prj.id, contractType: 'REGISTER', partyAName: 'E2E审批UI甲方',
+        signingDate: '2026-08-01', startDate: '2026-08-01', endDate: '2026-12-31',
+        contractAmount: 88888, taxRate: 9,
+      },
+    })
+    expect(cResp.ok(), '创建合同').toBeTruthy()
+    const cPage = await request.get(`${API_BASE}/api/v1/contract/page`, {
+      params: { page: 1, size: 20, projectId: prj.id },
+    })
+    const contract = (await cPage.json()).data?.records?.[0]
+    expect(contract, '合同应可查到').toBeTruthy()
+    createdContractIds.push(contract.id)
+
+    const submitResp = await request.post(`${API_BASE}/api/v1/contract/${contract.id}/submit`)
+    expect(submitResp.ok(), '提交合同审批').toBeTruthy()
+    return contract.id
+  }
+
+  /** 按 businessId 查待办（API 层辅助断言） */
+  async function findTodos(request: any, businessId: number): Promise<any[]> {
+    const resp = await request.get(`${API_BASE}/api/v1/workflow/approval/todo`, {
+      params: { page: 1, size: 50 },
+    })
+    return ((await resp.json()).data?.records || []).filter((t: any) => String(t.businessId) === String(businessId))
+  }
+
+  async function withdrawContract(request: any, contractId: number): Promise<void> {
+    await request.post(
+      `${API_BASE}/api/v1/workflow/approval/withdraw-by-business?businessType=CONSTRUCTION_CONTRACT&businessId=${contractId}`
+    ).catch(() => {})
+  }
+
+  test('退回发起人 — 弹窗真实操作（D-32）', async ({ page, request }) => {
+    const contractId = await prepareSubmittedContract(request)
+    try {
+      await page.goto('/workflow/approval')
+      await page.waitForLoadState('networkidle')
+      const todoTab = page.locator('.el-tabs__item:has-text("待办"), .el-tabs__item:has-text("待处理")').first()
+      if (await todoTab.isVisible().catch(() => false)) {
+        await todoTab.click()
+        await page.waitForTimeout(1000)
+      }
+      // 待办行点「退回」
+      const rejectBtn = page.locator('.el-table__body-wrapper .el-table__row button:has-text("退回")').first()
+      await expect(rejectBtn).toBeVisible({ timeout: 15_000 })
+      await rejectBtn.click()
+      // 退回弹窗：选「退回发起人」+ 填原因 + 确定
+      const dialog = page.locator('.el-dialog:has-text("退回任务")')
+      await expect(dialog).toBeVisible({ timeout: 10_000 })
+      await dialog.locator('.el-radio:has-text("退回发起人")').click()
+      await dialog.locator('textarea').fill('P1 UI测试退回发起人')
+      const [rejectResp] = await Promise.all([
+        page.waitForResponse(
+          (resp) => resp.url().includes('/workflow/approval/reject-start') && resp.request().method() === 'POST',
+          { timeout: 15_000 }
+        ),
+        dialog.locator('button:has-text("确定")').click(),
+      ])
+      expect(rejectResp.status()).toBe(200)
+      // 回写断言：合同回 DRAFT（语义实证：reject-start 发布 ApprovalRejectEvent）
+      const cResp = await request.get(`${API_BASE}/api/v1/contract/${contractId}`)
+      expect((await cResp.json()).data?.status, '退回发起人后合同应 DRAFT').toBe('DRAFT')
+    } finally {
+      await withdrawContract(request, contractId)
+    }
+  })
+
+  test('退回上一步 — 待办回退第一级（D-32）', async ({ page, request }) => {
+    const contractId = await prepareSubmittedContract(request)
+    try {
+      // 先通过第一级，使任务进入第二级
+      let todos = await findTodos(request, contractId)
+      expect(todos.length).toBeGreaterThan(0)
+      const c1 = await request.post(`${API_BASE}/api/v1/workflow/approval/complete`, {
+        data: { taskId: todos[0].taskId, comment: 'P1 UI一级通过' },
+      })
+      expect(c1.ok()).toBeTruthy()
+      todos = await findTodos(request, contractId)
+      expect(todos[0]?.taskDefinitionKey, '应进入第二级').toBe('financeApproval')
+
+      // UI 退回上一步
+      await page.goto('/workflow/approval')
+      await page.waitForLoadState('networkidle')
+      const todoTab = page.locator('.el-tabs__item:has-text("待办"), .el-tabs__item:has-text("待处理")').first()
+      if (await todoTab.isVisible().catch(() => false)) {
+        await todoTab.click()
+        await page.waitForTimeout(1000)
+      }
+      const rejectBtn = page.locator('.el-table__body-wrapper .el-table__row button:has-text("退回")').first()
+      await expect(rejectBtn).toBeVisible({ timeout: 15_000 })
+      await rejectBtn.click()
+      const dialog = page.locator('.el-dialog:has-text("退回任务")')
+      await expect(dialog).toBeVisible({ timeout: 10_000 })
+      await dialog.locator('.el-radio:has-text("退回上一步")').click()
+      await dialog.locator('textarea').fill('P1 UI测试退回上一步')
+      const [rejectResp] = await Promise.all([
+        page.waitForResponse(
+          (resp) => resp.url().includes('/workflow/approval/reject-previous') && resp.request().method() === 'POST',
+          { timeout: 15_000 }
+        ),
+        dialog.locator('button:has-text("确定")').click(),
+      ])
+      expect(rejectResp.status()).toBe(200)
+      // 回写断言：待办回退第一级
+      todos = await findTodos(request, contractId)
+      expect(todos.length, '退回后应仍有待办').toBeGreaterThan(0)
+      expect(todos[0].taskDefinitionKey, '应回退第一级').toBe('managerApproval')
+    } finally {
+      await withdrawContract(request, contractId)
+    }
+  })
+
+  test('终止流程 — 确认弹窗真实操作（D-32）', async ({ page, request }) => {
+    const contractId = await prepareSubmittedContract(request)
+    try {
+      await page.goto('/workflow/approval')
+      await page.waitForLoadState('networkidle')
+      const todoTab = page.locator('.el-tabs__item:has-text("待办"), .el-tabs__item:has-text("待处理")').first()
+      if (await todoTab.isVisible().catch(() => false)) {
+        await todoTab.click()
+        await page.waitForTimeout(1000)
+      }
+      const terminateBtn = page.locator('.el-table__body-wrapper .el-table__row button:has-text("终止")').first()
+      await expect(terminateBtn).toBeVisible({ timeout: 15_000 })
+      // ElMessageBox 确认弹窗
+      page.once('dialog', (d) => d.accept().catch(() => {}))
+      const [terminateResp] = await Promise.all([
+        page.waitForResponse(
+          (resp) => resp.url().includes('/workflow/approval/terminate') && resp.request().method() === 'POST',
+          { timeout: 15_000 }
+        ),
+        terminateBtn.click(),
+      ])
+      expect(terminateResp.status()).toBe(200)
+      // 回写断言：合同回 DRAFT + 待办清空
+      const cResp = await request.get(`${API_BASE}/api/v1/contract/${contractId}`)
+      expect((await cResp.json()).data?.status, '终止后合同应 DRAFT').toBe('DRAFT')
+      expect((await findTodos(request, contractId)).length, '终止后待办应清空').toBe(0)
+    } finally {
+      await withdrawContract(request, contractId)
+    }
+  })
+
+  test('批量通过 — 勾选+确认（D-32/D-33-12）', async ({ page, request }) => {
+    const cidA = await prepareSubmittedContract(request)
+    const cidB = await prepareSubmittedContract(request)
+    try {
+      await page.goto('/workflow/approval')
+      await page.waitForLoadState('networkidle')
+      const todoTab = page.locator('.el-tabs__item:has-text("待办"), .el-tabs__item:has-text("待处理")').first()
+      if (await todoTab.isVisible().catch(() => false)) {
+        await todoTab.click()
+        await page.waitForTimeout(1000)
+      }
+      // 勾选前两行（页首即最新待办）
+      const checkboxes = page.locator('.el-table__body-wrapper .el-table__row .el-checkbox')
+      const rowCount = await checkboxes.count()
+      expect(rowCount, '应有待办行可勾选').toBeGreaterThanOrEqual(2)
+      await checkboxes.nth(0).click()
+      await checkboxes.nth(1).click()
+      const batchBtn = page.locator('button:has-text("批量通过")').first()
+      await expect(batchBtn).toBeEnabled({ timeout: 10_000 })
+      const [batchResp] = await Promise.all([
+        page.waitForResponse(
+          (resp) => resp.url().includes('/workflow/approval/batch-approve') && resp.request().method() === 'POST',
+          { timeout: 15_000 }
+        ),
+        batchBtn.click(),
+      ])
+      expect(batchResp.status()).toBe(200)
+      // 回写断言：两单进入第二级（一级批量通过，流程未结束仍 SUBMITTED）
+      const todosA = await findTodos(request, cidA)
+      const todosB = await findTodos(request, cidB)
+      expect(todosA[0]?.taskDefinitionKey, '合同A应进入第二级').toBe('financeApproval')
+      expect(todosB[0]?.taskDefinitionKey, '合同B应进入第二级').toBe('financeApproval')
+    } finally {
+      await withdrawContract(request, cidA)
+      await withdrawContract(request, cidB)
+    }
+  })
+
+  test('已办列表回显已办记录（D-32）', async ({ page, request }) => {
+    const contractId = await prepareSubmittedContract(request)
+    try {
+      // API 通过一级，产生已办记录
+      const todos = await findTodos(request, contractId)
+      expect(todos.length).toBeGreaterThan(0)
+      const c1 = await request.post(`${API_BASE}/api/v1/workflow/approval/complete`, {
+        data: { taskId: todos[0].taskId, comment: 'P1 UI已办验证' },
+      })
+      expect(c1.ok()).toBeTruthy()
+      // UI 已办 tab 回显
+      await page.goto('/workflow/approval')
+      await page.waitForLoadState('networkidle')
+      const doneTab = page.locator('.el-tabs__item:has-text("已办"), .el-tabs__item:has-text("已处理")').first()
+      await expect(doneTab).toBeVisible({ timeout: 15_000 })
+      await doneTab.click()
+      await page.waitForTimeout(1500)
+      const rows = page.locator('.el-table__body-wrapper .el-table__row')
+      expect(await rows.count(), '已办列表应有记录').toBeGreaterThan(0)
+    } finally {
+      await withdrawContract(request, contractId)
+    }
+  })
+})
+
 /**
  * 测试数据清理
  * 通过 API 删除测试中创建的合同
  */
 test.afterAll(async ({ request }) => {
-  for (const contractId of createdContractIds) {
+  // 逆序删除（合同先于项目；先 withdraw 残留审批流）
+  for (let i = createdContractIds.length - 1; i >= 0; i--) {
+    const id = createdContractIds[i]
     try {
-      await request.delete(`${API_BASE}/api/v1/contract/${contractId}`)
+      await request.post(
+        `${API_BASE}/api/v1/workflow/approval/withdraw-by-business?businessType=CONSTRUCTION_CONTRACT&businessId=${id}`
+      ).catch(() => {})
+      await request.delete(`${API_BASE}/api/v1/contract/${id}`)
     } catch {
-      console.warn(`[Cleanup] 删除合同 ${contractId} 失败，可能需要手动清理`)
+      // 非合同 id（项目 id）走项目删除
+      try {
+        await request.delete(`${API_BASE}/api/v1/project/${id}`)
+      } catch {
+        console.warn(`[Cleanup] 删除 ${id} 失败，可能需要手动清理`)
+      }
     }
   }
 })
