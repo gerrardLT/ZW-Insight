@@ -197,9 +197,8 @@ describe('10 - 材料库存', () => {
     })
 
     // @matrix 盲点 11a 钉住：同项目调拨后端守卫（MaterialTransferService.validateDistinctProject，
-    // 2026-08-14 修复；旧后端无守卫曾实证放行）。守卫随推送部署生效，
-    // 部署前用 it.skip 显式声明（不静默，台账同步登记），部署后移除 skip 验证。
-    it.skip('负向：同项目调拨被后端拒绝（盲点 11a，待守卫部署后启用） [部署后移除 skip]', async () => {
+    // 2026-08-14 修复并随 run 31786299556 部署生效，skip 移除转真实验证）
+    it('负向：同项目调拨被后端拒绝（盲点 11a）', async () => {
       const resp = await client.post('/api/v1/material/transfer', {
         fromProjectId: projectId,
         toProjectId: projectId,
