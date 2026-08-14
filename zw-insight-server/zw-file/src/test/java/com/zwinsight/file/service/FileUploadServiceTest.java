@@ -32,6 +32,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -231,6 +232,99 @@ class FileUploadServiceTest {
             // Then
             assertNotNull(result);
             assertEquals("测试_文档_v2.0(最终版).pdf", result.getOriginalName());
+        }
+    }
+
+    // ==================== 上传安全守卫测试（2026-08-14 审计批次 6 收尾项） ====================
+
+    @Nested
+    @DisplayName("上传安全守卫：黑名单与大小上限")
+    class UploadSecurityTests {
+
+        @Test
+        @DisplayName("拒绝服务端页面类文件（jsp）且不触达 MinIO")
+        void upload_jsp_blocked() {
+            MockMultipartFile jspFile = new MockMultipartFile(
+                "file", "shell.jsp", "application/octet-stream", "<% %>".getBytes());
+
+            assertThatThrownBy(() -> fileService.upload(jspFile, "TEST", 1L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("不支持的文件类型：.jsp");
+            verifyNoInteractions(minioService);
+            verifyNoInteractions(fileInfoMapper);
+        }
+
+        @Test
+        @DisplayName("拒绝可执行文件且扩展名大小写不敏感（EXE）")
+        void upload_exe_uppercase_blocked() {
+            MockMultipartFile exeFile = new MockMultipartFile(
+                "file", "malware.EXE", "application/octet-stream", "MZ".getBytes());
+
+            assertThatThrownBy(() -> fileService.upload(exeFile, "TEST", 1L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("不支持的文件类型：.exe");
+            verifyNoInteractions(minioService);
+        }
+
+        @Test
+        @DisplayName("拒绝脚本类文件（vbs）")
+        void upload_vbs_blocked() {
+            MockMultipartFile vbsFile = new MockMultipartFile(
+                "file", "run.vbs", "text/plain", "Set ws = CreateObject".getBytes());
+
+            assertThatThrownBy(() -> fileService.upload(vbsFile, "TEST", 1L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("不支持的文件类型：.vbs");
+            verifyNoInteractions(minioService);
+        }
+
+        @Test
+        @DisplayName("超过 100MB 显式上限快速失败且不触达 MinIO")
+        void upload_oversized_blocked() {
+            MultipartFile oversized = mock(MultipartFile.class);
+            when(oversized.isEmpty()).thenReturn(false);
+            when(oversized.getSize()).thenReturn(FileService.MAX_UPLOAD_SIZE_BYTES + 1);
+            when(oversized.getOriginalFilename()).thenReturn("big.pdf");
+
+            assertThatThrownBy(() -> fileService.upload(oversized, "TEST", 1L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("文件大小超过上限（最大 100MB）");
+            verifyNoInteractions(minioService);
+        }
+
+        @Test
+        @DisplayName("业务常用类型不误拦：zip 压缩包正常上传")
+        void upload_zip_allowed() {
+            MockMultipartFile zipFile = new MockMultipartFile(
+                "file", "附件.zip", "application/zip", "PK".getBytes());
+
+            when(minioService.upload(any(MultipartFile.class), anyString())).thenReturn("2026-08-14/x.zip");
+            when(fileInfoMapper.insert(any(FileInfo.class))).thenReturn(1);
+
+            FileInfo result = fileService.upload(zipFile, "PROJECT_DOCUMENT", 1L, 1L);
+            assertNotNull(result);
+            verify(minioService).upload(any(MultipartFile.class), anyString());
+        }
+
+        @Test
+        @DisplayName("业务常用类型不误拦：docx 文档正常上传")
+        void upload_docx_allowed() {
+            MockMultipartFile docxFile = new MockMultipartFile(
+                "file", "合同扫描件.docx", "application/octet-stream", "PK".getBytes());
+
+            when(minioService.upload(any(MultipartFile.class), anyString())).thenReturn("2026-08-14/x.docx");
+            when(fileInfoMapper.insert(any(FileInfo.class))).thenReturn(1);
+
+            FileInfo result = fileService.upload(docxFile, "CONTRACT_SCAN", 1L, 1L);
+            assertNotNull(result);
+        }
+
+        @Test
+        @DisplayName("黑名单覆盖断言：危险扩展名全量在册")
+        void blockedExtensions_registryComplete() {
+            assertThat(FileService.BLOCKED_EXTENSIONS)
+                .contains("jsp", "jspx", "php", "asp", "aspx", "exe", "bat", "cmd",
+                        "sh", "ps1", "vbs", "js", "jar", "war", "msi", "dll", "scr");
         }
     }
 

@@ -14,6 +14,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
@@ -123,6 +124,17 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public R<Void> handleNoResourceFoundException(NoResourceFoundException e) {
         return R.fail(404, "资源未找到");
+    }
+
+    /**
+     * 文件上传超出 multipart 上限（spring.servlet.multipart.max-file-size，当前 100MB）。
+     * 不处理则落入兜底 Exception 返回 500，此处转为 413 + 友好提示（2026-08-14 审计批次 6 收尾项）。
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public R<Void> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e, HttpServletRequest request) {
+        log.warn("文件上传超限 [{}]: {}", request.getRequestURI(), e.getMessage());
+        return R.fail(413, "文件大小超过上限（最大 100MB），请压缩后重试");
     }
 
     /**

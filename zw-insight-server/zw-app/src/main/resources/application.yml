@@ -4,6 +4,12 @@ server:
     context-path: /
 
 spring:
+  # 文件上传显式上限（2026-08-14 审计批次 6 收尾项）：Spring Boot 默认 max-file-size=1MB
+  # 属隐式拦截且报错不友好，此处显式声明；服务层 FileService 另有同口径快速失败守卫
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 105MB
   application:
     name: zw-insight-server
   profiles:
