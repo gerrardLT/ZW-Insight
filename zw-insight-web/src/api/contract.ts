@@ -58,8 +58,10 @@ export function submitChangeVisa(id: number) {
 }
 
 // ======================== 其他合同 ========================
+// 后端分页为根 @GetMapping /api/v1/contract/other（无 /page 后缀，OtherContractController 实证；
+// 2026-08-14 P0 修复盲点 5：原 /page 路径 500，导致付款申请 OTHER_EXPENSE 分支合同下拉恒不可用）
 export function getOtherContractPage(params: PageQuery & { projectId?: number; contractCategory?: string }) {
-  return request.get<R<PageResult<OtherContract>>>('/v1/contract/other/page', { params })
+  return request.get<R<PageResult<OtherContract>>>('/v1/contract/other', { params })
 }
 
 export function getOtherContractDetail(id: number) {

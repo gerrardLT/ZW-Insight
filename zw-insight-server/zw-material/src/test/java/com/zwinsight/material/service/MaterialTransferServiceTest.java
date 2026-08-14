@@ -56,6 +56,44 @@ class MaterialTransferServiceTest {
         verify(stockMapper, never()).updateById(any());
         verify(stockMapper, never()).insert(any());
     }
+
+    @Test
+    @DisplayName("保存调拨：同项目调拨抛异常（2026-08-14 P0 盲点 11a 后端守卫钉住）")
+    void testSave_sameProjectRejected() {
+        BizMaterialTransfer transfer = new BizMaterialTransfer();
+        transfer.setFromProjectId(1L);
+        transfer.setToProjectId(1L);
+
+        BizMaterialTransferDetail detail = new BizMaterialTransferDetail();
+        detail.setMaterialName("钢筋");
+        detail.setQuantity(new BigDecimal("10"));
+
+        assertThatThrownBy(() -> materialTransferService.save(transfer, List.of(detail)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不能相同");
+        verify(transferMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("更新调拨：PUT 体携带同项目抛异常（盲点 11a update 路径钉住）")
+    void testUpdate_sameProjectRejected() {
+        BizMaterialTransfer existing = new BizMaterialTransfer();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        existing.setFromProjectId(1L);
+        existing.setToProjectId(2L);
+        when(transferMapper.selectById(1L)).thenReturn(existing);
+
+        // PUT 体只改 toProjectId 为与 from 相同
+        BizMaterialTransfer update = new BizMaterialTransfer();
+        update.setId(1L);
+        update.setToProjectId(1L);
+
+        assertThatThrownBy(() -> materialTransferService.update(update))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不能相同");
+        verify(transferMapper, never()).updateById(any());
+    }
     
     @Test
     @DisplayName("审批通过：调出减库存+调入新建库存")

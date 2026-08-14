@@ -3,12 +3,12 @@
     <el-card shadow="never">
       <template #header>
         <div class="card-header">
-          <span>{{ isEdit ? '编辑施工合同' : '新增施工合同' }}</span>
+          <span>{{ isView ? '施工合同详情' : (isEdit ? '编辑施工合同' : '新增施工合同') }}</span>
           <el-button @click="handleBack">返回</el-button>
         </div>
       </template>
 
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px" style="max-width: 900px">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px" style="max-width: 900px" :disabled="isView">
         <el-divider content-position="left">合同基本信息</el-divider>
 
         <el-row :gutter="16">
@@ -88,7 +88,7 @@
         <!-- 明细清单 -->
         <el-divider content-position="left">合同明细</el-divider>
 
-        <div class="detail-toolbar">
+        <div class="detail-toolbar" v-if="!isView">
           <el-button type="primary" size="small" @click="addDetailRow">
             <el-icon><Plus /></el-icon>新增明细
           </el-button>
@@ -125,7 +125,7 @@
               {{ ((row.quantity || 0) * (row.unitPrice || 0)).toFixed(2) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="70" align="center">
+          <el-table-column v-if="!isView" label="操作" width="70" align="center">
             <template #default="{ $index }">
               <el-button link type="danger" size="small" @click="removeDetailRow($index)">
                 <el-icon><Delete /></el-icon>
@@ -134,7 +134,7 @@
           </el-table-column>
         </el-table>
 
-        <el-form-item style="margin-top: 24px">
+        <el-form-item v-if="!isView" style="margin-top: 24px">
           <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
           <el-button @click="handleBack">取消</el-button>
         </el-form-item>
@@ -159,6 +159,9 @@ const projectList = ref<any[]>([])
 const detailList = ref<any[]>([])
 
 const isEdit = computed(() => !!route.params.id)
+// 只读查看模式（2026-08-14 P0 修复盲点 3：列表「查看」携 ?mode=view 进入，
+// 表单整体禁用 + 隐藏保存/新增明细入口；缺省行为不变）
+const isView = computed(() => route.query.mode === 'view')
 
 const formData = ref({
   id: undefined as number | undefined,
@@ -220,6 +223,7 @@ async function loadDetail() {
 }
 
 async function handleSubmit() {
+  if (isView.value) return // 只读模式守卫：双保险，防绕过 UI 直接调用
   await formRef.value?.validate()
   submitLoading.value = true
   try {

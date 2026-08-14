@@ -168,7 +168,9 @@ function handleEdit(row: any) {
 }
 
 function handleView(row: any) {
-  router.push(`/contract/edit/${row.id}`)
+  // 只读查看（2026-08-14 P0 修复盲点 3：原实现与 handleEdit 同跳编辑页，
+  // 非草稿合同也可进编辑表单尝试保存）
+  router.push(`/contract/edit/${row.id}?mode=view`)
 }
 
 async function handleSubmitContract(row: any) {

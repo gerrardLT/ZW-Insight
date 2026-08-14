@@ -184,7 +184,8 @@ function handleAddDetail() { formData.value.details.push(newDetail()) }
 function handleDeleteDetail(index: number) { formData.value.details.splice(index, 1) }
 async function handleFormSubmit() {
   await formRef.value?.validate()
-  if (!isEdit.value && formData.value.details.filter(d => d.materialName).length === 0) {
+  // 2026-08-14 P0 修复盲点 10：原守卫仅新增时生效（!isEdit 前缀），编辑态可删光明细保存
+  if (formData.value.details.filter(d => d.materialName).length === 0) {
     ElMessage.warning('请至少填写一条入库明细')
     return
   }

@@ -330,7 +330,15 @@ async function loadTeamDetail(row: TeamSalaryVO, page: number) {
       page,
       size: 10
     })
-    row._detailData = res.data?.records || []
+    let records = res.data?.records || []
+    // 2026-08-14 P0 修复盲点 9：工人姓名筛选原为失效控件（既不传后端也不本地过滤）。
+    // 后端 /detail 无 workerName 参数，此处对返回明细做本地过滤（工人级生效；
+    // 班组级不预筛为已知权衡——避免逐班组拉明细的性能代价）。
+    const kw = (queryParams.value.workerName || '').trim()
+    if (kw) {
+      records = records.filter((r: any) => (r.workerName || '').includes(kw))
+    }
+    row._detailData = records
     row._detailTotal = res.data?.total || 0
   } catch (e) {
     row._detailData = []

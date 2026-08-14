@@ -124,6 +124,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadFile, UploadInstance, UploadRawFile } from 'element-plus'
 import { uploadBoq, getBoqTree, deleteBoq } from '@/api/boq'
 import { getContractDetail } from '@/api/contract'
+import { isXlsxFile } from './boq-utils'
 
 const route = useRoute()
 // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
@@ -179,8 +180,8 @@ function formatNumber(val: number | null | undefined) {
  */
 function handleFileChange(file: UploadFile) {
   const rawFile = file.raw as UploadRawFile
-  // 校验文件类型
-  if (!rawFile.name.endsWith('.xlsx')) {
+  // 校验文件类型（大小写不敏感，2026-08-14 P0 修复盲点 4，逻辑提取至 boq-utils 便于 L1 钉住）
+  if (!isXlsxFile(rawFile.name)) {
     ElMessage.error('仅支持 .xlsx 格式文件')
     uploadRef.value?.clearFiles()
     selectedFile.value = null

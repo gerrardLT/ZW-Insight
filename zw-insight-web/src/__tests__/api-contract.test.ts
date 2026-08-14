@@ -129,9 +129,9 @@ describe('contract API 模块', () => {
   // ======================== 其他合同 ========================
 
   describe('其他合同', () => {
-    it('getOtherContractPage 调用 GET /v1/contract/other/page', () => {
+    it('getOtherContractPage 调用 GET /v1/contract/other（后端根路径，无 /page）', () => {
       getOtherContractPage({ pageNum: 1 })
-      expect(mockRequest.get).toHaveBeenCalledWith('/v1/contract/other/page', { params: { pageNum: 1 } })
+      expect(mockRequest.get).toHaveBeenCalledWith('/v1/contract/other', { params: { pageNum: 1 } })
     })
 
     it('getOtherContractDetail 调用 GET /v1/contract/other/:id', () => {

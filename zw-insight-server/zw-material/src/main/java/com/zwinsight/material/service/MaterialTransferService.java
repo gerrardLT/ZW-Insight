@@ -66,6 +66,9 @@ public class MaterialTransferService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizMaterialTransfer transfer, List<BizMaterialTransferDetail> details) {
+        // 2026-08-14 P0 修复盲点 11a：同项目调拨后端守卫（原仅前端守卫，
+        // API 直连可绕过，10-material.spec.ts 曾实证放行）
+        validateDistinctProject(transfer.getFromProjectId(), transfer.getToProjectId());
         transfer.setStatus("DRAFT");
         transferMapper.insert(transfer);
         for (BizMaterialTransferDetail detail : details) {
@@ -178,7 +181,18 @@ public class MaterialTransferService {
         BizMaterialTransfer existing = transferMapper.selectById(transfer.getId());
         if (existing == null) throw new BusinessException("调拨单不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
+        // 盲点 11a：PUT 体可能携带项目字段，同项目守卫与 save 一致（未传则沿用库值比对）
+        Long from = transfer.getFromProjectId() != null ? transfer.getFromProjectId() : existing.getFromProjectId();
+        Long to = transfer.getToProjectId() != null ? transfer.getToProjectId() : existing.getToProjectId();
+        validateDistinctProject(from, to);
         transferMapper.updateById(transfer);
+    }
+
+    /** 调出与调入项目不得相同（盲点 11a 后端守卫） */
+    private void validateDistinctProject(Long fromProjectId, Long toProjectId) {
+        if (fromProjectId != null && fromProjectId.equals(toProjectId)) {
+            throw new BusinessException("调出项目与调入项目不能相同");
+        }
     }
 
     public void delete(Long id) {
