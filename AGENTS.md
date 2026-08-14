@@ -192,9 +192,9 @@ cd tools/consistency-audit && npm run dev
 
 #### PR 前运行 L1 单元测试
 
-- 提交 PR 前必须在本地运行 `mvn test` 确认单元测试通过
-- CI backend job 执行 `mvn -B clean package`（运行全量单元测试 + JaCoCo 报告），并与 `tests/coverage-baseline.json` 对比：任一模块覆盖率回落即构建失败
-- **CI 测试套件触发策略（2026-08-13 用户决策）**：push 默认只跑 Backend Build（L1 单测 + 覆盖率基线）→ Deploy → 部署冒烟（健康检查 + API 文档收敛断言），**Integration Test（L3/L4/L5）与 k6 默认不跑**（全量约 40 分钟）。全量套件唯一触发入口：手动 workflow_dispatch 选 `run_tests=true`（`gh workflow run deploy.yml -f run_tests=true`）
+- 提交 PR 前必须在本地运行 `mvn test` 确认单元测试通过（注意：勿在本地跑全量并行构建 `mvn -T 1C clean package`，22 模块并行 fork 几十个 JVM 会卡死机器，重型验证一律 CI/服务器执行）
+- CI backend job 执行 `mvn -B -T 1C clean package`（运行全量单元测试 + JaCoCo 报告），并与 `tests/coverage-baseline.json` 对比：任一模块覆盖率回落即构建失败。注：-T 1C 在 2 vCPU runner 上实测无提速效果（510s vs 串行 503s，2026-08-14 run 31762169585），保留仅为多核 runner 兼容；实测提速来自 L2 门控（省 302s）与前端镜像缓存（省 ~50s）
+- **CI 测试套件触发策略（2026-08-13 用户决策，2026-08-14 扩展）**：push 默认只跑 Backend Build（L1 单测 + 覆盖率基线）→ Deploy → 部署冒烟（健康检查 + API 文档收敛断言），**L2 Testcontainers、Integration Test（L3/L4/L5）与 k6 默认不跑**（全量约 40 分钟，L2 单项实测 302s）。全量套件唯一触发入口：手动 workflow_dispatch 选 `run_tests=true`（`gh workflow run deploy.yml -f run_tests=true`）
 - pom jacoco check（minimum 0.80，BUNDLE LINE）绑定 verify 阶段，CI 当前跑 package 不触发；阶段三目标达成后 CI 切到 verify 强制（见 spec 3.3）
 
 #### L3 API 契约验证
