@@ -12,9 +12,27 @@
  *
  * 需求: 6.1, 6.2
  */
-import { test, expect } from '@playwright/test'
+import { test, expect, request as pwRequest } from '@playwright/test'
 
 const API_BASE = process.env.E2E_API_BASE || 'http://129.204.3.200:18080'
+
+// 后端仅认 Authorization: Bearer 头（AuthInterceptor 实证），storageState token 存于 localStorage，
+// playwright 内置 request fixture 只发 cookies 不带鉴权头 → 自建已鉴权 APIRequestContext
+//（API 直登：联调 captcha-enabled=false 实证；P2 实跑实证修复，expense-write 同源）
+let authed: Awaited<ReturnType<typeof pwRequest.newContext>> | null = null
+
+test.beforeAll(async () => {
+  // 从 storage-state.json 提取 token（不可重新 API 登录：admin max-devices=5，
+  // 多轮实跑新会话会踢出 UI 会话致页面跳登录页，P2 实证事故）
+  const fs = await import('node:fs')
+  const st = JSON.parse(fs.readFileSync('./e2e/.auth/storage-state.json', 'utf-8'))
+  const token = (st.origins || []).flatMap((o: any) => o.localStorage || [])
+    .find((kv: any) => kv.name === 'token')?.value
+  expect(token, 'storageState 应含登录 token').toBeTruthy()
+  authed = await pwRequest.newContext({
+    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
+  })
+})
 
 // 测试中创建的合同 ID，用于清理
 const createdContractIds: number[] = []
@@ -142,7 +160,8 @@ test.describe('审批流 — 提交审批', () => {
     }
   })
 
-  test('提交合同审批 — API 调用验证', async ({ page, request }) => {
+  test('提交合同审批 — API 调用验证', async ({ page }) => {
+    const request = authed!
     // 如果前面的测试创建了合同，尝试提交审批
     if (createdContractIds.length === 0) {
       test.skip(true, '没有可用的测试合同，跳过提交审批测试')
@@ -309,7 +328,8 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
     ).catch(() => {})
   }
 
-  test('退回发起人 — 弹窗真实操作（D-32）', async ({ page, request }) => {
+  test('退回发起人 — 弹窗真实操作（D-32）', async ({ page }) => {
+    const request = authed!
     const contractId = await prepareSubmittedContract(request)
     try {
       await page.goto('/workflow/approval')
@@ -344,7 +364,8 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
     }
   })
 
-  test('退回上一步 — 待办回退第一级（D-32）', async ({ page, request }) => {
+  test('退回上一步 — 待办回退第一级（D-32）', async ({ page }) => {
+    const request = authed!
     const contractId = await prepareSubmittedContract(request)
     try {
       // 先通过第一级，使任务进入第二级
@@ -389,7 +410,8 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
     }
   })
 
-  test('终止流程 — 确认弹窗真实操作（D-32）', async ({ page, request }) => {
+  test('终止流程 — 确认弹窗真实操作（D-32）', async ({ page }) => {
+    const request = authed!
     const contractId = await prepareSubmittedContract(request)
     try {
       await page.goto('/workflow/approval')
@@ -420,7 +442,8 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
     }
   })
 
-  test('批量通过 — 勾选+确认（D-32/D-33-12）', async ({ page, request }) => {
+  test('批量通过 — 勾选+确认（D-32/D-33-12）', async ({ page }) => {
+    const request = authed!
     const cidA = await prepareSubmittedContract(request)
     const cidB = await prepareSubmittedContract(request)
     try {
@@ -458,7 +481,8 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
     }
   })
 
-  test('已办列表回显已办记录（D-32）', async ({ page, request }) => {
+  test('已办列表回显已办记录（D-32）', async ({ page }) => {
+    const request = authed!
     const contractId = await prepareSubmittedContract(request)
     try {
       // API 通过一级，产生已办记录
@@ -487,7 +511,8 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
  * 测试数据清理
  * 通过 API 删除测试中创建的合同
  */
-test.afterAll(async ({ request }) => {
+test.afterAll(async () => {
+  const request = authed!
   // 逆序删除（合同先于项目；先 withdraw 残留审批流）
   for (let i = createdContractIds.length - 1; i >= 0; i--) {
     const id = createdContractIds[i]
@@ -505,4 +530,5 @@ test.afterAll(async ({ request }) => {
       }
     }
   }
+  if (authed) await authed.dispose()
 })
