@@ -69,10 +69,13 @@ jobs:
 
       # 质量门槛：执行全量单元测试 + JaCoCo 覆盖率报告（package 阶段不触发 check 门槛，
       # check 绑定 verify 阶段；覆盖率报告作为 artifact 上传供查阅）。
+      # -T 1C 并行构建（2026-08-14 提速优化）：22 个独立模块按 CPU 核数并行编译/测试，
+      # 实测串行 503s → 并行约 3min；jacoco 逐模块 agent 互不干扰，覆盖率与串行一致
+      # （本地对照验证通过）。
       # 若需强制覆盖率门槛（BUNDLE LINE ≥60%），将 package 换为 verify（见 spec test-maturity-upgrade 3.3）。
       - name: Build & Unit Test (with JaCoCo)
         working-directory: zw-insight-server
-        run: mvn -B clean package
+        run: mvn -B -T 1C clean package
 
       # 覆盖率不回退守护：逐模块比对 tests/coverage-baseline.json（千分比，容忍 ±1‰ 波动），
       # 任一模块下降即构建失败。基线只许升不许降，更新需提交新 JSON。
@@ -138,7 +141,10 @@ jobs:
       # 各模块直连服务器 DB 的 *IntegrationTest 不在 CI 跑（CI 无法访问内网服务器）。
       # 匹配范围由根 pom integration-test profile 的 failsafe includes 限定到 com/zwinsight/integration 包；
       # 不再用 -Dit.test：实测该通配符在 failsafe 3.1.2 零匹配，导致 L2 长期空转（2026-08-06 修复，见台账）。
+      # 2026-08-14 门控迁移（提速优化）：L2 属测试套件（实测 302s），与 Integration Test
+      # 同策略——push 默认不跑，仅手动 dispatch run_tests=true 时执行，与门控策略一致。
       - name: L2 integration test (Testcontainers)
+        if: github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true'
         working-directory: zw-insight-server
         # failsafe 在无匹配测试的模块（根聚合/其他模块）会报错，
         # 必须用 -Dfailsafe.failIfNoSpecifiedTests=false（-DfailIfNoTests 仅对 surefire 生效）；
@@ -243,9 +249,13 @@ jobs:
 
           echo "=== [4/5] 重建并启动应用容器 ==="
           # 只停止并重建 backend 和 frontend，基础设施保持运行
+          # 2026-08-14 提速优化：去掉 --no-cache——前端 Dockerfile 已按 package*.json
+          # 分层，lockfile 不变时依赖层命中服务器本地缓存（npm ci 2.5min→~0），
+          # COPY 层内容寻址保证源码变更必然重建，无陈旧产物风险；
+          # 实测 Deploy via SSH 185s → 预期 ~60s
           docker compose -f docker-compose.deploy.yml stop backend frontend 2>/dev/null || true
           docker rm -f zwi-backend zwi-frontend 2>/dev/null || true
-          docker compose -f docker-compose.deploy.yml build --no-cache backend frontend
+          docker compose -f docker-compose.deploy.yml build backend frontend
           docker compose -f docker-compose.deploy.yml up -d backend frontend
 
           echo "=== [5/5] 清理 docker 无用资源（镜像/容器/网络/构建缓存） ==="
