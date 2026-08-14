@@ -157,12 +157,14 @@ describe('06 - 合同管理', () => {
       expect([200, 404]).toContain(resp.code)
     })
 
-    it('查询产值上报列表', async () => {
-      const resp = await client.get('/api/v1/contract/output/page', {
+    it('查询产值上报列表（盲点 5 修复：正确路径 /contract/output，硬断言 200）', async () => {
+      // 原路径 /contract/output/page 不存在，容忍 404 断言导致等效未覆盖（2026-08-14 P0 修复）；
+      // 产值写路径（创建→审批→回写）在 21-finance-chain.spec.ts C-FIN-X2 覆盖
+      const resp = await client.get('/api/v1/contract/output', {
         page: 1,
         size: 10,
       })
-      expect([200, 404]).toContain(resp.code)
+      expect(resp.code, `产值上报列表应可用，实际 message=${resp.message}`).toBe(200)
     })
 
     it('查询变更签证列表', async () => {

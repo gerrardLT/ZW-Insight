@@ -9,7 +9,7 @@ import {
   gotoAndCapture,
   matchTableToRecords,
   matchPaginationTotal,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type ColumnSpec,
   type PageConsistencyResult,
   type PageResult,
@@ -51,6 +51,6 @@ test.describe.serial('machine 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('machine', results)
+    finalizeModuleConsistency('machine', results)
   })
 })

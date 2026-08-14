@@ -11,7 +11,7 @@ import {
   gotoAndCapture,
   matchTableToRecords,
   matchPaginationTotal,
-  writeModuleReport,
+  finalizeModuleConsistency,
   fmtAmount,
   type ColumnSpec,
   type PageConsistencyResult,
@@ -60,6 +60,6 @@ test.describe.serial('contract 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('contract', results)
+    finalizeModuleConsistency('contract', results)
   })
 })

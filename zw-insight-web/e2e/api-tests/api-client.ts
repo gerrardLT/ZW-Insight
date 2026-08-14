@@ -60,14 +60,19 @@ export class ApiClient {
 
   /**
    * 登录：获取验证码 → 获取验证码明文 → 登录
+   * extraHeaders：可注入 X-Forwarded-For/X-Device-Id 等头（安全测试副作用隔离，2026-08-14 P0）
    */
-  async login(username = 'admin', password = '123456'): Promise<LoginResponse> {
+  async login(
+    username = 'admin',
+    password = '123456',
+    extraHeaders?: Record<string, string>
+  ): Promise<LoginResponse> {
     // 先尝试无验证码登录（验证码关闭时直接成功）
     const directResp = await this.post<LoginResponse>('/api/v1/auth/login', {
       loginType: 'PASSWORD',
       username,
       password,
-    })
+    }, extraHeaders)
 
     if (directResp.code === 200 && directResp.data?.token) {
       this.token = directResp.data.token
@@ -102,7 +107,7 @@ export class ApiClient {
         password,
         captchaUuid: uuid,
         captchaCode,
-      })
+      }, extraHeaders)
 
       if (loginResp.code === 200 && loginResp.data?.token) {
         this.token = loginResp.data.token
@@ -126,7 +131,8 @@ export class ApiClient {
 
   async get<T = any>(
     path: string,
-    params?: Record<string, any>
+    params?: Record<string, any>,
+    extraHeaders?: Record<string, string>
   ): Promise<ApiResponse<T>> {
     const url = new URL(path, this.baseUrl)
     if (params) {
@@ -138,18 +144,19 @@ export class ApiClient {
     }
     const resp = await fetch(url.toString(), {
       method: 'GET',
-      headers: this.headers(),
+      headers: this.headers(extraHeaders),
     })
     return resp.json()
   }
 
   async post<T = any>(
     path: string,
-    body?: any
+    body?: any,
+    extraHeaders?: Record<string, string>
   ): Promise<ApiResponse<T>> {
     const resp = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.headers(extraHeaders),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
     return resp.json()
@@ -157,20 +164,21 @@ export class ApiClient {
 
   async put<T = any>(
     path: string,
-    body?: any
+    body?: any,
+    extraHeaders?: Record<string, string>
   ): Promise<ApiResponse<T>> {
     const resp = await fetch(`${this.baseUrl}${path}`, {
       method: 'PUT',
-      headers: this.headers(),
+      headers: this.headers(extraHeaders),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
     return resp.json()
   }
 
-  async delete<T = any>(path: string): Promise<ApiResponse<T>> {
+  async delete<T = any>(path: string, extraHeaders?: Record<string, string>): Promise<ApiResponse<T>> {
     const resp = await fetch(`${this.baseUrl}${path}`, {
       method: 'DELETE',
-      headers: this.headers(),
+      headers: this.headers(extraHeaders),
     })
     return resp.json()
   }
@@ -189,7 +197,7 @@ export class ApiClient {
 
   // ============ 工具方法 ============
 
-  private headers(): Record<string, string> {
+  private headers(extraHeaders?: Record<string, string>): Record<string, string> {
     const h: Record<string, string> = {
       'Content-Type': 'application/json',
     }
@@ -198,6 +206,9 @@ export class ApiClient {
     }
     if (this.tenantId) {
       h['X-Tenant-Id'] = String(this.tenantId)
+    }
+    if (extraHeaders) {
+      Object.assign(h, extraHeaders)
     }
     return h
   }

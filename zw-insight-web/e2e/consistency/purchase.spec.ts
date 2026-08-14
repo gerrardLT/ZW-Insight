@@ -7,7 +7,7 @@ import {
   gotoAndCapture,
   matchTableToRecords,
   matchPaginationTotal,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type ColumnSpec,
   type PageConsistencyResult,
   type PageResult,
@@ -48,6 +48,6 @@ test.describe.serial('purchase 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('purchase', results)
+    finalizeModuleConsistency('purchase', results)
   })
 })

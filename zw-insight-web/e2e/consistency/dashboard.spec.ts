@@ -12,7 +12,7 @@
 import { test, expect } from '@playwright/test'
 import {
   gotoAndCapture,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type PageConsistencyResult,
   type Mismatch,
 } from './consistency-helper'
@@ -122,6 +122,6 @@ test.describe.serial('dashboard 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('dashboard', results)
+    finalizeModuleConsistency('dashboard', results)
   })
 })

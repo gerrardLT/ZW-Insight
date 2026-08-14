@@ -153,12 +153,20 @@ jobs:
         run: mvn -B verify -pl zw-app -am -Pintegration-test -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -Djacoco.skip=true
 
   # ────────────────────────────────────────────────────
-  # 1b. 前端单元测试（2026-08-14 前端深度补测：存量单测此前从未入 CI）
-  #     与 backend 并行执行，不增加总耗时；npm cache 加速依赖安装
+  # 1b. 前端单元测试（三端 matrix，2026-08-14 M2/M3 修复：app/门户接入 + 覆盖率门禁）
+  #     与 backend 并行执行，不增加总耗时；每项目独立 npm cache。
+  #     覆盖率守护：复刻后端基线「只升不降」机制（tests/frontend-coverage-baseline.json，
+  #     千分比行覆盖率，回落超 ±1‰ 即失败）；基线取 2026-08-14 实测值（web 36‰/app 45‰/portal 82‰）。
+  #     注：app 的 @dcloudio 依赖曾误写为不存在版本 3.0.0-4010120240507001（笔误，
+  #     registry 实际为 40105 系列），2026-08-14 修正后才能 npm ci。
   # ────────────────────────────────────────────────────
   frontend-test:
-    name: Frontend Unit Test
+    name: Frontend Unit Test (${{ matrix.project }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [zw-insight-web, zw-insight-app, zw-supplier-portal]
     steps:
       - uses: actions/checkout@v4
 
@@ -167,15 +175,27 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: zw-insight-web/package-lock.json
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
 
       - name: Install dependencies
-        working-directory: zw-insight-web
+        working-directory: ${{ matrix.project }}
         run: npm ci --no-audit --no-fund
 
-      - name: Run frontend unit tests (vitest)
-        working-directory: zw-insight-web
-        run: npm test
+      - name: Run frontend unit tests with coverage (vitest)
+        working-directory: ${{ matrix.project }}
+        run: npm run test:coverage
+
+      # 覆盖率不回退守护：比对 tests/frontend-coverage-baseline.json，任一项目回落即失败
+      - name: Coverage baseline check (no regression)
+        run: node tests/check-frontend-coverage.mjs ${{ matrix.project }}
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-${{ matrix.project }}
+          path: ${{ matrix.project }}/coverage/
+          retention-days: 14
 
   # ────────────────────────────────────────────────────
   # 2. 部署到宝塔服务器
@@ -497,7 +517,7 @@ jobs:
           tail -8 ../test-results/l5-api-tests.log
           exit $L5_EXIT
 
-      - name: Run L5 UI real tests (playwright e2e-real, 30 cases against deployed frontend :18081)
+      - name: Run L5 UI real tests (playwright e2e-real, 29 cases against deployed frontend :18081，2026-08-14 实测口径)
         if: always()
         run: |
           cd zw-insight-web
@@ -511,7 +531,7 @@ jobs:
           tail -6 ../test-results/l5-ui-real.log
           exit $UI_REAL_EXIT
 
-      - name: Run L5 consistency audit (playwright, 54 cases frontend-display vs backend-data)
+      - name: Run L5 consistency audit (playwright, 53 cases frontend-display vs backend-data，2026-08-14 实测口径)
         if: always()
         run: |
           cd zw-insight-web
@@ -599,7 +619,7 @@ jobs:
             echo "::warning::未找到 L5 测试结果文件"
           fi
   
-          # L5 UI real 汇总（playwright e2e-real 30 例，打部署前端真实登录）
+          # L5 UI real 汇总（playwright e2e-real 29 例，打部署前端真实登录）
           echo ""
           echo "--- L5 UI Real (playwright) ---"
           if [ -f test-results/l5-ui-real.log ]; then
@@ -613,7 +633,7 @@ jobs:
             echo "::warning::未找到 L5 UI real 测试结果文件"
           fi
   
-          # L5 consistency 汇总（playwright consistency-real 54 例，前端展示 vs 后端数据字段级比对）
+          # L5 consistency 汇总（playwright consistency-real 53 例，前端展示 vs 后端数据字段级比对）
           echo ""
           echo "--- L5 Consistency (playwright) ---"
           if [ -f test-results/l5-consistency.log ]; then

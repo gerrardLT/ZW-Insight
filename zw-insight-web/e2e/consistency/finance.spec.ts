@@ -2,6 +2,7 @@
  * finance 财务管理 —— 列表页前端展示 vs 后端数据 字段级一致性
  *  A 开票申请 /finance/invoice-apply  GET /v1/finance/invoice-apply/page
  *  A 付款申请 /finance/payment-apply  GET /v1/finance/payment-apply/page
+ *  B 财务封账 /finance/finance-lock   GET /v1/finance/lock/page（2026-08-14 P0 扩展，@matrix C-13）
  *
  * 金额列前端用 formatMoney（toLocaleString zh-CN，强制 2 位小数），空值显示 '-'。
  */
@@ -10,7 +11,7 @@ import {
   gotoAndCapture,
   matchTableToRecords,
   matchPaginationTotal,
-  writeModuleReport,
+  finalizeModuleConsistency,
   fmtAmount,
   type ColumnSpec,
   type PageConsistencyResult,
@@ -36,6 +37,21 @@ const PAYMENT_COLUMNS: ColumnSpec[] = [
   { label: '付款金额', index: 2, field: 'paymentAmount', expect: amountExpect('paymentAmount') },
   { label: '付款日期', index: 3, field: 'paymentDate', type: 'date' },
   { label: '状态', index: 4, field: 'status', type: 'enum', enumMap: PAYMENT_APPLY_STATUS },
+]
+
+/** 封账页枚举基线（finance-lock/index.vue lockTypeLabel + 状态 tag 实证） */
+const LOCK_TYPE_MAP: Record<string, string> = { MONTHLY: '月度', QUARTERLY: '季度' }
+const LOCK_STATUS_MAP: Record<string, string> = { LOCKED: '已封账', UNLOCKED: '已解封' }
+/** 直出文本列：null/空跳过比对（后端可能无操作人/时间） */
+const rawText = (field: string) => (r: any) =>
+  r[field] == null || r[field] === '' ? null : String(r[field])
+
+const LOCK_COLUMNS: ColumnSpec[] = [
+  { label: '期间', index: 0, field: 'period', type: 'text' },
+  { label: '封账类型', index: 1, field: 'lockType', type: 'enum', enumMap: LOCK_TYPE_MAP },
+  { label: '状态', index: 2, field: 'status', type: 'enum', enumMap: LOCK_STATUS_MAP },
+  { label: '操作人', index: 3, field: 'lockBy', expect: rawText('lockBy') },
+  { label: '操作时间', index: 4, field: 'lockTime', expect: rawText('lockTime') },
 ]
 
 const results: PageConsistencyResult[] = []
@@ -83,7 +99,40 @@ test.describe.serial('finance 一致性', () => {
     expect(mismatches, `付款申请存在 ${mismatches.length} 处不一致：\n${JSON.stringify(mismatches, null, 2)}`).toHaveLength(0)
   })
 
+  // @matrix C-13 封账页字段级勾稽（只读；封账拦截行为闭环在 21-finance-chain.spec.ts）
+  test('B 财务封账 /finance/finance-lock 字段级一致', async ({ page }) => {
+    const resp = await gotoAndCapture<PageResult>(page, '/finance/finance-lock', /\/v1\/finance\/lock\/page/)
+    expect(resp.code, `接口应返回成功码，实际 message=${resp.message}`).toBe(200)
+    const records = resp.data?.records ?? []
+
+    if (records.length === 0) {
+      // 租户 1 无封账记录：记录豁免说明（与 runListConsistency 的 __empty__ 语义一致）
+      results.push({
+        route: '/finance/finance-lock',
+        title: '财务封账列表',
+        api: 'GET /v1/finance/lock/page',
+        recordCount: 0,
+        mismatches: [{ row: -1, column: '__empty__', expected: '有封账记录', actual: '租户无封账记录，跳过逐行比对（非一致性缺陷）' }],
+      })
+      return
+    }
+
+    await page.locator('.el-table__body-wrapper .el-table__row').first().waitFor({ timeout: 15_000 })
+
+    const mismatches = await matchTableToRecords(page, records, LOCK_COLUMNS, { softCollect: true })
+    await matchPaginationTotal(page, resp.data.total)
+
+    results.push({
+      route: '/finance/finance-lock',
+      title: '财务封账列表',
+      api: 'GET /v1/finance/lock/page',
+      recordCount: records.length,
+      mismatches,
+    })
+    expect(mismatches, `封账列表存在 ${mismatches.length} 处不一致：\n${JSON.stringify(mismatches, null, 2)}`).toHaveLength(0)
+  })
+
   test.afterAll(async () => {
-    writeModuleReport('finance', results)
+    finalizeModuleConsistency('finance', results)
   })
 })

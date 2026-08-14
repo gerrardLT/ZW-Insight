@@ -331,9 +331,25 @@ export interface ModuleReport {
 }
 
 /**
+ * 发现标记分类（2026-08-14 M1 修复：封堵接口错误静默通过缺口）
+ * - FATAL_MARKERS：接口错误/列表绑定错误，属阻断级发现，finalizeModuleConsistency 汇总后硬失败
+ * - INFO_MARKERS：信息性发现（空列表豁免/文档性说明/已知缺陷记录），不导致失败
+ * - 真实字段级不一致（column 为实际列名）同样计为 fatal
+ */
+export const FATAL_MARKERS = ['__apiError__', '__listBinding__'] as const
+export const INFO_MARKERS = ['__empty__', '__note__', '__silentFallback__'] as const
+
+/** 判定单条 mismatch 是否为 fatal 发现 */
+export function isFatalMismatch(m: Mismatch): boolean {
+  if ((INFO_MARKERS as readonly string[]).includes(m.column)) return false
+  return true
+}
+
+/**
  * 通用列表页一致性流程：抓取列表接口 → 断言 code=200 → 表格与 records 字段级比对
- * → 分页 total 断言。接口非 200 时把错误记入 results 后再抛断言，避免丢失发现。
- * 结果统一 push 到调用方传入的 results 数组，afterAll 再 writeModuleReport 落盘。
+ * → 分页 total 断言。接口非 200 时记入 __apiError__ 标记后继续（不中断 describe.serial
+ * 同组后续页面审计），硬失败由 afterAll 的 finalizeModuleConsistency 汇总断言执行。
+ * 结果统一 push 到调用方传入的 results 数组，afterAll 再 finalize 落盘+断言。
  */
 export async function runListConsistency(
   page: Page,
@@ -349,7 +365,8 @@ export async function runListConsistency(
       api,
       mismatches: [{ row: -1, column: '__apiError__', expected: 'code=200', actual: `code=${resp.code} message=${resp.message}` }],
     })
-    // 记录 500 等接口错误为发现，但不抛异常：避免 describe.serial 组内后续页面被跳过（保证全页覆盖）
+    // 记录 500 等接口错误为 fatal 发现；不在此抛异常以避免 describe.serial 组内后续页面被跳过，
+    // 硬失败由 finalizeModuleConsistency 在 afterAll 汇总执行（2026-08-14 M1 修复）
     return
   }
   const records = resp.data?.records ?? []
@@ -372,7 +389,8 @@ export async function runListConsistency(
 /**
  * 非分页「直出数组」列表页一致性流程：接口 data 直接是数组（无 records/total）。
  * 适用于 serial-number/template/version/process/devices 等无分页组件的列表页。
- * - data 非数组（意外返回分页对象等）→ 记 __listBinding__ 发现并断言失败暴露缺陷。
+ * - data 非数组（意外返回分页对象等）→ 记 __listBinding__ fatal 发现（finalize 汇总硬失败）。
+ * - 接口非 200 → 记 __apiError__ fatal 发现（同上）。
  * - data 为空数组 → 记 __empty__ 说明（管理类全局表在测试租户下可能无种子），
  *   best-effort 跳过逐行比对而非误报为不一致。
  */
@@ -390,7 +408,8 @@ export async function runFlatListConsistency(
       api,
       mismatches: [{ row: -1, column: '__apiError__', expected: 'code=200', actual: `code=${resp.code} message=${resp.message}` }],
     })
-    // 记录 500 等接口错误为发现，但不抛异常：避免 describe.serial 组内后续页面被跳过（保证全页覆盖）
+    // 记录 500 等接口错误为 fatal 发现；不在此抛异常以避免 describe.serial 组内后续页面被跳过，
+    // 硬失败由 finalizeModuleConsistency 在 afterAll 汇总执行（2026-08-14 M1 修复）
     return
   }
   const data = resp.data
@@ -401,7 +420,7 @@ export async function runFlatListConsistency(
       api,
       mismatches: [{ row: -1, column: '__listBinding__', expected: 'data 为数组', actual: `data 非数组（${typeof data}），列表页可能绑定了非列表结构` }],
     })
-    // 记录绑定异常为发现，但不抛异常，保证同组后续页面仍被审计
+    // 记录绑定异常为 fatal 发现；不在此抛异常，保证同组后续页面仍被审计（finalize 汇总硬失败）
     return
   }
   if (data.length === 0) {
@@ -462,4 +481,38 @@ export function writeModuleReport(module: string, pages: PageConsistencyResult[]
     lines.push('')
   }
   writeFileSync(resolve(dir, `${module}.md`), lines.join('\n'), 'utf-8')
+}
+
+/**
+ * 模块一致性审计收尾：先落盘报告（诊断产物永远存在），再对全部 fatal 发现
+ * 执行汇总硬断言（2026-08-14 M1 修复：封堵接口 500 静默通过缺口）。
+ *
+ * 在 test.afterAll 中调用：afterAll 晚于组内全部用例执行，抛错只把该
+ * describe.serial 组标红，不会跳过任何已排期页面——同时满足
+ * 「硬失败（禁止静默通过）」与「全页覆盖审计」双约束。
+ *
+ * fatal 判定：mismatch.column 命中 FATAL_MARKERS（__apiError__/__listBinding__）
+ * 或为真实列名的字段级不一致；INFO_MARKERS（__empty__/__note__/__silentFallback__）
+ * 为信息性发现不计入失败。
+ */
+export function finalizeModuleConsistency(module: string, results: PageConsistencyResult[]): void {
+  // 报告永远先落盘，即使后续断言失败也能从产物定位
+  writeModuleReport(module, results)
+
+  const fatalPages = results
+    .map((p) => ({ page: p, fatals: p.mismatches.filter(isFatalMismatch) }))
+    .filter((x) => x.fatals.length > 0)
+
+  const detail = fatalPages
+    .map(({ page, fatals }) =>
+      `  - ${page.title} (${page.route}) [${page.api}]\n` +
+      fatals.map((m) => `      · ${m.column}${m.field ? `/${m.field}` : ''}：期望 ${m.expected ?? ''}，实际 ${m.actual}`).join('\n')
+    )
+    .join('\n')
+  const total = fatalPages.reduce((s, x) => s + x.fatals.length, 0)
+
+  expect(
+    fatalPages,
+    `${module} 一致性审计存在 ${total} 处阻断级发现（接口错误/绑定错误/字段不一致）：\n${detail}`
+  ).toHaveLength(0)
 }

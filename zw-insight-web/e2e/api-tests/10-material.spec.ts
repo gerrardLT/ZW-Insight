@@ -113,6 +113,24 @@ describe('10 - 材料库存', () => {
       const resp = await client.post(`/api/v1/material/outbound/${outboundId}/submit`)
       expect([200, 400, 500]).toContain(resp.code)
     })
+
+    // @matrix 盲点 11b 钉住：出库超库存后端校验（MaterialOutboundService.save 已有，
+    // MaterialOutboundServiceTest.testSave_pick_stockInsufficient 实证）——L5 负向钉住防回归
+    it('负向：领料出库数量远超库存被拒（盲点 11b）', async () => {
+      const resp = await client.post('/api/v1/material/outbound', {
+        projectId,
+        outboundType: 'PICK',
+        remark: 'E2E超库存负向',
+        details: [{
+          materialName: 'E2E不存在钢筋',
+          specification: 'HRB400',
+          unit: '吨',
+          quantity: 999999,
+        }],
+      })
+      expect(resp.code, '超库存出库应被拒').not.toBe(200)
+      expect(String(resp.message)).toMatch(/库存/)
+    })
   })
 
   // ============ 材料盘点 ============
@@ -149,14 +167,46 @@ describe('10 - 材料库存', () => {
   // ============ 材料调拨 ============
   describe('材料调拨', () => {
     let transferId: number
+    let transferProjectId2: number
 
-    it('创建调拨单', async () => {
+    it('准备：创建调入方第二项目（盲点 11a 后端守卫要求调出≠调入）', async () => {
+      const resp = await client.post('/api/v1/project', {
+        projectName: `${TEST_PROJECT.name}_TRANSFER2`,
+        projectType: 'BUILDING',
+        projectAddress: '调拨测试地址',
+        needTender: 0,
+      })
+      expectOk(resp, '创建调拨第二项目')
+      const pageResp = await client.get('/api/v1/project/page', {
+        page: 1, size: 10, projectName: `${TEST_PROJECT.name}_TRANSFER2`,
+      })
+      const found = (pageResp.data?.records || [])
+        .find((p: any) => p.projectName?.includes('TRANSFER2'))
+      expect(found).toBeDefined()
+      transferProjectId2 = found.id
+      cleaner.add('删除调拨第二项目', () => client.delete(`/api/v1/project/${transferProjectId2}`))
+    })
+
+    it('创建调拨单（调出≠调入）', async () => {
       const resp = await client.post('/api/v1/material/transfer', {
         fromProjectId: projectId,
-        toProjectId: projectId,
+        toProjectId: transferProjectId2,
         remark: 'E2E测试调拨',
       })
       expectOk(resp, '创建调拨')
+    })
+
+    // @matrix 盲点 11a 钉住：同项目调拨后端守卫（MaterialTransferService.validateDistinctProject，
+    // 2026-08-14 修复；旧后端无守卫曾实证放行）。守卫随推送部署生效，
+    // 部署前用 it.skip 显式声明（不静默，台账同步登记），部署后移除 skip 验证。
+    it.skip('负向：同项目调拨被后端拒绝（盲点 11a，待守卫部署后启用） [部署后移除 skip]', async () => {
+      const resp = await client.post('/api/v1/material/transfer', {
+        fromProjectId: projectId,
+        toProjectId: projectId,
+        remark: 'E2E同项目负向',
+      })
+      expect(resp.code, '同项目调拨应被拒').not.toBe(200)
+      expect(String(resp.message)).toContain('不能相同')
     })
 
     it('分页查询调拨', async () => {

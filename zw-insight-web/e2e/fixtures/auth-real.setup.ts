@@ -9,14 +9,20 @@
  *
  * 环境变量：
  * - E2E_API_BASE:  后端 API 地址（默认 http://129.204.3.200:18080）
- * - E2E_SSH_KEY:   SSH 私钥路径（默认 C:\Users\gerrard\.ssh\zwinsight.pem）
+ * - E2E_SSH_KEY:   SSH 私钥路径（CI 显式指定 deploy_key；本地默认仓库内 keys/zwinsight.pem，2026-08-14 M6 修复）
  * - E2E_SSH_HOST:  SSH 目标（默认 root@129.204.3.200）
  */
 import { test as setup, expect } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// ESM 兼容（package.json type=module 无 __dirname；2026-08-14 P0 修复既有隐患）
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const API_BASE = process.env.E2E_API_BASE || 'http://129.204.3.200:18080'
-const SSH_KEY = process.env.E2E_SSH_KEY || 'C:\\Users\\gerrard\\.ssh\\zwinsight.pem'
+// 本地默认回退到仓库内密钥（相对解析，跨机器可用）；CI 通过 E2E_SSH_KEY 显式覆盖，行为不变
+const SSH_KEY = process.env.E2E_SSH_KEY || resolve(__dirname, '../../../keys/zwinsight.pem')
 const SSH_HOST = process.env.E2E_SSH_HOST || 'root@129.204.3.200'
 
 /** 经 SSH 从服务器 Redis 读取验证码答案（真实组件，需求 5.1 同源链路） */

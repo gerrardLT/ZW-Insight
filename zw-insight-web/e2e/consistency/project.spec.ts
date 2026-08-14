@@ -16,7 +16,7 @@ import {
   matchPaginationTotal,
   matchDetailFields,
   getFormInputValue,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type ColumnSpec,
   type PageConsistencyResult,
   type PageResult,
@@ -134,6 +134,6 @@ test.describe.serial('project 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('project', results)
+    finalizeModuleConsistency('project', results)
   })
 })

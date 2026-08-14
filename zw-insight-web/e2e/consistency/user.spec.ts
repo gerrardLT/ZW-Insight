@@ -9,7 +9,7 @@
 import { test } from '@playwright/test'
 import {
   runFlatListConsistency,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type PageConsistencyResult,
   type ColumnSpec,
 } from './consistency-helper'
@@ -39,6 +39,6 @@ test.describe.serial('user 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('user', results)
+    finalizeModuleConsistency('user', results)
   })
 })

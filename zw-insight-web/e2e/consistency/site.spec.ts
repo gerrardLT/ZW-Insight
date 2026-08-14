@@ -10,7 +10,7 @@
 import { test } from '@playwright/test'
 import {
   runListConsistency,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type ColumnSpec,
   type PageConsistencyResult,
 } from './consistency-helper'
@@ -69,6 +69,6 @@ test.describe.serial('site 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('site', results)
+    finalizeModuleConsistency('site', results)
   })
 })

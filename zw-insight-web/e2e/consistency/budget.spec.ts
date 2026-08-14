@@ -11,7 +11,7 @@ import {
   gotoAndCapture,
   matchTableToRecords,
   matchPaginationTotal,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type ColumnSpec,
   type PageConsistencyResult,
   type PageResult,
@@ -52,6 +52,6 @@ test.describe.serial('budget 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('budget', results)
+    finalizeModuleConsistency('budget', results)
   })
 })

@@ -18,7 +18,7 @@ import {
   gotoAndCapture,
   fmtAmount,
   runListConsistency,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type ColumnSpec,
   type PageConsistencyResult,
 } from './consistency-helper'
@@ -93,6 +93,6 @@ test.describe.serial('archive 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('archive', results)
+    finalizeModuleConsistency('archive', results)
   })
 })

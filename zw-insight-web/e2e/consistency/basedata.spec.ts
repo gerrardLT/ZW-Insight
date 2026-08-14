@@ -14,7 +14,7 @@
 import { test } from '@playwright/test'
 import {
   runListConsistency,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type ColumnSpec,
   type PageConsistencyResult,
 } from './consistency-helper'
@@ -107,6 +107,6 @@ test.describe.serial('basedata 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('basedata', results)
+    finalizeModuleConsistency('basedata', results)
   })
 })

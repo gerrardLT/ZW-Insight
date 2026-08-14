@@ -23,9 +23,9 @@
 | L2 集成测试 | **16 个集成测试类** | Testcontainers（MySQL 8 + Redis）+ `@EnabledIfDockerAvailable` 自动降级 | 审批回滚、数据权限、租户隔离、Flowable、安全边界 | 场景集中在 zw-app，多数业务模块无 L2 |
 | L3 API 测试 | **8 个 shell 脚本**（keys/test-api-*.sh） | verify-base.sh 基座（真实登录） | 各模块接口可达性 + 结构验证 | 断言以 HTTP 状态码为主，契约级字段校验弱 |
 | L4 端到端 | **lifecycle-sim-v2.sh 19 阶段** | bash + 真实接口 + 金额硬断言 | 收入+支出+多类型付款+驳回+竣工结算全链路；幂等；清理零残留；租户 9999 隔离 | 单用户串行，仅一条主干业务变体 |
-| L5 前端 E2E | **53 个 spec**（api-tests 20 + consistency 20 + tests 13），5 个 Playwright project | Playwright 1.61，mock/real/consistency 三模式 | real 模式打真实服务器；consistency 做前后端一致性 | 页面覆盖广但深度浅（多为 CRUD 冒烟） |
-| 移动端 | **9 个属性测试**（watermark/offlineCache） | vitest + fast-check | 水印与离线缓存的不变量 | 仅 2 个文件，页面级无测试 |
-| supplier-portal | **5 个单元测试**（api 拦截器） | vitest + happy-dom | token 注入/401 登出/错误透传 | 刚起步，无页面测试 |
+| L5 前端 E2E | **43 个 spec**（api-tests 20 + consistency 20 + real 3），3 个 Playwright project（setup-real/e2e-real/consistency-real） | Playwright 1.61，全真实模式（mock 已于 2026-08-11 归档删除） | real 模式打真实服务器；consistency 做前后端一致性，接口错误经 afterAll 汇总硬断言（2026-08-14，禁止静默通过） | 页面覆盖广但深度浅（多为 CRUD 冒烟） |
+| 移动端 | **9 个属性测试**（watermark/offlineCache） | vitest + fast-check，2026-08-14 起入 CI matrix + 覆盖率基线门禁 | 水印与离线缓存的不变量 | 仅 2 个文件，页面级无测试（覆盖率基线 45‰ 如实反映） |
+| supplier-portal | **5 个单元测试**（api 拦截器） | vitest + happy-dom，2026-08-14 起入 CI matrix + 覆盖率基线门禁 | token 注入/401 登出/错误透传 | 刚起步，无页面测试（覆盖率基线 82‰ 如实反映） |
 
 ### 2.2 特色资产（超出同级项目平均水平）
 
@@ -168,3 +168,5 @@
 | 2026-08-05 | v1.0 | 初版：五层盘点、差距矩阵、54 分评分、三阶段路线、受阻规范 |
 | 2026-08-05 | v1.1 | 阶段一启动：spec 三件套落地、基线 JSON + CI 不回退守护、zw-purchase 补测达标 70.5%（8 测试类 37 用例）、verify 门槛验证通过；受阻台账 #1：本机无 Docker 导致 L2 实跑受阻 |
 | 2026-08-05 | v1.2 | 阶段一完成：六核心模块全部达标 ≥60%（labor 70.3%/contract 62.0%/finance 64.8%/budget 71.8%/material 72.0%），新增约 30 个测试类；顺带修复 2 个真实缺陷：① JDK21 下 JaCoCo 与 Mockito agent 共存需 -XX:+EnableDynamicAgentLoading（surefire argLine） ② commons-io 2.11 与 easyexcel 3.3.4 不兼容导致 Excel 导出 NoClassDefFoundError（钉住 2.16.1） |
+| 2026-08-14 | v1.3 | 前端测试修复批次（评估 9 项问题闭环）：① L5 口径修正为 43 spec/3 project（mock 已删）；② consistency 接口 500 静默通过改硬失败（finalizeModuleConsistency afterAll 汇总断言，保全页覆盖）；③ 三前端单测全部入 CI（frontend-test matrix 化）+ 前端覆盖率度量与「只升不降」基线门禁（tests/frontend-coverage-baseline.json，实测 web 36‰/app 45‰/portal 82‰）；④ app @dcloudio 依赖版本笔误修正（40101→40105，原版本在任何 registry 不存在）并首次生成 lockfile + 移除死依赖 uni-automator；⑤ E2E 登录默认密钥路径仓库相对化 |
+| 2026-08-14 | v1.4 | 前端业务模块测试用例枚举矩阵落地：tests/frontend-test-case-matrix.md（21 模块/104 页面源码逐页深读实证，1,123 个用例：页面级 1,048 + 跨模块集成 75，含现有覆盖映射与 20 项源码级盲点汇总 + P0-P3 落地优先级）；实测整体已有覆盖≈32%，财务域最低（20.7%）；盲点含源码缺陷（模板假上传/薪资筛选失效/BOQ 大小写误拒等），需修复流程处理而非仅测试钉住 |

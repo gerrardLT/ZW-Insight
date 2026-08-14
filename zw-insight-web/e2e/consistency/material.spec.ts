@@ -7,7 +7,7 @@ import {
   gotoAndCapture,
   matchTableToRecords,
   matchPaginationTotal,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type ColumnSpec,
   type PageConsistencyResult,
   type PageResult,
@@ -48,6 +48,6 @@ test.describe.serial('material 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('material', results)
+    finalizeModuleConsistency('material', results)
   })
 })

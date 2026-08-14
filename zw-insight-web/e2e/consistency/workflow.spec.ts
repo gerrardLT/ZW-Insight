@@ -12,7 +12,7 @@ import { test } from '@playwright/test'
 import {
   runListConsistency,
   runFlatListConsistency,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type PageConsistencyResult,
   type ColumnSpec,
 } from './consistency-helper'
@@ -72,6 +72,6 @@ test.describe.serial('workflow 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('workflow', results)
+    finalizeModuleConsistency('workflow', results)
   })
 })

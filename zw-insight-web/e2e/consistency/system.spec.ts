@@ -18,7 +18,7 @@ import { test } from '@playwright/test'
 import {
   runListConsistency,
   runFlatListConsistency,
-  writeModuleReport,
+  finalizeModuleConsistency,
   type PageConsistencyResult,
   type ColumnSpec,
 } from './consistency-helper'
@@ -150,6 +150,6 @@ test.describe.serial('system 一致性', () => {
   })
 
   test.afterAll(async () => {
-    writeModuleReport('system', results)
+    finalizeModuleConsistency('system', results)
   })
 })
