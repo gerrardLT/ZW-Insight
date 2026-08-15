@@ -423,14 +423,16 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
       }
       const terminateBtn = page.locator('.el-table__body-wrapper .el-table__row button:has-text("终止")').first()
       await expect(terminateBtn).toBeVisible({ timeout: 15_000 })
-      // ElMessageBox 确认弹窗
-      page.once('dialog', (d) => d.accept().catch(() => {}))
+      // ElMessageBox 是 DOM 弹窗（非 native dialog，CI 首跑实证 page.once('dialog') 永不触发）
+      await terminateBtn.click()
+      const msgbox = page.locator('.el-message-box')
+      await expect(msgbox).toBeVisible({ timeout: 10_000 })
       const [terminateResp] = await Promise.all([
         page.waitForResponse(
           (resp) => resp.url().includes('/workflow/approval/terminate') && resp.request().method() === 'POST',
           { timeout: 15_000 }
         ),
-        terminateBtn.click(),
+        msgbox.locator('button:has-text("确定")').click(),
       ])
       expect(terminateResp.status()).toBe(200)
       // 回写断言：合同回 DRAFT + 待办清空
@@ -462,12 +464,16 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
       await checkboxes.nth(1).click()
       const batchBtn = page.locator('button:has-text("批量通过")').first()
       await expect(batchBtn).toBeEnabled({ timeout: 10_000 })
+      await batchBtn.click()
+      // ElMessageBox 是 DOM 弹窗（CI 首跑实证）
+      const batchBox = page.locator('.el-message-box')
+      await expect(batchBox).toBeVisible({ timeout: 10_000 })
       const [batchResp] = await Promise.all([
         page.waitForResponse(
           (resp) => resp.url().includes('/workflow/approval/batch-approve') && resp.request().method() === 'POST',
           { timeout: 15_000 }
         ),
-        batchBtn.click(),
+        batchBox.locator('button:has-text("确定")').click(),
       ])
       expect(batchResp.status()).toBe(200)
       // 回写断言：两单进入第二级（一级批量通过，流程未结束仍 SUBMITTED）

@@ -382,7 +382,6 @@ test.describe('支出域 — 工资单生成与提交（@matrix B-18）', () => 
     // 提交（直批 APPROVED，LaborPayrollService.submit 实证无流程）
     const row = page.locator('.el-table__row', { hasText: `${periodStart} ~ ${periodEnd}` })
     await row.locator('button:has-text("提交")').click()
-    page.once('dialog', (d) => d.accept().catch(() => {}))
     const [submitResp] = await Promise.all([
       page.waitForResponse(
         (resp) => resp.url().includes(`/v1/labor/payroll/${created.id}/submit`),
@@ -459,7 +458,6 @@ test.describe('支出域 — 询价创建与发布（@matrix B-24）', () => {
       test.skip(true, '前置询价不存在（上一用例未产生），跳过发布用例')
       return
     }
-    page.once('dialog', (d) => d.accept().catch(() => {}))
     const [publishResp] = await Promise.all([
       page.waitForResponse(
         (resp) => resp.url().includes('/v1/purchase/inquiry') && resp.url().includes('/publish'),

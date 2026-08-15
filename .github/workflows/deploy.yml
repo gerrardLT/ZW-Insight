@@ -510,6 +510,10 @@ jobs:
           mkdir -p test-results
           cd zw-insight-web
           npm ci --no-audit --no-fund
+          # 2026-08-15 修复（run 31853153997 实证）：22-budget/31-approval/13b/30-security
+          # 等 spec 的 redis-probe 依赖 SSH（keys/zwinsight.pem 在 gitignore，CI 不存在），
+          # 必须指向 deploy_key，否则 beforeAll 失败致 4 文件 failed + 71 skipped
+          export E2E_SSH_KEY="$HOME/.ssh/deploy_key"
           # bash -e 下 vitest 非零会中止步骤，用 || 捕获退出码确保日志写入
           L5_EXIT=0
           npx vitest run --config e2e/api-tests/vitest.config.ts > ../test-results/l5-api-tests.log 2>&1 || L5_EXIT=$?
