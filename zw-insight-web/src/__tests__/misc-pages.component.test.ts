@@ -59,6 +59,10 @@ vi.mock('@/api/site', () => ({
 vi.mock('@/api/inspection-scheme', () => ({
   getInspectionDetail: mockInspectionDetail,
 }))
+// inspection/index 内嵌 ProjectSelector 子组件会调 getProjectList，mock 防真实请求
+vi.mock('@/api/project', () => ({
+  getProjectList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+}))
 vi.mock('vue-router', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
