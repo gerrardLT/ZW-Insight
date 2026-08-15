@@ -54,7 +54,10 @@ test.describe('忘记密码 UI 真实走查（@matrix D-2）', () => {
       runRemote(
         `echo "${Buffer.from(`UPDATE sys_user SET password='${BCRYPT_123456}' WHERE username='${USER}'`, 'utf-8').toString('base64')}" | base64 -d | docker exec -i zwi-mysql mysql -uroot -pzwinsight123 --default-character-set=utf8mb4 zw_insight`
       )
-    } catch { /* 恢复失败登记台账 */ }
+    } catch (e) {
+      // 不静默：恢复失败将致 t9999user 残留测试密码，30-security D-2 组连锁失败
+      console.warn(`[Cleanup] t9999user 密码恢复失败，需手动重置为 123456:`, e)
+    }
     // 清理短信频控键，避免影响后续批次
     try {
       runRemote(`docker exec zwi-redis redis-cli DEL 'sms:${PHONE}' 'sms:freq:${PHONE}' 'pwd_reset:lock:${PHONE}' 'pwd_reset:verify_fail:${PHONE}'`)

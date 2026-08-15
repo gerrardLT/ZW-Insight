@@ -13,9 +13,9 @@
  */
 import { test, expect, request as pwRequest } from '@playwright/test'
 
-// 写路径用例文件内串行（全局 fullyParallel=true 会让同文件用例并行，
-// 多弹窗/同页远程请求竞争致超时，P2 八遍实跑实证；文件间仍按 workers 并行）
-test.describe.configure({ mode: 'default' })
+// 写路径用例文件内串行（'default' 会继承全局 fullyParallel=true 仍并行，审查实证无效；
+// 'serial' 才真串行——多弹窗/共享数据态用例并行互扰，P2 十二遍实跑实证）
+test.describe.configure({ mode: 'serial' })
 
 const API_BASE = process.env.E2E_API_BASE || 'http://129.204.3.200:18080'
 
@@ -155,6 +155,9 @@ test.describe('支出域 — 采购结算写路径（@matrix B-23）', () => {
     // 可能永不满足致 waitForLoadState 挂到测试超时（九遍实跑实证）——本用例全部改具体元素等待
     test.setTimeout(180_000)
     const request = authed!
+    // 创建前快照既有结算单 ID（审查实证：按金额=1+DRAFT 模糊定位可能误命中真实单据）
+    const beforeResp = await request.get(`${API_BASE}/api/v1/purchase/settlement/page`, { params: { page: 1, size: 200 } })
+    const beforeIds = new Set(((await beforeResp.json()).data?.records || []).map((r: any) => r.id))
     await page.goto('/purchase/settlement')
     await page.waitForSelector('button:has-text("新增结算单")', { timeout: 30_000 })
     await page.locator('button:has-text("新增结算单")').click()
@@ -196,11 +199,11 @@ test.describe('支出域 — 采购结算写路径（@matrix B-23）', () => {
     expect(createResp.status()).toBe(200)
     const createBody = await createResp.json()
     expect(createBody.code, `创建结算单：${createBody.message}`).toBe(200)
-    // 定位新结算单（金额 1 元 + DRAFT）并登记清理
+    // 定位新结算单：创建前后 ID 差集（唯一标识，杜绝误操作租户 1 真实单据）
     const listResp = await request.get(`${API_BASE}/api/v1/purchase/settlement/page`, { params: { page: 1, size: 200 } })
     const records = (await listResp.json()).data?.records || []
-    const created = records.find((r: any) => Number(r.settlementAmount) === 1 && r.status === 'DRAFT')
-    expect(created, '新结算单应出现在列表（DRAFT）').toBeTruthy()
+    const created = records.find((r: any) => !beforeIds.has(r.id) && r.status === 'DRAFT')
+    expect(created, '新结算单应出现在列表（DRAFT，差集定位）').toBeTruthy()
     createdSettlementIds.push(created.id)
 
     // 提交进入审批（purchase_settlement_approval 租户 1 已部署实证）；
