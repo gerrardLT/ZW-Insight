@@ -53,7 +53,7 @@ beforeEach(() => {
 })
 
 describe('contract/form.vue 只读查看模式（@matrix 盲点 3）', () => {
-  it('mode=view：标题为详情、表单禁用、无保存按钮、无新增明细按钮', async () => {
+  it('mode=view：标题为详情、表单禁用、无保存按钮、无新增明细按钮', { timeout: 20_000 }, async () => {
     mockRouteQuery.value = { mode: 'view' }
     const wrapper = mount(ContractForm, { global: { plugins: [ElementPlus] } })
     await flushPromises()
@@ -69,7 +69,9 @@ describe('contract/form.vue 只读查看模式（@matrix 盲点 3）', () => {
     expect(inputs.every((i) => i.attributes('disabled') !== undefined)).toBe(true)
   })
 
-  it('mode=view：handleSubmit 守卫直接返回，不触发任何保存 API', async () => {
+  // contract/form.vue 为重型页（BOQ 明细表+多子组件），全量并行挂载下默认 5s 超时
+  // 实证不够（单跑 3/3 绿、全量并行 timeout，2026-08-15 第三批实跑），放宽到 20s
+  it('mode=view：handleSubmit 守卫直接返回，不触发任何保存 API', { timeout: 20_000 }, async () => {
     mockRouteQuery.value = { mode: 'view' }
     const wrapper = mount(ContractForm, { global: { plugins: [ElementPlus] } })
     await flushPromises()
@@ -81,7 +83,7 @@ describe('contract/form.vue 只读查看模式（@matrix 盲点 3）', () => {
     expect(mockCreateContract).not.toHaveBeenCalled()
   })
 
-  it('缺省（编辑模式）行为不变：标题为编辑、保存按钮存在', async () => {
+  it('缺省（编辑模式）行为不变：标题为编辑、保存按钮存在', { timeout: 20_000 }, async () => {
     mockRouteQuery.value = {}
     const wrapper = mount(ContractForm, { global: { plugins: [ElementPlus] } })
     await flushPromises()
