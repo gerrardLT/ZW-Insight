@@ -29,6 +29,10 @@ export interface CrudSuiteOpts {
   requiredField?: string
   /** 删除 API 的期望实参（默认 [row.id]；部分页为双参如 certificate 的 (type, id)） */
   deleteExpectedArgs?: (row: any) => any[]
+  /** 分页页码参数名（默认 pageNum；部分页为 page/size 口径如 work-order/inbound） */
+  pageKey?: 'pageNum' | 'page'
+  /** 编辑回显经 detail API 的页（tender/register、hr/entry）跳过工厂回显例，由各自扩展例覆盖 */
+  skipEditCase?: boolean
   records: any[]
   total?: number
 }
@@ -60,20 +64,22 @@ export function crudPageSuite(o: CrudSuiteOpts) {
       expect(w.text()).toContain(String(o.total ?? o.records.length))
     })
 
-    it('搜索重置 pageNum 并重新查询', async () => {
+    it('搜索重置页码并重新查询', async () => {
+      const pageKey = o.pageKey ?? 'pageNum'
       o.pageMock.mockResolvedValue({ code: 200, data: { records: o.records, total: o.records.length } })
       const w = await mountPage()
       o.pageMock.mockClear()
-      st().queryParams.pageNum = 3
+      st().queryParams[pageKey] = 3
       st().handleSearch()
       await flushPromises()
-      expect(st().queryParams.pageNum).toBe(1)
+      expect(st().queryParams[pageKey]).toBe(1)
       expect(o.pageMock).toHaveBeenCalled()
       const arg = o.pageMock.mock.calls[0][0]
-      expect(arg.pageNum).toBe(1)
+      expect(arg[pageKey]).toBe(1)
     })
 
     it('重置清空搜索条件', async () => {
+      const pageKey = o.pageKey ?? 'pageNum'
       o.pageMock.mockResolvedValue({ code: 200, data: { records: [], total: 0 } })
       const w = await mountPage()
       const keys = Object.keys(st().queryParams)
@@ -86,7 +92,7 @@ export function crudPageSuite(o: CrudSuiteOpts) {
       for (const k of keys) {
         if (typeof st().queryParams[k] === 'string') expect(st().queryParams[k]).toBe('')
       }
-      expect(st().queryParams.pageNum).toBe(1)
+      expect(st().queryParams[pageKey]).toBe(1)
     })
 
     it('必填守卫配置 + 提交组装 formData 调 create', async () => {
@@ -108,7 +114,7 @@ export function crudPageSuite(o: CrudSuiteOpts) {
       expect(o.createMock.mock.calls[0][0]).toMatchObject(st().formData)
     })
 
-    it('编辑回显 formData 与行一致', async () => {
+    it.skipIf(o.skipEditCase)('编辑回显 formData 与行一致', async () => {
       o.pageMock.mockResolvedValue({ code: 200, data: { records: o.records, total: o.records.length } })
       const w = await mountPage()
       st().handleEdit(o.records[0])
