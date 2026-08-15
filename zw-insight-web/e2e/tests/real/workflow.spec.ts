@@ -14,6 +14,10 @@
  */
 import { test, expect, request as pwRequest } from '@playwright/test'
 
+// 审批办理用例持有共享审批状态（待办列表/合同状态），fullyParallel 下同文件并行
+// 互扰（三轮全链实证：行定位串扰/待办查空/批量按钮未启用）——文件内串行
+test.describe.configure({ mode: 'default' })
+
 const API_BASE = process.env.E2E_API_BASE || 'http://129.204.3.200:18080'
 
 // 后端仅认 Authorization: Bearer 头（AuthInterceptor 实证），storageState token 存于 localStorage，
