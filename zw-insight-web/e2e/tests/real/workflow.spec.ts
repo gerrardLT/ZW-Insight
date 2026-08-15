@@ -337,7 +337,8 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
   async function locateTodoRow(page: any, request: any, contractId: number): Promise<any> {
     const todos = await findTodos(request, contractId)
     expect(todos.length, '目标合同应有待办').toBeGreaterThan(0)
-    const key = String(todos[0].createTime || '').slice(0, 16)
+    // 取到秒级（19 字符）：同分钟多待办时行定位会碰撞（四轮全链实证批量用例同行 toggle 取消勾选）
+    const key = String(todos[0].createTime || '').slice(0, 19)
     expect(key.length, '待办应含 createTime 用于行定位').toBeGreaterThanOrEqual(16)
     const row = page.locator('.el-table__body-wrapper .el-table__row', { hasText: key })
     await expect(row.first()).toBeVisible({ timeout: 15_000 })
@@ -462,6 +463,8 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
   test('批量通过 — 勾选+确认（D-32/D-33-12）', async ({ page }) => {
     const request = authed!
     const cidA = await prepareSubmittedContract(request)
+    // 错秒提交：createTime 秒级行定位需两单不同秒（同秒碰撞致同行 toggle，四轮实证）
+    await new Promise((r) => setTimeout(r, 1100))
     const cidB = await prepareSubmittedContract(request)
     try {
       await page.goto('/workflow/approval')
