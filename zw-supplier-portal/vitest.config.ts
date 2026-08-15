@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config'
+import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
+  // 组件测试需解析 .vue SFC（2026-08-15 P3 方向3 门户视图补测）
+  plugins: [vue()],
   test: {
     environment: 'happy-dom',
     include: ['tests/**/*.test.ts'],

@@ -24,8 +24,8 @@
 | L3 API 测试 | **8 个 shell 脚本**（keys/test-api-*.sh） | verify-base.sh 基座（真实登录） | 各模块接口可达性 + 结构验证 | 断言以 HTTP 状态码为主，契约级字段校验弱 |
 | L4 端到端 | **lifecycle-sim-v2.sh 19 阶段** | bash + 真实接口 + 金额硬断言 | 收入+支出+多类型付款+驳回+竣工结算全链路；幂等；清理零残留；租户 9999 隔离 | 单用户串行，仅一条主干业务变体 |
 | L5 前端 E2E | **43 个 spec**（api-tests 20 + consistency 20 + real 3），3 个 Playwright project（setup-real/e2e-real/consistency-real） | Playwright 1.61，全真实模式（mock 已于 2026-08-11 归档删除） | real 模式打真实服务器；consistency 做前后端一致性，接口错误经 afterAll 汇总硬断言（2026-08-14，禁止静默通过） | 页面覆盖广但深度浅（多为 CRUD 冒烟） |
-| 移动端 | **9 个属性测试**（watermark/offlineCache） | vitest + fast-check，2026-08-14 起入 CI matrix + 覆盖率基线门禁 | 水印与离线缓存的不变量 | 仅 2 个文件，页面级无测试（覆盖率基线 45‰ 如实反映） |
-| supplier-portal | **5 个单元测试**（api 拦截器） | vitest + happy-dom，2026-08-14 起入 CI matrix + 覆盖率基线门禁 | token 注入/401 登出/错误透传 | 刚起步，无页面测试（覆盖率基线 82‰ 如实反映） |
+| 移动端 | **47 个单元/属性测试**（watermark/offlineCache 属性 9 + request/offline/offlineData/stores/api 契约 38） | vitest + fast-check + uni 存储桩，2026-08-14 起入 CI matrix + 覆盖率基线门禁 | 水印与离线缓存不变量；请求封装分支/离线队列同步/在线优先离线回退/store 状态机/api 路径方法契约（2026-08-15 P3 方向3） | 页面级 .vue 无测试（覆盖率基线 112‰ 如实反映） |
+| supplier-portal | **22 个单元测试**（api 拦截器 5 + 四视图组件 17） | vitest + happy-dom，2026-08-14 起入 CI matrix + 覆盖率基线门禁 | token 注入/401 登出/错误透传；InquiryList/Login/MyQuotations/InquiryDetail 视图渲染与交互（2026-08-15 P3 方向3，仅 router/main 引导未覆盖） | 覆盖率基线 857‰ 如实反映 |
 
 ### 2.2 特色资产（超出同级项目平均水平）
 
