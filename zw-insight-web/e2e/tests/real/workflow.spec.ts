@@ -328,6 +328,18 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
     ).catch(() => {})
   }
 
+  /** 定位目标待办行（CI 并行环境下首行未必是目标——二轮全链实证 terminate 点错行）：
+   *  经 API 取目标 task 的 createTime，UI 行内 createTime 列含该前缀（取到分钟） */
+  async function locateTodoRow(page: any, request: any, contractId: number): Promise<any> {
+    const todos = await findTodos(request, contractId)
+    expect(todos.length, '目标合同应有待办').toBeGreaterThan(0)
+    const key = String(todos[0].createTime || '').slice(0, 16)
+    expect(key.length, '待办应含 createTime 用于行定位').toBeGreaterThanOrEqual(16)
+    const row = page.locator('.el-table__body-wrapper .el-table__row', { hasText: key })
+    await expect(row.first()).toBeVisible({ timeout: 15_000 })
+    return row.first()
+  }
+
   test('退回发起人 — 弹窗真实操作（D-32）', async ({ page }) => {
     const request = authed!
     const contractId = await prepareSubmittedContract(request)
@@ -339,9 +351,9 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
         await todoTab.click()
         await page.waitForTimeout(1000)
       }
-      // 待办行点「退回」
-      const rejectBtn = page.locator('.el-table__body-wrapper .el-table__row button:has-text("退回")').first()
-      await expect(rejectBtn).toBeVisible({ timeout: 15_000 })
+      // 待办行点「退回」（按 createTime 定位目标行）
+      const targetRow = await locateTodoRow(page, request, contractId)
+      const rejectBtn = targetRow.locator('button:has-text("退回")')
       await rejectBtn.click()
       // 退回弹窗：选「退回发起人」+ 填原因 + 确定
       const dialog = page.locator('.el-dialog:has-text("退回任务")')
@@ -378,17 +390,17 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
       todos = await findTodos(request, contractId)
       expect(todos[0]?.taskDefinitionKey, '应进入第二级').toBe('financeApproval')
 
-      // UI 退回上一步
+      // UI 退回上一步（按 createTime 定位目标行）
       await page.goto('/workflow/approval')
       await page.waitForLoadState('networkidle')
-      const todoTab = page.locator('.el-tabs__item:has-text("待办"), .el-tabs__item:has-text("待处理")').first()
-      if (await todoTab.isVisible().catch(() => false)) {
-        await todoTab.click()
+      const todoTab2 = page.locator('.el-tabs__item:has-text("待办"), .el-tabs__item:has-text("待处理")').first()
+      if (await todoTab2.isVisible().catch(() => false)) {
+        await todoTab2.click()
         await page.waitForTimeout(1000)
       }
-      const rejectBtn = page.locator('.el-table__body-wrapper .el-table__row button:has-text("退回")').first()
-      await expect(rejectBtn).toBeVisible({ timeout: 15_000 })
-      await rejectBtn.click()
+      const targetRow2 = await locateTodoRow(page, request, contractId)
+      const rejectBtn2 = targetRow2.locator('button:has-text("退回")')
+      await rejectBtn2.click()
       const dialog = page.locator('.el-dialog:has-text("退回任务")')
       await expect(dialog).toBeVisible({ timeout: 10_000 })
       await dialog.locator('.el-radio:has-text("退回上一步")').click()
@@ -421,8 +433,7 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
         await todoTab.click()
         await page.waitForTimeout(1000)
       }
-      const terminateBtn = page.locator('.el-table__body-wrapper .el-table__row button:has-text("终止")').first()
-      await expect(terminateBtn).toBeVisible({ timeout: 15_000 })
+      const terminateBtn = (await locateTodoRow(page, request, contractId)).locator('button:has-text("终止")')
       // ElMessageBox 是 DOM 弹窗（非 native dialog，CI 首跑实证 page.once('dialog') 永不触发）
       await terminateBtn.click()
       const msgbox = page.locator('.el-message-box')
@@ -456,12 +467,11 @@ test.describe('审批流 — 真实办理操作（2026-08-14 P1 补测，@matrix
         await todoTab.click()
         await page.waitForTimeout(1000)
       }
-      // 勾选前两行（页首即最新待办）
-      const checkboxes = page.locator('.el-table__body-wrapper .el-table__row .el-checkbox')
-      const rowCount = await checkboxes.count()
-      expect(rowCount, '应有待办行可勾选').toBeGreaterThanOrEqual(2)
-      await checkboxes.nth(0).click()
-      await checkboxes.nth(1).click()
+      // 勾选两个目标待办行（按 createTime 定位，CI 并行下首行未必是目标）
+      const rowA = await locateTodoRow(page, request, cidA)
+      const rowB = await locateTodoRow(page, request, cidB)
+      await rowA.locator('.el-checkbox').first().click()
+      await rowB.locator('.el-checkbox').first().click()
       const batchBtn = page.locator('button:has-text("批量通过")').first()
       await expect(batchBtn).toBeEnabled({ timeout: 10_000 })
       await batchBtn.click()
