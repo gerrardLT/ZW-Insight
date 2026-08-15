@@ -283,24 +283,159 @@ test.describe('支出域 — 机械结算 create 页（@matrix B-11/B-12/B-13）
   })
 })
 
-test.describe('支出域 — 盲点 13 现状钉住：四支出合同页无提交审批入口', () => {
-  // @matrix 盲点 13：四个支出合同页 UI 均无提交审批按钮但 API 存在（submitXxxContract 前端函数齐全），
-  // 合同生效链路 UI 断链。本组钉住现状（toHaveCount(0)），产品决策补入口后翻转为正向用例。
-  const pages: Array<{ route: string; name: string }> = [
-    { route: '/labor/contract', name: '劳务合同' },
-    { route: '/machine/contract', name: '机械合同' },
-    { route: '/subcontract/contract', name: '分包合同' },
-    { route: '/purchase/contract', name: '采购合同' },
+test.describe('支出域 — 盲点 13 修复验证：四支出合同页提交审批入口（2026-08-15 决策 A）', () => {
+  // @matrix 盲点 13：决策 A 补 UI 提交按钮后翻转为正向用例——
+  // DRAFT 行显示「提交审批」→ 点击+确认 → 对应 submit API 200 → 清理 withdraw+删除
+  let projectId: number
+  test.beforeAll(async () => {
+    const request = authed!
+    const pname = `${E2E_PREFIX}_盲13项目`
+    const resp = await request.post(`${API_BASE}/api/v1/project`, {
+      data: { projectName: pname, projectType: 'BUILDING', projectAddress: 'E2E', needTender: 0 },
+    })
+    expect(resp.ok(), '创建盲13共享项目').toBeTruthy()
+    const pageResp = await request.get(`${API_BASE}/api/v1/project/page`, { params: { page: 1, size: 10, projectName: pname } })
+    projectId = ((await pageResp.json()).data?.records || []).find((p: any) => p.projectName === pname)?.id
+    expect(projectId, '项目应创建成功').toBeTruthy()
+    // 系统默认预算控制为 BLOCK（hardCodedDefault 实证）且新项目无科目额度，
+    // 支出合同创建必被拦——本项目设 EXEMPT 豁免（afterAll 删配置）
+    const cfgResp = await request.post(`${API_BASE}/api/v1/budget-control-configs`, {
+      data: { projectId, controlMode: 'EXEMPT', warningThreshold: 80 },
+    })
+    expect(cfgResp.ok(), '设 EXEMPT 预算控制').toBeTruthy()
+  })
+  test.afterAll(async () => {
+    if (projectId) {
+      const cfgPage = await authed!.get(`${API_BASE}/api/v1/budget-control-configs`, { params: { page: 1, size: 20 } })
+      const cfg = ((await cfgPage.json()).data?.records || []).find((c: any) => String(c.projectId) === String(projectId))
+      if (cfg) await authed!.delete(`${API_BASE}/api/v1/budget-control-configs/${cfg.id}`).catch(() => {})
+      await authed!.delete(`${API_BASE}/api/v1/project/${projectId}`).catch(() => {})
+    }
+  })
+  const cases: Array<{ route: string; name: string; createPath: string; submitPath: (id: any) => string; delPath: (id: any) => string; payload: (n: string, pid: number) => any; businessType: string }> = [
+    {
+      route: '/labor/contract', name: '劳务合同',
+      createPath: '/api/v1/labor/contract', submitPath: (id) => `/api/v1/labor/contract/${id}/submit`, delPath: (id) => `/api/v1/labor/contract/${id}`,
+      payload: (n, pid) => ({ projectId: pid, contractName: n, teamName: `${n}_班组`, contractAmount: 1000, startDate: '2026-01-01', endDate: '2026-12-31' }),
+      businessType: 'LABOR_CONTRACT',
+    },
+    {
+      route: '/machine/contract', name: '机械合同',
+      createPath: '/api/v1/machine/contract', submitPath: (id) => `/api/v1/machine/contract/${id}/submit`, delPath: (id) => `/api/v1/machine/contract/${id}`,
+      payload: (n, pid) => ({ projectId: pid, contractName: n, machineName: `${n}_机械`, supplierName: 'E2E供应商', rentalType: 'SHIFT', contractAmount: 1000, startDate: '2026-01-01', endDate: '2026-12-31' }),
+      businessType: 'MACHINE_CONTRACT',
+    },
+    {
+      route: '/subcontract/contract', name: '分包合同',
+      createPath: '/api/v1/subcontract/contract', submitPath: (id) => `/api/v1/subcontract/contract/${id}/submit`, delPath: (id) => `/api/v1/subcontract/contract/${id}`,
+      payload: (n, pid) => ({ projectId: pid, contractName: n, subcontractorName: 'E2E分包商', contractAmount: 1000, startDate: '2026-01-01', endDate: '2026-12-31' }),
+      businessType: 'SUBCONTRACT',
+    },
+    {
+      route: '/purchase/contract', name: '采购合同',
+      createPath: '/api/v1/purchase/contract', submitPath: (id) => `/api/v1/purchase/contract/${id}/submit`, delPath: (id) => `/api/v1/purchase/contract/${id}`,
+      payload: (n, pid) => ({ projectId: pid, contractName: n, contractCode: `E2E_${Date.now()}`, partyAName: 'E2E甲方', supplierName: 'E2E供应商', contractAmount: 1000, signingDate: '2026-01-15' }),
+      businessType: 'PURCHASE_CONTRACT',
+    },
   ]
-  for (const p of pages) {
-    test(`${p.name}页 ${p.route} — 无提交审批按钮（盲点 13 钉住）`, async ({ page }) => {
-      await page.goto(p.route)
-      await page.waitForLoadState('networkidle')
-      await page.waitForSelector('.el-table, .el-empty', { timeout: 15_000 })
-      const submitBtns = page.locator('.el-table__row button:has-text("提交")')
-      expect(await submitBtns.count(), `${p.name}行内不应有提交按钮（现状钉住）`).toBe(0)
+  for (const c of cases) {
+    test(`${c.name}页 — DRAFT 行提交审批按钮可用且触发 submit（盲点 13 翻转）`, async ({ page }) => {
+      const request = authed!
+      const cname = `${E2E_PREFIX}_盲13_${c.name}`
+      const createResp = await request.post(`${API_BASE}${c.createPath}`, { data: c.payload(cname, projectId) })
+      expect(createResp.ok(), `创建${c.name}`).toBeTruthy()
+      // 按合同名过滤查询（租户 1 数据量大，无过滤翻页可能查不到新记录）
+      const pageResp = await request.get(`${API_BASE}${c.createPath}/page`, { params: { page: 1, size: 50, contractName: cname } })
+      const created = ((await pageResp.json()).data?.records || []).find((r: any) => r.contractName === cname)
+      expect(created, `${c.name}应创建成功`).toBeTruthy()
+      try {
+        await page.goto(c.route)
+        await page.waitForLoadState('networkidle')
+        const row = page.locator('.el-table__row', { hasText: cname })
+        await expect(row.first()).toBeVisible({ timeout: 15_000 })
+        const submitBtn = row.first().locator('button:has-text("提交审批")')
+        await expect(submitBtn, 'DRAFT 行应显示提交审批按钮（盲点 13 修复）').toBeVisible()
+        await submitBtn.click()
+        const msgbox = page.locator('.el-message-box')
+        await expect(msgbox).toBeVisible({ timeout: 10_000 })
+        const [submitResp] = await Promise.all([
+          page.waitForResponse(
+            (resp) => resp.url().includes(c.submitPath(created.id)) && resp.request().method() === 'POST',
+            { timeout: 15_000 }
+          ),
+          msgbox.locator('button:has-text("确定")').click(),
+        ])
+        expect(submitResp.status()).toBe(200)
+      } finally {
+        await request.post(`${API_BASE}/api/v1/workflow/approval/withdraw-by-business?businessType=${c.businessType}&businessId=${created.id}`).catch(() => {})
+        await request.delete(`${API_BASE}${c.delPath(created.id)}`).catch(() => {})
+      }
     })
   }
+})
+
+test.describe('支出域 — 询价定标 UI 闭环（B-P-X1，2026-08-15 决策 A 补齐）', () => {
+  // @matrix B-P-X1：发布询价 → 两供应商报价 → UI 比价定标（报价列表+计算排名+确认定标）→ 状态 AWARDED
+  test('比价定标全流程 — 报价列表/排名/定标（UI 真实操作）', async ({ page }) => {
+    const request = authed!
+    const title = `${E2E_PREFIX}_定标询价`
+    // 1. 创建并发布询价（API）
+    const createResp = await request.post(`${API_BASE}/api/v1/purchase/inquiry`, {
+      data: {
+        title, materialSummary: 'E2E定标材料', description: 'E2E',
+        deadline: '2026-12-31T00:00:00',
+        items: [{ materialName: 'E2E定标材料', specification: 'S1', quantity: 10 }],
+      },
+    })
+    expect(createResp.ok(), '创建询价').toBeTruthy()
+    const iqPage = await request.get(`${API_BASE}/api/v1/purchase/inquiry/page`, { params: { page: 1, size: 50, title } })
+    const inquiry = ((await iqPage.json()).data?.records || []).find((r: any) => r.title === title)
+    expect(inquiry, '询价应创建成功').toBeTruthy()
+    const pubResp = await request.post(`${API_BASE}/api/v1/purchase/inquiry/${inquiry.id}/publish`)
+    expect(pubResp.ok(), '发布询价').toBeTruthy()
+    // 2. 两供应商报价（API，details 总额不同）
+    for (const [sid, sname, price] of [[1, 'E2E供应商A', 9000], [2, 'E2E供应商B', 8000]] as const) {
+      const q = await request.post(`${API_BASE}/api/v1/purchase/quotation/submit`, {
+        data: { inquiryId: inquiry.id, supplierId: sid, supplierName: sname, details: [{ totalPrice: price }] },
+      })
+      expect(q.ok(), `报价 ${sname}`).toBeTruthy()
+    }
+    try {
+      // 3. UI 比价定标
+      await page.goto('/purchase/inquiry')
+      await page.waitForLoadState('networkidle')
+      const row = page.locator('.el-table__row', { hasText: title })
+      await expect(row.first()).toBeVisible({ timeout: 15_000 })
+      await row.first().locator('button:has-text("比价定标")').click()
+      const dialog = page.locator('.el-dialog:has-text("比价定标")')
+      await expect(dialog).toBeVisible({ timeout: 10_000 })
+      // 报价列表应含两供应商
+      await expect(dialog.locator('.el-table').first().locator('.el-table__row')).toHaveCount(2, { timeout: 10_000 })
+      // 计算排名
+      await dialog.locator('button:has-text("计算排名")').click()
+      const rankingTable = dialog.locator('.el-table').nth(1)
+      await expect(rankingTable.locator('.el-table__row')).toHaveCount(2, { timeout: 10_000 })
+      // 低价排第一（B 8000 < A 9000）
+      const firstRankRow = rankingTable.locator('.el-table__row').first()
+      await expect(firstRankRow).toContainText('E2E供应商B')
+      // 确认定标给第一名
+      await firstRankRow.locator('button:has-text("确认定标")').click()
+      const msgbox = page.locator('.el-message-box')
+      await expect(msgbox).toBeVisible({ timeout: 10_000 })
+      const [confirmResp] = await Promise.all([
+        page.waitForResponse(
+          (resp) => resp.url().includes('/v1/purchase/bid/confirm') && resp.request().method() === 'POST',
+          { timeout: 15_000 }
+        ),
+        msgbox.locator('button:has-text("确定")').click(),
+      ])
+      expect(confirmResp.status()).toBe(200)
+      // 列表状态翻转为已定标
+      await expect(row.first().locator('.el-tag')).toContainText('已定标', { timeout: 10_000 })
+    } finally {
+      await request.delete(`${API_BASE}/api/v1/purchase/inquiry/${inquiry.id}`).catch(() => {})
+    }
+  })
 })
 
 test.describe('支出域 — 工资单生成与提交（@matrix B-18）', () => {

@@ -34,9 +34,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交审批</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -67,7 +68,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getSubcontractPage, createSubcontract, updateSubcontract, deleteSubcontract } from '@/api/subcontract'
+import { getSubcontractPage, createSubcontract, updateSubcontract, deleteSubcontract, submitSubcontract } from '@/api/subcontract'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -88,6 +89,8 @@ function handleAdd() { isEdit.value = false; formData.value = { id: undefined, c
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateSubcontract(formData.value) : await createSubcontract(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteSubcontract(row.id); ElMessage.success('删除成功'); loadData() }
+// 盲点 13 修复（2026-08-15 决策 A）：补提交审批入口，合同生效链路 UI 闭环
+async function handleSubmit(row: any) { await ElMessageBox.confirm('确定要提交该合同进入审批流程吗？', '提示', { type: 'warning' }); await submitSubcontract(row.id); ElMessage.success('已提交审批'); loadData() }
 onMounted(() => { loadData() })
 </script>
 

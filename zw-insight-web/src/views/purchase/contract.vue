@@ -39,9 +39,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交审批</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -82,7 +83,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getPurchaseContractPage, createPurchaseContract, updatePurchaseContract, deletePurchaseContract } from '@/api/purchase'
+import { getPurchaseContractPage, createPurchaseContract, updatePurchaseContract, deletePurchaseContract, submitPurchaseContract } from '@/api/purchase'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -127,6 +128,12 @@ async function handleFormSubmit() {
 async function handleDelete(row: any) {
   await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' })
   await deletePurchaseContract(row.id); ElMessage.success('删除成功'); loadData()
+}
+
+// 盲点 13 修复（2026-08-15 决策 A）：补提交审批入口，合同生效链路 UI 闭环
+async function handleSubmit(row: any) {
+  await ElMessageBox.confirm('确定要提交该合同进入审批流程吗？', '提示', { type: 'warning' })
+  await submitPurchaseContract(row.id); ElMessage.success('已提交审批'); loadData()
 }
 
 onMounted(() => { loadData() })

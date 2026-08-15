@@ -35,10 +35,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handlePublish(row)">发布</el-button>
+            <el-button v-if="row.status === 'PUBLISHED' || row.status === 'QUOTED' || row.status === 'AWARDED'" link type="warning" @click="handleBid(row)">比价定标</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -75,6 +76,46 @@
         <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 比价定标弹窗（2026-08-15 决策 A 补齐：报价列表+排名+定标，B-P-X1 闭环） -->
+    <el-dialog v-model="bidDialogVisible" :title="`比价定标 — ${bidRow?.title || ''}`" width="720px" destroy-on-close>
+      <div style="margin-bottom: 12px">
+        <el-button type="primary" size="small" :loading="rankingLoading" @click="handleCalculateRanking">计算排名</el-button>
+        <span v-if="bidRow?.status === 'AWARDED'" style="margin-left: 8px; color: #67c23a">已定标</span>
+      </div>
+      <el-table :data="quotationList" border size="small" style="margin-bottom: 12px">
+        <el-table-column prop="supplierName" label="报价供应商" min-width="160" />
+        <el-table-column prop="totalAmount" label="报价总额(元)" width="130" align="right">
+          <template #default="{ row }">{{ row.totalAmount?.toLocaleString() }}</template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="90" align="center">
+          <template #default="{ row }">{{ row.status === 'SUBMITTED' ? '已提交' : '草稿' }}</template>
+        </el-table-column>
+        <el-table-column prop="quotationSource" label="来源" width="90" align="center">
+          <template #default="{ row }">{{ row.quotationSource === 'PORTAL' ? '门户' : '手动' }}</template>
+        </el-table-column>
+      </el-table>
+      <el-table v-if="rankingList.length" :data="rankingList" border size="small">
+        <el-table-column prop="ranking" label="排名" width="70" align="center" />
+        <el-table-column prop="supplierName" label="供应商" min-width="160" />
+        <el-table-column prop="totalAmount" label="报价总额(元)" width="130" align="right">
+          <template #default="{ row }">{{ row.totalAmount?.toLocaleString() }}</template>
+        </el-table-column>
+        <el-table-column label="中标" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.isWinner === 1" type="success" size="small">中标</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" align="center">
+          <template #default="{ row }">
+            <el-button v-if="bidRow?.status !== 'AWARDED' && row.isWinner !== 1" link type="primary" @click="handleConfirmWinner(row)">确认定标</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="bidDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -82,7 +123,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getInquiryPage, createInquiry, updateInquiry, deleteInquiry, publishInquiry } from '@/api/purchase'
+import { getInquiryPage, createInquiry, updateInquiry, deleteInquiry, publishInquiry, getQuotationList, calculateBidRanking, confirmBidWinner, getBidResultByInquiry } from '@/api/purchase'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -129,6 +170,49 @@ function buildInquiryPayload() {
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { const payload = buildInquiryPayload(); isEdit.value ? await updateInquiry(payload) : await createInquiry(payload); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handlePublish(row: any) { await ElMessageBox.confirm('确定要发布此询价吗？', '提示', { type: 'warning' }); await publishInquiry(row.id); ElMessage.success('发布成功'); loadData() }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteInquiry(row.id); ElMessage.success('删除成功'); loadData() }
+
+// ======================== 比价定标（B-P-X1，2026-08-15 决策 A 补齐） ========================
+const bidDialogVisible = ref(false)
+const bidRow = ref<any>(null)
+const quotationList = ref<any[]>([])
+const rankingList = ref<any[]>([])
+const rankingLoading = ref(false)
+
+async function handleBid(row: any) {
+  bidRow.value = row
+  bidDialogVisible.value = true
+  quotationList.value = []
+  rankingList.value = []
+  const res: any = await getQuotationList(row.id)
+  quotationList.value = res.data || []
+  // 已定标直接展示定标结果
+  if (row.status === 'AWARDED') {
+    const bidRes: any = await getBidResultByInquiry(row.id)
+    rankingList.value = bidRes.data || []
+  }
+}
+
+async function handleCalculateRanking() {
+  if (!bidRow.value) return
+  rankingLoading.value = true
+  try {
+    const res: any = await calculateBidRanking(bidRow.value.id)
+    rankingList.value = res.data || []
+    if (!rankingList.value.length) ElMessage.warning('暂无已提交的报价，无法计算排名')
+  } finally {
+    rankingLoading.value = false
+  }
+}
+
+async function handleConfirmWinner(row: any) {
+  await ElMessageBox.confirm(`确定定标给「${row.supplierName}」吗？`, '定标确认', { type: 'warning' })
+  await confirmBidWinner({ inquiryId: bidRow.value.id, supplierId: row.supplierId })
+  ElMessage.success('定标成功')
+  bidRow.value.status = 'AWARDED'
+  const bidRes: any = await getBidResultByInquiry(bidRow.value.id)
+  rankingList.value = bidRes.data || []
+  loadData()
+}
 onMounted(() => { loadData() })
 </script>
 

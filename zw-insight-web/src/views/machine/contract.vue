@@ -29,9 +29,10 @@
         <el-table-column prop="rentalType" label="租赁方式" width="100" align="center" />
         <el-table-column prop="startDate" label="开始日期" width="110" />
         <el-table-column prop="endDate" label="结束日期" width="110" />
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交审批</el-button>
             <PrintButton
               link
               :show-icon="false"
@@ -72,7 +73,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getMachineContractPage, createMachineContract, updateMachineContract, deleteMachineContract } from '@/api/machine'
+import { getMachineContractPage, createMachineContract, updateMachineContract, deleteMachineContract, submitMachineContract } from '@/api/machine'
 import PrintButton from '@/components/PrintButton.vue'
 
 const formRef = ref<FormInstance>()
@@ -94,6 +95,8 @@ function handleAdd() { isEdit.value = false; formData.value = { id: undefined, c
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateMachineContract(formData.value) : await createMachineContract(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteMachineContract(row.id); ElMessage.success('删除成功'); loadData() }
+// 盲点 13 修复（2026-08-15 决策 A）：补提交审批入口，合同生效链路 UI 闭环
+async function handleSubmit(row: any) { await ElMessageBox.confirm('确定要提交该合同进入审批流程吗？', '提示', { type: 'warning' }); await submitMachineContract(row.id); ElMessage.success('已提交审批'); loadData() }
 /** 构造打印渲染所需的业务变量（与机械合同打印模板占位符对应） */
 function buildPrintVariables(row: any) {
   return {
