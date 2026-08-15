@@ -125,6 +125,9 @@ zw-insight-web/e2e/api-tests/node_modules/
 zw-insight-web/e2e/api-tests/.auth/
 zw-insight-web/e2e/api-tests/_*.mjs
 zw-insight-web/e2e/api-tests/_*.json
+zw-insight-web/_*.cjs
+zw-insight-web/_*.json
+zw-insight-web/_ciart/
 # OCR 训练二进制（体积大，不入库；本地/CI 自行提供）
 **/eng.traineddata
 
