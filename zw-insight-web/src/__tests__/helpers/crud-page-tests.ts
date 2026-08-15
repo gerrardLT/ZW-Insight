@@ -27,6 +27,8 @@ export interface CrudSuiteOpts {
   addButtonText: string
   requiredError: string
   requiredField?: string
+  /** 删除 API 的期望实参（默认 [row.id]；部分页为双参如 certificate 的 (type, id)） */
+  deleteExpectedArgs?: (row: any) => any[]
   records: any[]
   total?: number
 }
@@ -123,7 +125,8 @@ export function crudPageSuite(o: CrudSuiteOpts) {
       o.pageMock.mockClear()
       await st().handleDelete(o.records[0])
       await flushPromises()
-      expect(o.deleteMock).toHaveBeenCalledWith(o.records[0].id)
+      const expectedArgs = o.deleteExpectedArgs ? o.deleteExpectedArgs(o.records[0]) : [o.records[0].id]
+      expect(o.deleteMock).toHaveBeenCalledWith(...expectedArgs)
       expect(o.pageMock).toHaveBeenCalled()
     })
   })
