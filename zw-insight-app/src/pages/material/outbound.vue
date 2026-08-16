@@ -118,16 +118,19 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
+    // 后端 BizMaterialOutbound 契约为单头+明细数组；领料 outboundType=PICK，
+    // 后端按明细扣减库存（不足报「库存不足，无法领料」）
     await saveMaterialOutbound({
       projectId: form.value.projectId,
-      materialName: form.value.materialName,
-      specification: form.value.specification,
-      quantity: Number(form.value.quantity),
-      unit: form.value.unit,
-      receiver: form.value.receiver,
-      purpose: form.value.purpose,
+      outboundType: 'PICK',
       outboundDate: form.value.outboundDate,
-      remark: form.value.remark
+      operatorName: form.value.receiver,
+      details: [{
+        materialName: form.value.materialName,
+        specification: form.value.specification,
+        unit: form.value.unit,
+        quantity: Number(form.value.quantity)
+      }]
     })
     uni.showToast({ title: '提交成功', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)

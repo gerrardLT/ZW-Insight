@@ -26,8 +26,9 @@ public class ReserveFundController {
     public R<PageResult<BizReserveFundApply>> applyPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(applyService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String status) {
+        return R.ok(applyService.page(page, size, projectId, status));
     }
 
     @PostMapping("/apply")

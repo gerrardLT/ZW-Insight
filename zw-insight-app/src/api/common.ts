@@ -129,6 +129,10 @@ export function saveReimbursement(data: any) {
 export function saveOtherPayment(data: any) {
   return request({ url: '/v1/finance/other-payment', method: 'POST', data })
 }
+// 备用金申请分页查询（ReserveFundController，移动端归还页按 status=APPROVED 拉未还清申请）
+export function getReserveFundApplyPage(params?: any) {
+  return request({ url: '/v1/finance/reserve-fund/apply', data: params })
+}
 // 备用金申请（ReserveFundController）
 export function saveReserveFundApply(data: any) {
   return request({ url: '/v1/finance/reserve-fund/apply', method: 'POST', data })

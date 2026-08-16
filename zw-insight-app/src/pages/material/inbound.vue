@@ -142,16 +142,18 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
+    // 后端 BizMaterialInbound 契约为单头+明细数组（details），单价/数量随明细提交
     await saveMaterialInbound({
       projectId: form.value.projectId,
-      materialName: form.value.materialName,
-      specification: form.value.specification,
-      quantity: Number(form.value.quantity),
-      unit: form.value.unit,
-      unitPrice: Number(form.value.unitPrice),
-      supplierName: form.value.supplierName,
       inboundDate: form.value.inboundDate,
-      remark: form.value.remark
+      totalAmount: Number((Number(form.value.quantity) * Number(form.value.unitPrice || 0)).toFixed(2)),
+      details: [{
+        materialName: form.value.materialName,
+        specification: form.value.specification,
+        unit: form.value.unit,
+        quantity: Number(form.value.quantity),
+        unitPrice: Number(form.value.unitPrice)
+      }]
     })
     uni.showToast({ title: '提交成功', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)

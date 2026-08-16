@@ -164,7 +164,7 @@ describe('material/inbound.vue 材料入库页', () => {
     wrapper.unmount()
   })
 
-  it('提交载荷数量/单价转 Number，成功后延迟返回', async () => {
+  it('提交载荷按后端契约组装 details 数组（单头+明细），totalAmount 随明细计算', async () => {
     vi.useFakeTimers()
     vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [{ id: 5, projectName: 'P5' }] } })
     vi.mocked(saveMaterialInbound).mockResolvedValue({ code: 200 })
@@ -172,13 +172,16 @@ describe('material/inbound.vue 材料入库页', () => {
     await flushPromises()
 
     wrapper.vm.selectProject({ id: 5, projectName: 'P5' })
-    Object.assign(wrapper.vm.form, { materialName: '水泥', quantity: '10', unitPrice: '320.5', inboundDate: '2026-08-16' })
+    Object.assign(wrapper.vm.form, { materialName: '水泥', specification: 'P.O42.5', unit: '吨', quantity: '10', unitPrice: '320.5', inboundDate: '2026-08-16' })
     await wrapper.vm.handleSubmit()
     await flushPromises()
 
-    expect(vi.mocked(saveMaterialInbound)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 5, materialName: '水泥', quantity: 10, unitPrice: 320.5, inboundDate: '2026-08-16',
-    }))
+    expect(vi.mocked(saveMaterialInbound)).toHaveBeenCalledWith({
+      projectId: 5,
+      inboundDate: '2026-08-16',
+      totalAmount: 3205,
+      details: [{ materialName: '水泥', specification: 'P.O42.5', unit: '吨', quantity: 10, unitPrice: 320.5 }],
+    })
     vi.advanceTimersByTime(1500)
     expect((getUni() as any).navigateBack).toHaveBeenCalled()
     wrapper.unmount()
@@ -187,7 +190,7 @@ describe('material/inbound.vue 材料入库页', () => {
 })
 
 describe('material/outbound.vue 材料出库页', () => {
-  it('三段校验 + 提交载荷含领用人/用途', async () => {
+  it('三段校验 + 提交载荷 outboundType=PICK 且 details 数组，领用人映射 operatorName', async () => {
     vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [{ id: 7, projectName: 'P7' }] } })
     vi.mocked(saveMaterialOutbound).mockResolvedValue({ code: 200 })
     const toast = vi.fn()
@@ -199,13 +202,17 @@ describe('material/outbound.vue 材料出库页', () => {
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请选择项目' }))
 
     wrapper.vm.selectProject({ id: 7, projectName: 'P7' })
-    Object.assign(wrapper.vm.form, { materialName: '木方', quantity: '3', receiver: '李四', purpose: '模板支护', outboundDate: '2026-08-16' })
+    Object.assign(wrapper.vm.form, { materialName: '木方', specification: '5x10', unit: '根', quantity: '3', receiver: '李四', outboundDate: '2026-08-16' })
     await wrapper.vm.handleSubmit()
     await flushPromises()
 
-    expect(vi.mocked(saveMaterialOutbound)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 7, materialName: '木方', quantity: 3, receiver: '李四', purpose: '模板支护',
-    }))
+    expect(vi.mocked(saveMaterialOutbound)).toHaveBeenCalledWith({
+      projectId: 7,
+      outboundType: 'PICK',
+      outboundDate: '2026-08-16',
+      operatorName: '李四',
+      details: [{ materialName: '木方', specification: '5x10', unit: '根', quantity: 3 }],
+    })
     wrapper.unmount()
   })
 })

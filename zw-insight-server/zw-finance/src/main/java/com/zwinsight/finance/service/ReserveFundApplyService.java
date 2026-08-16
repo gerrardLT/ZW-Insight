@@ -26,12 +26,13 @@ public class ReserveFundApplyService {
     private final ApprovalService approvalService;
 
     /**
-     * 分页查询
+     * 分页查询（支持按项目与状态过滤；移动端备用金归还需按 status=APPROVED 拉未还清申请）
      */
-    public PageResult<BizReserveFundApply> page(int page, int size, Long projectId) {
+    public PageResult<BizReserveFundApply> page(int page, int size, Long projectId, String status) {
         Page<BizReserveFundApply> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizReserveFundApply> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizReserveFundApply::getProjectId, projectId)
+                .eq(status != null && !status.isEmpty(), BizReserveFundApply::getStatus, status)
                 .orderByDesc(BizReserveFundApply::getCreatedAt);
         Page<BizReserveFundApply> result = reserveFundApplyMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);

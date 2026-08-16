@@ -58,9 +58,23 @@ class ReserveFundApplyServiceTest {
         page.setTotal(1L);
         when(reserveFundApplyMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
 
-        PageResult<BizReserveFundApply> result = service.page(1, 10, 1L);
+        PageResult<BizReserveFundApply> result = service.page(1, 10, 1L, null);
 
         assertThat(result.getRecords()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("page - status 过滤（移动端备用金归还拉 APPROVED 未还清申请）")
+    void page_withStatusFilter() {
+        Page<BizReserveFundApply> page = new Page<>(1, 10);
+        page.setRecords(Collections.singletonList(apply(2L, "APPROVED")));
+        page.setTotal(1L);
+        when(reserveFundApplyMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        PageResult<BizReserveFundApply> result = service.page(1, 10, null, "APPROVED");
+
+        assertThat(result.getRecords()).hasSize(1);
+        assertThat(result.getRecords().get(0).getStatus()).isEqualTo("APPROVED");
     }
 
     @Test
