@@ -1,12 +1,16 @@
 package com.zwinsight.finance.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizReserveFundApply;
 import com.zwinsight.finance.mapper.BizReserveFundApplyMapper;
 import com.zwinsight.workflow.service.ApprovalService;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +35,13 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 class ReserveFundApplyServiceTest {
+
+    @BeforeAll
+    static void initTableInfo() {
+        // LambdaQueryWrapper.getSqlSegment() 断言需要实体 TableInfo
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), BizReserveFundApply.class);
+    }
 
     @Mock
     private BizReserveFundApplyMapper reserveFundApplyMapper;
@@ -69,12 +80,33 @@ class ReserveFundApplyServiceTest {
         Page<BizReserveFundApply> page = new Page<>(1, 10);
         page.setRecords(Collections.singletonList(apply(2L, "APPROVED")));
         page.setTotal(1L);
-        when(reserveFundApplyMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        org.mockito.ArgumentCaptor<LambdaQueryWrapper<BizReserveFundApply>> captor =
+                org.mockito.ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        when(reserveFundApplyMapper.selectPage(any(Page.class), captor.capture())).thenReturn(page);
 
         PageResult<BizReserveFundApply> result = service.page(1, 10, null, "APPROVED");
 
         assertThat(result.getRecords()).hasSize(1);
         assertThat(result.getRecords().get(0).getStatus()).isEqualTo("APPROVED");
+        // 强断言：wrapper 确实携带了 status 条件与参数值（删掉过滤条件本用例必须变红）
+        LambdaQueryWrapper<BizReserveFundApply> wrapper = captor.getValue();
+        assertThat(wrapper.getSqlSegment()).contains("status");
+        assertThat(wrapper.getParamNameValuePairs().values()).contains("APPROVED");
+    }
+
+    @Test
+    @DisplayName("page - status 空串/null 不拼条件")
+    void page_blankStatusOmitsCondition() {
+        Page<BizReserveFundApply> page = new Page<>(1, 10);
+        page.setRecords(Collections.emptyList());
+        page.setTotal(0L);
+        org.mockito.ArgumentCaptor<LambdaQueryWrapper<BizReserveFundApply>> captor =
+                org.mockito.ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        when(reserveFundApplyMapper.selectPage(any(Page.class), captor.capture())).thenReturn(page);
+
+        service.page(1, 10, null, "");
+
+        assertThat(captor.getValue().getParamNameValuePairs().values()).doesNotContain("");
     }
 
     @Test

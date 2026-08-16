@@ -36,11 +36,12 @@ public class PersonalReimbursementService {
     }
 
     /**
-     * 新增个人报销
+     * 新增个人报销（返回新记录 id，供移动端链式调用 submit 完成两段式提交）
      */
-    public void save(BizPersonalReimbursement reimbursement) {
+    public Long save(BizPersonalReimbursement reimbursement) {
         reimbursement.setStatus("DRAFT");
         personalReimbursementMapper.insert(reimbursement);
+        return reimbursement.getId();
     }
 
     /**

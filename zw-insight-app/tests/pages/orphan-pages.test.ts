@@ -1,11 +1,14 @@
 // @vitest-environment happy-dom
 /**
- * 孤儿页补全后的页面级组件测试（2026-08-16 用户决策 B：补功能+补测试）
+ * 孤儿页补全后的页面级组件测试（2026-08-16 决策 B；评审修复后按后端实体契约翻转断言）
  *
- * 覆盖补全后的 6 页：finance/invoice-received、other-payment、
- * personal-reimbursement、reserve-fund-apply（对齐 BizReserveFundApply）、
- * reserve-fund-return（status=APPROVED 拉未还清+BizReserveFundReturn 载荷）、
- * material/return（退货出库 outboundType=RETURN+details 契约）。
+ * 断言基准为后端真实实体字段（Jackson 静默丢弃未知字段，钉错字段=假安心）：
+ * - BizInvoiceReceived：projectId/supplierName/invoiceAmount/taxRate/invoiceDate
+ * - BizOtherPayment：projectId/payerName/paymentAmount/paymentDate/remark
+ * - BizPersonalReimbursement：totalAmount/reimbursementDate/remark（两段式 save→submit）
+ * - BizReserveFundApply：projectId/applicant/applyDate/applyAmount（两段式 save→submit）
+ * - BizReserveFundReturn：reserveApplyId/returnAmount/returnDate（待归还口径扣 offsetAmount）
+ * - BizMaterialOutbound(RETURN)：details 数组含 unitPrice（退款金额=数量×单价）
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -17,8 +20,10 @@ vi.mock('@/api/common', () => ({
   saveInvoiceReceived: vi.fn(),
   saveOtherPayment: vi.fn(),
   savePersonalReimbursement: vi.fn(),
+  submitPersonalReimbursement: vi.fn(),
   getReserveFundApplyPage: vi.fn(),
   saveReserveFundApply: vi.fn(),
+  submitReserveFundApply: vi.fn(),
   saveReserveFundReturn: vi.fn(),
   saveMaterialOutbound: vi.fn(),
 }))
@@ -31,8 +36,9 @@ import ReserveFundReturn from '@/pages/finance/reserve-fund-return.vue'
 import MaterialReturn from '@/pages/material/return.vue'
 import {
   getProjectList, getReserveFundApplyPage, saveInvoiceReceived,
-  saveOtherPayment, savePersonalReimbursement, saveReserveFundApply,
-  saveReserveFundReturn, saveMaterialOutbound,
+  saveOtherPayment, savePersonalReimbursement, submitPersonalReimbursement,
+  saveReserveFundApply, submitReserveFundApply, saveReserveFundReturn,
+  saveMaterialOutbound,
 } from '@/api/common'
 import { resetUniStorage, getUni } from '../setup'
 
@@ -49,95 +55,114 @@ function today() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
-describe('finance/invoice-received.vue 收票登记页', () => {
-  it('默认票种/日期今天；三段校验 + 提交载荷金额转 Number', async () => {
+describe('finance/invoice-received.vue 收票登记页（对齐 BizInvoiceReceived）', () => {
+  it('默认收票日期今天；三段校验 + 载荷 invoiceAmount/supplierName/taxRate', async () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
     vi.mocked(saveInvoiceReceived).mockResolvedValue({ code: 200 })
     const wrapper = mount(InvoiceReceived)
     await flushPromises()
 
-    expect(wrapper.vm.form.invoiceType).toBe('增值税专票')
     expect(wrapper.vm.form.invoiceDate).toBe(today())
 
     await wrapper.vm.handleSubmit()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请选择项目' }))
     wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
     await wrapper.vm.handleSubmit()
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入发票号码' }))
-    wrapper.vm.form.invoiceNo = 'FP-001'
-    await wrapper.vm.handleSubmit()
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入金额' }))
-
-    wrapper.vm.form.amount = '6666'
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入供应商名称' }))
     wrapper.vm.form.supplierName = '供应商B'
     await wrapper.vm.handleSubmit()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '收票金额必须大于0' }))
+
+    wrapper.vm.form.invoiceAmount = '6666'
+    wrapper.vm.form.taxRate = '13'
+    await wrapper.vm.handleSubmit()
     await flushPromises()
-    expect(vi.mocked(saveInvoiceReceived)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 1, invoiceNo: 'FP-001', supplierName: '供应商B', amount: 6666,
-    }))
+    expect(vi.mocked(saveInvoiceReceived)).toHaveBeenCalledWith({
+      projectId: 1, supplierName: '供应商B', invoiceAmount: 6666, taxRate: 13, invoiceDate: today(),
+    })
+    wrapper.unmount()
+  })
+
+  it('金额非数字（NaN）被前端守卫拦截', async () => {
+    const toast = vi.fn()
+    ;(getUni() as any).showToast = toast
+    const wrapper = mount(InvoiceReceived)
+    await flushPromises()
+    wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
+    wrapper.vm.form.supplierName = '供应商B'
+    wrapper.vm.form.invoiceAmount = 'abc'
+    await wrapper.vm.handleSubmit()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '收票金额必须大于0' }))
+    expect(vi.mocked(saveInvoiceReceived)).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 })
 
-describe('finance/other-payment.vue 其他付款页', () => {
-  it('两段校验 + 提交载荷透传整个表单', async () => {
+describe('finance/other-payment.vue 其他付款页（对齐 BizOtherPayment）', () => {
+  it('三段校验 + 载荷 paymentAmount/payerName/paymentDate（封账校验依赖日期）', async () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
     vi.mocked(saveOtherPayment).mockResolvedValue({ code: 200 })
     const wrapper = mount(OtherPayment)
     await flushPromises()
 
+    expect(wrapper.vm.form.paymentDate).toBe(today())
+
     await wrapper.vm.handleSubmit()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请选择项目' }))
     wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
     await wrapper.vm.handleSubmit()
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入金额' }))
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入付款人' }))
+    wrapper.vm.form.payerName = '财务部'
+    await wrapper.vm.handleSubmit()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '付款金额必须大于0' }))
 
-    wrapper.vm.form.amount = '800'
-    wrapper.vm.form.feeType = '检测费'
+    wrapper.vm.form.paymentAmount = '800'
+    wrapper.vm.form.remark = '检测费'
     await wrapper.vm.handleSubmit()
     await flushPromises()
-    expect(vi.mocked(saveOtherPayment)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 1, amount: '800', feeType: '检测费',
-    }))
+    expect(vi.mocked(saveOtherPayment)).toHaveBeenCalledWith({
+      projectId: 1, payerName: '财务部', paymentAmount: 800, paymentDate: today(), remark: '检测费',
+    })
     wrapper.unmount()
   })
 })
 
-describe('finance/personal-reimbursement.vue 个人报销页', () => {
-  it('默认类别交通+日期今天；两段校验 + 载荷金额转 Number 带附件', async () => {
+describe('finance/personal-reimbursement.vue 个人报销页（对齐 BizPersonalReimbursement，两段式）', () => {
+  it('金额校验 + 载荷 totalAmount/reimbursementDate，save 后链式 submit', async () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
-    vi.mocked(savePersonalReimbursement).mockResolvedValue({ code: 200 })
+    vi.mocked(savePersonalReimbursement).mockResolvedValue({ code: 200, data: 77 })
+    vi.mocked(submitPersonalReimbursement).mockResolvedValue({ code: 200 })
     const wrapper = mount(PersonalReimbursement)
     await flushPromises()
 
-    expect(wrapper.vm.form.category).toBe('交通')
-    expect(wrapper.vm.form.expenseDate).toBe(today())
+    expect(wrapper.vm.form.reimbursementDate).toBe(today())
 
     await wrapper.vm.handleSubmit()
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入金额' }))
-    wrapper.vm.form.amount = '120'
-    await wrapper.vm.handleSubmit()
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入报销事由' }))
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入报销金额' }))
 
-    wrapper.vm.form.reason = '市内打车'
-    wrapper.vm.attachments = ['file://r1.jpg']
+    wrapper.vm.form.totalAmount = '120'
+    wrapper.vm.form.remark = '市内打车'
     await wrapper.vm.handleSubmit()
     await flushPromises()
-    expect(vi.mocked(savePersonalReimbursement)).toHaveBeenCalledWith(expect.objectContaining({
-      amount: 120, reason: '市内打车', category: '交通', attachments: ['file://r1.jpg'],
-    }))
+
+    expect(vi.mocked(savePersonalReimbursement)).toHaveBeenCalledWith({
+      totalAmount: 120, reimbursementDate: today(), remark: '市内打车',
+    })
+    // 两段式：save 返回 id 后必须链式 submit，否则记录永久 DRAFT
+    expect(vi.mocked(submitPersonalReimbursement)).toHaveBeenCalledWith(77)
     wrapper.unmount()
   })
 })
 
-describe('finance/reserve-fund-apply.vue 备用金申请页（对齐 BizReserveFundApply）', () => {
-  it('三段校验（项目/申请人/金额>0）+ 载荷 projectId/applicant/applyDate/applyAmount', async () => {
+describe('finance/reserve-fund-apply.vue 备用金申请页（对齐 BizReserveFundApply，两段式）', () => {
+  it('三段校验 + 载荷，save 后链式 submit（否则归还页 APPROVED 过滤永不可见）', async () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
-    vi.mocked(saveReserveFundApply).mockResolvedValue({ code: 200 })
+    vi.mocked(saveReserveFundApply).mockResolvedValue({ code: 200, data: 99 })
+    vi.mocked(submitReserveFundApply).mockResolvedValue({ code: 200 })
     const wrapper = mount(ReserveFundApply)
     await flushPromises()
 
@@ -159,6 +184,7 @@ describe('finance/reserve-fund-apply.vue 备用金申请页（对齐 BizReserveF
     expect(vi.mocked(saveReserveFundApply)).toHaveBeenCalledWith({
       projectId: 1, applicant: '王五', applyDate: today(), applyAmount: 2000,
     })
+    expect(vi.mocked(submitReserveFundApply)).toHaveBeenCalledWith(99)
     wrapper.unmount()
   })
 })
@@ -167,25 +193,26 @@ describe('finance/reserve-fund-return.vue 备用金归还页（对齐 BizReserve
   function mockPendingList() {
     vi.mocked(getReserveFundApplyPage).mockResolvedValue({
       code: 200,
-      data: { records: [
-        { id: 11, applicant: '王五', applyAmount: 2000, returnedAmount: 500, applyDate: '2026-08-01', status: 'APPROVED' },
-        { id: 12, applicant: '赵六', applyAmount: 1000, returnedAmount: 1000, applyDate: '2026-08-02', status: 'APPROVED' },
+      data: { total: 3, records: [
+        { id: 11, applicant: '王五', applyAmount: 2000, returnedAmount: 500, offsetAmount: 0, applyDate: '2026-08-01', status: 'APPROVED' },
+        { id: 12, applicant: '赵六', applyAmount: 1000, returnedAmount: 1000, offsetAmount: 0, applyDate: '2026-08-02', status: 'APPROVED' },
+        // 已通过报销冲抵结清（returned+offset==apply），不应列入未结清
+        { id: 13, applicant: '钱七', applyAmount: 800, returnedAmount: 300, offsetAmount: 500, applyDate: '2026-08-03', status: 'APPROVED' },
       ] },
     })
   }
 
-  it('按 status=APPROVED 拉取并过滤未还清（returnedAmount<applyAmount）', async () => {
+  it('按 status=APPROVED 拉取并过滤未结清（returned+offset<apply，与后端口径一致）', async () => {
     mockPendingList()
     const wrapper = mount(ReserveFundReturn)
     await flushPromises()
 
     expect(vi.mocked(getReserveFundApplyPage)).toHaveBeenCalledWith({ page: 1, size: 100, status: 'APPROVED' })
-    // id=12 已还清被过滤
     expect(wrapper.vm.pendingList.map((f: any) => f.id)).toEqual([11])
     wrapper.unmount()
   })
 
-  it('选中自动回填剩余金额；超额拦截；载荷 reserveApplyId/returnAmount/returnDate', async () => {
+  it('选中回填剩余（扣 offsetAmount）；超额拦截；载荷 reserveApplyId/returnAmount/returnDate', async () => {
     mockPendingList()
     vi.mocked(saveReserveFundReturn).mockResolvedValue({ code: 200 })
     const toast = vi.fn()
@@ -198,9 +225,8 @@ describe('finance/reserve-fund-return.vue 备用金归还页（对齐 BizReserve
 
     wrapper.vm.selectFund(wrapper.vm.pendingList[0])
     expect(wrapper.vm.form.reserveApplyId).toBe(11)
-    expect(wrapper.vm.form.returnAmount).toBe('1500') // 2000-500
+    expect(wrapper.vm.form.returnAmount).toBe('1500') // 2000-500-0
 
-    // 超额拦截
     wrapper.vm.form.returnAmount = '2000'
     await wrapper.vm.handleSubmit()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '归还金额不能超过剩余未还金额' }))
@@ -217,7 +243,7 @@ describe('finance/reserve-fund-return.vue 备用金归还页（对齐 BizReserve
 })
 
 describe('material/return.vue 材料退货页（退货出库 RETURN 契约）', () => {
-  it('校验链：项目/材料/数量>0；退货退款必填采购合同ID', async () => {
+  it('校验链：项目/材料/数量>0；退货退款需有效合同ID与入库单价', async () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
     const wrapper = mount(MaterialReturn)
@@ -235,19 +261,24 @@ describe('material/return.vue 材料退货页（退货出库 RETURN 契约）', 
 
     wrapper.vm.form.quantity = '2'
     wrapper.vm.form.returnType = 'RETURN_REFUND'
+    wrapper.vm.form.contractId = 'abc' // 非数字：NaN 会序列化为 null 静默退化，必须拦截
     await wrapper.vm.handleSubmit()
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '退货退款需填写采购合同ID' }))
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '退货退款需填写有效的采购合同ID' }))
+
+    wrapper.vm.form.contractId = '555'
+    await wrapper.vm.handleSubmit()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '退货退款需填写入库单价（用于计算退款金额）' }))
     expect(vi.mocked(saveMaterialOutbound)).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
-  it('仅退货：载荷 outboundType=RETURN + details，contractId=null', async () => {
+  it('仅退货：载荷 outboundType=RETURN + details 含 unitPrice，contractId=null', async () => {
     vi.mocked(saveMaterialOutbound).mockResolvedValue({ code: 200 })
     const wrapper = mount(MaterialReturn)
     await flushPromises()
 
     wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
-    Object.assign(wrapper.vm.form, { materialName: '钢筋', specification: 'HRB400', unit: '吨', quantity: '2', outboundDate: '2026-08-16' })
+    Object.assign(wrapper.vm.form, { materialName: '钢筋', specification: 'HRB400', unit: '吨', quantity: '2', unitPrice: '4000', outboundDate: '2026-08-16' })
     await wrapper.vm.handleSubmit()
     await flushPromises()
 
@@ -257,25 +288,27 @@ describe('material/return.vue 材料退货页（退货出库 RETURN 契约）', 
       outboundDate: '2026-08-16',
       returnType: 'RETURN_ONLY',
       contractId: null,
-      details: [{ materialName: '钢筋', specification: 'HRB400', unit: '吨', quantity: 2 }],
+      details: [{ materialName: '钢筋', specification: 'HRB400', unit: '吨', quantity: 2, unitPrice: 4000 }],
     })
     wrapper.unmount()
   })
 
-  it('退货退款：contractId 转 Number 随载荷提交', async () => {
+  it('退货退款：contractId 转 Number，unitPrice 随明细提交（退款金额=数量×单价）', async () => {
     vi.mocked(saveMaterialOutbound).mockResolvedValue({ code: 200 })
     const wrapper = mount(MaterialReturn)
     await flushPromises()
 
     wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
     Object.assign(wrapper.vm.form, {
-      materialName: '钢筋', quantity: '1', returnType: 'RETURN_REFUND', contractId: '555', outboundDate: '2026-08-16',
+      materialName: '钢筋', quantity: '1', unitPrice: '4000',
+      returnType: 'RETURN_REFUND', contractId: '555', outboundDate: '2026-08-16',
     })
     await wrapper.vm.handleSubmit()
     await flushPromises()
 
     expect(vi.mocked(saveMaterialOutbound)).toHaveBeenCalledWith(expect.objectContaining({
       outboundType: 'RETURN', returnType: 'RETURN_REFUND', contractId: 555,
+      details: [{ materialName: '钢筋', specification: '', unit: '', quantity: 1, unitPrice: 4000 }],
     }))
     wrapper.unmount()
   })

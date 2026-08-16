@@ -39,9 +39,9 @@ public class ReserveFundApplyService {
     }
 
     /**
-     * 新增备用金申请
+     * 新增备用金申请（返回新记录 id，供移动端链式调用 submit 完成两段式提交）
      */
-    public void save(BizReserveFundApply apply) {
+    public Long save(BizReserveFundApply apply) {
         // P0 修复（FIN-RFA-04，2026-08-12）：申请金额必须>0，原实现负/零无校验
         if (apply.getApplyAmount() == null || apply.getApplyAmount().signum() <= 0) {
             throw new BusinessException("备用金申请金额必须大于0");
@@ -54,6 +54,7 @@ public class ReserveFundApplyService {
             apply.setOffsetAmount(BigDecimal.ZERO);
         }
         reserveFundApplyMapper.insert(apply);
+        return apply.getId();
     }
 
     /**

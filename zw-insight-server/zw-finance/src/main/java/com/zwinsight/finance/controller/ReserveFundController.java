@@ -32,9 +32,8 @@ public class ReserveFundController {
     }
 
     @PostMapping("/apply")
-    public R<Void> saveApply(@RequestBody BizReserveFundApply apply) {
-        applyService.save(apply);
-        return R.ok();
+    public R<Long> saveApply(@RequestBody BizReserveFundApply apply) {
+        return R.ok(applyService.save(apply));
     }
 
     @PostMapping("/apply/{id}/submit")

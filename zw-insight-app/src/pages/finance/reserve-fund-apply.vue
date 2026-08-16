@@ -36,7 +36,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getProjectList, saveReserveFundApply } from '@/api/common'
+import { getProjectList, saveReserveFundApply, submitReserveFundApply } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const submitting = ref(false)
@@ -72,18 +72,21 @@ async function handleSubmit() {
   if (!form.value.applicant) {
     uni.showToast({ title: '请输入申请人', icon: 'none' }); return
   }
-  if (!form.value.applyAmount || Number(form.value.applyAmount) <= 0) {
+  const amount = Number(form.value.applyAmount)
+  if (!Number.isFinite(amount) || amount <= 0) {
     uni.showToast({ title: '申请金额必须大于0', icon: 'none' }); return
   }
   submitting.value = true
   try {
-    // 后端 BizReserveFundApply：projectId/applicant/applyDate/applyAmount（状态后端置 DRAFT）
-    await saveReserveFundApply({
+    // 两段式提交（与 web 端一致）：save 落 DRAFT 返回 id → submit 启动审批置 APPROVED，
+    // 否则记录永久 DRAFT 且在归还页（按 APPROVED 过滤）永不可见
+    const res: any = await saveReserveFundApply({
       projectId: form.value.projectId,
       applicant: form.value.applicant,
       applyDate: form.value.applyDate,
-      applyAmount: Number(form.value.applyAmount)
+      applyAmount: amount
     })
+    await submitReserveFundApply(res.data)
     uni.showToast({ title: '提交成功', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally { submitting.value = false }

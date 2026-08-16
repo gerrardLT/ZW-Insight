@@ -137,6 +137,10 @@ export function getReserveFundApplyPage(params?: any) {
 export function saveReserveFundApply(data: any) {
   return request({ url: '/v1/finance/reserve-fund/apply', method: 'POST', data })
 }
+// 备用金申请提交审批（两段式：save 落 DRAFT 后链式 submit，ReserveFundController）
+export function submitReserveFundApply(id: number) {
+  return request({ url: `/v1/finance/reserve-fund/apply/${id}/submit`, method: 'POST' })
+}
 // 备用金归还（ReserveFundController）
 export function saveReserveFundReturn(data: any) {
   return request({ url: '/v1/finance/reserve-fund/return', method: 'POST', data })
@@ -144,6 +148,10 @@ export function saveReserveFundReturn(data: any) {
 // 个人报销（PersonalReimbursementController）
 export function savePersonalReimbursement(data: any) {
   return request({ url: '/v1/finance/personal-reimbursement', method: 'POST', data })
+}
+// 个人报销提交审批（两段式：save 落 DRAFT 后链式 submit）
+export function submitPersonalReimbursement(id: number) {
+  return request({ url: `/v1/finance/personal-reimbursement/${id}/submit`, method: 'POST' })
 }
 // 收票登记（后端 POST /v1/finance/invoice-received）
 export function saveInvoiceReceived(data: any) {

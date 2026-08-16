@@ -55,15 +55,29 @@ onMounted(async () => {
   const now = new Date()
   form.value.returnDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   try {
-    // 已审批通过的备用金申请中筛未还清（returnedAmount < applyAmount）
-    const res: any = await getReserveFundApplyPage({ page: 1, size: 100, status: 'APPROVED' })
-    const records = res.data?.records || []
-    pendingList.value = records.filter((r: any) => Number(r.returnedAmount || 0) < Number(r.applyAmount || 0))
+    // 已审批通过的备用金申请中筛未结清（returnedAmount + offsetAmount < applyAmount，
+    // 与后端 ReserveFundReturnService 待归还口径一致）；按 total 循环拉全量避免超页遗漏
+    const all: any[] = []
+    let page = 1
+    let total = Infinity
+    while (all.length < total) {
+      const res: any = await getReserveFundApplyPage({ page, size: 100, status: 'APPROVED' })
+      const records = res.data?.records || []
+      total = Number(res.data?.total || records.length)
+      all.push(...records)
+      if (!records.length) break
+      page++
+    }
+    pendingList.value = all.filter((r: any) =>
+      Number(r.returnedAmount || 0) + Number(r.offsetAmount || 0) < Number(r.applyAmount || 0))
   } catch {}
 })
 
 function remaining(item: any) {
-  return Number((Number(item.applyAmount || 0) - Number(item.returnedAmount || 0)).toFixed(2))
+  // 后端口径：applyAmount - returnedAmount - offsetAmount（报销冲抵会写大 offsetAmount）
+  return Number((Number(item.applyAmount || 0)
+    - Number(item.returnedAmount || 0)
+    - Number(item.offsetAmount || 0)).toFixed(2))
 }
 
 function selectFund(item: any) {
@@ -75,11 +89,12 @@ async function handleSubmit() {
   if (!form.value.reserveApplyId) {
     uni.showToast({ title: '请选择备用金记录', icon: 'none' }); return
   }
-  if (!form.value.returnAmount || Number(form.value.returnAmount) <= 0) {
+  const amount = Number(form.value.returnAmount)
+  if (!Number.isFinite(amount) || amount <= 0) {
     uni.showToast({ title: '请输入归还金额', icon: 'none' }); return
   }
   const fund = pendingList.value.find((f) => f.id === form.value.reserveApplyId)
-  if (fund && Number(form.value.returnAmount) > remaining(fund)) {
+  if (fund && amount > remaining(fund)) {
     uni.showToast({ title: '归还金额不能超过剩余未还金额', icon: 'none' }); return
   }
   submitting.value = true
@@ -87,7 +102,7 @@ async function handleSubmit() {
     // 后端 BizReserveFundReturn：reserveApplyId/returnAmount/returnDate
     await saveReserveFundReturn({
       reserveApplyId: form.value.reserveApplyId,
-      returnAmount: Number(form.value.returnAmount),
+      returnAmount: amount,
       returnDate: form.value.returnDate
     })
     uni.showToast({ title: '归还成功', icon: 'success' })

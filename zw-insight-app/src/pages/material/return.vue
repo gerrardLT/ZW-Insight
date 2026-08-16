@@ -23,6 +23,10 @@
         <input v-model="form.quantity" type="number" placeholder="不能超过库存数量" class="form-input" />
       </view>
       <view class="form-item">
+        <text class="form-label">入库单价</text>
+        <input v-model="form.unitPrice" type="number" placeholder="退货退款时用于计算退款金额" class="form-input" />
+      </view>
+      <view class="form-item">
         <text class="form-label">退货类型</text>
         <view class="form-value radio-row">
           <text class="radio" :class="{ on: form.returnType === 'RETURN_ONLY' }" @click="form.returnType = 'RETURN_ONLY'">仅退货</text>
@@ -75,6 +79,7 @@ const form = ref({
   specification: '',
   unit: '',
   quantity: '',
+  unitPrice: '',
   returnType: 'RETURN_ONLY',
   contractId: '',
   outboundDate: ''
@@ -102,27 +107,42 @@ async function handleSubmit() {
   if (!form.value.materialName) {
     uni.showToast({ title: '请输入材料名称', icon: 'none' }); return
   }
-  if (!form.value.quantity || Number(form.value.quantity) <= 0) {
+  const qty = Number(form.value.quantity)
+  if (!Number.isFinite(qty) || qty <= 0) {
     uni.showToast({ title: '请输入退货数量', icon: 'none' }); return
   }
-  if (form.value.returnType === 'RETURN_REFUND' && !form.value.contractId) {
-    uni.showToast({ title: '退货退款需填写采购合同ID', icon: 'none' }); return
+  const price = Number(form.value.unitPrice || 0)
+  if (!Number.isFinite(price) || price < 0) {
+    uni.showToast({ title: '入库单价格式不正确', icon: 'none' }); return
+  }
+  let contractId: number | null = null
+  if (form.value.returnType === 'RETURN_REFUND') {
+    // 非数字/NaN 会序列化为 null 使退款事件不发布（静默退化为仅退货），必须正整数校验
+    const cid = Number(form.value.contractId)
+    if (!form.value.contractId || !Number.isInteger(cid) || cid <= 0) {
+      uni.showToast({ title: '退货退款需填写有效的采购合同ID', icon: 'none' }); return
+    }
+    if (price <= 0) {
+      uni.showToast({ title: '退货退款需填写入库单价（用于计算退款金额）', icon: 'none' }); return
+    }
+    contractId = cid
   }
   submitting.value = true
   try {
     // 材料退货 = 出库单 outboundType=RETURN（后端自动扣库存；关联采购合同时
-    // 发布 MaterialReturnCreatedEvent 自动生成退款申请并提交审批）
+    // 发布 MaterialReturnCreatedEvent，按明细 unitPrice 自动生成退款申请并提交审批）
     await saveMaterialOutbound({
       projectId: form.value.projectId,
       outboundType: 'RETURN',
       outboundDate: form.value.outboundDate,
       returnType: form.value.returnType,
-      contractId: form.value.returnType === 'RETURN_REFUND' ? Number(form.value.contractId) : null,
+      contractId,
       details: [{
         materialName: form.value.materialName,
         specification: form.value.specification,
         unit: form.value.unit,
-        quantity: Number(form.value.quantity)
+        quantity: qty,
+        unitPrice: price
       }]
     })
     uni.showToast({ title: '退货提交成功', icon: 'success' })

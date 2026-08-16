@@ -152,7 +152,7 @@ async function handleSubmit() {
         specification: form.value.specification,
         unit: form.value.unit,
         quantity: Number(form.value.quantity),
-        unitPrice: Number(form.value.unitPrice)
+        unitPrice: Number(form.value.unitPrice || 0)
       }]
     })
     uni.showToast({ title: '提交成功', icon: 'success' })
