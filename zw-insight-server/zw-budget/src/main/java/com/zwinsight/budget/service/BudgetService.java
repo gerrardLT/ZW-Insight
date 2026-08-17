@@ -125,16 +125,24 @@ public class BudgetService {
             throw new BusinessException("仅草稿状态可提交");
         }
 
-        // 汇总明细金额
-        BigDecimal totalAmount = calculateTotalAmount(id);
-        budget.setTotalAmount(totalAmount);
+        // 汇总明细金额：仅当存在明细行时以明细合计覆盖总额；
+        // 无明细时保留用户录入的 totalAmount（前端预算编制弹窗仅录总额，
+        // 若用空明细汇总 0 覆盖会导致预算总额清零并连带回写破坏项目预算，
+        // 2026-08-17 归零重建后真实浏览器全链路实测发现）。
+        List<BizBudgetDetail> details = listDetails(id);
+        if (!details.isEmpty()) {
+            BigDecimal totalAmount = details.stream()
+                    .map(d -> d.getBudgetTotalPrice() != null ? d.getBudgetTotalPrice() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            budget.setTotalAmount(totalAmount);
+        }
         budget.setStatus("APPROVED");
         budgetMapper.updateById(budget);
 
         // 回写项目预算金额
         BizProject project = projectMapper.selectById(budget.getProjectId());
         if (project != null) {
-            project.setBudgetAmount(totalAmount);
+            project.setBudgetAmount(budget.getTotalAmount());
             projectMapper.updateById(project);
         }
     }
@@ -179,13 +187,19 @@ public class BudgetService {
     }
 
     /**
+     * 查询预算明细行
+     */
+    private List<BizBudgetDetail> listDetails(Long budgetId) {
+        LambdaQueryWrapper<BizBudgetDetail> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BizBudgetDetail::getBudgetId, budgetId);
+        return budgetDetailMapper.selectList(wrapper);
+    }
+
+    /**
      * 计算预算明细合计
      */
     private BigDecimal calculateTotalAmount(Long budgetId) {
-        LambdaQueryWrapper<BizBudgetDetail> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(BizBudgetDetail::getBudgetId, budgetId);
-        List<BizBudgetDetail> details = budgetDetailMapper.selectList(wrapper);
-        return details.stream()
+        return listDetails(budgetId).stream()
                 .map(d -> d.getBudgetTotalPrice() != null ? d.getBudgetTotalPrice() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }

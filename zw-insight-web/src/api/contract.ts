@@ -32,7 +32,9 @@ export function deleteContract(id: number) {
 }
 
 export function submitContract(id: number) {
-  return request.put<R<void>>(`/v1/contract/${id}/submit`)
+  // 后端 ContractController 为 @PostMapping("/{id}/submit")（Controller 为 SoT），
+  // 2026-08-17 真实浏览器实测发现前端误用 PUT 导致 405，修正为 POST
+  return request.post<R<void>>(`/v1/contract/${id}/submit`)
 }
 
 // ======================== 合同明细 ========================

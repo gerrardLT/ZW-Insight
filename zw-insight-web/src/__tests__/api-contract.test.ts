@@ -84,9 +84,9 @@ describe('contract API 模块', () => {
       expect(mockRequest.delete).toHaveBeenCalledWith('/v1/contract/8')
     })
 
-    it('submitContract 调用 PUT /v1/contract/:id/submit', () => {
+    it('submitContract 调用 POST /v1/contract/:id/submit（后端 ContractController @PostMapping，Controller 为 SoT）', () => {
       submitContract(2)
-      expect(mockRequest.put).toHaveBeenCalledWith('/v1/contract/2/submit')
+      expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract/2/submit')
     })
   })
 
