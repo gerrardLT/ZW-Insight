@@ -18,6 +18,10 @@ vi.mock('@/api/machine', () => ({
   getMachineContractPage: mockPage, createMachineContract: mockCreate, updateMachineContract: mockUpdate,
   deleteMachineContract: mockDelete, submitMachineContract: mockSubmit,
 }))
+// 内嵌 ProjectSelector 子组件使用，mock 防真实请求
+vi.mock('@/api/project', () => ({
+  getProjectList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+}))
 vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
