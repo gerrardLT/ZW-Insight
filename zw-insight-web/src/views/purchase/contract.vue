@@ -55,6 +55,9 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑采购合同' : '新增采购合同'" width="650px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
+        <el-form-item label="项目" prop="projectId">
+          <ProjectSelector v-model="formData.projectId" />
+        </el-form-item>
         <el-form-item label="合同名称" prop="contractName">
           <el-input v-model="formData.contractName" />
         </el-form-item>
@@ -84,6 +87,9 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getPurchaseContractPage, createPurchaseContract, updatePurchaseContract, deletePurchaseContract, submitPurchaseContract } from '@/api/purchase'
+// 2026-08-17 归零重建全链路 E2E 实测缺陷#7：表单原无项目字段，导致 projectId=null
+// ① DB project_id NOT NULL 无默认值 INSERT 直接 500；② 预算切面取不到 projectId 静默跳过管控
+import ProjectSelector from '@/components/ProjectSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -94,8 +100,9 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, contractName: '', supplierName: '', status: '' })
-const formData = ref({ id: undefined as number | undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', content: '' })
+const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', content: '' })
 const formRules = {
+  projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   contractName: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
   supplierName: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }],
   contractAmount: [{ required: true, message: '请输入合同金额', trigger: 'blur' }]
@@ -112,7 +119,7 @@ async function loadData() {
 
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, contractName: '', supplierName: '', status: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', content: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', content: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 
 async function handleFormSubmit() {

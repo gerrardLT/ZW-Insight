@@ -60,7 +60,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑预算' : '新增预算编制'" width="600px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑预算' : '新增预算编制'" width="900px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="项目" prop="projectId">
           <el-select
@@ -77,6 +77,56 @@
         <el-form-item label="预算总额" prop="totalAmount">
           <el-input-number v-model="formData.totalAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
+        <!-- 2026-08-17 缺陷#8：预算管控按科目检查额度，补齐明细录入入口 -->
+        <el-form-item label="预算明细">
+          <div style="width: 100%">
+            <div style="margin-bottom: 8px">
+              <el-button size="small" @click="addDetail">添加明细行</el-button>
+              <span v-if="detailsTotal > 0" style="margin-left: 12px; color: #909399; font-size: 12px">
+                明细合计：{{ detailsTotal.toLocaleString() }} 元（提交后总额以明细合计为准）
+              </span>
+            </div>
+            <el-table :data="formData.details" border size="small">
+              <el-table-column label="费用类别" width="150">
+                <template #default="{ row }">
+                  <el-select v-model="row.costCategory" placeholder="选择类别" style="width: 100%">
+                    <el-option v-for="c in COST_CATEGORIES" :key="c.value" :label="c.label" :value="c.value" />
+                  </el-select>
+                </template>
+              </el-table-column>
+              <el-table-column label="项目名称" min-width="140">
+                <template #default="{ row }">
+                  <el-input v-model="row.itemName" placeholder="如：钢材" />
+                </template>
+              </el-table-column>
+              <el-table-column label="单位" width="90">
+                <template #default="{ row }">
+                  <el-input v-model="row.unit" />
+                </template>
+              </el-table-column>
+              <el-table-column label="数量" width="110">
+                <template #default="{ row }">
+                  <el-input-number v-model="row.budgetQuantity" :min="0" :precision="2" :controls="false" style="width: 100%" />
+                </template>
+              </el-table-column>
+              <el-table-column label="单价(元)" width="130">
+                <template #default="{ row }">
+                  <el-input-number v-model="row.budgetUnitPrice" :min="0" :precision="2" :controls="false" style="width: 100%" />
+                </template>
+              </el-table-column>
+              <el-table-column label="合计(元)" width="120" align="right">
+                <template #default="{ row }">
+                  {{ (detailTotal(row)).toLocaleString() }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="70" align="center">
+                <template #default="{ $index }">
+                  <el-button link type="danger" size="small" @click="formData.details.splice($index, 1)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -87,11 +137,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getBudgetPage, createBudget, updateBudget, deleteBudget, submitBudget } from '@/api/budget'
+import { getBudgetPage, createBudget, updateBudget, deleteBudget, submitBudget, getBudgetDetailsByBudgetId } from '@/api/budget'
 import { getProjectList } from '@/api/project'
+
+// 费用类别（与后端 BizBudgetDetail.costCategory 枚举一致）
+const COST_CATEGORIES = [
+  { label: '材料', value: 'MATERIAL' },
+  { label: '人工', value: 'LABOR' },
+  { label: '机械', value: 'MACHINE' },
+  { label: '分包', value: 'SUBCONTRACT' },
+  { label: '间接费', value: 'INDIRECT' },
+  { label: '其他', value: 'OTHER' }
+]
+
+interface BudgetDetailRow {
+  costCategory: string
+  itemName: string
+  unit: string
+  budgetQuantity: number
+  budgetUnitPrice: number
+}
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -111,8 +179,18 @@ const queryParams = ref({
 const formData = ref({
   id: undefined as number | undefined,
   projectId: undefined as number | undefined,
-  totalAmount: 0
+  totalAmount: 0,
+  details: [] as BudgetDetailRow[]
 })
+
+function detailTotal(row: BudgetDetailRow) {
+  return (row.budgetQuantity || 0) * (row.budgetUnitPrice || 0)
+}
+const detailsTotal = computed(() => formData.value.details.reduce((s, r) => s + detailTotal(r), 0))
+
+function addDetail() {
+  formData.value.details.push({ costCategory: 'MATERIAL', itemName: '', unit: '', budgetQuantity: 1, budgetUnitPrice: 0 })
+}
 
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
@@ -147,24 +225,47 @@ function handleReset() {
 
 function handleAdd() {
   isEdit.value = false
-  formData.value = { id: undefined, projectId: undefined, totalAmount: 0 }
+  formData.value = { id: undefined, projectId: undefined, totalAmount: 0, details: [] }
   dialogVisible.value = true
 }
 
-function handleEdit(row: any) {
+async function handleEdit(row: any) {
   isEdit.value = true
-  formData.value = { id: row.id, projectId: row.projectId, totalAmount: row.totalAmount }
+  formData.value = { id: row.id, projectId: row.projectId, totalAmount: row.totalAmount, details: [] }
   dialogVisible.value = true
+  // 回填已有明细行
+  try {
+    const res: any = await getBudgetDetailsByBudgetId(row.id)
+    formData.value.details = (res.data || []).map((d: any) => ({
+      costCategory: d.costCategory || 'MATERIAL',
+      itemName: d.itemName || '',
+      unit: d.unit || '',
+      budgetQuantity: d.budgetQuantity ?? 1,
+      budgetUnitPrice: d.budgetUnitPrice ?? 0
+    }))
+  } catch { /* 明细查询失败不阻断编辑，保留空明细 */ }
 }
 
 async function handleFormSubmit() {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
-    const payload = {
+    const payload: any = {
       projectId: formData.value.projectId as number,
       budgetType: 'ORIGINAL',
-      totalAmount: formData.value.totalAmount
+      totalAmount: formData.value.totalAmount,
+      details: formData.value.details.map(d => ({
+        costCategory: d.costCategory,
+        itemName: d.itemName,
+        unit: d.unit,
+        budgetQuantity: d.budgetQuantity,
+        budgetUnitPrice: d.budgetUnitPrice,
+        budgetTotalPrice: detailTotal(d)
+      }))
+    }
+    // 存在明细时总额以明细合计为准（与后端 submit 汇总口径一致）
+    if (formData.value.details.length > 0) {
+      payload.totalAmount = detailsTotal.value
     }
     if (isEdit.value) {
       await updateBudget({ ...payload, id: formData.value.id as number })

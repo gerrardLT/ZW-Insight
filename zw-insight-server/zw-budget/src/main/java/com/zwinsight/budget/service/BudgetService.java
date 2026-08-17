@@ -69,23 +69,57 @@ public class BudgetService {
     }
 
     /**
-     * 从请求 DTO 创建预算
+     * 从请求 DTO 创建预算（含明细行；缺陷#8：补齐预算明细录入能力）
      */
     @Transactional(rollbackFor = Exception.class)
     public void saveFromRequest(BudgetCreateRequest request) {
         BizBudget budget = new BizBudget();
         BeanUtil.copyProperties(request, budget);
         save(budget);
+        saveDetails(budget.getId(), request.getDetails());
+        // 存在明细时以明细合计为准，与 submit() 汇总口径保持一致
+        if (request.getDetails() != null && !request.getDetails().isEmpty()) {
+            budget.setTotalAmount(calculateTotalAmount(budget.getId()));
+            budgetMapper.updateById(budget);
+        }
     }
 
     /**
-     * 从请求 DTO 更新预算
+     * 从请求 DTO 更新预算（同步重建明细行）
      */
+    @Transactional(rollbackFor = Exception.class)
     public void updateFromRequest(Long id, BudgetCreateRequest request) {
         BizBudget budget = new BizBudget();
         BeanUtil.copyProperties(request, budget);
         budget.setId(id);
         update(budget);
+        if (request.getDetails() != null) {
+            budgetDetailMapper.delete(new LambdaQueryWrapper<BizBudgetDetail>()
+                    .eq(BizBudgetDetail::getBudgetId, id));
+            saveDetails(id, request.getDetails());
+            budget.setTotalAmount(calculateTotalAmount(id));
+            budgetMapper.updateById(budget);
+        }
+    }
+
+    /**
+     * 保存预算明细行（budgetTotalPrice 缺省时按 数量×单价 计算）
+     */
+    private void saveDetails(Long budgetId, List<BudgetCreateRequest.DetailItem> items) {
+        if (items == null) {
+            return;
+        }
+        for (BudgetCreateRequest.DetailItem item : items) {
+            BizBudgetDetail detail = new BizBudgetDetail();
+            BeanUtil.copyProperties(item, detail);
+            detail.setBudgetId(budgetId);
+            if (detail.getBudgetTotalPrice() == null) {
+                BigDecimal qty = detail.getBudgetQuantity() != null ? detail.getBudgetQuantity() : BigDecimal.ZERO;
+                BigDecimal price = detail.getBudgetUnitPrice() != null ? detail.getBudgetUnitPrice() : BigDecimal.ZERO;
+                detail.setBudgetTotalPrice(qty.multiply(price));
+            }
+            budgetDetailMapper.insert(detail);
+        }
     }
 
     /**
