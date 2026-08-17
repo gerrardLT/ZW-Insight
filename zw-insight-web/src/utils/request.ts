@@ -42,6 +42,14 @@ service.interceptors.response.use(
       return response.data
     }
     const res = response.data
+    // 后端 JacksonConfig 全局 Long→String（雪花 ID 防 JS 精度丢失），PageResult.total
+    // 也被序列化为字符串（如 "311"）；element-plus ElPagination 要求 total 为 number，
+    // 否则判废弃用法渲染 null 致全系统列表页分页器消失（2026-08-17 真实浏览器实测修复）。
+    // 仅对数字型字符串 total 归一，records 内雪花 ID 字符串不受影响。
+    if (res?.data && typeof res.data === 'object' && !Array.isArray(res.data)
+      && typeof res.data.total === 'string' && /^\d+$/.test(res.data.total)) {
+      res.data.total = Number(res.data.total)
+    }
     if (res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {

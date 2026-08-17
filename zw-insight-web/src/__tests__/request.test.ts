@@ -172,6 +172,45 @@ describe('request.ts 拦截器', () => {
         expect(result).toBe(response.data)
       }
     })
+
+    // 钉住：后端 Long→String 全局序列化致分页 total 为字符串，ElPagination 需 number
+    it('PageResult 字符串 total 归一为 number（分页器渲染前提）', () => {
+      const response = {
+        config: {},
+        data: { code: 200, data: { records: [{ id: '2088926380211367937' }], total: '311' }, message: 'ok' },
+      }
+      const successFn = mockAxiosInstance.interceptors.response.use.mock.calls[0]?.[0]
+      if (successFn) {
+        const result = successFn(response)
+        expect(result.data.total).toBe(311)
+        // records 内雪花 ID 保持字符串不受影响
+        expect(result.data.records[0].id).toBe('2088926380211367937')
+      }
+    })
+
+    it('非数字字符串 total 不归一（防误转）', () => {
+      const response = {
+        config: {},
+        data: { code: 200, data: { total: 'N/A' }, message: 'ok' },
+      }
+      const successFn = mockAxiosInstance.interceptors.response.use.mock.calls[0]?.[0]
+      if (successFn) {
+        const result = successFn(response)
+        expect(result.data.total).toBe('N/A')
+      }
+    })
+
+    it('data 为数组时无 total 归一（不干扰非分页响应）', () => {
+      const response = {
+        config: {},
+        data: { code: 200, data: [{ id: 1 }, { id: 2 }], message: 'ok' },
+      }
+      const successFn = mockAxiosInstance.interceptors.response.use.mock.calls[0]?.[0]
+      if (successFn) {
+        const result = successFn(response)
+        expect(Array.isArray(result.data)).toBe(true)
+      }
+    })
   })
 
   // =====================================================================
