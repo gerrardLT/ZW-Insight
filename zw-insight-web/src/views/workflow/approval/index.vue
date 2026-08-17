@@ -38,8 +38,8 @@
       <!-- 分页 -->
       <div class="pagination-wrap">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.size"
           :page-sizes="[10, 20, 50, 100]"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
@@ -115,9 +115,11 @@ const approveDialogVisible = ref(false)
 const rejectDialogVisible = ref(false)
 const submitLoading = ref(false)
 
+// 后端 /todo /done 收 page/size（ApprovalController SoT），
+// 原传 pageNum/pageSize 致后端永用默认值，翻页/改页大小实际失效（2026-08-17 真实浏览器实测修复）
 const queryParams = ref({
-  pageNum: 1,
-  pageSize: 10
+  page: 1,
+  size: 10
 })
 
 const approveForm = ref({
@@ -144,7 +146,7 @@ async function loadData() {
 }
 
 function handleTabChange() {
-  queryParams.value.pageNum = 1
+  queryParams.value.page = 1
   selectedRows.value = []
   loadData()
 }

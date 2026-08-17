@@ -117,6 +117,20 @@ describe('workflow/approval/index.vue 审批中心', () => {
     expect(mockTodo).toHaveBeenCalled()
   })
 
+  // 分页参数口径钉住（2026-08-17 真实浏览器实测修复）：
+  // 后端 /todo /done 收 page/size（ApprovalController SoT），原传 pageNum/pageSize 翻页失效
+  it('分页参数以后端 page/size 口径传递，切 tab 重置页码', async () => {
+    await mountPage()
+    expect(mockTodo).toHaveBeenCalledWith(expect.objectContaining({ page: 1, size: 10 }))
+    const st = wrapper.vm.$.setupState
+    st.queryParams.page = 3
+    st.activeTab = 'done'
+    st.handleTabChange()
+    await flushPromises()
+    expect(st.queryParams.page).toBe(1)
+    expect(mockDone).toHaveBeenCalledWith(expect.objectContaining({ page: 1, size: 10 }))
+  })
+
   it('tab 切换到已办', async () => {
     await mountPage()
     const st = wrapper.vm.$.setupState

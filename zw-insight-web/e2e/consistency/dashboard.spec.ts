@@ -47,11 +47,13 @@ test.describe.serial('dashboard 一致性', () => {
     }
 
     const data = resp.data ?? {}
+    // 期望值取后端真实字段（2026-08-17 修复：原断言 projectCount 等错位字段，
+    // 与页面同为 undefined→'0' 造成假一致；翻转后双向钉住真实值）
     const expectedByLabel: Record<string, string> = {
-      '项目总数': String(data.projectCount || 0),
-      '合同总额(万)': fmtWan(data.contractAmount),
-      '已收款(万)': fmtWan(data.receivedAmount),
-      '垫资(万)': fmtWan(data.advanceAmount),
+      '项目总数': String(data.projectTotal || 0),
+      '合同总额(万)': fmtWan(data.totalContractAmount),
+      '已收款(万)': fmtWan(data.totalIncome),
+      '垫资(万)': fmtWan(data.advanceFund),
     }
 
     const cards = page.locator('.stat-card')

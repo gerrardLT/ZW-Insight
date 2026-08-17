@@ -1,10 +1,10 @@
 /**
  * dashboard/index.vue 首页驾驶舱组件测试（2026-08-14 P2 补测）
  *
- * @matrix C-29 首页驾驶舱：greeting 时段（C-29-1）、4 卡片绑定（C-29-2）、
- *   formatWan 展示（C-29-3/4 纯函数层已覆盖，此处钉卡片绑定链）、
- *   三接口失败显式 ElMessage.error + 空图兜底（C-29-5/7/8，钉住已修复行为，
- *   consistency 层 __silentFallback__ 过期断言的对照基准）、resize（C-29-10）、dispose
+ * @matrix C-29 首页驾驶舱：greeting 时段（C-29-1）、4 卡片绑定（C-29-2，后端真实字段
+ *   projectTotal/totalContractAmount/totalIncome/advanceFund，2026-08-17 真实浏览器实测修复翻转）、
+ *   饼图 statusDistribution Map→[{name,value}] 转换钉住、柱图累计收支 toWan 钉住、
+ *   接口失败显式 ElMessage.error + 空图兜底（C-29-5/7/8）、resize（C-29-10）、dispose
  *
  * 模式与 inspection-form.scheme.component.test.ts 一致：真实 Element Plus 挂载，
  * mock API 层与 echarts 模块（happy-dom 无 canvas），setupState 驱动，afterEach unmount。
@@ -15,9 +15,7 @@ import ElementPlus from 'element-plus'
 
 // vi.hoisted 先于模块 import 执行，不可引用顶部 import 的 helper，内联构造
 const {
-  mockGetDashboardStats,
-  mockGetProjectStatusDistribution,
-  mockGetIncomeExpenseComparison,
+  mockGetCompanyOverview,
   chartInstances,
   chartInit,
   mockError,
@@ -35,9 +33,7 @@ const {
     return c
   })
   return {
-    mockGetDashboardStats: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
-    mockGetProjectStatusDistribution: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
-    mockGetIncomeExpenseComparison: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
+    mockGetCompanyOverview: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
     chartInstances: instances,
     chartInit: init,
     mockError: vi.fn(),
@@ -45,9 +41,7 @@ const {
 })
 
 vi.mock('@/api/dashboard', () => ({
-  getDashboardStats: mockGetDashboardStats,
-  getProjectStatusDistribution: mockGetProjectStatusDistribution,
-  getIncomeExpenseComparison: mockGetIncomeExpenseComparison,
+  getCompanyOverview: mockGetCompanyOverview,
 }))
 vi.mock('@/stores/user', () => ({
   useUserStore: () => ({ userInfo: { realName: '测试管理员' } }),
@@ -83,9 +77,7 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     chartInstances.length = 0
-    mockGetDashboardStats.mockResolvedValue({ code: 200, data: {} })
-    mockGetProjectStatusDistribution.mockResolvedValue({ code: 200, data: [] })
-    mockGetIncomeExpenseComparison.mockResolvedValue({ code: 200, data: {} })
+    mockGetCompanyOverview.mockResolvedValue({ code: 200, data: {} })
   })
 
   afterEach(() => {
@@ -111,11 +103,11 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
     expect(wrapper.text()).toContain(expected)
   })
 
-  // @matrix C-29-2
-  it('4 卡片绑定 stats 数据（formatWan 展示链）', async () => {
-    mockGetDashboardStats.mockResolvedValue({
+  // @matrix C-29-2（后端真实字段钉住：防回归再读 projectCount 等错位字段）
+  it('4 卡片绑定后端真实字段（formatWan 展示链）', async () => {
+    mockGetCompanyOverview.mockResolvedValue({
       code: 200,
-      data: { projectCount: 12, contractAmount: 5000000, receivedAmount: 1234567, advanceAmount: null },
+      data: { projectTotal: 12, totalContractAmount: 5000000, totalIncome: 1234567, advanceFund: null },
     })
     const wrapper = await mountPage()
     const text = wrapper.text()
@@ -126,9 +118,39 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
     expect(text).toContain('123.5')
   })
 
+  // 饼图：statusDistribution Map → [{name,value}] 转换钉住（修复前整个 overview 对象当数组致空白）
+  it('饼图将 statusDistribution Map 转为 [{name,value}]', async () => {
+    mockGetCompanyOverview.mockResolvedValue({
+      code: 200,
+      data: { statusDistribution: { '施工中': 3, '已竣工': 2, '报备中': 1 } },
+    })
+    await mountPage()
+    const pie = chartInstances[0]
+    const opt = pie.setOption.mock.calls[pie.setOption.mock.calls.length - 1][0]
+    expect(opt.series[0].type).toBe('pie')
+    expect(opt.series[0].data).toEqual([
+      { name: '施工中', value: 3 },
+      { name: '已竣工', value: 2 },
+      { name: '报备中', value: 1 },
+    ])
+  })
+
+  // 柱图：累计收入/支出 toWan 钉住（后端无月度端点，不再伪造 months/income/expense）
+  it('柱图展示累计收入/支出（toWan 转换）', async () => {
+    mockGetCompanyOverview.mockResolvedValue({
+      code: 200,
+      data: { totalIncome: 59900000, totalExpense: 30000000 },
+    })
+    await mountPage()
+    const bar = chartInstances[1]
+    const opt = bar.setOption.mock.calls[bar.setOption.mock.calls.length - 1][0]
+    expect(opt.xAxis.data).toEqual(['收入', '支出'])
+    expect(opt.series[0].data.map((d: any) => d.value)).toEqual([5990, 3000])
+  })
+
   // @matrix C-29-5（钉住已修复行为：接口失败显式提示，不静默）
   it('loadStats 失败 → ElMessage.error 显式提示且 stats 置空', async () => {
-    mockGetDashboardStats.mockRejectedValue(new Error('stats down'))
+    mockGetCompanyOverview.mockRejectedValue(new Error('stats down'))
     const wrapper = await mountPage()
     expect(mockError).toHaveBeenCalledWith(expect.stringContaining('加载统计数据失败'))
     expect(setupState(wrapper).stats).toEqual({})
@@ -136,7 +158,10 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
 
   // @matrix C-29-7
   it('饼图接口失败 → 显式提示 + 空图兜底 setOption', async () => {
-    mockGetProjectStatusDistribution.mockRejectedValue(new Error('pie down'))
+    // 首次调用（loadStats）成功，仅饼图所用调用失败：第一次 resolve、其后 reject
+    mockGetCompanyOverview
+      .mockResolvedValueOnce({ code: 200, data: {} })
+      .mockRejectedValue(new Error('pie down'))
     await mountPage()
     expect(mockError).toHaveBeenCalledWith(expect.stringContaining('加载项目状态分布失败'))
     const pie = chartInstances[0]
@@ -149,15 +174,18 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
 
   // @matrix C-29-8
   it('柱图接口失败 → 显式提示 + 空图兜底 setOption', async () => {
-    mockGetIncomeExpenseComparison.mockRejectedValue(new Error('bar down'))
+    // loadStats/饼图先成功，柱图调用失败
+    mockGetCompanyOverview
+      .mockResolvedValueOnce({ code: 200, data: {} })
+      .mockResolvedValueOnce({ code: 200, data: {} })
+      .mockRejectedValue(new Error('bar down'))
     await mountPage()
     expect(mockError).toHaveBeenCalledWith(expect.stringContaining('加载收支对比失败'))
     const bar = chartInstances[1]
     expect(bar).toBeDefined()
     const opt = bar.setOption.mock.calls[bar.setOption.mock.calls.length - 1][0]
-    expect(opt.series).toHaveLength(2)
+    expect(opt.series).toHaveLength(1)
     expect(opt.series[0].data).toEqual([])
-    expect(opt.series[1].data).toEqual([])
   })
 
   // @matrix C-29-10

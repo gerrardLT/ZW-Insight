@@ -35,18 +35,9 @@ export function getScheduleGantt(projectId: number) {
   return request.get(`/v1/dashboard/schedule-gantt/${projectId}`)
 }
 
-// ======================== 兼容别名（页面引用） ========================
-export function getDashboardStats() {
-  return getCompanyOverview()
-}
-
-export function getProjectStatusDistribution() {
-  return request.get('/v1/dashboard/company-overview')
-}
-
-export function getIncomeExpenseComparison() {
-  return request.get('/v1/dashboard/receivable-monitor')
-}
+// 兼容别名已移除（2026-08-17）：getDashboardStats/getProjectStatusDistribution/getIncomeExpenseComparison
+// 三别名均指向 company-overview 或 receivable-monitor，与页面实际消费语义错位，
+// 致仪表盘卡片全 0/饼图空白（真实浏览器实测抓出）；页面统一改用 getCompanyOverview。
 
 // ======================================================================
 // 项目看板（独立项目维度） - P2 Business Enhance

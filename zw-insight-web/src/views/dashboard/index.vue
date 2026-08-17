@@ -55,8 +55,8 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { getDashboardStats, getProjectStatusDistribution, getIncomeExpenseComparison } from '@/api/dashboard'
-import { formatWan } from '@/utils/chart-format'
+import { getCompanyOverview } from '@/api/dashboard'
+import { formatWan, toWan } from '@/utils/chart-format'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -86,16 +86,18 @@ const todayText = computed(() => {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${week[d.getDay()]}`
 })
 
+// 字段与后端 company-overview 严格对齐（2026-08-17 真实浏览器实测修复：
+// 原读 projectCount/contractAmount/receivedAmount/advanceAmount 与后端字段错位致卡片全 0）
 const statCards = computed(() => [
-  { key: 'project', label: '项目总数', value: stats.value.projectCount || 0, icon: 'Briefcase', color: '#3370ff', bg: 'rgba(51,112,255,0.12)' },
-  { key: 'contract', label: '合同总额(万)', value: formatWan(stats.value.contractAmount), icon: 'Notebook', color: '#00b42a', bg: 'rgba(0,180,42,0.12)' },
-  { key: 'received', label: '已收款(万)', value: formatWan(stats.value.receivedAmount), icon: 'WalletFilled', color: '#ff7d00', bg: 'rgba(255,125,0,0.12)' },
-  { key: 'advance', label: '垫资(万)', value: formatWan(stats.value.advanceAmount), icon: 'Warning', color: '#f53f3f', bg: 'rgba(245,63,63,0.12)' }
+  { key: 'project', label: '项目总数', value: stats.value.projectTotal || 0, icon: 'Briefcase', color: '#3370ff', bg: 'rgba(51,112,255,0.12)' },
+  { key: 'contract', label: '合同总额(万)', value: formatWan(stats.value.totalContractAmount), icon: 'Notebook', color: '#00b42a', bg: 'rgba(0,180,42,0.12)' },
+  { key: 'received', label: '已收款(万)', value: formatWan(stats.value.totalIncome), icon: 'WalletFilled', color: '#ff7d00', bg: 'rgba(255,125,0,0.12)' },
+  { key: 'advance', label: '垫资(万)', value: formatWan(stats.value.advanceFund), icon: 'Warning', color: '#f53f3f', bg: 'rgba(245,63,63,0.12)' }
 ])
 
 async function loadStats() {
   try {
-    const res: any = await getDashboardStats()
+    const res: any = await getCompanyOverview()
     stats.value = res.data || {}
   } catch (e: any) {
     // 不静默处理：显式提示错误，同时置空避免页面卡死
@@ -109,8 +111,10 @@ async function loadPieChart() {
   pieChart = echarts.init(pieChartRef.value)
 
   try {
-    const res: any = await getProjectStatusDistribution()
-    const data = res.data || []
+    const res: any = await getCompanyOverview()
+    // 后端 statusDistribution 为 Map<状态,数量>，转换为 echarts 饼图 [{name,value}]
+    const dist = res.data?.statusDistribution || {}
+    const data = Object.entries(dist).map(([name, value]) => ({ name, value: Number(value) || 0 }))
     pieChart.setOption({
       color: ['#3370ff', '#00b42a', '#ff7d00', '#f53f3f', '#722ed1', '#38bdf8'],
       tooltip: { trigger: 'item' },
@@ -148,31 +152,33 @@ async function loadBarChart() {
   barChart = echarts.init(barChartRef.value)
 
   try {
-    const res: any = await getIncomeExpenseComparison()
-    const data = res.data || { months: [], income: [], expense: [] }
+    const res: any = await getCompanyOverview()
+    // 后端无月度收支端点，柱图展示累计收入/支出总额（万元，真实数据）
+    const overview = res.data || {}
     barChart.setOption({
-      tooltip: { trigger: 'axis' },
-      legend: { data: ['收入', '支出'] },
+      tooltip: { trigger: 'axis', valueFormatter: (v: any) => `${v} 万` },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-      xAxis: { type: 'category', data: data.months || [] },
+      xAxis: { type: 'category', data: ['收入', '支出'] },
       yAxis: { type: 'value', axisLabel: { formatter: '{value} 万' } },
-      series: [
-        { name: '收入', type: 'bar', barMaxWidth: 28, itemStyle: { color: '#3370ff', borderRadius: [4, 4, 0, 0] }, data: data.income || [] },
-        { name: '支出', type: 'bar', barMaxWidth: 28, itemStyle: { color: '#f76560', borderRadius: [4, 4, 0, 0] }, data: data.expense || [] }
-      ]
+      series: [{
+        name: '金额',
+        type: 'bar',
+        barMaxWidth: 48,
+        label: { show: true, position: 'top', formatter: '{c} 万' },
+        data: [
+          { value: toWan(Number(overview.totalIncome) || 0), itemStyle: { color: '#3370ff', borderRadius: [4, 4, 0, 0] } },
+          { value: toWan(Number(overview.totalExpense) || 0), itemStyle: { color: '#f76560', borderRadius: [4, 4, 0, 0] } }
+        ]
+      }]
     })
   } catch (e: any) {
     // 不静默处理：显式提示错误，同时展空图避免区域空白
     ElMessage.error('加载收支对比失败：' + (e?.message || '接口异常'))
     barChart.setOption({
       tooltip: { trigger: 'axis' },
-      legend: { data: ['收入', '支出'] },
-      xAxis: { type: 'category', data: [] },
+      xAxis: { type: 'category', data: ['收入', '支出'] },
       yAxis: { type: 'value' },
-      series: [
-        { name: '收入', type: 'bar', data: [] },
-        { name: '支出', type: 'bar', data: [] }
-      ]
+      series: [{ name: '金额', type: 'bar', data: [] }]
     })
   }
 }
