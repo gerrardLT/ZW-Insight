@@ -1,4 +1,9 @@
 spring:
+  # Flowable 流程引擎配置（2026-08-17 P0-01 修复：启用自动建表）
+  flowable:
+    database-schema-update: true  # 自动创建/更新 Flowable 表（act_re_procdef/act_ru_task/act_hi_procinst）
+    async-executor-activate: false  # 暂不启用异步执行器（避免并发问题）
+
   # 数据源配置
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource

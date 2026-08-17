@@ -72,6 +72,9 @@ services:
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
+      # Flowable 流程引擎配置（2026-08-17 P0-01 修复：启用自动建表）
+      SPRING_FLOWABLE_DATABASE_SCHEMA_UPDATE: true  # 自动创建/更新 Flowable 表（act_re_procdef/act_ru_task/act_hi_procinst）
+      SPRING_FLOWABLE_ASYNC_EXECUTOR_ACTIVATE: false  # 暂不启用异步执行器（避免并发问题）
       # context-path 置空，使后端直接服务于控制器映射的 /api/v1/...，与前端 baseURL(/api)+/v1 对齐
       # （原 dev 配置 server.servlet.context-path=/api 会与控制器的 /api/v1 叠加成 /api/api/v1）
       SERVER_SERVLET_CONTEXT_PATH: /
