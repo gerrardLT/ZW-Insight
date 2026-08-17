@@ -328,7 +328,7 @@ test.describe('支出域 — 盲点 13 修复验证：四支出合同页提交�
     {
       route: '/subcontract/contract', name: '分包合同',
       createPath: '/api/v1/subcontract/contract', submitPath: (id) => `/api/v1/subcontract/contract/${id}/submit`, delPath: (id) => `/api/v1/subcontract/contract/${id}`,
-      payload: (n, pid) => ({ projectId: pid, contractName: n, subcontractorName: 'E2E分包商', contractAmount: 1000, startDate: '2026-01-01', endDate: '2026-12-31' }),
+      payload: (n, pid) => ({ projectId: pid, contractName: n, subcontractor: 'E2E分包商', contractAmount: 1000, signingDate: '2026-01-01' }),
       businessType: 'SUBCONTRACT',
     },
     {

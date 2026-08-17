@@ -50,6 +50,12 @@ class SubcontractSettlementServiceTest {
         item.setUnitPrice(new BigDecimal("50.555")); // 100 * 50.555 = 5055.50
         request.setDetails(List.of(item));
 
+        // D5 校验适配（2026-08-17）：合同存在且归属项目 10，与请求一致
+        BizSubcontract contract = new BizSubcontract();
+        contract.setId(1L);
+        contract.setProjectId(10L);
+        when(subcontractMapper.selectById(1L)).thenReturn(contract);
+
         // 模拟 MyBatis-Plus 自动填充 ID
         doAnswer(invocation -> {
             BizSubcontractSettlement s = invocation.getArgument(0);
@@ -160,5 +166,63 @@ class SubcontractSettlementServiceTest {
         assertThatThrownBy(() -> subSettlementService.getById(999L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("结算记录不存在");
+    }
+
+    // ==================== 审计缺陷 D5 钉住：结算项目与合同归属一致性 ====================
+
+    private SubcontractSettlementCreateRequest settlementRequest(Long contractId, Long projectId) {
+        SubcontractSettlementCreateRequest request = new SubcontractSettlementCreateRequest();
+        request.setContractId(contractId);
+        request.setProjectId(projectId);
+        SubcontractSettlementDetailDTO item = new SubcontractSettlementDetailDTO();
+        item.setItemName("人工费");
+        item.setQuantity(new BigDecimal("10"));
+        item.setUnitPrice(new BigDecimal("100"));
+        request.setDetails(List.of(item));
+        return request;
+    }
+
+    @Test
+    @DisplayName("创建结算：合同不存在拒绝（D5）")
+    void testCreateSettlement_contractNotFound() {
+        when(subcontractMapper.selectById(99L)).thenReturn(null);
+
+        assertThatThrownBy(() -> subSettlementService.createSettlement(settlementRequest(99L, 10L)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("关联分包合同不存在");
+        verify(settlementMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("创建结算：项目与合同归属不一致拒绝（D5）")
+    void testCreateSettlement_projectMismatch() {
+        BizSubcontract contract = new BizSubcontract();
+        contract.setId(1L);
+        contract.setProjectId(10L);
+        when(subcontractMapper.selectById(1L)).thenReturn(contract);
+
+        assertThatThrownBy(() -> subSettlementService.createSettlement(settlementRequest(1L, 20L)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("结算项目与分包合同所属项目不一致");
+        verify(settlementMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("更新结算：项目与合同归属不一致拒绝（D5）")
+    void testUpdateSettlement_projectMismatch() {
+        BizSubcontractSettlement existing = new BizSubcontractSettlement();
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(settlementMapper.selectById(1L)).thenReturn(existing);
+
+        BizSubcontract contract = new BizSubcontract();
+        contract.setId(1L);
+        contract.setProjectId(10L);
+        when(subcontractMapper.selectById(1L)).thenReturn(contract);
+
+        assertThatThrownBy(() -> subSettlementService.updateSettlement(1L, settlementRequest(1L, 20L)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("结算项目与分包合同所属项目不一致");
+        verify(settlementMapper, never()).updateById(any());
     }
 }

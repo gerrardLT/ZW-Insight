@@ -42,14 +42,15 @@ describe('12 - 分包管理', () => {
   // ============ 分包合同 ============
   describe('分包合同', () => {
     it('创建分包合同', async () => {
+      // 字段名以后端实体 BizSubcontract 为准（审计缺陷 D2 修复，2026-08-17）：
+      // 原载荷 subcontractorName/startDate/endDate 在实体上不存在，被 Jackson 静默丢弃致假绿
       const resp = await client.post('/api/v1/subcontract/contract', {
         projectId,
         contractName: TEST_SUBCONTRACT.contractName,
         contractCode: `E2E_SC_${Date.now()}`,
-        subcontractorName: 'E2E分包商',
+        subcontractor: 'E2E分包商',
         contractAmount: 800000,
-        startDate: '2026-01-01',
-        endDate: '2026-12-31',
+        signingDate: '2026-01-01',
       })
       expectOk(resp, '创建分包合同')
     })
@@ -68,11 +69,17 @@ describe('12 - 分包管理', () => {
       )
     })
 
-    it('获取分包合同详情', async () => {
+    it('获取分包合同详情（字段契约回读断言）', async () => {
       expect(subcontractId).toBeTruthy()
       const resp = await client.get(`/api/v1/subcontract/contract/${subcontractId}`)
       expect(resp.code).toBe(200)
       expect(resp.data?.contractName).toBe(TEST_SUBCONTRACT.contractName)
+      // 审计缺陷 D2 钉住：逐字段断言提交值真实落库，一行字段漂移即红，
+      // 杜绝未知字段被 Jackson 静默丢弃后测试假绿
+      expect(resp.data?.subcontractor).toBe('E2E分包商')
+      expect(resp.data?.signingDate).toBe('2026-01-01')
+      expect(Number(resp.data?.projectId)).toBe(projectId)
+      expect(Number(resp.data?.contractAmount)).toBe(800000)
     })
 
     it('更新分包合同', async () => {

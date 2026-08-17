@@ -85,6 +85,11 @@ class SubcontractMutationTest {
             return 1;
         }).when(settlementMapper).insert(any(BizSubcontractSettlement.class));
         when(settlementMapper.updateById(any(BizSubcontractSettlement.class))).thenReturn(1);
+        // D5 校验适配（2026-08-17）：合同归属项目与请求一致
+        BizSubcontract contractForCreate = new BizSubcontract();
+        contractForCreate.setId(10L);
+        contractForCreate.setProjectId(1L);
+        when(subcontractMapper.selectById(10L)).thenReturn(contractForCreate);
 
         SubcontractSettlementCreateRequest request = new SubcontractSettlementCreateRequest();
         request.setContractId(10L);
@@ -150,6 +155,11 @@ class SubcontractMutationTest {
         draft.setId(2L);
         draft.setStatus("DRAFT");
         when(settlementMapper.selectById(2L)).thenReturn(draft);
+        // D5 校验适配（2026-08-17）：合同归属项目与请求一致
+        BizSubcontract contractForUpdate = new BizSubcontract();
+        contractForUpdate.setId(20L);
+        contractForUpdate.setProjectId(2L);
+        when(subcontractMapper.selectById(20L)).thenReturn(contractForUpdate);
 
         SubcontractSettlementCreateRequest request = new SubcontractSettlementCreateRequest();
         request.setContractId(20L);
@@ -336,8 +346,14 @@ class SubcontractMutationTest {
 
         SubcontractSettlementCreateRequest request = new SubcontractSettlementCreateRequest();
         request.setContractId(10L);
+        request.setProjectId(3L);
         request.setDetails(Collections.singletonList(
                 detailDTO("混凝土", "2", "3000", null)));
+        // D5 校验适配（2026-08-17）：合同归属项目与请求一致
+        BizSubcontract contractForFallback = new BizSubcontract();
+        contractForFallback.setId(10L);
+        contractForFallback.setProjectId(3L);
+        when(subcontractMapper.selectById(10L)).thenReturn(contractForFallback);
 
         // 原有汇总字段为 null → 调用 updateSettlement 应回退 0
         draft.setSettlementAmount(null);

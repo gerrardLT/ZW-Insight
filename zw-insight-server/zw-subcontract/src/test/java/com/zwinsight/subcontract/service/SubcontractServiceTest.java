@@ -267,6 +267,35 @@ class SubcontractServiceTest {
                         BigDecimal.ZERO.compareTo(contract.getCumulativePaid()) == 0
                 ));
             }
+
+            @Test
+            @DisplayName("保存合同 - 金额为null/零/负数抛异常（审计缺陷 D3 钉住）")
+            void save_invalidAmount_throwsException() {
+                // null
+                BizSubcontract nullAmount = new BizSubcontract();
+                nullAmount.setProjectId(400L);
+                assertThatThrownBy(() -> subcontractService.save(nullAmount))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("分包合同金额必须大于0");
+
+                // 零
+                BizSubcontract zeroAmount = new BizSubcontract();
+                zeroAmount.setProjectId(400L);
+                zeroAmount.setContractAmount(BigDecimal.ZERO);
+                assertThatThrownBy(() -> subcontractService.save(zeroAmount))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("分包合同金额必须大于0");
+
+                // 负数
+                BizSubcontract negativeAmount = new BizSubcontract();
+                negativeAmount.setProjectId(400L);
+                negativeAmount.setContractAmount(new BigDecimal("-100.00"));
+                assertThatThrownBy(() -> subcontractService.save(negativeAmount))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("分包合同金额必须大于0");
+
+                verify(subcontractMapper, never()).insert(any(BizSubcontract.class));
+            }
         }
 
         @Nested
@@ -746,6 +775,8 @@ class SubcontractServiceTest {
 
                 request.setDetails(Arrays.asList(detail1, detail2));
 
+                // D5 校验适配（2026-08-17）：createSettlement 入口新增合同存在性+项目一致性校验
+                when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
                 when(settlementMapper.insert(any(BizSubcontractSettlement.class))).thenReturn(1);
                 when(detailMapper.insert(any(BizSubcontractSettlementDetail.class))).thenReturn(1);
                 when(settlementMapper.updateById(any(BizSubcontractSettlement.class))).thenReturn(1);
@@ -776,6 +807,8 @@ class SubcontractServiceTest {
 
                 request.setDetails(Collections.singletonList(detail));
 
+                // D5 校验适配（2026-08-17）
+                when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
                 when(settlementMapper.insert(any(BizSubcontractSettlement.class))).thenReturn(1);
                 when(detailMapper.insert(any(BizSubcontractSettlementDetail.class))).thenReturn(1);
                 when(settlementMapper.updateById(any(BizSubcontractSettlement.class))).thenReturn(1);
@@ -865,6 +898,8 @@ class SubcontractServiceTest {
                 newDetail.setUnitPrice(new BigDecimal("120.00"));
                 request.setDetails(Collections.singletonList(newDetail));
 
+                // D5 校验适配（2026-08-17）
+                when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
                 when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
                 when(detailMapper.delete(any(LambdaQueryWrapper.class))).thenReturn(3);
                 when(detailMapper.insert(any(BizSubcontractSettlementDetail.class))).thenReturn(1);

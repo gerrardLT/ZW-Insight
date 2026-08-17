@@ -214,3 +214,45 @@ describe('payment-apply.vue 五分支合同路由（@matrix C-5）', () => {
     expect(st.contractOptions[0].contractName).toBe('直出数组')
   })
 })
+
+describe('payment-apply.vue 审计缺陷修复钉住（D4/D7，2026-08-17）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetPaymentApplyPage.mockResolvedValue({ code: 200, data: { records: [], total: 0 } })
+  })
+
+  it('D7：handleAdd 默认 contractCategory 为空，强制显式选择', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.handleAdd()
+    expect(st.formData.contractCategory).toBe('')
+    wrapper.unmount()
+  })
+
+  it('D4：状态筛选值域含已驳回，不含后端从不产生的 APPROVING（展开下拉实测）', async () => {
+    vi.useFakeTimers()
+    try {
+      const wrapper = mount(PaymentApply, {
+        global: { plugins: [ElementPlus] },
+        attachTo: document.body,
+      })
+      await flushPromises()
+      // 查询区第二个下拉为状态筛选（第一个是项目 remote select），点击展开使 el-option 渲染进 body 传送门
+      const selects = wrapper.findAll('.el-select')
+      await selects[1].trigger('click')
+      await vi.advanceTimersByTimeAsync(300)
+      await flushPromises()
+      const items = Array.from(document.querySelectorAll('.el-select-dropdown__item'))
+        .map((el) => (el.textContent || '').trim())
+      expect(items.length, '状态筛选选项应已渲染').toBeGreaterThan(0)
+      expect(items).toContain('已驳回')
+      expect(items).toContain('审批中')
+      // APPROVING 为死值（后端 PaymentApplyService 仅产生 SUBMITTED），不允许回流
+      expect(document.body.innerHTML).not.toContain('APPROVING')
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+      document.body.innerHTML = ''
+    }
+  })
+})

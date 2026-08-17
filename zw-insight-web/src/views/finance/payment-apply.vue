@@ -16,10 +16,13 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
+          <!-- 筛选值域与下方 statusMap 同源：后端 PaymentApplyService 仅产生
+               DRAFT/SUBMITTED/APPROVED/REJECTED；PAID 为付款执行功能预留（后端暂未产生，勿删） -->
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
             <el-option label="草稿" value="DRAFT" />
-            <el-option label="审批中" value="APPROVING" />
+            <el-option label="审批中" value="SUBMITTED" />
             <el-option label="已通过" value="APPROVED" />
+            <el-option label="已驳回" value="REJECTED" />
             <el-option label="已付款" value="PAID" />
           </el-select>
         </el-form-item>
@@ -92,7 +95,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="合同类型" prop="contractCategory">
-          <el-select v-model="formData.contractCategory" style="width: 100%" @change="loadContracts">
+          <el-select v-model="formData.contractCategory" placeholder="请选择合同类型" style="width: 100%" @change="loadContracts">
             <el-option label="其他支出合同" value="OTHER_EXPENSE" />
             <el-option label="采购合同" value="PURCHASE" />
             <el-option label="劳务合同" value="LABOR" />
@@ -145,6 +148,7 @@ import { getLaborContractPage } from '@/api/labor'
 import { getMachineContractPage } from '@/api/machine'
 import { getSubcontractPage } from '@/api/subcontract'
 import SupplierSelector from '@/components/SupplierSelector.vue'
+import { positiveAmount } from '@/utils/form-rules'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -164,7 +168,9 @@ const queryParams = ref({
 
 const formData = ref({
   projectId: undefined as number | undefined,
-  contractCategory: 'OTHER_EXPENSE',
+  // 审计缺陷 D7 修复：不再默认 OTHER_EXPENSE（该分支累计结算无回写路径，付款永不可提交，
+  // 已由 21-finance-chain.spec.ts 钉住为产品缺口）；空值强制用户显式选择，required 规则兜底
+  contractCategory: '',
   contractId: undefined as number | undefined,
   supplierId: undefined as number | undefined,
   supplierName: '',
@@ -177,7 +183,7 @@ const formRules = {
   contractCategory: [{ required: true, message: '请选择合同类型', trigger: 'change' }],
   contractId: [{ required: true, message: '请选择关联合同', trigger: 'change' }],
   supplierId: [{ required: true, message: '请选择收款单位', trigger: 'change' }],
-  paymentAmount: [{ required: true, message: '请输入付款金额', trigger: 'blur' }],
+  paymentAmount: [{ required: true, message: '请输入付款金额', trigger: 'blur' }, ...positiveAmount('付款金额必须大于 0')],
   paymentDate: [{ required: true, message: '请选择付款日期', trigger: 'change' }]
 }
 
@@ -255,7 +261,7 @@ function handleReset() {
 }
 
 function handleAdd() {
-  formData.value = { projectId: undefined, contractCategory: 'OTHER_EXPENSE', contractId: undefined, supplierId: undefined, supplierName: '', paymentAmount: 0, paymentDate: '' }
+  formData.value = { projectId: undefined, contractCategory: '', contractId: undefined, supplierId: undefined, supplierName: '', paymentAmount: 0, paymentDate: '' }
   contractOptions.value = []
   dialogVisible.value = true
 }

@@ -424,6 +424,28 @@ class PaymentApplyServiceTest {
         }
 
         @Test
+        @DisplayName("save 金额 null/零/负数 — 拒绝落库（审计缺陷 D3 钉住）")
+        void save_invalidAmount_throws() {
+            // 范式照抄 ReserveFundApplyServiceTest L155-168（zw-finance 金额守卫负向测试惯例）
+            BizPaymentApply nullAmount = apply(10L, null);
+            nullAmount.setPaymentAmount(null);
+            assertThatThrownBy(() -> paymentApplyService.save(nullAmount))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("付款金额必须大于0");
+
+            BizPaymentApply zero = apply(11L, null);
+            zero.setPaymentAmount(BigDecimal.ZERO);
+            assertThatThrownBy(() -> paymentApplyService.save(zero))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("付款金额必须大于0");
+
+            BizPaymentApply negative = apply(12L, null);
+            negative.setPaymentAmount(new BigDecimal("-100"));
+            assertThatThrownBy(() -> paymentApplyService.save(negative))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("付款金额必须大于0");
+
+            verify(paymentApplyMapper, never()).insert(any());
+        }
+
+        @Test
         @DisplayName("update 仅 DRAFT 可编辑（FIN-PAY-02/08）")
         void update_draftOnly() {
             when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "DRAFT"));

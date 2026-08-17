@@ -66,6 +66,8 @@ public class SubcontractSettlementService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Long createSettlement(SubcontractSettlementCreateRequest request) {
+        // 审计缺陷 D5 修复（2026-08-17）：校验结算单项目与合同归属一致，防跨项目错挂污染支出台账
+        validateContractProjectMatch(request.getContractId(), request.getProjectId());
         // 1. 创建结算单主表
         BizSubcontractSettlement settlement = new BizSubcontractSettlement();
         settlement.setContractId(request.getContractId());
@@ -102,6 +104,8 @@ public class SubcontractSettlementService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
+        // 审计缺陷 D5 修复（2026-08-17）：更新时合同/项目可变，同样需一致性校验
+        validateContractProjectMatch(request.getContractId(), request.getProjectId());
 
         // 1. 更新主表基本信息
         existing.setContractId(request.getContractId());
@@ -118,6 +122,24 @@ public class SubcontractSettlementService {
         // 4. 更新结算单总金额
         existing.setSettlementAmount(totalAmount);
         settlementMapper.updateById(existing);
+    }
+
+    /**
+     * 校验结算单项目与分包合同所属项目一致（审计缺陷 D5）
+     * <p>原实现 create/update 直接落 request.getProjectId()，不校验合同存在性与归属，
+     * 结算单可挂任意项目，污染项目支出台账。</p>
+     *
+     * @param contractId 合同ID
+     * @param projectId  结算单项目ID
+     */
+    private void validateContractProjectMatch(Long contractId, Long projectId) {
+        BizSubcontract contract = subcontractMapper.selectById(contractId);
+        if (contract == null) {
+            throw new BusinessException("关联分包合同不存在");
+        }
+        if (contract.getProjectId() == null || !contract.getProjectId().equals(projectId)) {
+            throw new BusinessException("结算项目与分包合同所属项目不一致");
+        }
     }
 
     /**

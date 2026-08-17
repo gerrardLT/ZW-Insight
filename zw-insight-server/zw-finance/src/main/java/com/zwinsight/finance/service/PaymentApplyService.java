@@ -71,6 +71,10 @@ public class PaymentApplyService {
      * 新增付款申请
      */
     public void save(BizPaymentApply paymentApply) {
+        // 审计缺陷 D3 修复（2026-08-17）：付款金额必须>0，原实现负/零无校验可进审批流
+        if (paymentApply.getPaymentAmount() == null || paymentApply.getPaymentAmount().signum() <= 0) {
+            throw new BusinessException("付款金额必须大于0");
+        }
         paymentApply.setStatus("DRAFT");
         paymentApplyMapper.insert(paymentApply);
     }

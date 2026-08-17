@@ -165,10 +165,10 @@ export async function createFinanceFixture(
     projectId,
     contractName: `${name}_分包`,
     contractCode: `E2E_FSC_${ts}`,
-    subcontractorName: 'E2E分包商',
+    // 字段名以后端实体 BizSubcontract 为准（审计缺陷 D2 修复，2026-08-17）
+    subcontractor: 'E2E分包商',
     contractAmount: 600000,
-    startDate: '2026-01-01',
-    endDate: '2026-12-31',
+    signingDate: '2026-01-01',
   }, '/api/v1/subcontract/contract/page', 'contractName', `${name}_分包`,
   (id) => `/api/v1/subcontract/contract/${id}`)
 

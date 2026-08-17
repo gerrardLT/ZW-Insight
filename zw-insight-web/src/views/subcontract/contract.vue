@@ -36,9 +36,9 @@
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交审批</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -50,6 +50,7 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑分包合同' : '新增分包合同'" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
+        <el-form-item label="所属项目" prop="projectId"><ProjectSelector v-model="formData.projectId" /></el-form-item>
         <el-form-item label="合同名称" prop="contractName"><el-input v-model="formData.contractName" /></el-form-item>
         <el-form-item label="分包方" prop="subcontractor"><el-input v-model="formData.subcontractor" /></el-form-item>
         <el-form-item label="合同金额" prop="contractAmount"><el-input-number v-model="formData.contractAmount" :min="0" :precision="2" style="width: 100%" /></el-form-item>
@@ -69,6 +70,8 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getSubcontractPage, createSubcontract, updateSubcontract, deleteSubcontract, submitSubcontract } from '@/api/subcontract'
+import { positiveAmount } from '@/utils/form-rules'
+import ProjectSelector from '@/components/ProjectSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -79,13 +82,13 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, contractName: '', subcontractor: '' })
-const formData = ref({ id: undefined as number | undefined, contractName: '', subcontractor: '', contractAmount: 0, content: '', signingDate: '' })
-const formRules = { contractName: [{ required: true, message: '请输入合同名称', trigger: 'blur' }], subcontractor: [{ required: true, message: '请输入分包方', trigger: 'blur' }] }
+const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', subcontractor: '', contractAmount: 0, content: '', signingDate: '' })
+const formRules = { projectId: [{ required: true, message: '请选择项目', trigger: 'change' }], contractName: [{ required: true, message: '请输入合同名称', trigger: 'blur' }], subcontractor: [{ required: true, message: '请输入分包方', trigger: 'blur' }], contractAmount: positiveAmount('合同金额必须大于 0') }
 
 async function loadData() { loading.value = true; try { const res: any = await getSubcontractPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, contractName: '', subcontractor: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, contractName: '', subcontractor: '', contractAmount: 0, content: '', signingDate: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', subcontractor: '', contractAmount: 0, content: '', signingDate: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateSubcontract(formData.value) : await createSubcontract(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteSubcontract(row.id); ElMessage.success('删除成功'); loadData() }

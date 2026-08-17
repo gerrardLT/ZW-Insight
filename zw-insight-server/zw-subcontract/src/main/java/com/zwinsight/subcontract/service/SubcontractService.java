@@ -48,6 +48,11 @@ public class SubcontractService {
     @BlacklistCheck
     @Transactional(rollbackFor = Exception.class)
     public void save(BizSubcontract contract) {
+        // 审计缺陷 D3 修复（2026-08-17）：合同金额必须>0，原实现负/零无校验，
+        // 0 元合同落库后 maxSettlement=0 导致结算永被拒，产生流程死单据
+        if (contract.getContractAmount() == null || contract.getContractAmount().signum() <= 0) {
+            throw new BusinessException("分包合同金额必须大于0");
+        }
         // 预算控制：SUBCONTRACT
         if (contract.getBudgetId() != null) {
             LambdaQueryWrapper<BizBudgetDetail> wrapper = new LambdaQueryWrapper<>();
