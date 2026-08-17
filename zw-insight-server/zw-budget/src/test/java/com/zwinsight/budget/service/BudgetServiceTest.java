@@ -485,8 +485,8 @@ class BudgetServiceTest {
         }
 
         @Test
-        @DisplayName("提交预算无明细 - 总金额为ZERO")
-        void submit_noDetails_totalAmountIsZero() {
+        @DisplayName("提交预算无明细 - 保留用户录入的总额（旧行为是空明细汇总0覆盖清零，2026-08-17全链路实测确认为缺陷已修复）")
+        void submit_noDetails_keepsUserEnteredTotalAmount() {
             // given
             when(budgetMapper.selectById(1L)).thenReturn(sampleBudget);
             when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
@@ -501,10 +501,15 @@ class BudgetServiceTest {
             // when
             budgetService.submit(1L);
 
-            // then: 无明细时总额为 0
+            // then: 无明细时保留用户录入的总额 500000.00（sampleBudget 初始值），不被空汇总清零
             verify(budgetMapper).updateById(argThat(budget ->
-                    BigDecimal.ZERO.compareTo(budget.getTotalAmount()) == 0 &&
+                    new BigDecimal("500000.00").compareTo(budget.getTotalAmount()) == 0 &&
                     "APPROVED".equals(budget.getStatus())
+            ));
+
+            // then: 项目预算金额回写为保留后的总额
+            verify(projectMapper).updateById(argThat(proj ->
+                    new BigDecimal("500000.00").compareTo(proj.getBudgetAmount()) == 0
             ));
         }
 
