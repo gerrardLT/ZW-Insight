@@ -290,14 +290,14 @@ export async function matchDetailFields(
   return mismatches
 }
 
-/** 断言分页组件 total 与后端 total 一致 */
-export async function matchPaginationTotal(page: Page, total: number): Promise<void> {
+/** 断言分页组件 total 与后端 total 一致（后端 JacksonConfig 全局 Long→String，total 为字符串，数值归一化后比对） */
+export async function matchPaginationTotal(page: Page, total: number | string): Promise<void> {
   const pager = page.locator('.el-pagination').first()
   if (!(await pager.isVisible().catch(() => false))) return
   const totalText = await pager.locator('.el-pagination__total').first().innerText().catch(() => '')
   if (totalText) {
     const num = Number(totalText.replace(/[^\d]/g, ''))
-    expect(num, `分页 total 应与后端返回一致`).toBe(total)
+    expect(num, `分页 total 应与后端返回一致`).toBe(Number(total))
   }
 }
 

@@ -1,55 +1,76 @@
 {
   "module": "basedata",
-  "generatedAt": "2026-08-11T08:52:08.735Z",
+  "generatedAt": "2026-08-18T00:45:12.414Z",
   "pages": [
     {
       "route": "/basedata/company",
       "title": "自持公司列表",
       "api": "GET /v1/basedata/company/page",
-      "recordCount": 6,
+      "recordCount": 1,
       "mismatches": []
     },
     {
       "route": "/basedata/material",
       "title": "材料字典列表",
       "api": "GET /v1/basedata/material/page",
-      "recordCount": 10,
+      "recordCount": 2,
       "mismatches": []
     },
     {
       "route": "/basedata/owner",
       "title": "甲方单位列表",
       "api": "GET /v1/basedata/owner/page",
-      "recordCount": 4,
+      "recordCount": 1,
       "mismatches": []
     },
     {
       "route": "/basedata/supplier",
       "title": "供应商列表",
       "api": "GET /v1/basedata/supplier/page",
-      "recordCount": 10,
+      "recordCount": 5,
       "mismatches": []
     },
     {
       "route": "/basedata/supplier-blacklist",
       "title": "供应商黑名单列表",
       "api": "GET /v1/basedata/supplier-blacklist",
-      "recordCount": 1,
-      "mismatches": []
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
     },
     {
       "route": "/basedata/supplier-evaluation",
       "title": "供应商评价列表",
       "api": "GET /v1/basedata/supplier-evaluation",
-      "recordCount": 2,
-      "mismatches": []
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
     },
     {
       "route": "/basedata/inspection-scheme",
       "title": "检查方案列表",
       "api": "GET /v1/basedata/inspection-scheme/page",
-      "recordCount": 2,
-      "mismatches": []
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
     }
   ]
 }

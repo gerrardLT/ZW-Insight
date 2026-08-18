@@ -1,12 +1,12 @@
 {
   "module": "labor",
-  "generatedAt": "2026-08-11T08:52:14.582Z",
+  "generatedAt": "2026-08-18T00:45:15.883Z",
   "pages": [
     {
       "route": "/labor/contract",
       "title": "劳务合同列表",
       "api": "GET /v1/labor/contract/page",
-      "recordCount": 10,
+      "recordCount": 6,
       "mismatches": []
     }
   ]

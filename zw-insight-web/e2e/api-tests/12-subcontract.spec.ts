@@ -12,8 +12,9 @@ import type { TestDataCleaner } from './test-data'
 describe('12 - 分包管理', () => {
   let client: ApiClient
   let cleaner: TestDataCleaner
-  let projectId: number
-  let subcontractId: number
+  // 后端 JacksonConfig 全局 Long→String 序列化，雪花 ID 超 2^53，必须按字符串持有，禁止 Number() 归一化（尾数丢失）
+  let projectId: string
+  let subcontractId: string
 
   beforeAll(async () => {
     client = createAuthedClient()
@@ -78,7 +79,7 @@ describe('12 - 分包管理', () => {
       // 杜绝未知字段被 Jackson 静默丢弃后测试假绿
       expect(resp.data?.subcontractor).toBe('E2E分包商')
       expect(resp.data?.signingDate).toBe('2026-01-01')
-      expect(Number(resp.data?.projectId)).toBe(projectId)
+      expect(String(resp.data?.projectId)).toBe(String(projectId))
       expect(Number(resp.data?.contractAmount)).toBe(800000)
     })
 

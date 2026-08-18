@@ -1,20 +1,34 @@
 {
   "module": "tender",
-  "generatedAt": "2026-08-11T08:52:54.889Z",
+  "generatedAt": "2026-08-18T00:46:01.373Z",
   "pages": [
     {
       "route": "/tender/certificate",
       "title": "证件管理列表",
       "api": "GET /v1/tender/certificate/person",
-      "recordCount": 6,
-      "mismatches": []
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
     },
     {
       "route": "/tender/register",
       "title": "投标报名列表",
       "api": "GET /v1/tender/register/page",
-      "recordCount": 10,
-      "mismatches": []
+      "recordCount": 0,
+      "mismatches": [
+        {
+          "row": -1,
+          "column": "__empty__",
+          "expected": "有种子数据",
+          "actual": "测试租户下该列表为空，跳过逐行比对（非一致性缺陷）"
+        }
+      ]
     }
   ]
 }

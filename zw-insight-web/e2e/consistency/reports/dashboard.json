@@ -1,20 +1,12 @@
 {
   "module": "dashboard",
-  "generatedAt": "2026-08-11T08:52:03.052Z",
+  "generatedAt": "2026-08-18T00:44:57.786Z",
   "pages": [
     {
       "route": "/dashboard",
       "title": "首页驾驶舱",
       "api": "GET /v1/dashboard/company-overview",
-      "mismatches": [
-        {
-          "row": -1,
-          "column": "__silentFallback__",
-          "field": "loadStats/pie/bar catch",
-          "expected": "接口异常应显式提示",
-          "actual": "index.vue 三处 catch 静默兜底空数据，无错误提示（违反无静默 fallback 约定）"
-        }
-      ]
+      "mismatches": []
     },
     {
       "route": "/project-dashboard",
