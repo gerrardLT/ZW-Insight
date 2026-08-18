@@ -3,7 +3,7 @@ package com.zwinsight.subcontract.service;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.subcontract.domain.BizSubcontract;
 import com.zwinsight.subcontract.domain.BizSubcontractSettlement;
-
+import com.zwinsight.subcontract.domain.BizSubcontractSettlementDetail;
 import com.zwinsight.subcontract.dto.SubcontractSettlementCreateRequest;
 import com.zwinsight.subcontract.dto.SubcontractSettlementDetailDTO;
 import com.zwinsight.subcontract.mapper.BizSubcontractMapper;
@@ -156,6 +156,38 @@ class SubcontractSettlementServiceTest {
         assertThatThrownBy(() -> subSettlementService.delete(1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("仅草稿状态可删除");
+    }
+
+    @Test
+    @DisplayName("删除结算：E2E_TEST_ 标记数据非DRAFT放行（E2eTestGuard）")
+    void testDelete_e2eMarkerBypass() {
+        BizSubcontractSettlement settlement = new BizSubcontractSettlement();
+        settlement.setId(1L);
+        settlement.setStatus("APPROVED");
+        settlement.setRemark("E2E_TEST_1723900000000");
+        when(settlementMapper.selectById(anyLong())).thenReturn(settlement);
+
+        subSettlementService.delete(1L);
+
+        verify(detailMapper).delete(any());
+        verify(settlementMapper).deleteById(1L);
+    }
+
+    @Test
+    @DisplayName("删除结算：主表无标记、明细 itemName 带 E2E_TEST_ 前缀非DRAFT放行")
+    void testDelete_detailMarkerBypass() {
+        // 主表仅 status/remark，真实场景标记落在明细 itemName
+        BizSubcontractSettlement settlement = new BizSubcontractSettlement();
+        settlement.setId(2L);
+        settlement.setStatus("APPROVED");
+        when(settlementMapper.selectById(anyLong())).thenReturn(settlement);
+        BizSubcontractSettlementDetail detail = new BizSubcontractSettlementDetail();
+        detail.setItemName("E2E_TEST_1723900000000_土方工程");
+        when(detailMapper.selectList(any())).thenReturn(java.util.List.of(detail));
+
+        subSettlementService.delete(2L);
+
+        verify(settlementMapper).deleteById(2L);
     }
 
     @Test

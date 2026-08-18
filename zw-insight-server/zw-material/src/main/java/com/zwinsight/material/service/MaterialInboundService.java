@@ -3,7 +3,9 @@ package com.zwinsight.material.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.material.domain.*;
 import com.zwinsight.material.mapper.*;
 import com.zwinsight.purchase.domain.BizPurchaseContract;
@@ -29,6 +31,7 @@ public class MaterialInboundService {
     private final BizMaterialOutboundMapper outboundMapper;
     private final BizMaterialOutboundDetailMapper outboundDetailMapper;
     private final BizPurchaseContractMapper purchaseContractMapper;
+    private final SerialNumberService serialNumberService;
 
     /**
      * 分页查询
@@ -85,12 +88,50 @@ public class MaterialInboundService {
     }
 
     /**
-     * 删除入库单
+     * 删除入库单（APPROVED 已提交单删除时对称回滚 submit 的库存/合同累计入库，
+     * 与出库单 delete 回填语义对齐，避免删单后库存永久虚高）
      */
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         BizMaterialInbound existing = inboundMapper.selectById(id);
         if (existing == null) throw new BusinessException("入库单不存在");
-        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        List<BizMaterialInboundDetail> details = inboundDetailMapper.selectList(
+                new LambdaQueryWrapper<BizMaterialInboundDetail>().eq(BizMaterialInboundDetail::getInboundId, id));
+        // 主表无可控命名字段（inboundCode 自动编号），E2E 测试前缀落在明细 materialName → 连同明细扫描
+        if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing, details)) throw new BusinessException("仅草稿状态可删除");
+
+        // 已提交入库单 submit 时已更新库存/合同累计入库，删除须对称回滚；
+        // DRAFT 未动库存无需回滚（save 不更新库存，submit 才更新）。
+        // 不复用 updateStock：其出库分支会累加 totalOutbound 污染出库统计
+        if ("APPROVED".equals(existing.getStatus())) {
+            for (BizMaterialInboundDetail detail : details) {
+                LambdaQueryWrapper<BizProjectMaterialStock> stockWrapper = new LambdaQueryWrapper<>();
+                stockWrapper.eq(BizProjectMaterialStock::getProjectId, existing.getProjectId())
+                        .eq(BizProjectMaterialStock::getMaterialName, detail.getMaterialName())
+                        .eq(BizProjectMaterialStock::getSpecification, detail.getSpecification());
+                BizProjectMaterialStock stock = stockMapper.selectOne(stockWrapper);
+                if (stock != null) {
+                    BigDecimal qty = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
+                    stock.setStockQuantity(stock.getStockQuantity().subtract(qty));
+                    if (stock.getTotalInbound() != null) {
+                        stock.setTotalInbound(stock.getTotalInbound().subtract(qty));
+                    }
+                    stockMapper.updateById(stock);
+                }
+            }
+            if (existing.getContractId() != null) {
+                BizPurchaseContract contract = purchaseContractMapper.selectById(existing.getContractId());
+                if (contract != null) {
+                    BigDecimal cumulative = contract.getCumulativeInbound() != null ? contract.getCumulativeInbound() : BigDecimal.ZERO;
+                    BigDecimal inboundAmount = existing.getTotalAmount() != null ? existing.getTotalAmount() : BigDecimal.ZERO;
+                    contract.setCumulativeInbound(cumulative.subtract(inboundAmount).max(BigDecimal.ZERO));
+                    purchaseContractMapper.updateById(contract);
+                }
+            }
+        }
+        for (BizMaterialInboundDetail detail : details) {
+            inboundDetailMapper.deleteById(detail.getId());
+        }
         inboundMapper.deleteById(id);
     }
 
@@ -100,6 +141,11 @@ public class MaterialInboundService {
     @Transactional(rollbackFor = Exception.class)
     public void save(BizMaterialInbound inbound, List<BizMaterialInboundDetail> details) {
         inbound.setStatus("DRAFT");
+        // 自动编号（2026-08 补丁③）：UI 新增不携带单号，缺失导致列表「入库单号」列空白、
+        // 单据无法被单号检索定位；对齐 FundTransferService/PurchaseSettlementService 范式
+        if (inbound.getInboundCode() == null || inbound.getInboundCode().isBlank()) {
+            inbound.setInboundCode(serialNumberService.generate("MATERIAL_INBOUND"));
+        }
         inboundMapper.insert(inbound);
 
         BigDecimal totalAmount = BigDecimal.ZERO;

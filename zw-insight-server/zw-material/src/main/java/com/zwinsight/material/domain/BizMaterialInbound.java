@@ -39,6 +39,9 @@ public class BizMaterialInbound extends BaseEntity {
     /** 状态（DRAFT-草稿/APPROVED-已审批） */
     private String status;
 
+    /** 备注 */
+    private String remark;
+
     /** 入库明细（随主表提交，非表字段） */
     @TableField(exist = false)
     private List<BizMaterialInboundDetail> details;

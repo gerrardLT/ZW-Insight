@@ -29,4 +29,7 @@ public class BizSubcontractSettlement extends BaseEntity {
 
     /** 状态（DRAFT-草稿/APPROVED-已审批） */
     private String status;
+
+    /** 备注 */
+    private String remark;
 }

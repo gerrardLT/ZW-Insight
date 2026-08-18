@@ -103,6 +103,20 @@ class InquiryServiceTest {
     }
 
     @Test
+    @DisplayName("删除：E2E_TEST_ 标记数据非DRAFT放行（E2eTestGuard）")
+    void testDelete_e2eMarkerBypass() {
+        BizInquiry inquiry = new BizInquiry();
+        inquiry.setId(1L);
+        inquiry.setStatus("PUBLISHED");
+        inquiry.setTitle("E2E_TEST_1723900000000_询价");
+        when(inquiryMapper.selectById(1L)).thenReturn(inquiry);
+
+        inquiryService.delete(1L);
+
+        verify(inquiryMapper).deleteById(1L);
+    }
+
+    @Test
     @DisplayName("查询：不存在抛异常")
     void testGetById_notFound() {
         when(inquiryMapper.selectById(999L)).thenReturn(null);

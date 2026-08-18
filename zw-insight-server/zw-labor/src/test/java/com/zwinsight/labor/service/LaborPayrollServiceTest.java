@@ -317,6 +317,20 @@ class LaborPayrollServiceTest {
     }
 
     @Test
+    @DisplayName("删除工资单：E2E_TEST_ 标记数据非DRAFT放行（E2eTestGuard）")
+    void testDelete_e2eMarkerBypass() {
+        BizLaborPayroll e2e = new BizLaborPayroll();
+        e2e.setId(2L);
+        e2e.setStatus("APPROVED");
+        e2e.setTeamName("E2E_TEST_1723900000000_班组");
+        when(payrollMapper.selectById(2L)).thenReturn(e2e);
+
+        laborPayrollService.delete(2L);
+
+        verify(payrollMapper).deleteById(2L);
+    }
+
+    @Test
     @DisplayName("删除工资单：不存在抛异常")
     void testDelete_notFound() {
         when(payrollMapper.selectById(999L)).thenReturn(null);

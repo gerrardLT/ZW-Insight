@@ -45,6 +45,19 @@ public class SupplierService {
     }
 
     /**
+     * 列表查询供应商（不分页，供下拉选择器使用；仅启用状态，最多 200 条）
+     */
+    public List<BdSupplier> list(String supplierName, String supplierType) {
+        LambdaQueryWrapper<BdSupplier> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StrUtil.isNotBlank(supplierName), BdSupplier::getSupplierName, supplierName)
+                .eq(StrUtil.isNotBlank(supplierType), BdSupplier::getSupplierType, supplierType)
+                .eq(BdSupplier::getStatus, 1)
+                .orderByDesc(BdSupplier::getCreatedAt)
+                .last("LIMIT 200");
+        return supplierMapper.selectList(wrapper);
+    }
+
+    /**
      * 根据ID查询
      */
     public BdSupplier getById(Long id) {

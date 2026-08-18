@@ -26,6 +26,21 @@ class SupplierServiceTest {
     private SupplierService supplierService;
 
     @Test
+    @DisplayName("列表查询：返回启用供应商列表")
+    void testList() {
+        BdSupplier supplier = new BdSupplier();
+        supplier.setId(1L);
+        supplier.setSupplierName("测试供应商");
+        when(supplierMapper.selectList(any())).thenReturn(List.of(supplier));
+
+        List<BdSupplier> result = supplierService.list("测试", null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getSupplierName()).isEqualTo("测试供应商");
+        verify(supplierMapper).selectList(any());
+    }
+
+    @Test
     @DisplayName("根据ID查询：存在返回供应商")
     void testGetById_found() {
         BdSupplier supplier = new BdSupplier();

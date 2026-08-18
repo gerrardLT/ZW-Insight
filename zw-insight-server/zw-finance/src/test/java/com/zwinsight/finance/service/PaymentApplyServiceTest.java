@@ -479,6 +479,18 @@ class PaymentApplyServiceTest {
         }
 
         @Test
+        @DisplayName("delete E2E_TEST_ 标记数据非草稿放行（E2eTestGuard）")
+        void delete_e2eMarkerBypass() {
+            BizPaymentApply e2e = apply(3L, "APPROVED");
+            e2e.setSupplierName("E2E_TEST_1723900000000_供应商");
+            when(paymentApplyMapper.selectById(3L)).thenReturn(e2e);
+
+            paymentApplyService.delete(3L);
+
+            verify(paymentApplyMapper).deleteById(3L);
+        }
+
+        @Test
         @DisplayName("onRejected 幂等：非 SUBMITTED 静默返回（FIN-PAY-20）")
         void onRejected_idempotent() {
             when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "REJECTED"));

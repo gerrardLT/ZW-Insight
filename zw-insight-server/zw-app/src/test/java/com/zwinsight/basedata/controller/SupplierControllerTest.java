@@ -69,6 +69,25 @@ class SupplierControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/basedata/supplier/list - 返回供应商列表（不被 /{id} 吞掉）")
+    void should_return_list() throws Exception {
+        BdSupplier supplier = new BdSupplier();
+        supplier.setId(1L);
+        supplier.setSupplierName("测试供应商");
+
+        when(supplierService.list(any(), any())).thenReturn(List.of(supplier));
+
+        mockMvc.perform(get("/api/v1/basedata/supplier/list")
+                        .param("supplierName", "测试"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data[0].supplierName").value("测试供应商"));
+
+        verify(supplierService).list("测试", null);
+        verify(supplierService, never()).getById(anyLong());
+    }
+
+    @Test
     @DisplayName("GET /api/v1/basedata/supplier/{id} - 返回供应商详吨")
     void should_return_by_id() throws Exception {
         BdSupplier supplier = new BdSupplier();

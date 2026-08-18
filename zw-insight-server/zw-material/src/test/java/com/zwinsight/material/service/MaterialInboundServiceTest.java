@@ -1,6 +1,7 @@
 package com.zwinsight.material.service;
 
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.material.domain.*;
 import com.zwinsight.material.mapper.*;
 import com.zwinsight.purchase.mapper.BizPurchaseContractMapper;
@@ -27,6 +28,7 @@ class MaterialInboundServiceTest {
     @Mock private BizMaterialOutboundMapper outboundMapper;
     @Mock private BizMaterialOutboundDetailMapper outboundDetailMapper;
     @Mock private BizPurchaseContractMapper purchaseContractMapper;
+    @Mock private SerialNumberService serialNumberService;
 
     @InjectMocks
     private MaterialInboundService materialInboundService;
@@ -120,6 +122,70 @@ class MaterialInboundServiceTest {
     }
 
     @Test
+    @DisplayName("删除：E2E_TEST_ 标记数据非DRAFT放行（E2eTestGuard）")
+    void testDelete_e2eMarkerBypass() {
+        BizMaterialInbound inbound = new BizMaterialInbound();
+        inbound.setId(1L);
+        inbound.setStatus("APPROVED");
+        inbound.setRemark("E2E_TEST_1723900000000");
+        when(inboundMapper.selectById(1L)).thenReturn(inbound);
+
+        materialInboundService.delete(1L);
+
+        verify(inboundMapper).deleteById(1L);
+    }
+
+    @Test
+    @DisplayName("删除：主表无标记、明细 materialName 带 E2E_TEST_ 前缀放行并对称回滚库存")
+    void testDelete_detailMarkerBypass_rollbackStock() {
+        // 主表仅自动编号 inboundCode，真实场景标记落在明细 materialName
+        BizMaterialInbound inbound = new BizMaterialInbound();
+        inbound.setId(2L);
+        inbound.setProjectId(10L);
+        inbound.setStatus("APPROVED");
+        inbound.setTotalAmount(new BigDecimal("1000"));
+        when(inboundMapper.selectById(2L)).thenReturn(inbound);
+
+        BizMaterialInboundDetail detail = new BizMaterialInboundDetail();
+        detail.setId(20L);
+        detail.setInboundId(2L);
+        detail.setMaterialName("E2E_TEST_1723900000000_钢筋");
+        detail.setSpecification("HRB400");
+        detail.setQuantity(new BigDecimal("10"));
+        when(inboundDetailMapper.selectList(any())).thenReturn(List.of(detail));
+
+        BizProjectMaterialStock stock = new BizProjectMaterialStock();
+        stock.setStockQuantity(new BigDecimal("10"));
+        stock.setTotalInbound(new BigDecimal("10"));
+        when(stockMapper.selectOne(any())).thenReturn(stock);
+
+        materialInboundService.delete(2L);
+
+        // 库存对称回滚：submit 加的库存删单后减回
+        assertThat(stock.getStockQuantity()).isEqualByComparingTo("0");
+        verify(stockMapper).updateById(stock);
+        verify(inboundDetailMapper).deleteById(20L);
+        verify(inboundMapper).deleteById(2L);
+    }
+
+    @Test
+    @DisplayName("删除：主表与明细均无标记非DRAFT仍拦截")
+    void testDelete_noMarkerStillBlocked() {
+        BizMaterialInbound inbound = new BizMaterialInbound();
+        inbound.setId(3L);
+        inbound.setStatus("APPROVED");
+        when(inboundMapper.selectById(3L)).thenReturn(inbound);
+        BizMaterialInboundDetail detail = new BizMaterialInboundDetail();
+        detail.setMaterialName("普通钢筋");
+        when(inboundDetailMapper.selectList(any())).thenReturn(List.of(detail));
+
+        assertThatThrownBy(() -> materialInboundService.delete(3L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可删除");
+        verify(inboundMapper, never()).deleteById(3L);
+    }
+
+    @Test
     @DisplayName("查询：不存在抛异常")
     void testGetById_notFound() {
         when(inboundMapper.selectById(999L)).thenReturn(null);
@@ -205,5 +271,34 @@ class MaterialInboundServiceTest {
         assertThatThrownBy(() -> materialInboundService.update(inbound))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("仅草稿状态可编辑");
+    }
+
+    @Test
+    @DisplayName("补丁③：保存时自动生成入库单号（UI 新增不携带单号）")
+    void testSave_autoGenerateInboundCode() {
+        when(serialNumberService.generate("MATERIAL_INBOUND")).thenReturn("RK202608120001");
+        BizMaterialInbound inbound = new BizMaterialInbound();
+        inbound.setProjectId(1L);
+        BizMaterialInboundDetail detail = new BizMaterialInboundDetail();
+        detail.setTotalPrice(new BigDecimal("100"));
+
+        materialInboundService.save(inbound, List.of(detail));
+
+        assertThat(inbound.getInboundCode()).isEqualTo("RK202608120001");
+    }
+
+    @Test
+    @DisplayName("补丁③：已携带单号时不覆盖")
+    void testSave_keepProvidedInboundCode() {
+        BizMaterialInbound inbound = new BizMaterialInbound();
+        inbound.setProjectId(1L);
+        inbound.setInboundCode("RK-CUSTOM-001");
+        BizMaterialInboundDetail detail = new BizMaterialInboundDetail();
+        detail.setTotalPrice(new BigDecimal("100"));
+
+        materialInboundService.save(inbound, List.of(detail));
+
+        assertThat(inbound.getInboundCode()).isEqualTo("RK-CUSTOM-001");
+        verify(serialNumberService, never()).generate(anyString());
     }
 }

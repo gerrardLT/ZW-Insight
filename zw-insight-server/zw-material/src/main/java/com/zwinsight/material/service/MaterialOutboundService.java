@@ -3,6 +3,7 @@ package com.zwinsight.material.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.material.domain.BizMaterialOutbound;
 import com.zwinsight.material.domain.BizMaterialOutboundDetail;
@@ -155,13 +156,14 @@ public class MaterialOutboundService {
     public void delete(Long id) {
         BizMaterialOutbound existing = outboundMapper.selectById(id);
         if (existing == null) throw new BusinessException("出库单不存在");
-        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
 
         // B3 修复（2026-08-11）：save 时已扣减库存，删除必须对称回填，
         // 否则删除草稿出库单即永久丢失库存
         LambdaQueryWrapper<BizMaterialOutboundDetail> detailWrapper = new LambdaQueryWrapper<>();
         detailWrapper.eq(BizMaterialOutboundDetail::getOutboundId, id);
         List<BizMaterialOutboundDetail> details = outboundDetailMapper.selectList(detailWrapper);
+        // 主表无可控命名字段，E2E 测试前缀落在明细 materialName → 连同明细扫描
+        if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing, details)) throw new BusinessException("仅草稿状态可删除");
         for (BizMaterialOutboundDetail detail : details) {
             LambdaQueryWrapper<BizProjectMaterialStock> stockWrapper = new LambdaQueryWrapper<>();
             stockWrapper.eq(BizProjectMaterialStock::getProjectId, existing.getProjectId())

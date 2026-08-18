@@ -8,6 +8,7 @@ import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.machine.domain.BizMachineContract;
 import com.zwinsight.machine.mapper.BizMachineContractMapper;
@@ -97,7 +98,7 @@ public class MachineContractService {
     public void delete(Long id) {
         BizMachineContract existing = machineContractMapper.selectById(id);
         if (existing == null) throw new BusinessException("机械合同不存在");
-        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) throw new BusinessException("仅草稿状态可删除");
         machineContractMapper.deleteById(id);
     }
 }

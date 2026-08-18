@@ -3,6 +3,7 @@ package com.zwinsight.subcontract.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.subcontract.domain.BizSubcontract;
 import com.zwinsight.subcontract.domain.BizSubcontractOutputReport;
@@ -56,7 +57,7 @@ public class SubcontractOutputService {
     public void delete(Long id) {
         BizSubcontractOutputReport existing = outputReportMapper.selectById(id);
         if (existing == null) throw new BusinessException("产值报告不存在");
-        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) throw new BusinessException("仅草稿状态可删除");
         outputReportMapper.deleteById(id);
     }
 

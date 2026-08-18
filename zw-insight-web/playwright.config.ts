@@ -63,5 +63,32 @@ export default defineConfig({
       // 顺序执行，避免并发写库；一致性用例以只读比对为主
       workers: 2,
     },
+
+    // ─── 视觉回归模式（W4：真实服务器关键页面截图基线比对） ───
+    // 基线生成：npm run test:e2e:visual:update（首次或 UI 有意变更时）
+    // 日常验证：npm run test:e2e:visual（与 e2e/visual-snapshots/ 下基线比对）
+    {
+      name: 'visual-real',
+      dependencies: ['setup-real'],
+      testDir: './e2e/visual',
+      testMatch: /.*\.spec\.ts$/,
+      snapshotPathTemplate: '{testDir}/../visual-snapshots/{arg}{ext}',
+      use: {
+        baseURL: realBaseURL,
+        storageState: './e2e/.auth/storage-state.json',
+      },
+      expect: {
+        toHaveScreenshot: {
+          // 真实服务器演示数据存在微量动态差异（时间戳残影/图表抗锯齿），
+          // 以像素比例兜底；结构性回归（布局塌陷/组件丢失）远超该阈值必 FAIL
+          maxDiffPixelRatio: 0.02,
+          animations: 'disabled',
+          caret: 'hide',
+        },
+      },
+      // 单 worker 串行：避免并发截图时服务器负载差异引起渲染抖动
+      workers: 1,
+      retries: 0,
+    },
   ],
 })

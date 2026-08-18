@@ -398,6 +398,67 @@ class BudgetServiceTest {
         }
 
         @Test
+        @DisplayName("删除E2E_TEST_标记预算非DRAFT放行（E2eTestGuard）")
+        void delete_e2eMarkerBypass_success() {
+            // given
+            BizBudget e2e = new BizBudget();
+            e2e.setId(2L);
+            e2e.setStatus("APPROVED");
+            e2e.setProjectName("E2E_TEST_1723900000000_项目");
+            when(budgetMapper.selectById(2L)).thenReturn(e2e);
+            when(budgetMapper.deleteById(2L)).thenReturn(1);
+
+            // when
+            budgetService.delete(2L);
+
+            // then
+            verify(budgetMapper).deleteById(2L);
+        }
+
+        @Test
+        @DisplayName("删除预算 — 主表无标记但明细 itemName 带 E2E_TEST_ 前缀非DRAFT放行")
+        void delete_detailMarkerBypass_success() {
+            // given：主表 projectName 不落库，真实场景标记只能落在明细 itemName
+            BizBudget e2e = new BizBudget();
+            e2e.setId(3L);
+            e2e.setStatus("APPROVED");
+            when(budgetMapper.selectById(3L)).thenReturn(e2e);
+            BizBudgetDetail detail = new BizBudgetDetail();
+            detail.setId(30L);
+            detail.setBudgetId(3L);
+            detail.setItemName("E2E_TEST_1723900000000_材料费");
+            when(budgetDetailMapper.selectList(any())).thenReturn(java.util.List.of(detail));
+
+            // when
+            budgetService.delete(3L);
+
+            // then：明细同步删除 + 主表删除
+            verify(budgetDetailMapper).deleteById(30L);
+            verify(budgetMapper).deleteById(3L);
+        }
+
+        @Test
+        @DisplayName("删除预算 — 主表与明细均无标记非DRAFT仍拦截")
+        void delete_noMarkerStillBlocked() {
+            // given
+            BizBudget normal = new BizBudget();
+            normal.setId(4L);
+            normal.setStatus("APPROVED");
+            when(budgetMapper.selectById(4L)).thenReturn(normal);
+            BizBudgetDetail detail = new BizBudgetDetail();
+            detail.setId(40L);
+            detail.setBudgetId(4L);
+            detail.setItemName("人工费");
+            when(budgetDetailMapper.selectList(any())).thenReturn(java.util.List.of(detail));
+
+            // when & then
+            assertThatThrownBy(() -> budgetService.delete(4L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅草稿状态可删除");
+            verify(budgetMapper, never()).deleteById(4L);
+        }
+
+        @Test
         @DisplayName("删除不存在的预算 - 抛出异常")
         void delete_notExists_throwsException() {
             // given

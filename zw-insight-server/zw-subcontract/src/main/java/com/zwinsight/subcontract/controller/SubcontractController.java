@@ -52,8 +52,7 @@ public class SubcontractController {
         return R.ok();
     }
 
-    @PostMapping("/{id}/submit")
-    @PutMapping("/{id}/submit")
+    @RequestMapping(value = "/{id}/submit", method = {RequestMethod.POST, RequestMethod.PUT})
     public R<Void> submit(@PathVariable Long id) {
         subcontractService.submit(id);
         return R.ok();

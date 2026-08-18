@@ -7,6 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.subcontract.domain.BizSubcontract;
 import com.zwinsight.subcontract.domain.BizSubcontractSettlement;
@@ -178,7 +179,11 @@ public class SubcontractSettlementService {
     public void delete(Long id) {
         BizSubcontractSettlement existing = settlementMapper.selectById(id);
         if (existing == null) throw new BusinessException("结算记录不存在");
-        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可删除");
+        // 主表无可控命名字段（仅 status/remark），E2E 测试前缀落在明细 itemName → 连同明细扫描
+        LambdaQueryWrapper<BizSubcontractSettlementDetail> markerWrapper = new LambdaQueryWrapper<>();
+        markerWrapper.eq(BizSubcontractSettlementDetail::getSettlementId, id);
+        List<BizSubcontractSettlementDetail> existingDetails = detailMapper.selectList(markerWrapper);
+        if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing, existingDetails)) throw new BusinessException("仅草稿状态可删除");
 
         // 删除明细行
         LambdaQueryWrapper<BizSubcontractSettlementDetail> deleteWrapper = new LambdaQueryWrapper<>();

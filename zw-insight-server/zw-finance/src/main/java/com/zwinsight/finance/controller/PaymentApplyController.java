@@ -55,8 +55,7 @@ public class PaymentApplyController {
         return R.ok();
     }
 
-    @PostMapping("/{id}/submit")
-    @PutMapping("/{id}/submit")
+    @RequestMapping(value = "/{id}/submit", method = {RequestMethod.POST, RequestMethod.PUT})
     @RequiresPermission("finance:payment:submit")
     public R<Void> submit(@PathVariable Long id) {
         paymentApplyService.submit(id);

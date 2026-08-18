@@ -203,6 +203,20 @@ class ProjectServiceTest {
     }
 
     @Test
+    @DisplayName("删除：E2E_TEST_ 标记数据非DRAFT放行（E2eTestGuard）")
+    void testDelete_e2eMarkerBypass() {
+        BizProject e2e = new BizProject();
+        e2e.setId(2L);
+        e2e.setStatus("FILED");
+        e2e.setProjectName("E2E_TEST_1723900000000_项目");
+        when(projectMapper.selectById(2L)).thenReturn(e2e);
+
+        projectService.delete(2L);
+
+        verify(projectMapper).deleteById(2L);
+    }
+
+    @Test
     @DisplayName("删除：项目不存在抛异常")
     void testDelete_notFound() {
         when(projectMapper.selectById(999L)).thenReturn(null);

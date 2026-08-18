@@ -10,7 +10,9 @@
     "test:coverage": "vitest --run --coverage",
     "test:watch": "vitest",
     "test:e2e:real": "npx playwright test --project=e2e-real",
-    "test:e2e:consistency": "npx playwright test --project=consistency-real"
+    "test:e2e:consistency": "npx playwright test --project=consistency-real",
+    "test:e2e:visual": "npx playwright test --project=visual-real",
+    "test:e2e:visual:update": "npx playwright test --project=visual-real --update-snapshots"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",

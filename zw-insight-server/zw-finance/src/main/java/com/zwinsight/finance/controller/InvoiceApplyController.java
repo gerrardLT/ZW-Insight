@@ -59,8 +59,7 @@ public class InvoiceApplyController {
         return R.ok();
     }
 
-    @PostMapping("/{id}/submit")
-    @PutMapping("/{id}/submit")
+    @RequestMapping(value = "/{id}/submit", method = {RequestMethod.POST, RequestMethod.PUT})
     @RequiresPermission("finance:invoiceapply:submit")
     public R<Void> submit(@PathVariable Long id) {
         invoiceApplyService.submit(id);

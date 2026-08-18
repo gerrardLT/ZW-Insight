@@ -206,6 +206,20 @@ class MaterialTransferServiceTest {
     }
 
     @Test
+    @DisplayName("删除：E2E_TEST_ 标记数据非DRAFT放行（E2eTestGuard）")
+    void testDelete_e2eMarkerBypass() {
+        BizMaterialTransfer transfer = new BizMaterialTransfer();
+        transfer.setId(1L);
+        transfer.setStatus("APPROVED");
+        transfer.setFromProjectName("E2E_TEST_1723900000000_调出");
+        when(transferMapper.selectById(1L)).thenReturn(transfer);
+
+        materialTransferService.delete(1L);
+
+        verify(transferMapper).deleteById(1L);
+    }
+
+    @Test
     @DisplayName("查询：不存在抛异常")
     void testGetById_notFound() {
         when(transferMapper.selectById(999L)).thenReturn(null);

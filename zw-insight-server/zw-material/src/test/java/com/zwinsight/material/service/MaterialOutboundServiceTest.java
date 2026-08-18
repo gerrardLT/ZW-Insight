@@ -121,6 +121,51 @@ class MaterialOutboundServiceTest {
     }
 
     @Test
+    @DisplayName("删除：E2E_TEST_ 标记数据非DRAFT放行（E2eTestGuard）")
+    void testDelete_e2eMarkerBypass() {
+        BizMaterialOutbound outbound = new BizMaterialOutbound();
+        outbound.setId(1L);
+        outbound.setStatus("APPROVED");
+        outbound.setProjectName("E2E_TEST_1723900000000_项目");
+        when(outboundMapper.selectById(1L)).thenReturn(outbound);
+        when(outboundDetailMapper.selectList(any())).thenReturn(java.util.Collections.emptyList());
+
+        materialOutboundService.delete(1L);
+
+        verify(outboundMapper).deleteById(1L);
+    }
+
+    @Test
+    @DisplayName("删除：主表无标记、明细 materialName 带 E2E_TEST_ 前缀放行并回填库存")
+    void testDelete_detailMarkerBypass_restoreStock() {
+        BizMaterialOutbound outbound = new BizMaterialOutbound();
+        outbound.setId(2L);
+        outbound.setProjectId(10L);
+        outbound.setStatus("APPROVED");
+        outbound.setOutboundType("PICK");
+        when(outboundMapper.selectById(2L)).thenReturn(outbound);
+
+        BizMaterialOutboundDetail detail = new BizMaterialOutboundDetail();
+        detail.setId(20L);
+        detail.setOutboundId(2L);
+        detail.setMaterialName("E2E_TEST_1723900000000_钢筋");
+        detail.setSpecification("HRB400");
+        detail.setQuantity(new java.math.BigDecimal("5"));
+        when(outboundDetailMapper.selectList(any())).thenReturn(java.util.List.of(detail));
+
+        BizProjectMaterialStock stock = new BizProjectMaterialStock();
+        stock.setStockQuantity(new java.math.BigDecimal("5"));
+        stock.setTotalOutbound(new java.math.BigDecimal("5"));
+        when(stockMapper.selectOne(any())).thenReturn(stock);
+
+        materialOutboundService.delete(2L);
+
+        // save 时扣的库存删单后回填
+        assertThat(stock.getStockQuantity()).isEqualByComparingTo("10");
+        verify(outboundMapper).deleteById(2L);
+    }
+
+    @Test
     @DisplayName("查询：不存在抛异常")
     void testGetById_notFound() {
         when(outboundMapper.selectById(999L)).thenReturn(null);

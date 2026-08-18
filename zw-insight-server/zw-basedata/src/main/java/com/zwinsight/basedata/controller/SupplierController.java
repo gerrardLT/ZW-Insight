@@ -40,6 +40,13 @@ public class SupplierController {
         return page(page, size, supplierName, supplierType, status);
     }
 
+    @GetMapping("/list")
+    public R<List<BdSupplier>> list(
+            @RequestParam(required = false) String supplierName,
+            @RequestParam(required = false) String supplierType) {
+        return R.ok(supplierService.list(supplierName, supplierType));
+    }
+
     @GetMapping("/{id}")
     public R<BdSupplier> getById(@PathVariable Long id) {
         return R.ok(supplierService.getById(id));

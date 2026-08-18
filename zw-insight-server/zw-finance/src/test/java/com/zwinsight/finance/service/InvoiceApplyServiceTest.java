@@ -198,6 +198,22 @@ class InvoiceApplyServiceTest {
 
             verify(invoiceApplyMapper, never()).deleteById(anyLong());
         }
+
+        @Test
+        @DisplayName("E2E_TEST_ 标记数据非 DRAFT 放行删除（E2eTestGuard）")
+        void delete_e2eMarkerBypass_callsDeleteById() {
+            Long id = 3L;
+            BizInvoiceApply existing = new BizInvoiceApply();
+            existing.setId(id);
+            existing.setStatus("APPROVED");
+            existing.setProjectName("E2E_TEST_1723900000000_项目");
+
+            when(invoiceApplyMapper.selectById(id)).thenReturn(existing);
+
+            invoiceApplyService.delete(id);
+
+            verify(invoiceApplyMapper).deleteById(id);
+        }
     }
 
     // ============ submit() 测试 ============

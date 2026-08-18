@@ -254,6 +254,18 @@ class PurchaseSettlementServiceTest {
         verify(settlementMapper).deleteById(3L);
     }
 
+    @Test
+    @DisplayName("delete - E2E_TEST_ 标记数据非草稿放行（E2eTestGuard）")
+    void delete_e2eMarkerBypass() {
+        BizPurchaseSettlement e2e = settlement("APPROVED", "100");
+        e2e.setRemark("E2E_TEST_1723900000000");
+        when(settlementMapper.selectById(4L)).thenReturn(e2e);
+
+        service.delete(4L);
+
+        verify(settlementMapper).deleteById(4L);
+    }
+
     // ── submit ──────────────────────────────────
 
     @Test

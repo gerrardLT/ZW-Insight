@@ -250,10 +250,10 @@
 |---|---|---|---|---|---|---|
 | A11-01 | 列表加载与状态标签 | 功能 | 有预算数据 | 进入页面 | 已批准/审批中/草稿三态标签 | L5-API/L5-一致性 |
 | A11-02 | 项目筛选与重置 | 功能 | 多项目 | 选项目搜索/重置 | 带 projectId 查询；重置重载 | 无 |
-| A11-03 | 新增必填校验 | 负向 | 打开弹窗 | 项目/总额留空 | 「请选择项目」「请输入预算总额」 | 无 |
+| A11-03 | 新增必填校验 | 负向 | 打开弹窗 | 项目/总额留空 | 「请选择项目」「请输入预算总额」 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；空态确定不发 POST 抓包实证） |
 | A11-04 | 创建 payload 固定 ORIGINAL | 一致性 | — | 新增确定 | 请求体 budgetType='ORIGINAL' | L5-API |
 | A11-05 | 编辑更新金额 | 功能 | 已有预算 | 改总额确定 | PUT 成功 | L5-API |
-| A11-06 | 提交审批流转 | 集成 | DRAFT | 确认提交 | POST /{id}/submit→APPROVING，Flowable 待办 | L5-API |
+| A11-06 | 提交审批流转 | 集成 | DRAFT | 确认提交 | POST /{id}/submit→APPROVING，Flowable 待办。**2026-08 E2E 实证修正**：BudgetService.submit 无流程依赖，直批 APPROVED（非 APPROVING） | L5-API + E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；创建 DRAFT→提交直批→明细合计回写总额） |
 | A11-07 | 非法状态提交拦截 | 负向 | APPROVED 预算 | 直调 submit | 后端拒绝 | 无 |
 | A11-08 | 删除草稿 | 功能 | DRAFT | 确认删除 | DELETE 成功 | 无 |
 | A11-09 | 同项目重复目标成本拦截 | 负向 | 项目已有预算 | 再创建 | 后端拒绝（唯一性约束） | L5-API |
@@ -311,7 +311,7 @@
 | A14-08 | 删除回落提示 | 功能 | 项目级规则 | 确认删除 | 文案「删除后将回落为全局默认规则」，DELETE 成功 | 无 |
 | A14-09 | 同项目重复配置 | 负向 | 项目已有规则 | 再建同项目规则 | 验证后端唯一性拦截 | 无 |
 | A14-10 | 分页/数组双兼容 | 边界 | 后端返回数组或分页 | 加载 | res.data?.records 兜底 res.data 数组 | 无 |
-| A14-11 | BLOCK 拦截语义端到端 | 集成 | 项目配 BLOCK 且预算将耗尽 | 提交支出单据 | 超阈值提交被拦截，WARN_ONLY 仅提醒、EXEMPT 放行（getEffectiveConfig） | 无 |
+| A14-11 | BLOCK 拦截语义端到端 | 集成 | 项目配 BLOCK 且预算将耗尽 | 提交支出单据 | 超阈值提交被拦截，WARN_ONLY 仅提醒、EXEMPT 放行（getEffectiveConfig） | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；UI 层：自置 BLOCK 项目+项目级配置，other-payment 创建被拒含预算语义 + 错误 Toast 可见 + 差集无落库；WARN_ONLY/EXEMPT 分支仍待补） |
 
 ### A-X 预算跨模块集成
 
@@ -335,12 +335,12 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-1-1 | 必填校验 projectId/inboundDate | 负向 | 打开新增弹窗 | 不选项目/日期直接确定 | 提示「请选择项目」「请选择入库日期」 | 无 |
+| B-1-1 | 必填校验 projectId/inboundDate | 负向 | 打开新增弹窗 | 不选项目/日期直接确定 | 提示「请选择项目」「请选择入库日期」 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿） |
 | B-1-2 | 至少一条有材料名的明细 | 负向 | 新增弹窗 | 明细 materialName 留空提交 | warning「请至少填写一条入库明细」 | 无 |
 | B-1-3 | 明细金额联动=数量×单价 toFixed(2) | 功能 | 明细行 | 输入 quantity=2.5、unitPrice=100 | 金额列显示 250.00 | 无 |
 | B-1-4 | 数量/单价边界 min=0 precision=2 | 边界 | 明细行 | 尝试输入负数/三位小数 | input-number 拒绝负值、截断 2 位 | 无 |
 | B-1-5 | 切换项目后清空采购合同 | 功能 | 已选合同 | 更换项目 | contractId 被重置 | 无 |
-| B-1-6 | 提交仅 DRAFT 且二次确认 | 功能 | 草稿行 | 点击提交 | 确认框「提交后将更新库存与合同累计入库」，确认后状态变更 | L5-API |
+| B-1-6 | 提交仅 DRAFT 且二次确认 | 功能 | 草稿行 | 点击提交 | 确认框「提交后将更新库存与合同累计入库」，确认后状态变更 | L5-API + E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；提交直批 APPROVED + 库存更新断言 stockQuantity/totalInbound=入库量，save 不动库存 submit 才更新实证） |
 | B-1-7 | 编辑回显明细 | 功能 | 已有单据 | 点编辑 | 明细数量/单价 Number 回显正确 | 无 |
 | B-1-8 | 编辑模式绕过明细必填守卫 | 负向 | 已有单据 | 编辑时删光明细确定 | 源码仅 !isEdit 时校验→可保存空明细（应补守卫） | 无 |
 | B-1-9 | 空 materialName 明细行被 payload 过滤 | 边界 | 2 行明细 1 行空名 | 提交 | payload.details 仅含非空行 | 无 |
@@ -355,11 +355,11 @@
 | B-2-1 | 必填 projectId/outboundType | 负向 | 新增弹窗 | 清空后确定 | 必填提示 | 无 |
 | B-2-2 | 至少一条出库明细守卫 | 负向 | 新增弹窗 | details 为空确定 | warning「请至少添加一条出库明细」 | 无 |
 | B-2-3 | 出库类型 PICK/RETURN 切换与展示 | 功能 | — | 新建退货单 | 列表显示「退货」 | 无 |
-| B-2-4 | 出库数量超库存 | 负向 | 库存 10 | 提交 quantity=999 出库单 | 前端不校验（无库存比对）→后端应拦截；前端盲点 | 无 |
+| B-2-4 | 出库数量超库存 | 负向 | 库存 10 | 新建 quantity=999 出库单 | 前端不校验（无库存比对）→后端应拦截；前端盲点。**2026-08 代码取证修正**：拦截点在 save 阶段（MaterialOutboundService.save PICK 分支查库存并扣减，submit 仅 DRAFT→APPROVED），超量保存即被拒且不落库 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿） |
 | B-2-5 | 提交仅 DRAFT + 确认框 | 功能 | 草稿行 | 提交 | 确认后调 submitMaterialOutbound | L5-API |
 | B-2-6 | 编辑回显 | 功能 | 已有单 | 编辑 | outboundType 缺省回落 PICK | 无 |
 | B-2-7 | 展开行显示明细子表 | 功能 | 有明细行 | 点展开 | 名称/规格/单位/数量/单价正确 | 无 |
-| B-2-8 | 类型筛选+项目筛选搜索/重置 | 功能 | 混合数据 | outboundType=RETURN 搜索 | 仅退货记录；重置恢复 | L5-API |
+| B-2-8 | 类型筛选+项目筛选搜索/重置 | 功能 | 混合数据 | outboundType=RETURN 搜索 | 仅退货记录；重置恢复 | L5-API + E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；PICK/RETURN 筛选参数下发抓包实证） |
 | B-2-9 | 删除确认 | 功能 | 草稿行 | 删除 | ElMessageBox 确认后成功 | 无 |
 | B-2-10 | 分页参数 pageNum/pageSize | 边界 | 数据>10 | 翻页 | 与入库页 page/size 参数名不一致，接口均正常 | 无 |
 
@@ -665,14 +665,14 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-21-1 | 必填 projectId/contractId | 负向 | 新增 | 留空确定 | 提示 | 无 |
+| B-21-1 | 必填 projectId/contractId | 负向 | 新增 | 留空确定 | 提示 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿） |
 | B-21-2 | 明细为空守卫 | 负向 | 新增 | 不加明细确定 | warning「请至少添加一条结算明细」 | 无 |
 | B-21-3 | 切换项目清空合同选择 | 功能 | 已选合同 | 换项目 | contractId 重置，SubcontractSelector 按 projectId 过滤 | 无 |
-| B-21-4 | 小计=数量×单价、合计=Σ小计 联动 | 功能 | 2 行明细 | 输入数值 | 行小计与 totalAmount 实时正确 | 无 |
+| B-21-4 | 小计=数量×单价、合计=Σ小计 联动 | 功能 | 2 行明细 | 输入数值 | 行小计与 totalAmount 实时正确 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；创建 DRAFT 时联动渲染 + settlementAmount=明细合计断言） |
 | B-21-5 | 数量/单价 min=0 边界 | 边界 | 明细行 | 负数 | 拒绝 | 无 |
 | B-21-6 | payload 自动注入 sortOrder | 功能 | 多行明细 | 保存 | details.map 注入 i+1 | 无 |
 | B-21-7 | 编辑回显明细（Number 转换） | 功能 | 已有单 | 编辑 | quantity/unitPrice Number 回显 | 无 |
-| B-21-8 | 提交/删除仅 DRAFT | 功能 | 各状态 | 观察按钮 | v-if | L5-API |
+| B-21-8 | 提交/删除仅 DRAFT | 功能 | 各状态 | 观察按钮 | v-if | L5-API + E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；UI 提交 APPROVED + 详情级联回读明细，VO 嵌套 settlement/details 实证） |
 | B-21-9 | 累计结算金额展示与回写 | 集成 | 同合同第二张单 | 审批通过 | cumulativeSettlement=历次之和 | 无 |
 | B-21-10 | 结算超合同金额预算管控 | 负向 | 累计>contractAmount | 提交 | 后端 BLOCK/WARN_ONLY 拦截（前端无此校验） | 无 |
 | B-21-11 | 合同/状态筛选搜索 | 功能 | 多数据 | 筛选 | 过滤 | L5-API |
@@ -761,8 +761,8 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-1-1 | 必填校验 projectId/contractId/invoiceAmount/applyDate | 负向 | 已登录 | 打开新增弹窗，留空必填项点确定 | 各字段显示必填提示，不发请求 | 无 |
-| C-1-2 | 新增成功：taxRate 走 TaxRateSelector，invoiceType 默认增专 | 功能 | 项目+合同存在 | 完整填写并提交表单 | 创建成功，列表出现新单据，状态草稿 | L5-API |
+| C-1-1 | 必填校验 projectId/contractId/invoiceAmount/applyDate | 负向 | 已登录 | 打开新增弹窗，留空必填项点确定 | 各字段显示必填提示，不发请求 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿） |
+| C-1-2 | 新增成功：taxRate 走 TaxRateSelector，invoiceType 默认增专 | 功能 | 项目+合同存在 | 完整填写并提交表单 | 创建成功，列表出现新单据，状态草稿 | L5-API + E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；创建 DRAFT + TaxRateSelector UI 选择，税率前提自置 E2E_TEST_ 预设） |
 | C-1-3 | 金额边界：invoiceAmount 负值 | 边界 | 弹窗打开 | 输入 -1 | el-input-number min=0 拦截 | 无 |
 | C-1-4 | 税率联动：选预设自动填值、手改不一致清选中 | 集成 | 税率数据存在 | 选「增值税13%」→手改为 12 | 填 13.00；手改后清除选中态 | L1 |
 | C-1-5 | 提交审批：仅 DRAFT/REJECTED 可提交 | 功能 | 存在草稿单 | 点提交→confirm 确认 | 提示「已提交审批，审批通过后生效」，状态变审批中 | L5-API |
@@ -780,9 +780,9 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-2-1 | 必填校验 projectId/invoiceAmount/invoiceDate | 负向 | 弹窗打开 | 留空提交 | 必填提示，无请求 | 无 |
-| C-2-2 | 新增成功（仅新增，无编辑/删除） | 功能 | 项目存在 | 完整填写提交 | 创建成功 | 无 |
-| C-2-3 | 税率列百分比展示 formatTaxRate | 一致性 | 列表有数据 | 对比接口 taxRate | 显示如 "13%" | 无 |
+| C-2-1 | 必填校验 projectId/invoiceAmount/invoiceDate | 负向 | 弹窗打开 | 留空提交 | 必填提示，无请求 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿） |
+| C-2-2 | 新增成功（仅新增，无编辑/删除） | 功能 | 项目存在 | 完整填写提交 | 创建成功 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；含无编辑/删除入口断言） |
+| C-2-3 | 税率列百分比展示 formatTaxRate | 一致性 | 列表有数据 | 对比接口 taxRate | 显示如 "13%" | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿） |
 | C-2-4 | 金额负值拦截 | 边界 | 弹窗打开 | 输入负数 | min=0 拦截 | 无 |
 | C-2-5 | 列表金额 formatMoney + 分页 | 一致性 | 列表有数据 | 核对金额列 | 千分位 2 位小数 | 无 |
 | C-2-6 | 重复提交防抖 | 负向 | 弹窗已填写 | 快速双击确定 | 仅一次请求（button loading） | 无 |
@@ -807,9 +807,9 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-4-1 | 必填校验 projectId/receiveAmount/receiveDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | 无 |
-| C-4-2 | 新增成功，receiveType 默认银行转账 | 功能 | 项目存在 | 仅填必填项提交 | 创建成功，receiveType=银行转账 | 无 |
-| C-4-3 | 编辑回填 {...row} 并保存 | 功能 | 列表有数据 | 点编辑→改金额→保存 | 表单完整回填，update 成功 | 无 |
+| C-4-1 | 必填校验 projectId/receiveAmount/receiveDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿） |
+| C-4-2 | 新增成功，receiveType 默认银行转账 | 功能 | 项目存在 | 仅填必填项提交 | 创建成功，receiveType=银行转账 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿） |
+| C-4-3 | 编辑回填 {...row} 并保存 | 功能 | 列表有数据 | 点编辑→改金额→保存 | 表单完整回填，update 成功 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；编辑改金额闭环） |
 | C-4-4 | 删除走 confirm 二次确认 | 功能 | 列表有数据 | 点删除→确认 | 删除成功，列表刷新 | 无 |
 | C-4-5 | receiveType 四枚举 | 功能 | 弹窗打开 | 切换选项 | 银行转账/支票/现金/承兑汇票均可选并保存 | 无 |
 | C-4-6 | 金额负值/0 边界 | 边界 | 弹窗打开 | 输入 -1 / 0 | 负值拦截；0 行为与产品口径一致 | 无 |
@@ -822,15 +822,15 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-5-1 | 必填校验（项目/合同类型/合同/金额/日期） | 负向 | 弹窗打开 | 留空提交 | 必填提示，无请求 | 无 |
-| C-5-2 | 合同路由：PURCHASE→getPurchaseContractPage | 功能 | 存在采购合同 | 选合同类型=采购 | 合同下拉加载采购合同 | 无 |
+| C-5-1 | 必填校验（项目/合同类型/合同/金额/日期） | 负向 | 弹窗打开 | 留空提交 | 必填提示，无请求 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿） |
+| C-5-2 | 合同路由：PURCHASE→getPurchaseContractPage | 功能 | 存在采购合同 | 选合同类型=采购 | 合同下拉加载采购合同 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；抓包实证 getPurchaseContractPage） |
 | C-5-3 | 合同路由：LABOR→getLaborContractPage | 功能 | 存在劳务合同 | 选劳务 | 加载劳务合同 | 无 |
 | C-5-4 | 合同路由：MACHINE→getMachineContractPage | 功能 | 存在机械合同 | 选机械 | 加载机械合同 | 无 |
 | C-5-5 | 合同路由：SUBCONTRACT→getSubcontractPage | 功能 | 存在分包合同 | 选分包 | 加载分包合同 | 无 |
 | C-5-6 | 合同路由：OTHER_EXPENSE→getOtherContractPage | 功能 | 存在其他支出合同 | 选其他支出 | 加载其他支出合同 | 无 |
 | C-5-7 | 项目/类型变更清空 contractId+contractOptions | 边界 | 已选类型与合同 | 更换项目或合同类型 | contractId 清空、下拉重载 | 无 |
 | C-5-8 | SupplierSelector @change 回填 supplierName | 功能 | 弹窗打开 | 选择供应商 | supplierName 自动回填 | 无 |
-| C-5-9 | 提交审批仅 DRAFT/REJECTED，confirm 提示 | 功能 | 草稿单存在 | 提交 | 状态→审批中，成功提示 | L5-API |
+| C-5-9 | 提交审批仅 DRAFT/REJECTED，confirm 提示 | 功能 | 草稿单存在 | 提交 | 状态→审批中，成功提示 | L5-API + E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；完整创建 DRAFT→UI 提交→直批 APPROVED + 状态标签渲染） |
 | C-5-10 | statusMap 含 PAID（已付款/primary） | 一致性 | 存在已付款单 | 查看状态列 | 显示「已付款」 primary 标签 | 无 |
 | C-5-11 | 查看详情 stub | 功能 | 列表有数据 | 点查看 | ElMessage.info('查看详情功能开发中') | 无 |
 | C-5-12 | 金额列 formatMoney + 分页 total | 一致性 | 列表有数据 | 核对 | 严格一致 | L5-一致性 |
@@ -843,9 +843,9 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-6-1 | 分页参数为 page/size（异于其他财务页） | 一致性 | 列表有数据 | 抓包翻页请求 | 参数名 page/size 正确、翻页生效 | 无 |
-| C-6-2 | 必填校验 projectId/payerName/paymentAmount/paymentDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | 无 |
-| C-6-3 | 仅新增：无编辑/删除入口 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | 无 |
+| C-6-1 | 分页参数为 page/size（异于其他财务页） | 一致性 | 列表有数据 | 抓包翻页请求 | 参数名 page/size 正确、翻页生效。**2026-08 E2E 实证**：payment-apply 前端传 pageNum/pageSize 但后端 Controller 仅收 page/size，UI 层列表恒 size=10 首页（现状钉住） | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；抓包实证） |
+| C-6-2 | 必填校验 projectId/payerName/paymentAmount/paymentDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿） |
+| C-6-3 | 仅新增：无编辑/删除入口 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；含完整创建闭环） |
 | C-6-4 | statusMap 仅 DRAFT/APPROVED，其他状态兜底 | 边界 | 存在 SUBMITTED 单 | 查看状态列 | 不渲染 undefined/空白崩溃 | 无 |
 | C-6-5 | 金额负值拦截 | 边界 | 弹窗打开 | 输入负数 | min=0 拦截 | 无 |
 | C-6-6 | 提交审批（仅 DRAFT） | 功能 | 草稿存在 | 提交 | 状态流转成功 | 无 |
@@ -858,8 +858,8 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | C-7-1 | offsetReserve 开关（active=1）控制 offsetAmount 列显隐 | 功能 | 列表有冲销数据 | 切换抵扣开关 | offsetAmount 列与表单项随开关显隐 | 无 |
-| C-7-2 | 必填校验 projectId/totalAmount/reimbursementDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | 无 |
-| C-7-3 | 新增/编辑/删除 CRUD | 功能 | 项目存在 | 依次操作 | 各操作成功且列表刷新 | 无 |
+| C-7-2 | 必填校验 projectId/totalAmount/reimbursementDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；空态确定不发 POST。**API-GAP-fin**：后端无 DELETE 通道，不真实建单） |
+| C-7-3 | 新增/编辑/删除 CRUD | 功能 | 项目存在 | 依次操作 | 各操作成功且列表刷新 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿。**2026-08 实测修正**：UI 无编辑/删除入口，仅提交按钮且只在草稿行渲染） |
 | C-7-4 | 提交仅 DRAFT（submit POST） | 功能 | 草稿存在 | 提交 | 状态→审批中 | 无 |
 | C-7-5 | 勾选冲销时 offsetAmount 必填 | 负向 | 开关开启 | 留空冲销额提交 | 校验提示 | 无 |
 | C-7-6 | offsetAmount 边界（0/负值/超总额） | 边界 | 开关开启 | 输入 0、-5、大于 totalAmount | 按校验规则拦截或正确计算实付 | 无 |
@@ -872,9 +872,9 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-8-1 | 借支申请必填校验 | 负向 | 弹窗打开 | 留空提交 | 必填提示 | 无 |
+| C-8-1 | 借支申请必填校验 | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿。**API-GAP-fin**：后端无 DELETE 通道，不真实建单） |
 | C-8-2 | 借支申请新增成功 | 功能 | 项目/人员存在 | 完整填写提交 | 创建草稿单 | 无 |
-| C-8-3 | 归还弹窗仅 APPROVED 行可见 | 负向 | 各状态记录存在 | 检查操作列 | 仅 APPROVED 显示归还 | 无 |
+| C-8-3 | 归还弹窗仅 APPROVED 行可见 | 负向 | 各状态记录存在 | 检查操作列 | 仅 APPROVED 显示归还 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；逐行状态条件渲染断言，无 APPROVED 行时显式 skip 登记） |
 | C-8-4 | 归还必填 returnAmount/returnDate | 负向 | 归还弹窗打开 | 留空提交 | 必填提示 | 无 |
 | C-8-5 | 归还调用 createReserveFundReturn | 功能 | APPROVED 记录 | 填归还额提交 | 归还成功，记录状态/余额更新 | 无 |
 | C-8-6 | 归还金额>借支金额边界 | 边界 | APPROVED 记录 | 输入超额 | 拦截或提示 | 无 |
@@ -889,9 +889,9 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-9-1 | 无项目筛选条件 | 负向 | 打开页面 | 检查筛选区/抓包 | 请求无 projectId 参数 | 无 |
-| C-9-2 | 必填校验 totalAmount/reimbursementDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | 无 |
-| C-9-3 | 仅新增+提交：无编辑/删除 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | 无 |
+| C-9-1 | 无项目筛选条件 | 负向 | 打开页面 | 检查筛选区/抓包 | 请求无 projectId 参数 | 受阻（API-GAP-fin：抓包依赖真实建单，后端无 DELETE 通道；tasks.md 登记）。UI 层弹窗无「项目」字段已由 E2E 钉住 |
+| C-9-2 | 必填校验 totalAmount/reimbursementDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；空态确定不发 POST + 弹窗无项目字段断言） |
+| C-9-3 | 仅新增+提交：无编辑/删除 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；现状钉住） |
 | C-9-4 | 提交仅 DRAFT | 功能 | 草稿存在 | 提交 | 状态流转成功 | 无 |
 | C-9-5 | 金额负值拦截 | 边界 | 弹窗打开 | 输入 -1 | min 拦截 | 无 |
 | C-9-6 | 金额 formatMoney + 分页 | 一致性 | 列表有数据 | 核对 | 一致 | 无 |
@@ -955,8 +955,8 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-13-1 | canOperate：*:*:* 或 FINANCE_ADMIN/ADMIN 显示新增按钮 | 权限 | 财务管理员登录 | 打开页面 | 新增封账按钮+操作列可见 | 无 |
-| C-13-2 | 普通用户隐藏新增与操作列 | 权限 | 普通角色登录 | 打开页面 | 按钮与操作列均隐藏 | 无 |
+| C-13-1 | canOperate：*:*:* 或 FINANCE_ADMIN/ADMIN 显示新增按钮 | 权限 | 财务管理员登录 | 打开页面 | 新增封账按钮+操作列可见。**2026-08 契约实证**：FINANCE_STAFF（wangqiang）不在 OPERATE_ROLES，按钮同样隐藏 | E2E permission.spec.ts（真实模式 wangqiang 视角，2026-08-18 全绿） |
+| C-13-2 | 普通用户隐藏新增与操作列 | 权限 | 普通角色登录 | 打开页面 | 按钮与操作列均隐藏（`:text-is` 精确匹配，排除「操作人/操作时间」列误伤） | E2E permission.spec.ts（真实模式 lina/STAFF 视角，2026-08-18 全绿） |
 | C-13-3 | period month-picker 格式 YYYY-MM | 功能 | 弹窗打开 | 选 2026-08 | 提交参数 period='2026-08' | 无 |
 | C-13-4 | lockType MONTHLY/QUARTERLY | 功能 | 弹窗打开 | 切换类型提交 | 类型正确保存 | 无 |
 | C-13-5 | 新增封账成功→状态 LOCKED（已封账/danger） | 功能 | 未封账月份 | 新增封账 | 列表出现已封账红标签 | 无 |
@@ -972,9 +972,9 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-14-1 | validateRateValue 范围 0.01–99.99 | 负向 | 弹窗打开 | 输入 0 | 校验失败 | 无 |
-| C-14-2 | 小数位正则：3 位小数拒绝 | 边界 | 弹窗打开 | 输入 13.456 | 校验失败 | 无 |
-| C-14-3 | 边界值 99.99 通过、100 拒绝 | 边界 | 弹窗打开 | 分别输入 | 99.99 通过/100 拒绝 | 无 |
+| C-14-1 | validateRateValue 范围 0.01–99.99 | 负向 | 弹窗打开 | 输入 0 | 校验失败 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；越界输入 el-input-number UI 钳制实证） |
+| C-14-2 | 小数位正则：3 位小数拒绝 | 边界 | 弹窗打开 | 输入 13.456 | 校验失败 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；超精度收敛 precision=2） |
+| C-14-3 | 边界值 99.99 通过、100 拒绝 | 边界 | 弹窗打开 | 分别输入 | 99.99 通过/100 拒绝 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；99.99 创建→列表可见→停用闭环） |
 | C-14-4 | name 最大 30 字符 | 边界 | 弹窗打开 | 输入 31 字 | 校验失败 | 无 |
 | C-14-5 | 新增/编辑成功 | 功能 | 特权角色 | 填写合法值提交 | 保存成功，列表刷新 | 无 |
 | C-14-6 | 停用 confirm「停用后将不可用于新单据」 | 功能 | 启用中税率 | 点停用→确认 | 文案正确，状态变停用 | 无 |

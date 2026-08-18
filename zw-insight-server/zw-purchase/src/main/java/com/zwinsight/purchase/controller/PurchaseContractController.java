@@ -49,8 +49,7 @@ public class PurchaseContractController {
         return R.ok();
     }
 
-    @PostMapping("/{id}/submit")
-    @PutMapping("/{id}/submit")
+    @RequestMapping(value = "/{id}/submit", method = {RequestMethod.POST, RequestMethod.PUT})
     public R<Void> submit(@PathVariable Long id) {
         purchaseContractService.submit(id);
         return R.ok();

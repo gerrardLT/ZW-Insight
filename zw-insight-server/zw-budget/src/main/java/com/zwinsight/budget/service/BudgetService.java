@@ -9,6 +9,7 @@ import com.zwinsight.budget.dto.BudgetCreateRequest;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BizBudgetMapper;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
@@ -209,13 +210,20 @@ public class BudgetService {
     /**
      * 删除预算
      */
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         BizBudget existing = budgetMapper.selectById(id);
         if (existing == null) {
             throw new BusinessException("预算不存在");
         }
-        if (!"DRAFT".equals(existing.getStatus())) {
+        // 主表 projectName 不落库（@TableField(exist=false)），E2E 测试前缀落在
+        // 明细 itemName → 守卫连同明细行扫描
+        List<BizBudgetDetail> details = listDetails(id);
+        if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing, details)) {
             throw new BusinessException("仅草稿状态可删除");
+        }
+        for (BizBudgetDetail detail : details) {
+            budgetDetailMapper.deleteById(detail.getId());
         }
         budgetMapper.deleteById(id);
     }

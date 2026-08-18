@@ -388,6 +388,23 @@ class SubcontractServiceTest {
             }
 
             @Test
+            @DisplayName("删除E2E_TEST_标记合同 - 非DRAFT放行（E2eTestGuard）")
+            void delete_e2eMarkerBypass() {
+                // given
+                BizSubcontract e2e = new BizSubcontract();
+                e2e.setId(2L);
+                e2e.setStatus("EFFECTIVE");
+                e2e.setContractName("E2E_TEST_1723900000000_分包");
+                when(subcontractMapper.selectById(2L)).thenReturn(e2e);
+
+                // when
+                subcontractService.delete(2L);
+
+                // then
+                verify(subcontractMapper).deleteById(2L);
+            }
+
+            @Test
             @DisplayName("删除不存在的合同 - 抛出异常")
             void delete_notExists_throwsException() {
                 // given
