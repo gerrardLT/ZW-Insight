@@ -162,83 +162,83 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| A7-01 | 列表加载与金额格式 | 功能 | 有合同数据 | 进入页面 | contractAmount 千分位 2 位小数 | L5-API/L5-一致性 |
-| A7-02 | 项目远程筛选 | 功能 | 多项目合同 | 输入项目名搜索后筛选 | getProjectList(projectName)，带 projectId 查询 | 无 |
-| A7-03 | formatMoney 边界 | 边界 | 金额 null/0 | 观察列 | 空→「-」，0→「0.00」 | 无 |
-| A7-04 | DRAFT 三按钮渲染 | 功能 | 各状态数据 | 观察操作列 | 仅 DRAFT 显示编辑/提交/删除 | 无 |
-| A7-05 | 提交审批流转 | 集成 | DRAFT 合同 | 确认提交 | PUT /{id}/submit→SUBMITTED | L5-API |
-| A7-06 | 非法状态提交拦截 | 负向 | EFFECTIVE 合同 | 直调 submit | 后端拒绝 | 无 |
-| A7-07 | 删除草稿 | 功能 | DRAFT 合同 | 确认删除 | DELETE 成功刷新 | 无 |
-| A7-08 | 查看入口即编辑页 | 负向 | 任意状态 | 点查看 | handleView 跳 /contract/edit/:id（源码实证：无只读视图，非草稿亦可进编辑表单） | 无 |
-| A7-09 | 打印按钮渲染 | 功能 | 任意行 | 观察操作列 | PrintButton business-type=CONTRACT 可用 | 无 |
-| A7-10 | 状态标签映射 | 一致性 | 5 态数据 | 比对 | 与 statusMap 一致 | L5-一致性 |
-| A7-11 | 分页 | 边界 | 数据>10 | 切 size/翻页 | [10,20,50,100] 生效 | 无 |
-| A7-12 | 重置 | 功能 | 已筛选 | 点重置 | projectId/status 清空重载 | 无 |
+| A7-01 | 列表加载与金额格式 | 功能 | 有合同数据 | 进入页面 | contractAmount 千分位 2 位小数 | L5-API/L5-一致性 + L1 contract-index-matrix.component.test.ts（2026-08-18，formatMoney 断言） |
+| A7-02 | 项目远程筛选 | 功能 | 多项目合同 | 输入项目名搜索后筛选 | getProjectList(projectName)，带 projectId 查询 | L1 contract-index-matrix.component.test.ts（2026-08-18，projectName 透传断言） |
+| A7-03 | formatMoney 边界 | 边界 | 金额 null/0 | 观察列 | 空→「-」，0→「0.00」 | L1 contract-index-matrix.component.test.ts（2026-08-18） |
+| A7-04 | DRAFT 三按钮渲染 | 功能 | 各状态数据 | 观察操作列 | 仅 DRAFT 显示编辑/提交/删除 | L1 contract-index-matrix.component.test.ts（2026-08-18，含 EFFECTIVE 行对照） |
+| A7-05 | 提交审批流转 | 集成 | DRAFT 合同 | 确认提交 | PUT /{id}/submit→SUBMITTED | L5-API + E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；实证 POST /{id}/submit，两级审批 complete 后 EFFECTIVE） |
+| A7-06 | 非法状态提交拦截 | 负向 | EFFECTIVE 合同 | 直调 submit | 后端拒绝 | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；SUBMITTED 重提交 code=500「仅草稿状态可提交」） |
+| A7-07 | 删除草稿 | 功能 | DRAFT 合同 | 确认删除 | DELETE 成功刷新 | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；DRAFT 删除+E2E_TEST_ 前缀放行，删后不可再定位） |
+| A7-08 | 查看入口即编辑页 | 负向 | 任意状态 | 点查看 | handleView 跳 /contract/edit/:id（源码实证：无只读视图，非草稿亦可进编辑表单） | L1 contract-index-matrix.component.test.ts（2026-08-18）。**2026-08 实证修正**：handleView 已携 ?mode=view 进只读视图（P0 盲点 3 修复后），账本预期「同跳编辑页」过时 |
+| A7-09 | 打印按钮渲染 | 功能 | 任意行 | 观察操作列 | PrintButton business-type=CONTRACT 可用 | L1 contract-index-matrix.component.test.ts（2026-08-18，源码钉住） |
+| A7-10 | 状态标签映射 | 一致性 | 5 态数据 | 比对 | 与 statusMap 一致 | L5-一致性 + L1 contract-index-matrix.component.test.ts（2026-08-18，五态+未知状态回落） |
+| A7-11 | 分页 | 边界 | 数据>10 | 切 size/翻页 | [10,20,50,100] 生效 | L1 contract-index-matrix.component.test.ts（2026-08-18，page-sizes 源码钉住） |
+| A7-12 | 重置 | 功能 | 已筛选 | 点重置 | projectId/status 清空重载 | L1 contract-index-matrix.component.test.ts（2026-08-18） |
 
 ### A8 施工合同表单（/contract/create、/contract/edit/:id · views/contract/form.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| A8-01 | 三项必填校验 | 负向 | 新增页 | 项目/甲方/金额留空保存 | 3 条必填提示，不发请求 | 无 |
-| A8-02 | 默认值验证 | 功能 | 新增页 | 观察 | contractType=REGISTER、taxRate=9、合同编号 disabled | 无 |
-| A8-03 | 明细行增删与合计 | 功能 | 新增页 | 加行→输数量/单价→删行 | 合计=quantity×unitPrice toFixed(2)，行删除正确 | L5-API(明细 API 层) |
-| A8-04 | 4 位小数精度计算 | 边界 | 明细行 | quantity=0.0001×unitPrice=9999.9999 | 乘积无浮点溢出，显示 2 位 | 无 |
-| A8-05 | 空明细不调保存接口 | 功能 | 无明细行 | 保存 | detailList 为空时跳过 saveContractDetails | 无 |
-| A8-06 | 编辑回显含明细与项目注入 | 一致性 | 已有合同+明细 | 进编辑页 | 主表+明细回显，项目注入下拉 | 无 |
-| A8-07 | 雪花 ID 字符串传递 | 边界 | 大 ID 合同 | URL 直达编辑 | 字符串传参无精度丢失 | 无 |
-| A8-08 | 合同金额≠明细合计仍可保存 | 负向 | 明细合计与金额不等 | 保存 | 前端无一致性校验（源码实证），验证后端是否拦截 | 无 |
-| A8-09 | 开工晚于竣工日期 | 边界 | 新增页 | startDate>endDate | 前端无校验（源码实证），验证后端行为 | 无 |
-| A8-10 | 变更/补充合同类型 | 功能 | 新增页 | 选 CHANGE/SUPPLEMENT | 保存值正确 | 无 |
-| A8-11 | 税率边界 | 边界 | 新增页 | 输 101/负数 | min=0 max=100 拦截 | 无 |
-| A8-12 | 取消不落库 | 负向 | 已修改 | 点取消 | 无写请求，返回列表 | 无 |
+| A8-01 | 三项必填校验 | 负向 | 新增页 | 项目/甲方/金额留空保存 | 3 条必填提示，不发请求 | L1 contract-form-matrix.component.test.ts（2026-08-18，文案钉住） |
+| A8-02 | 默认值验证 | 功能 | 新增页 | 观察 | contractType=REGISTER、taxRate=9、合同编号 disabled | L1 contract-form-matrix.component.test.ts（2026-08-18） |
+| A8-03 | 明细行增删与合计 | 功能 | 新增页 | 加行→输数量/单价→删行 | 合计=quantity×unitPrice toFixed(2)，行删除正确 | L5-API(明细 API 层) + L1 contract-form-matrix.component.test.ts（2026-08-18，增删行为） |
+| A8-04 | 4 位小数精度计算 | 边界 | 明细行 | quantity=0.0001×unitPrice=9999.9999 | 乘积无浮点溢出，显示 2 位 | L1 contract-form-matrix.component.test.ts（2026-08-18，模板表达式断言） |
+| A8-05 | 空明细不调保存接口 | 功能 | 无明细行 | 保存 | detailList 为空时跳过 saveContractDetails | L1 contract-form-matrix.component.test.ts（2026-08-18，空/有明细双分支） |
+| A8-06 | 编辑回显含明细与项目注入 | 一致性 | 已有合同+明细 | 进编辑页 | 主表+明细回显，项目注入下拉 | L1 contract-form-matrix.component.test.ts（2026-08-18） |
+| A8-07 | 雪花 ID 字符串传递 | 边界 | 大 ID 合同 | URL 直达编辑 | 字符串传参无精度丢失 | L1 contract-form-matrix.component.test.ts（2026-08-18，字符串传详情/明细 API） |
+| A8-08 | 合同金额≠明细合计仍可保存 | 负向 | 明细合计与金额不等 | 保存 | 前端无一致性校验（源码实证），验证后端是否拦截 | 源码实证钉住（2026-08）：后端 ConstructionContractService.save 亦无一致性校验（仅自动编号+税金计算），现状放行 |
+| A8-09 | 开工晚于竣工日期 | 边界 | 新增页 | startDate>endDate | 前端无校验（源码实证），验证后端行为 | 源码实证钉住（2026-08）：后端无日期顺序校验，现状放行；另实证 startDate/endDate 缺失亦接受 |
+| A8-10 | 变更/补充合同类型 | 功能 | 新增页 | 选 CHANGE/SUPPLEMENT | 保存值正确 | L1 contract-form-matrix.component.test.ts（2026-08-18，三选项钉住） |
+| A8-11 | 税率边界 | 边界 | 新增页 | 输 101/负数 | min=0 max=100 拦截 | L1 contract-form-matrix.component.test.ts（2026-08-18，min/max/precision 钉住） |
+| A8-12 | 取消不落库 | 负向 | 已修改 | 点取消 | 无写请求，返回列表 | L1 contract-form-matrix.component.test.ts（2026-08-18） |
 
 ### A9 BOQ 上传（/contract/boq/:contractId · views/contract/boq-upload.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| A9-01 | 页面加载合同信息与已有清单 | 功能 | 合同已上传清单 | 进入页面 | descriptions 展示；树表 default-expand-all | 无 |
-| A9-02 | 非 xlsx 格式拒绝 | 负向 | — | 选 .xls/.csv | 「仅支持 .xlsx 格式文件」，clearFiles | 无 |
-| A9-03 | 大写 .XLSX 被拒 | 负向 | — | 选 .XLSX | endsWith('.xlsx') 大小写敏感→误拒（源码实证边界） | 无 |
-| A9-04 | 超 20MB 拒绝 | 边界 | — | 选 21MB 文件 | 「文件大小不能超过 20MB」 | 无 |
-| A9-05 | 文件数量超限 | 边界 | 已选 1 文件 | 再选一个 | 「仅允许上传一个文件」warning | 无 |
-| A9-06 | 未选文件按钮禁用 | 功能 | 无文件 | 观察 | 「开始上传解析」disabled | 无 |
-| A9-07 | 上传解析成功统计 | 功能 | 合法 xlsx | 上传 | POST /v1/contracts/{id}/boq/upload，展示总条目/层级数/合计金额 | 无 |
-| A9-08 | 解析失败错误提示 | 负向 | 内容非法 xlsx | 上传 | 拦截器 Toast，uploading 复位 | 无 |
-| A9-09 | 平铺数据建树与孤儿回落 | 边界 | 后端返回平铺 | 加载树 | 按 parentId 建树；父缺失回落根节点 | 无 |
-| A9-10 | 金额/数量格式化 | 一致性 | 清单有值/空 | 观察列 | 金额 2 位、数量 ≤4 位、空显示「-」 | 无 |
-| A9-11 | 清除清单确认与取消 | 负向 | 有清单 | 清除→取消 | 不发 DELETE | 无 |
-| A9-12 | 清除后状态复位 | 功能 | 有清单 | 确认清除 | DELETE 成功，树/统计清空，清除按钮隐藏 | 无 |
-| A9-13 | 上传超时配置 | 边界 | 超大清单文件 | 上传 | timeout=120s 生效 | 无 |
+| A9-01 | 页面加载合同信息与已有清单 | 功能 | 合同已上传清单 | 进入页面 | descriptions 展示；树表 default-expand-all | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；实证 GET /boq 返回平铺列表前端按 parentId 建树）+ L1 contract-pages.component.test.ts（2026-08-18，default-expand-all 钉住） |
+| A9-02 | 非 xlsx 格式拒绝 | 负向 | — | 选 .xls/.csv | 「仅支持 .xlsx 格式文件」，clearFiles | L1 contract-pages.component.test.ts（2026-08-18，含大小写边界） |
+| A9-03 | 大写 .XLSX 被拒 | 负向 | — | 选 .XLSX | endsWith('.xlsx') 大小写敏感→误拒（源码实证边界） | L1 contract-pages.component.test.ts（2026-08-18）。**2026-08 实证修正**：大写 .XLSX 已被接受（P0 盲点 4 修复，toLowerCase 后比对），账本「误拒」预期过时 |
+| A9-04 | 超 20MB 拒绝 | 边界 | — | 选 21MB 文件 | 「文件大小不能超过 20MB」 | L1 contract-pages.component.test.ts（2026-08-18） |
+| A9-05 | 文件数量超限 | 边界 | 已选 1 文件 | 再选一个 | 「仅允许上传一个文件」warning | L1 contract-pages.component.test.ts（2026-08-18） |
+| A9-06 | 未选文件按钮禁用 | 功能 | 无文件 | 观察 | 「开始上传解析」disabled | L1 contract-pages.component.test.ts（2026-08-18，:disabled="!selectedFile" 钉住） |
+| A9-07 | 上传解析成功统计 | 功能 | 合法 xlsx | 上传 | POST /v1/contracts/{id}/boq/upload，展示总条目/层级数/合计金额 | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；手工构造 xlsx 上传，totalItems=3/totalAmount=2000/levelCount≥2；实证 totalAmount=Σ顶层条目合价且回写 contractAmount） |
+| A9-08 | 解析失败错误提示 | 负向 | 内容非法 xlsx | 上传 | 拦截器 Toast，uploading 复位 | DATA 受阻（tasks.md 登记 2026-08-18：无畸形 xlsx 演示文件前提；拦截器全局 Toast 机制已有既有覆盖） |
+| A9-09 | 平铺数据建树与孤儿回落 | 边界 | 后端返回平铺 | 加载树 | 按 parentId 建树；父缺失回落根节点 | L1 contract-pages.component.test.ts（2026-08-18，buildTree 孤儿回落+children 直用） |
+| A9-10 | 金额/数量格式化 | 一致性 | 清单有值/空 | 观察列 | 金额 2 位、数量 ≤4 位、空显示「-」 | L1 contract-pages.component.test.ts（2026-08-18，formatMoney/formatNumber 断言） |
+| A9-11 | 清除清单确认与取消 | 负向 | 有清单 | 清除→取消 | 不发 DELETE | L1 contract-pages.component.test.ts（2026-08-18，mockReject 取消断言） |
+| A9-12 | 清除后状态复位 | 功能 | 有清单 | 确认清除 | DELETE 成功，树/统计清空，清除按钮隐藏 | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；实证被产值引用拦截文案+无引用 EFFECTIVE 合同清除成功）+ L1 contract-pages.component.test.ts（2026-08-18，boqLoaded 复位） |
+| A9-13 | 上传超时配置 | 边界 | 超大清单文件 | 上传 | timeout=120s 生效 | L1 contract-pages.component.test.ts（2026-08-18，timeout: 120000 源码钉住） |
 
 ### A10 产值上报（/contract/output-report · views/contract/output-report.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| A10-01 | 列表加载与四态标签 | 功能 | 有上报数据 | 进入页面 | DRAFT/SUBMITTED/APPROVED/REJECTED 标签 | 无（06 路径失配） |
-| A10-02 | 项目→合同级联仅生效合同 | 集成 | 项目有多状态合同 | 选项目 | contractId 清空，下拉仅 status=EFFECTIVE（pageSize=100） | 无 |
-| A10-03 | 新增必填校验 | 负向 | 打开弹窗 | 项目/合同/期间留空 | 3 条必填提示 | 无 |
-| A10-04 | 本期产值须大于 0 | 负向 | 纯金额模式 | currentOutput=0 保存 | 「本期产值须大于0」(min:0.01) | 无 |
-| A10-05 | 无 BOQ 合同仅纯金额 | 功能 | 合同无清单 | 选合同 | 「按清单行」disabled+提示文案，fillMode=amount | 无 |
-| A10-06 | 有 BOQ 自动切清单模式 | 集成 | 合同有清单 | 选合同 | getBoqFlat 加载，自动 fillMode=boq | 无 |
-| A10-07 | 完成量实时重算合计 | 功能 | boq 模式 | 输入本期完成量 | 行金额=q×p toFixed(2)，合计=Σ行金额 toFixed(2) | 无 |
-| A10-08 | 行金额舍入精度 | 边界 | 单价 0.33×量 3 | 计算 | 0.99 无浮点误差 | 无 |
-| A10-09 | 全部完成量为 0 拦截 | 负向 | boq 模式 | 不填任何量保存 | 「请至少填写一条清单行的本期完成量」，不发请求 | 无 |
-| A10-10 | 草稿保存 details 过滤 | 功能 | 部分行有量 | 保存 | details 仅含 reportQuantity>0 行，含 amount | 无 |
-| A10-11 | 提交按钮状态渲染 | 功能 | 各状态行 | 观察操作列 | 仅 DRAFT/REJECTED 显示提交 | 无 |
-| A10-12 | 提交审批闭环 | 集成 | DRAFT 上报单 | 确认提交→Flowable 审批 | 「已提交审批，审批通过后生效」；通过后 APPROVED | 无 |
-| A10-13 | 切换项目状态复位 | 功能 | 已选合同 | 换项目 | 合同/BOQ/金额全部复位 | 无 |
-| A10-14 | 重置 | 功能 | 已筛选 | 点重置 | 条件与合同选项清空重载 | 无 |
-| A10-15 | 分页 | 边界 | 数据>10 | 翻页 | [10,20,50] 生效 | 无 |
+| A10-01 | 列表加载与四态标签 | 功能 | 有上报数据 | 进入页面 | DRAFT/SUBMITTED/APPROVED/REJECTED 标签 | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；列表查询 page/size 实证，前端分页参数失配钉住见 A10-15） |
+| A10-02 | 项目→合同级联仅生效合同 | 集成 | 项目有多状态合同 | 选项目 | contractId 清空，下拉仅 status=EFFECTIVE（pageSize=100） | L1 contract-output-matrix.component.test.ts（2026-08-18，级联清空+仅 EFFECTIVE 断言） |
+| A10-03 | 新增必填校验 | 负向 | 打开弹窗 | 项目/合同/期间留空 | 3 条必填提示 | L1 contract-output-matrix.component.test.ts（2026-08-18） |
+| A10-04 | 本期产值须大于 0 | 负向 | 纯金额模式 | currentOutput=0 保存 | 「本期产值须大于0」(min:0.01) | L1 contract-output-matrix.component.test.ts（2026-08-18） |
+| A10-05 | 无 BOQ 合同仅纯金额 | 功能 | 合同无清单 | 选合同 | 「按清单行」disabled+提示文案，fillMode=amount | L1 contract-output-matrix.component.test.ts（2026-08-18） |
+| A10-06 | 有 BOQ 自动切清单模式 | 集成 | 合同有清单 | 选合同 | getBoqFlat 加载，自动 fillMode=boq | L1 contract-output-matrix.component.test.ts（2026-08-18，getBoqFlat mock 断言） |
+| A10-07 | 完成量实时重算合计 | 功能 | boq 模式 | 输入本期完成量 | 行金额=q×p toFixed(2)，合计=Σ行金额 toFixed(2) | L1 contract-output-matrix.component.test.ts（2026-08-18） |
+| A10-08 | 行金额舍入精度 | 边界 | 单价 0.33×量 3 | 计算 | 0.99 无浮点误差 | L1 contract-output-matrix.component.test.ts（2026-08-18） |
+| A10-09 | 全部完成量为 0 拦截 | 负向 | boq 模式 | 不填任何量保存 | 「请至少填写一条清单行的本期完成量」，不发请求 | L1 contract-output-matrix.component.test.ts（2026-08-18，不发请求断言） |
+| A10-10 | 草稿保存 details 过滤 | 功能 | 部分行有量 | 保存 | details 仅含 reportQuantity>0 行，含 amount | L1 contract-output-matrix.component.test.ts（2026-08-18，payload 过滤断言） |
+| A10-11 | 提交按钮状态渲染 | 功能 | 各状态行 | 观察操作列 | 仅 DRAFT/REJECTED 显示提交 | L1 contract-output-matrix.component.test.ts（2026-08-18） |
+| A10-12 | 提交审批闭环 | 集成 | DRAFT 上报单 | 确认提交→Flowable 审批 | 「已提交审批，审批通过后生效」；通过后 APPROVED | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；提交→驳回→重提→APPROVED 全闭环，SUPER_ADMIN complete 推进） |
+| A10-13 | 切换项目状态复位 | 功能 | 已选合同 | 换项目 | 合同/BOQ/金额全部复位 | L1 contract-output-matrix.component.test.ts（2026-08-18） |
+| A10-14 | 重置 | 功能 | 已筛选 | 点重置 | 条件与合同选项清空重载 | L1 contract-output-matrix.component.test.ts（2026-08-18） |
+| A10-15 | 分页 | 边界 | 数据>10 | 翻页 | [10,20,50] 生效 | L1 contract-output-matrix.component.test.ts（2026-08-18，page-sizes [10,20,50] 源码钉住）+ E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；**缺陷现状钉住**：前端 pageNum/pageSize vs 后端 page/size 失配，tasks.md 登记 2026-08-18） |
 
 ### A-X 合同跨模块集成
 
 | 用例ID | 测试点 | 类型 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|
-| A-X10 | 合同审批通过→可报产值 | 集成 | 合同 DRAFT→提交→审批通过 EFFECTIVE→产值上报选合同 | 仅 EFFECTIVE 出现在上报下拉 | 无 |
-| A-X11 | BOQ→产值清单行联动 | 集成 | 上传 BOQ→产值按清单行填报→审批通过 | 清单 completedQuantity 随审批累加 | 无 |
-| A-X12 | 驳回后可重新提交 | 集成 | 产值上报审批驳回 | 状态 REJECTED，提交按钮复现 | 无 |
-| A-X13 | 预算 BLOCK 拦截支出合同 | 集成 | 项目配 BLOCK→创建支出类合同并提交 | 提交被拦截并提示超预算（施工收入合同不受控，须区分验证） | 无 |
-| A-X14 | 产值累计与竣工结算 | 集成 | 多期上报 APPROVED | cumulativeOutput 逐期累加，为结算提供依据 | 无 |
+| A-X10 | 合同审批通过→可报产值 | 集成 | 合同 DRAFT→提交→审批通过 EFFECTIVE→产值上报选合同 | 仅 EFFECTIVE 出现在上报下拉 | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；主链合同至 EFFECTIVE 后产值上报基于该合同创建成功，前提钉住） |
+| A-X11 | BOQ→产值清单行联动 | 集成 | 上传 BOQ→产值按清单行填报→审批通过 | 清单 completedQuantity 随审批累加 | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；上传→填报→APPROVED 后 flat 清单 completedQuantity 累加断言） |
+| A-X12 | 驳回后可重新提交 | 集成 | 产值上报审批驳回 | 状态 REJECTED，提交按钮复现 | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；驳回后 REJECTED→重提→APPROVED，与 A10-12 同链） |
+| A-X13 | 预算 BLOCK 拦截支出合同 | 集成 | 项目配 BLOCK→创建支出类合同并提交 | 提交被拦截并提示超预算（施工收入合同不受控，须区分验证） | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；**收入侧放行实证**：项目配 BLOCK 下施工合同提交审批不受拦截直至 EFFECTIVE）；支出侧拦截语义已由 A14-11 expense-write-2 覆盖（other-payment 支出单据），支出合同分支待后续补 |
+| A-X14 | 产值累计与竣工结算 | 集成 | 多期上报 APPROVED | cumulativeOutput 逐期累加，为结算提供依据 | E2E a3-contract.spec.ts（真实模式，2026-08-18 全绿；两期上报 APPROVED 后 cumulativeOutput 逐期累加断言） |
 
 ## A-4 预算管理（/budget，4 页，48+5 例，覆盖≈23%）
 
@@ -248,80 +248,80 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| A11-01 | 列表加载与状态标签 | 功能 | 有预算数据 | 进入页面 | 已批准/审批中/草稿三态标签 | L5-API/L5-一致性 |
-| A11-02 | 项目筛选与重置 | 功能 | 多项目 | 选项目搜索/重置 | 带 projectId 查询；重置重载 | 无 |
+| A11-01 | 列表加载与状态标签 | 功能 | 有预算数据 | 进入页面 | 已批准/审批中/草稿三态标签 | L5-API/L5-一致性 + L1 budget-matrix.component.test.ts（2026-08-18，三态标签断言） |
+| A11-02 | 项目筛选与重置 | 功能 | 多项目 | 选项目搜索/重置 | 带 projectId 查询；重置重载 | L1 budget-matrix.component.test.ts（2026-08-18） |
 | A11-03 | 新增必填校验 | 负向 | 打开弹窗 | 项目/总额留空 | 「请选择项目」「请输入预算总额」 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；空态确定不发 POST 抓包实证） |
 | A11-04 | 创建 payload 固定 ORIGINAL | 一致性 | — | 新增确定 | 请求体 budgetType='ORIGINAL' | L5-API |
-| A11-05 | 编辑更新金额 | 功能 | 已有预算 | 改总额确定 | PUT 成功 | L5-API |
+| A11-05 | 编辑更新金额 | 功能 | 已有预算 | 改总额确定 | PUT 成功 | L5-API + E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；P2 草稿 PUT 600→回读验证→DELETE 清理） |
 | A11-06 | 提交审批流转 | 集成 | DRAFT | 确认提交 | POST /{id}/submit→APPROVING，Flowable 待办。**2026-08 E2E 实证修正**：BudgetService.submit 无流程依赖，直批 APPROVED（非 APPROVING） | L5-API + E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；创建 DRAFT→提交直批→明细合计回写总额） |
-| A11-07 | 非法状态提交拦截 | 负向 | APPROVED 预算 | 直调 submit | 后端拒绝 | 无 |
-| A11-08 | 删除草稿 | 功能 | DRAFT | 确认删除 | DELETE 成功 | 无 |
-| A11-09 | 同项目重复目标成本拦截 | 负向 | 项目已有预算 | 再创建 | 后端拒绝（唯一性约束） | L5-API |
-| A11-10 | 金额边界 | 边界 | 弹窗 | 负数/3 位小数 | min=0、precision=2 生效 | 无 |
-| A11-11 | 编辑按钮不受状态限制 | 负向 | APPROVED/APPROVING 行 | 点编辑保存 | 前端始终显示编辑（源码实证），验证后端是否拦截 | 无 |
-| A11-12 | 分页 | 边界 | 数据>10 | 翻页 | [10,20,50] 生效 | 无 |
+| A11-07 | 非法状态提交拦截 | 负向 | APPROVED 预算 | 直调 submit | 后端拒绝 | E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；APPROVED 提交「仅草稿状态可提交」拦截） |
+| A11-08 | 删除草稿 | 功能 | DRAFT | 确认删除 | DELETE 成功 | E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；P2 草稿 DELETE 成功且删后不可定位） |
+| A11-09 | 同项目重复目标成本拦截 | 负向 | 项目已有预算 | 再创建 | 后端拒绝（唯一性约束） | L5-API + E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；「该项目已存在原始预算，不可重复创建」） |
+| A11-10 | 金额边界 | 边界 | 弹窗 | 负数/3 位小数 | min=0、precision=2 生效 | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A11-11 | 编辑按钮不受状态限制 | 负向 | APPROVED/APPROVING 行 | 点编辑保存 | 前端始终显示编辑（源码实证），验证后端是否拦截 | L1 budget-matrix.component.test.ts（2026-08-18，前端编辑按钮常显源码钉住）+ E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；APPROVED PUT 后端拦截「仅草稿状态可编辑」） |
+| A11-12 | 分页 | 边界 | 数据>10 | 翻页 | [10,20,50] 生效 | L1 budget-matrix.component.test.ts（2026-08-18，page-sizes 源码钉住） |
 
 ### A12 目标成本变更列表（/budget/change · views/budget/change/index.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| A12-01 | 列表加载五态标签 | 功能 | 变更数据齐备 | 进入页面 | DRAFT/SUBMITTED/APPROVED/REJECTED/WITHDRAWN | 无 |
-| A12-02 | 项目切换自动搜索 | 功能 | 多项目 | ProjectSelector 切换 | @change 直接触发 handleSearch | 无 |
-| A12-03 | 调整总额红绿着色 | 一致性 | 正/负调整单 | 观察列 | <0 红、>0 绿、千分位 | 无 |
-| A12-04 | 状态驱动操作集 | 功能 | 各状态行 | 观察操作列 | DRAFT:编辑/提交/删除；SUBMITTED:撤回；APPROVED:仅查看 | 无 |
-| A12-05 | 提交进入审批 | 集成 | DRAFT | 确认提交 | POST /{id}/submit→SUBMITTED | 无 |
-| A12-06 | 撤回成功 | 功能 | SUBMITTED | 确认撤回 | POST /{id}/withdraw→WITHDRAWN | 无 |
-| A12-07 | 非法状态撤回拦截 | 负向 | DRAFT/APPROVED | 直调 withdraw | 后端拒绝 | 无 |
-| A12-08 | 删除草稿确认 | 功能 | DRAFT | 确认删除 | DELETE 成功「删除后不可恢复」文案 | 无 |
-| A12-09 | 查看带 mode=view | 功能 | 任意行 | 点查看 | 跳 /budget/change/form?id=&mode=view | 无 |
-| A12-10 | 状态筛选 | 功能 | 各状态 | 逐状态筛选 | 结果匹配 | 无 |
-| A12-11 | 分页 | 边界 | 数据>10 | 翻页 | [10,20,50] 生效 | 无 |
+| A12-01 | 列表加载五态标签 | 功能 | 变更数据齐备 | 进入页面 | DRAFT/SUBMITTED/APPROVED/REJECTED/WITHDRAWN | L1 budget-matrix.component.test.ts（2026-08-18，五态标签断言） |
+| A12-02 | 项目切换自动搜索 | 功能 | 多项目 | ProjectSelector 切换 | @change 直接触发 handleSearch | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A12-03 | 调整总额红绿着色 | 一致性 | 正/负调整单 | 观察列 | <0 红、>0 绿、千分位 | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A12-04 | 状态驱动操作集 | 功能 | 各状态行 | 观察操作列 | DRAFT:编辑/提交/删除；SUBMITTED:撤回；APPROVED:仅查看 | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A12-05 | 提交进入审批 | 集成 | DRAFT | 确认提交 | POST /{id}/submit→SUBMITTED | E2E a4-budget.spec.ts（真实模式，2026-08-18；**DATA 受阻钉住**：租户 1 缺 budget_change_approval BPMN，submit 无法进审批，状态停留 DRAFT；创建校验拦截同例全绿；tasks.md 登记 2026-08-18） |
+| A12-06 | 撤回成功 | 功能 | SUBMITTED | 确认撤回 | POST /{id}/withdraw→WITHDRAWN | E2E a4-budget.spec.ts（真实模式，2026-08-18；负向守卫「仅已提交状态可撤回」拦截断言全绿；正向链路 DATA 受阻（BPMN 缺失无 SUBMITTED 前提），tasks.md 登记 2026-08-18） |
+| A12-07 | 非法状态撤回拦截 | 负向 | DRAFT/APPROVED | 直调 withdraw | 后端拒绝 | E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；DRAFT 直调 withdraw 拦截） |
+| A12-08 | 删除草稿确认 | 功能 | DRAFT | 确认删除 | DELETE 成功「删除后不可恢复」文案 | L1 budget-matrix.component.test.ts（2026-08-18，「删除后不可恢复」文案源码钉住）+ E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；草稿 DELETE 成功） |
+| A12-09 | 查看带 mode=view | 功能 | 任意行 | 点查看 | 跳 /budget/change/form?id=&mode=view | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A12-10 | 状态筛选 | 功能 | 各状态 | 逐状态筛选 | 结果匹配 | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A12-11 | 分页 | 边界 | 数据>10 | 翻页 | [10,20,50] 生效 | L1 budget-matrix.component.test.ts（2026-08-18，page-sizes 源码钉住） |
 
 ### A13 变更单表单（/budget/change/form · views/budget/change/form.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| A13-01 | 必填校验 | 负向 | 新建页 | 项目/变更原因留空 | 「请选择所属项目」「请输入变更原因」 | 无 |
-| A13-02 | 空明细拦截 | 负向 | 必填已填 | 不加明细行保存 | 「请至少添加一条变更明细」 | 无 |
-| A13-03 | 明细未选科目拦截 | 负向 | 有空明细行 | 保存 | 「请为每一行选择原预算明细」 | 无 |
-| A13-04 | 原预算仅 APPROVED | 集成 | 项目有草稿+已批准预算 | 选项目 | 下拉仅 APPROVED（pageSize=100） | 无 |
-| A13-05 | 选明细带出科目与原金额 | 功能 | 预算有明细 | 选原预算明细 | 带出 costCategory/costSubcategory/itemName/originalAmount | 无 |
-| A13-06 | 调整后金额计算 | 功能 | 明细行 | 输调整金额 | adjustedAmount=原+调整 toFixed(2)，负值递减 | 无 |
-| A13-07 | 调整总额聚合 | 功能 | 多明细行 | 各行输入 | totalAdjustAmount=ΣadjustAmount，红绿着色 | 无 |
-| A13-08 | 保存草稿 | 功能 | 合法表单 | 保存草稿 | POST create（含 details/totalAdjustAmount）→回列表 | L5-API(弱) |
-| A13-09 | 提交审批组合操作 | 集成 | 新建合法表单 | 提交审批→确认 | create+submit 两连发→SUBMITTED→回列表 | 无 |
-| A13-10 | 取消确认不发请求 | 负向 | 提交审批弹窗 | 取消 | 无 create/submit 请求 | 无 |
-| A13-11 | 编辑回显（budgetId 二次回填） | 一致性 | 已有变更单 | 进编辑页 | 项目/预算/明细完整回显（handleProjectChange 清空后回填） | 无 |
-| A13-12 | 查看模式只读 | 功能 | mode=view | 观察 | form disabled、无底部按钮、明细纯文本 | 无 |
-| A13-13 | 变更原因 500 字上限 | 边界 | 新建页 | 输 501 字 | maxlength=500 截断+字数统计 | 无 |
-| A13-14 | 项目无已批准预算 | 边界 | 项目仅草稿预算 | 选项目 | 原预算下拉为空，无法选 | 无 |
-| A13-15 | 编辑模式走 update | 功能 | 编辑页 | 保存 | PUT /{id}（updateBudgetChange(id,data)） | 无 |
+| A13-01 | 必填校验 | 负向 | 新建页 | 项目/变更原因留空 | 「请选择所属项目」「请输入变更原因」 | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-02 | 空明细拦截 | 负向 | 必填已填 | 不加明细行保存 | 「请至少添加一条变更明细」 | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-03 | 明细未选科目拦截 | 负向 | 有空明细行 | 保存 | 「请为每一行选择原预算明细」 | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-04 | 原预算仅 APPROVED | 集成 | 项目有草稿+已批准预算 | 选项目 | 下拉仅 APPROVED（pageSize=100） | L1 budget-change-form-matrix.component.test.ts（2026-08-18，含未选项目不发请求断言） |
+| A13-05 | 选明细带出科目与原金额 | 功能 | 预算有明细 | 选原预算明细 | 带出 costCategory/costSubcategory/itemName/originalAmount | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-06 | 调整后金额计算 | 功能 | 明细行 | 输调整金额 | adjustedAmount=原+调整 toFixed(2)，负值递减 | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-07 | 调整总额聚合 | 功能 | 多明细行 | 各行输入 | totalAdjustAmount=ΣadjustAmount，红绿着色 | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-08 | 保存草稿 | 功能 | 合法表单 | 保存草稿 | POST create（含 details/totalAdjustAmount）→回列表 | L5-API(弱) + L1 budget-change-form-matrix.component.test.ts（2026-08-18，payload 结构断言） |
+| A13-09 | 提交审批组合操作 | 集成 | 新建合法表单 | 提交审批→确认 | create+submit 两连发→SUBMITTED→回列表 | **DATA 受阻钉住**：租户 1 缺 budget_change_approval BPMN，create 后 submit 无法进审批（连带 A12-05）；后端 submit 守卫文案已由 a4 钉住；tasks.md 登记 2026-08-18 |
+| A13-10 | 取消确认不发请求 | 负向 | 提交审批弹窗 | 取消 | 无 create/submit 请求 | L1 budget-change-form-matrix.component.test.ts（2026-08-18，不发请求断言） |
+| A13-11 | 编辑回显（budgetId 二次回填） | 一致性 | 已有变更单 | 进编辑页 | 项目/预算/明细完整回显（handleProjectChange 清空后回填） | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-12 | 查看模式只读 | 功能 | mode=view | 观察 | form disabled、无底部按钮、明细纯文本 | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-13 | 变更原因 500 字上限 | 边界 | 新建页 | 输 501 字 | maxlength=500 截断+字数统计 | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-14 | 项目无已批准预算 | 边界 | 项目仅草稿预算 | 选项目 | 原预算下拉为空，无法选 | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
+| A13-15 | 编辑模式走 update | 功能 | 编辑页 | 保存 | PUT /{id}（updateBudgetChange(id,data)） | L1 budget-change-form-matrix.component.test.ts（2026-08-18） |
 
 ### A14 预算控制配置（/budget/control-config · views/budget/control-config/index.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | A14-01 | 列表加载与全局默认显示 | 功能 | 有项目级+全局规则 | 进入页面 | projectName 空显示「全局默认」，模式 tag 三色映射 | L5-API |
-| A14-02 | 名称/模式筛选 | 功能 | 数据齐备 | 输入名称、选 BLOCK | 条件生效，pageNum 重置 | 无 |
-| A14-03 | 控制模式必填 | 负向 | 新建弹窗 | 清空模式确定 | 「请选择控制模式」 | 无 |
-| A14-04 | 创建项目级规则 | 功能 | 项目存在 | 选项目+BLOCK+阈值 | POST /v1/budget-control-configs 成功 | 无 |
-| A14-05 | 项目留空=全局规则 | 功能 | 新建弹窗 | 不选项目 | payload.projectId=null | 无 |
-| A14-06 | 阈值滑杆范围 | 边界 | 弹窗 | 拖动/输入 | min=50 max=99 step=1，默认 80 | 无 |
-| A14-07 | 编辑更新 | 功能 | 已有规则 | 改模式/阈值 | PUT 成功 | 无 |
-| A14-08 | 删除回落提示 | 功能 | 项目级规则 | 确认删除 | 文案「删除后将回落为全局默认规则」，DELETE 成功 | 无 |
-| A14-09 | 同项目重复配置 | 负向 | 项目已有规则 | 再建同项目规则 | 验证后端唯一性拦截 | 无 |
-| A14-10 | 分页/数组双兼容 | 边界 | 后端返回数组或分页 | 加载 | res.data?.records 兜底 res.data 数组 | 无 |
+| A14-02 | 名称/模式筛选 | 功能 | 数据齐备 | 输入名称、选 BLOCK | 条件生效，pageNum 重置 | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A14-03 | 控制模式必填 | 负向 | 新建弹窗 | 清空模式确定 | 「请选择控制模式」 | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A14-04 | 创建项目级规则 | 功能 | 项目存在 | 选项目+BLOCK+阈值 | POST /v1/budget-control-configs 成功 | E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；创建 WARN_ONLY/80 成功且 getEffectiveConfig 生效验证） |
+| A14-05 | 项目留空=全局规则 | 功能 | 新建弹窗 | 不选项目 | payload.projectId=null | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A14-06 | 阈值滑杆范围 | 边界 | 弹窗 | 拖动/输入 | min=50 max=99 step=1，默认 80 | L1 budget-matrix.component.test.ts（2026-08-18） |
+| A14-07 | 编辑更新 | 功能 | 已有规则 | 改模式/阈值 | PUT 成功 | E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；PUT BLOCK/90 成功且 effective 回验） |
+| A14-08 | 删除回落提示 | 功能 | 项目级规则 | 确认删除 | 文案「删除后将回落为全局默认规则」，DELETE 成功 | L1 budget-matrix.component.test.ts（2026-08-18，回落文案源码钉住）+ E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；**实证修正**：删除后 getEffectiveConfig 回落全局默认 isDefault=1/BLOCK/80，非 null） |
+| A14-09 | 同项目重复配置 | 负向 | 项目已有规则 | 再建同项目规则 | 验证后端唯一性拦截 | E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；拦截断言；**实证**：500 DuplicateKey 无业务文案，缺陷现状钉住，tasks.md 登记 2026-08-18） |
+| A14-10 | 分页/数组双兼容 | 边界 | 后端返回数组或分页 | 加载 | res.data?.records 兜底 res.data 数组 | L1 budget-matrix.component.test.ts（2026-08-18） |
 | A14-11 | BLOCK 拦截语义端到端 | 集成 | 项目配 BLOCK 且预算将耗尽 | 提交支出单据 | 超阈值提交被拦截，WARN_ONLY 仅提醒、EXEMPT 放行（getEffectiveConfig） | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；UI 层：自置 BLOCK 项目+项目级配置，other-payment 创建被拒含预算语义 + 错误 Toast 可见 + 差集无落库；WARN_ONLY/EXEMPT 分支仍待补） |
 
 ### A-X 预算跨模块集成
 
 | 用例ID | 测试点 | 类型 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|
-| A-X15 | 预算批准→变更可选 | 集成 | 编制提交→审批 APPROVED→变更表单选项目 | 该预算出现在原预算下拉 | 无 |
-| A-X16 | 变更审批通过→总额更新 | 集成 | 变更单提交→Flowable 通过 | 预算 totalAmount 按调整总额更新 | 无 |
-| A-X17 | 撤回不影响预算 | 集成 | SUBMITTED 变更单撤回 | WITHDRAWN，预算金额不变 | 无 |
-| A-X18 | BLOCK 拦截支出合同提交 | 集成 | BLOCK 项目提交超预算支出合同 | 提交被拒并展示预警信息；WARN_ONLY 放行+提醒 | 无 |
-| A-X19 | 删除项目级规则回落全局 | 集成 | 删除项目 BLOCK 规则后提交支出 | 行为回落全局默认配置 | 无 |
+| A-X15 | 预算批准→变更可选 | 集成 | 编制提交→审批 APPROVED→变更表单选项目 | 该预算出现在原预算下拉 | E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；预算直批 APPROVED 后变更单引用其明细创建成功，前提钉住；下拉仅 APPROVED 逻辑由 A13-04 vitest 覆盖） |
+| A-X16 | 变更审批通过→总额更新 | 集成 | 变更单提交→Flowable 通过 | 预算 totalAmount 按调整总额更新 | **DATA 受阻钉住**：租户 1 缺 budget_change_approval BPMN，变更单无法至 APPROVED（连带 A12-05/A13-09）；tasks.md 登记 2026-08-18，待流程部署后翻转 |
+| A-X17 | 撤回不影响预算 | 集成 | SUBMITTED 变更单撤回 | WITHDRAWN，预算金额不变 | **DATA 受阻钉住**：同上 BPMN 缺失无 SUBMITTED 前提；负向守卫「仅已提交状态可撤回」已由 a4 钉住；tasks.md 登记 2026-08-18 |
+| A-X18 | BLOCK 拦截支出合同提交 | 集成 | BLOCK 项目提交超预算支出合同 | 提交被拒并展示预警信息；WARN_ONLY 放行+提醒 | 支出单据侧 BLOCK 拦截已由 A14-11 expense-write-2 覆盖（other-payment 被拒+Toast）；支出合同提交拦截分支待后续补；WARN_ONLY/EXEMPT 分支同待补 |
+| A-X19 | 删除项目级规则回落全局 | 集成 | 删除项目 BLOCK 规则后提交支出 | 行为回落全局默认配置 | E2E a4-budget.spec.ts（真实模式，2026-08-18 全绿；删除后 getEffectiveConfig 实证回落全局默认 isDefault=1/controlMode=BLOCK/threshold=80） |
 
 ---
 

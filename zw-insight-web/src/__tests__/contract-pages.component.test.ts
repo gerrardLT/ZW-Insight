@@ -59,6 +59,14 @@ vi.mock('element-plus', async (importOriginal) => {
 import ContractIndex from '@/views/contract/index.vue'
 import OutputReport from '@/views/contract/output-report.vue'
 import BoqUpload from '@/views/contract/boq-upload.vue'
+import { ElMessageBox } from 'element-plus'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __testDir = dirname(fileURLToPath(import.meta.url))
+const boqUploadSrc = readFileSync(resolve(__testDir, '../views/contract/boq-upload.vue'), 'utf-8')
+const boqApiSrc = readFileSync(resolve(__testDir, '../api/boq.ts'), 'utf-8')
 
 let wrapper: any = null
 afterEach(() => {
@@ -202,5 +210,67 @@ describe('contract/boq-upload.vue BOQ 上传', () => {
     await st.handleUpload()
     await flushPromises()
     expect(mockUploadBoq).toHaveBeenCalledWith('55', expect.anything())
+  })
+
+  it('@matrix A9-06 未选文件时「开始上传解析」disabled（源码钉住）', async () => {
+    await mountPage()
+    expect(boqUploadSrc).toContain(':disabled="!selectedFile"')
+    expect(wrapper.vm.$.setupState.selectedFile).toBeNull()
+  })
+
+  it('@matrix A9-09 buildTree 按 parentId 建树，孤儿/无父回落根节点', async () => {
+    await mountPage()
+    const st = wrapper.vm.$.setupState
+    const tree = st.buildTree([
+      { id: 1, parentId: null, itemName: '根' },
+      { id: 2, parentId: 1, itemName: '子' },
+      { id: 3, parentId: 999, itemName: '孤儿' },
+    ])
+    expect(tree).toHaveLength(2) // 根 + 孤儿回落
+    expect(tree[0].children).toHaveLength(1)
+    expect(tree[0].children[0].itemName).toBe('子')
+    expect(tree[1].itemName).toBe('孤儿')
+    // 后端已返回树形（带 children）时直用不重建
+    const asIs = st.buildTree([{ id: 1, children: [{ id: 2 }] }])
+    expect(asIs).toHaveLength(1)
+  })
+
+  it('@matrix A9-10 金额 2 位/数量 ≤4 位格式化，空值显示「-」', async () => {
+    await mountPage()
+    const st = wrapper.vm.$.setupState
+    expect(st.formatMoney(null)).toBe('-')
+    expect(st.formatMoney(1234.5)).toBe('1,234.50')
+    expect(st.formatNumber(null)).toBe('-')
+    expect(st.formatNumber(1.23456789)).toBe('1.2346')
+    expect(st.formatNumber(3)).toBe('3')
+  })
+
+  it('@matrix A9-11 清除确认取消不发 DELETE', async () => {
+    await mountPage()
+    const st = wrapper.vm.$.setupState
+    ;(ElMessageBox.confirm as any).mockRejectedValueOnce('cancel')
+    mockBoqDelete.mockClear()
+    await st.handleDeleteBoq().catch(() => { /* 取消即 reject */ })
+    await flushPromises()
+    expect(mockBoqDelete).not.toHaveBeenCalled()
+  })
+
+  it('@matrix A9-12 确认清除后树/统计清空、boqLoaded 复位', async () => {
+    await mountPage()
+    const st = wrapper.vm.$.setupState
+    st.boqTreeData = [{ id: 1 }]
+    st.uploadResult = { totalItems: 1, levelCount: 1, totalAmount: 1 }
+    expect(st.boqLoaded).toBe(true)
+    await st.handleDeleteBoq()
+    await flushPromises()
+    expect(mockBoqDelete).toHaveBeenCalledWith('55')
+    expect(st.boqTreeData).toEqual([])
+    expect(st.uploadResult).toBeNull()
+    expect(st.boqLoaded).toBe(false)
+  })
+
+  it('@matrix A9-13 上传超时 120s 配置钉住（api/boq.ts）', async () => {
+    expect(boqApiSrc).toContain('timeout: 120000')
+    expect(boqUploadSrc).toContain('default-expand-all')
   })
 })
