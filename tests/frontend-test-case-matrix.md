@@ -36,75 +36,75 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | A1-01 | 首屏加载默认分页 | 功能 | 已登录，存在项目数据 | 进入列表页 | GET /v1/project/page（pageNum=1,pageSize=10），表格渲染 8 列 | L5-API/L5-UI |
-| A1-02 | 名称搜索重置页码 | 功能 | 第 2 页 | 输入名称回车或点搜索 | pageNum 重置为 1 并重新请求 | L5-UI |
-| A1-03 | 状态筛选 8 枚举 | 功能 | 各状态数据齐备 | 依次选 DRAFT…CLOSED 查询 | 请求带 status，结果仅含对应状态 | 无 |
-| A1-04 | 重置清空条件 | 功能 | 已设置筛选 | 点重置 | 条件清空、pageSize=10 重载 | 无 |
-| A1-05 | 分页 size/页码切换 | 边界 | total>20 | 切 50/页、跳页 | page-sizes=[10,20,50,100] 生效 | 无 |
-| A1-06 | DRAFT 行显示编辑/提交/删除 | 功能 | 存在草稿项目 | 观察操作列 | 仅 DRAFT 渲染三按钮+查看 | 无 |
-| A1-07 | COMPLETED 行显示结项按钮 | 功能 | 存在已竣工项目 | 观察操作列 | 仅 COMPLETED 显示「结项」 | 无 |
-| A1-08 | 非草稿行无编辑/提交/删除 | 负向 | FILED/WON 等行 | 观察操作列并直调 API | UI 无按钮；API submit/delete 返回业务错误 | L5-API(弱) |
-| A1-09 | 提交二次确认+取消 | 功能 | DRAFT 行 | 点提交→弹窗取消 | 不发 submit 请求，状态不变 | 无 |
-| A1-10 | 提交成功状态流转 | 集成 | DRAFT 行 | 确认后提交 | POST /{id}/submit 成功，刷新后状态变更 | L5-API |
-| A1-11 | 结项预检不满足拦截 | 负向 | COMPLETED 但有未结清事项 | 点结项 | close-check allPassed=false，alert 展示 failedReasons（；分隔），不发 close | L5-API(仅 200 断言) |
-| A1-12 | 结项预检通过发起审批 | 集成 | 预检全通过 | 确认后结项 | POST /{id}/close 成功，状态→CLOSING | 无 |
-| A1-13 | 删除草稿成功刷新 | 功能 | DRAFT 行 | 确认删除 | DELETE 成功，列表刷新 | L5-API |
-| A1-14 | 状态标签文案映射一致 | 一致性 | 各状态行 | 比对标签 | 8 状态中文标签与 statusMap 一致 | L5-一致性 |
+| A1-02 | 名称搜索重置页码 | 功能 | 第 2 页 | 输入名称回车或点搜索 | pageNum 重置为 1 并重新请求 | L5-UI + L1 project-index-matrix.component.test.ts（2026-08-18） |
+| A1-03 | 状态筛选 8 枚举 | 功能 | 各状态数据齐备 | 依次选 DRAFT…CLOSED 查询 | 请求带 status，结果仅含对应状态 | L1 project-index-matrix.component.test.ts（2026-08-18，status 参数下发+8 枚举源码静态钉住） |
+| A1-04 | 重置清空条件 | 功能 | 已设置筛选 | 点重置 | 条件清空、pageSize=10 重载 | L1 project-index-matrix.component.test.ts（2026-08-18） |
+| A1-05 | 分页 size/页码切换 | 边界 | total>20 | 切 50/页、跳页 | page-sizes=[10,20,50,100] 生效 | L1 project-index-matrix.component.test.ts（2026-08-18，page-sizes 配置钉住） |
+| A1-06 | DRAFT 行显示编辑/提交/删除 | 功能 | 存在草稿项目 | 观察操作列 | 仅 DRAFT 渲染三按钮+查看 | L1 project-index-matrix.component.test.ts（2026-08-18） |
+| A1-07 | COMPLETED 行显示结项按钮 | 功能 | 存在已竣工项目 | 观察操作列 | 仅 COMPLETED 显示「结项」 | L1 project-index-matrix.component.test.ts（2026-08-18） |
+| A1-08 | 非草稿行无编辑/提交/删除 | 负向 | FILED/WON 等行 | 观察操作列并直调 API | UI 无按钮；API submit/delete 返回业务错误。**2026-08 E2E 实证**：submit 拦截 code=500「仅草稿状态可提交」；DELETE **无状态守卫**（FILED 可删，缺陷现状钉住） | L5-API + L1 project-index-matrix.component.test.ts（2026-08-18，UI 面）+ E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；FILED 后操作列收缩 + resubmit 拦截断言） |
+| A1-09 | 提交二次确认+取消 | 功能 | DRAFT 行 | 点提交→弹窗取消 | 不发 submit 请求，状态不变 | L1 project-index-matrix.component.test.ts（2026-08-18，取消不发请求断言） |
+| A1-10 | 提交成功状态流转 | 集成 | DRAFT 行 | 确认后提交 | POST /{id}/submit 成功，刷新后状态变更。**2026-08 E2E 实证修正**：项目提交为直批——DRAFT→submit 立即 FILED（无 Flowable 待办，A-X2 预期修正） | L5-API + E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；UI 提交→已报备标签+请求仅一次计数断言） |
+| A1-11 | 结项预检不满足拦截 | 负向 | COMPLETED 但有未结清事项 | 点结项 | close-check allPassed=false，alert 展示 failedReasons（；分隔），不发 close | L5-API + E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；演示 COMPLETED 项目 alert 动态 reasons 断言 + closePostCount=0） |
+| A1-12 | 结项预检通过发起审批 | 集成 | 预检全通过 | 确认后结项 | POST /{id}/close 成功，状态→CLOSING | DATA 受阻（tasks.md 登记 2026-08-18：无 allPassed=true 演示项目前提） |
+| A1-13 | 删除草稿成功刷新 | 功能 | DRAFT 行 | 确认删除 | DELETE 成功，列表刷新 | L5-API + E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；UI 确认删除→行消失） |
+| A1-14 | 状态标签文案映射一致 | 一致性 | 各状态行 | 比对标签 | 8 状态中文标签与 statusMap 一致 | L5-一致性 + L1 project-index-matrix.component.test.ts（2026-08-18，statusMap 源码钉住） |
 
 ### A2 项目表单（/project/create、/project/edit/:id · views/project/form.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | A2-01 | 5 项必填校验 | 负向 | 新增页 | 逐项清空 projectName/性质/类型/业主/签约公司后保存 | 分别提示对应必填文案，不发请求 | L5-UI |
-| A2-02 | 完整新增保存 | 功能 | 业主/公司基础数据存在 | 填全→保存 | POST /v1/project 成功，跳 /project/list | L5-API/L5-UI |
-| A2-03 | 项目编号只读 | 功能 | 新增页 | 尝试编辑编号 | 输入框 disabled，placeholder「系统自动生成」 | 无 |
-| A2-04 | 业主单位远程搜索 | 功能 | 新增页 | 输入关键字 | 触发 GET /v1/basedata/owner/list?ownerName=，loading 态 | 无 |
-| A2-05 | 选中后同步名称快照 | 功能 | 选项已加载 | 选中业主/签约公司 | ownerCompanyName/signingCompanyName 同步回填 | 无 |
+| A2-02 | 完整新增保存 | 功能 | 业主/公司基础数据存在 | 填全→保存 | POST /v1/project 成功，跳 /project/list | L5-API/L5-UI + E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；业主远程搜索+签约公司联动+POST 硬断言+跳列表） |
+| A2-03 | 项目编号只读 | 功能 | 新增页 | 尝试编辑编号 | 输入框 disabled，placeholder「系统自动生成」 | L1 project-form-detail-matrix.component.test.ts（2026-08-18） |
+| A2-04 | 业主单位远程搜索 | 功能 | 新增页 | 输入关键字 | 触发 GET /v1/basedata/owner/list?ownerName=，loading 态 | L1 project-form-detail-matrix.component.test.ts（2026-08-18）+ E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；A2-02 含 UI 远程搜索） |
+| A2-05 | 选中后同步名称快照 | 功能 | 选项已加载 | 选中业主/签约公司 | ownerCompanyName/signingCompanyName 同步回填 | L1 project-form-detail-matrix.component.test.ts（2026-08-18） |
 | A2-06 | 编辑回显含业主注入 | 一致性 | 已有项目 | 进入编辑页 | 表单回显；业主单位强制注入下拉选项 | L5-一致性 |
-| A2-07 | 雪花 ID 字符串传递 | 边界 | 编辑 >2^53 的 ID | 直接 URL 访问 | getProjectDetail 以字符串传参，无精度丢失 | 无 |
-| A2-08 | 预算金额非负 | 边界 | 新增页 | 输入负数 | input-number min=0 拦截 | 无 |
-| A2-09 | 是否招标默认「否」 | 功能 | 新增页 | 观察单选 | needTender 默认 0 | L5-API |
-| A2-10 | 校验失败不发请求 | 负向 | 必填缺失 | 点保存 | 无网络请求，submitLoading 不置位 | 无 |
+| A2-07 | 雪花 ID 字符串传递 | 边界 | 编辑 >2^53 的 ID | 直接 URL 访问 | getProjectDetail 以字符串传参，无精度丢失 | L1 project-form-detail-matrix.component.test.ts（2026-08-18，19 位超 MAX_SAFE_INTEGER 断言） |
+| A2-08 | 预算金额非负 | 边界 | 新增页 | 输入负数 | input-number min=0 拦截 | L1 project-form-detail-matrix.component.test.ts（2026-08-18，min=0 precision=2 配置钉住） |
+| A2-09 | 是否招标默认「否」 | 功能 | 新增页 | 观察单选 | needTender 默认 0 | L5-API + L1 project-form-detail-matrix.component.test.ts（2026-08-18） |
+| A2-10 | 校验失败不发请求 | 负向 | 必填缺失 | 点保存 | 无网络请求，submitLoading 不置位 | L1 project-form-detail-matrix.component.test.ts（2026-08-18，api mock 零调用断言） |
 | A2-11 | 更新走 PUT 并带 id | 功能 | 编辑页 | 修改后保存 | PUT /v1/project/{id}，提示更新成功 | L5-API |
-| A2-12 | 取消/返回不落库 | 功能 | 已修改字段 | 点取消/返回 | 跳列表，无写请求 | 无 |
+| A2-12 | 取消/返回不落库 | 功能 | 已修改字段 | 点取消/返回 | 跳列表，无写请求 | L1 project-form-detail-matrix.component.test.ts（2026-08-18，无写请求断言） |
 
 ### A3 项目详情（/project/detail/:id · views/project/detail.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | A3-01 | 字段级展示一致 | 一致性 | 已有项目 | 比对 12 项描述字段 | 与 GET /{id} 返回一致 | L5-一致性 |
-| A3-02 | CLOSING 状态标签缺失 | 负向 | 项目处于 CLOSING | 打开详情 | detail statusMap 无 CLOSING，回退显示原始枚举串（源码实证缺陷） | 无 |
-| A3-03 | URL tab 直达 | 功能 | 已有项目 | 访问 ?tab=team | 初始激活「项目团队」tab | 无 |
-| A3-04 | 返回列表 | 功能 | 详情页 | 点返回 | 跳 /project/list | 无 |
-| A3-05 | 非法/越权 id | 负向 | 无权限或不存在 id | 直接 URL 访问 | request 拦截器统一错误提示，页面空态 | 无 |
-| A3-06 | 标题含项目名称 | 功能 | 已有项目 | 观察卡片头 | 「项目详情：{projectName}」 | L5-UI |
-| A3-07 | 预算金额 0/空显示 | 边界 | budgetAmount=0 | 观察字段 | 显示 0 而非空 | 无 |
-| A3-08 | 切 tab 触发成员加载 | 集成 | 详情已加载 | 点项目团队 | ProjectMember 挂载即请求成员列表 | 无 |
+| A3-02 | CLOSING 状态标签缺失 | 负向 | 项目处于 CLOSING | 打开详情 | detail statusMap 无 CLOSING，回退显示原始枚举串（源码实证缺陷） | L1 project-form-detail-matrix.component.test.ts（2026-08-18，缺陷钉住） |
+| A3-03 | URL tab 直达 | 功能 | 已有项目 | 访问 ?tab=team | 初始激活「项目团队」tab | L1 project-form-detail-matrix.component.test.ts（2026-08-18） |
+| A3-04 | 返回列表 | 功能 | 详情页 | 点返回 | 跳 /project/list | L1 project-form-detail-matrix.component.test.ts（2026-08-18） |
+| A3-05 | 非法/越权 id | 负向 | 无权限或不存在 id | 直接 URL 访问 | request 拦截器统一错误提示，页面空态 | E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；非法 id 详情空态） |
+| A3-06 | 标题含项目名称 | 功能 | 已有项目 | 观察卡片头 | 「项目详情：{projectName}」 | L5-UI + L1 project-form-detail-matrix.component.test.ts（2026-08-18） |
+| A3-07 | 预算金额 0/空显示 | 边界 | budgetAmount=0 | 观察字段 | 显示 0 而非空 | L1 project-form-detail-matrix.component.test.ts（2026-08-18，el-descriptions cell 相邻断言） |
+| A3-08 | 切 tab 触发成员加载 | 集成 | 详情已加载 | 点项目团队 | ProjectMember 挂载即请求成员列表 | L1 project-member-matrix.component.test.ts（2026-08-18，?tab=team 直达挂载即请求） |
 
 ### A4 项目团队（详情 tab · views/project/components/ProjectMember.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | A4-01 | 成员列表加载 | 功能 | 项目有成员 | 进团队 tab | GET /{projectId}/member 分页渲染 | L5-API |
-| A4-02 | 按角色筛选 | 功能 | 7 类角色数据 | 选角色 | 请求带 role，pageNum 重置 1 | 无 |
-| A4-03 | 添加成员必填校验 | 负向 | 打开添加弹窗 | 不选用户/角色点确定 | 「请选择用户」「请选择至少一个角色」(min:1) | 无 |
-| A4-04 | 用户远程搜索 | 功能 | 添加弹窗 | 输入姓名 | getUserPage(realName,pageSize=20)，选项含部门后缀 | 无 |
-| A4-05 | 添加成员成功 | 功能 | 用户可选 | 选用户+多角色→确定 | POST member 成功，关弹窗刷新 | L5-API |
-| A4-06 | 重复添加拦截 | 负向 | 用户已是成员 | 再次添加同一用户 | 后端报错，拦截器 Toast，弹窗保留 | 无 |
-| A4-07 | 变更角色空选拦截 | 负向 | 变更角色弹窗 | 清空角色点确定 | 前端 warning，不发 PUT | 无 |
-| A4-08 | 变更角色成功 | 功能 | 成员存在 | 调整角色确定 | PUT /member/{userId}/roles，标签刷新 | 无 |
-| A4-09 | 移除确认与取消 | 负向 | 成员存在 | 点移除→取消 | 无 DELETE 请求 | 无 |
-| A4-10 | 移除成功 | 功能 | 成员存在 | 确认移除 | DELETE 成功刷新 | L5-API |
-| A4-11 | 分页尺寸 | 边界 | 成员>10 | 切换 size | page-sizes=[10,20,50] 生效 | 无 |
-| A4-12 | 多角色标签渲染 | 一致性 | 成员持多角色 | 观察角色列 | 每角色一 tag，7 角色中文映射正确 | 无 |
+| A4-02 | 按角色筛选 | 功能 | 7 类角色数据 | 选角色 | 请求带 role，pageNum 重置 1 | L1 project-member-matrix.component.test.ts（2026-08-18） |
+| A4-03 | 添加成员必填校验 | 负向 | 打开添加弹窗 | 不选用户/角色点确定 | 「请选择用户」「请选择至少一个角色」(min:1) | L1 project-member-matrix.component.test.ts（2026-08-18，不发 POST + loading 不置位） |
+| A4-04 | 用户远程搜索 | 功能 | 添加弹窗 | 输入姓名 | getUserPage(realName,pageSize=20)，选项含部门后缀 | L1 project-member-matrix.component.test.ts（2026-08-18，含空查询不请求断言） |
+| A4-05 | 添加成员成功 | 功能 | 用户可选 | 选用户+多角色→确定 | POST member 成功，关弹窗刷新 | L5-API + E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；UI 远程搜索用户+双角色，行可见断言） |
+| A4-06 | 重复添加拦截 | 负向 | 用户已是成员 | 再次添加同一用户 | 后端报错，拦截器 Toast，弹窗保留 | E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；code=400「已是本项目成员」+弹窗保留断言） |
+| A4-07 | 变更角色空选拦截 | 负向 | 变更角色弹窗 | 清空角色点确定 | 前端 warning，不发 PUT | L1 project-member-matrix.component.test.ts（2026-08-18，「请至少选择一个角色」warning 断言） |
+| A4-08 | 变更角色成功 | 功能 | 成员存在 | 调整角色确定 | PUT /member/{userId}/roles，标签刷新 | E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；UI 变更→资料员标签刷新） |
+| A4-09 | 移除确认与取消 | 负向 | 成员存在 | 点移除→取消 | 无 DELETE 请求 | L1 project-member-matrix.component.test.ts（2026-08-18） |
+| A4-10 | 移除成功 | 功能 | 成员存在 | 确认移除 | DELETE 成功刷新 | L5-API + E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；UI 确认→DELETE→行消失） |
+| A4-11 | 分页尺寸 | 边界 | 成员>10 | 切换 size | page-sizes=[10,20,50] 生效 | L1 project-member-matrix.component.test.ts（2026-08-18） |
+| A4-12 | 多角色标签渲染 | 一致性 | 成员持多角色 | 观察角色列 | 每角色一 tag，7 角色中文映射正确 | L1 project-member-matrix.component.test.ts（2026-08-18） |
 
 ### A-X 项目跨模块集成
 
 | 用例ID | 测试点 | 类型 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|
-| A-X1 | 投标中标联动项目状态 | 集成 | 项目报备→投标报名→开标记录 isWon=1 | register→WON，项目状态联动 WON | L5-API(无联动断言) |
-| A-X2 | 项目提交审批闭环 | 集成 | DRAFT 提交→Flowable 待办→审批通过 | 项目 FILED，待办消失 | 无 |
-| A-X3 | 结项审批全链路 | 集成 | close-check 通过→close→审批通过/驳回 | 通过→CLOSED；驳回→回 COMPLETED | 无 |
-| A-X4 | 项目删除引用拦截 | 负向 | 删除已挂合同/预算的项目 | 后端引用拦截，前端 Toast | 无 |
+| A-X1 | 投标中标联动项目状态 | 集成 | 项目报备→投标报名→开标记录 isWon=1 | register→WON，项目状态联动 WON | L5-API + E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；开标 isWon=1→报名 WON+项目 WON 联动断言补齐） |
+| A-X2 | 项目提交审批闭环 | 集成 | DRAFT 提交→Flowable 待办→审批通过 | 项目 FILED，待办消失。**2026-08 E2E 实证修正**：项目提交为直批（DRAFT→submit 立即 FILED，无 Flowable 待办环节），账本预期按实证修正 | E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；A1-10 用例实证直批钉住） |
+| A-X3 | 结项审批全链路 | 集成 | close-check 通过→close→审批通过/驳回 | 通过→CLOSED；驳回→回 COMPLETED | DATA 受阻（tasks.md 登记 2026-08-18：预检全通过数据前提缺失，同 A1-12） |
+| A-X4 | 项目删除引用拦截 | 负向 | 删除已挂合同/预算的项目 | 后端引用拦截，前端 Toast。**2026-08 E2E 实证修正**：后端 DELETE **无引用检查且无状态守卫**（挂报名引用仍 code=200 放行删除，与账本预期不符，缺陷现状钉住） | E2E a1-project.spec.ts（真实模式，2026-08-18 全绿；挂报名引用 DELETE 放行现状钉住）+ L1 project-index-matrix.component.test.ts（delete reject 不吞错） |
 | A-X5 | 成员角色与数据权限 | 权限 | 以项目经理/普通成员分别查看项目数据 | 按角色控制数据可见范围 | L1(仅单测) |
 
 ## A-2 投标管理（/tender，2 页，24+4 例，覆盖≈50%）
@@ -115,44 +115,44 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| A5-01 | 列表加载与状态标签 | 功能 | 有报名数据 | 进入页面 | 4 态标签（报名中/已投标/中标/未中标），保证金千分位 | L5-API/L5-一致性 |
-| A5-02 | 项目筛选与重置 | 功能 | 多项目数据 | ProjectSelector 选项目→搜索/重置 | page=1 带 projectId 查询；重置清空 | 无 |
-| A5-03 | 新增必填校验 | 负向 | 打开新增弹窗 | 项目/业主单位留空点确定 | 「请选择项目」「请输入业主单位」 | 无 |
-| A5-04 | 完整新增报名 | 功能 | 项目存在 | 填全 8 字段确定 | POST register 成功，状态 REGISTERED | L5-API |
-| A5-05 | 保证金精度边界 | 边界 | 新增弹窗 | 输入负数/3 位小数 | min=0、precision=2 生效 | 无 |
+| A5-01 | 列表加载与状态标签 | 功能 | 有报名数据 | 进入页面 | 4 态标签（报名中/已投标/中标/未中标），保证金千分位 | L5-API/L5-一致性 + L1 tender-matrix.component.test.ts（2026-08-18） |
+| A5-02 | 项目筛选与重置 | 功能 | 多项目数据 | ProjectSelector 选项目→搜索/重置 | page=1 带 projectId 查询；重置清空 | L1 tender-matrix.component.test.ts（2026-08-18） |
+| A5-03 | 新增必填校验 | 负向 | 打开新增弹窗 | 项目/业主单位留空点确定 | 「请选择项目」「请输入业主单位」 | L1 tender-matrix.component.test.ts（2026-08-18，文案钉住+不发创建请求） |
+| A5-04 | 完整新增报名 | 功能 | 项目存在 | 填全 8 字段确定 | POST register 成功，状态 REGISTERED | L5-API + E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；UI 完整新增含项目远程搜索+「报名中」标签） |
+| A5-05 | 保证金精度边界 | 边界 | 新增弹窗 | 输入负数/3 位小数 | min=0、precision=2 生效 | L1 tender-matrix.component.test.ts（2026-08-18） |
 | A5-06 | 编辑回显（detail 合并） | 一致性 | 已有记录 | 点编辑 | 先 GET /{id} 再与 defaultForm 合并回显 | L5-API/L5-一致性 |
-| A5-07 | 提交仅 REGISTERED 可见 | 功能 | 各状态行 | 观察操作列 | 仅 REGISTERED 显示提交/删除 | 无 |
-| A5-08 | 提交确认与取消 | 负向 | REGISTERED 行 | 提交→取消 | 不发 PUT /{id}/submit | 无 |
-| A5-09 | 提交成功状态流转 | 集成 | REGISTERED 行 | 确认提交 | 状态→SUBMITTED，按钮消失 | L5-API |
-| A5-10 | 非法状态提交拦截 | 负向 | WON/LOST 记录 | 直调 submit API | 后端拒绝 | 无 |
-| A5-11 | 开标日期早于报名日期 | 边界 | 新增弹窗 | openDate<registerDate | 前端无校验（源码实证），验证后端是否拦截 | 无 |
-| A5-12 | 分页参数命名 page/size | 一致性 | 数据>10 | 翻页 | 该页用 page/size（其余模块 pageNum/pageSize），请求正确 | 无 |
-| A5-13 | 删除仅草稿态 | 负向 | SUBMITTED 行 | 观察操作列 | 无删除按钮；直调 DELETE 应被拒 | 无 |
-| A5-14 | 编辑任意状态可入 | 负向 | WON 行 | 点编辑并保存 | 前端未限制（源码实证），验证后端状态校验 | 无 |
+| A5-07 | 提交仅 REGISTERED 可见 | 功能 | 各状态行 | 观察操作列 | 仅 REGISTERED 显示提交/删除 | L1 tender-matrix.component.test.ts（2026-08-18）+ E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；SUBMITTED 后提交/删除按钮消失） |
+| A5-08 | 提交确认与取消 | 负向 | REGISTERED 行 | 提交→取消 | 不发 PUT /{id}/submit | L1 tender-matrix.component.test.ts（2026-08-18） |
+| A5-09 | 提交成功状态流转 | 集成 | REGISTERED 行 | 确认提交 | 状态→SUBMITTED，按钮消失 | L5-API + E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；UI 提交→「已投标」标签+按钮消失+项目 TENDERING 联动 A-X6） |
+| A5-10 | 非法状态提交拦截 | 负向 | WON/LOST 记录 | 直调 submit API | 后端拒绝。**2026-08 E2E 实证**：SUBMITTED resubmit 同样拦截 code=500「仅报名状态可提交」 | E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；API 直调拦截断言） |
+| A5-11 | 开标日期早于报名日期 | 边界 | 新增弹窗 | openDate<registerDate | 前端无校验（源码实证），验证后端是否拦截。**2026-08 E2E 实证**：后端也接受（code=200），现状钉住 | L1 tender-matrix.component.test.ts（2026-08-18，源码无 validator 钉住）+ E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；后端接受现状钉住+当场清理） |
+| A5-12 | 分页参数命名 page/size | 一致性 | 数据>10 | 翻页 | 该页用 page/size（其余模块 pageNum/pageSize），请求正确 | E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；列表请求 page/size 口径抓包钉住） |
+| A5-13 | 删除仅草稿态 | 负向 | SUBMITTED 行 | 观察操作列 | 无删除按钮；直调 DELETE 应被拒。**2026-08 E2E 实证**：DELETE code=500「仅报名状态可删除」（SUBMITTED/WON/LOST 均不可删） | L1 tender-matrix.component.test.ts（2026-08-18，UI 按钮门禁）+ E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；API 直调拦截断言） |
+| A5-14 | 编辑任意状态可入 | 负向 | WON 行 | 点编辑并保存 | 前端未限制（源码实证），验证后端状态校验。**2026-08 E2E 实证**：PUT 无状态守卫，SUBMITTED 编辑放行（缺陷现状钉住） | E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；PUT 放行现状钉住） |
 
 ### A6 证件管理（/tender/certificate · views/tender/certificate.vue）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| A6-01 | 列表加载三态标签 | 功能 | 有证件数据 | 进入页面 | VALID/EXPIRING/EXPIRED 标签渲染 | L5-一致性 |
-| A6-02 | 三条件筛选 | 功能 | 数据齐备 | 证件名称/持证人/状态查询 | pageNum 重置 1，条件生效 | 无 |
-| A6-03 | 新增必填校验 | 负向 | 打开弹窗 | 名称/编号/持证人留空 | 3 条必填提示 | 无 |
+| A6-01 | 列表加载三态标签 | 功能 | 有证件数据 | 进入页面 | VALID/EXPIRING/EXPIRED 标签渲染。**2026-08 E2E 实证**：后端 status 为 Integer 1/0 且无到期计算，列表恒显示「已过期」（API-GAP） | L5-一致性 + API-GAP 受阻（tasks.md 登记 2026-08-18；E2E a2-tender.spec.ts 现状钉住断言） |
+| A6-02 | 三条件筛选 | 功能 | 数据齐备 | 证件名称/持证人/状态查询 | pageNum 重置 1，条件生效。**2026-08 E2E 实证**：前端 certName/holderName/status 与后端 personName/certificateType 参数名脱节，筛选实际失效（API-GAP） | L1 tender-matrix.component.test.ts（2026-08-18，前端行为钉住）+ API-GAP 受阻（tasks.md 登记 2026-08-18） |
+| A6-03 | 新增必填校验 | 负向 | 打开弹窗 | 名称/编号/持证人留空 | 3 条必填提示 | L1 tender-matrix.component.test.ts（2026-08-18，文案钉住+不发请求） |
 | A6-04 | 新增证件成功 | 功能 | — | 填全确定 | POST /certificate/person 成功 | L5-API |
-| A6-05 | 编辑回显与更新 | 功能 | 已有证件 | 编辑→改日期→确定 | PUT 成功刷新 | 无 |
+| A6-05 | 编辑回显与更新 | 功能 | 已有证件 | 编辑→改日期→确定 | PUT 成功刷新。**2026-08 E2E 实证**：前端 expiryDate/issueOrgan 与后端 expireDate 等字段脱节，回显/更新链路失真（API-GAP） | API-GAP 受阻（tasks.md 登记 2026-08-18） |
 | A6-06 | 删除确认与成功 | 功能 | 已有证件 | 确认删除 | DELETE /certificate/{type}/{id} | 无 |
-| A6-07 | 到期状态后端计算 | 集成 | 到期日临近/已过 | 保存后查列表 | 后端按日期算 EXPIRING/EXPIRED | 无 |
-| A6-08 | 到期日早于发证日 | 边界 | 新增弹窗 | expiryDate<issueDate | 前端无校验（源码实证），验证后端行为 | 无 |
-| A6-09 | 企业证书入口不可达 | 负向 | — | 页面全链路操作 | row.type 恒缺省→恒走 person；company 分支前端无法触达（源码实证盲点） | 仅 L5-API 直调 |
-| A6-10 | 分页边界 | 边界 | 数据>10 | 切换 size/页码 | [10,20,50] 生效 | 无 |
+| A6-07 | 到期状态后端计算 | 集成 | 到期日临近/已过 | 保存后查列表 | 后端按日期算 EXPIRING/EXPIRED。**2026-08 E2E 实证**：后端无到期日计算逻辑（status 恒 Integer，无枚举映射），预期不成立（API-GAP） | API-GAP 受阻（tasks.md 登记 2026-08-18） |
+| A6-08 | 到期日早于发证日 | 边界 | 新增弹窗 | expiryDate<issueDate | 前端无校验（源码实证），验证后端行为 | L1 tender-matrix.component.test.ts（2026-08-18，源码无校验现状钉住） |
+| A6-09 | 企业证书入口不可达 | 负向 | — | 页面全链路操作 | row.type 恒缺省→恒走 person；company 分支前端无法触达（源码实证盲点） | 仅 L5-API 直调 + L1 tender-matrix.component.test.ts（2026-08-18，row.type \|\| 'person' 源码钉住） |
+| A6-10 | 分页边界 | 边界 | 数据>10 | 切换 size/页码 | [10,20,50] 生效。**2026-08 E2E 实证**：前端 pageNum/pageSize vs 后端 @RequestParam page/size，前端分页参数被忽略（API-GAP） | L1 tender-matrix.component.test.ts（2026-08-18，page-sizes 配置钉住）+ API-GAP 受阻（tasks.md 登记 2026-08-18；E2E 现状钉住断言） |
 
 ### A-X 投标跨模块集成
 
 | 用例ID | 测试点 | 类型 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|
-| A-X6 | 报名提交→项目招标中 | 集成 | REGISTERED→提交 | 项目状态联动 TENDERING | 无 |
-| A-X7 | 开标中标双向联动 | 集成 | 创建开标记录 isWon=1 | register→WON 且项目→WON | L5-API(无联动断言) |
+| A-X6 | 报名提交→项目招标中 | 集成 | REGISTERED→提交 | 项目状态联动 TENDERING | E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；提交后项目状态 TENDERING 联动断言） |
+| A-X7 | 开标中标双向联动 | 集成 | 创建开标记录 isWon=1 | register→WON 且项目→WON | L5-API + E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；开标 isWon=1→报名 WON+项目 WON 双联动断言补齐） |
 | A-X8 | 保证金申请-缴纳-退还链 | 集成 | deposit/apply→fee 确认付款→deposit/return | 三环节金额一致、状态流转正确 | L5-API(弱断言) |
-| A-X9 | 中标后合同入口 | 集成 | 中标项目创建施工合同 | 合同可选该项目，项目进入施工链路 | 无 |
+| A-X9 | 中标后合同入口 | 集成 | 中标项目创建施工合同 | 合同可选该项目，项目进入施工链路 | E2E a2-tender.spec.ts（真实模式，2026-08-18 全绿；前提钉住——开标 isWon=1 后项目 WON，进入施工链路前置状态实证） |
 
 ## A-3 合同管理（/contract，4 页，52+5 例，覆盖≈29%）
 
