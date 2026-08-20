@@ -66,10 +66,11 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-const pages: Array<{ name: string; comp: any; pageMock: any; createMock: any; submitMock: any; label: string; pageKey: 'pageNum' | 'page'; clearKey: string }> = [
-  { name: 'inbound', comp: Inbound, pageMock: mockInboundPage, createMock: mockInboundCreate, submitMock: mockInboundSubmit, label: '入库单', pageKey: 'page', clearKey: 'projectId' },
-  { name: 'outbound', comp: Outbound, pageMock: mockOutboundPage, createMock: mockOutboundCreate, submitMock: mockOutboundSubmit, label: '出库单', pageKey: 'pageNum', clearKey: 'projectId' },
-  { name: 'transfer', comp: Transfer, pageMock: mockTransferPage, createMock: mockTransferCreate, submitMock: mockTransferSubmit, label: '调拨单', pageKey: 'pageNum', clearKey: 'fromProjectId' },
+const pages: Array<{ name: string; comp: any; pageMock: any; createMock: any; submitMock: any; label: string; pageKey: 'pageNum' | 'page'; pageArgKey: 'pageNum' | 'page'; clearKey: string }> = [
+  { name: 'inbound', comp: Inbound, pageMock: mockInboundPage, createMock: mockInboundCreate, submitMock: mockInboundSubmit, label: '入库单', pageKey: 'page', pageArgKey: 'page', clearKey: 'projectId' },
+  // 2026-08-21 缺陷#5 口径对齐：出库本地状态 pageNum/pageSize，请求实参映射为后端 page/size
+  { name: 'outbound', comp: Outbound, pageMock: mockOutboundPage, createMock: mockOutboundCreate, submitMock: mockOutboundSubmit, label: '出库单', pageKey: 'pageNum', pageArgKey: 'page', clearKey: 'projectId' },
+  { name: 'transfer', comp: Transfer, pageMock: mockTransferPage, createMock: mockTransferCreate, submitMock: mockTransferSubmit, label: '调拨单', pageKey: 'pageNum', pageArgKey: 'pageNum', clearKey: 'fromProjectId' },
 ]
 
 async function mountPage(p: (typeof pages)[number], records: any[] = []) {
@@ -98,7 +99,7 @@ for (const p of pages) {
       st.handleSearch()
       await flushPromises()
       expect(st.queryParams[p.pageKey]).toBe(1)
-      expect((p.pageMock.mock.calls as any)[0][0][p.pageKey]).toBe(1)
+      expect((p.pageMock.mock.calls as any)[0][0][p.pageArgKey]).toBe(1)
       st.handleReset()
       await flushPromises()
       expect(st.queryParams[p.pageKey]).toBe(1)

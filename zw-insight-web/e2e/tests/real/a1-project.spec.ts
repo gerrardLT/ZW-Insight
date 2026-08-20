@@ -3,16 +3,24 @@
  *
  * @matrix A2-02 完整新增保存（硬断言）/ A4-05 添加成员成功 / A4-06 重复添加拦截 /
  *   A4-08 变更角色成功 / A4-10 移除成功 / A1-10 提交成功状态流转（直批 FILED）/
- *   A1-08 非草稿直调 submit 拦截（+ delete 无守卫实证钉住）/ A1-13 删除草稿成功刷新 /
- *   A1-11 结项预检不满足拦截 / A-X4 项目删除引用拦截（实证：无守卫放行，缺陷钉住）/
+ *   A1-08 非草稿直调 submit 拦截 / A1-13 删除草稿成功刷新 /
+ *   A1-11 结项预检不满足拦截 / A1-12/A-X3 可结项项目结项链（种子 90004，
+ *   2026-08-21 数据态#1 解除后翻正向）/
+ *   A-X4 项目删除引用拦截（2026-08-21 缺陷#2 修复后翻负向）/
  *   A3-05 非法 id 详情空态
  *
  * 实证修正（探测 2026-08，以事实为依据）：
  *   - 项目提交为直批：DRAFT→submit 立即 FILED（无 Flowable 待办，账本 A-X2 预期修正）
- *   - 项目 DELETE 无状态守卫（FILED 可删）且无报名引用检查（A-X4 与账本预期不符，钉住现状）
+ *   - 项目 DELETE：DRAFT 守卫（E2E_TEST 前缀旁路）+ 2026-08-21 起报名引用检查
+ *     「项目存在关联投标报名，不可删除」（引用检查不做旁路，
+ *     ProjectService.delete + BizProjectMapper.countTenderRegisters）
  *   - 非草稿 resubmit 拦截 code=500「仅草稿状态可提交」（HTTP 200 + 业务 code）
- *   - 演示数据存在 1 条 COMPLETED 项目，close-check allPassed=false（未收款 2500000）→ A1-11 可测；
- *     A1-12 预检全通过无数据前提 → tasks.md 受阻登记（DATA）
+ *   - 演示数据存在 1 条 COMPLETED 项目，close-check allPassed=false（未收款 2500000）→ A1-11 可测
+ *   - 种子 90004（45_V2026_43）为可结项 COMPLETED 项目，close-check allPassed=true；
+ *     结项链断言止于 CLOSING + withdraw-by-business 撤回回退 COMPLETED——
+ *     CLOSED 后流程实例结束，withdraw 幂等 false 且无状态回滚通道（无 updateStatus 端点），
+ *     走完整链会不可逆损毁种子数据前提（探测实证 ApprovalService.withdrawByBusiness
+ *     发 ApprovalRejectEvent → ProjectCloseListener.onCloseRejected 回退 COMPLETED）
  *
  * 范式：serial + storageState token authed API context（禁重新登录）+ E2E_TEST_ 前缀自置
  * + waitForResponse 硬断言 + afterAll 逆序清理。
@@ -332,23 +340,63 @@ test.describe('A-1 项目状态流转', () => {
     expect(closePostCount, '预检不通过不应发起结项').toBe(0)
   })
 
-  test('@matrix A-X4 项目删除引用检查现状钉住（实证：挂报名引用仍放行删除）', async () => {
-    // 账本预期「后端引用拦截」；探测实证无引用守卫——挂 E2E_TEST 报名后 DELETE 仍 code=200。
-    // 此处钉住现状（缺陷实证），不静默跳过；tasks.md 同步登记。
+  test('@matrix A1-12/A-X3 可结项项目结项链（种子 90004：close-check→CLOSING→撤回回退）', async () => {
+    // 种子 45_V2026_43 可结项项目（COMPLETED + 款项结清 + APPROVED 结算单）
+    const CLOSEABLE_ID = '90004'
+    const detail = await apiJson('GET', `/api/v1/project/${CLOSEABLE_ID}`)
+    expect(detail.body?.code, '数据前提：种子 90004 应存在').toBe(200)
+    expect(detail.body?.data?.status, '种子 90004 应为 COMPLETED').toBe('COMPLETED')
+    // 预检全通过（数据态#1 解除实证）
+    const check = await apiJson('GET', `/api/v1/project/${CLOSEABLE_ID}/close-check`)
+    expect(check.body?.code, 'close-check').toBe(200)
+    expect(check.body?.data?.allPassed, '可结项项目预检应全通过').toBe(true)
+    // 发起结项 → CLOSING（project_close_approval 流程启动）
+    const close = await apiJson('POST', `/api/v1/project/${CLOSEABLE_ID}/close`)
+    expect(close.body?.code, 'POST close').toBe(200)
+    const closing = await apiJson('GET', `/api/v1/project/${CLOSEABLE_ID}`)
+    expect(closing.body?.data?.status, '结项发起后应 CLOSING').toBe('CLOSING')
+    try {
+      // 撤回恢复：withdraw-by-business（发起人）→ ApprovalRejectEvent → 回退 COMPLETED。
+      // 不推进 completeAllTodos 至 CLOSED：流程结束后无回滚通道，种子前提不可逆损毁。
+      const wd = await apiJson('POST', `/api/v1/workflow/approval/withdraw-by-business?businessType=PROJECT_CLOSE&businessId=${CLOSEABLE_ID}`)
+      expect(wd.body?.code, 'withdraw-by-business').toBe(200)
+      expect(wd.body?.data, '运行中结项流程应撤回成功').toBe(true)
+      await new Promise((r) => setTimeout(r, 800)) // 事件异步回调回退状态
+      const restored = await apiJson('GET', `/api/v1/project/${CLOSEABLE_ID}`)
+      expect(restored.body?.data?.status, '撤回后应回退 COMPLETED').toBe('COMPLETED')
+      // 幂等：再次撤回无运行中流程返回 false（清理语义不报错）
+      const wd2 = await apiJson('POST', `/api/v1/workflow/approval/withdraw-by-business?businessType=PROJECT_CLOSE&businessId=${CLOSEABLE_ID}`)
+      expect(wd2.body?.data, '无运行中流程撤回应幂等 false').toBe(false)
+    } catch (e) {
+      // 兜底：无论断言成败，尽力把 90004 恢复到 COMPLETED（防种子前提残留 CLOSING）
+      await apiJson('POST', `/api/v1/workflow/approval/withdraw-by-business?businessType=PROJECT_CLOSE&businessId=${CLOSEABLE_ID}`).catch(() => {})
+      throw e
+    }
+  })
+
+  test('@matrix A-X4 项目删除引用拦截（2026-08-21 缺陷#2 修复后翻负向：先删报名再删项目）', async () => {
     const regName = `${PREFIX}_引用业主`
     const cr = await apiJson('POST', '/api/v1/tender/register', {
       projectId: mainProjectId, ownerCompany: regName, registerDate: '2026-08-01', openDate: '2026-08-02', depositAmount: 10,
     })
     expect(cr.body?.code, '挂报名引用').toBe(200)
+    // 翻负向：挂报名 DELETE 应业务拦截（引用检查不做 E2E 旁路）
     const del = await apiJson('DELETE', `/api/v1/project/${mainProjectId}`)
-    expect(del.body?.code, '现状钉住：引用项目删除放行（无守卫）').toBe(200)
+    expect(del.body?.code, '挂报名项目删除应拦截').not.toBe(200)
+    expect(del.body?.message).toContain('项目存在关联投标报名')
+    const alive = await apiJson('GET', `/api/v1/project/${mainProjectId}`)
+    expect(alive.body?.code, '拦截后项目应仍存在').toBe(200)
+    // 先删报名（REGISTERED 态可删，探测实证）→ 再删项目放行
+    const regPage = await apiJson('GET', `/api/v1/tender/register/page?page=1&size=50`)
+    const reg = (regPage.body?.data?.records || []).find((r: any) => r.ownerCompany === regName)
+    expect(reg, '报名应可定位').toBeTruthy()
+    const regDel = await apiJson('DELETE', `/api/v1/tender/register/${reg.id}`)
+    expect(regDel.body?.code, '删除报名').toBe(200)
+    const del2 = await apiJson('DELETE', `/api/v1/project/${mainProjectId}`)
+    expect(del2.body?.code, '无引用后删除应放行').toBe(200)
     mainDeleted = true
     const gone = await apiJson('GET', `/api/v1/project/${mainProjectId}`)
     expect(gone.body?.code, '项目应已删除').not.toBe(200)
-    // 残留报名清理（REGISTERED 态可删，探测实证）
-    const regPage = await apiJson('GET', `/api/v1/tender/register/page?page=1&size=50`)
-    const reg = (regPage.body?.data?.records || []).find((r: any) => r.ownerCompany === regName)
-    if (reg) await apiJson('DELETE', `/api/v1/tender/register/${reg.id}`)
   })
 
   test('@matrix A3-05 非法 id 详情页空态（不崩溃，标题无名称）', async ({ page }) => {

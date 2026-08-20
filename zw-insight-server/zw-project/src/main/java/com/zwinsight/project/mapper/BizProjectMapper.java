@@ -48,6 +48,16 @@ public interface BizProjectMapper extends BaseMapper<BizProject> {
     long countApprovedSettlement(@Param("projectId") Long projectId);
 
     /**
+     * 统计项目关联的投标报名数量（直接查表避免与 zw-tender 模块循环依赖）
+     *
+     * @param projectId 项目ID
+     * @return 关联投标报名数量
+     */
+    @Select("SELECT COUNT(*) FROM biz_tender_register " +
+            "WHERE project_id = #{projectId} AND deleted = 0")
+    long countTenderRegisters(@Param("projectId") Long projectId);
+
+    /**
      * 原子累加项目累计产值（产值上报审批通过时回写，避免并发丢失更新）
      *
      * @param projectId 项目ID

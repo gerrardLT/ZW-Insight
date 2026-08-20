@@ -2,12 +2,12 @@
  * 真实模式 E2E 测试：非 admin 权限视角（前端补测四步收口 W5，2026-08）
  *
  * @matrix C-13-1 封账 canOperate 契约 / C-13-2 普通用户隐藏操作入口 /
- *   菜单可见性现状钉住（PERM-GAP）/ 后端 @RequiresPermission 写接口边界
+ *   菜单权限生效（PERM-GAP 2026-08-21 修复后翻正向）/ 后端 @RequiresPermission 写接口边界
  *
  * 种子账号：lina=STAFF（仅授权首页+消息）、wangqiang=FINANCE_STAFF，密码均 123456
- * 产品现状实证（前端勘察 2026-08）：
- *   1. 侧边栏由静态路由表生成（DefaultLayout menuRoutes 遍历 router.options.routes），
- *      不消费 sys_role_menu 种子 → 各角色菜单完全一致（PERM-GAP，tasks.md 登记）
+ * 产品现状实证（2026-08-21 修复后）：
+ *   1. 侧边栏消费 GET /v1/system/menu/user（sys_role_menu 授权集）过滤静态路由表 →
+ *      lina 仅见首页+消息管理（缺陷#1 PERM-GAP 已解除）
  *   2. 封账页 canOperate = permissions 含 "*:*:*" 或 roles ∈ ["FINANCE_ADMIN","ADMIN"]
  *      → wangqiang（FINANCE_STAFF）新增封账按钮同样隐藏（以代码契约为准）
  *   3. 后端写接口 @RequiresPermission（finance:financelock:create/unlock）= 真实权限边界
@@ -97,17 +97,20 @@ test.describe('权限视角 — 非 admin 真实登录（@matrix C-13/PERM-GAP�
     expect(wangqiangLogin.roles, 'wangqiang 角色').toContain('FINANCE_STAFF')
   })
 
-  test('lina 侧边栏现状钉住 — 静态路由表未按角色过滤（PERM-GAP，tasks.md 登记）', async ({ browser }) => {
+  test('lina 侧边栏菜单权限生效 — 仅首页/消息管理，未授权模块全部隐藏（PERM-GAP 2026-08-21 修复后翻正向）', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: buildStorageState(linaLogin) })
     const page = await ctx.newPage()
     try {
       await page.goto('/dashboard')
       await page.waitForSelector('.side-menu', { timeout: 30_000 })
+      // 菜单经 GET /v1/system/menu/user 异步过滤渲染，先等授权项出现再断排他
+      await expect(page.locator('.side-menu')).toContainText('消息管理', { timeout: 30_000 })
       const menuText = await page.locator('.side-menu').innerText()
-      // 现状钉住：菜单来自静态路由表，STAFF 用户同样看到全部模块（产品缺口 PERM-GAP）
-      expect(menuText, 'lina 侧边栏含项目管理').toContain('项目管理')
-      expect(menuText, 'lina 侧边栏含财务管理').toContain('财务管理')
-      expect(menuText, 'lina 侧边栏含系统管理').toContain('系统管理')
+      expect(menuText, 'lina 侧边栏含首页').toContain('首页')
+      expect(menuText, 'lina 侧边栏含消息管理').toContain('消息管理')
+      expect(menuText, 'lina 侧边栏不应含项目管理').not.toContain('项目管理')
+      expect(menuText, 'lina 侧边栏不应含财务管理').not.toContain('财务管理')
+      expect(menuText, 'lina 侧边栏不应含系统管理').not.toContain('系统管理')
     } finally {
       await ctx.close()
     }

@@ -147,7 +147,7 @@ public class ProjectService {
     }
 
     /**
-     * 删除项目（仅DRAFT状态可删）
+     * 删除项目（仅DRAFT状态可删；存在关联投标报名时一律拦截，防引用悬空）
      */
     public void delete(Long id) {
         BizProject existing = projectMapper.selectById(id);
@@ -156,6 +156,11 @@ public class ProjectService {
         }
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) {
             throw new BusinessException("仅草稿状态可删除");
+        }
+        // 引用检查（2026-08-21 台账缺陷修复）：挂报名引用的项目不可删除，
+        // E2E 清理须先删报名再删项目（与账本「引用拦截」预期对齐）
+        if (projectMapper.countTenderRegisters(id) > 0) {
+            throw new BusinessException("项目存在关联投标报名，不可删除");
         }
         projectMapper.deleteById(id);
     }

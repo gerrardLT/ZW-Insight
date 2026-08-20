@@ -110,6 +110,7 @@ import { useRouter } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
+import { getUserMenus } from '@/api/system'
 import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
 
@@ -145,8 +146,55 @@ function joinPath(parent: string, child: string): string {
 }
 
 /**
+ * 菜单权限状态（2026-08-21 台账 PERM-GAP 修复）：数据源为 GET /v1/system/menu/user
+ * （后端经 sys_role_menu JOIN 的真实授权）。
+ * - authorizedPaths：授权菜单的完整路由路径（一级绝对路径 / 二级 parent.path 拼接）
+ * - authorizedDirs：授权的一级 DIR 路径 —— DIR 已授权但其子菜单均未单独授权时整组显示
+ */
+const authorizedPaths = ref<Set<string>>(new Set())
+const authorizedDirs = ref<Set<string>>(new Set())
+
+interface UserMenu {
+  id: number | string
+  menuType?: string
+  parentId?: number | string | null
+  path?: string
+}
+
+async function loadUserMenus() {
+  try {
+    const res: any = await getUserMenus()
+    const menus: UserMenu[] = Array.isArray(res?.data) ? res.data : []
+    const byId = new Map<string, UserMenu>(menus.map((m) => [String(m.id), m]))
+    const paths = new Set<string>()
+    const dirs = new Set<string>()
+    for (const m of menus) {
+      if (!m.path) continue
+      const parent = m.parentId != null && m.parentId !== 0 ? byId.get(String(m.parentId)) : undefined
+      if (parent && parent.path) {
+        // 二级菜单：用父菜单 path 拼接完整路径
+        paths.add(joinPath(parent.path, m.path))
+      } else if (m.path.startsWith('/')) {
+        // 一级 MENU / DIR（绝对路径）
+        if (m.menuType === 'DIR') dirs.add(m.path)
+        paths.add(m.path)
+      }
+    }
+    authorizedPaths.value = paths
+    authorizedDirs.value = dirs
+  } catch {
+    // 全局响应拦截器已提示错误；失败时菜单置空（真实行为，不静默回落静态路由）
+    authorizedPaths.value = new Set()
+    authorizedDirs.value = new Set()
+  }
+}
+
+onMounted(loadUserMenus)
+
+/**
  * 侧边栏菜单：基于路由表(constantRoutes)动态生成，
- * 自动列出所有挂在布局下的模块及其可见子菜单（尊重 meta.hidden / title / icon）。
+ * 自动列出所有挂在布局下的模块及其可见子菜单（尊重 meta.hidden / title / icon），
+ * 并按用户授权菜单过滤（fullPath 命中授权路径；DIR 整组授权显示全组）。
  */
 const menuRoutes = computed(() => {
   const roots = router.options.routes as RouteRecordRaw[]
@@ -167,24 +215,32 @@ const menuRoutes = computed(() => {
     if (visibleChildren.length === 0) continue
 
     const groupTitle = r.meta?.title as string | undefined
+
+    // 权限过滤：子项 fullPath 授权命中；DIR 授权但子项均未单独授权 → 显示整组
+    const allowedChildren = visibleChildren.filter((c) => authorizedPaths.value.has(c.fullPath))
+    const dirAuthorized = authorizedDirs.value.has(r.path)
+
     if (!groupTitle) {
-      for (const c of visibleChildren) {
+      for (const c of allowedChildren) {
         groups.push({ path: c.fullPath, singleChild: c })
       }
       continue
     }
 
-    if (visibleChildren.length === 1) {
+    if (allowedChildren.length === 0 && !dirAuthorized) continue
+    const shownChildren = allowedChildren.length > 0 ? allowedChildren : visibleChildren
+
+    if (shownChildren.length === 1) {
       groups.push({
         path: r.path,
-        singleChild: { ...visibleChildren[0], title: groupTitle, icon: r.meta?.icon }
+        singleChild: { ...shownChildren[0], title: groupTitle, icon: r.meta?.icon }
       })
     } else {
       groups.push({
         path: r.path,
         title: groupTitle,
         icon: r.meta?.icon as string | undefined,
-        children: visibleChildren
+        children: shownChildren
       })
     }
   }

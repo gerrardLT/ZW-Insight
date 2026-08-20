@@ -144,7 +144,9 @@ const formRules = {
 async function loadData() {
   loading.value = true
   try {
-    const res: any = await getMaterialOutboundPage(queryParams.value)
+    // 后端 Controller 契约为 page/size（@RequestParam 硬编码），直传避免口径失配
+    const { pageNum, pageSize, ...rest } = queryParams.value
+    const res: any = await getMaterialOutboundPage({ page: pageNum, size: pageSize, ...rest })
     tableData.value = res.data?.records || []
     total.value = res.data?.total || 0
   } finally {

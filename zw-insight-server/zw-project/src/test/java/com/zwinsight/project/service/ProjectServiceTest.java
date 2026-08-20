@@ -217,6 +217,30 @@ class ProjectServiceTest {
     }
 
     @Test
+    @DisplayName("删除：存在关联投标报名拦截（2026-08-21 台账缺陷#2 引用检查）")
+    void testDelete_withTenderRegisters_rejected() {
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.countTenderRegisters(1L)).thenReturn(2L);
+
+        assertThatThrownBy(() -> projectService.delete(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("项目存在关联投标报名，不可删除");
+
+        verify(projectMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
+    @DisplayName("删除：无关联投标报名放行")
+    void testDelete_noTenderRegisters_allowed() {
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.countTenderRegisters(1L)).thenReturn(0L);
+
+        projectService.delete(1L);
+
+        verify(projectMapper).deleteById(1L);
+    }
+
+    @Test
     @DisplayName("删除：项目不存在抛异常")
     void testDelete_notFound() {
         when(projectMapper.selectById(999L)).thenReturn(null);

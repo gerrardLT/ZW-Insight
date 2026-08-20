@@ -229,6 +229,7 @@ describe('purchase/settlement.vue 采购结算（B23）', () => {
     expect(mocks.mockSettleCreate).not.toHaveBeenCalled()
   })
 
+  // 全量并发下 happy-dom 挂载偶发 >5s（单跑 <2.5s），放宽至 15s 消除负载抖动误杀
   it('@matrix B-23-6 金额不超入库金额正常创建', async () => {
     const w = await mountSettlement()
     const st: any = w.vm.$.setupState
@@ -241,7 +242,7 @@ describe('purchase/settlement.vue 采购结算（B23）', () => {
     await st.handleFormSubmit()
     expect(mocks.mockSettleCreate).toHaveBeenCalledTimes(1)
     expect(mocks.mockSuccess).toHaveBeenCalledWith('新增成功')
-  })
+  }, 15000)
 
   it('@matrix B-23-9 草稿行三按钮 vs 已审批行文本（源码钉住）', () => {
     expect(settlementSrc).toContain('<template v-if="row.status === \'DRAFT\'">')

@@ -142,6 +142,11 @@ export function submitOutputReport(id: number) {
   return request.post<R<void>>(`/v1/contract/output/${id}/submit`)
 }
 
+// 删除产值报告（后端守卫：仅 DRAFT/REJECTED 可删，2026-08-21 台账缺口#2 通道）
+export function deleteOutputReport(id: number) {
+  return request.delete<R<void>>(`/v1/contract/output/${id}`)
+}
+
 // ======================== 工程量清单(BOQ) ========================
 export interface BomItem {
   id?: number

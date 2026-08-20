@@ -291,6 +291,65 @@ class OutputReportServiceTest {
     }
 
     @Nested
+    @DisplayName("delete() 删除产值报告（2026-08-21 台账缺口#2 DELETE 通道）")
+    class DeleteTests {
+
+        @Test
+        @DisplayName("DRAFT 可删 — 先删明细行再删主表")
+        void delete_draft_allowed() {
+            BizOutputReport report = new BizOutputReport();
+            report.setId(1L);
+            report.setStatus("DRAFT");
+            when(outputReportMapper.selectById(1L)).thenReturn(report);
+
+            outputReportService.delete(1L);
+
+            verify(reportDetailMapper).delete(any());
+            verify(outputReportMapper).deleteById(1L);
+        }
+
+        @Test
+        @DisplayName("APPROVED 无 E2E 标记拒绝 — 明细与主表均不动")
+        void delete_approved_rejected() {
+            BizOutputReport report = new BizOutputReport();
+            report.setId(1L);
+            report.setStatus("APPROVED");
+            when(outputReportMapper.selectById(1L)).thenReturn(report);
+
+            assertThatThrownBy(() -> outputReportService.delete(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅草稿或已驳回状态可删除");
+
+            verify(reportDetailMapper, never()).delete(any());
+            verify(outputReportMapper, never()).deleteById(anyLong());
+        }
+
+        @Test
+        @DisplayName("E2E_TEST_ 标记数据非草稿态放行（E2eTestGuard 旁路）")
+        void delete_e2eMarkerBypass() {
+            BizOutputReport report = new BizOutputReport();
+            report.setId(2L);
+            report.setStatus("APPROVED");
+            report.setReportPeriod("E2E_TEST_1723900000000_2026-08");
+            when(outputReportMapper.selectById(2L)).thenReturn(report);
+
+            outputReportService.delete(2L);
+
+            verify(outputReportMapper).deleteById(2L);
+        }
+
+        @Test
+        @DisplayName("报告不存在抛异常")
+        void delete_notFound() {
+            when(outputReportMapper.selectById(99L)).thenReturn(null);
+
+            assertThatThrownBy(() -> outputReportService.delete(99L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("产值报告不存在");
+        }
+    }
+
+    @Nested
     @DisplayName("save() 保存草稿")
     class SaveTests {
 

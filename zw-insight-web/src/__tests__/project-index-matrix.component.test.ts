@@ -78,7 +78,7 @@ describe('project/index.vue 账本补测（@matrix A1）', () => {
     await flushPromises()
     expect(st.queryParams.pageNum).toBe(1)
     expect(mockProjectPage).toHaveBeenCalledTimes(1)
-    expect(mockProjectPage.mock.calls[0][0]).toMatchObject({ pageNum: 1, projectName: '滨江' })
+    expect((mockProjectPage.mock.calls[0] as any[])[0]).toMatchObject({ pageNum: 1, projectName: '滨江' })
   })
 
   it('@matrix A1-03 状态筛选随查询下发 status 参数', async () => {
@@ -88,7 +88,7 @@ describe('project/index.vue 账本补测（@matrix A1）', () => {
     st.queryParams.status = 'CONSTRUCTION'
     st.handleSearch()
     await flushPromises()
-    expect(mockProjectPage.mock.calls[0][0].status).toBe('CONSTRUCTION')
+    expect((mockProjectPage.mock.calls[0] as any[])[0].status).toBe('CONSTRUCTION')
   })
 
   it('@matrix A1-03 状态下拉提供 8 枚举选项', async () => {

@@ -8,7 +8,7 @@ import ElementPlus from 'element-plus'
 
 const {
   mockContractPage, mockContractDelete, mockContractSubmit,
-  mockOutputPage, mockOutputCreate, mockOutputSubmit,
+  mockOutputPage, mockOutputCreate, mockOutputSubmit, mockOutputDelete,
   mockUploadBoq, mockBoqTree, mockBoqFlat, mockBoqDelete,
   mockProjectList, mockError, mockWarning,
   mockRouteParams,
@@ -19,6 +19,7 @@ const {
   mockOutputPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockOutputCreate: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockOutputSubmit: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  mockOutputDelete: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockUploadBoq: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockBoqTree: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
   mockBoqFlat: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
@@ -32,6 +33,7 @@ const {
 vi.mock('@/api/contract', () => ({
   getContractPage: mockContractPage, deleteContract: mockContractDelete, submitContract: mockContractSubmit,
   getOutputReportPage: mockOutputPage, createOutputReport: mockOutputCreate, submitOutputReport: mockOutputSubmit,
+  deleteOutputReport: mockOutputDelete,
 }))
 vi.mock('@/api/boq', () => ({
   uploadBoq: mockUploadBoq, getBoqTree: mockBoqTree, getBoqFlat: mockBoqFlat, deleteBoq: mockBoqDelete,

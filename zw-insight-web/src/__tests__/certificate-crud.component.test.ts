@@ -37,11 +37,14 @@ crudPageSuite({
   updateMock: mockUpdate,
   deleteMock: mockDelete,
   addButtonText: '新增证件',
-  requiredError: '请输入证件名称',
-  // certificate.vue 删除为双参 deleteCertificate(row.type || 'person', row.id)
-  deleteExpectedArgs: (row) => [row.type || 'person', row.id],
+  requiredError: '请输入持证人',
+  // 2026-08-21 契约对齐：本地状态 pageNum/pageSize，请求实参映射为后端 page/size
+  pageArgKey: 'page',
+  // certificate.vue 删除恒为双参 deleteCertificate('person', row.id)
+  deleteExpectedArgs: (row) => ['person', row.id],
+  // 字段对齐后端实体 BizPersonCertificate：personName/certificateType/certificateNo/issueDate/expireDate
   records: [
-    { id: 1, type: 'person', certName: '一级建造师', certNo: 'JZ20200001', holderName: '张三', issueDate: '2020-01-01', expiryDate: '2026-01-01', issueOrgan: '住建部' },
-    { id: 2, type: 'person', certName: '安全生产考核合格证', certNo: 'AQ20210002', holderName: '李四', issueDate: '2021-05-01', expiryDate: '2027-05-01', issueOrgan: '住建厅' },
+    { id: 1, personName: '张三', certificateType: '一级建造师', certificateNo: 'JZ20200001', issueDate: '2020-01-01', expireDate: '2026-01-01', status: 1 },
+    { id: 2, personName: '李四', certificateType: '安全生产考核合格证', certificateNo: 'AQ20210002', issueDate: '2021-05-01', expireDate: '2027-05-01', status: 1 },
   ],
 })

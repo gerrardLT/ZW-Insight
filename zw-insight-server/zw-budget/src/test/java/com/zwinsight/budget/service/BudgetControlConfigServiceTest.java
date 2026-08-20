@@ -3,6 +3,7 @@ package com.zwinsight.budget.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.budget.domain.SysBudgetControlConfig;
 import com.zwinsight.budget.dto.BudgetCheckResult;
+import com.zwinsight.budget.dto.BudgetControlConfigDTO;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BudgetOccupiedMapper;
 import com.zwinsight.budget.mapper.SysBudgetControlConfigMapper;
@@ -20,6 +21,7 @@ import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -217,7 +219,48 @@ class BudgetControlConfigServiceTest {
         verify(configMapper, never()).deleteById(any());
     }
 
+    // ======================== save 测试（2026-08-21 台账缺陷#6 重复预检） ========================
+
+    @Test
+    @DisplayName("testSave_duplicateProjectConfig_rejected — 同项目已有配置时业务拦截（防裸 DuplicateKey 500）")
+    void testSave_duplicateProjectConfig_rejected() {
+        BudgetControlConfigDTO dto = buildDto(PROJECT_ID, "BLOCK", 80);
+        when(configMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> budgetControlConfigService.save(dto));
+
+        assertEquals("该项目已存在预算控制配置，请直接编辑", exception.getMessage());
+        verify(configMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("testSave_firstConfig_allowed — 项目首次创建配置正常落库")
+    void testSave_firstConfig_allowed() {
+        BudgetControlConfigDTO dto = buildDto(PROJECT_ID, "WARN_ONLY", 90);
+        when(configMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+
+        budgetControlConfigService.save(dto);
+
+        verify(configMapper).insert(argThat(c ->
+                PROJECT_ID.equals(c.getProjectId())
+                        && "WARN_ONLY".equals(c.getControlMode())
+                        && Integer.valueOf(90).equals(c.getWarningThreshold())
+                        && Integer.valueOf(0).equals(c.getIsDefault())));
+    }
+
     // ======================== 辅助方法 ========================
+
+    /**
+     * 构建测试用创建入参 DTO
+     */
+    private BudgetControlConfigDTO buildDto(Long projectId, String controlMode, int warningThreshold) {
+        BudgetControlConfigDTO dto = new BudgetControlConfigDTO();
+        dto.setProjectId(projectId);
+        dto.setControlMode(controlMode);
+        dto.setWarningThreshold(warningThreshold);
+        return dto;
+    }
 
     /**
      * 构建测试用预算控制配置

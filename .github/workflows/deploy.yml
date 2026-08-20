@@ -440,6 +440,10 @@ jobs:
           # 3) 部署全部 BPMN 到租户 9999（幂等；BPMN 持久化于 ACT_RE_PROCDEF，重复部署只增版本）
           cd /root/zwi-deploy
           ZWI_USER=t9999admin ZWI_PASS=123456 ZWI_TENANT_ID=9999 bash deploy-bpmn.sh || true
+          # 4) 部署全部 BPMN 到租户 1（2026-08-21 台账缺口修复：budget_change_approval/
+          #    material_refund_approval/project_close_approval 等流程定义此前仅存在于租户 9999，
+          #    导致 a4 预算变更/b1 材料退货/a1 结项审批链在演示租户受阻。幂等，仅全量套件触发时增版本）
+          ZWI_USER=admin ZWI_PASS=123456 ZWI_TENANT_ID=1 bash deploy-bpmn.sh || true
           INIT_SCRIPT
         env:
           DEPLOY_DIR: ${{ env.DEPLOY_DIR }}

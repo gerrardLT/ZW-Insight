@@ -40,4 +40,11 @@ public class OutputReportController {
         outputReportService.submit(id);
         return R.ok();
     }
+
+    @DeleteMapping("/{id}")
+    @RequiresPermission("contract:outputreport:delete")
+    public R<Void> delete(@PathVariable Long id) {
+        outputReportService.delete(id);
+        return R.ok();
+    }
 }

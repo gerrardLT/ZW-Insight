@@ -2,8 +2,9 @@
  * 真实模式 E2E：A-3 合同管理账本补测（账本全量补齐 M2，2026-08）
  *
  * @matrix A7-05 提交→SUBMITTED / A7-06 非法状态提交拦截 / A7-07 删除草稿 /
- *   A9-01 页面加载合同信息与清单 / A9-07 上传解析成功统计 / A9-12 清除清单 /
- *   A10-12 产值提交审批闭环（驳回→重提→通过）/ A10-15 分页参数失配现状钉住 /
+ *   A9-01 页面加载合同信息与清单 / A9-07 上传解析成功统计 / A9-08 畸形 xlsx 优雅拒绝 /
+ *   A9-12 清除清单 / A10-12 产值提交审批闭环（驳回→重提→通过）/
+ *   A10-15 产值分页 page/size 生效 + 未知参数回落默认（失配消除）/
  *   A-X10 EFFECTIVE 前提钉住 / A-X11 BOQ completedQuantity 随审批累加 /
  *   A-X12 驳回后可重新提交 / A-X13 BLOCK 不拦收入合同 / A-X14 cumulativeOutput 逐期累加
  *
@@ -11,17 +12,19 @@
  *   - 合同 submit DRAFT→SUBMITTED（construction_contract_approval 两级：
  *     managerApproval→financeApproval，SUPER_ADMIN 可 complete 任意任务）；
  *     非草稿重提交 code=500「仅草稿状态可提交」
- *   - 产值无 DELETE 通道（OutputReportController 仅 GET/POST/submit）→ 本 spec
- *     产生的 APPROVED 产值残留无法清理（E2E_TEST_ 前缀可识别，巡检兜底）
- *   - 产值分页后端 page/size（默认 1/10），前端传 pageNum/pageSize → 分页失配钉住
+ *   - 产值 2026-08-21 起有 DELETE 通道（缺口#2：DRAFT/REJECTED 守卫，
+ *     reportPeriod 带 E2E_TEST 前缀旁路可删 APPROVED）→ afterAll 逆序清理零残留
+ *   - 产值分页后端 page/size（默认 1/10），前端 2026-08-21 已对齐 page/size；
+ *     未知参数 pageNum/pageSize 被忽略回落默认（A10-15 失配消除）
  *   - BOQ 上传模板列：编码|名称|单位|数量|单价|合价（BoqServiceUploadFlowTest 实证），
- *     本 spec 内以 zlib 手工构造最小 xlsx（仓库无 xlsx 依赖，不为单测引入新依赖）
+ *     本 spec 内以 zlib 手工构造最小 xlsx（仓库无 xlsx 依赖，不为单测引入新依赖）；
+ *     畸形文件 2026-08-21 起友好业务拒绝「Excel文件解析失败」（BoqService catch 兜底）
  *   - BOQ 操作仅限 EFFECTIVE/CHANGING 合同（ALLOWED_UPLOAD_STATUSES）；
  *     deleteBoq 有产值引用检查（被引用拦截）；totalAmount=Σ顶层条目合价；
  *     GET /boq 返回平铺列表（前端按 parentId 建树）；上传回写 contractAmount
  *
- * 残留声明：EFFECTIVE 合同（主链+清单清除合同 C）+ APPROVED 产值×2 + 项目无删除通道，
- * 均 E2E_TEST_ 前缀可识别（巡检兜底）
+ * 残留声明：afterAll 逆序清理 产值（含 APPROVED，E2E reportPeriod 前缀旁路）→
+ * 合同（E2E partyAName 前缀旁路）→ 配置 → 项目，零残留
  *
  * 纯前端守卫用例（A9-02/03/04/05/06/09/10/11/13、A10-02~11/13/14）见
  * src/__tests__/contract-output-matrix / contract-pages / contract-index-matrix /
@@ -40,9 +43,14 @@ const TODAY = todayStr()
 let authed: AuthedContext | null = null
 let projectId = ''
 const projectName = `${PREFIX}_合同项目`
-let contractAId = ''      // 主链合同（最终 EFFECTIVE，无删除通道 → 残留）
+let contractAId = ''      // 主链合同（最终 EFFECTIVE，afterAll E2E 前缀旁路删除）
+let contractCId = ''      // 清单清除合同（A9-12，afterAll 清理）
 let configId = ''         // BLOCK 控制配置（afterAll 清理）
 const partyA = `${PREFIX}_甲方`
+// 产值 reportPeriod 挂 E2E 前缀：OutputReportService.delete 守卫旁路生效，
+// APPROVED 产值也可在 afterAll 清理（2026-08-21 缺口#2 DELETE 通道）
+const period1 = `${PREFIX}_2026-08`
+const period2 = `${PREFIX}_2026-09`
 
 // 雪花 ID 纪律（探测实证 2026-08）：创建 payload 一律传字符串 projectId（Jackson 接受
 // string→Long）；Number() 会四舍五入雪花 ID（...778→...800）导致存值失真、精确筛选恒空；
@@ -187,8 +195,18 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   if (!authed) return
   if (configId) await authed.delete(`${API_BASE}/api/v1/budget-control-configs/${configId}`).catch(() => {})
-  // 主链合同 EFFECTIVE、产值 APPROVED 均无删除通道 → 残留以 E2E_TEST_ 前缀可识别（巡检兜底）；
-  // 项目因挂合同删不掉，一并残留
+  // 逆序清理（2026-08-21 缺口#2 产值 DELETE 通道解除）：
+  // 产值（reportPeriod E2E 前缀旁路，APPROVED 可删，明细由 service 级联）→
+  // 合同（partyAName E2E 前缀旁路，EFFECTIVE 可删）→ 项目（无引用后放行）
+  for (const cid of [contractAId, contractCId]) {
+    if (!cid) continue
+    const pg = await authed.get(`${API_BASE}/api/v1/contract/output?contractId=${cid}&page=1&size=50`).catch(() => null)
+    const reports = ((await pg?.json().catch(() => null))?.data?.records || [])
+    for (const r of reports) {
+      await authed.delete(`${API_BASE}/api/v1/contract/output/${r.id}`).catch(() => {})
+    }
+    await authed.delete(`${API_BASE}/api/v1/contract/${cid}`).catch(() => {})
+  }
   await authed.delete(`${API_BASE}/api/v1/project/${projectId}`).catch(() => {})
   await authed.dispose()
 })
@@ -257,6 +275,23 @@ test.describe('A-3 BOQ 上传与产值审批闭环', () => {
     expect(items.filter((i: any) => String(i.parentId) === String(roots[0].id)).length, '子节点数量').toBe(2)
   })
 
+  test('@matrix A9-08 畸形 xlsx 优雅拒绝（截断字节，清单不落库）', async () => {
+    expect(contractAId).toBeTruthy()
+    // 截断正常 xlsx：zip 结构破损 → 后端友好业务拒绝（2026-08-21 BoqService catch 兜底，
+    // 此前 EasyExcel/POI 运行时异常走全局兜底裸 500——台账数据态#2 解除）
+    const valid = buildBoqXlsx([['1', `${PREFIX}_畸形`, 'm³', 1, 1, 1]])
+    const corrupted = valid.subarray(0, Math.min(32, Math.floor(valid.length / 4)))
+    const resp = await authed!.post(`${API_BASE}/api/v1/contracts/${contractAId}/boq/upload`, {
+      multipart: { file: { name: 'boq.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: corrupted } },
+    })
+    const body = await resp.json().catch(() => null)
+    expect(body?.code, '畸形文件应业务拒绝（非崩溃）').not.toBe(200)
+    expect(body?.message).toContain('解析失败')
+    // 清单不落库：A9-07 上传的 3 条完好（拒绝发生在删旧之前）
+    const items = await getBoqFlatItems(contractAId)
+    expect(items.length, '拒绝后既有清单应完好').toBe(3)
+  })
+
   test('@matrix A10-12/A-X11/A-X12 产值清单模式：提交→驳回→重提→通过，completedQuantity 累加', async () => {
     expect(contractAId).toBeTruthy()
     const items = await getBoqFlatItems(contractAId)
@@ -265,12 +300,12 @@ test.describe('A-3 BOQ 上传与产值审批闭环', () => {
     // 创建清单模式产值（details 仅含完成量>0 行，vitest A10-10 钉前端过滤）
     const cr = await apiJson('POST', '/api/v1/contract/output', {
       projectId, contractId: contractAId,
-      reportPeriod: '2026-08', currentOutput: 400, confirmDate: TODAY,
+      reportPeriod: period1, currentOutput: 400, confirmDate: TODAY,
       details: [{ boqItemId: dig.id, quantity: 4, amount: 400 }],
     })
     expect(cr.body?.code, '创建产值').toBe(200)
     const pg = await apiJson('GET', `/api/v1/contract/output?contractId=${contractAId}&page=1&size=50`)
-    const report = (pg.body?.data?.records || []).find((r: any) => r.reportPeriod === '2026-08')
+    const report = (pg.body?.data?.records || []).find((r: any) => r.reportPeriod === period1)
     expect(report, '产值记录应可定位').toBeTruthy()
     expect(report.status).toBe('DRAFT')
     // 提交 → SUBMITTED
@@ -303,11 +338,11 @@ test.describe('A-3 BOQ 上传与产值审批闭环', () => {
     expect(contractAId).toBeTruthy()
     const cr = await apiJson('POST', '/api/v1/contract/output', {
       projectId, contractId: contractAId,
-      reportPeriod: '2026-09', currentOutput: 50, confirmDate: TODAY,
+      reportPeriod: period2, currentOutput: 50, confirmDate: TODAY,
     })
     expect(cr.body?.code, '创建第二期产值').toBe(200)
     const pg = await apiJson('GET', `/api/v1/contract/output?contractId=${contractAId}&page=1&size=50`)
-    const report = (pg.body?.data?.records || []).find((r: any) => r.reportPeriod === '2026-09')
+    const report = (pg.body?.data?.records || []).find((r: any) => r.reportPeriod === period2)
     expect(report, '第二期产值应可定位').toBeTruthy()
     const sub = await apiJson('POST', `/api/v1/contract/output/${report.id}/submit`)
     expect(sub.body?.code).toBe(200)
@@ -336,13 +371,14 @@ test.describe('A-3 BOQ 上传与产值审批闭环', () => {
     })
     expect(cr.body?.code, '创建清单清除合同').toBe(200)
     const contractC = await findContract(partyC)
+    contractCId = String(contractC?.id || '')
     // DRAFT 上传被拒（状态守卫实证）
     const xlsx = buildBoqXlsx([['1', `${PREFIX}_单项`, 'm³', 1, 1, 1]])
     const upDraft = await authed!.post(`${API_BASE}/api/v1/contracts/${contractC.id}/boq/upload`, {
       multipart: { file: { name: 'boq.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: xlsx } },
     })
     expect((await upDraft.json()).code, 'DRAFT 上传应被状态守卫拒绝').not.toBe(200)
-    // 推进至 EFFECTIVE 后上传+清除成功（该合同无删除通道，与主链同档残留）
+    // 推进至 EFFECTIVE 后上传+清除成功（该合同 EFFECTIVE 态由 afterAll E2E 前缀旁路清理）
     const sub = await apiJson('POST', `/api/v1/contract/${contractC.id}/submit`)
     expect(sub.body?.code, '合同 C 提交').toBe(200)
     await completeAllTodos(contractC.id)
@@ -372,14 +408,20 @@ test.describe('A-3 合同删除守卫与产值分页口径', () => {
     expect(await findContract(partyB), '删除后不可再定位').toBeUndefined()
   })
 
-  test('@matrix A10-15 产值分页参数失配现状钉住（后端 page/size vs 前端 pageNum/pageSize）', async () => {
+  test('@matrix A10-15 产值分页：page/size 生效 + 未知参数回落默认（失配消除）', async () => {
     // 后端口径 page/size 生效：size=1 恒返回 1 条（产值表含演示+残留数据 ≥2 条）
     const p1 = await apiJson('GET', '/api/v1/contract/output?page=1&size=1')
     expect(p1.body?.code).toBe(200)
     expect(p1.body?.data?.records?.length, 'page/size 口径应生效').toBe(1)
-    // 前端口径 pageNum/pageSize 不被识别：size=1 的请求参数被忽略，返回默认 10 条口径
+    // 未知参数 pageNum/pageSize 被忽略 → 回落默认分页（1/10），与显式默认口径结果一致。
+    // 前端 2026-08-21 已对齐 page/size（vitest contract-output-matrix A10-14 钉住），失配消除
     const p2 = await apiJson('GET', '/api/v1/contract/output?pageNum=1&pageSize=1')
+    const p3 = await apiJson('GET', '/api/v1/contract/output?page=1&size=10')
     expect(p2.body?.code).toBe(200)
-    expect(p2.body?.data?.records?.length, '现状钉住：pageNum/pageSize 失配回落默认分页').toBeGreaterThan(1)
+    expect(p3.body?.code).toBe(200)
+    const ids2 = (p2.body?.data?.records || []).map((r: any) => String(r.id))
+    const ids3 = (p3.body?.data?.records || []).map((r: any) => String(r.id))
+    expect(ids2.length, '回落默认分页 size=10 口径').toBeLessThanOrEqual(10)
+    expect(ids2, 'pageNum/pageSize 被忽略，应与显式默认口径结果一致').toEqual(ids3)
   })
 })

@@ -91,6 +91,11 @@ public class BoqService {
                     .doRead();
         } catch (IOException e) {
             throw new BusinessException("文件读取失败: " + e.getMessage());
+        } catch (Exception e) {
+            // 畸形/非 xlsx 文件：EasyExcel/POI 抛 ExcelAnalysisException 等运行时异常，
+            // 收敛为友好业务拒绝，避免走全局兜底裸 500（2026-08-21 台账数据态#2）
+            log.warn("BOQ 文件解析失败 [contractId={}]: {}", contractId, e.getMessage());
+            throw new BusinessException("Excel文件解析失败，请上传有效的清单Excel文件");
         }
 
         // 解析后校验错误

@@ -234,12 +234,17 @@ describe('material/outbound.vue B2 矩阵', () => {
     expect(outboundSrc).toContain('prop="unitPrice" label="单价(元)"')
   })
 
-  it('B-2-10 分页参数名 pageNum/pageSize：与入库页 page/size 不一致（后端 page/size，参数被忽略走默认分页——缺陷现状钉住）', async () => {
+  it('B-2-10 分页请求口径对齐：本地状态 pageNum/pageSize，请求实参回落 page/size 与入库页一致（2026-08-21 缺陷#5 修复后翻正向）', async () => {
     const w = await mountOutbound()
     const st = w.vm.$.setupState
     expect(st.queryParams.pageNum).toBe(1)
     expect(st.queryParams.pageSize).toBe(10)
     expect(outboundSrc).toContain('v-model:current-page="queryParams.pageNum"')
     expect(inboundSrc).toContain('v-model:current-page="queryParams.page"')
+    mockOutboundPage.mockClear()
+    st.queryParams.pageNum = 2
+    st.handleSearch()
+    await flushPromises()
+    expect(mockOutboundPage).toHaveBeenCalledWith(expect.objectContaining({ page: 1, size: 10 }))
   })
 })

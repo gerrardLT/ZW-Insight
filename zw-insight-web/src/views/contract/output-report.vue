@@ -35,9 +35,10 @@
             <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="success" @click="handleSubmit(row)">提交</el-button>
+            <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -121,7 +122,7 @@
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import ProjectSelector from '@/components/ProjectSelector.vue'
-import { getOutputReportPage, createOutputReport, submitOutputReport, getContractPage } from '@/api/contract'
+import { getOutputReportPage, createOutputReport, submitOutputReport, deleteOutputReport, getContractPage } from '@/api/contract'
 import { getBoqFlat } from '@/api/boq'
 import type { OutputReportDetail } from '@/types/contract'
 
@@ -152,8 +153,9 @@ async function loadData() {
   loading.value = true
   try {
     const res: any = await getOutputReportPage({
-      pageNum: queryParams.pageNum,
-      pageSize: queryParams.pageSize,
+      // 后端 Controller 契约为 page/size（@RequestParam 硬编码），直传避免口径失配
+      page: queryParams.pageNum,
+      size: queryParams.pageSize,
       projectId: queryParams.projectId,
       contractId: queryParams.contractId
     })
@@ -198,6 +200,13 @@ async function handleSubmit(row: any) {
   await ElMessageBox.confirm('确定要提交该产值上报吗？', '提示', { type: 'warning' })
   await submitOutputReport(row.id)
   ElMessage.success('已提交审批，审批通过后生效')
+  loadData()
+}
+
+async function handleDelete(row: any) {
+  await ElMessageBox.confirm('确定要删除该产值报告吗？删除后不可恢复', '提示', { type: 'warning' })
+  await deleteOutputReport(row.id)
+  ElMessage.success('删除成功')
   loadData()
 }
 

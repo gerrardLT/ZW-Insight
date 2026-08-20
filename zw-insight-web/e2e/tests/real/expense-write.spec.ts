@@ -436,7 +436,16 @@ test.describe('支出域 — 询价定标 UI 闭环（B-P-X1，2026-08-15 决策
       // 列表状态翻转为已定标
       await expect(row.first().locator('.el-tag')).toContainText('已定标', { timeout: 10_000 })
     } finally {
-      await request.delete(`${API_BASE}/api/v1/purchase/inquiry/${inquiry.id}`).catch(() => {})
+      // AWARDED 残留销项（台账数据态#3）：InquiryService.delete 仅 DRAFT 守卫 +
+      // E2eTestGuard 前缀旁路（title 带 E2E_TEST_，无报价/定标引用检查，f07671a 实证）
+      // → AWARDED 询价应可删除，硬断言销项；报价/定标行无 DELETE 端点，
+      // E2E_TEST_ 前缀可识别（巡检兜底）
+      const del = await request.delete(`${API_BASE}/api/v1/purchase/inquiry/${inquiry.id}`)
+      const delBody = await del.json().catch(() => null)
+      expect(delBody?.code, `AWARDED 询价应可删除（E2E 前缀旁路）: ${delBody?.message || ''}`).toBe(200)
+      const gone = await request.get(`${API_BASE}/api/v1/purchase/inquiry/page`, { params: { page: 1, size: 50, title } })
+      const still = ((await gone.json()).data?.records || []).find((r: any) => String(r.id) === String(inquiry.id))
+      expect(still, '删除后询价不应再存在于列表').toBeUndefined()
     }
   })
 })

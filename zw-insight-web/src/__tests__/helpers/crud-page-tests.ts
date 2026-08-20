@@ -31,6 +31,8 @@ export interface CrudSuiteOpts {
   deleteExpectedArgs?: (row: any) => any[]
   /** 分页页码参数名（默认 pageNum；部分页为 page/size 口径如 work-order/inbound） */
   pageKey?: 'pageNum' | 'page'
+  /** 请求实参中的页码键（默认同 pageKey；部分页本地状态 pageNum、请求映射为 page 如 certificate） */
+  pageArgKey?: 'pageNum' | 'page'
   /** 编辑回显经 detail API 的页（tender/register、hr/entry）跳过工厂回显例，由各自扩展例覆盖 */
   skipEditCase?: boolean
   records: any[]
@@ -75,7 +77,7 @@ export function crudPageSuite(o: CrudSuiteOpts) {
       expect(st().queryParams[pageKey]).toBe(1)
       expect(o.pageMock).toHaveBeenCalled()
       const arg = o.pageMock.mock.calls[0][0]
-      expect(arg[pageKey]).toBe(1)
+      expect(arg[o.pageArgKey ?? pageKey]).toBe(1)
     })
 
     it('重置清空搜索条件', async () => {

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.domain.BizOutputReport;
 import com.zwinsight.contract.domain.BizOutputReportDetail;
@@ -171,6 +172,30 @@ public class OutputReportService {
         report.setStatus("REJECTED");
         outputReportMapper.updateById(report);
         log.info("产值报告审批驳回, id={}", id);
+    }
+
+    /**
+     * 删除产值报告（2026-08-21 台账缺口修复：补齐 DELETE 通道）
+     * <p>
+     * 状态守卫：仅 DRAFT/REJECTED 可删（数据未生效，无累计产值回滚问题）；
+     * E2E 测试数据（主表 String 字段带 E2E_TEST_ 前缀）旁路放行供测试清理，
+     * 与 BudgetService/SubcontractService 等删除守卫同款双条件模式。
+     * </p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long id) {
+        BizOutputReport existing = outputReportMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException("产值报告不存在");
+        }
+        if (!"DRAFT".equals(existing.getStatus()) && !"REJECTED".equals(existing.getStatus())
+                && !E2eTestGuard.containsE2eTestMarker(existing)) {
+            throw new BusinessException("仅草稿或已驳回状态可删除");
+        }
+        LambdaQueryWrapper<BizOutputReportDetail> detailWrapper = new LambdaQueryWrapper<>();
+        detailWrapper.eq(BizOutputReportDetail::getReportId, id);
+        reportDetailMapper.delete(detailWrapper);
+        outputReportMapper.deleteById(id);
     }
 
     /**

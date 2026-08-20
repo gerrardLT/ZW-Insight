@@ -85,6 +85,13 @@ public class BudgetControlConfigService {
         validateControlMode(dto.getControlMode());
         // 校验 warningThreshold 范围 50-99
         validateWarningThreshold(dto.getWarningThreshold());
+        // 同项目重复预检（2026-08-21 台账缺陷修复）：唯一键冲突前业务拦截，
+        // 避免裸 DuplicateKeyException 500（无业务文案）
+        LambdaQueryWrapper<SysBudgetControlConfig> dupWrapper = new LambdaQueryWrapper<>();
+        dupWrapper.eq(SysBudgetControlConfig::getProjectId, dto.getProjectId());
+        if (configMapper.selectCount(dupWrapper) > 0) {
+            throw new BusinessException("该项目已存在预算控制配置，请直接编辑");
+        }
 
         SysBudgetControlConfig config = new SysBudgetControlConfig();
         config.setProjectId(dto.getProjectId());

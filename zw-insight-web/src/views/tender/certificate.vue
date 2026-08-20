@@ -1,15 +1,17 @@
 <template>
   <div class="certificate-container">
     <el-card shadow="never">
+      <!-- 查询区：后端契约 GET /tender/certificate/person?page&size&personName&certificateType -->
       <el-form :model="queryParams" inline>
-        <el-form-item label="证件名称">
-          <el-input v-model="queryParams.certName" placeholder="证件名称" clearable style="width: 180px" />
-        </el-form-item>
         <el-form-item label="持证人">
-          <el-input v-model="queryParams.holderName" placeholder="持证人" clearable style="width: 140px" />
+          <el-input v-model="queryParams.personName" placeholder="持证人" clearable style="width: 140px" />
+        </el-form-item>
+        <el-form-item label="证件类型">
+          <el-input v-model="queryParams.certificateType" placeholder="证件类型" clearable style="width: 180px" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
+          <!-- 后端无 status 查询参数（实体 status 为 Integer 启用标记），展示三态由前端基于 expireDate 派生，此处客户端过滤 -->
+          <el-select v-model="queryParams.derivedStatus" placeholder="全部" clearable style="width: 120px">
             <el-option label="有效" value="VALID" />
             <el-option label="即将过期" value="EXPIRING" />
             <el-option label="已过期" value="EXPIRED" />
@@ -25,18 +27,15 @@
         <el-button type="primary" @click="handleAdd">新增证件</el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="certName" label="证件名称" min-width="160" />
-        <el-table-column prop="certNo" label="证件编号" width="160" />
-        <el-table-column prop="holderName" label="持证人" width="100" />
+      <el-table :data="filteredData" v-loading="loading" border>
+        <el-table-column prop="personName" label="持证人" width="100" />
+        <el-table-column prop="certificateType" label="证件类型" min-width="160" />
+        <el-table-column prop="certificateNo" label="证件编号" width="160" />
         <el-table-column prop="issueDate" label="发证日期" width="110" />
-        <el-table-column prop="expiryDate" label="到期日期" width="110" />
-        <el-table-column prop="issueOrgan" label="发证机关" width="150" show-overflow-tooltip />
+        <el-table-column prop="expireDate" label="到期日期" width="110" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'VALID' ? 'success' : row.status === 'EXPIRING' ? 'warning' : 'danger'" size="small">
-              {{ row.status === 'VALID' ? '有效' : row.status === 'EXPIRING' ? '即将过期' : '已过期' }}
-            </el-tag>
+            <el-tag :type="derivedStatusTag(row).type" size="small">{{ derivedStatusTag(row).label }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
@@ -54,12 +53,14 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑证件' : '新增证件'" width="550px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
-        <el-form-item label="证件名称" prop="certName"><el-input v-model="formData.certName" /></el-form-item>
-        <el-form-item label="证件编号" prop="certNo"><el-input v-model="formData.certNo" /></el-form-item>
-        <el-form-item label="持证人" prop="holderName"><el-input v-model="formData.holderName" /></el-form-item>
+        <el-form-item label="持证人" prop="personName"><el-input v-model="formData.personName" /></el-form-item>
+        <el-form-item label="证件类型" prop="certificateType"><el-input v-model="formData.certificateType" placeholder="如：一级建造师 / 安全员C证" /></el-form-item>
+        <el-form-item label="证件编号" prop="certificateNo"><el-input v-model="formData.certificateNo" /></el-form-item>
         <el-form-item label="发证日期"><el-date-picker v-model="formData.issueDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="到期日期"><el-date-picker v-model="formData.expiryDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="发证机关"><el-input v-model="formData.issueOrgan" /></el-form-item>
+        <el-form-item label="到期日期"><el-date-picker v-model="formData.expireDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
+        <el-form-item label="启用状态">
+          <el-switch v-model="formData.status" :active-value="1" :inactive-value="0" active-text="有效" inactive-text="无效" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -70,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getCertificatePage, createCertificate, updateCertificate, deleteCertificate } from '@/api/tender'
@@ -83,17 +84,96 @@ const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
 
-const queryParams = ref({ pageNum: 1, pageSize: 10, certName: '', holderName: '', status: '' })
-const formData = ref({ id: undefined as number | undefined, certName: '', certNo: '', holderName: '', issueDate: '', expiryDate: '', issueOrgan: '' })
-const formRules = { certName: [{ required: true, message: '请输入证件名称', trigger: 'blur' }], certNo: [{ required: true, message: '请输入证件编号', trigger: 'blur' }], holderName: [{ required: true, message: '请输入持证人', trigger: 'blur' }] }
+/** 查询参数：pageNum/pageSize 为本地状态，调用时映射为后端 page/size */
+const queryParams = ref({ pageNum: 1, pageSize: 10, personName: '', certificateType: '', derivedStatus: '' })
+const defaultFormData = () => ({ id: undefined as number | undefined, type: 'person', personName: '', certificateType: '', certificateNo: '', issueDate: '', expireDate: '', status: 1 })
+const formData = ref(defaultFormData())
+const formRules = {
+  personName: [{ required: true, message: '请输入持证人', trigger: 'blur' }],
+  certificateType: [{ required: true, message: '请输入证件类型', trigger: 'blur' }],
+  certificateNo: [{ required: true, message: '请输入证件编号', trigger: 'blur' }]
+}
 
-async function loadData() { loading.value = true; try { const res: any = await getCertificatePage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
+/**
+ * 展示三态由前端基于真实 expireDate 派生（后端契约无此字段）：
+ * >30天=有效 / ≤30天=即将过期 / 早于今天=已过期；无到期日期视为长期有效
+ */
+function deriveStatus(row: any): 'VALID' | 'EXPIRING' | 'EXPIRED' {
+  if (!row.expireDate) return 'VALID'
+  const expire = new Date(row.expireDate)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (expire < today) return 'EXPIRED'
+  const daysLeft = (expire.getTime() - today.getTime()) / 86400000
+  return daysLeft <= 30 ? 'EXPIRING' : 'VALID'
+}
+
+function derivedStatusTag(row: any) {
+  const s = deriveStatus(row)
+  if (s === 'VALID') return { label: '有效', type: 'success' as const }
+  if (s === 'EXPIRING') return { label: '即将过期', type: 'warning' as const }
+  return { label: '已过期', type: 'danger' as const }
+}
+
+/** 状态筛选为客户端过滤（后端无 status 查询参数） */
+const filteredData = computed(() => {
+  if (!queryParams.value.derivedStatus) return tableData.value
+  return tableData.value.filter((row) => deriveStatus(row) === queryParams.value.derivedStatus)
+})
+
+async function loadData() {
+  loading.value = true
+  try {
+    // 后端契约：page/size/personName/certificateType（空串参数不传，避免误匹配）
+    const params: any = {
+      type: 'person',
+      page: queryParams.value.pageNum,
+      size: queryParams.value.pageSize
+    }
+    if (queryParams.value.personName) params.personName = queryParams.value.personName
+    if (queryParams.value.certificateType) params.certificateType = queryParams.value.certificateType
+    const res: any = await getCertificatePage(params)
+    tableData.value = res.data?.records || []
+    total.value = res.data?.total || 0
+  } finally {
+    loading.value = false
+  }
+}
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
-function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, certName: '', holderName: '', status: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, certName: '', certNo: '', holderName: '', issueDate: '', expiryDate: '', issueOrgan: '' }; dialogVisible.value = true }
-function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
-async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateCertificate(formData.value) : await createCertificate(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
-async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteCertificate(row.type || 'person', row.id); ElMessage.success('删除成功'); loadData() }
+function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, personName: '', certificateType: '', derivedStatus: '' }; loadData() }
+function handleAdd() { isEdit.value = false; formData.value = defaultFormData(); dialogVisible.value = true }
+function handleEdit(row: any) {
+  isEdit.value = true
+  formData.value = {
+    id: row.id,
+    type: 'person',
+    personName: row.personName || '',
+    certificateType: row.certificateType || '',
+    certificateNo: row.certificateNo || '',
+    issueDate: row.issueDate || '',
+    expireDate: row.expireDate || '',
+    status: row.status === 0 ? 0 : 1
+  }
+  dialogVisible.value = true
+}
+async function handleFormSubmit() {
+  await formRef.value?.validate()
+  submitLoading.value = true
+  try {
+    isEdit.value ? await updateCertificate(formData.value) : await createCertificate(formData.value)
+    ElMessage.success(isEdit.value ? '更新成功' : '新增成功')
+    dialogVisible.value = false
+    loadData()
+  } finally {
+    submitLoading.value = false
+  }
+}
+async function handleDelete(row: any) {
+  await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' })
+  await deleteCertificate('person', row.id)
+  ElMessage.success('删除成功')
+  loadData()
+}
 onMounted(() => { loadData() })
 </script>
 

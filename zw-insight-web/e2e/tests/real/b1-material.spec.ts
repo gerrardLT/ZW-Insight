@@ -1,11 +1,12 @@
 /**
  * 真实模式 E2E：B-1 材料管理账本补测（账本全量补齐 M3，2026-08）
  *
- * @matrix B-M-X2 入库提交直批→库存/合同累计回写 / B-M-X3 退货→退款链路受阻钉住 /
+ * @matrix B-M-X2 入库提交直批→库存/合同累计回写 /
+ *   B-M-X3/B-2-9 退货→退款链路闭环（2026-08-21 缺口#4 解除后翻正向）/
  *   B-M-X4 调拨审批通过双向库存 / B-M-X5 直接出库联动 /
- *   B-2-4 PICK 扣库存+超量拦截 / B-2-9 RETURN 退货创建受阻钉住 /
+ *   B-2-4 PICK 扣库存+超量拦截 /
  *   B-3-3 同项目调拨 API 直连反向证据 / B-3-7 调拨提交审批→库存变更 /
- *   B-4-3 库存预警筛选通道 / 分页失配双请求对照（outbound/transfer）
+ *   B-4-3 库存预警筛选通道 / 分页 page/size 生效+未知参数回落默认（失配消除）
  *
  * 实证（探测 2026-08）：
  *   - 入库 save 不动库存，submit 直批 APPROVED（无 BPMN）：库存/采购合同
@@ -13,13 +14,11 @@
  *   - 出库 save 即扣库存（PICK 超量「库存不足」/RETURN 超量「库存不足，无法退货」；
  *     数量≤0「出库数量必须大于0」）；submit 仅置 APPROVED；删除对称回填库存
  *   - RETURN 且 contractId!=null → save 时发布退货事件自动生成 PENDING 退款
- *     （unitPrice 作为入库单价计算退款金额）；删除退货单同步作废 PENDING 退款
+ *     （unitPrice 作为入库单价计算退款金额）；删除退货单同步作废 PENDING 退款（CANCELED）
  *   - 调拨 save 仅落单据（同项目后端守卫「调出项目与调入项目不能相同」，盲点 11a），
  *     submit 启动 BPMN material_transfer_approval，审批通过回调双向库存变更
- *   - RETURN 且 contractId!=null → save 内发布退货事件同步生成退款并
- *     startProcess(material_refund_approval)；**实证 2026-08：该流程在租户 1 未部署**
- *     （ACT_RE_PROCDEF 仅空租户与 9999）→ 退货创建整体事务回滚 500，
- *     退款/退货链路 API-GAP 受阻钉住（tasks.md 登记，不改后端）
+ *   - 2026-08-21 material_refund_approval 部署租户 1（缺口#4）→ 退货创建
+ *     save 200 + PENDING 退款生成 + startProcess 成功（此前事务回滚 500 受阻解除）
  *   - 入库/出库主表无可控命名字段，E2E 前缀落在明细 materialName（E2eTestGuard 连明细扫描）
  *   - 系统默认预算控制配置为 BLOCK：无 MATERIAL 预算时创建采购合同被拦
  *     （「该科目未设置预算额度」实证）→ beforeAll 自置 MATERIAL 预算直批后放行
@@ -225,32 +224,47 @@ test.describe('B-1 出库（PICK/RETURN/删除回填）', () => {
     expect(Number((await getStock(STEEL, projectAId))?.stockQuantity), '删除后库存回填').toBe(6)
   })
 
-  test('@matrix B-2-9/B-M-X3 RETURN 退货创建受阻现状钉住（material_refund_approval 租户 1 未部署）', async () => {
+  test('@matrix B-2-9/B-M-X3 RETURN+合同 退货→PENDING 退款生成→删退货作废退款（翻正向）', async () => {
+    // 2026-08-21 material_refund_approval 部署租户 1（缺口#4）→ 退货创建不再事务回滚
     const before = Number((await getStock(STEEL, projectAId))?.stockQuantity)
     const cr = await apiJson('POST', '/api/v1/material/outbound', {
       projectId: projectAId, outboundType: 'RETURN', returnType: 'RETURN_REFUND',
       contractId: purchaseContractId, outboundDate: TODAY,
       details: [{ materialName: STEEL, specification: SPEC, unit: '吨', quantity: 3, unitPrice: 100 }],
     })
-    // 实证（2026-08，ACT_RE_PROCDEF 探针）：退货事件监听器 startProcess(material_refund_approval)
-    // 在租户 1 无流程定义 → 同步事件抛非业务异常 → 事务回滚 500「系统内部错误」
-    expect(cr.body?.code, '退货创建应因退款流程缺失受阻').not.toBe(200)
-    expect(Number((await getStock(STEEL, projectAId))?.stockQuantity), '事务回滚库存不受损').toBe(before)
+    expect(cr.body?.code, `退货创建（退款流程已部署）: ${cr.body?.message || ''}`).toBe(200)
+    expect(Number((await getStock(STEEL, projectAId))?.stockQuantity), 'save 即扣库存').toBe(before - 3)
+    const outbound = await findWhere(`/api/v1/material/outbound/page?page=1&size=10&projectId=${projectAId}&outboundType=RETURN`,
+      (r: any) => r.status === 'DRAFT' && Number(r.totalAmount) === 300)
+    expect(outbound, '退货单应可定位').toBeTruthy()
+    // PENDING 退款自动生成：金额 = quantity × 入库单价（3 × 100 = 300）
     const refundPg = await apiJson('GET', `/api/v1/material/refund?page=1&size=20&contractId=${purchaseContractId}`)
-    expect((refundPg.body?.data?.records || []).length, '退款未生成').toBe(0)
-    // 无合同的退货不发布事件，不受影响（正向对照钉住守卫边界）
+    const refund = (refundPg.body?.data?.records || [])
+      .find((r: any) => String(r.outboundId) === String(outbound.id) && r.status === 'PENDING')
+    expect(refund, 'PENDING 退款应自动生成').toBeTruthy()
+    expect(Number(refund.refundAmount), '退款金额 = quantity × 入库单价').toBe(300)
+    // 删除退货单 → 库存回填 + 同步作废 PENDING 退款（CANCELED，防退款继续审批扣款）
+    const del = await apiJson('DELETE', `/api/v1/material/outbound/${outbound.id}`)
+    expect(del.body?.code, '退货单删除').toBe(200)
+    expect(Number((await getStock(STEEL, projectAId))?.stockQuantity), '删除后库存回填').toBe(before)
+    const refundAfterPg = await apiJson('GET', `/api/v1/material/refund?page=1&size=20&contractId=${purchaseContractId}`)
+    const refundAfter = (refundAfterPg.body?.data?.records || []).find((r: any) => String(r.id) === String(refund.id))
+    expect(refundAfter?.status, 'PENDING 退款应同步作废').toBe('CANCELED')
+    // 单据作废但退款流程实例仍在运行 → 按业务撤回，避免待办残留（发起人幂等）
+    const wd = await apiJson('POST', `/api/v1/workflow/approval/withdraw-by-business?businessType=MATERIAL_REFUND&businessId=${refund.id}`)
+    expect(wd.body?.data, '退款流程应可撤回').toBe(true)
+    // 无合同的退货不发布事件（正向对照钉住守卫边界）
     const noContract = await apiJson('POST', '/api/v1/material/outbound', {
       projectId: projectAId, outboundType: 'RETURN', outboundDate: TODAY,
       details: [{ materialName: STEEL, specification: SPEC, unit: '吨', quantity: 1, unitPrice: 100 }],
     })
     expect(noContract.body?.code, '无合同退货不触发退款流程应成功').toBe(200)
-    const outbound = await findWhere(`/api/v1/material/outbound/page?page=1&size=10&projectId=${projectAId}&outboundType=RETURN`,
+    const noContractOutbound = await findWhere(`/api/v1/material/outbound/page?page=1&size=10&projectId=${projectAId}&outboundType=RETURN`,
       (r: any) => r.status === 'DRAFT')
-    expect(outbound, '无合同退货单应可定位').toBeTruthy()
-    expect(Number((await getStock(STEEL, projectAId))?.totalReturn), '退货统计').toBe(1)
+    expect(noContractOutbound, '无合同退货单应可定位').toBeTruthy()
     // 清理：草稿退货删除回填库存（避免残留干扰后续用例）
-    const del = await apiJson('DELETE', `/api/v1/material/outbound/${outbound.id}`)
-    expect(del.body?.code, '草稿退货删除').toBe(200)
+    const del2 = await apiJson('DELETE', `/api/v1/material/outbound/${noContractOutbound.id}`)
+    expect(del2.body?.code, '草稿退货删除').toBe(200)
   })
 })
 
@@ -299,16 +313,25 @@ test.describe('B-1 库存预警通道与分页口径', () => {
     expect(Array.isArray(pg.body?.data?.records), '应返回分页结构').toBe(true)
   })
 
-  test('@matrix 分页失配现状钉住（outbound/transfer 后端 page/size vs 前端 pageNum/pageSize）', async () => {
-    // outbound：page/size 生效 vs pageNum/pageSize 被忽略回落默认 10（出库表含演示+本批 ≥2 条）
+  test('@matrix 分页：page/size 生效 + pageNum/pageSize 回落默认（失配消除，outbound/transfer）', async () => {
+    // outbound：page/size 生效；未知参数 pageNum/pageSize 被忽略回落默认，与显式默认口径一致。
+    // 前端 2026-08-21 已对齐 page/size（vitest material-inbound-outbound-matrix B-2-10 钉住）
     const p1 = await apiJson('GET', '/api/v1/material/outbound/page?page=1&size=1')
     expect(p1.body?.data?.records?.length, 'page/size 口径应生效').toBe(1)
     const p2 = await apiJson('GET', '/api/v1/material/outbound/page?pageNum=1&pageSize=1')
-    expect(p2.body?.data?.records?.length, '现状钉住：pageNum/pageSize 失配回落默认分页').toBeGreaterThan(1)
+    const p3 = await apiJson('GET', '/api/v1/material/outbound/page?page=1&size=10')
+    const ids2 = (p2.body?.data?.records || []).map((r: any) => String(r.id))
+    const ids3 = (p3.body?.data?.records || []).map((r: any) => String(r.id))
+    expect(ids2.length, '回落默认分页 size=10 口径').toBeLessThanOrEqual(10)
+    expect(ids2, 'outbound pageNum/pageSize 被忽略，应与默认口径一致').toEqual(ids3)
     // transfer 同构
     const t1 = await apiJson('GET', '/api/v1/material/transfer/page?page=1&size=1')
     expect(t1.body?.data?.records?.length, 'transfer page/size 口径应生效').toBe(1)
     const t2 = await apiJson('GET', '/api/v1/material/transfer/page?pageNum=1&pageSize=1')
-    expect(t2.body?.data?.records?.length, 'transfer pageNum/pageSize 失配钉住').toBeGreaterThan(1)
+    const t3 = await apiJson('GET', '/api/v1/material/transfer/page?page=1&size=10')
+    const tids2 = (t2.body?.data?.records || []).map((r: any) => String(r.id))
+    const tids3 = (t3.body?.data?.records || []).map((r: any) => String(r.id))
+    expect(tids2.length, 'transfer 回落默认分页口径').toBeLessThanOrEqual(10)
+    expect(tids2, 'transfer pageNum/pageSize 被忽略，应与默认口径一致').toEqual(tids3)
   })
 })

@@ -127,6 +127,27 @@ class BoqServiceUploadFlowTest {
     }
 
     @Test
+    @DisplayName("畸形文件（截断字节）→ 友好业务拒绝，不走全局兜底 500（台账数据态#2）")
+    void corruptedFile_rejectedGracefully() throws Exception {
+        // 截断正常 xlsx 字节：zip 结构破损，EasyExcel/POI 抛运行时解析异常
+        Path file = tempDir.resolve("corrupt-" + System.nanoTime() + ".xlsx");
+        EasyExcel.write(file.toFile()).head(BOQ_HEAD).sheet().doWrite(List.of(
+                List.of("1", "土建", "m3", new BigDecimal("10"), new BigDecimal("100"), new BigDecimal("1000"))));
+        byte[] full = Files.readAllBytes(file);
+        Files.delete(file);
+        byte[] truncated = Arrays.copyOf(full, Math.min(32, full.length / 4));
+        MultipartFile corrupt = new MockMultipartFile("file", "boq.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", truncated);
+
+        assertThatThrownBy(() -> uploadWithExcel(corrupt))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Excel文件解析失败");
+
+        verify(boqItemMapper, never()).deleteByContractId(anyLong());
+        verify(boqItemMapper, never()).insert(any(BizBoqItem.class));
+    }
+
+    @Test
     @DisplayName("上传主链路：删旧→插入→顶层合计回写合同额（P1 BOQ-08）")
     void uploadHappyPath_deleteInsertWriteBackTotal() throws Exception {
         MultipartFile file = boqFile(List.of(

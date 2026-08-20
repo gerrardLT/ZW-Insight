@@ -125,6 +125,11 @@ export function deleteMenu(id: number) {
   return request.delete(`/v1/system/menu/${id}`)
 }
 
+// 当前用户授权菜单（后端经 sys_role_menu JOIN 返回，排除 BUTTON 类型；侧栏过滤数据源）
+export function getUserMenus() {
+  return request.get('/v1/system/menu/user')
+}
+
 // ======================== 数据字典 ========================
 // 后端：列表/分页在根 GET /dict，更新为 PUT /dict/{id}
 export function getDictList(params?: any) {

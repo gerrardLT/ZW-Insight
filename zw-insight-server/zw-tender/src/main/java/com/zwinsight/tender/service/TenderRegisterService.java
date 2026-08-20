@@ -39,6 +39,8 @@ public class TenderRegisterService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizTenderRegister register) {
+        // 日期合理性校验（2026-08-21 台账缺陷修复）：开标日期不得早于报名日期
+        validateDates(register);
         // D1 守卫（2026-08-11）：终态项目禁止被改回投标中，先校验再落库（fail-fast）。
         // P2 强化（2026-08-12，批次二 D3）：已中标/施工中项目新增登记会把状态回退为
         // TENDERING（状态回退漏洞），一并拦截
@@ -76,11 +78,31 @@ public class TenderRegisterService {
     public void update(BizTenderRegister register) {
         BizTenderRegister existing = registerMapper.selectById(register.getId());
         if (existing == null) throw new BusinessException("投标登记不存在");
+        // 状态守卫（2026-08-21 台账缺陷修复）：仅报名状态可编辑，
+        // SUBMITTED/WON/LOST 已进投标/开标链路，禁止事后篡改
+        if (!"REGISTERED".equals(existing.getStatus())) {
+            throw new BusinessException("仅报名状态可编辑");
+        }
+        // 日期合理性校验：以提交字段为准，缺省回落存量值比对
+        BizTenderRegister merged = new BizTenderRegister();
+        merged.setRegisterDate(register.getRegisterDate() != null ? register.getRegisterDate() : existing.getRegisterDate());
+        merged.setOpenDate(register.getOpenDate() != null ? register.getOpenDate() : existing.getOpenDate());
+        validateDates(merged);
         // P1 修复（2026-08-12，批次二取证枚举 TND-08）：status/projectId 由登记/开标链路
         // 维护，置 null 后 updateById（NOT_NULL 策略）不落库，防 PUT 篡改状态/换绑项目
         register.setStatus(null);
         register.setProjectId(null);
         registerMapper.updateById(register);
+    }
+
+    /**
+     * 开标日期不得早于报名日期（两端日期均非空时校验）
+     */
+    private void validateDates(BizTenderRegister register) {
+        if (register.getOpenDate() != null && register.getRegisterDate() != null
+                && register.getOpenDate().isBefore(register.getRegisterDate())) {
+            throw new BusinessException("开标日期不能早于报名日期");
+        }
     }
 
     /**

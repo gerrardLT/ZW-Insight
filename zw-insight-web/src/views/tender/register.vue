@@ -32,7 +32,7 @@
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'REGISTERED'" link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'REGISTERED'" link type="success" @click="handleSubmitApply(row)">提交</el-button>
             <el-button v-if="row.status === 'REGISTERED'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -57,7 +57,7 @@
         <el-form-item label="报名方式" prop="registerMethod"><el-input v-model="formData.registerMethod" /></el-form-item>
         <el-form-item label="投标方式" prop="tenderMethod"><el-input v-model="formData.tenderMethod" /></el-form-item>
         <el-form-item label="报名日期" prop="registerDate"><el-date-picker v-model="formData.registerDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
-        <el-form-item label="开标日期" prop="openDate"><el-date-picker v-model="formData.openDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
+        <el-form-item label="开标日期" prop="openDate"><el-date-picker v-model="formData.openDate" type="date" value-format="YYYY-MM-DD" :disabled-date="disableBeforeRegisterDate" style="width: 100%" /></el-form-item>
         <el-form-item label="保证金(元)" prop="depositAmount"><el-input-number v-model="formData.depositAmount" :min="0" :precision="2" style="width: 100%" /></el-form-item>
       </el-form>
       <template #footer>
@@ -89,7 +89,27 @@ const defaultForm = () => ({ id: undefined as number | undefined, projectId: und
 const formData = ref(defaultForm())
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
-  ownerCompany: [{ required: true, message: '请输入业主单位', trigger: 'blur' }]
+  ownerCompany: [{ required: true, message: '请输入业主单位', trigger: 'blur' }],
+  // 开标日期不得早于报名日期（与后端 TenderRegisterService.validateDates 同规则，前端提前拦截）
+  openDate: [{
+    validator: (_rule: any, value: string, callback: any) => {
+      if (value && formData.value.registerDate && value < formData.value.registerDate) {
+        callback(new Error('开标日期不能早于报名日期'))
+      } else {
+        callback()
+      }
+    },
+    trigger: 'change'
+  }]
+}
+
+/** 开标日期选择器禁选：早于报名日期的日期置灰（YYYY-MM-DD 字符串按字典序即时间序） */
+function disableBeforeRegisterDate(date: Date): boolean {
+  if (!formData.value.registerDate) return false
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}` < formData.value.registerDate
 }
 
 async function loadData() { loading.value = true; try { const res: any = await getTenderRegisterPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }

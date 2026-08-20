@@ -3,19 +3,20 @@
  * （P3 批 contract-pages 已有调度级覆盖；本文件补校验规则/BOQ 联动/金额计算/
  * details 过滤/按钮状态守卫等字段级断言）
  *
- * @matrix A10-02/A10-03/A10-04/A10-05/A10-06/A10-07/A10-08/A10-09/A10-10/A10-11/A10-13/A10-14/A10-15
+ * @matrix A10-02/A10-03/A10-04/A10-05/A10-06/A10-07/A10-08/A10-09/A10-10/A10-11/A10-13/A10-14/A10-15/A10-16
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
 const {
-  mockOutputPage, mockOutputCreate, mockOutputSubmit,
+  mockOutputPage, mockOutputCreate, mockOutputSubmit, mockOutputDelete,
   mockContractPage, mockBoqFlat, mockProjectList, mockWarning,
 } = vi.hoisted(() => ({
   mockOutputPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockOutputCreate: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockOutputSubmit: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  mockOutputDelete: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockContractPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockBoqFlat: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
   mockProjectList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
@@ -26,6 +27,7 @@ vi.mock('@/api/contract', () => ({
   getOutputReportPage: mockOutputPage,
   createOutputReport: mockOutputCreate,
   submitOutputReport: mockOutputSubmit,
+  deleteOutputReport: mockOutputDelete,
   getContractPage: mockContractPage,
 }))
 vi.mock('@/api/boq', () => ({
@@ -221,7 +223,7 @@ describe('contract/output-report.vue A10 矩阵', () => {
     expect(st.createForm.currentOutput).toBe(0)
   })
 
-  it('A10-14 重置清空查询条件与合同选项并重载', async () => {
+  it('A10-14 重置清空查询条件与合同选项并重载（2026-08-21 缺陷#5 口径对齐：请求实参回落 page/size）', async () => {
     await mountPage()
     const st = wrapper.vm.$.setupState
     st.queryParams.projectId = 3
@@ -235,6 +237,24 @@ describe('contract/output-report.vue A10 矩阵', () => {
     expect(st.queryParams.contractId).toBeUndefined()
     expect(st.queryParams.pageNum).toBe(1)
     expect(st.contractOptions).toEqual([])
+    expect(mockOutputPage).toHaveBeenCalledWith(expect.objectContaining({ page: 1, size: 10 }))
+  })
+
+  it('A10-16 删除通道前端消费：DRAFT/REJECTED 行渲染删除按钮，确认后调 deleteOutputReport 并刷新；APPROVED 行不渲染（2026-08-21 缺口#2）', async () => {
+    const w = await mountPage([
+      { id: 1, status: 'DRAFT', currentOutput: 1 },
+      { id: 2, status: 'APPROVED', currentOutput: 1 },
+      { id: 3, status: 'REJECTED', currentOutput: 1 },
+    ])
+    const rows = w.findAll('.el-table__row')
+    const btnText = (row: any) => row.findAll('button').map((b: any) => b.text()).join(' ')
+    expect(btnText(rows[0])).toContain('删除')
+    expect(btnText(rows[1])).not.toContain('删除')
+    expect(btnText(rows[2])).toContain('删除')
+    mockOutputPage.mockClear()
+    await wrapper.vm.$.setupState.handleDelete({ id: 1 })
+    await flushPromises()
+    expect(mockOutputDelete).toHaveBeenCalledWith(1)
     expect(mockOutputPage).toHaveBeenCalled()
   })
 

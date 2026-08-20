@@ -192,6 +192,23 @@ class TenderRegisterServiceTest {
 
             assertThat(register.getStatus()).isEqualTo("REGISTERED");
         }
+
+        @Test
+        @DisplayName("新增：开标日期早于报名日期拦截（2026-08-21 台账缺陷#4）")
+        void testSave_openDateBeforeRegisterDate_rejected() {
+            BizTenderRegister register = new BizTenderRegister();
+            register.setProjectId(100L);
+            register.setRegisterDate(LocalDate.of(2026, 3, 10));
+            register.setOpenDate(LocalDate.of(2026, 3, 1));
+
+            assertThatThrownBy(() -> tenderRegisterService.save(register))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("开标日期不能早于报名日期");
+
+            // fail-fast：登记不落库、不回写项目状态
+            verify(registerMapper, never()).insert(any());
+            verify(projectMapper, never()).updateById(any());
+        }
     }
 
     // ═══════════════════════════════════════════
@@ -253,6 +270,61 @@ class TenderRegisterServiceTest {
             assertThatThrownBy(() -> tenderRegisterService.update(register))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("投标登记不存在");
+        }
+
+        @Test
+        @DisplayName("更新：非报名状态拦截（2026-08-21 台账缺陷#3 状态守卫）")
+        void testUpdate_nonRegistered_rejected() {
+            for (String status : new String[]{"SUBMITTED", "WON", "LOST"}) {
+                BizTenderRegister existing = new BizTenderRegister();
+                existing.setId(1L);
+                existing.setStatus(status);
+                when(registerMapper.selectById(1L)).thenReturn(existing);
+
+                BizTenderRegister update = new BizTenderRegister();
+                update.setId(1L);
+                update.setOwnerCompany("篡改业主");
+
+                assertThatThrownBy(() -> tenderRegisterService.update(update))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("仅报名状态可编辑");
+            }
+            verify(registerMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("更新：合并日期倒挂拦截（提交 openDate 早于存量 registerDate，台账缺陷#4）")
+        void testUpdate_mergedOpenDateBeforeRegisterDate_rejected() {
+            // 存量：报名 2026-03-10；本次仅提交 openDate 2026-03-01 → 合并后倒挂
+            BizTenderRegister existing = new BizTenderRegister();
+            existing.setId(1L);
+            existing.setStatus("REGISTERED");
+            existing.setRegisterDate(LocalDate.of(2026, 3, 10));
+            when(registerMapper.selectById(1L)).thenReturn(existing);
+
+            BizTenderRegister update = new BizTenderRegister();
+            update.setId(1L);
+            update.setOpenDate(LocalDate.of(2026, 3, 1));
+
+            assertThatThrownBy(() -> tenderRegisterService.update(update))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("开标日期不能早于报名日期");
+
+            verify(registerMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("更新：报名状态 + 日期合法放行（合并校验正常路径）")
+        void testUpdate_registeredValidDates_allowed() {
+            when(registerMapper.selectById(1L)).thenReturn(sampleRegister);
+
+            BizTenderRegister update = new BizTenderRegister();
+            update.setId(1L);
+            update.setOpenDate(LocalDate.of(2026, 2, 20));
+
+            tenderRegisterService.update(update);
+
+            verify(registerMapper).updateById(update);
         }
     }
 

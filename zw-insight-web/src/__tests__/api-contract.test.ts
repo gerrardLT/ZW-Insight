@@ -41,6 +41,7 @@ import {
   getOutputReportPage,
   createOutputReport,
   submitOutputReport,
+  deleteOutputReport,
   getBomItems,
   createBomItem,
   updateBomItem,
@@ -228,6 +229,11 @@ describe('contract API 模块', () => {
     it('submitOutputReport 调用 POST /v1/contract/output/:id/submit', () => {
       submitOutputReport(7)
       expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract/output/7/submit')
+    })
+
+    it('deleteOutputReport 调用 DELETE /v1/contract/output/:id（2026-08-21 缺口#2 后端通道补齐后前端消费）', () => {
+      deleteOutputReport(7)
+      expect(mockRequest.delete).toHaveBeenCalledWith('/v1/contract/output/7')
     })
   })
 
