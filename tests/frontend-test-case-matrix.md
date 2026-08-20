@@ -336,84 +336,84 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | B-1-1 | 必填校验 projectId/inboundDate | 负向 | 打开新增弹窗 | 不选项目/日期直接确定 | 提示「请选择项目」「请选择入库日期」 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿） |
-| B-1-2 | 至少一条有材料名的明细 | 负向 | 新增弹窗 | 明细 materialName 留空提交 | warning「请至少填写一条入库明细」 | 无 |
-| B-1-3 | 明细金额联动=数量×单价 toFixed(2) | 功能 | 明细行 | 输入 quantity=2.5、unitPrice=100 | 金额列显示 250.00 | 无 |
-| B-1-4 | 数量/单价边界 min=0 precision=2 | 边界 | 明细行 | 尝试输入负数/三位小数 | input-number 拒绝负值、截断 2 位 | 无 |
-| B-1-5 | 切换项目后清空采购合同 | 功能 | 已选合同 | 更换项目 | contractId 被重置 | 无 |
+| B-1-2 | 至少一条有材料名的明细 | 负向 | 新增弹窗 | 明细 materialName 留空提交 | warning「请至少填写一条入库明细」 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
+| B-1-3 | 明细金额联动=数量×单价 toFixed(2) | 功能 | 明细行 | 输入 quantity=2.5、unitPrice=100 | 金额列显示 250.00 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
+| B-1-4 | 数量/单价边界 min=0 precision=2 | 边界 | 明细行 | 尝试输入负数/三位小数 | input-number 拒绝负值、截断 2 位 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
+| B-1-5 | 切换项目后清空采购合同 | 功能 | 已选合同 | 更换项目 | contractId 被重置 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
 | B-1-6 | 提交仅 DRAFT 且二次确认 | 功能 | 草稿行 | 点击提交 | 确认框「提交后将更新库存与合同累计入库」，确认后状态变更 | L5-API + E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；提交直批 APPROVED + 库存更新断言 stockQuantity/totalInbound=入库量，save 不动库存 submit 才更新实证） |
-| B-1-7 | 编辑回显明细 | 功能 | 已有单据 | 点编辑 | 明细数量/单价 Number 回显正确 | 无 |
-| B-1-8 | 编辑模式绕过明细必填守卫 | 负向 | 已有单据 | 编辑时删光明细确定 | 源码仅 !isEdit 时校验→可保存空明细（应补守卫） | 无 |
-| B-1-9 | 空 materialName 明细行被 payload 过滤 | 边界 | 2 行明细 1 行空名 | 提交 | payload.details 仅含非空行 | 无 |
+| B-1-7 | 编辑回显明细 | 功能 | 已有单据 | 点编辑 | 明细数量/单价 Number 回显正确 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
+| B-1-8 | 编辑模式绕过明细必填守卫 | 负向 | 已有单据 | 编辑时删光明细确定 | 源码仅 !isEdit 时校验→可保存空明细（应补守卫） | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19，盲点行为钉住） |
+| B-1-9 | 空 materialName 明细行被 payload 过滤 | 边界 | 2 行明细 1 行空名 | 提交 | payload.details 仅含非空行 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
 | B-1-10 | 按项目搜索/重置、分页 page/size | 功能 | 多条数据 | 选项目搜索→翻页→改 pageSize | 列表过滤、page 回到 1；sizes=[10,20,50] | L5-API |
 | B-1-11 | 列表字段一致性 | 一致性 | 种子数据 | 对比接口 records | 金额 toLocaleString、directOutbound 1→是、状态映射正确 | L5-一致性 |
-| B-1-12 | 状态列仅二分显示 | 一致性 | SUBMITTED 单据 | 查看状态列 | 非 APPROVED 一律显示「草稿」——与调拨页四态不一致，需确认设计 | 无 |
+| B-1-12 | 状态列仅二分显示 | 一致性 | SUBMITTED 单据 | 查看状态列 | 非 APPROVED 一律显示「草稿」——与调拨页四态不一致，需确认设计 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19，二分映射现状钉住） |
 
 ### B2 领料出库（/material/outbound）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-2-1 | 必填 projectId/outboundType | 负向 | 新增弹窗 | 清空后确定 | 必填提示 | 无 |
-| B-2-2 | 至少一条出库明细守卫 | 负向 | 新增弹窗 | details 为空确定 | warning「请至少添加一条出库明细」 | 无 |
-| B-2-3 | 出库类型 PICK/RETURN 切换与展示 | 功能 | — | 新建退货单 | 列表显示「退货」 | 无 |
-| B-2-4 | 出库数量超库存 | 负向 | 库存 10 | 新建 quantity=999 出库单 | 前端不校验（无库存比对）→后端应拦截；前端盲点。**2026-08 代码取证修正**：拦截点在 save 阶段（MaterialOutboundService.save PICK 分支查库存并扣减，submit 仅 DRAFT→APPROVED），超量保存即被拒且不落库 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿） |
+| B-2-1 | 必填 projectId/outboundType | 负向 | 新增弹窗 | 清空后确定 | 必填提示 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
+| B-2-2 | 至少一条出库明细守卫 | 负向 | 新增弹窗 | details 为空确定 | warning「请至少添加一条出库明细」 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
+| B-2-3 | 出库类型 PICK/RETURN 切换与展示 | 功能 | — | 新建退货单 | 列表显示「退货」 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
+| B-2-4 | 出库数量超库存 | 负向 | 库存 10 | 新建 quantity=999 出库单 | 前端不校验（无库存比对）→后端应拦截；前端盲点。**2026-08 代码取证修正**：拦截点在 save 阶段（MaterialOutboundService.save PICK 分支查库存并扣减，submit 仅 DRAFT→APPROVED），超量保存即被拒且不落库 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿）+ E2E b1-material.spec.ts（真实模式，2026-08-19 全绿；超量拦截文案「材料[x]库存不足」+ PICK 4→6 草稿删除库存对称回填实证） |
 | B-2-5 | 提交仅 DRAFT + 确认框 | 功能 | 草稿行 | 提交 | 确认后调 submitMaterialOutbound | L5-API |
-| B-2-6 | 编辑回显 | 功能 | 已有单 | 编辑 | outboundType 缺省回落 PICK | 无 |
-| B-2-7 | 展开行显示明细子表 | 功能 | 有明细行 | 点展开 | 名称/规格/单位/数量/单价正确 | 无 |
+| B-2-6 | 编辑回显 | 功能 | 已有单 | 编辑 | outboundType 缺省回落 PICK | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
+| B-2-7 | 展开行显示明细子表 | 功能 | 有明细行 | 点展开 | 名称/规格/单位/数量/单价正确 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19） |
 | B-2-8 | 类型筛选+项目筛选搜索/重置 | 功能 | 混合数据 | outboundType=RETURN 搜索 | 仅退货记录；重置恢复 | L5-API + E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；PICK/RETURN 筛选参数下发抓包实证） |
-| B-2-9 | 删除确认 | 功能 | 草稿行 | 删除 | ElMessageBox 确认后成功 | 无 |
-| B-2-10 | 分页参数 pageNum/pageSize | 边界 | 数据>10 | 翻页 | 与入库页 page/size 参数名不一致，接口均正常 | 无 |
+| B-2-9 | 删除确认 | 功能 | 草稿行 | 删除 | ElMessageBox 确认后成功 | E2E b1-material.spec.ts（真实模式，2026-08-19 全绿；PICK 草稿删除→库存对称回填实证） |
+| B-2-10 | 分页参数 pageNum/pageSize | 边界 | 数据>10 | 翻页 | 与入库页 page/size 参数名不一致，接口均正常 | L1 material-inbound-outbound-matrix.component.test.ts（2026-08-19，参数名钉住）+ E2E b1-material.spec.ts（真实模式，2026-08-19 全绿；后端忽略 pageNum/pageSize 回落默认 1/10 双请求对照实证） |
 
 ### B3 材料调拨（/material/transfer）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-3-1 | 必填 fromProjectId/toProjectId | 负向 | 新增弹窗 | 留空确定 | 必填提示 | 无 |
-| B-3-2 | 调出=调入同项目拦截 | 负向 | 新增弹窗 | 选同一项目 | warning「调出项目与调入项目不能相同」 | 无 |
-| B-3-3 | 同项目调拨 API 直连绕过前端 | 负向 | — | 直接 POST from=to | 10-material.spec.ts 实测后端接受→后端缺守卫（一致性风险） | L5-API(反向证据) |
-| B-3-4 | 至少一条调拨明细守卫 | 负向 | 新增弹窗 | 空明细确定 | warning | 无 |
-| B-3-5 | 四态状态标签 | 一致性 | 各状态数据 | 查看列表 | 草稿/审批中/已审批/已驳回 tag 颜色正确 | 无 |
-| B-3-6 | 操作按钮状态条件渲染 | 功能 | 各状态行 | 观察按钮 | 编辑/删除仅 DRAFT；提交 DRAFT 或 REJECTED | 无 |
-| B-3-7 | 提交后提示「审批通过后变更库存」 | 功能 | 草稿单 | 提交 | 成功文案；库存实际变更见集成 | L5-API(容忍多码) |
-| B-3-8 | 调出/调入项目筛选搜索 | 功能 | 多项目数据 | 分别筛选 | 过滤正确 | 无 |
-| B-3-9 | 编辑回显明细 | 功能 | 草稿单 | 编辑 | details 原样回显 | 无 |
-| B-3-10 | 数量 min=0 precision=2 边界 | 边界 | 明细行 | 输入 0/负数 | 0 允许、负数拒绝 | 无 |
+| B-3-1 | 必填 fromProjectId/toProjectId | 负向 | 新增弹窗 | 留空确定 | 必填提示 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-3-2 | 调出=调入同项目拦截 | 负向 | 新增弹窗 | 选同一项目 | warning「调出项目与调入项目不能相同」 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-3-3 | 同项目调拨 API 直连绕过前端 | 负向 | — | 直接 POST from=to | 10-material.spec.ts 实测后端接受→后端缺守卫（一致性风险）。**2026-08-19 实证修正**：后端已补守卫，save/update 均拒「调出项目与调入项目不能相同」 | L5-API(反向证据，历史) + E2E b1-material.spec.ts（真实模式，2026-08-19 全绿；后端守卫实证） |
+| B-3-4 | 至少一条调拨明细守卫 | 负向 | 新增弹窗 | 空明细确定 | warning | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-3-5 | 四态状态标签 | 一致性 | 各状态数据 | 查看列表 | 草稿/审批中/已审批/已驳回 tag 颜色正确 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-3-6 | 操作按钮状态条件渲染 | 功能 | 各状态行 | 观察按钮 | 编辑/删除仅 DRAFT；提交 DRAFT 或 REJECTED | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-3-7 | 提交后提示「审批通过后变更库存」 | 功能 | 草稿单 | 提交 | 成功文案；库存实际变更见集成 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19）+ E2E b1-material.spec.ts（真实模式，2026-08-19 全绿；DRAFT→SUBMITTED→SUPER_ADMIN 审批→APPROVED→双向库存联动实证） |
+| B-3-8 | 调出/调入项目筛选搜索 | 功能 | 多项目数据 | 分别筛选 | 过滤正确 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-3-9 | 编辑回显明细 | 功能 | 草稿单 | 编辑 | details 原样回显 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-3-10 | 数量 min=0 precision=2 边界 | 边界 | 明细行 | 输入 0/负数 | 0 允许、负数拒绝 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
 | B-3-11 | 分页与删除确认 | 功能 | 草稿单 | 删除 | 确认后删除成功 | L5-API |
 
 ### B4 库存查询（/material/stock）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-4-1 | 库存预警判定 stockQuantity<=minStock | 功能 | 低库存记录 | 查看状态列 | 红色「库存不足」 | 无 |
-| B-4-2 | minStock 为 null 时恒为「正常」 | 边界 | minStock=null | 查看 | success 标签（短路） | 无 |
-| B-4-3 | warning=LOW/NORMAL 筛选 | 功能 | 混合数据 | 选「不足」搜索 | 后端过滤生效 | 无 |
+| B-4-1 | 库存预警判定 stockQuantity<=minStock | 功能 | 低库存记录 | 查看状态列 | 红色「库存不足」 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-4-2 | minStock 为 null 时恒为「正常」 | 边界 | minStock=null | 查看 | success 标签（短路） | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-4-3 | warning=LOW/NORMAL 筛选 | 功能 | 混合数据 | 选「不足」搜索 | 后端过滤生效 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19）+ E2E b1-material.spec.ts（真实模式，2026-08-19 全绿；warning=true 通道实证） |
 | B-4-4 | materialName/projectName 模糊搜索 | 功能 | 有数据 | 输入关键字 | 过滤正确，搜索重置 page=1 | L5-API |
-| B-4-5 | 只读页面无增删改入口 | 一致性 | — | 检查工具栏 | 无新增按钮（纯查询页） | 无 |
-| B-4-6 | 重置清空三条件 | 功能 | 已搜索 | 重置 | 参数归位并加载 | 无 |
-| B-4-7 | 分页 pageNum/pageSize | 边界 | 数据>10 | 翻页/改 size | 正确 | 无 |
-| B-4-8 | 空结果渲染 | 边界 | 无匹配 | 搜索生僻词 | 空表格不报错 | 无 |
+| B-4-5 | 只读页面无增删改入口 | 一致性 | — | 检查工具栏 | 无新增按钮（纯查询页） | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-4-6 | 重置清空三条件 | 功能 | 已搜索 | 重置 | 参数归位并加载 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-4-7 | 分页 pageNum/pageSize | 边界 | 数据>10 | 翻页/改 size | 正确 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-4-8 | 空结果渲染 | 边界 | 无匹配 | 搜索生僻词 | 空表格不报错 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
 
 ### B5 退货退款（/material/refund）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-5-1 | 只读守卫：无增删改按钮 | 一致性 | — | 检查页面 | 仅 alert 说明+明细按钮 | 无 |
-| B-5-2 | 退货出库审批→自动生成退款记录 | 集成 | RETURN 出库单 | 提交审批通过 | 退款列表出现记录 | 无 |
+| B-5-1 | 只读守卫：无增删改按钮 | 一致性 | — | 检查页面 | 仅 alert 说明+明细按钮 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-5-2 | 退货出库审批→自动生成退款记录 | 集成 | RETURN 出库单 | 提交审批通过 | 退款列表出现记录。**2026-08-19 实证受阻**：RETURN+合同 save 触发 createRefundFromReturn→startProcess(material_refund_approval)，该流程租户 1 未部署（ACT_RE_PROCDEF 探针实证，仅空租户/9999）→FlowableObjectNotFoundException→整个 save 事务回滚 500 | API-GAP-material-refund-process 受阻钉住（tasks.md 已登记；E2E b1-material.spec.ts 2026-08-19 受阻现状断言全绿：创建被拒+库存不受损+退款 0 条+无合同 RETURN 正向对照） |
 | B-5-3 | 按采购合同 ID 搜索 | 功能 | 有记录 | 输入 contractId | 过滤正确；重置恢复 | L5-API |
-| B-5-4 | 明细弹窗字段完整性 | 功能 | 有记录 | 点明细 | 退款单号/金额/合同ID/关联出库单ID/原因+明细表 | 无 |
-| B-5-5 | 状态四态映射 | 一致性 | 各状态 | 查看 | 草稿/待审批/已通过/已驳回 | 无 |
-| B-5-6 | formatMoney 空值容错 | 边界 | 金额为 null | 渲染 | 显示「-」 | 无 |
+| B-5-4 | 明细弹窗字段完整性 | 功能 | 有记录 | 点明细 | 退款单号/金额/合同ID/关联出库单ID/原因+明细表 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-5-5 | 状态四态映射 | 一致性 | 各状态 | 查看 | 草稿/待审批/已通过/已驳回 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
+| B-5-6 | formatMoney 空值容错 | 边界 | 金额为 null | 渲染 | 显示「-」 | L1 material-transfer-stock-refund-matrix.component.test.ts（2026-08-19） |
 | B-5-7 | 退款金额=退货数量×单价 勾稽 | 一致性 | 有退款单 | 对比明细 | 明细 amount 合计=refundAmount（守卫历史「打错表」事故） | 无 |
 | B-5-8 | 分页 page/size | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
 ### B-X 材料跨模块集成
 
-| 用例ID | 测试点 | 链路 | 预期 |
-|---|---|---|---|
-| B-M-X1 | 入库审批→采购结算前置 | 入库单 APPROVED → 采购结算新建 | available-inbounds 出现该单；未审批单不出现 |
-| B-M-X2 | 入库提交→库存+合同累计入库回写 | 提交入库单 | 库存新增量；采购合同累计入库增加 |
-| B-M-X3 | 退货出库审批→退款生成→合同累计冲减 | RETURN 出库提交 | 退款记录生成、outboundId 关联正确 |
-| B-M-X4 | 调拨审批→双项目库存联动 | 调拨审批通过 | 调出减、调入增 |
-| B-M-X5 | 直接出库开关 directOutbound=1 语义 | 入库时开启直接出库 | 库存净增=0（入即出），列表显示「是」 |
+| 用例ID | 测试点 | 链路 | 预期 | 现有覆盖 |
+|---|---|---|---|---|
+| B-M-X1 | 入库审批→采购结算前置 | 入库单 APPROVED → 采购结算新建 | available-inbounds 出现该单；未审批单不出现 | 待 M5 采购批次覆盖 |
+| B-M-X2 | 入库提交→库存+合同累计入库回写 | 提交入库单 | 库存新增量；采购合同累计入库增加 | E2E b1-material.spec.ts（真实模式，2026-08-19 全绿；直批 APPROVED+库存 10/均价 100/合同累计 1000 实证） |
+| B-M-X3 | 退货出库审批→退款生成→合同累计冲减 | RETURN 出库提交 | 退款记录生成、outboundId 关联正确 | API-GAP-material-refund-process 受阻钉住（material_refund_approval 租户 1 未部署→save 事务回滚，tasks.md 已登记；E2E b1 受阻现状断言全绿） |
+| B-M-X4 | 调拨审批→双项目库存联动 | 调拨审批通过 | 调出减、调入增 | E2E b1-material.spec.ts（真实模式，2026-08-19 全绿；BPMN material_transfer_approval→调出 6→4/调入新行 2 实证） |
+| B-M-X5 | 直接出库开关 directOutbound=1 语义 | 入库时开启直接出库 | 库存净增=0（入即出），列表显示「是」 | E2E b1-material.spec.ts（真实模式，2026-08-19 全绿；水泥净零+PICK APPROVED 同步生成实证） |
 
 ## B-2 机械管理（/machine，8 页）
 
@@ -423,14 +423,14 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-6-1 | 必填 contractName/supplierName/machineName | 负向 | 新增弹窗 | 留空确定 | 三条必填提示 | 无 |
-| B-6-2 | 合同金额 min=0 | 边界 | 新增弹窗 | 输入负数 | input-number 拒绝 | 无 |
-| B-6-3 | 租赁方式默认月租 | 功能 | 新增 | 查看默认值 | rentalType='月租' | 无 |
+| B-6-1 | 必填 contractName/supplierName/machineName | 负向 | 新增弹窗 | 留空确定 | 三条必填提示 | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-6-2 | 合同金额 min=0 | 边界 | 新增弹窗 | 输入负数 | input-number 拒绝 | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-6-3 | 租赁方式默认月租 | 功能 | 新增 | 查看默认值 | rentalType='月租' | L1 machine-matrix.component.test.ts（2026-08-19） |
 | B-6-4 | 合同名称+供应商搜索/重置 | 功能 | 有数据 | 搜索 | 过滤正确 | L5-API |
 | B-6-5 | 编辑回显（整行 spread） | 功能 | 已有合同 | 编辑保存 | 更新成功 | L5-API |
-| B-6-6 | 打印按钮变量构造 | 功能 | 合同行 | 点打印 | buildPrintVariables 8 字段齐全，空值回落 ''/0 | 无 |
+| B-6-6 | 打印按钮变量构造 | 功能 | 合同行 | 点打印 | buildPrintVariables 8 字段齐全，空值回落 ''/0 | L1 machine-matrix.component.test.ts（2026-08-19） |
 | B-6-7 | 删除确认 | 功能 | 合同行 | 删除 | 确认后成功 | 无 |
-| B-6-8 | 页面无提交审批按钮但 API 存在 | 一致性 | — | 对照 api/machine.ts | submitMachineContract 未挂 UI；审批入口缺失需确认设计 | L5-API |
+| B-6-8 | 页面无提交审批按钮但 API 存在 | 一致性 | — | 对照 api/machine.ts | submitMachineContract 未挂 UI；审批入口缺失需确认设计 | L5-API + L1 machine-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；API 直连 submit 直批 DRAFT→EFFECTIVE+重提交拦截实证，前提自置 MACHINE 预算破 BLOCK） |
 | B-6-9 | 列表字段一致性（8 列无状态列） | 一致性 | 种子数据 | 对比接口 | 与 consistency 断言一致 | L5-一致性 |
 | B-6-10 | 分页 pageNum/pageSize | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
@@ -438,54 +438,54 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-7-1 | 必填 machineName | 负向 | 新增 | 留空确定 | 「请输入设备名称」 | 无 |
-| B-7-2 | 权属 OWN/RENT 展示 | 功能 | 两类设备 | 查看列 | 自有/租赁映射正确 | 无 |
-| B-7-3 | 状态三态 | 一致性 | 各状态设备 | 查看 | 在场(success)/已退场(info)/已登记(warning) | 无 |
+| B-7-1 | 必填 machineName | 负向 | 新增 | 留空确定 | 「请输入设备名称」 | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-7-2 | 权属 OWN/RENT 展示 | 功能 | 两类设备 | 查看列 | 自有/租赁映射正确 | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-7-3 | 状态三态 | 一致性 | 各状态设备 | 查看 | 在场(success)/已退场(info)/已登记(warning) | L1 machine-matrix.component.test.ts（2026-08-19） |
 | B-7-4 | 设备名称+类型搜索/重置 | 功能 | 有数据 | 搜索 | 过滤正确 | L5-API |
-| B-7-5 | 新增默认 ownerType=OWN | 边界 | 新增 | 查看默认 | 'OWN' | 无 |
+| B-7-5 | 新增默认 ownerType=OWN | 边界 | 新增 | 查看默认 | 'OWN' | L1 machine-matrix.component.test.ts（2026-08-19） |
 | B-7-6 | 编辑/删除 | 功能 | 设备行 | 编辑保存、删除确认 | 成功 | L5-API |
-| B-7-7 | 删除有进出场记录的设备 | 负向 | 设备已进场 | 删除 | 前端直接调 delete，引用守卫依赖后端 | 无 |
+| B-7-7 | 删除有进出场记录的设备 | 负向 | 设备已进场 | 删除 | 前端直接调 delete，引用守卫依赖后端 | L1 machine-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；entry 引用→@ReferenceCheck 拦截实证，无引用台账删除成功对照） |
 | B-7-8 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
 ### B8 进出场登记（/machine/entry）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-8-1 | 必填 machineId/projectId/entryType | 负向 | 新增 | 留空确定 | 三条提示 | 无 |
-| B-8-2 | entryDate 无必填规则 | 边界 | 新增 | 不选日期确定 | 前端放行→后端兜底待验证 | 无 |
-| B-8-3 | 进场后台账状态置 IN_FIELD | 集成 | 设备 REGISTERED | 登记进场 | 台账显示「在场」 | L5-API |
-| B-8-4 | 出场后台账置 OUT_FIELD | 集成 | 在场设备 | 登记出场 | 「已退场」；再记工作日志被拒（见 B-9-5） | L5-API |
-| B-8-5 | 类型筛选 IN/OUT + tag 颜色 | 功能 | 混合记录 | 筛选 | 进场 success/出场 danger | L5-API |
-| B-8-6 | 重复进场 | 负向 | 在场设备 | 再登记进场 | 后端状态机守卫待验证 | 无 |
+| B-8-1 | 必填 machineId/projectId/entryType | 负向 | 新增 | 留空确定 | 三条提示 | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-8-2 | entryDate 无必填规则 | 边界 | 新增 | 不选日期确定 | 前端放行→后端兜底待验证 | L1 machine-matrix.component.test.ts（2026-08-19，前端放行现状钉住） |
+| B-8-3 | 进场后台账状态置 IN_FIELD | 集成 | 设备 REGISTERED | 登记进场 | 台账显示「在场」 | L5-API + E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；entryIn REGISTERED→IN_FIELD 实证） |
+| B-8-4 | 出场后台账置 OUT_FIELD | 集成 | 在场设备 | 登记出场 | 「已退场」；再记工作日志被拒（见 B-9-5） | L5-API + E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；结算后 entryOut→OUT_FIELD+退场后记日志拦截实证） |
+| B-8-5 | 类型筛选 IN/OUT + tag 颜色 | 功能 | 混合记录 | 筛选 | 进场 success/出场 danger | L5-API + L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-8-6 | 重复进场 | 负向 | 在场设备 | 再登记进场 | 后端状态机守卫待验证。**2026-08-19 实证**：守卫存在，「仅已登记或已退场的机械可进场」 | L1 machine-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿） |
 | B-8-7 | 编辑/删除确认 | 功能 | 记录行 | 操作 | 成功 | 无 |
-| B-8-8 | 设备选择器数据源 | 功能 | — | 打开下拉 | 列出台账设备 | 无 |
+| B-8-8 | 设备选择器数据源 | 功能 | — | 打开下拉 | 列出台账设备 | L1 machine-matrix.component.test.ts（2026-08-19） |
 | B-8-9 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
 ### B9 台班/工作量（/machine/work-log）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-9-1 | 必填 machineId/workDate | 负向 | 新增 | 留空确定 | 提示 | 无 |
-| B-9-2 | 精度：shiftCount=1 位、workQuantity=2 位、oil=1 位，均 min=0 | 边界 | 新增 | 输入 1.25 台班 | 台班截断 1 位 | 无 |
-| B-9-3 | 结算状态展示 | 一致性 | 已结算日志 | 查看 | SETTLED success/未结算 info | 无 |
+| B-9-1 | 必填 machineId/workDate | 负向 | 新增 | 留空确定 | 提示 | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-9-2 | 精度：shiftCount=1 位、workQuantity=2 位、oil=1 位，均 min=0 | 边界 | 新增 | 输入 1.25 台班 | 台班截断 1 位 | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-9-3 | 结算状态展示 | 一致性 | 已结算日志 | 查看 | SETTLED success/未结算 info | L1 machine-matrix.component.test.ts（2026-08-19） |
 | B-9-4 | 设备名+工作日期搜索 | 功能 | 有数据 | 搜索 | 过滤正确 | L5-API |
-| B-9-5 | 非 IN_FIELD 机械记日志被拒 | 负向 | OUT_FIELD 设备 | 创建日志 | 后端拒绝（须先重新进场） | L5-API(隐式) |
+| B-9-5 | 非 IN_FIELD 机械记日志被拒 | 负向 | OUT_FIELD 设备 | 创建日志 | 后端拒绝（须先重新进场） | L5-API(隐式) + E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；REGISTERED 记日志拦截「仅在场机械可记录工作日志」+退场后拦截实证） |
 | B-9-6 | 编辑合并默认值 | 功能 | 已有日志 | 编辑 | 缺字段回落 0 | L5-API |
-| B-9-7 | 已结算日志的编辑/删除守卫 | 负向 | SETTLED 日志 | 编辑/删除 | 前端无禁用（盲点），依赖后端守卫 | 无 |
-| B-9-8 | 台班数为 0 提交 | 边界 | 新增 | shiftCount=0 | 前端放行，语义待确认 | 无 |
+| B-9-7 | 已结算日志的编辑/删除守卫 | 负向 | SETTLED 日志 | 编辑/删除 | 前端无禁用（盲点），依赖后端守卫 | L1 machine-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；「已结算的工作日志不可删除」后端守卫实证） |
+| B-9-8 | 台班数为 0 提交 | 边界 | 新增 | shiftCount=0 | 前端放行，语义待确认 | L1 machine-matrix.component.test.ts（2026-08-19，后端仅拒负值实证） |
 | B-9-9 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
 ### B10 故障维修（/machine/repair）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-10-1 | 必填 machineId/faultDescription | 负向 | 新增 | 留空确定 | 提示 | 无 |
-| B-10-2 | 新增走 /repair/report，默认 REPORTED | 功能 | 新增 | 保存 | report 接口；默认状态已报修 | L5-API |
-| B-10-3 | 状态选择器仅编辑态显示 | 功能 | 新增 vs 编辑 | 对比表单 | v-if="isEdit" | 无 |
-| B-10-4 | 四态流转展示 | 一致性 | 各状态 | 查看列表 | 已报修/已派工/维修中/已完成 tag | 无 |
-| B-10-5 | 维修费用 min=0 | 边界 | 编辑 | 负数 | 拒绝 | 无 |
+| B-10-1 | 必填 machineId/faultDescription | 负向 | 新增 | 留空确定 | 提示 | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-10-2 | 新增走 /repair/report，默认 REPORTED | 功能 | 新增 | 保存 | report 接口；默认状态已报修 | L5-API + E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；report→REPORTED+reportDate=今天实证） |
+| B-10-3 | 状态选择器仅编辑态显示 | 功能 | 新增 vs 编辑 | 对比表单 | v-if="isEdit" | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-10-4 | 四态流转展示 | 一致性 | 各状态 | 查看列表 | 已报修/已派工/维修中/已完成 tag | L1 machine-matrix.component.test.ts（2026-08-19） |
+| B-10-5 | 维修费用 min=0 | 边界 | 编辑 | 负数 | 拒绝 | L1 machine-matrix.component.test.ts（2026-08-19） |
 | B-10-6 | 设备名搜索/重置 | 功能 | 有数据 | 搜索 | 过滤 | L5-API |
-| B-10-7 | 派工（→DISPATCHED） | 集成 | 已报修 | 编辑置已派工 | API 层 dispatch 存在（容忍多码） | L5-API |
+| B-10-7 | 派工（→DISPATCHED） | 集成 | 已报修 | 编辑置已派工 | API 层 dispatch 存在（容忍多码） | L5-API + E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；report→dispatch→complete 全状态机+「仅已报修状态可派工」守卫实证） |
 | B-10-8 | 删除确认 | 功能 | 记录行 | 删除 | 成功 | 无 |
 | B-10-9 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
@@ -494,53 +494,53 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | B-11-1 | 费用总览三卡片渲染 | 功能 | 有结算数据 | 进入页面 | 已结算/已付款/未付款=summary 值 | L5-API |
-| B-11-2 | summary 接口失败不阻断 | 负向 | mock 500 | 进入 | catch 静默，列表仍渲染 | 无 |
-| B-11-3 | 状态筛选数字枚举 0/1/2/3 | 功能 | 各状态 | 逐一切换 | 过滤正确 | 无 |
-| B-11-4 | 结算周期 dateRange→periodStart/periodEnd | 功能 | 有数据 | 选区间搜索 | 参数组装正确；仅 length===2 才附加 | 无 |
-| B-11-5 | 提交审批仅 status 0/3 可见 | 功能 | 各状态行 | 观察 | v-if="row.status === 0 \|\| row.status === 3" | 无 |
-| B-11-6 | 提交审批确认框+成功刷新 | 功能 | 草稿单 | 提交 | 确认后 submit，提示「提交成功」 | 无 |
-| B-11-7 | 导出 Excel blob 下载 | 功能 | 结算单 | 点导出 | 文件名`机械结算单_{code}.xlsx`，revokeObjectURL | 无 |
-| B-11-8 | 导出失败提示 | 负向 | mock 导出 500 | 点导出 | ElMessage.error('导出失败') | 无 |
-| B-11-9 | 新建跳转 create 页 | 功能 | — | 点新建 | router.push | 无 |
-| B-11-10 | 查看跳转 detail/:id | 功能 | 行 | 点查看 | 正确路由 | 无 |
+| B-11-2 | summary 接口失败不阻断 | 负向 | mock 500 | 进入 | catch 静默，列表仍渲染 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-11-3 | 状态筛选数字枚举 0/1/2/3 | 功能 | 各状态 | 逐一切换 | 过滤正确 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-11-4 | 结算周期 dateRange→periodStart/periodEnd | 功能 | 有数据 | 选区间搜索 | 参数组装正确；仅 length===2 才附加 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-11-5 | 提交审批仅 status 0/3 可见 | 功能 | 各状态行 | 观察 | v-if="row.status === 0 \|\| row.status === 3" | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-11-6 | 提交审批确认框+成功刷新 | 功能 | 草稿单 | 提交 | 确认后 submit，提示「提交成功」 | L1 machine-settlement-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；submit→BPMN machine_settlement→两节点审批→status 2 实证） |
+| B-11-7 | 导出 Excel blob 下载 | 功能 | 结算单 | 点导出 | 文件名`机械结算单_{code}.xlsx`，revokeObjectURL | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-11-8 | 导出失败提示 | 负向 | mock 导出 500 | 点导出 | ElMessage.error('导出失败') | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-11-9 | 新建跳转 create 页 | 功能 | — | 点新建 | router.push | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-11-10 | 查看跳转 detail/:id | 功能 | 行 | 点查看 | 正确路由 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
 | B-11-11 | 分页+项目筛选联动 summary | 功能 | 多项目 | 选项目搜索 | loadData+loadSummary 均带 projectId | L5-API |
 
 ### B12 新建结算单（/machine/settlement/create）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-12-1 | 必填 projectId/period | 负向 | 空表单 | 保存 | 「请选择项目」「请选择结算周期」 | 无 |
-| B-12-2 | 预览仅双条件齐备时加载 | 功能 | 只选项目 | 查看预览区 | previewVisible=false | 无 |
-| B-12-3 | 预览金额=工作天数×单价，合计=sum(amount) | 功能 | 有 usage 数据 | 选项目+周期 | computed totalAmount 与明细一致 | 无 |
-| B-12-4 | 切换项目/周期自动重载预览 | 功能 | 已预览 | 改周期 | handlePeriodChange→loadPreview | 无 |
-| B-12-5 | 预览为空仍可保存 | 负向 | 周期内无台班 | 保存 | 前端无空明细守卫（盲点）→创建 0 元结算单 | 无 |
-| B-12-6 | 保存 payload 与跳转 | 功能 | 合法输入 | 保存 | createMachineSettlement 后跳转列表+成功提示 | 无 |
-| B-12-7 | 同项目同周期重复结算 | 负向 | 已存在同周期单 | 再次保存 | 前端无重复守卫，依赖后端 | 无 |
-| B-12-8 | usage 接口失败降级 | 负向 | mock 失败 | 选条件 | previewData=[]，不阻断 | 无 |
-| B-12-9 | 取消/返回 router.back() | 功能 | — | 点取消 | 返回上一页 | 无 |
+| B-12-1 | 必填 projectId/period | 负向 | 空表单 | 保存 | 「请选择项目」「请选择结算周期」 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-12-2 | 预览仅双条件齐备时加载 | 功能 | 只选项目 | 查看预览区 | previewVisible=false | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-12-3 | 预览金额=工作天数×单价，合计=sum(amount) | 功能 | 有 usage 数据 | 选项目+周期 | computed totalAmount 与明细一致 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-12-4 | 切换项目/周期自动重载预览 | 功能 | 已预览 | 改周期 | handlePeriodChange→loadPreview | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-12-5 | 预览为空仍可保存 | 负向 | 周期内无台班 | 保存 | 前端无空明细守卫（盲点）→创建 0 元结算单 | L1 machine-settlement-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；后端「无可结算的工作量记录」守卫实证兑底） |
+| B-12-6 | 保存 payload 与跳转 | 功能 | 合法输入 | 保存 | createMachineSettlement 后跳转列表+成功提示 | L1 machine-settlement-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；台班计价 2×500=1000+编号 JXJS- 前缀+周期倒置拦截实证） |
+| B-12-7 | 同项目同周期重复结算 | 负向 | 已存在同周期单 | 再次保存 | 前端无重复守卫，依赖后端。**2026-08-19 实证**：后端守卫存在「该项目在选定周期内已存在结算单，结算周期不能重叠」 | L1 machine-settlement-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿） |
+| B-12-8 | usage 接口失败降级 | 负向 | mock 失败 | 选条件 | previewData=[]，不阻断 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-12-9 | 取消/返回 router.back() | 功能 | — | 点取消 | 返回上一页 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
 
 ### B13 结算单详情（/machine/settlement/detail/:id）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-13-1 | 雪花 ID 字符串传递防精度丢失 | 边界 | 长 ID 单据 | 打开详情 | route.params.id 直传字符串（源码注释实证） | 无 |
-| B-13-2 | 提交审批按钮仅 status 0/3 | 功能 | 各状态单 | 观察 | v-if 条件 | 无 |
-| B-13-3 | 基本信息五项渲染 | 一致性 | 有数据 | 查看 | 编号/周期/金额/状态/流程ID（缺省'-'） | 无 |
-| B-13-4 | 明细表渲染 | 一致性 | 有明细 | 查看 | 与创建预览同构 | 无 |
+| B-13-1 | 雪花 ID 字符串传递防精度丢失 | 边界 | 长 ID 单据 | 打开详情 | route.params.id 直传字符串（源码注释实证） | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-13-2 | 提交审批按钮仅 status 0/3 | 功能 | 各状态单 | 观察 | v-if 条件 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-13-3 | 基本信息五项渲染 | 一致性 | 有数据 | 查看 | 编号/周期/金额/状态/流程ID（缺省'-'） | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-13-4 | 明细表渲染 | 一致性 | 有明细 | 查看 | 与创建预览同构 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
 | B-13-5 | 详情页提交后重新加载 | 功能 | 草稿单 | 提交 | loadDetail 刷新状态 | 无 |
 | B-13-6 | 导出 Excel | 功能 | 任意单 | 导出 | 同列表页逻辑 | 无 |
-| B-13-7 | 无效 id 打开 | 负向 | id 不存在 | 直达路由 | detail={} 不崩溃；无 id 时直接 return | 无 |
-| B-13-8 | 数字状态映射与列表页一致 | 一致性 | — | 对比 | 同一 statusMap 0/1/2/3 | 无 |
+| B-13-7 | 无效 id 打开 | 负向 | id 不存在 | 直达路由 | detail={} 不崩溃；无 id 时直接 return | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
+| B-13-8 | 数字状态映射与列表页一致 | 一致性 | — | 对比 | 同一 statusMap 0/1/2/3 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
 
 ### B-X 机械跨模块集成
 
-| 用例ID | 测试点 | 链路 | 预期 |
-|---|---|---|---|
-| B-J-X1 | 台账→进场→工作日志链路 | 新建设备→进场→记台班 | 各步状态衔接，日志创建成功 |
-| B-J-X2 | 台班→结算金额聚合 | 周期内日志→create 预览→保存 | 结算金额=Σ(workDays×unitPrice)，与预览合计一致 |
-| B-J-X3 | 结算审批→总览回写 | 提交审批通过 | summary.totalSettledAmount 增加，未付款=已结算-已付款 |
-| B-J-X4 | 退场后日志拦截 | OUT_FIELD 设备记日志 | 后端拒绝（负向集成） |
-| B-J-X5 | 结算审批→项目支出回写 | 审批通过 | 项目 totalExpense 含机械费（预算管控依赖此累计） |
+| 用例ID | 测试点 | 链路 | 预期 | 现有覆盖 |
+|---|---|---|---|---|
+| B-J-X1 | 台账→进场→工作日志链路 | 新建设备→进场→记台班 | 各步状态衔接，日志创建成功 | E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；REGISTERED→IN_FIELD→日志落地实证，新日志 settlementStatus 非 SETTLED 防伪造实证） |
+| B-J-X2 | 台班→结算金额聚合 | 周期内日志→create 预览→保存 | 结算金额=Σ(workDays×unitPrice)，与预览合计一致 | E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；单价=contractAmount 台班计价 2×500=1000 实证） |
+| B-J-X3 | 结算审批→总览回写 | 提交审批通过 | summary.totalSettledAmount 增加，未付款=已结算-已付款 | E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；两节点审批（FINANCE 候选组任务经 SUPER_ADMIN 直 complete）→totalSettledAmount=1000+settlementCount=1 实证） |
+| B-J-X4 | 退场后日志拦截 | OUT_FIELD 设备记日志 | 后端拒绝（负向集成） | E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；未结算退场拦截+结算后退场放行+退场后记日志拦截实证） |
+| B-J-X5 | 结算审批→项目支出回写 | 审批通过 | 项目 totalExpense 含机械费（预算管控依赖此累计） | E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；合同 cumulativeSettlement=1000 回写实证，日志 SETTLED 后不可删实证） |
 
 ## B-3 劳务管理（/labor，6 页）
 

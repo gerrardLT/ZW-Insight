@@ -205,7 +205,11 @@ test.describe('财务域 — C5 付款申请★ 完整写流程（@matrix C-5-1/
     const beforeIds = new Set(((await beforeResp.json()).data?.records || []).map((r: any) => r.id))
     // API 预查有可付余额的合同（可付 = 累计结算 - 累计已付，奖惩净额仅劳务/分包适用，
     // PaymentApplyService.validatePaymentLimit 实证）。历轮实跑审批回写会消耗采购合同余额
-    // （run6 撞「最大可付金额：0.00」），按 PURCHASE→LABOR→MACHINE 顺序找余额 >= 1 元者
+    // （run6 撞「最大可付金额：0.00」），按 PURCHASE→LABOR→MACHINE 顺序找余额 >= 1 元者。
+    // 前提守卫（2026-08-20 修复）：候选合同必须能解析到存在的项目——历史残留的
+    // E2E_TEST_ 孤儿合同（挂项目已被删除）会带审批回写余额，命中即致定位项目失败
+    const prAll = await request.get(`${API_BASE}/api/v1/project/page`, { params: { page: 1, size: 200 } })
+    const projectMap = new Map(((await prAll.json()).data?.records || []).map((p: any) => [String(p.id), p.projectName]))
     const CATS = [
       { cat: 'PURCHASE', label: '采购合同', url: '/api/v1/purchase/contract/page' },
       { cat: 'LABOR', label: '劳务合同', url: '/api/v1/labor/contract/page' },
@@ -216,14 +220,14 @@ test.describe('财务域 — C5 付款申请★ 完整写流程（@matrix C-5-1/
     for (const c of CATS) {
       const resp = await request.get(`${API_BASE}${c.url}`, { params: { page: 1, size: 200 } })
       const recs = (await resp.json()).data?.records || []
-      targetPc = recs.find((r: any) => Number(r.cumulativeSettlement ?? 0) - Number(r.cumulativePaid ?? 0) >= 1)
+      targetPc = recs.find((r: any) => Number(r.cumulativeSettlement ?? 0) - Number(r.cumulativePaid ?? 0) >= 1
+        && (r.projectName || projectMap.has(String(r.projectId))))
       if (targetPc) { targetCat = c; break }
     }
-    expect(targetPc, '演示数据前提：应存在可付余额 >= 1 元的采购/劳务/机械合同').toBeTruthy()
+    expect(targetPc, '演示数据前提：应存在可付余额 >= 1 元且项目可解析的采购/劳务/机械合同').toBeTruthy()
     let targetProjectName = targetPc.projectName
     if (!targetProjectName) {
-      const pr = await request.get(`${API_BASE}/api/v1/project/page`, { params: { page: 1, size: 200 } })
-      targetProjectName = ((await pr.json()).data?.records || []).find((p: any) => String(p.id) === String(targetPc.projectId))?.projectName
+      targetProjectName = projectMap.get(String(targetPc.projectId))
     }
     expect(targetProjectName, '应定位到合同所属项目').toBeTruthy()
     expect(targetPc.contractName, '合同应有名称（UI 按名定向选择）').toBeTruthy()
