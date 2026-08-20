@@ -1303,7 +1303,7 @@
 
 > 页序约定：D1-D3 登录与个人中心 · D4-D17 系统管理 · D18-D24 基础数据 · D25-D28 消息 · D29-D33 工作流 · D34-D36 平台管理
 
-## D-1 登录与个人中心（/login · /forgot-password · /user，3 页）
+## D-1 登录与个人中心（/login · /forgot-password · /user，3 页，2026-08-20 M8：L1 login-domain-matrix +6 例，新覆 5 行 + 回填既有 10 行）
 
 **业务概述**：login/index.vue 三字段均 required，登录前 getImageCaptcha() 获取 uuid+imageBase64，提交 /v1/auth/login 带 captchaUuid，失败 catch 中自动 refreshCaptcha()，成功后 setToken/setUserInfo/setPermissions 再 push('/')。forgot-password.vue 为三步 el-steps 流程（发码→验码→重置），含手机号/6位验证码/密码强度三套正则与 60s 倒计时。devices.vue 对当前设备禁止注销（tooltip「当前设备不可注销」）、status!==1 禁用注销按钮。注意：背景提及的「记住用户名」在登录页源码中**无对应控件**。
 
@@ -1314,27 +1314,27 @@
 | D-1-1 | 完整登录成功跳转 | 功能 | 有效账号、正确验证码 | 填写用户名/密码/验证码，点击登录 | 请求带 captchaUuid，成功写 token/userInfo/permissions 并 push('/') | L5-UI/L5-API |
 | D-1-2 | 空表单必填拦截 | 负向 | 无 | 三字段留空直接提交 | username/password/captcha 均报 required 错误，不发请求 | L5-UI |
 | D-1-3 | 验证码图片加载 | 功能 | 无 | 打开登录页 | img 渲染 base64，uuid 已持有 | L5-UI |
-| D-1-4 | 错误验证码→自动刷新 | 负向 | 有效账密 | 输入错误验证码提交 | 登录失败提示，验证码图自动更换（refreshCaptcha） | 无专项 |
+| D-1-4 | 错误验证码→自动刷新 | 负向 | 有效账密 | 输入错误验证码提交 | 登录失败提示，验证码图自动更换（refreshCaptcha） | L1 login-page.component.test.ts（2026-08-15，登录失败自动刷新验证码且不跳转运行时实证） |
 | D-1-5 | 验证码 uuid 一次性消费 | 负向 | 已消费过一次 uuid | 用同一 uuid 再次提交 | 后端拒绝，前端提示并刷新验证码 | 无 |
 | D-1-6 | IP 失败锁定（5次/5分钟→锁15分钟） | 负向 | 连续 5 次错误密码 | 第 6 次用正确密码登录 | 提示锁定剩余时间，拒绝登录 | 无 |
 | D-1-7 | 锁定态下验证码仍刷新 | 边界 | 已锁定 | 点击验证码图 | 图片刷新但提交仍被拒 | 无 |
 | D-1-8 | 登录后权限点装载 | 集成 | 登录成功 | 观察 store.permissions | setPermissions 已写入，v-permission 可用 | L1 |
 | D-1-9 | 已认证访问 /login | 权限 | 已登录 | 直接访问 /login | 路由守卫重定向/不重复渲染 | L5-UI/L1 |
-| D-1-10 | 记住用户名 | 功能 | 背景需求 | 勾选记住后二次进入 | 用户名回填 | 无（源码无此控件，盲点） |
+| D-1-10 | 记住用户名 | 功能 | 背景需求 | 勾选记住后二次进入 | 用户名回填 | L1 login-domain-matrix.component.test.ts（2026-08-20，实证现状钉住：源码无记住用户名控件/localStorage，盲点） |
 
 ### D2 忘记密码（/forgot-password）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| D-2-1 | 三步流程正向走通 | 功能 | 已注册手机号 | 发码→输 6 位码→设新密码 | 依次 sendResetCode/verifyResetCode/resetPassword，提示成功 | 无 |
-| D-2-2 | 手机号格式校验 | 负向 | 无 | 输入 12345678901 / 2 开头号码 | pattern /^1[3-9]\d{9}$/ 拦截 | 无 |
-| D-2-3 | 验证码格式校验 | 负向 | 已进入第 2 步 | 输入 5 位/含字母 | /^\d{6}$/ 拦截 | 无 |
-| D-2-4 | 错误验证码 | 负向 | 已发码 | 输入错误 6 位码 | verifyResetCode 失败提示，不进入第 3 步 | 无 |
-| D-2-5 | 新密码强度校验 | 负向 | 已进入第 3 步 | 输入纯数字 7 位 / 无数字 | (?=.*[A-Za-z])(?=.*\d).{8,20} 拦截 | 无 |
-| D-2-6 | 确认密码不一致 | 负向 | 已进入第 3 步 | 两次密码不同 | 一致性 validator 报错 | 无 |
-| D-2-7 | 60s 倒计时与重发 | 边界 | 已点击发送 | 观察按钮并等待 60s | 倒计时期间禁用，归零后可重发 | 无 |
-| D-2-8 | 脱敏手机号展示 | 功能 | 输入 13812345678 | 进入第 2 步 | 显示 138****5678 | 无 |
-| D-2-9 | 重置成功后回登录页 | 集成 | 重置完成 | 点击返回登录 | 跳转 /login，新密码可登录 | 无 |
+| D-2-1 | 三步流程正向走通 | 功能 | 已注册手机号 | 发码→输 6 位码→设新密码 | 依次 sendResetCode/verifyResetCode/resetPassword，提示成功 | L1 forgot-password.component.test.ts（2026-08-14，三步 API 链位置参数运行时实证） |
+| D-2-2 | 手机号格式校验 | 负向 | 无 | 输入 12345678901 / 2 开头号码 | pattern /^1[3-9]\d{9}$/ 拦截 | L1 forgot-password.component.test.ts（2026-08-14，非法 4 样本/合法 3 样本 pattern 实证） |
+| D-2-3 | 验证码格式校验 | 负向 | 已进入第 2 步 | 输入 5 位/含字母 | /^\d{6}$/ 拦截 | L1 forgot-password.component.test.ts（2026-08-14，仅 6 位数字匹配实证） |
+| D-2-4 | 错误验证码 | 负向 | 已发码 | 输入错误 6 位码 | verifyResetCode 失败提示，不进入第 3 步 | L1 login-domain-matrix.component.test.ts（2026-08-20，verify reject 停留步骤 2 不推进运行时实证） |
+| D-2-5 | 新密码强度校验 | 负向 | 已进入第 3 步 | 输入纯数字 7 位 / 无数字 | (?=.*[A-Za-z])(?=.*\d).{8,20} 拦截 | L1 forgot-password.component.test.ts（2026-08-14，validator 4 非法样本 reject 实证） |
+| D-2-6 | 确认密码不一致 | 负向 | 已进入第 3 步 | 两次密码不同 | 一致性 validator 报错 | L1 forgot-password.component.test.ts（2026-08-14，不一致 reject/一致 resolve 实证） |
+| D-2-7 | 60s 倒计时与重发 | 边界 | 已点击发送 | 观察按钮并等待 60s | 倒计时期间禁用，归零后可重发 | L1 forgot-password.component.test.ts（2026-08-14，fake timers 60→30→0 递减实证） |
+| D-2-8 | 脱敏手机号展示 | 功能 | 输入 13812345678 | 进入第 2 步 | 显示 138****5678 | L1 forgot-password.component.test.ts（2026-08-14，maskedPhone 11 位脱敏/非 11 位原样实证） |
+| D-2-9 | 重置成功后回登录页 | 集成 | 重置完成 | 点击返回登录 | 跳转 /login，新密码可登录 | L1 forgot-password.component.test.ts（2026-08-14，resetPassword 成功后 push('/login') 实证） |
 
 ### D3 登录设备（/user/devices）
 
@@ -1343,10 +1343,10 @@
 | D-3-1 | 设备列表渲染 | 功能 | 多设备在线 | 打开页面 | 列表含设备/位置/时间/状态列 | L5-一致性 |
 | D-3-2 | 当前设备禁注销 | 功能 | isCurrent=true 行存在 | 查看该行按钮 | disabled + tooltip「当前设备不可注销」 | L5-一致性 |
 | D-3-3 | 注销其他设备 | 功能 | 存在非当前在线设备 | 点注销→confirm 确认 | ElMessageBox 确认后调 revoke，列表刷新 | L5-一致性 |
-| D-3-4 | 注销取消 | 负向 | 同上 | confirm 点取消 | 不发请求，列表不变 | 无 |
-| D-3-5 | 离线设备禁注销 | 边界 | row.status!==1 | 查看注销按钮 | disabled | 无 |
-| D-3-6 | 位置格式化 | 功能 | location 含 \| 分隔 | 渲染列表 | split('\|').join(' ') 显示空格分隔 | 无 |
-| D-3-7 | 空列表占位 | 边界 | 仅当前设备/无数据 | 打开页面 | el-empty 展示 | 无 |
+| D-3-4 | 注销取消 | 负向 | 同上 | confirm 点取消 | 不发请求，列表不变 | L1 login-domain-matrix.component.test.ts（2026-08-20，confirm reject 后零 revoke 零刷新运行时实证） |
+| D-3-5 | 离线设备禁注销 | 边界 | row.status!==1 | 查看注销按钮 | disabled | L1 login-domain-matrix.component.test.ts（2026-08-20，:disabled="row.status !== 1" 源码 + is-disabled 运行时双实证） |
+| D-3-6 | 位置格式化 | 功能 | location 含 \| 分隔 | 渲染列表 | split('\|').join(' ') 显示空格分隔 | L1 refund-devices.component.test.ts（2026-08-15，formatLocation \|→空格/空值显 '-' 运行时实证） |
+| D-3-7 | 空列表占位 | 边界 | 仅当前设备/无数据 | 打开页面 | el-empty 展示 | L1 login-domain-matrix.component.test.ts（2026-08-20，el-empty「暂无登录设备记录」运行时实证） |
 | D-3-8 | 未登录访问设备页 | 权限 | 未登录 | 直接访问 /user/devices | 路由守卫重定向 /login | L1 |
 
 ### D-X1 登录域跨模块集成
@@ -1357,7 +1357,7 @@
 | D-3-10 | 异地登录消息→设备页 | 集成 | 消息中心点「查看设备」 | router.push('/user/devices') 且设备列表含新设备 | 无 |
 | D-3-11 | 租户停用→登录拦截 | 集成 | 平台页停用租户后用其账号登录 | 登录被拒并提示 | 无 |
 
-## D-2 系统管理（/system，14 页）
+## D-2 系统管理（/system，14 页，2026-08-20 M8：L1 system-matrix +30 例，新覆 22 行 + 回填既有 9 行）
 
 **业务概述**：14 页覆盖组织树（左树右详情）、用户 CRUD（username 编辑时 :disabled="!!formData.id"、批量操作经 filterBatchIds 排除自己）、角色（菜单树 show-checkbox+check-strictly、全选 indeterminate 态、dataScope 五档）、菜单（DIR/MENU/BUTTON 条件字段）、字典两级、系统设置（valueType 分型渲染、仅保存 diff 项）、模板（handleFileChange **只弹 info 未真正上传**）、打印模板（{{变量}} 正则预览）、日志三 tab、编号规则（L1 属性测试在案）、备份（恢复走 449 密码二次确认拦截器）、版本（semver pattern）、监控（**仅 el-empty 占位**）。
 
@@ -1368,8 +1368,8 @@
 | D-4-1 | 组织树加载+选中详情 | 功能 | 存在多级组织 | 点击树节点 | 右侧详情联动 | L5-API |
 | D-4-2 | 新增组织必填校验 | 负向 | 无 | orgName/orgType 留空提交 | required 拦截 | L5-API(相关) |
 | D-4-3 | 新增子组织 | 功能 | 选中父节点 | 新增并保存 | 树刷新出现子节点 | L5-API |
-| D-4-4 | 停用组织 | 功能 | 启用中节点 | 停用→confirm | 节点打 danger tag | 无 |
-| D-4-5 | 启用组织 | 功能 | 停用节点 | 启用→confirm | tag 恢复 | 无 |
+| D-4-4 | 停用组织 | 功能 | 启用中节点 | 停用→confirm | 节点打 danger tag | L1 system-matrix.component.test.ts（2026-08-20，handleToggleStatus confirm→updateOrgStatus(id,0)+状态回写运行时实证） |
+| D-4-5 | 启用组织 | 功能 | 停用节点 | 启用→confirm | tag 恢复 | L1 system-matrix.component.test.ts（2026-08-20，status=0→updateOrgStatus(id,1) 双向运行时实证） |
 | D-4-6 | 删除组织二次确认 | 负向 | 叶子节点 | 删除→取消 | 不删除 | L5-API |
 | D-4-7 | 名称重复冲突 | 负向 | 已存在同名 | 新增同名 | 后端 409/错误提示 | 无 |
 | D-4-8 | 无权限访问组织页 | 权限 | 无 system:org 权限 | 访问 /system/org | 守卫拦截/按钮经 v-permission 隐藏 | L1 |
@@ -1386,7 +1386,7 @@
 | D-5-5 | 重置密码二次确认 | 功能 | 目标用户存在 | 重置密码→confirm | 确认后调 reset-password | L5-API |
 | D-5-6 | 批量启停用排除自己 | 功能 | 勾选含当前登录用户 | 批量停用 | filterBatchIds 过滤自己；仅选自己提示「不能对自己执行此操作」 | L1(batch-status.property) |
 | D-5-7 | 用户名重复 409 | 负向 | 已存在 username | 新增同名 | 冲突提示 | 无 |
-| D-5-8 | 手机号格式 | 负向 | 无 | 输入非法手机号 | 校验拦截 | 无 |
+| D-5-8 | 手机号格式 | 负向 | 无 | 输入非法手机号 | 现状：仅 required 无格式校验（实证现状钉住，盲点） | L1 system-matrix.component.test.ts（2026-08-20，实证现状钉住：phone 规则仅一条 required，无 pattern） |
 | D-5-9 | 分页+条件查询 | 功能 | 数据>10条 | 输入条件查询、翻页 | pageNum/pageSize 正确传递 | L5-API |
 | D-5-10 | 删除用户确认 | 负向 | 目标用户存在 | 删除→取消 | 不删除 | L5-API |
 | D-5-11 | 无权限隐藏操作按钮 | 权限 | 无 user:edit 权限 | 进入页面 | 编辑按钮经 v-permission 隐藏 | L1 |
@@ -1398,8 +1398,8 @@
 | D-6-1 | 新增角色必填 | 负向 | 无 | roleName/roleCode 留空 | required 拦截 | L5-API |
 | D-6-2 | 角色 CRUD | 功能 | 无 | 增/查/改 | 成功 | L5-API |
 | D-6-3 | 菜单权限树勾选 | 功能 | 打开权限配置 | 勾选节点保存 | GET/PUT role/{id}/menus 一致 | L5-API |
-| D-6-4 | check-strictly 父子不联动 | 功能 | 树多层 | 仅勾父节点 | 子节点不自动选中（check-strictly） | 无 |
-| D-6-5 | 全选/全不选+半选态 | 功能 | 权限树已加载 | 全选→部分取消 | indeterminate 正确切换（updateCheckAllState） | 无 |
+| D-6-4 | check-strictly 父子不联动 | 功能 | 树多层 | 仅勾父节点 | 子节点不自动选中（check-strictly） | L1 system-matrix.component.test.ts（2026-08-20，show-checkbox+check-strictly+node-key 源码钉住） |
+| D-6-5 | 全选/全不选+半选态 | 功能 | 权限树已加载 | 全选→部分取消 | indeterminate 正确切换（updateCheckAllState） | L1 system-matrix.component.test.ts（2026-08-20，勾选 1/3 半选、3/3 全选、handleCheckAll 全勾/清空运行时实证） |
 | D-6-6 | 数据权限五档 | 功能 | 角色存在 | 依次选 ALL/DEPT_AND_CHILDREN/DEPT/PROJECT/SELF 保存 | PUT data-scope 成功 | L5-API |
 | D-6-7 | 角色编码重复 | 负向 | 已存在 roleCode | 新增同码 | 冲突提示 | 无 |
 | D-6-8 | 删除已绑定用户角色 | 边界 | 角色已分配用户 | 删除 | 后端约束提示，前端不崩 | 无 |
@@ -1411,11 +1411,11 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | D-7-1 | 树表全展开渲染 | 功能 | 菜单树存在 | 进入页面 | default-expand-all 全展开 | L5-API |
-| D-7-2 | 全部折叠/展开切换 | 功能 | 树多层 | 点切换 | refreshTable+nextTick 重建生效 | 无 |
-| D-7-3 | menuName/menuType 必填 | 负向 | 无 | 留空提交 | required 拦截 | 无 |
-| D-7-4 | BUTTON 类型条件字段 | 功能 | 选 menuType=BUTTON | 观察表单 | 显示权限标识、隐藏组件路径 | 无 |
-| D-7-5 | MENU 类型条件字段 | 功能 | 选 MENU | 观察表单 | 显示组件路径 | 无 |
-| D-7-6 | 新增子菜单 | 功能 | 选中父级 | 新增保存 | 树中出现子节点 | 无 |
+| D-7-2 | 全部折叠/展开切换 | 功能 | 树多层 | 点切换 | refreshTable+nextTick 重建生效 | L1 system-matrix.component.test.ts（2026-08-20，toggleExpandAll refreshTable false→nextTick 恢复 true 运行时实证） |
+| D-7-3 | menuName/menuType 必填 | 负向 | 无 | 留空提交 | required 拦截 | L1 system-matrix.component.test.ts（2026-08-20，formRules 仅 menuName/menuType 两键 required 实证） |
+| D-7-4 | BUTTON 类型条件字段 | 功能 | 选 menuType=BUTTON | 观察表单 | 显示权限标识、隐藏组件路径 | L1 system-matrix.component.test.ts（2026-08-20，BUTTON 显示权限标识/隐藏路径图标 v-if 源码钉住） |
+| D-7-5 | MENU 类型条件字段 | 功能 | 选 MENU | 观察表单 | 显示组件路径 | L1 system-matrix.component.test.ts（2026-08-20，MENU 显示组件路径 v-if 源码钉住） |
+| D-7-6 | 新增子菜单 | 功能 | 选中父级 | 新增保存 | 树中出现子节点 | L1 system-pages-3.component.test.ts（2026-08-15，handleAdd(parentId)+createMenu 运行时实证） |
 | D-7-7 | 权限标识格式 | 边界 | BUTTON | 输入非 x:x:x 格式 | 按校验规则提示（如有）/后端约束 | 无 |
 | D-7-8 | 用户菜单接口一致 | 一致性 | 已配置权限 | 对比 menu 树与 menu/user | 当前用户菜单为全树子集 | L5-API |
 | D-7-9 | 删除含子级菜单 | 边界 | 菜单有子节点 | 删除 | 后端拒绝或级联提示 | 无 |
@@ -1426,9 +1426,9 @@
 |---|---|---|---|---|---|---|
 | D-8-1 | 字典 CRUD | 功能 | 无 | 增改查删 | 成功 | L5-API |
 | D-8-2 | dictName/dictCode 必填 | 负向 | 无 | 留空提交 | required 拦截 | L5-API(相关) |
-| D-8-3 | 前端名称/编码过滤 | 功能 | 字典>1页 | 输入关键字 | 左侧列表前端 filter 即时过滤 | 无 |
-| D-8-4 | 字典值新增必填 | 负向 | 选中字典 | label/value 留空 | required 拦截 | 无 |
-| D-8-5 | 字典值新增子项 | 功能 | 选中值节点 | 新增子项 | 树形值结构生效 | 无 |
+| D-8-3 | 前端名称/编码过滤 | 功能 | 字典>1页 | 输入关键字 | 左侧列表前端 filter 即时过滤 | L1 system-matrix.component.test.ts（2026-08-20，searchText 按名称/编码 filter 不发请求运行时实证） |
+| D-8-4 | 字典值新增必填 | 负向 | 选中字典 | label/value 留空 | required 拦截 | L1 system-matrix.component.test.ts（2026-08-20，itemFormRules label/value 两键 required 实证） |
+| D-8-5 | 字典值新增子项 | 功能 | 选中值节点 | 新增子项 | 树形值结构生效 | L1 system-matrix.component.test.ts（2026-08-20，handleAddItem(parentId) 传入且 dictId 关联当前字典实证） |
 | D-8-6 | 字典编码重复 | 负向 | 已存在 dictCode | 新增同码 | 冲突提示 | 无 |
 | D-8-7 | useDict 消费端渲染 | 集成 | 字典已建 | 业务页用 useDict 取该字典 | 下拉项与字典值一致 | L1(use-dict) |
 | D-8-8 | 删除被引用字典 | 边界 | 字典被表单使用 | 删除 | 后端约束提示 | 无 |
@@ -1439,8 +1439,8 @@
 |---|---|---|---|---|---|---|
 | D-9-1 | 岗位 CRUD | 功能 | 无 | 增改查删 | 成功 | L5-API/L5-一致性 |
 | D-9-2 | postName/postCode 必填 | 负向 | 无 | 留空提交 | required 拦截 | L5-一致性 |
-| D-9-3 | 排序边界 | 边界 | 无 | sort 输入 -1 / 10000 | min=0/max=9999 钳制 | 无 |
-| D-9-4 | 启用/停用确认 | 功能 | 岗位存在 | 切换状态→confirm | 状态更新 | 无 |
+| D-9-3 | 排序边界 | 边界 | 无 | sort 输入 -1 / 10000 | min=0/max=9999 钳制 | L1 system-matrix.component.test.ts（2026-08-20，el-input-number :min="0" :max="9999" 源码钉住） |
+| D-9-4 | 启用/停用确认 | 功能 | 岗位存在 | 切换状态→confirm | 状态更新 | L1 system-pages-1.component.test.ts（2026-08-15，handleToggleStatus confirm→updatePostStatus(3,0) 运行时实证） |
 | D-9-5 | 删除确认+取消 | 负向 | 岗位存在 | 删除→取消 | 不删除 | L5-API |
 | D-9-6 | 岗位编码重复 | 负向 | 已存在 postCode | 新增同码 | 冲突提示 | 无 |
 | D-9-7 | 删除已绑定用户岗位 | 边界 | 岗位已绑用户 | 删除 | 后端约束提示 | 无 |
@@ -1451,12 +1451,12 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | D-10-1 | 四分组 tab 切换加载 | 功能 | 无 | 切 security/approval/file/notification | 各组按 group 拉取渲染 | L5-API |
-| D-10-2 | NUMBER 型 min/max 钳制 | 边界 | NUMBER 项有 valueRange | 输入越界值 | input-number 从 valueRange 正则解析 min/max 并钳制 | 无 |
-| D-10-3 | BOOLEAN 型 switch 切换 | 功能 | BOOLEAN 项 | 切换开关 | active-value 写入 | 无 |
+| D-10-2 | NUMBER 型 min/max 钳制 | 边界 | NUMBER 项有 valueRange | 输入越界值 | input-number 从 valueRange 正则解析 min/max 并钳制 | L1 system-matrix.component.test.ts（2026-08-20，getNumberMin/Max 解析 '1-10'→1/10、无 range 返 undefined 实证） |
+| D-10-3 | BOOLEAN 型 switch 切换 | 功能 | BOOLEAN 项 | 切换开关 | active-value 写入 | L1 system-pages-2.component.test.ts（2026-08-15，BOOLEAN 解析为布尔 + el-switch v-model 双向实证） |
 | D-10-4 | JSON 型非法值 | 负向 | JSON 项 | 输入非法 JSON 保存 | 校验拦截/报错 | 无 |
-| D-10-5 | 仅保存 diff 项 | 功能 | 修改 1 项 | 保存 | batchUpdateConfig 只含 currentVal!==originalVal 项 | 无 |
-| D-10-6 | 无修改保存提示 | 边界 | 未修改 | 点保存 | 提示「没有需要保存的修改」，不发请求 | 无 |
-| D-10-7 | 恢复默认值 | 功能 | 项已改 | 恢复默认→confirm | resetConfigToDefault 生效 | 无 |
+| D-10-5 | 仅保存 diff 项 | 功能 | 修改 1 项 | 保存 | batchUpdateConfig 只含 currentVal!==originalVal 项 | L1 system-pages-2.component.test.ts（2026-08-15，改 1 项仅提交该项 diff 运行时实证） |
+| D-10-6 | 无修改保存提示 | 边界 | 未修改 | 点保存 | 提示「没有需要保存的修改」，不发请求 | L1 system-pages-2.component.test.ts（2026-08-15，info 提示且零请求运行时实证） |
+| D-10-7 | 恢复默认值 | 功能 | 项已改 | 恢复默认→confirm | resetConfigToDefault 生效 | L1 system-matrix.component.test.ts（2026-08-20，confirm→resetConfigToDefault(key)+刷新分组运行时实证） |
 | D-10-8 | STRING 超长输入 | 边界 | STRING 项 | 输入超长文本 | 按后端约束提示 | 无 |
 | D-10-9 | 安全配置影响登录策略 | 集成 | 修改锁定次数配置 | 触发失败登录 | 锁定阈值按新配置生效 | 无 |
 | D-10-10 | 无权限访问 | 权限 | 无 config 权限 | 访问页面 | 守卫拦截 | L1 |
@@ -1468,10 +1468,10 @@
 | D-11-1 | 模板 CRUD | 功能 | 无 | 增改查删 | 成功 | L5-一致性 |
 | D-11-2 | 模块 9 选项渲染 | 功能 | 无 | 打开表单 | moduleOptions 9 项完整 | L5-一致性 |
 | D-11-3 | IMPORT/EXPORT/PRINT 类型区分 | 功能 | 无 | 切换类型 | 表单/列表按类型展示 | 无 |
-| D-11-4 | 文件选择未真正上传 | 负向 | IMPORT 类型 | 选择文件 | **仅 ElMessage.info('已选择文件...')，fileId 恒 null**（源码缺陷，盲点） | 无 |
+| D-11-4 | 文件选择未真正上传 | 负向 | IMPORT 类型 | 选择文件 | **仅 ElMessage.info('已选择文件...')，fileId 恒 null**（源码缺陷，盲点） | L1 system-matrix.component.test.ts（2026-08-20，实证缺陷现状钉住：handleFileChange 仅弹 info、fileId 保持 null、auto-upload=false） |
 | D-11-5 | 设默认模板互斥 | 功能 | 同模块多模板 | 开启某模板 isDefault | 同模块仅一个默认 | 无 |
-| D-11-6 | PRINT 模板编辑内容弹窗 | 功能 | PRINT 行 | 点「编辑内容」 | 弹窗含 {{变量名}} 占位符提示 | 无 |
-| D-11-7 | 必填校验 | 负向 | 无 | 名称留空 | required 拦截 | 无 |
+| D-11-6 | PRINT 模板编辑内容弹窗 | 功能 | PRINT 行 | 点「编辑内容」 | 弹窗含 {{变量名}} 占位符提示 | L1 system-matrix.component.test.ts（2026-08-20，handleEditContent 回填 + 占位符提示源码 + updateTemplate(id,{templateContent}) 实证） |
+| D-11-7 | 必填校验 | 负向 | 无 | 名称留空 | required 拦截 | L1 system-matrix.component.test.ts（2026-08-20，templateName/moduleCode/templateType 三键 required 实证） |
 | D-11-8 | 模板被推送配置引用 | 集成 | push-config 选择模板 | loadTemplates | 下拉含该模板（page:1,size:200） | 无 |
 | D-11-9 | 删除使用中模板 | 边界 | 模板被引用 | 删除 | 后端约束提示 | 无 |
 
@@ -1481,12 +1481,12 @@
 |---|---|---|---|---|---|---|
 | D-12-1 | 模板 CRUD | 功能 | 无 | 增改查删 | 成功 | L5-一致性 |
 | D-12-2 | templateName 必填+长度 | 边界 | 无 | 留空/输 101 字符 | required 与 max:100 拦截 | L5-一致性 |
-| D-12-3 | businessType 6 选项 | 功能 | 无 | 打开表单 | CONTRACT/BUDGET/MATERIAL/FINANCE/LABOR/MACHINE | 无 |
+| D-12-3 | businessType 6 选项 | 功能 | 无 | 打开表单 | CONTRACT/BUDGET/MATERIAL/FINANCE/LABOR/MACHINE | L1 system-matrix.component.test.ts（2026-08-20，businessTypeOptions 六值序列实证） |
 | D-12-4 | 引擎类型切换 | 功能 | 无 | SIMPLE↔THYMELEAF | engineType 正确提交 | 无 |
 | D-12-5 | templateContent 必填 | 负向 | 无 | 内容留空 | required 拦截 | 无 |
-| D-12-6 | 名称前端过滤 | 功能 | 数据多页 | 输入名称 | 前端过滤（后端无模糊查询参数，源码注释明示） | 无 |
-| D-12-7 | 预览变量提取 | 功能 | 内容含 {{a}} {{b.c}} | 点预览 | 正则提取变量填「示例-x」，renderPrintTemplate 新窗口 | 无 |
-| D-12-8 | 预览渲染为空 | 负向 | 无变量可渲染 | 预览 | 提示「渲染结果为空」 | 无 |
+| D-12-6 | 名称前端过滤 | 功能 | 数据多页 | 输入名称 | 前端过滤（后端无模糊查询参数，源码注释明示） | L1 system-matrix.component.test.ts（2026-08-20，templateName 前端 filter 命中单条 + 源码注释钉住） |
+| D-12-7 | 预览变量提取 | 功能 | 内容含 {{a}} {{b.c}} | 点预览 | 正则提取变量填「示例-x」，renderPrintTemplate 新窗口 | L1 system-matrix.component.test.ts（2026-08-20，{{含空格}} 提取填示例-x + render 参数 + window.write 实证） |
+| D-12-8 | 预览渲染为空 | 负向 | 无变量可渲染 | 预览 | 提示「渲染结果为空」 | L1 system-matrix.component.test.ts（2026-08-20，render 空串→error 提示且零开窗实证） |
 | D-12-9 | Thymeleaf 占位符兼容 | 边界 | engineType=THYMELEAF | 预览 | ${} 语法不被 {{}} 正则误处理 | 无 |
 | D-12-10 | 默认模板互斥 | 功能 | 同业务多模板 | 设默认 | 互斥生效 | 无 |
 
@@ -1495,12 +1495,12 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | D-13-1 | 三 tab 列结构 | 功能 | 无 | 切 oper/login/exception | 三套列各自正确 | L5-API/L5-一致性 |
-| D-13-2 | operator 条件查询 | 功能 | 有日志 | 输入操作人查询 | 结果过滤 | 无 |
-| D-13-3 | 时间范围查询 | 功能 | 有日志 | 选 startTime/endTime | 区间过滤 | 无 |
+| D-13-2 | operator 条件查询 | 功能 | 有日志 | 输入操作人查询 | 结果过滤 | L1 system-pages-1.component.test.ts（2026-08-15，operator 参数组装下发运行时实证） |
+| D-13-3 | 时间范围查询 | 功能 | 有日志 | 选 startTime/endTime | 区间过滤 | L1 system-pages-1.component.test.ts（2026-08-15，timeRange→startTime/endTime 参数组装实证） |
 | D-13-4 | 时间范围倒置 | 边界 | 无 | start>end | 空结果或提示，不崩 | 无 |
 | D-13-5 | 分页翻页 | 功能 | 数据充足 | 翻页 | 正确 | L5-API |
 | D-13-6 | 登录日志 tab 数据 | 一致性 | 刚执行过登录 | 查看 login tab | 含刚次登录记录 | 无 |
-| D-13-7 | 批量删除 | 负向 | 背景需求 | 勾选多条批删 | **源码无批删按钮**（差距，不可执行） | 无 |
+| D-13-7 | 批量删除 | 负向 | 背景需求 | 勾选多条批删 | **源码无批删按钮**（差距，不可执行） | L1 system-matrix.component.test.ts（2026-08-20，实证差距现状钉住：源码无批量删除/selection 列） |
 | D-13-8 | 无权限访问 | 权限 | 无 log 权限 | 访问 | 守卫拦截 | L1 |
 
 ### D14 编号规则（/system/serial-number）
@@ -1524,11 +1524,11 @@
 | D-15-1 | 手动备份 | 功能 | 无 | 备份→confirm | MANUAL 记录生成 | L5-一致性 |
 | D-15-2 | 并发备份 409 守卫 | 负向 | 备份进行中 | 再次触发 | 409 冲突提示 | 无 |
 | D-15-3 | 下载按钮启用条件 | 边界 | status!=='SUCCESS' 或无 storagePath | 查看按钮 | disabled | L5-一致性 |
-| D-15-4 | 恢复二次确认 | 功能 | SUCCESS 记录 | 恢复→confirm(type=error) | 确认后发请求 | 无 |
+| D-15-4 | 恢复二次确认 | 功能 | SUCCESS 记录 | 恢复→confirm(type=error) | 确认后发请求 | L1 system-matrix.component.test.ts（2026-08-20，confirm type=error+「不可撤销」文案+restoreBackup(7) 实证） |
 | D-15-5 | 恢复 449 密码确认链 | 集成 | 后端返回 449 | 恢复 | 拦截器弹密码框，验证后自动重试 | L1(组件级，端到端无) |
 | D-15-6 | 449 密码错误 | 负向 | 449 弹窗 | 输错密码 | 重试失败提示 | L1(组件级) |
-| D-15-7 | SCHEDULED/MANUAL 标签 | 功能 | 两类记录 | 查看列表 | tag 正确 | 无 |
-| D-15-8 | formatSize/formatDuration 边界 | 边界 | 值为 0 | 渲染 | 显示 '-' | 无 |
+| D-15-7 | SCHEDULED/MANUAL 标签 | 功能 | 两类记录 | 查看列表 | tag 正确 | L1 system-matrix.component.test.ts（2026-08-20，SCHEDULED→定时/否则手动 tag 源码钉住） |
+| D-15-8 | formatSize/formatDuration 边界 | 边界 | 值为 0 | 渲染 | 显示 '-' | L1 system-pages-2.component.test.ts（2026-08-15，formatSize/formatDuration 0 值显 '-' 运行时实证） |
 | D-15-9 | 备份进行中状态轮显 | 功能 | 备份中 | 观察列表 | RUNNING 态正确 | 无 |
 | D-15-10 | 无权限访问 | 权限 | 无 backup 权限 | 访问 | 守卫拦截 | L1 |
 
@@ -1539,20 +1539,20 @@
 | D-16-1 | 版本 CRUD | 功能 | 无 | 增改查 | 成功 | L5-一致性 |
 | D-16-2 | semver 格式校验 | 负向 | 无 | 输入 1.2 / v1.2.3 / 1.2.3.4 | /^\d+\.\d+\.\d+$/ 拦截 | L5-一致性 |
 | D-16-3 | 重复版本号 409 | 负向 | 已有 1.0.0 | 再建 1.0.0 | 冲突提示 | 无 |
-| D-16-4 | releaseDate 必填 | 负向 | 无 | 留空 | required 拦截 | 无 |
-| D-16-5 | changelog 非必填 | 边界 | 无 | 仅必填项提交 | 成功 | 无 |
-| D-16-6 | 摘要首行截断 | 功能 | changelog 首行>60 字 | 查看列表 | 截断+'…' | 无 |
+| D-16-4 | releaseDate 必填 | 负向 | 无 | 留空 | required 拦截 | L1 system-matrix.component.test.ts（2026-08-20，rules.releaseDate required 实证） |
+| D-16-5 | changelog 非必填 | 边界 | 无 | 仅必填项提交 | 成功 | L1 system-matrix.component.test.ts（2026-08-20，rules 无 changelog 键实证） |
+| D-16-6 | 摘要首行截断 | 功能 | changelog 首行>60 字 | 查看列表 | 截断+'…' | L1 system-matrix.component.test.ts（2026-08-20，summarize 70 字截 60+'…'运行时实证） |
 | D-16-7 | 当前版本 tag | 功能 | 多版本 | 查看列表 | 当前版本标记 | 无 |
-| D-16-8 | 查看日志弹窗 | 功能 | 有 changelog | 点查看 | pre 全文展示 | 无 |
+| D-16-8 | 查看日志弹窗 | 功能 | 有 changelog | 点查看 | pre 全文展示 | L1 system-matrix.component.test.ts（2026-08-20，detailVisible+标题 v{versionNo} 更新日志 + 「（无更新日志）」兑底实证） |
 | D-16-9 | 非法发布日 | 边界 | 无 | 早于上一版本日期 | 提示或不约束（记录现状） | 无 |
 
 ### D17 系统监控（/system/monitor）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| D-17-1 | 占位页渲染 | 功能 | 无 | 访问页面 | el-empty「待实现（任务 10.3）」 | 无 |
+| D-17-1 | 占位页渲染 | 功能 | 无 | 访问页面 | el-empty「待实现（任务 10.3）」 | L1 system-matrix.component.test.ts（2026-08-20，el-empty 文案 mount 运行时实证） |
 | D-17-2 | 路由可达+权限 | 权限 | 有/无权限 | 访问 /system/monitor | 按 meta.permission 控制 | L1 |
-| D-17-3 | monitor API 闲置 | 一致性 | api/monitor.ts 存在 | 检查调用方 | **前端无任何调用**（盲点） | 无 |
+| D-17-3 | monitor API 闲置 | 一致性 | api/monitor.ts 存在 | 检查调用方 | **前端无任何调用**（盲点） | L1 system-matrix.component.test.ts（2026-08-20，views/components/stores/composables 全扫零调用方钉住，盲点） |
 | D-17-4 | 实现后 CPU/内存指标 | 功能 | 待实现 | - | 占位用例 | 无 |
 | D-17-5 | 实现后 JVM/线程指标 | 功能 | 待实现 | - | 占位用例 | 无 |
 | D-17-6 | 实现后磁盘指标 | 功能 | 待实现 | - | 占位用例 | 无 |
