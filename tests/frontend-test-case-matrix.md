@@ -759,7 +759,7 @@
 
 # 分组 C：财务与现场域（344 例）
 
-## C-1 财务管理（/finance，14 页，159+5 例，覆盖≈20.7% 最低）
+## C-1 财务管理（/finance，14 页，159+5 例，覆盖≈29%（2026-08-20 M6：L1 finance-matrix +18 例新覆 13 行 + 另有 6 行增强 + E2E 解除 5 处条件 skip，由 ≈20.7% 提升））
 
 **业务概述**：覆盖开票链（申请→收票→汇总）、收款链（回款登记）、付款链（多合同类型付款申请/其他费用付款/项目与个人报销）、资金（备用金借还、质保金计提返还）、结算（跨模块聚合结算单）与管控（封账、税率）。单据统一走 DRAFT→APPROVING/SUBMITTED→APPROVED/REJECTED 状态机（付款另有 PAID），金额经 formatMoney（toLocaleString zh-CN 两位小数、空值 -）格式化，审批提交前有 confirm 确认。
 
@@ -769,14 +769,14 @@
 |---|---|---|---|---|---|---|
 | C-1-1 | 必填校验 projectId/contractId/invoiceAmount/applyDate | 负向 | 已登录 | 打开新增弹窗，留空必填项点确定 | 各字段显示必填提示，不发请求 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿） |
 | C-1-2 | 新增成功：taxRate 走 TaxRateSelector，invoiceType 默认增专 | 功能 | 项目+合同存在 | 完整填写并提交表单 | 创建成功，列表出现新单据，状态草稿 | L5-API + E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；创建 DRAFT + TaxRateSelector UI 选择，税率前提自置 E2E_TEST_ 预设） |
-| C-1-3 | 金额边界：invoiceAmount 负值 | 边界 | 弹窗打开 | 输入 -1 | el-input-number min=0 拦截 | 无 |
+| C-1-3 | 金额边界：invoiceAmount 负值 | 边界 | 弹窗打开 | 输入 -1 | el-input-number min=0 拦截 | L1 finance-matrix.component.test.ts（2026-08-20，:min=0 :precision=2 源码钉住） |
 | C-1-4 | 税率联动：选预设自动填值、手改不一致清选中 | 集成 | 税率数据存在 | 选「增值税13%」→手改为 12 | 填 13.00；手改后清除选中态 | L1 |
 | C-1-5 | 提交审批：仅 DRAFT/REJECTED 可提交 | 功能 | 存在草稿单 | 点提交→confirm 确认 | 提示「已提交审批，审批通过后生效」，状态变审批中 | L5-API |
-| C-1-6 | 非法状态提交拦截 | 负向 | 存在 APPROVING/APPROVED 单 | 查看操作列 | 提交按钮不渲染 | 无 |
-| C-1-7 | 删除仅限 DRAFT | 负向 | 存在已审批单 | 查看操作列 | 无删除按钮 | 无 |
-| C-1-8 | 查看详情为 stub | 功能 | 列表有数据 | 点「查看」 | ElMessage.info('查看详情功能开发中') | 无 |
+| C-1-6 | 非法状态提交拦截 | 负向 | 存在 APPROVING/APPROVED 单 | 查看操作列 | 提交按钮不渲染 | L1 finance-matrix.component.test.ts（2026-08-20，提交按钮 v-if DRAFT/REJECTED 源码钉住 + 行提交调用/文案实证） |
+| C-1-7 | 删除仅限 DRAFT | 负向 | 存在已审批单 | 查看操作列 | 无删除按钮 | L1 finance-matrix.component.test.ts（2026-08-20，删除按钮 v-if DRAFT 源码钉住） |
+| C-1-8 | 查看详情为 stub | 功能 | 列表有数据 | 点「查看」 | ElMessage.info('查看详情功能开发中') | L1 finance-matrix.component.test.ts（2026-08-20，handleView stub 提示实证） |
 | C-1-9 | 金额列 formatMoney 千分位 2 位、空值 '-' | 一致性 | 列表有数据 | 对比接口 invoiceAmount 与单元格 | 严格一致 | L5-一致性 |
-| C-1-10 | statusMap：SUBMITTED 与 APPROVING 均映射「审批中」 | 一致性 | 两种状态各一条 | 查看状态列 | 均显示「审批中」 | L5-一致性 |
+| C-1-10 | statusMap：SUBMITTED 与 APPROVING 均映射「审批中」 | 一致性 | 两种状态各一条 | 查看状态列 | 均显示「审批中」 | L1 finance-matrix.component.test.ts（2026-08-20，双映射 warning 实证）+ L5-一致性 |
 | C-1-11 | 项目+状态组合筛选重载 | 功能 | 列表有数据 | 选项目+状态后查询 | 请求携带 projectId+status，列表刷新 | 无 |
 | C-1-12 | 分页 total 一致 | 一致性 | 数据>1 页 | 翻页 | pageNum/pageSize 生效，total 与接口一致 | L5-一致性 |
 | C-1-13 | 封账期间新增拦截 | 集成 | 当前月已封账 | 新增开票申请并提交 | 后端拒绝，前端展示错误提示而非静默 | 无 |
@@ -850,10 +850,10 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | C-6-1 | 分页参数为 page/size（异于其他财务页） | 一致性 | 列表有数据 | 抓包翻页请求 | 参数名 page/size 正确、翻页生效。**2026-08 E2E 实证**：payment-apply 前端传 pageNum/pageSize 但后端 Controller 仅收 page/size，UI 层列表恒 size=10 首页（现状钉住） | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；抓包实证） |
-| C-6-2 | 必填校验 projectId/payerName/paymentAmount/paymentDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿） |
-| C-6-3 | 仅新增：无编辑/删除入口 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；含完整创建闭环） |
-| C-6-4 | statusMap 仅 DRAFT/APPROVED，其他状态兜底 | 边界 | 存在 SUBMITTED 单 | 查看状态列 | 不渲染 undefined/空白崩溃 | 无 |
-| C-6-5 | 金额负值拦截 | 边界 | 弹窗打开 | 输入负数 | min=0 拦截 | 无 |
+| C-6-2 | 必填校验 projectId/payerName/paymentAmount/paymentDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿）+ L1 finance-matrix.component.test.ts（2026-08-20，四必填规则键与文案钉住） |
+| C-6-3 | 仅新增：无编辑/删除入口 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；含完整创建闭环）+ L1 finance-matrix.component.test.ts（2026-08-20，页面无操作列现状钉住） |
+| C-6-4 | statusMap 仅 DRAFT/APPROVED，其他状态兜底 | 边界 | 存在 SUBMITTED 单 | 查看状态列 | 不渲染 undefined/空白崩溃 | L1 finance-matrix.component.test.ts（2026-08-20，两态映射+未知状态透传 status 兜底实证） |
+| C-6-5 | 金额负值拦截 | 边界 | 弹窗打开 | 输入负数 | min=0 拦截 | L1 finance-matrix.component.test.ts（2026-08-20，:min=0 :precision=2 源码钉住） |
 | C-6-6 | 提交审批（仅 DRAFT） | 功能 | 草稿存在 | 提交 | 状态流转成功 | 无 |
 | C-6-7 | 金额 formatMoney | 一致性 | 列表有数据 | 核对 | 千分位 2 位小数 | 无 |
 | C-6-8 | 重复提交防抖 | 负向 | 表单已填 | 双击提交 | 仅一次请求 | 无 |
@@ -863,10 +863,10 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-7-1 | offsetReserve 开关（active=1）控制 offsetAmount 列显隐 | 功能 | 列表有冲销数据 | 切换抵扣开关 | offsetAmount 列与表单项随开关显隐 | 无 |
+| C-7-1 | offsetReserve 开关（active=1）控制 offsetAmount 列显隐 | 功能 | 列表有冲销数据 | 切换抵扣开关 | offsetAmount 列与表单项随开关显隐 | L1 finance-matrix.component.test.ts（2026-08-20，el-switch 1/0 + 表单项 v-if 联动运行时实证（=0 隐藏/=1 出现）+ 列表列 formatMoney/'-' 源码钉住） |
 | C-7-2 | 必填校验 projectId/totalAmount/reimbursementDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；空态确定不发 POST。**API-GAP-fin**：后端无 DELETE 通道，不真实建单） |
-| C-7-3 | 新增/编辑/删除 CRUD | 功能 | 项目存在 | 依次操作 | 各操作成功且列表刷新 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿。**2026-08 实测修正**：UI 无编辑/删除入口，仅提交按钮且只在草稿行渲染） |
-| C-7-4 | 提交仅 DRAFT（submit POST） | 功能 | 草稿存在 | 提交 | 状态→审批中 | 无 |
+| C-7-3 | 新增/编辑/删除 CRUD | 功能 | 项目存在 | 依次操作 | 各操作成功且列表刷新 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿。**2026-08 实测修正**：UI 无编辑/删除入口，仅提交按钮且只在草稿行渲染。**2026-08-20 解除 skip**：种子 99051（APPROVED）已导入，列表有数据行硬断言全绿） |
+| C-7-4 | 提交仅 DRAFT（submit POST） | 功能 | 草稿存在 | 提交 | 状态→审批中 | E2E finance-write.spec.ts（真实模式，逐行状态条件渲染断言）+ L1 finance-matrix.component.test.ts（2026-08-20，提交按钮 v-if DRAFT 源码钉住 + submitProjectReimbursement 调用实证） |
 | C-7-5 | 勾选冲销时 offsetAmount 必填 | 负向 | 开关开启 | 留空冲销额提交 | 校验提示 | 无 |
 | C-7-6 | offsetAmount 边界（0/负值/超总额） | 边界 | 开关开启 | 输入 0、-5、大于 totalAmount | 按校验规则拦截或正确计算实付 | 无 |
 | C-7-7 | 金额 formatMoney + 分页 | 一致性 | 列表有数据 | 核对 | 一致 | 无 |
@@ -880,7 +880,7 @@
 |---|---|---|---|---|---|---|
 | C-8-1 | 借支申请必填校验 | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿。**API-GAP-fin**：后端无 DELETE 通道，不真实建单） |
 | C-8-2 | 借支申请新增成功 | 功能 | 项目/人员存在 | 完整填写提交 | 创建草稿单 | 无 |
-| C-8-3 | 归还弹窗仅 APPROVED 行可见 | 负向 | 各状态记录存在 | 检查操作列 | 仅 APPROVED 显示归还 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；逐行状态条件渲染断言，无 APPROVED 行时显式 skip 登记） |
+| C-8-3 | 归还弹窗仅 APPROVED 行可见 | 负向 | 各状态记录存在 | 检查操作列 | 仅 APPROVED 显示归还 | E2E finance-write.spec.ts（真实模式，全绿；逐行状态条件渲染断言。**2026-08-20 解除 skip**：种子 99071（APPROVED 李明）已导入，列表有数据行+APPROVED 前提双硬断言全绿） |
 | C-8-4 | 归还必填 returnAmount/returnDate | 负向 | 归还弹窗打开 | 留空提交 | 必填提示 | 无 |
 | C-8-5 | 归还调用 createReserveFundReturn | 功能 | APPROVED 记录 | 填归还额提交 | 归还成功，记录状态/余额更新 | 无 |
 | C-8-6 | 归还金额>借支金额边界 | 边界 | APPROVED 记录 | 输入超额 | 拦截或提示 | 无 |
@@ -897,7 +897,7 @@
 |---|---|---|---|---|---|---|
 | C-9-1 | 无项目筛选条件 | 负向 | 打开页面 | 检查筛选区/抓包 | 请求无 projectId 参数 | 受阻（API-GAP-fin：抓包依赖真实建单，后端无 DELETE 通道；tasks.md 登记）。UI 层弹窗无「项目」字段已由 E2E 钉住 |
 | C-9-2 | 必填校验 totalAmount/reimbursementDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；空态确定不发 POST + 弹窗无项目字段断言） |
-| C-9-3 | 仅新增+提交：无编辑/删除 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；现状钉住） |
+| C-9-3 | 仅新增+提交：无编辑/删除 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；现状钉住。**2026-08-20 解除 skip**：种子 99421/99422（APPROVED+DRAFT）已导入，列表有数据行硬断言全绿） |
 | C-9-4 | 提交仅 DRAFT | 功能 | 草稿存在 | 提交 | 状态流转成功 | 无 |
 | C-9-5 | 金额负值拦截 | 边界 | 弹窗打开 | 输入 -1 | min 拦截 | 无 |
 | C-9-6 | 金额 formatMoney + 分页 | 一致性 | 列表有数据 | 核对 | 一致 | 无 |
@@ -926,11 +926,11 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | C-11-1 | 创建结算：选项目→createSettlement→跳转详情携带 id | 功能 | 项目存在且未结算 | 点创建→选项目确认 | 创建成功并跳转 /finance/settlement/{id} | L5-API |
-| C-11-2 | profit<0 加 text-danger | 一致性 | 存在亏损结算 | 查看利润列 | 红色样式且数值正确 | 无 |
-| C-11-3 | profitRate<0 加 text-danger | 一致性 | 存在负利润率 | 查看利润率列 | 红色样式 | 无 |
-| C-11-4 | 导出 Blob 下载 `结算报告_${code}.xlsx` | 功能 | 存在已结算单 | 点导出 | 触发 Blob 下载且文件名正确 | 无 |
-| C-11-5 | 导出失败错误提示 | 负向 | mock 导出失败 | 点导出 | ElMessage.error，无假下载 | 无 |
-| C-11-6 | 状态枚举 DRAFT/SUBMITTED/APPROVED/REJECTED | 一致性 | 四态数据 | 核对状态列 | 文案一致 | 无 |
+| C-11-2 | profit<0 加 text-danger | 一致性 | 存在亏损结算 | 查看利润列 | 红色样式且数值正确 | E2E finance-write.spec.ts（真实模式，全绿；**2026-08-20 解除 skip**：种子 44_V2026_42 补入亏损结算单 99361（profit=-50000），负利润存在性+text-danger 可见双硬断言）+ L1 finance-matrix.component.test.ts（2026-08-20，负利润行渲染实证） |
+| C-11-3 | profitRate<0 加 text-danger | 一致性 | 存在负利润率 | 查看利润率列 | 红色样式 | L1 finance-matrix.component.test.ts（2026-08-20，负利润率行渲染实证，与 C-11-2 同例） |
+| C-11-4 | 导出 Blob 下载 `结算报告_${code}.xlsx` | 功能 | 存在已结算单 | 点导出 | 触发 Blob 下载且文件名正确 | L1 finance-matrix.component.test.ts（2026-08-20，createObjectURL/revokeObjectURL spy + 文件名 `结算报告_${code｜｜id}.xlsx` 钉住） |
+| C-11-5 | 导出失败错误提示 | 负向 | mock 导出失败 | 点导出 | ElMessage.error，无假下载 | L1 finance-matrix.component.test.ts（2026-08-20，导出失败「导出失败」提示实证） |
+| C-11-6 | 状态枚举 DRAFT/SUBMITTED/APPROVED/REJECTED | 一致性 | 四态数据 | 核对状态列 | 文案一致 | L1 finance-matrix.component.test.ts（2026-08-20，四态映射+未知透传实证） |
 | C-11-7 | 金额 formatMoney + 分页 | 一致性 | 列表有数据 | 核对 | 一致 | L5-API |
 | C-11-8 | 创建接口失败不跳转并提示 | 负向 | mock 创建失败 | 选项目确认 | 停留列表并报错 | 无 |
 | C-11-9 | 行点击/详情入口跳转 | 功能 | 列表有数据 | 进入详情 | 正确携带 id 跳转 | 无 |

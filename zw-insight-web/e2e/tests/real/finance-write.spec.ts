@@ -603,9 +603,8 @@ test.describe('财务域 — C7 项目报销（@matrix C-7-1/3；建单受阻 AP
     // 状态条件渲染：逐行核对「提交」按钮仅出现在草稿行
     const rows = page.locator('.el-table__row')
     const rowCount = await rows.count()
-    if (rowCount === 0) {
-      test.skip(true, '无演示数据行，状态渲染无可断言对象（tasks.md DATA 受阻登记）')
-    }
+    // 2026-08-20 解除 skip：种子 99051（APPROVED）已导入实证，数据态缺口消除，改硬断言
+    expect(rowCount, '项目报销应有演示数据行（种子 99051）').toBeGreaterThan(0)
     for (let i = 0; i < rowCount; i++) {
       const row = rows.nth(i)
       const statusText = (await row.locator('.el-tag').first().innerText()).trim()
@@ -636,9 +635,8 @@ test.describe('财务域 — C8 备用金（@matrix C-8-1/3；建单受阻 API-G
     await page.waitForSelector('.el-table__row, .el-table__empty-block', { timeout: 30_000 })
     const rows = page.locator('.el-table__row')
     const rowCount = await rows.count()
-    if (rowCount === 0) {
-      test.skip(true, '无备用金演示数据（tasks.md DATA 受阻登记）')
-    }
+    // 2026-08-20 解除 skip：种子 99071（APPROVED，李明）已导入实证，改硬断言
+    expect(rowCount, '备用金应有演示数据行（种子 99071）').toBeGreaterThan(0)
     let approvedSeen = false
     for (let i = 0; i < rowCount; i++) {
       const row = rows.nth(i)
@@ -651,8 +649,8 @@ test.describe('财务域 — C8 备用金（@matrix C-8-1/3；建单受阻 API-G
         expect(returnCount, `第 ${i + 1} 行「${statusText}」不应有归还按钮`).toBe(0)
       }
     }
-    // 无 APPROVED 行则归还可见性前提缺失——显式受阻登记，非静默通过
-    test.skip(!approvedSeen, '无 APPROVED 备用金行，归还按钮正向断言前提缺失（tasks.md DATA 受阻登记）')
+    // 无 APPROVED 行则归还可见性前提缺失——2026-08-20 解除 skip：种子 99071 APPROVED 已导入，改硬断言
+    expect(approvedSeen, '应存在 APPROVED 备用金行（种子 99071），归还按钮正向断言前提成立').toBe(true)
   })
 })
 
@@ -680,9 +678,8 @@ test.describe('财务域 — C9 个人报销（@matrix C-9-1；建单受阻 API-
     await page.goto('/finance/personal-reimbursement')
     await page.waitForSelector('.el-table__row, .el-table__empty-block', { timeout: 30_000 })
     const rowCount = await page.locator('.el-table__row').count()
-    if (rowCount === 0) {
-      test.skip(true, '无个人报销演示数据，入口缺失断言无可断言对象（tasks.md DATA 受阻登记）')
-    }
+    // 2026-08-20 解除 skip：种子 99421/99422（APPROVED+DRAFT）已导入实证，改硬断言
+    expect(rowCount, '个人报销应有演示数据行（种子 99421/99422）').toBeGreaterThan(0)
     await expect(page.locator('.el-table button:has-text("编辑")')).toHaveCount(0)
     await expect(page.locator('.el-table button:has-text("删除")')).toHaveCount(0)
   })
@@ -803,10 +800,8 @@ test.describe('财务域 — C10/C11/C12 只读断言（质保金预警 / 发票
     const negative = records.find((r: any) => Number(r.profit) < 0)
     await page.goto('/finance/settlement')
     await page.waitForSelector('.el-table__row, .el-table__empty-block', { timeout: 30_000 })
-    if (!negative) {
-      // 无负利润结算单 → 红色渲染前提缺失，显式受阻登记（DATA），非静默通过
-      test.skip(true, '无利润为负的结算单，红色渲染无可断言对象（tasks.md DATA 受阻登记）')
-    }
+    // 2026-08-20 解除 skip：种子 44_V2026_42 补入亏损结算单 99361（profit=-50000），改硬断言
+    expect(negative, '应存在负利润结算单（种子 99361 JS20260620NEG）').toBeTruthy()
     const targetRow = page.locator('.el-table__row', { hasText: negative.settlementCode }).first()
     await expect(targetRow).toBeVisible({ timeout: 15_000 })
     await expect(targetRow.locator('.text-danger').first()).toBeVisible()
