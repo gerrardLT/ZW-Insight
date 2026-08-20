@@ -699,59 +699,61 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-22-1 | 必填 contractName/supplierName/contractAmount | 负向 | 新增 | 留空确定 | 三条提示 | 无 |
-| B-22-2 | 金额 min=0 | 边界 | 新增 | 负数 | 拒绝 | 无 |
-| B-22-3 | 名称+供应商+状态筛选/重置 | 功能 | 混合数据 | 组合搜索 | 过滤 | L5-API |
-| B-22-4 | 状态 EFFECTIVE/DRAFT 展示 | 一致性 | 各状态 | 查看 | 生效/草稿 | L5-一致性 |
-| B-22-5 | 编辑/删除 | 功能 | 合同行 | 操作 | 成功+确认 | L5-API |
-| B-22-6 | 非草稿合同编辑被拒 | 负向 | EFFECTIVE 合同 | 直接 PUT | 后端守卫拒绝（08-purchase 实证） | L5-API |
-| B-22-7 | 页面无提交按钮但 API 存在 | 一致性 | — | 对照 api | UI 审批入口缺失 | L5-API(容忍多码) |
-| B-22-8 | 合同内容 textarea 长文本 | 边界 | 新增 | 500 字 | 保存成功 | 无 |
+| B-22-1 | 必填 contractName/supplierName/contractAmount（实证四条，含 projectId） | 负向 | 新增 | 留空确定 | 四条提示（较账本多 projectId，缺陷#7 修复：projectId=null 曾致 INSERT 500） | L1 purchase-matrix.component.test.ts（2026-08-20，四必填+payload 含 projectId 钉住） |
+| B-22-2 | 金额 min=0 | 边界 | 新增 | 负数 | 拒绝 | L1 purchase-matrix.component.test.ts（2026-08-20，:min=0 :precision=2 源码钉住） |
+| B-22-3 | 名称+供应商+状态筛选/重置 | 功能 | 混合数据 | 组合搜索 | 过滤；搜索重置 pageNum 归 1、重置清空三条件 | L1 purchase-matrix.component.test.ts（2026-08-20）+ L5-API |
+| B-22-4 | 状态 EFFECTIVE/DRAFT 展示 | 一致性 | 各状态 | 查看 | 生效/草稿 | E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；DRAFT→EFFECTIVE 状态翻转实证）+ L5-一致性 |
+| B-22-5 | 编辑/删除 | 功能 | 合同行 | 操作 | 成功+确认 | L5-API + E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；EFFECTIVE 编辑被后端守卫拦截、带结算删除放行实证） |
+| B-22-6 | 非草稿合同编辑被拒 | 负向 | EFFECTIVE 合同 | 直接 PUT | 后端守卫拒绝（code=500「仅草稿状态可编辑」） | E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；正向断言守卫文案实证） |
+| B-22-7 | 提交入口（原「页面无提交按钮」已过时，已补齐） | 一致性 | 草稿合同 | 提交 | DRAFT 显示提交按钮，走 BPMN 自动完成至 EFFECTIVE | L1 purchase-matrix.component.test.ts（2026-08-20，DRAFT 提交按钮源码钉住）+ E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；workflowInstanceId 非空 BPMN 自动完成，区别于劳务/分包直批 + 重提交拦截实证） |
+| B-22-8 | 编辑/删除按钮无状态条件现状钉住（原「长文本」测试点无覆盖） | 边界 | 各状态行 | 观察 | EFFECTIVE 亦可点编辑/删除，依赖后端守卫 | L1 purchase-matrix.component.test.ts（2026-08-20，现状钉住） |
 | B-22-9 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | 无 |
+| B-22-10 | 有结算的合同删除守卫 | 负向 | 合同已结算 | 删除 | 前端直接调 delete，依赖后端引用守卫 | E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；缺陷钉住：有已审批结算合同删除 code=200 放行，引用守卫缺失，与 B-20-7 同款，修复后翻转负向断言） |
 
 ### B23 采购结算（/purchase/settlement）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-23-1 | 必填 contractId/inboundId/settlementAmount | 负向 | 新增 | 留空确定 | 三条提示 | 无 |
-| B-23-2 | 入库单下拉在未选合同前禁用 | 功能 | 新增 | 查看 | disabled=!formData.contractId | 无 |
-| B-23-3 | 选合同加载可结算入库单；空时提示 | 功能 | 合同无已审批入库单 | 选合同 | empty-tip「该合同暂无可结算的已审批入库单」 | 无 |
-| B-23-4 | 未审批入库单不在候选中 | 集成 | 合同有 DRAFT 入库单 | 选合同 | available-inbounds 不含该单（「已审批且未结算」语义） | 无 |
-| B-23-5 | 选入库单回填入库金额 | 功能 | 有候选 | 选入库单 | inboundAmount=totalAmount | 无 |
-| B-23-6 | 结算金额>入库金额拦截（双保险） | 负向 | 入库 10 万 | 输 12 万确定 | input-number max 限制 + warning「结算金额不能大于入库金额」 | 无 |
-| B-23-7 | 同一入库单二次结算 | 负向 | 入库单已结算 | 再选合同 | 候选列表不再含该单；API 直连应被拒 | L5-API(间接) |
-| B-23-8 | 编辑态合同/入库单锁定 | 功能 | 草稿单 | 编辑 | 两 select disabled=isEdit | 无 |
-| B-23-9 | 草稿行三按钮 vs 已审批行文本 | 功能 | 各状态行 | 观察 | 模板分支 | 无 |
-| B-23-10 | 提交进入审批确认框 | 功能 | 草稿单 | 提交 | 「确定提交该结算单进入审批流程吗？」→已提交审批 | L5-API |
-| B-23-11 | 合同筛选 change 即搜索 | 功能 | 多合同 | 切换下拉 | @change=handleSearch | L5-API |
-| B-23-12 | 金额格式化两位小数 | 一致性 | 有数据 | 查看列表 | formatAmount 与接口值一致 | 无 |
+| B-23-1 | 必填 contractId/inboundId/settlementAmount | 负向 | 新增 | 留空确定 | 三条提示 | L1 purchase-matrix.component.test.ts（2026-08-20） |
+| B-23-2 | 入库单下拉在未选合同前禁用 | 功能 | 新增 | 查看 | disabled=isEdit \|\| !formData.contractId | L1 purchase-matrix.component.test.ts（2026-08-20，源码钉住） |
+| B-23-3 | 选合同加载可结算入库单；空时提示 | 功能 | 合同无已审批入库单 | 选合同 | empty-tip「该合同暂无可结算的已审批入库单」 | L1 purchase-matrix.component.test.ts（2026-08-20，源码钉住） |
+| B-23-4 | 未审批入库单不在候选中 | 集成 | 合同有 DRAFT 入库单 | 选合同 | available-inbounds 不含该单（「已审批且未结算」语义） | E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；间接实证：入库 APPROVED 后进入候选、结算后排除；DRAFT 入库未单独验证） |
+| B-23-5 | 选入库单回填入库金额 | 功能 | 有候选 | 选入库单 | inboundAmount=totalAmount | L1 purchase-matrix.component.test.ts（2026-08-20，handleInboundChange 回填+未命中归 0）+ E2E b5-purchase.spec.ts（真实模式；API 层 inboundAmount=1000 自动回填实证） |
+| B-23-6 | 结算金额>入库金额拦截（双保险） | 负向 | 入库 10 万 | 输 12 万确定 | input-number max 限制 + warning「结算金额不能大于入库金额」 | L1 purchase-matrix.component.test.ts（2026-08-20，双保险拆两例：:max 钳制超额值实证 + 逻辑层 warning 拦截） |
+| B-23-7 | 同一入库单二次结算 | 负向 | 入库单已结算 | 再选合同 | 候选列表不再含该单；API 直连应被拒 | E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；候选排除=[] + API 直连 code=500「该入库单已存在结算记录，不可重复结算」+ 累计不重复实证） |
+| B-23-8 | 编辑态合同/入库单锁定 | 功能 | 草稿单 | 编辑 | 两 select disabled=isEdit | L1 purchase-matrix.component.test.ts（2026-08-20，源码钉住） |
+| B-23-9 | 草稿行三按钮 vs 已审批行文本 | 功能 | 各状态行 | 观察 | 模板分支 | L1 purchase-matrix.component.test.ts（2026-08-20，源码钉住） |
+| B-23-10 | 提交进入审批确认框 | 功能 | 草稿单 | 提交 | 「确定提交该结算单进入审批流程吗？」→已提交审批 | E2E expense-write.spec.ts（真实模式；UI 写路径）+ E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；提交直批 APPROVED 实证）+ L5-API |
+| B-23-11 | 合同筛选 change 即搜索 | 功能 | 多合同 | 切换下拉 | @change=handleSearch | L1 purchase-matrix.component.test.ts（2026-08-20，源码钉住）+ L5-API |
+| B-23-12 | 金额格式化两位小数 | 一致性 | 有数据 | 查看列表 | formatAmount 与接口值一致 | L1 purchase-matrix.component.test.ts（2026-08-20，formatAmount 两位小数千分位+空值 0.00） |
 | B-23-13 | 分页 page/size | 边界 | 数据>10 | 翻页 | 正确 | 无 |
+| B-23-14 | APPROVED 结算单删除守卫 | 负向 | 已审批结算 | 删除 | 后端拦截「仅草稿状态可删除」 | E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；code=500 守卫文案正向断言实证） |
 
 ### B24 询价比价（/purchase/inquiry）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-24-1 | 必填 title/materialName/quantity | 负向 | 新增 | 留空确定 | 三条提示；materialName 必填即保证 items 非空 | L5-API |
-| B-24-2 | 数量 min=1 | 边界 | 新增 | 输入 0 | input-number 拒绝 | 无 |
-| B-24-3 | payload 组装 items 数组 | 功能 | 合法表单 | 保存 | buildInquiryPayload 结构 | L5-API |
-| B-24-4 | 发布仅 DRAFT 可见 | 功能 | 各状态行 | 观察按钮 | v-if status==='DRAFT' | L5-API |
-| B-24-5 | 发布确认框+状态→报价中 | 功能 | 草稿单 | 发布 | PUBLISHED 显示「报价中」 | L5-API |
-| B-24-6 | 状态五态展示含 ANNOUNCED | 一致性 | 各状态 | 查看 | 展示分支含 ANNOUNCED，但筛选下拉无此选项（观察项） | 无 |
+| B-24-1 | 必填 title/materialName/quantity | 负向 | 新增 | 留空确定 | 三条提示；materialName 必填即保证 items 非空 | L1 purchase-matrix.component.test.ts（2026-08-20）+ L5-API |
+| B-24-2 | 数量 min=1 | 边界 | 新增 | 输入 0 | input-number 拒绝 | L1 purchase-matrix.component.test.ts（2026-08-20，:min=1 源码钉住） |
+| B-24-3 | payload 组装 items 数组 | 功能 | 合法表单 | 保存 | buildInquiryPayload 结构（items 数组+deadline 归一化 datetime） | L1 purchase-matrix.component.test.ts（2026-08-20，deadline 拼接/幂等/缺省三分支）+ L5-API |
+| B-24-4 | 发布仅 DRAFT 可见 | 功能 | 各状态行 | 观察按钮 | v-if status==='DRAFT'；比价定标 PUBLISHED/QUOTED/AWARDED 可见 | L1 purchase-matrix.component.test.ts（2026-08-20，源码钉住）+ L5-API |
+| B-24-5 | 发布确认框+状态→报价中 | 功能 | 草稿单 | 发布 | PUBLISHED 显示「报价中」 | E2E expense-write.spec.ts（真实模式；B-P-X1 链路含发布）+ L5-API |
+| B-24-6 | 状态五态展示含 ANNOUNCED | 一致性 | 各状态 | 查看 | 展示分支含 ANNOUNCED，但筛选下拉无此选项（现状钉住） | L1 purchase-matrix.component.test.ts（2026-08-20，展示 vs 筛选差异源码钉住） |
 | B-24-7 | 标题+状态筛选/重置 | 功能 | 多数据 | 搜索 | 过滤 | 无 |
-| B-24-8 | 已发布询价编辑守卫 | 负向 | PUBLISHED 单 | 编辑保存 | 前端无禁用（盲点），依赖后端 | 无 |
+| B-24-8 | 已发布询价编辑守卫 | 负向 | PUBLISHED 单 | 编辑保存 | 前端无禁用（盲点），依赖后端 | L1 purchase-matrix.component.test.ts（2026-08-20，现状钉住：编辑按钮无状态条件） |
 | B-24-9 | 报价数 quotationCount 展示 | 集成 | 有报价 | 查看 | 与 quotation 接口条数一致（三家报价实证） | L5-API |
 | B-24-10 | 删除确认（含已报价单据） | 负向 | QUOTED 单 | 删除 | 前端放行，引用守卫依赖后端 | 无 |
 | B-24-11 | 分页 pageNum/pageSize | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
 ### B-X 采购跨模块集成
 
-| 用例ID | 测试点 | 链路 | 预期 |
-|---|---|---|---|
-| B-P-X1 | 询价→报价→定标→合同 | 发布询价→3 家报价→calculate 排名→confirm 中标 | 最低价排名第一（API 层已覆盖，UI 层未覆盖） |
-| B-P-X2 | 入库审批→采购结算前置 | 入库单 APPROVED→结算页选合同 | 候选出现；结算金额=入库金额可保存 |
-| B-P-X3 | 结算审批→合同累计结算+项目 totalExpense 回写 | 提交审批通过 | 合同累计增加、项目支出增加、预算管控累计生效 |
-| B-P-X4 | 退货出库→退款→采购结算冲减联动 | RETURN 出库审批 | 退款生成（refund 页可见），合同累计口径正确 |
-| B-P-X5 | 预算 BLOCK 拦截采购结算 | 累计结算超预算且 BLOCK | 提交被拦截（四类支出合同共性管控） |
+| 用例ID | 测试点 | 链路 | 预期 | 现有覆盖 |
+|---|---|---|---|---|
+| B-P-X1 | 询价→报价→定标→合同 | 发布询价→3 家报价→calculate 排名→confirm 中标 | 最低价排名第一（UI 层已覆盖） | E2E expense-write.spec.ts（真实模式；UI 定标链路）+ L1 purchase-matrix.component.test.ts（2026-08-20，空排名 warning + 定标 payload/状态翻转 AWARDED 两用例） |
+| B-P-X2 | 入库审批→采购结算前置 | 入库单 APPROVED→结算页选合同 | 候选出现；结算金额=入库金额可保存 | E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；入库直批 APPROVED→候选出现→结算创建回填→直批 APPROVED 全链实证） |
+| B-P-X3 | 结算审批→合同累计结算+项目 totalExpense 回写 | 提交审批通过 | 合同累计增加、项目支出增加、预算管控累计生效 | E2E b5-purchase.spec.ts（真实模式，2026-08-20 全绿；结算审批后合同 cumulativeSettlement=1000 回写实证；totalExpense 未单独验证） |
+| B-P-X4 | 退货出库→退款→采购结算冲减联动 | RETURN 出库审批 | 退款生成（refund 页可见），合同累计口径正确 | 无 |
+| B-P-X5 | 预算 BLOCK 拦截采购结算 | 累计结算超预算且 BLOCK | 提交被拦截（四类支出合同共性管控） | 无 |
 
 ---
 
