@@ -550,39 +550,39 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-14-1 | 必填 contractName/teamName | 负向 | 新增 | 留空确定 | 提示 | 无 |
-| B-14-2 | 金额 min=0 | 边界 | 新增 | 负数 | 拒绝 | 无 |
-| B-14-3 | 状态筛选 DRAFT/EFFECTIVE | 功能 | 混合数据 | 筛选 | 过滤正确 | 无 |
+| B-14-1 | 必填 contractName/teamName | 负向 | 新增 | 留空确定 | 提示 | L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-14-2 | 金额 min=0 | 边界 | 新增 | 负数 | 拒绝 | L1 labor-matrix.component.test.ts（2026-08-20，positiveAmount 规则钉住） |
+| B-14-3 | 状态筛选 DRAFT/EFFECTIVE | 功能 | 混合数据 | 筛选 | 过滤正确 | L5-API + L1 labor-matrix.component.test.ts（2026-08-20） |
 | B-14-4 | 状态展示 生效/草稿 | 一致性 | 各状态 | 查看 | EFFECTIVE→生效 success | L5-一致性 |
-| B-14-5 | 名称+队伍搜索/重置 | 功能 | 有数据 | 搜索 | 过滤 | L5-API |
-| B-14-6 | 编辑/删除 | 功能 | 合同行 | 操作 | 成功+确认框 | L5-API |
-| B-14-7 | 页面无提交按钮但 API 存在 | 一致性 | — | 对照 api/labor.ts | 审批入口缺失，与 L5-API「提交劳务合同审批」不对称 | L5-API |
-| B-14-8 | 生效合同编辑守卫 | 负向 | EFFECTIVE 合同 | 编辑保存 | 前端无禁用（盲点），后端守卫 | 无 |
+| B-14-5 | 名称+队伍搜索/重置 | 功能 | 有数据 | 搜索 | 过滤 | L5-API + L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-14-6 | 编辑/删除 | 功能 | 合同行 | 操作 | 成功+确认框 | L5-API + L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-14-7 | 提交入口（原「页面无提交按钮」已过时，盲点13 已修复） | 一致性 | 草稿合同 | 提交 | DRAFT 显示提交按钮，直批生效 | L1 labor-pages.component.test.ts（DRAFT 提交守卫钉住）+ L1 labor-matrix.component.test.ts（2026-08-20）+ E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；提交直批 DRAFT→EFFECTIVE 无 BPMN + EFFECTIVE 重提交拦截实证） |
+| B-14-8 | 生效合同编辑守卫 | 负向 | EFFECTIVE 合同 | 编辑保存 | 前端无禁用（盲点），后端守卫 | L1 labor-matrix.component.test.ts（2026-08-20，现状钉住：编辑/删除无状态条件，与分包 D6 不一致） |
 | B-14-9 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
 ### B15 班组管理（/labor/team）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-15-1 | 必填 teamName/leaderName/workType | 负向 | 新增 | 留空确定 | 三条提示 | 无 |
-| B-15-2 | 人数 min=1 默认 1 | 边界 | 新增 | 输入 0 | input-number 拒绝 | 无 |
-| B-15-3 | 班组名+工种搜索/重置 | 功能 | 有数据 | 搜索 | 过滤 | 无 |
-| B-15-4 | 新增/编辑/删除 CRUD | 功能 | — | 全流程 | 成功+确认 | 无（API 测试无 team 用例） |
-| B-15-5 | 联系电话无格式校验 | 边界 | 新增 | 输入非法号码 | 前端放行（无规则，盲点） | 无 |
-| B-15-6 | 班组作为工资单下拉源 | 集成 | 有班组 | 打开 payroll 生成弹窗 | teamOptions 含该班组 | 无 |
-| B-15-7 | 删除被用工单引用的班组 | 负向 | 班组有用工单 | 删除 | 引用守卫依赖后端 | 无 |
+| B-15-1 | 必填 teamName/leaderName/workType | 负向 | 新增 | 留空确定 | 三条提示 | L1 team-crud.component.test.ts（crudPageSuite 必填首条）+ L1 labor-matrix.component.test.ts（2026-08-20 规则条数钉住） |
+| B-15-2 | 人数 min=1 默认 1 | 边界 | 新增 | 输入 0 | input-number 拒绝 | L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-15-3 | 班组名+工种搜索/重置 | 功能 | 有数据 | 搜索 | 过滤 | L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-15-4 | 新增/编辑/删除 CRUD | 功能 | — | 全流程 | 成功+确认 | L1 team-crud.component.test.ts（CRUD 标准 6 用例）+ L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-15-5 | 联系电话无格式校验 | 边界 | 新增 | 输入非法号码 | 前端放行（无规则，盲点） | L1 labor-matrix.component.test.ts（2026-08-20，现状钉住） |
+| B-15-6 | 班组作为工资单下拉源 | 集成 | 有班组 | 打开 payroll 生成弹窗 | teamOptions 含该班组 | L1 labor-matrix.component.test.ts（2026-08-20，payroll 班组选项源断言） |
+| B-15-7 | 删除被用工单引用的班组 | 负向 | 班组有用工单 | 删除 | 引用守卫依赖后端 | E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；被 APPROVED 工资单引用→400「该记录被 N 条数据引用，无法删除」实证，msg 字段） |
 | B-15-8 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
 ### B16 劳务花名册（/labor/roster）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-16-1 | 必填 workerName/idCard | 负向 | 新增 | 留空确定 | 提示 | 无 |
-| B-16-2 | 身份证号无格式/查重校验 | 负向 | 新增 | 输入 5 位随意字符 | 前端放行（盲点） | 无 |
+| B-16-1 | 必填 workerName/idCard | 负向 | 新增 | 留空确定 | 提示 | L1 labor-matrix.component.test.ts（2026-08-20）+ L1 roster-crud.component.test.ts（crudPageSuite 必填首条） |
+| B-16-2 | 身份证号无格式/查重校验 | 负向 | 新增 | 输入 5 位随意字符 | 前端放行（盲点） | L1 labor-matrix.component.test.ts（2026-08-20，现状钉住） |
 | B-16-3 | 在场状态 status===1 展示 | 一致性 | 在场/退场 | 查看 | 在场 success/退场 info | 无 |
 | B-16-4 | 姓名+班组+工种三条件搜索/重置 | 功能 | 有数据 | 组合搜索 | 过滤 | 无 |
-| B-16-5 | 新增/编辑/删除 CRUD | 功能 | — | 全流程 | 成功 | L5-API |
-| B-16-6 | 表单无退场日期字段但列表展示 exitDate | 一致性 | 退场人员 | 编辑 | exitDate 只读展示、不可编辑（观察项） | 无 |
+| B-16-5 | 新增/编辑/删除 CRUD | 功能 | — | 全流程 | 成功 | L5-API + L1 roster-crud.component.test.ts（CRUD 标准 6 用例）+ L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-16-6 | 表单无退场日期字段但列表展示 exitDate | 一致性 | 退场人员 | 编辑 | exitDate 只读展示、不可编辑（观察项） | L1 labor-matrix.component.test.ts（2026-08-20，源码断言钉住） |
 | B-16-7 | 进场日期选未来日期 | 边界 | 新增 | 选明天 | 前端无限制 | 无 |
 | B-16-8 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | L5-API |
 
@@ -590,30 +590,32 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-17-1 | 必填 projectId/teamId/workerName/orderType/workDate | 负向 | 新增 | 留空确定 | 五条提示 | 无 |
-| B-17-2 | 合计预览=hours×hourlyRate+overtime×overtimeRate | 功能 | 新增 | hours=8,rate=50,overtime=2,otRate=75 | 预览 550.00 元 | 无 |
-| B-17-3 | 预览与后端计算一致性 | 一致性 | 同上 | 保存后对比 totalAmount | 列表合计应=预览值（「最终以后端计算为准」核对用例） | 无 |
-| B-17-4 | 工时/时薪 min=0 边界 | 边界 | 新增 | 负数/高精度 | precision 1/2 位截断 | 无 |
-| B-17-5 | 提交/删除仅 DRAFT 可见 | 功能 | 各状态行 | 观察按钮 | v-if status==='DRAFT' | 无 |
-| B-17-6 | 提交确认后状态→已确认 | 功能 | 草稿单 | 提交 | APPROVED 显示「已确认」 | 无（API 测试无用工单用例） |
+| B-17-1 | 必填 projectId/teamId/workerName/orderType/workDate | 负向 | 新增 | 留空确定 | 五条提示 | L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-17-2 | 合计预览=hours×hourlyRate+overtime×overtimeRate | 功能 | 新增 | hours=8,rate=50,overtime=2,otRate=75 | 预览 550.00 元 | L1 labor-matrix.component.test.ts（2026-08-20，totalPreview computed：8×30+2×45=330） |
+| B-17-3 | 预览与后端计算一致性 | 一致性 | 同上 | 保存后对比 totalAmount | 列表合计应=预览值（「最终以后端计算为准」核对用例） | E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；后端 totalAmount=330 与预览公式实证一致） |
+| B-17-4 | 工时/时薪 min=0 边界 | 边界 | 新增 | 负数/高精度 | precision 1/2 位截断 | L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-17-5 | 提交/删除仅 DRAFT 可见 | 功能 | 各状态行 | 观察按钮 | v-if status==='DRAFT' | L1 labor-pages.component.test.ts（DRAFT 提交守卫钉住） |
+| B-17-6 | 提交确认后状态→已确认 | 功能 | 草稿单 | 提交 | APPROVED 显示「已确认」 | L1 labor-pages.component.test.ts（submitWorkOrder 调用）+ E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；直批 DRAFT→APPROVED + 重提交拦截实证） |
 | B-17-7 | 用工类型 FIXED/TEMPORARY 展示 | 功能 | 两类 | 查看 | 固定/临时 | 无 |
-| B-17-8 | 项目+班组+状态组合筛选 | 功能 | 多数据 | 组合搜索 | 过滤 | 无 |
+| B-17-8 | 项目+班组+状态组合筛选 | 功能 | 多数据 | 组合搜索 | 过滤 | L1 labor-matrix.component.test.ts（2026-08-20） |
 | B-17-9 | 编辑合并默认值 | 功能 | 已有单 | 编辑 | emptyForm+row 合并 | 无 |
 | B-17-10 | 工人姓名与花名册无联动校验 | 负向 | — | 输入不存在工人 | 前端自由文本（盲点） | 无 |
 | B-17-11 | 分页 page/size | 边界 | 数据>10 | 翻页 | 正确 | 无 |
+
+另：B17 后端删除守卫缺陷钉住——APPROVED 用工单 DELETE 返回 code=200 放行（探针实证 2026-08-20；前端仅 DRAFT 显示删除按钮但 API 层无状态守卫，与 payroll「仅草稿状态可删除」不一致；b3-labor.spec.ts afterAll 清理利用该现状删除，修复后需补负向断言）
 
 ### B18 工资单（/labor/payroll）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-18-1 | 生成必填 teamId/orderType/period | 负向 | 生成弹窗 | 留空生成 | 三条提示 | 无 |
-| B-18-2 | 选班组自动带出 projectId | 功能 | 班组有项目 | 选班组 | handleTeamChange 填 team.projectId | 无 |
-| B-18-3 | 结算金额自动汇总 alert 语义 | 集成 | 周期内有 APPROVED 用工单 | 生成 | totalSettlement=Σ用工单合计 | L5-API |
+| B-18-1 | 生成必填 teamId/orderType/period | 负向 | 生成弹窗 | 留空生成 | 三条提示 | L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-18-2 | 选班组自动带出 projectId | 功能 | 班组有项目 | 选班组 | handleTeamChange 填 team.projectId | L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-18-3 | 结算金额自动汇总 alert 语义 | 集成 | 周期内有 APPROVED 用工单 | 生成 | totalSettlement=Σ用工单合计 | L5-API + L1 labor-matrix.component.test.ts（2026-08-20）+ E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；生成 totalSettlement=330=周期内唯一 APPROVED 用工单实证） |
 | B-18-4 | 周期内无已审批用工单生成 | 负向 | 空周期 | 生成 | 0 元单或后端拒绝待验证 | 无 |
-| B-18-5 | 三态状态标签 DRAFT/APPROVED/SETTLED | 一致性 | 各状态 | 查看 | 草稿/已审批/已结算 | 无 |
-| B-18-6 | 提交/删除仅 DRAFT | 功能 | 各状态 | 观察 | v-if | L5-API |
-| B-18-7 | 已付/未付列联动 | 集成 | 有付款 | 查看 | totalPaid+unpaid=totalSettlement 恒等式 | 无 |
-| B-18-8 | 班组名+状态筛选/重置 | 功能 | 多数据 | 搜索 | 过滤 | L5-API |
+| B-18-5 | 三态状态标签 DRAFT/APPROVED/SETTLED | 一致性 | 各状态 | 查看 | 草稿/已审批/已结算 | L1 labor-matrix.component.test.ts（2026-08-20） |
+| B-18-6 | 提交/删除仅 DRAFT | 功能 | 各状态 | 观察 | v-if | L5-API + L1 settlement-docs.component.test.ts（payroll 提交/删除）+ E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；APPROVED 后删除拦截「仅草稿状态可删除」实证） |
+| B-18-7 | 已付/未付列联动 | 集成 | 有付款 | 查看 | totalPaid+unpaid=totalSettlement 恒等式 | E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；无付款 totalPaid=0/unpaid=330 实证） |
+| B-18-8 | 班组名+状态筛选/重置 | 功能 | 多数据 | 搜索 | 过滤 | L5-API + L1 labor-matrix.component.test.ts（2026-08-20，payload period 拆分 periodStart/periodEnd 断言） |
 | B-18-9 | 重复生成同班组同周期 | 负向 | 已存在 | 再生成 | 前端无守卫，依赖后端唯一性 | 无 |
 | B-18-10 | 分页 pageNum/pageSize | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
@@ -621,28 +623,30 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-19-1 | 未选项目查询拦截 | 负向 | 空条件 | 点查询 | warning「请选择项目」 | 无 |
-| B-19-2 | 未选月份查询拦截 | 负向 | 只选项目 | 查询 | warning「请选择月份」 | 无 |
-| B-19-3 | 汇总栏 应发/扣款/实发恒等 | 功能 | 有数据 | 查询 | totalActual=totalPayable-totalDeduction | 无 |
-| B-19-4 | 同比环比为 null 显示「暂无数据」 | 边界 | 无上月数据 | 查询 | 模板分支 | 无 |
-| B-19-5 | 比率正负配色 rate-up/rate-down | 功能 | 有升有降 | 查询 | getRateClass | 无 |
-| B-19-6 | Tab ALL/FIXED/TEMPORARY 前端过滤 | 功能 | 两类班组 | 切 Tab | filteredTeamList 按 orderType 过滤 | 无 |
-| B-19-7 | 班组名称本地 includes 过滤 | 功能 | 多班组 | 输入关键字 | 本地过滤 | 无 |
-| B-19-8 | 工人姓名筛选字段未生效 | 负向 | — | 输入工人姓名查询 | queryParams.workerName 既未传 API 也未本地过滤→**失效控件（源码实证盲点）** | 无 |
-| B-19-9 | 展开行懒加载明细 + 明细分页>10 | 功能 | 班组人数>10 | 展开 | getSalaryDetail size=10，_detailTotal>10 显示分页 | 无 |
-| B-19-10 | 导出按钮禁用态 !statsData | 功能 | 未查询 | 查看按钮 | disabled | 无 |
-| B-19-11 | 导出 fetch+Bearer blob | 功能 | 已查询 | 导出 | 文件名 薪资统计_{month}.xlsx；失败提示「导出失败，请稍后重试」 | 无 |
-| B-19-12 | 切项目清空旧数据；重置全清 | 功能 | 已查询 | 换项目/重置 | statsData/compareData/searched 清空 | 无 |
+| B-19-1 | 未选项目查询拦截 | 负向 | 空条件 | 点查询 | warning「请选择项目」 | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20，双拦截） |
+| B-19-2 | 未选月份查询拦截 | 负向 | 只选项目 | 查询 | warning「请选择月份」 | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20，双拦截） |
+| B-19-3 | 汇总栏 应发/扣款/实发恒等 | 功能 | 有数据 | 查询 | totalActual=totalPayable-totalDeduction | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20）+ E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；真实数据恒等式实证） |
+| B-19-4 | 同比环比为 null 显示「暂无数据」 | 边界 | 无上月数据 | 查询 | 模板分支 | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20）+ E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；compare momRate/yoyRate=null 实证） |
+| B-19-5 | 比率正负配色 rate-up/rate-down | 功能 | 有升有降 | 查询 | getRateClass | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20） |
+| B-19-6 | Tab ALL/FIXED/TEMPORARY 前端过滤 | 功能 | 两类班组 | 切 Tab | filteredTeamList 按 orderType 过滤 | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20） |
+| B-19-7 | 班组名称本地 includes 过滤 | 功能 | 多班组 | 输入关键字 | 本地过滤 | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20） |
+| B-19-8 | 工人姓名筛选字段已修复（原失效控件） | 负向 | — | 输入工人姓名查询 | workerName 本地过滤明细（盲点9 修复后） | L1 material-salary-defects.component.test.ts（盲点9 修复钉住） |
+| B-19-9 | 展开行懒加载明细 + 明细分页>10 | 功能 | 班组人数>10 | 展开 | getSalaryDetail size=10，_detailTotal>10 显示分页 | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20，源码断言 v-if="row._detailTotal > 10"） |
+| B-19-10 | 导出按钮禁用态 !statsData | 功能 | 未查询 | 查看按钮 | disabled | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20，源码断言 :disabled="!statsData"） |
+| B-19-11 | 导出 fetch+Bearer blob | 功能 | 已查询 | 导出 | 文件名 薪资统计_{month}.xlsx；失败提示「导出失败，请稍后重试」 | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20，文件名模板源码断言） |
+| B-19-12 | 切项目清空旧数据；重置全清 | 功能 | 已查询 | 换项目/重置 | statsData/compareData/searched 清空 | L1 labor-salary-stats-matrix.component.test.ts（2026-08-20） |
+
+另：B19 无已审批工资单时查询 → HTTP 200 + body code=500「该月份暂无已审批的薪资数据」（E2E b3-labor.spec.ts，真实模式，2026-08-20 全绿；payroll APPROVED 后 code=200 数据可见实证）
 
 ### B-X 劳务跨模块集成
 
-| 用例ID | 测试点 | 链路 | 预期 |
-|---|---|---|---|
-| B-L-X1 | 班组→花名册→用工单链路 | 建班组→添人员→按班组开单 | teamId 关联正确，TeamSelector 数据一致 |
-| B-L-X2 | 用工单 APPROVED→工资单汇总 | 周期内 3 张已确认用工单→生成工资单 | totalSettlement=三单合计 |
-| B-L-X3 | 工资单提交→薪资统计可见 | submitPayroll 审批通过 | 当月 stats 出现该班组应发/实发 |
-| B-L-X4 | 工资单结算→项目劳务支出回写 | 审批/结算 | 项目 totalExpense 增加，预算管控累计依据 |
-| B-L-X5 | 个税/扣款展示链路 | 有扣款数据 | 扣款合计与明细 deduction 之和一致 |
+| 用例ID | 测试点 | 链路 | 预期 | 现有覆盖 |
+|---|---|---|---|---|
+| B-L-X1 | 班组→花名册→用工单链路 | 建班组→添人员→按班组开单 | teamId 关联正确，TeamSelector 数据一致 | E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；建班组→按 teamId 开用工单 DRAFT→APPROVED 实证） |
+| B-L-X2 | 用工单 APPROVED→工资单汇总 | 周期内 3 张已确认用工单→生成工资单 | totalSettlement=三单合计 | E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；单张 APPROVED 用工单 330 汇总实证） |
+| B-L-X3 | 工资单提交→薪资统计可见 | submitPayroll 审批通过 | 当月 stats 出现该班组应发/实发 | E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；APPROVED 前 code=500 拦截/后 code=200 totalPayable=330 + 班组维度 FIXED 实证） |
+| B-L-X4 | 工资单结算→项目劳务支出回写 | 审批/结算 | 项目 totalExpense 增加，预算管控累计依据 | 无 |
+| B-L-X5 | 个税/扣款展示链路 | 有扣款数据 | 扣款合计与明细 deduction 之和一致 | E2E b3-labor.spec.ts（真实模式，2026-08-20 全绿；无扣款 totalDeduction=0 恒等实证，有扣款场景待补） |
 
 ## B-4 分包管理（/subcontract，2 页）
 
@@ -652,40 +656,40 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| B-20-1 | 必填 contractName/subcontractor | 负向 | 新增 | 留空确定 | 提示 | 无 |
-| B-20-2 | 金额 min=0 precision=2 | 边界 | 新增 | 负数 | 拒绝 | 无 |
+| B-20-1 | 必填 contractName/subcontractor | 负向 | 新增 | 留空确定 | 提示 | L1 subcontract-contract-crud.component.test.ts（D1 projectId 规则钉住） |
+| B-20-2 | 金额 min=0 precision=2 | 边界 | 新增 | 负数 | 拒绝 | L1 subcontract-contract-crud.component.test.ts（D3 contractAmount 拒绝 0/null/负数） |
 | B-20-3 | 名称+分包方搜索/重置 | 功能 | 有数据 | 搜索 | 过滤 | L5-API |
-| B-20-4 | 状态展示与筛选缺失 | 一致性 | 各状态 | 查看 | 展示正确；查询区无状态筛选（对比劳务/采购有） | L5-一致性 |
+| B-20-4 | 状态展示与筛选缺失 | 一致性 | 各状态 | 查看 | 展示正确；查询区无状态筛选（对比劳务/采购有） | L5-一致性 + L1 subcontract-matrix.component.test.ts（2026-08-20，现状钉住：queryParams 无 status 键） |
 | B-20-5 | 编辑/删除 | 功能 | 合同行 | 操作 | 成功+确认 | L5-API |
-| B-20-6 | 页面无提交按钮但 API 存在 | 一致性 | — | 对照 api | UI 审批入口缺失 | L5-API |
-| B-20-7 | 有结算的合同删除守卫 | 负向 | 合同已结算 | 删除 | 前端直接调 delete，依赖后端引用守卫 | 无 |
-| B-20-8 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | 无 |
+| B-20-6 | 提交入口（原「页面无提交按钮」已过时，已补齐） | 一致性 | 草稿合同 | 提交 | DRAFT 显示提交按钮，直批生效 | L1 subcontract-contract-crud.component.test.ts（DRAFT 提交守卫钉住）+ E2E b4-subcontract.spec.ts（真实模式，2026-08-20 全绿；提交直批 DRAFT→EFFECTIVE 无 BPMN + EFFECTIVE 重提交拦截实证） |
+| B-20-7 | 有结算的合同删除守卫 | 负向 | 合同已结算 | 删除 | 前端直接调 delete，依赖后端引用守卫 | E2E b4-subcontract.spec.ts（真实模式，2026-08-20 全绿；缺陷钉住：有已审批结算合同删除 code=200 放行，引用守卫缺失，修复后翻转负向断言） |
+| B-20-8 | 分页 | 边界 | 数据>10 | 翻页 | 正确 | L1 subcontract-matrix.component.test.ts（2026-08-20） |
 
 ### B21 分包结算（/subcontract/settlement）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | B-21-1 | 必填 projectId/contractId | 负向 | 新增 | 留空确定 | 提示 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿） |
-| B-21-2 | 明细为空守卫 | 负向 | 新增 | 不加明细确定 | warning「请至少添加一条结算明细」 | 无 |
-| B-21-3 | 切换项目清空合同选择 | 功能 | 已选合同 | 换项目 | contractId 重置，SubcontractSelector 按 projectId 过滤 | 无 |
+| B-21-2 | 明细为空守卫 | 负向 | 新增 | 不加明细确定 | warning「请至少添加一条结算明细」 | L1 subcontract-matrix.component.test.ts（2026-08-20，formRef 注入绕过 validate 测二次守卫） |
+| B-21-3 | 切换项目清空合同选择 | 功能 | 已选合同 | 换项目 | contractId 重置，SubcontractSelector 按 projectId 过滤 | L1 subcontract-matrix.component.test.ts（2026-08-20） |
 | B-21-4 | 小计=数量×单价、合计=Σ小计 联动 | 功能 | 2 行明细 | 输入数值 | 行小计与 totalAmount 实时正确 | E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；创建 DRAFT 时联动渲染 + settlementAmount=明细合计断言） |
-| B-21-5 | 数量/单价 min=0 边界 | 边界 | 明细行 | 负数 | 拒绝 | 无 |
-| B-21-6 | payload 自动注入 sortOrder | 功能 | 多行明细 | 保存 | details.map 注入 i+1 | 无 |
-| B-21-7 | 编辑回显明细（Number 转换） | 功能 | 已有单 | 编辑 | quantity/unitPrice Number 回显 | 无 |
+| B-21-5 | 数量/单价 min=0 边界 | 边界 | 明细行 | 负数 | 拒绝 | L1 subcontract-matrix.component.test.ts（2026-08-20） |
+| B-21-6 | payload 自动注入 sortOrder | 功能 | 多行明细 | 保存 | details.map 注入 i+1 | L1 subcontract-matrix.component.test.ts（2026-08-20）+ E2E b4-subcontract.spec.ts（真实模式，2026-08-20 全绿；sortOrder 落库回读=[1,2] 实证） |
+| B-21-7 | 编辑回显明细（Number 转换） | 功能 | 已有单 | 编辑 | quantity/unitPrice Number 回显 | L1 subcontract-matrix.component.test.ts（2026-08-20，Number 回显断言） |
 | B-21-8 | 提交/删除仅 DRAFT | 功能 | 各状态 | 观察按钮 | v-if | L5-API + E2E expense-write-2.spec.ts（真实模式，2026-08-18 全绿；UI 提交 APPROVED + 详情级联回读明细，VO 嵌套 settlement/details 实证） |
-| B-21-9 | 累计结算金额展示与回写 | 集成 | 同合同第二张单 | 审批通过 | cumulativeSettlement=历次之和 | 无 |
-| B-21-10 | 结算超合同金额预算管控 | 负向 | 累计>contractAmount | 提交 | 后端 BLOCK/WARN_ONLY 拦截（前端无此校验） | 无 |
+| B-21-9 | 累计结算金额展示与回写 | 集成 | 同合同第二张单 | 审批通过 | cumulativeSettlement=历次之和 | E2E b4-subcontract.spec.ts（真实模式，2026-08-20 全绿；结算审批后合同 cumulativeSettlement=10000 回写实证，累计口径在合同级） |
+| B-21-10 | 结算超合同金额预算管控 | 负向 | 累计>contractAmount | 提交 | 后端 BLOCK/WARN_ONLY 拦截（前端无此校验） | L1 subcontract-matrix.component.test.ts（2026-08-20，前端无校验现状钉住） |
 | B-21-11 | 合同/状态筛选搜索 | 功能 | 多数据 | 筛选 | 过滤 | L5-API |
 | B-21-12 | 分页 page/size | 边界 | 数据>10 | 翻页 | 正确 | 无 |
 
 ### B-X 分包跨模块集成
 
-| 用例ID | 测试点 | 链路 | 预期 |
-|---|---|---|---|
-| B-S-X1 | 合同生效→结算可选 | 合同提交生效后新建结算 | SubcontractSelector 列出该合同 |
-| B-S-X2 | 结算审批→累计结算+项目支出回写 | 提交审批通过 | cumulativeSettlement 与项目 totalExpense 同步增加 |
-| B-S-X3 | 超合同额预算 BLOCK | 累计结算>合同额且预算 BLOCK | 提交被拦截并提示 |
-| B-S-X4 | WARN_ONLY 模式放行 | 同上但 WARN_ONLY | 提示警告但允许继续 |
+| 用例ID | 测试点 | 链路 | 预期 | 现有覆盖 |
+|---|---|---|---|---|
+| B-S-X1 | 合同生效→结算可选 | 合同提交生效后新建结算 | SubcontractSelector 列出该合同 | E2E b4-subcontract.spec.ts（真实模式，2026-08-20 全绿；EFFECTIVE 合同→创建结算 DRAFT 链路实证） |
+| B-S-X2 | 结算审批→累计结算+项目支出回写 | 提交审批通过 | cumulativeSettlement 与项目 totalExpense 同步增加 | E2E b4-subcontract.spec.ts（真实模式，2026-08-20 全绿；直批 APPROVED + cumulativeSettlement=10000 + VO 嵌套 settlement/details 实证） |
+| B-S-X3 | 超合同额预算 BLOCK | 累计结算>合同额且预算 BLOCK | 提交被拦截并提示 | 无 |
+| B-S-X4 | WARN_ONLY 模式放行 | 同上但 WARN_ONLY | 提示警告但允许继续 | E2E b4-subcontract.spec.ts（真实模式，2026-08-20 全绿；自置 WARN_ONLY 管控下结算提交放行实证） |
 
 ## B-5 采购管理（/purchase，3 页）
 
