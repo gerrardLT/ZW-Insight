@@ -1745,7 +1745,7 @@
 | D-28-12 | 模板管理→推送配置下拉 | 集成 | 新建通用模板 | push-config 模板下拉出现 | 无 |
 | D-28-13 | 多设备踢出→安全消息→设备页 | 集成 | 第 6 设备登录 | 被踢用户收到 SECURITY 消息并可跳设备页 | 无 |
 
-## D-5 工作流管理（/workflow，5 页）
+## D-5 工作流管理（/workflow，5 页，2026-08-20 M10：L1 workflow-platform-matrix +30 例（与平台域合文件），新覆 17 行 + 回填既有 5 行）
 
 **业务概述**：设计器集成 bpmn-js（DEFAULT_XML：StartEvent→UserTask→EndEvent，导入失败提示「导入的文件格式不正确」，unmount 时 destroy）；流程定义页支持部署上传（accept .bpmn/.bpmn20.xml/.xml）、流程图与历史版本，但**无挂起/激活**；审批页仅 todo/done 两 tab（批量通过、通过附意见、退回 previous/start、终止），**无「我发起」/委托 UI/撤回**——api/workflow.ts 亦无 suspend/activate/withdraw 函数（delegateTask/transferTask API 存在但无页面消费）。
 
@@ -1753,13 +1753,13 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| D-29-1 | 画布初始化 | 功能 | 无 | 进入页面 | BpmnModeler 加载 DEFAULT_XML 三节点 | L5-UI |
-| D-29-2 | 导出 XML 下载 | 功能 | 画布有内容 | 保存/下载 | 下载 process.bpmn（saveXML） | 无 |
+| D-29-1 | 画布初始化 | 功能 | 无 | 进入页面 | BpmnModeler 加载 DEFAULT_XML 三节点 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，DEFAULT_XML 三节点源码钉住+挂载 importXML 调用） |
+| D-29-2 | 导出 XML 下载 | 功能 | 画布有内容 | 保存/下载 | 下载 process.bpmn（saveXML） | L1 workflow-platform-matrix.component.test.ts（2026-08-20，saveXML({format:true})+「已保存为 process.bpmn」提示） |
 | D-29-3 | 导入合法 bpmn | 功能 | 有效文件 | 导入 | importXML 成功渲染 | 无 |
-| D-29-4 | 导入非法文件 | 负向 | 非 bpmn 文件 | 导入 | 提示「导入的文件格式不正确」 | 无 |
+| D-29-4 | 导入非法文件 | 负向 | 非 bpmn 文件 | 导入 | 提示「导入的文件格式不正确」 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，importXML 失败→ElMessage.error 文案；注：designer accept 为 .bpmn/.xml 与流程定义页三项不同） |
 | D-29-5 | 部署流程 | 集成 | 画布有效 | 部署 | FormData(file+name) 提交成功 | 无 |
 | D-29-6 | 部署空画布 | 负向 | 未改动 | 部署 | 默认 XML 可部署或提示 | 无 |
-| D-29-7 | 组件销毁释放 | 边界 | 画布已加载 | 离开页面 | onBeforeUnmount modeler.destroy() 无泄漏 | 无 |
+| D-29-7 | 组件销毁释放 | 边界 | 画布已加载 | 离开页面 | onBeforeUnmount modeler.destroy() 无泄漏 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，unmount 后 destroy 调用断言） |
 | D-29-8 | 拖拽节点编辑 | 功能 | 无 | 增删节点连线 | XML 同步变化 | 无 |
 | D-29-9 | 无权限访问 | 权限 | 无权限 | 访问 | 守卫拦截 | L1 |
 
@@ -1769,11 +1769,11 @@
 |---|---|---|---|---|---|---|
 | D-30-1 | 定义列表 | 功能 | 已部署流程 | 进入页面 | getProcessList 渲染 | L5-API/L5-一致性/L5-UI |
 | D-30-2 | 上传部署 | 功能 | 合法 .bpmn | 上传 | 部署成功列表+版本 | L5-API |
-| D-30-3 | 上传格式限制 | 负向 | .txt 文件 | 上传 | accept 限制/拒绝 | 无 |
-| D-30-4 | 流程图展示 | 功能 | 定义存在 | 查看图片 | getProcessImage URL 渲染 | 无 |
+| D-30-3 | 上传格式限制 | 负向 | .txt 文件 | 上传 | accept 限制/拒绝 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，accept=".bpmn,.bpmn20.xml,.xml" 源码钉住） |
+| D-30-4 | 流程图展示 | 功能 | 定义存在 | 查看图片 | getProcessImage URL 渲染 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，getProcessImage 同步返回 URL 赋值 currentImageUrl+开弹窗，非 Promise） |
 | D-30-5 | 图片加载失败占位 | 边界 | URL 失效 | 查看 | 占位图 | 无 |
-| D-30-6 | 历史版本查看 | 功能 | 同 key 多版本 | 点版本 | getProcessVersions(row.key) 列表 | 无 |
-| D-30-7 | 挂起/激活 | 负向 | 背景需求 | 查找按钮 | **源码无按钮，api 无 suspend/activate**（差距） | 无 |
+| D-30-6 | 历史版本查看 | 功能 | 同 key 多版本 | 点版本 | getProcessVersions(row.key) 列表 | L1 workflow-pages.component.test.ts（2026-08-15，handleViewVersions 拉取版本列表） |
+| D-30-7 | 挂起/激活 | 负向 | 背景需求 | 查找按钮 | **源码无按钮，api 无 suspend/activate**（差距） | L1 workflow-platform-matrix.component.test.ts（2026-08-20，差距钉住：页面+api 双侧无挂起/激活） |
 | D-30-8 | 重复部署同 key | 边界 | 已部署 | 再传同 key | 版本+1 而非报错 | 无 |
 | D-30-9 | 无权限访问 | 权限 | 无权限 | 访问 | 守卫拦截 | L1 |
 
@@ -1798,14 +1798,14 @@
 | D-32-1 | 待办列表 | 功能 | 有待办 | 进 todo tab | getTodoTasks 渲染 | L5-API/L5-一致性/L5-UI |
 | D-32-2 | 已办列表 | 功能 | 有已办 | 切 done tab | getDoneTasks 渲染 | 同上 |
 | D-32-3 | 单任务通过附意见 | 功能 | 有待办 | 通过弹窗填 comment 确认 | completeTask 成功，待办减少 | L1(use-approval)/L5-UI |
-| D-32-4 | 退回到上一节点 | 功能 | 多节点流程 | 退回弹窗选 previous | rejectToPrevious | 无 |
-| D-32-5 | 退回到发起人 | 功能 | 待办 | 选 start | rejectToStart | 无 |
-| D-32-6 | 批量通过 | 功能 | 勾选多待办 | 批量通过→confirm | batchApprove(taskIds) | L5-API |
-| D-32-7 | 批量通过空选 | 边界 | 未勾选 | 点批量通过 | 禁用或提示 | 无 |
-| D-32-8 | 终止流程 | 功能 | 进行中实例 | 终止→confirm「终止后不可恢复」 | terminateProcess | 无 |
+| D-32-4 | 退回到上一节点 | 功能 | 多节点流程 | 退回弹窗选 previous | rejectToPrevious | L1 workflow-pages.component.test.ts（2026-08-15，submitReject 默认 previous→rejectToPrevious） |
+| D-32-5 | 退回到发起人 | 功能 | 待办 | 选 start | rejectToStart | L1 workflow-pages.component.test.ts（2026-08-15，rejectForm.type='start'→rejectToStart） |
+| D-32-6 | 批量通过 | 功能 | 勾选多待办 | 批量通过→confirm | batchApprove(taskIds) | L1 workflow-pages.component.test.ts（2026-08-15，勾选 taskId 列表提交）/L5-API |
+| D-32-7 | 批量通过空选 | 边界 | 未勾选 | 点批量通过 | 禁用或提示 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，:disabled="selectedRows.length===0"+confirm 拒绝零调用） |
+| D-32-8 | 终止流程 | 功能 | 进行中实例 | 终止→confirm「终止后不可恢复」 | terminateProcess | L1 workflow-pages.component.test.ts（2026-08-15，handleTerminate 直调 terminateProcess） |
 | D-32-9 | 已被他人办理的任务 | 边界 | 任务已被处理 | 再通过 | 后端冲突提示，前端不崩 | 无 |
-| D-32-10 | 委托/转办 UI | 负向 | 背景需求 | 查找入口 | **无 UI**（api 有 delegateTask/transferTask，差距） | 无 |
-| D-32-11 | 我发起/撤回 | 负向 | 背景需求 | 查找 tab | **无第三 tab、无 withdraw**（api 亦无，差距） | 无 |
+| D-32-10 | 委托/转办 UI | 负向 | 背景需求 | 查找入口 | **无 UI**（api 有 delegateTask/transferTask，差距） | L1 workflow-platform-matrix.component.test.ts（2026-08-20，差距钉住：页面零消费+api 函数存在实证） |
+| D-32-11 | 我发起/撤回 | 负向 | 背景需求 | 查找 tab | **无第三 tab、无 withdraw**（api 亦无，差距） | L1 workflow-platform-matrix.component.test.ts（2026-08-20，差距钉住：页面仅 todo/done 双 tab，api 无 withdraw） |
 | D-32-12 | 无权限访问 | 权限 | 无权限 | 访问 | 守卫拦截 | L1 |
 
 ### D33 审批回滚日志（/workflow/rollback）
@@ -1813,13 +1813,13 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | D-33-1 | 日志列表 | 功能 | 有回滚记录 | 进入页面 | getRollbackLogs 渲染 | L5-一致性 |
-| D-33-2 | bizType 6 选项过滤 | 功能 | 多类型记录 | 逐类型筛选 | 过滤正确 | 无 |
-| D-33-3 | 状态四态渲染 | 功能 | 四种状态记录 | 查看 | 0成功/1失败/2冲突待确认/3重试中正确 | 无 |
-| D-33-4 | 冲突处理入口可见性 | 功能 | status===2 与非2 记录 | 查看操作列 | 仅 status===2 显示「处理冲突」 | 无 |
-| D-33-5 | 冲突处理必选方案 | 负向 | 冲突记录 | 不选 resolution 确认 | 按钮 disabled(:disabled="!conflictForm.resolution") | 无 |
-| D-33-6 | 三种 resolution 提交 | 功能 | 冲突记录 | 分别 FORCE_ROLLBACK/SKIP/MANUAL | confirmRollbackConflict 成功 | 无 |
-| D-33-7 | 日期范围查询 | 功能 | 有记录 | 选 dateRange | startDate/endDate 传参正确 | 无 |
-| D-33-8 | 分页参数 page/size | 一致性 | 数据充足 | 翻页 | 用 page/size | 无 |
+| D-33-2 | bizType 6 选项过滤 | 功能 | 多类型记录 | 逐类型筛选 | 过滤正确 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，六选项源码钉住+bizType 随查询提交） |
+| D-33-3 | 状态四态渲染 | 功能 | 四种状态记录 | 查看 | 0成功/1失败/2冲突待确认/3重试中正确 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，statusNameMap 四态+表格渲染文案） |
+| D-33-4 | 冲突处理入口可见性 | 功能 | status===2 与非2 记录 | 查看操作列 | 仅 status===2 显示「处理冲突」 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，双行对比：冲突行有按钮非冲突行无） |
+| D-33-5 | 冲突处理必选方案 | 负向 | 冲突记录 | 不选 resolution 确认 | 按钮 disabled(:disabled="!conflictForm.resolution") | L1 workflow-platform-matrix.component.test.ts（2026-08-20，disabled 钉住+函数级守卫零 confirmRollbackConflict+warning 提示） |
+| D-33-6 | 三种 resolution 提交 | 功能 | 冲突记录 | 分别 FORCE_ROLLBACK/SKIP/MANUAL | confirmRollbackConflict 成功 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，三方案依次提交 (rowId,{resolution}) 断言） |
+| D-33-7 | 日期范围查询 | 功能 | 有记录 | 选 dateRange | startDate/endDate 传参正确 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，dateRange[0]/[1]→startDate/endDate 映射） |
+| D-33-8 | 分页参数 page/size | 一致性 | 数据充足 | 翻页 | 用 page/size | L1 workflow-platform-matrix.component.test.ts（2026-08-20，首载 {page:1,size:10}+重置清空全条件） |
 | D-33-9 | 冲突处理后状态流转 | 集成 | 处理冲突 | 刷新 | 状态变 0/3 | 无 |
 | D-33-10 | 无权限访问 | 权限 | 无权限 | 访问 | 守卫拦截 | L1 |
 
@@ -1832,7 +1832,7 @@
 | D-33-13 | 业务类型改绑流程→新单据路由 | 集成 | 更换 processKey 后提交 | 新单据走新流程 | 无 |
 | D-33-14 | 审批事件→消息中心 | 集成 | 待办产生 | 消息中心出现待办提醒 | 无 |
 
-## D-6 平台管理（/platform，超管专属，3 页）
+## D-6 平台管理（/platform，超管专属，3 页，2026-08-20 M10：L1 workflow-platform-matrix +30 例（与工作流域合文件），新覆 14 行 + 回填既有 2 行）
 
 **业务概述**：租户管理（6 字段全 required、maxUsers 1-9999、durationDays 1-3650、停用仅 status===1 且 confirm 明示「停用后该租户下所有用户将无法登录」、续期 1-1095、12 功能模块 checkbox）；租户类型（durationDays 固定 select 30/90/180/365，分页 page/size）；存储配置（**仅 storageType required，endpoint/accessKey/secretKey/bucket/basePath 均无必填校验**，secretKey 为 password 型，API 走 @/api/file）。
 
@@ -1842,15 +1842,15 @@
 |---|---|---|---|---|---|---|
 | D-34-1 | 租户 CRUD | 功能 | 超管 | 增改查 | 成功 | L5-一致性 |
 | D-34-2 | 6 字段全必填 | 负向 | 超管 | 逐项留空 | required 拦截 | L5-一致性 |
-| D-34-3 | maxUsers 边界 | 边界 | 无 | 输入 0/10000 | min=1 max=9999 钳制 | 无 |
-| D-34-4 | durationDays 边界 | 边界 | 无 | 输入 0/3651 | 1-3650 钳制 | 无 |
-| D-34-5 | 状态/类型组合查询 | 功能 | 多租户 | status(1/2/3)×userType 筛选 | 过滤正确 | 无 |
-| D-34-6 | 停用租户 | 功能 | status===1 | 停用→confirm | 提示含「所有用户将无法登录」，状态→2 | 无 |
-| D-34-7 | 非正常态无停用按钮 | 边界 | status 2/3 | 查看操作列 | 停用隐藏，启用显示(v-if) | 无 |
-| D-34-8 | 续期天数校验 | 负向 | 租户存在 | 输入 0/1096 | renewRules min1 max1095 拦截 | 无 |
+| D-34-3 | maxUsers 边界 | 边界 | 无 | 输入 0/10000 | min=1 max=9999 钳制 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，:min="1" :max="9999" 源码钉住） |
+| D-34-4 | durationDays 边界 | 边界 | 无 | 输入 0/3651 | 1-3650 钳制 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，:min="1" :max="3650" 源码钉住） |
+| D-34-5 | 状态/类型组合查询 | 功能 | 多租户 | status(1/2/3)×userType 筛选 | 过滤正确 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，status+userType 随查询提交+重置清空） |
+| D-34-6 | 停用租户 | 功能 | status===1 | 停用→confirm | 提示含「所有用户将无法登录」，状态→2 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，confirm 文案钉住）+misc-pages（2026-08-15，handleDisable 调 disableTenant） |
+| D-34-7 | 非正常态无停用按钮 | 边界 | status 2/3 | 查看操作列 | 停用隐藏，启用显示(v-if) | L1 workflow-platform-matrix.component.test.ts（2026-08-20，v-if 互斥条件源码钉住） |
+| D-34-8 | 续期天数校验 | 负向 | 租户存在 | 输入 0/1096 | renewRules min1 max1095 拦截 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，input-number :min/:max+rules min/max 双层钉住；注：async-validator 在 vitest ESM 与 Node CJS 下对无 type required 规则行为不一致，未做 validate 行为断言） |
 | D-34-9 | 续期成功延长到期日 | 功能 | 租户存在 | 续期 30 天 | endDate 顺延 | 无 |
-| D-34-10 | 模块配置 12 项保存 | 功能 | 租户存在 | 勾选模块保存 | updateTenantModules 生效 | 无 |
-| D-34-11 | 使用量展示 | 功能 | currentUsers 存在 | 查看列表 | currentUsers/maxUsers 渲染 | 无 |
+| D-34-10 | 模块配置 12 项保存 | 功能 | 租户存在 | 勾选模块保存 | updateTenantModules 生效 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，moduleOptions 12 项+回显+updateTenantModules(tenantId,modules)） |
+| D-34-11 | 使用量展示 | 功能 | currentUsers 存在 | 查看列表 | currentUsers/maxUsers 渲染 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，列渲染模板源码钉住）；另钉住 tenant 页分页用 pageNum/pageSize（与 tenant-type page/size 两套并存） |
 | D-34-12 | 非超管访问平台页 | 权限 | 普通用户 | 访问 /platform/tenant | 守卫/菜单拦截 | L1(超管 *:*:* 绕过) |
 
 ### D35 用户类型（/platform/tenant-type）
@@ -1859,11 +1859,11 @@
 |---|---|---|---|---|---|---|
 | D-35-1 | 类型 CRUD | 功能 | 超管 | 增改查删 | 成功 | L5-一致性 |
 | D-35-2 | typeName/durationDays 必填 | 负向 | 无 | 留空 | required 拦截 | L5-一致性 |
-| D-35-3 | durationDays 固定四档 | 功能 | 无 | 选 30/90/180/365 | select 限定 | 无 |
-| D-35-4 | sortOrder 边界 | 边界 | 无 | 输入负数 | min=0 钳制 | 无 |
-| D-35-5 | status switch | 功能 | 类型存在 | 启停切换 | 持久化 | 无 |
-| D-35-6 | 删除确认 | 负向 | 类型存在 | 删除→取消 | 不删除 | 无 |
-| D-35-7 | 分页 page/size | 一致性 | 数据充足 | 翻页 | 请求用 page/size | 无 |
+| D-35-3 | durationDays 固定四档 | 功能 | 无 | 选 30/90/180/365 | select 限定 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，四档 :value 源码钉住） |
+| D-35-4 | sortOrder 边界 | 边界 | 无 | 输入负数 | min=0 钳制 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，:min="0" 源码钉住） |
+| D-35-5 | status switch | 功能 | 类型存在 | 启停切换 | 持久化 | L1 tenant-type-crud.component.test.ts（2026-08-15，新增默认 status=1 随提交持久化） |
+| D-35-6 | 删除确认 | 负向 | 类型存在 | 删除→取消 | 不删除 | L1 tenant-type-crud.component.test.ts（2026-08-15，确认后调 deleteTenantType 并刷新） |
+| D-35-7 | 分页 page/size | 一致性 | 数据充足 | 翻页 | 请求用 page/size | L1 workflow-platform-matrix.component.test.ts（2026-08-20，v-model 绑定口径钉住）+tenant-type-crud（2026-08-15，{page:1,size:10} 提交断言） |
 | D-35-8 | 删除被租户引用类型 | 边界 | 类型被租户绑定 | 删除 | 约束提示 | 无 |
 | D-35-9 | 非超管访问 | 权限 | 普通用户 | 访问 | 拦截 | L1 |
 
@@ -1873,9 +1873,9 @@
 |---|---|---|---|---|---|---|
 | D-36-1 | 保存 MinIO 配置 | 功能 | 超管 | 选 MINIO 填全参数 | 保存成功（@/api/file） | L5-一致性 |
 | D-36-2 | storageType 必填 | 负向 | 无 | 留空 | required 拦截 | L5-一致性 |
-| D-36-3 | 五种存储类型切换 | 功能 | 无 | LOCAL/MINIO/ALIYUN/TENCENT/QINIU | 表单适配 | 无 |
-| D-36-4 | 空 endpoint 保存 | 负向 | 选 MINIO | 仅填 storageType 提交 | **前端无必填校验直接提交**，依赖后端（盲点） | 无 |
-| D-36-5 | secretKey 掩码 | 功能 | 无 | 输入密钥 | type=password 掩码显示 | 无 |
+| D-36-3 | 五种存储类型切换 | 功能 | 无 | LOCAL/MINIO/ALIYUN/TENCENT/QINIU | 表单适配 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，五选项源码钉住） |
+| D-36-4 | 空 endpoint 保存 | 负向 | 选 MINIO | 仅填 storageType 提交 | **前端无必填校验直接提交**，依赖后端（盲点） | L1 workflow-platform-matrix.component.test.ts（2026-08-20，盲点钉住：formRules 仅 storageType+空 endpoint 直达 createStorage） |
+| D-36-5 | secretKey 掩码 | 功能 | 无 | 输入密钥 | type=password 掩码显示 | L1 workflow-platform-matrix.component.test.ts（2026-08-20，type="password" show-password 源码钉住） |
 | D-36-6 | 连接测试/生效验证 | 集成 | 配置保存 | 上传文件 | 按新存储落盘 | 无 |
 | D-36-7 | 非法 endpoint | 负向 | 无 | 输入非法 URL | 后端报错前端提示 | 无 |
 | D-36-8 | 非超管访问 | 权限 | 普通用户 | 访问 | 拦截 | L1 |
