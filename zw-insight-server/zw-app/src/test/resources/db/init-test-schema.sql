@@ -644,6 +644,7 @@ CREATE TABLE IF NOT EXISTS `biz_material_inbound` (
     total_amount DECIMAL(18,2) DEFAULT 0.00 COMMENT '入库总金额',
     direct_outbound INT DEFAULT 0 COMMENT '直接出库（0-否 1-是）',
     status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态（DRAFT-草稿/APPROVED-已审批）',
+    remark VARCHAR(500) NULL COMMENT '备注（V2026_40 E2eTestGuard 守卫标记载体，2026-08-20 L2 补列）',
     tenant_id BIGINT COMMENT '租户ID',
     created_by BIGINT COMMENT '创建人ID',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
