@@ -44,11 +44,19 @@ export function e2ePrefix(ts: number = Date.now()): string {
   return `E2E_TEST_${ts}`
 }
 
-/** 当天日期 yyyy-MM-dd（表单日期字段自置用） */
+/**
+ * 当天日期 yyyy-MM-dd（表单日期字段自置用）。
+ * 时区纪律（2026-08-21 实证）：GitHub runner 为 UTC，后端 JVM 为 Asia/Shanghai；
+ * 当 CI 落在 UTC 16:00~24:00（北京已跨天）时 runner 本地日期比服务端晚一天，
+ * b2-machine B-10-2 `reportDate 强制今天` 断言 Expected/Received 跨日失败
+ * （run 32390426243，Expected 2026-08-20 / Received 2026-08-21）。
+ * 故"今天"一律以服务端时区 Asia/Shanghai 为口径，与后端 LocalDate.now() 对齐。
+ */
 export function todayStr(): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const d = new Date()
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
 }
 
 /**
