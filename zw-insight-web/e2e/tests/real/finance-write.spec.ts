@@ -596,7 +596,10 @@ test.describe('财务域 — C7 项目报销（@matrix C-7-1/3；建单受阻 AP
 
   test('无编辑/删除入口 + 提交按钮仅 DRAFT 行（状态条件渲染）', async ({ page }) => {
     await page.goto('/finance/project-reimbursement')
-    await page.waitForSelector('.el-table__row, .el-table__empty-block', { timeout: 30_000 })
+    // 2026-08-20 稳定化：空态块先于数据渲染，waitForSelector(empty-block) 与 count() 竞态（M7 回归复现）→ expect.poll 等行渲染
+    await expect.poll(async () => await page.locator('.el-table__row').count(), {
+      timeout: 15_000, message: '项目报销应有演示数据行（种子 99051）',
+    }).toBeGreaterThan(0)
     // C-7-3 实测修正：UI 无编辑/删除入口（源码实证仅提交按钮）
     await expect(page.locator('.el-table button:has-text("编辑")')).toHaveCount(0)
     await expect(page.locator('.el-table button:has-text("删除")')).toHaveCount(0)
@@ -632,11 +635,12 @@ test.describe('财务域 — C8 备用金（@matrix C-8-1/3；建单受阻 API-G
 
   test('归还按钮仅 APPROVED 行可见（C-8-3 状态条件渲染）', async ({ page }) => {
     await page.goto('/finance/reserve-fund')
-    await page.waitForSelector('.el-table__row, .el-table__empty-block', { timeout: 30_000 })
+    // 2026-08-20 稳定化：空态块先于数据渲染，waitForSelector(empty-block) 与 count() 竞态（M7 回归复现）→ expect.poll 等行渲染
+    await expect.poll(async () => await page.locator('.el-table__row').count(), {
+      timeout: 15_000, message: '备用金应有演示数据行（种子 99071）',
+    }).toBeGreaterThan(0)
     const rows = page.locator('.el-table__row')
     const rowCount = await rows.count()
-    // 2026-08-20 解除 skip：种子 99071（APPROVED，李明）已导入实证，改硬断言
-    expect(rowCount, '备用金应有演示数据行（种子 99071）').toBeGreaterThan(0)
     let approvedSeen = false
     for (let i = 0; i < rowCount; i++) {
       const row = rows.nth(i)
@@ -676,10 +680,10 @@ test.describe('财务域 — C9 个人报销（@matrix C-9-1；建单受阻 API-
 
   test('无编辑/删除入口（现状钉住）', async ({ page }) => {
     await page.goto('/finance/personal-reimbursement')
-    await page.waitForSelector('.el-table__row, .el-table__empty-block', { timeout: 30_000 })
-    const rowCount = await page.locator('.el-table__row').count()
-    // 2026-08-20 解除 skip：种子 99421/99422（APPROVED+DRAFT）已导入实证，改硬断言
-    expect(rowCount, '个人报销应有演示数据行（种子 99421/99422）').toBeGreaterThan(0)
+    // 2026-08-20 稳定化：空态块先于数据渲染，waitForSelector(empty-block) 与 count() 竞态（M7 回归复现）→ expect.poll 等行渲染
+    await expect.poll(async () => await page.locator('.el-table__row').count(), {
+      timeout: 15_000, message: '个人报销应有演示数据行（种子 99421/99422）',
+    }).toBeGreaterThan(0)
     await expect(page.locator('.el-table button:has-text("编辑")')).toHaveCount(0)
     await expect(page.locator('.el-table button:has-text("删除")')).toHaveCount(0)
   })

@@ -1001,7 +1001,7 @@
 | C-FIN-X4 | 封账期间对 5 类单据新增的统一拦截 | 集成 | 封当月后逐页新增提交 | 全部被拒绝且均有可见提示 | 无 |
 | C-FIN-X5 | 结算单聚合：支出汇总=付款+项目报销+个人报销+其他付款+分包/机械/采购支出 | 集成 | 项目多源支出后创建结算并 resummarize | 汇总与各源模块合计严格一致 | 无 |
 
-## C-2 现场管理（/site，5 页，56+4 例）
+## C-2 现场管理（/site，5 页，56+4 例，2026-08-20 M7：L1 site-matrix +26 例，新覆 25 行 + 增强 7 行）
 
 **业务概述**：进度计划以表格+dhtmlx-gantt 甘特图双视图呈现（watch(ganttProjectId) 触发 getSchedulePlanTree，空数据 el-empty）；施工日志按单日 logDate 转 startDate/endDate 查询；质量安全检查由 el-tabs 切换 QUALITY/SAFETY，表单页采用检查方案驱动（选方案→getSchemeItems/applyScheme 填充检查项，快照恢复），整改走 PENDING→SUBMITTED→APPROVED/REJECTED 闭环。
 
@@ -1009,15 +1009,15 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-15-1 | progress 列 el-progress 渲染 50% | 一致性 | 列表有数据 | 对比接口 progress | 进度条与文本一致 | L5-一致性 |
-| C-15-2 | taskStatus 翻译：COMPLETED/DELAYED/其他 | 一致性 | 三态数据 | 核对状态列 | 已完成/滞后/进行中 | L5-一致性 |
-| C-15-3 | 必填校验 taskName/planStartDate/planEndDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | 无 |
-| C-15-4 | progress slider max=100 边界 | 边界 | 弹窗打开 | 拖到最大/输入 101 | 上限 100 | 无 |
+| C-15-1 | progress 列 el-progress 渲染 50% | 一致性 | 列表有数据 | 对比接口 progress | 进度条与文本一致 | L5-一致性 + L1 site-matrix.component.test.ts（2026-08-20，:percentage="row.progress || 0" 源码钉住） |
+| C-15-2 | taskStatus 翻译：COMPLETED/DELAYED/其他 | 一致性 | 三态数据 | 核对状态列 | 已完成/滞后/进行中 | L5-一致性 + L1 site-matrix.component.test.ts（2026-08-20，三态文案与 tag type 源码钉住） |
+| C-15-3 | 必填校验 taskName/planStartDate/planEndDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | L1 site-matrix.component.test.ts（2026-08-20，三必填规则键与文案运行时实证） |
+| C-15-4 | progress slider max=100 边界 | 边界 | 弹窗打开 | 拖到最大/输入 101 | 上限 100 | L1 site-matrix.component.test.ts（2026-08-20，el-slider :max=100 源码钉住） |
 | C-15-5 | 新增/编辑/删除 CRUD | 功能 | 项目存在 | 依次操作 | 成功且刷新 | L5-API |
 | C-15-6 | 甘特图加载：选项目→getSchedulePlanTree→GanttChart 渲染 | 功能 | 项目有计划数据 | 选择项目 | 甘特图渲染任务条 | L5-API(树接口) |
-| C-15-7 | 甘特图空数据 el-empty | 边界 | 项目无计划 | 选择项目 | 显示空状态组件，ganttHasData=false | 无 |
+| C-15-7 | 甘特图空数据 el-empty | 边界 | 项目无计划 | 选择项目 | 显示空状态组件，ganttHasData=false | L1 site-matrix.component.test.ts（2026-08-20，planTree 空/有数据双分支运行时 + el-empty 文案源码钉住） |
 | C-15-8 | 甘特图 editable @task-updated→loadData 回刷 | 集成 | 甘特图有任务 | 拖动任务条 | 触发更新 API 并刷新表格 | 无 |
-| C-15-9 | 树接口失败提示 | 负向 | mock tree 500 | 选项目 | 错误提示，甘特区空状态 | 无 |
+| C-15-9 | 树接口失败提示 | 负向 | mock tree 500 | 选项目 | 错误提示，甘特区空状态 | L1 site-matrix.component.test.ts（2026-08-20，失败时 ganttHasData=false 不崩溃运行时实证） |
 | C-15-10 | 分页与项目筛选 | 功能 | 多项目数据 | 筛选+翻页 | 参数正确 | L5-API |
 | C-15-11 | 甘特图与表格数据一致 | 一致性 | 有计划数据 | 对比两侧任务数 | 一致 | 无 |
 | C-15-12 | 重复提交防抖 | 负向 | 表单已填 | 双击保存 | 一次请求 | 无 |
@@ -1026,9 +1026,9 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-16-1 | 单日 logDate 查询转 startDate/endDate | 功能 | 列表有数据 | 选单日查询抓包 | 请求携带 startDate=endDate=logDate | 无 |
-| C-16-2 | 必填校验 projectId/logDate/productionRecord | 负向 | 弹窗打开 | 留空提交 | 必填提示 | 无 |
-| C-16-3 | workerCount min=0 负值拦截 | 边界 | 弹窗打开 | 输入 -1 | 拦截 | 无 |
+| C-16-1 | 单日 logDate 查询转 startDate/endDate | 功能 | 列表有数据 | 选单日查询抓包 | 请求携带 startDate=endDate=logDate | L1 site-matrix.component.test.ts（2026-08-20，运行时断言请求含 startDate=endDate 且无 logDate 键） |
+| C-16-2 | 必填校验 projectId/logDate/productionRecord | 负向 | 弹窗打开 | 留空提交 | 必填提示 | L1 site-matrix.component.test.ts（2026-08-20，三必填规则键与文案运行时实证） |
+| C-16-3 | workerCount min=0 负值拦截 | 边界 | 弹窗打开 | 输入 -1 | 拦截 | L1 site-matrix.component.test.ts（2026-08-20，el-input-number :min=0 源码钉住） |
 | C-16-4 | 新增/编辑/删除 CRUD | 功能 | 项目存在 | 依次操作 | 成功 | L5-API |
 | C-16-5 | 列表字段（天气/气温/风力/人数/生产记录）一致性 | 一致性 | 列表有数据 | 核对 7 列 | 严格一致 | L5-一致性 |
 | C-16-6 | 日期范围筛选 | 功能 | 跨日数据 | 选范围查询 | 正确过滤 | L5-API |
@@ -1041,15 +1041,15 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-17-1 | el-tabs quality/safety @tab-change 重载 | 功能 | 两类数据存在 | 切换 tab | 列表按类型重载 | L5-API |
+| C-17-1 | el-tabs quality/safety @tab-change 重载 | 功能 | 两类数据存在 | 切换 tab | 列表按类型重载 | L5-API + L1 site-matrix.component.test.ts（2026-08-20，切换按类型路由 API 且 pageNum 归 1 运行时实证） |
 | C-17-2 | 质量 tab 列表与分页 | 功能 | 质量数据存在 | 查看+翻页 | 正确 | L5-一致性 |
 | C-17-3 | 安全 tab 列表 | 功能 | 安全数据存在 | 切换查看 | 正确 | L5-API |
-| C-17-4 | hasProblem 0→无问题 / 1→有问题 | 一致性 | 两种数据 | 核对列 | 文案一致 | L5-一致性 |
-| C-17-5 | RECT_MAP 整改状态四态+空值 '-' | 一致性 | 各状态数据 | 核对整改状态列 | PENDING/SUBMITTED/APPROVED/REJECTED/空 渲染正确 | L5-一致性 |
-| C-17-6 | 新增跳转 InspectionCreate | 功能 | 任一 tab | 点新增 | 路由至 /site/inspection/form | 无 |
-| C-17-7 | 编辑跳转 InspectionEdit/:id | 功能 | 列表有数据 | 点编辑 | 路由携带 id | 无 |
-| C-17-8 | 详情跳转 InspectionDetail/:id | 功能 | 列表有数据 | 点详情 | 路由携带 id | 无 |
-| C-17-9 | 删除 confirm + getDeleteApi 按 tab 类型 | 功能 | 列表有数据 | 删除→确认 | 按当前 tab 类型调用删除，列表刷新 | 无 |
+| C-17-4 | hasProblem 0→无问题 / 1→有问题 | 一致性 | 两种数据 | 核对列 | 文案一致 | L5-一致性 + L1 site-matrix.component.test.ts（2026-08-20，两态文案与 tag type 源码钉住） |
+| C-17-5 | RECT_MAP 整改状态四态+空值 '-' | 一致性 | 各状态数据 | 核对整改状态列 | PENDING/SUBMITTED/APPROVED/REJECTED/空 渲染正确 | L5-一致性 + L1 site-matrix.component.test.ts（2026-08-20，四态运行时 + 未知透传 + '-' 空值源码钉住） |
+| C-17-6 | 新增跳转 InspectionCreate | 功能 | 任一 tab | 点新增 | 路由至 /site/inspection/form | L1 site-matrix.component.test.ts（2026-08-20，router.push path+type query 运行时实证） |
+| C-17-7 | 编辑跳转 InspectionEdit/:id | 功能 | 列表有数据 | 点编辑 | 路由携带 id | L1 site-matrix.component.test.ts（2026-08-20，router.push /form/${id} 运行时实证） |
+| C-17-8 | 详情跳转 InspectionDetail/:id | 功能 | 列表有数据 | 点详情 | 路由携带 id | L1 site-matrix.component.test.ts（2026-08-20，router.push /detail/${id} 运行时实证） |
+| C-17-9 | 删除 confirm + getDeleteApi 按 tab 类型 | 功能 | 列表有数据 | 删除→确认 | 按当前 tab 类型调用删除，列表刷新 | L1 site-matrix.component.test.ts（2026-08-20，quality/safety 删除 API 按 tab 路由运行时实证） |
 | C-17-10 | tab 切换后筛选条件行为 | 边界 | 质量 tab 已设筛选 | 切到安全 | 筛选重置或保留符合实现 | 无 |
 | C-17-11 | 整改闭环入口：指派/提交/审批整改 | 集成 | hasProblem=1 记录 | 走 assignRectification→submit→approve | 状态 PENDING→SUBMITTED→APPROVED | L5-API(指派) |
 | C-17-12 | 列表接口失败提示 | 负向 | mock 失败 | 加载 | ElMessage.error | 无 |
@@ -1058,18 +1058,18 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-18-1 | 基本信息必填校验 | 负向 | 新增模式 | 留空提交 | 必填提示 | 无 |
-| C-18-2 | inspectionType 切换清空 schemeId+detailList 并重载方案列表 | 功能 | 已选方案 | 切换质量→安全 | 方案与明细清空，listInspectionSchemes 按类型重载 | L5-API(方案列表) |
-| C-18-3 | 新增模式选方案→getSchemeItems 填充 checkResult='NOT_CHECKED' | 功能 | 方案含检查项 | 选择方案 | 明细填充模板项，结果均为未检查 | 无 |
+| C-18-1 | 基本信息必填校验 | 负向 | 新增模式 | 留空提交 | 必填提示（实证仅 projectId/inspectionType 两条必填） | L1 site-matrix.component.test.ts（2026-08-20，formRules 键集合与文案运行时实证：仅两条必填） |
+| C-18-2 | inspectionType 切换清空 schemeId+detailList 并重载方案列表 | 功能 | 已选方案 | 切换质量→安全 | 方案与明细清空，listInspectionSchemes 按类型重载 | L5-API(方案列表) + L1 site-matrix.component.test.ts（2026-08-20，切换清空双字段并按 inspectionType 重载方案运行时实证） |
+| C-18-3 | 新增模式选方案→getSchemeItems 填充 checkResult='NOT_CHECKED' | 功能 | 方案含检查项 | 选择方案 | 明细填充模板项，结果均为未检查 | L1 site-matrix.component.test.ts（2026-08-20，getSchemeItems 填充 + 全项 NOT_CHECKED + 清空方案清空明细运行时实证） |
 | C-18-4 | 编辑模式选方案→applyScheme+重载 | 功能 | 编辑已有检查 | 更换方案 | applyScheme 生效，明细重载 | 无 |
-| C-18-5 | 有方案时 itemName/checkMethod 只读 | 负向 | 已应用方案 | 尝试编辑项名 | 输入框只读 | 无 |
-| C-18-6 | 有方案时不可新增方案外检查项 | 负向 | 已应用方案 | 点添加行 | 按钮禁用/不响应 | 无 |
-| C-18-7 | 手动添加上限 100 条 warning | 边界 | 无方案模式 | 添加到 100 再加 | 「检查项最多添加100条」，数量不再增加 | 无 |
-| C-18-8 | 提交 filter(d=>d.itemName) 过滤空行 | 功能 | 含空行 | 提交 | 空行不入库 | 无 |
+| C-18-5 | 有方案时 itemName/checkMethod 只读 | 负向 | 已应用方案 | 尝试编辑项名 | 输入框只读 | L1 site-matrix.component.test.ts（2026-08-20，v-if="!formData.schemeId" 可编辑分支源码钉住） |
+| C-18-6 | 有方案时不可新增方案外检查项 | 负向 | 已应用方案 | 点添加行 | 按钮禁用/不响应 | L1 site-matrix.component.test.ts（2026-08-20，detail-toolbar v-if="!formData.schemeId" + 「不可新增方案外检查项」文案源码钉住） |
+| C-18-7 | 手动添加上限 100 条 warning | 边界 | 无方案模式 | 添加到 100 再加 | 「检查项最多添加100条」，数量不再增加 | L1 site-matrix.component.test.ts（2026-08-20，100 条时 warning 文案与数量不增运行时实证，el-table stub 防 jsdom 超时） |
+| C-18-8 | 提交 filter(d=>d.itemName) 过滤空行 | 功能 | 含空行 | 提交 | 空行不入库 | L1 site-matrix.component.test.ts（2026-08-20，提交载荷仅含有效项、空行被 filter 运行时实证） |
 | C-18-9 | 编辑保存走 updateInspectionDetails | 功能 | 编辑模式 | 修改明细保存 | 调用更新明细接口成功 | 无 |
-| C-18-10 | schemeSnapshot 快照恢复 | 功能 | 编辑已提交检查 | 打开表单 | 明细从快照解析还原 | 无 |
-| C-18-11 | 检查项全空提交拦截 | 负向 | 无明细 | 提交 | 提示至少一条检查项 | 无 |
-| C-18-12 | 保存成功返回列表 | 功能 | 合法数据 | 提交 | 成功后 router.back/列表刷新 | 无 |
+| C-18-10 | schemeSnapshot 快照恢复 | 功能 | 编辑已提交检查 | 打开表单 | 明细从快照解析还原 | L1 site-matrix.component.test.ts（2026-08-20，无 details 时 schemeSnapshot JSON 解析还原明细 + checkResult 归位 NOT_CHECKED 运行时实证） |
+| C-18-11 | 检查项全空提交拦截 | 负向 | 无明细 | 提交 | 现状：前端无拦截，details=[] 仍提交（实证现状钉住） | L1 site-matrix.component.test.ts（2026-08-20，实证现状钉住：全空行 filter 后仍调 createInspection(details=[])，无守卫提示） |
+| C-18-12 | 保存成功返回列表 | 功能 | 合法数据 | 提交 | 成功后 router.push('/site/inspection')（实测修正，非 router.back） | L1 site-matrix.component.test.ts（2026-08-20，实测修正：保存成功后 router.push('/site/inspection') 运行时实证） |
 | C-18-13 | 重复提交防抖 | 负向 | 表单已填 | 双击提交 | 一次请求 | 无 |
 | C-18-14 | 方案接口失败提示 | 负向 | mock scheme 500 | 选类型 | 错误提示，方案下拉空 | 无 |
 
@@ -1077,11 +1077,11 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-19-1 | result PASS→合格/success，否则不合格/danger | 一致性 | 两种结果记录 | 查看详情 | 标签与颜色正确 | 无 |
-| C-19-2 | 明细 result 三态：PASS/FAIL/其他 | 一致性 | 含三态明细 | 核对明细行 | 合格/不合格/未检查 | 无 |
-| C-19-3 | schemeName 从快照解析 | 功能 | 方案驱动检查 | 查看详情 | 显示快照中方案名 | 无 |
-| C-19-4 | detailItems 空显示 el-empty | 边界 | 无明细记录 | 打开详情 | 空状态组件 | 无 |
-| C-19-5 | 详情加载失败提示 | 负向 | mock 失败/非法 id | 打开 | ElMessage.error | 无 |
+| C-19-1 | result PASS→合格/success，否则不合格/danger | 一致性 | 两种结果记录 | 查看详情 | 标签与颜色正确 | L1 site-matrix.component.test.ts（2026-08-20，PASS→合格/success 否则不合格/danger 源码钉住） |
+| C-19-2 | 明细 result 三态：PASS/FAIL/其他 | 一致性 | 含三态明细 | 核对明细行 | 合格/不合格/未检查 | L1 site-matrix.component.test.ts（2026-08-20，明细行 PASS/FAIL 两分支 + 其他态源码钉住） |
+| C-19-3 | schemeName 从快照解析 | 功能 | 方案驱动检查 | 查看详情 | 显示快照中方案名 | L1 site-matrix.component.test.ts（2026-08-20，schemeSnapshot JSON 解析出 schemeName 与明细运行时实证） |
+| C-19-4 | detailItems 空显示 el-empty | 边界 | 无明细记录 | 打开详情 | 空状态组件 | L1 site-matrix.component.test.ts（2026-08-20，el-empty「暂无检查明细」v-if="detailItems.length === 0" 源码钉住） |
+| C-19-5 | 详情加载失败提示 | 负向 | mock 失败/非法 id | 打开 | ElMessage.error | L1 site-matrix.component.test.ts（2026-08-20，失败时 ElMessage.error('加载检查详情失败') 运行时实证） |
 | C-19-6 | 整改状态与问题描述展示 | 功能 | 有问题记录 | 查看 | 与列表 RECT_MAP 一致 | 无 |
 | C-19-7 | 路由参数 id 传递正确 | 边界 | 长 id 记录 | 列表→详情 | 数据加载正确 | 无 |
 | C-19-8 | 详情数据与表单提交数据一致 | 一致性 | 刚提交检查 | 打开详情 | 明细逐条一致 | 无 |
@@ -1095,7 +1095,7 @@
 | C-SITE-X3 | 施工日志/进度数据进入项目档案聚合 | 集成 | 录入后切换项目档案 | 档案对应 tab 可见 | 无 |
 | C-SITE-X4 | 甘特图任务更新与进度反馈双写一致性 | 集成 | 甘特拖动任务后查进度反馈表 | task-updated 与反馈数据一致 | 无 |
 
-## C-3 行政人事（/hr，5 页，51+3 例）
+## C-3 行政人事（/hr，5 页，51+3 例，2026-08-20 M7：L1 hr-matrix +15 例，新覆 13 行 + 增强 8 行）
 
 **业务概述**：人事统计为一次 getHrStatisticsOverview 驱动的 3 卡片+4 ECharts 页；入职/离职申请走标准审批状态机（入职审批通过自动创建系统账号）；办公用品领用与车辆台账为常规 CRUD（vehicle 仅 plateNumber 必填）。
 
@@ -1110,7 +1110,7 @@
 | C-20-5 | 工龄分布柱图绑定 | 一致性 | 有工龄数据 | 对比 | 一致 | 无 |
 | C-20-6 | 入离职趋势折线图绑定 | 一致性 | 多月数据 | 对比 | 一致 | 无 |
 | C-20-7 | 接口失败错误提示 | 负向 | mock 500 | 打开 | ElMessage.error，卡片不显示假数据 | 无 |
-| C-20-8 | 空数据各图表空态渲染 | 边界 | 无人员数据 | 打开 | 图表空态/0 值，不报错 | 无 |
+| C-20-8 | 空数据各图表空态渲染 | 边界 | 无人员数据 | 打开 | 图表空态/0 值，不报错 | L1 hr-matrix.component.test.ts（2026-08-20，overview={} 时三卡片 0 + 四图 setOption 空系列、无 error 运行时实证） |
 | C-20-9 | 窗口 resize 重绘、卸载 dispose | 功能 | 页面已加载 | 缩放窗口/离开页面 | 图表自适应；无内存泄漏告警 | 无 |
 | C-20-10 | 卡片与入离职模块源数据一致 | 集成 | 当月有入职/离职审批通过 | 对比 monthlyEntry/Resign 与申请数 | 一致 | 无 |
 
@@ -1118,15 +1118,15 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-21-1 | 必填校验 realName/username/phone/orgId/postId | 负向 | 弹窗打开 | 留空提交 | 必填提示 | 无 |
+| C-21-1 | 必填校验 realName/username/phone/orgId/postId | 负向 | 弹窗打开 | 留空提交 | 必填提示 | L1 hr-matrix.component.test.ts（2026-08-20，五必填规则键集合与文案运行时实证） |
 | C-21-2 | 新增成功（DRAFT） | 功能 | 组织/岗位存在 | 完整填写 | 创建草稿 | L5-API |
-| C-21-3 | 状态渲染 APPROVED→已通过 否则草稿 | 一致性 | 两态数据 | 核对状态列 | 文案一致 | L5-一致性 |
-| C-21-4 | 提交 confirm「通过后自动创建系统账号」 | 功能 | 草稿存在 | 提交→确认 | 文案正确，状态流转 | L5-API |
-| C-21-5 | 删除仅 DRAFT | 负向 | APPROVED 记录 | 检查操作列 | 无删除按钮 | 无 |
+| C-21-3 | 状态渲染 APPROVED→已通过 否则草稿 | 一致性 | 两态数据 | 核对状态列 | 文案一致 | L5-一致性 + L1 hr-matrix.component.test.ts（2026-08-20，两态文案与 tag type 源码钉住） |
+| C-21-4 | 提交 confirm「通过后自动创建系统账号」 | 功能 | 草稿存在 | 提交→确认 | 文案正确，状态流转 | L5-API + L1 hr-matrix.component.test.ts（2026-08-20，confirm 完整文案 + submitHrEntry(id) 运行时实证） |
+| C-21-5 | 删除仅 DRAFT | 负向 | APPROVED 记录 | 检查操作列 | 无删除按钮 | L1 hr-matrix.component.test.ts（2026-08-20，删除按钮 v-if="row.status === 'DRAFT'" 源码钉住） |
 | C-21-6 | 编辑回填 getHrEntryDetail | 功能 | 草稿存在 | 点编辑 | 详情接口回填表单 | L5-API |
 | C-21-7 | 审批通过→自动创建系统账号 | 集成 | 提交并审批通过 | 查系统用户列表 | 新账号存在可登录 | 无 |
-| C-21-8 | APPROVED 状态非法再提交 | 负向 | 已通过记录 | 检查操作列 | 无提交按钮 | 无 |
-| C-21-9 | 手机号格式边界 | 边界 | 弹窗打开 | 输入 8 位/12 位 | 校验拦截 | 无 |
+| C-21-8 | APPROVED 状态非法再提交 | 负向 | 已通过记录 | 检查操作列 | 无提交按钮 | L1 hr-matrix.component.test.ts（2026-08-20，提交按钮 v-if="row.status === 'DRAFT'" 源码钉住） |
+| C-21-9 | 手机号格式边界 | 边界 | 弹窗打开 | 输入 8 位/12 位 | 现状：仅 required 无格式校验（实证现状钉住，盲点） | L1 hr-matrix.component.test.ts（2026-08-20，实证现状钉住：phone 规则仅一条 required，无 pattern/validator） |
 | C-21-10 | 分页与姓名筛选 | 功能 | 数据>1 页 | 筛选+翻页 | 参数正确 | L5-API/一致性 |
 | C-21-11 | 重复提交防抖 | 负向 | 表单已填 | 双击 | 一次请求 | 无 |
 | C-21-12 | username 重复边界 | 边界 | 已存在同 username | 再建 | 拒绝或提示 | 无 |
@@ -1135,12 +1135,12 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-22-1 | 必填校验 itemName/quantity(min=1) | 负向 | 弹窗打开 | 留空提交 | 必填提示 | 无 |
-| C-22-2 | quantity=0 负值拦截 | 边界 | 弹窗打开 | 输入 0 | min=1 拦截 | 无 |
+| C-22-1 | 必填校验 itemName/quantity(min=1) | 负向 | 弹窗打开 | 留空提交 | 必填提示 | L1 hr-matrix.component.test.ts（2026-08-20，两必填规则键与文案运行时实证） |
+| C-22-2 | quantity=0 负值拦截 | 边界 | 弹窗打开 | 输入 0 | min=1 拦截 | L1 hr-matrix.component.test.ts（2026-08-20，el-input-number :min=1 + 默认值 1 源码钉住） |
 | C-22-3 | 新增/编辑/删除 CRUD | 功能 | 已登录 | 依次操作 | 成功 | L5-API |
-| C-22-4 | 状态三元翻译 APPROVED 已领用/PENDING 审批中/其他草稿 | 一致性 | 三态数据 | 核对状态列 | 文案一致 | L5-一致性 |
+| C-22-4 | 状态三元翻译 APPROVED 已领用/PENDING 审批中/其他草稿 | 一致性 | 三态数据 | 核对状态列 | 文案一致 | L5-一致性 + L1 hr-matrix.component.test.ts（2026-08-20，三元文案与 tag type 源码钉住） |
 | C-22-5 | 提交审批（DRAFT） | 功能 | 草稿存在 | 提交 | 状态流转 | 无 |
-| C-22-6 | applyNo 单号展示 | 一致性 | 列表有数据 | 核对申请单号列 | 与接口一致 | L5-一致性 |
+| C-22-6 | applyNo 单号展示 | 一致性 | 列表有数据 | 核对申请单号列 | 与接口一致 | L5-一致性 + L1 hr-matrix.component.test.ts（2026-08-20，applyNo 列 prop 绑定源码钉住） |
 | C-22-7 | 分页与筛选 | 功能 | 数据>1 页 | 翻页 | 生效 | L5-API |
 | C-22-8 | 重复提交防抖 | 负向 | 表单已填 | 双击 | 一次请求 | 无 |
 | C-22-9 | 审批通过→用品档案库存扣减 | 集成 | 领用审批通过 | 查 /archive/office-supply | totalIssued 增加/currentStock 减少 | 无 |
@@ -1150,14 +1150,14 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-23-1 | 仅 plateNumber 必填 | 负向 | 弹窗打开 | 留空车牌提交 | 必填提示；其余可为空 | 无 |
+| C-23-1 | 仅 plateNumber 必填 | 负向 | 弹窗打开 | 留空车牌提交 | 必填提示；其余可为空 | L1 hr-matrix.component.test.ts（2026-08-20，formRules 仅 plateNumber 一键运行时实证） |
 | C-23-2 | 新增/编辑/删除 CRUD | 功能 | 已登录 | 依次操作 | 成功 | L5-API |
-| C-23-3 | vehicleStatus IN_USE 使用中/其他闲置 | 一致性 | 两态数据 | 核对状态列 | 文案一致 | L5-一致性 |
+| C-23-3 | vehicleStatus IN_USE 使用中/其他闲置 | 一致性 | 两态数据 | 核对状态列 | 文案一致 | L5-一致性 + L1 hr-matrix.component.test.ts（2026-08-20，两态文案与 warning/success tag 源码钉住） |
 | C-23-4 | insuranceExpiry/inspectionExpiry 日期录入 | 功能 | 弹窗打开 | 选择日期保存 | 正确回显 | L5-一致性 |
-| C-23-5 | 8 列字段一致性 | 一致性 | 列表有数据 | 核对 | 严格一致 | L5-一致性 |
+| C-23-5 | 8 列字段一致性 | 一致性 | 列表有数据 | 核对 | 严格一致 | L5-一致性 + L1 hr-matrix.component.test.ts（2026-08-20，七 prop 列 + 状态/操作列源码钉住） |
 | C-23-6 | 分页与筛选 | 功能 | 数据>1 页 | 翻页 | 生效 | L5-API |
 | C-23-7 | 重复车牌边界 | 边界 | 已存在同车牌 | 再建 | 拒绝或提示 | 无 |
-| C-23-8 | 到期日临近提醒（保险/年检） | 边界 | 到期日<30 天 | 查看列表 | 显示符合实现（若无则为盲点） | 无 |
+| C-23-8 | 到期日临近提醒（保险/年检） | 边界 | 到期日<30 天 | 查看列表 | 现状：无提醒逻辑（实证现状钉住，盲点待产品决策） | L1 hr-matrix.component.test.ts（2026-08-20，实证现状钉住：源码无提醒/临近/expireWarn 任何逻辑） |
 | C-23-9 | 重复提交防抖 | 负向 | 表单已填 | 双击 | 一次请求 | 无 |
 | C-23-10 | 接口失败提示 | 负向 | mock 500 | 保存 | ElMessage.error | 无 |
 
@@ -1165,12 +1165,12 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-24-1 | userId 必填（el-input-number min=1） | 负向 | 弹窗打开 | 留空/输 0 提交 | 校验拦截 | 无 |
-| C-24-2 | isHandover switch 录入 | 功能 | 弹窗打开 | 切换开关保存 | 1/0 正确保存 | 无 |
-| C-24-3 | 仅新增+提交：无编辑/删除入口 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | 无 |
-| C-24-4 | 提交仅 DRAFT | 功能 | 草稿存在 | 提交 | 状态流转 | 无 |
-| C-24-5 | 状态列 RESIGN_STATUS 枚举渲染 | 一致性 | 多态数据 | 核对 | 与枚举基线一致 | L5-一致性 |
-| C-24-6 | isHandover 1/0→是/否、交接人列 | 一致性 | 两种数据 | 核对 | 文案一致 | L5-一致性 |
+| C-24-1 | userId 必填（el-input-number min=1） | 负向 | 弹窗打开 | 留空/输 0 提交 | 校验拦截 | L1 hr-matrix.component.test.ts（2026-08-20，三必填 userId/userName/resignDate + :min=1 运行时与源码双实证） |
+| C-24-2 | isHandover switch 录入 | 功能 | 弹窗打开 | 切换开关保存 | 1/0 正确保存 | L1 hr-matrix.component.test.ts（2026-08-20，switch active-value=1/inactive-value=0 默认 0 运行时与源码双实证） |
+| C-24-3 | 仅新增+提交：无编辑/删除入口 | 负向 | 列表有数据 | 检查操作列 | 无编辑/删除按钮 | L1 hr-matrix.component.test.ts（2026-08-20，源码无 handleEdit/handleDelete 实证） |
+| C-24-4 | 提交仅 DRAFT | 功能 | 草稿存在 | 提交 | 状态流转 | L1 hr-matrix.component.test.ts（2026-08-20，提交按钮 v-if DRAFT + confirm 文案 + submitResignApply(id) 运行时实证） |
+| C-24-5 | 状态列 RESIGN_STATUS 枚举渲染 | 一致性 | 多态数据 | 核对 | 与枚举基线一致 | L5-一致性 + L1 hr-matrix.component.test.ts（2026-08-20，statusMap 三态 + 未知透传运行时实证） |
+| C-24-6 | isHandover 1/0→是/否、交接人列 | 一致性 | 两种数据 | 核对 | 文案一致 | L5-一致性 + L1 hr-matrix.component.test.ts（2026-08-20，isHandover===1?'是':'否' 源码钉住） |
 | C-24-7 | 分页（view 与 consistency 接口路径差异需统一） | 一致性 | 数据>1 页 | 抓包翻页 | 以实际 API 为准 | L5-API(仅[200,404]) |
 | C-24-8 | 重复提交防抖 | 负向 | 表单已填 | 双击 | 一次请求 | 无 |
 | C-24-9 | 审批通过→人事统计 monthlyResign+1、在职-1 | 集成 | 离职审批通过 | 查 /hr/statistics | 数值联动变化 | 无 |
@@ -1183,7 +1183,7 @@
 | C-HR-X2 | 办公用品领用审批通过→档案台账库存联动 | 集成 | 领用→审批→查档案 | currentStock/totalIssued 正确 | 无 |
 | C-HR-X3 | 入职/离职→人事统计卡片与趋势图联动 | 集成 | 当月入离职各一 | monthlyEntry/monthlyResign 与趋势末点正确 | 无 |
 
-## C-4 档案管理（/archive，4 页，34+3 例）
+## C-4 档案管理（/archive，4 页，34+3 例，2026-08-20 M7：L1 archive-dashboard-matrix 新覆 11 行 + 增强 4 行 + 回填既有 archive-pages 6 行）
 
 **业务概述**：四页均为只读档案视图（页首 el-alert 只读提示）。首页为「项目下拉（/v1/project/list）→ handleProjectChange → getProjectArchive 聚合视图（6 tabs+基本信息）」，加载失败 ElMessage.error('加载项目档案失败：')+resetArchive；其余三页为 keyword 筛选的只读列表（历史 Promise.resolve 假实现已于 commit 17ee02c 修复）。
 
@@ -1191,54 +1191,54 @@
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-25-1 | 只读 alert 展示 | 功能 | 打开页面 | 查看页首 | 只读提示可见 | 无 |
+| C-25-1 | 只读 alert 展示 | 功能 | 打开页面 | 查看页首 | 只读提示可见 | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，「项目档案为只读聚合视图」alert 文案源码钉住） |
 | C-25-2 | 项目下拉加载 /v1/project/list | 功能 | 项目存在 | 打开页面 | 下拉项与 list 一致 | L5-一致性 |
 | C-25-3 | handleProjectChange→getProjectArchive 聚合加载 | 功能 | 选中有数据项目 | 选择项目 | 基本信息+6 tabs 渲染 | L5-API |
-| C-25-4 | 6 tabs（成员/施工合同/付款/收款/分包/机械）数量徽标 | 一致性 | 聚合数据非空 | 对比 tab 数量与数组长度 | 一致 | 无 |
-| C-25-5 | 基本信息 contractAmount/totalIncome/totalExpense formatMoney | 一致性 | 有金额数据 | 对比接口 | 千分位 2 位小数 | 无 |
-| C-25-6 | formatMoney NaN/空值兜底 '-' | 边界 | 字段为 null/NaN | 查看金额 | 显示 '-' 不显示 NaN | 无 |
-| C-25-7 | 加载失败 ElMessage.error+resetArchive | 负向 | mock 档案接口 500 | 选项目 | 错误提示，视图重置 | 无 |
-| C-25-8 | 切换项目重新加载（旧数据不残留） | 边界 | 已加载项目 A | 切换到 B | A 数据清空，B 数据加载 | 无 |
-| C-25-9 | 未选择项目空状态 | 边界 | 首次打开 | 不选项目 | 空态提示，不发档案请求 | 无 |
+| C-25-4 | 6 tabs（成员/施工合同/付款/收款/分包/机械）数量徽标 | 一致性 | 聚合数据非空 | 对比 tab 数量与数组长度 | 一致 | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，六 tabs :label 模板字符串绑定数组 length 源码钉住） |
+| C-25-5 | 基本信息 contractAmount/totalIncome/totalExpense formatMoney | 一致性 | 有金额数据 | 对比接口 | 千分位 2 位小数 | L1 archive-pages.component.test.ts（2026-08-15，formatMoney 千分位两位小数运行时实证） |
+| C-25-6 | formatMoney NaN/空值兜底 '-' | 边界 | 字段为 null/NaN | 查看金额 | 显示 '-' 不显示 NaN | L1 archive-pages.component.test.ts（2026-08-15，null/空串/NaN 显 '-' 运行时实证） |
+| C-25-7 | 加载失败 ElMessage.error+resetArchive | 负向 | mock 档案接口 500 | 选项目 | 错误提示，视图重置 | L1 archive-pages.component.test.ts（2026-08-15，失败时「加载项目档案失败」提示 + 视图重置运行时实证） |
+| C-25-8 | 切换项目重新加载（旧数据不残留） | 边界 | 已加载项目 A | 切换到 B | A 数据清空，B 数据加载 | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，A→B 切换后 B 响应缺失字段重置为 [] 不残留运行时实证） |
+| C-25-9 | 未选择项目空状态 | 边界 | 首次打开 | 不选项目 | 空态提示，不发档案请求 | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，未选项目不发请求 + 「请先选择一个项目」空态运行时实证） |
 | C-25-10 | 档案数据与各源模块一致（付款/收款 tab vs 财务登记） | 集成 | 项目有收付款 | 对比 tab 明细与财务页 | 一致 | 无 |
 
 ### C26 办公用品档案（/archive/office-supply）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-26-1 | 只读 alert 展示 | 功能 | 打开页面 | 查看 | 只读提示可见 | 无 |
-| C-26-2 | keyword 筛选 | 功能 | 多用品数据 | 输入关键字查询 | 请求携带 keyword，结果过滤 | 无 |
-| C-26-3 | 5 列绑定 supplyName/currentStock/totalInbound/totalIssued/lastInboundDate | 一致性 | 列表有数据 | 核对 | 严格一致 | L5-一致性 |
+| C-26-1 | 只读 alert 展示 | 功能 | 打开页面 | 查看 | 只读提示可见 | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，「办公用品档案为只读聚合视图」alert 文案源码钉住） |
+| C-26-2 | keyword 筛选 | 功能 | 多用品数据 | 输入关键字查询 | 请求携带 keyword，结果过滤 | L1 archive-pages.component.test.ts（2026-08-15，搜索重置页码并携带 keyword、重置清空运行时实证） |
+| C-26-3 | 5 列绑定 supplyName/currentStock/totalInbound/totalIssued/lastInboundDate | 一致性 | 列表有数据 | 核对 | 严格一致 | L5-一致性 + L1 archive-dashboard-matrix.component.test.ts（2026-08-20，五列 prop 绑定源码钉住） |
 | C-26-4 | 分页 total 一致 | 一致性 | 数据>1 页 | 翻页 | total 一致 | L5-一致性 |
 | C-26-5 | 空数据空态 | 边界 | 无匹配 | 查询 | 空态组件 | 无 |
-| C-26-6 | 数值列 0 值显示 0（非 '-'） | 边界 | 库存为 0 | 查看 | 显示 0 | 无 |
-| C-26-7 | 接口失败提示 | 负向 | mock 500 | 加载 | ElMessage.error | 无 |
+| C-26-6 | 数值列 0 值显示 0（非 '-'） | 边界 | 库存为 0 | 查看 | 显示 0 | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，currentStock=0 单元格渲染 '0' 运行时实证） |
+| C-26-7 | 接口失败提示 | 负向 | mock 500 | 加载 | 现状：loadData 无 catch 无提示（实证现状钉住，盲点） | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，实证现状钉住：源码无 catch 无 ElMessage，失败无提示） |
 | C-26-8 | 库存=累计入库-累计领用 勾稽 | 一致性 | 有出入库记录 | 对比三列 | 等式成立 | L5-API |
 
 ### C27 其它支出合同档案（/archive/other-expense-contract）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-27-1 | 只读 alert 展示 | 功能 | 打开页面 | 查看 | 只读提示可见 | 无 |
-| C-27-2 | keyword 筛选 | 功能 | 多合同数据 | 输入关键字 | 正确过滤 | 无 |
-| C-27-3 | contractAmount formatMoney、空值 '-' | 一致性 | 含空金额记录 | 核对金额列 | 格式正确、空为 '-' | L5-一致性 |
-| C-27-4 | status 原始 code 直出（无翻译） | 一致性 | 列表有数据 | 核对状态列 | 显示原始 code | L5-一致性 |
+| C-27-1 | 只读 alert 展示 | 功能 | 打开页面 | 查看 | 只读提示可见 | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，「其它支出合同档案为只读聚合视图」alert 文案源码钉住） |
+| C-27-2 | keyword 筛选 | 功能 | 多合同数据 | 输入关键字 | 正确过滤 | L1 archive-pages.component.test.ts（2026-08-15，搜索重置页码并携带 keyword 运行时实证） |
+| C-27-3 | contractAmount formatMoney、空值 '-' | 一致性 | 含空金额记录 | 核对金额列 | 格式正确、空为 '-' | L5-一致性 + L1 archive-dashboard-matrix.component.test.ts（2026-08-20，null→'-'、0→'0.00'、千分位两位小数运行时实证） |
+| C-27-4 | status 原始 code 直出（无翻译） | 一致性 | 列表有数据 | 核对状态列 | 显示原始 code | L5-一致性 + L1 archive-dashboard-matrix.component.test.ts（2026-08-20，status prop 直出无模板源码钉住） |
 | C-27-5 | 分页 total 一致 | 一致性 | 数据>1 页 | 翻页 | total 一致 | L5-一致性 |
 | C-27-6 | 空数据空态 | 边界 | 无匹配 | 查询 | 空态组件 | 无 |
-| C-27-7 | 接口失败提示 | 负向 | mock 500 | 加载 | ElMessage.error | 无 |
+| C-27-7 | 接口失败提示 | 负向 | mock 500 | 加载 | 现状：loadData 无 catch 无提示（实证现状钉住，盲点） | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，实证现状钉住：源码无 catch 无 ElMessage，失败无提示） |
 | C-27-8 | 档案合同与支出域其他合同模块数据一致 | 集成 | 存在其他支出合同 | 对比源模块列表 | 编号/金额/状态一致 | L5-API |
 
 ### C28 其它收入合同档案（/archive/other-income-contract）
 
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
-| C-28-1 | 只读 alert 展示 | 功能 | 打开页面 | 查看 | 只读提示可见 | 无 |
-| C-28-2 | keyword 筛选 | 功能 | 多合同数据 | 输入关键字 | 正确过滤 | 无 |
+| C-28-1 | 只读 alert 展示 | 功能 | 打开页面 | 查看 | 只读提示可见 | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，「其它收入合同档案为只读聚合视图」alert 文案源码钉住） |
+| C-28-2 | keyword 筛选 | 功能 | 多合同数据 | 输入关键字 | 正确过滤 | L1 archive-pages.component.test.ts（2026-08-15，搜索重置页码并携带 keyword 运行时实证） |
 | C-28-3 | contractAmount formatMoney、空值 '-' | 一致性 | 含空金额记录 | 核对 | 格式正确 | L5-一致性 |
-| C-28-4 | status 原始 code 直出 | 一致性 | 列表有数据 | 核对 | 原始 code | L5-一致性 |
+| C-28-4 | status 原始 code 直出 | 一致性 | 列表有数据 | 核对 | 原始 code | L5-一致性 + L1 archive-dashboard-matrix.component.test.ts（2026-08-20，status prop 直出无模板源码钉住） |
 | C-28-5 | 分页 total 一致 | 一致性 | 数据>1 页 | 翻页 | total 一致 | L5-一致性 |
 | C-28-6 | 空数据空态 | 边界 | 无匹配 | 查询 | 空态组件 | 无 |
-| C-28-7 | 接口失败提示 | 负向 | mock 500 | 加载 | ElMessage.error | 无 |
+| C-28-7 | 接口失败提示 | 负向 | mock 500 | 加载 | 现状：loadData 无 catch 无提示（实证现状钉住，盲点） | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，实证现状钉住：源码无 catch 无 ElMessage，失败无提示） |
 | C-28-8 | 收入合同档案与收款/开票口径关联一致 | 集成 | 存在收入合同+回款 | 对比金额链路 | 合同额→回款累计勾稽 | 无 |
 
 ### C-ARC-X 档案跨模块集成
@@ -1249,7 +1249,7 @@
 | C-ARC-X2 | 办公用品出入库→档案台账三列勾稽 | 集成 | 入库 50/出库 10→查档案 | totalInbound/totalIssued/currentStock 正确 | 无 |
 | C-ARC-X3 | 项目删除/归档后档案入口行为 | 边界 | 删除项目后打开档案 | 下拉不含该项目，不报错 | 无 |
 
-## C-5 首页看板（/dashboard，2 页，26+3 例）
+## C-5 首页看板（/dashboard，2 页，26+3 例，2026-08-20 M7：L1 archive-dashboard-matrix 新覆 1 行 + 增强 2 行）
 
 **业务概述**：首页为公司级 KPI（4 statCards，formatWan = /10000 toFixed(1)）+ ECharts 饼图（项目状态分布）+柱图（收支对比），三个加载函数均有独立 try/catch 且**当前源码已显式 ElMessage.error**（catch 中饼/柱图仍渲染空图）。项目看板为 ProjectSelector 驱动的四维度并行加载（loadDimension 独立 try/catch，失败维度 el-alert 显式报错、空维度 el-empty），四个渲染函数含数值变换（剩余预算 Math.max(…,0)、完成率 ×100 裁剪 0–100、金额 toWan），resize 防抖 300ms。
 
@@ -1267,7 +1267,7 @@
 | C-29-8 | 柱图失败→ElMessage.error+渲染空柱图 | 负向 | mock 柱图接口 500 | 打开 | 错误提示+空图 | 无 |
 | C-29-9 | KPI 与收支数据源一致（已收款=回款登记汇总口径） | 集成 | 有回款数据 | 对比财务回款合计 | 口径一致 | 无 |
 | C-29-10 | 窗口 resize 图表重绘 | 功能 | 页面已加载 | 缩放窗口 | 图表自适应 | 无 |
-| C-29-11 | projectCount=0 空态 | 边界 | 无项目 | 打开 | 卡片 0、图表空态不报错 | 无 |
+| C-29-11 | projectCount=0 空态 | 边界 | 无项目 | 打开 | 卡片 0、图表空态不报错 | L1 archive-dashboard-matrix.component.test.ts（2026-08-20，overview={} 时项目总数 0 + 三金额卡 formatWan→'0' 无 NaN 无 error 运行时实证） |
 | C-29-12 | consistency spec __silentFallback__ 硬编码记录与已修复源码脱节 | 一致性 | 运行 consistency/dashboard | 查看报告 | 该项仍被固定写入发现（测试资产过期，需更新） | L5-一致性(过期断言) |
 
 ### C30 项目看板（/project-dashboard）
@@ -1279,8 +1279,8 @@
 | C-30-3 | 维度数据为空→el-empty | 边界 | 项目无进度数据 | 选项目 | 进度区空态 | 无 |
 | C-30-4 | 预算饼图：剩余预算 Math.max(budget-used,0) | 边界 | 支出>预算 | 选项目 | 剩余预算显示 0 不负数 | 无 |
 | C-30-5 | 进度仪表盘：completionRate*100 裁剪 0–100 | 边界 | 完成率 1.2/负值 | 选项目 | 仪表盘 100/0 | L5-API |
-| C-30-6 | 合同柱图 toWan 换算 | 一致性 | 有合同数据 | 对比柱值与接口/10000 | 一致 | L5-API |
-| C-30-7 | 产值折线图 toWan 换算 | 一致性 | 多月产值 | 对比 | 一致 | L5-API |
+| C-30-6 | 合同柱图 toWan 换算 | 一致性 | 有合同数据 | 对比柱值与接口/10000 | 一致 | L5-API + L1 archive-dashboard-matrix.component.test.ts（2026-08-20，双柱 toWan：5000000→500/1234567→123.46 setOption 运行时实证） |
+| C-30-7 | 产值折线图 toWan 换算 | 一致性 | 多月产值 | 对比 | 一致 | L5-API + L1 archive-dashboard-matrix.component.test.ts（2026-08-20，折线 toWan：100000→10/250000→25，X 轴月份运行时实证） |
 | C-30-8 | watch 驱动：切换项目旧图 dispose 新图 render | 功能 | 两项目有数据 | 连续切换 | 无残影/重复渲染 | 无 |
 | C-30-9 | resize 防抖 300ms | 边界 | 页面已加载 | 快速连续缩放 | 防抖后仅一次重绘 | 无 |
 | C-30-10 | 未选项目空状态，不发维度请求 | 边界 | 首次打开 | 不选项目 | 空态提示，无请求 | L5-一致性(__note__) |
