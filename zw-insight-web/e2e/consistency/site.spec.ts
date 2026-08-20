@@ -33,7 +33,9 @@ const SCHEDULE_COLUMNS: ColumnSpec[] = [
   { label: '计划完成', index: 3, field: 'planEndDate', type: 'date' },
   { label: '完成进度', index: 4, field: 'progress', expect: (r) => `${r.progress || 0}%` },
   { label: '负责人', index: 5, field: 'responsible', type: 'text' },
-  { label: '状态', index: 6, field: 'status', expect: (r) => (r.status === 'COMPLETED' ? '已完成' : r.status === 'DELAYED' ? '滞后' : '进行中') },
+  // 2026-08-20 修正：后端 BizSchedulePlan 字段为 taskStatus（非 status），页面 schedule.vue 亦按 taskStatus 渲染；
+  // 原绑定 status 读得 undefined 恒落 else 分叉「进行中」，与页面实际渲染不符（2026-08-20 全量 CI 暴露，本地复现实证）
+  { label: '状态', index: 6, field: 'taskStatus', expect: (r) => (r.taskStatus === 'COMPLETED' ? '已完成' : r.taskStatus === 'DELAYED' ? '滞后' : '进行中') },
 ]
 
 // 2026-08-11 对齐页面实际结构（site/inspection/index.vue）：项目/检查内容/是否有问题/
