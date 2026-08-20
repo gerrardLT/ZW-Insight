@@ -1568,7 +1568,7 @@
 | D-17-11 | 重置密码→新密码登录 | 集成 | 管理端重置密码 | 旧密码失败、新密码登录成功 | 无 |
 | D-17-12 | 编号规则→业务单据编号 | 集成 | 改规则后创建业务单据 | 单据编号按新前缀/补零生成 | 无 |
 
-## D-3 基础数据（/basedata，7 页）
+## D-3 基础数据（/basedata，7 页，2026-08-20 M9：L1 basedata-message-matrix +24 例（与消息域合文件），新覆 9 行 + 回填既有 2 行）
 
 **业务概述**：7 页均为精简 CRUD（材料/供应商/甲方/自持公司/检查方案/供应商评价/黑名单）。源码实证差距：supplier-evaluation.vue 仅单一 score（input-number min=1 max=100，只有新增+删除无编辑），**无五维评分**；inspection-scheme.vue 仅方案级字段（QUALITY/SAFETY + ENABLED/DISABLED），**无检查项模板维护 UI**。
 
@@ -1578,7 +1578,7 @@
 |---|---|---|---|---|---|---|
 | D-18-1 | 材料 CRUD | 功能 | 无 | 增改查删 | 成功 | L5-API/L5-一致性 |
 | D-18-2 | materialName 必填 | 负向 | 无 | 留空提交 | required 拦截 | L5-一致性 |
-| D-18-3 | referencePrice 精度 | 边界 | 无 | 输入 1.234 / 负数 | precision=2、min=0 钳制 | 无 |
+| D-18-3 | referencePrice 精度 | 边界 | 无 | 输入 1.234 / 负数 | precision=2、min=0 钳制 | L1 basedata-message-matrix.component.test.ts（2026-08-20，源码钉住 :min="0" :precision="2"） |
 | D-18-4 | 材料编码重复 | 负向 | 已有编码 | 新增同码 | 冲突提示 | 无 |
 | D-18-5 | 分类关联 | 功能 | 分类树存在 | 选分类建材料 | /material/categories 数据正确 | L5-API |
 | D-18-6 | 名称查询+分页 | 功能 | 数据充足 | 查询翻页 | 正确 | L5-API |
@@ -1591,8 +1591,8 @@
 |---|---|---|---|---|---|---|
 | D-19-1 | 供应商 CRUD | 功能 | 无 | 增改查删 | 成功 | L5-API/L5-一致性 |
 | D-19-2 | supplierName 必填 | 负向 | 无 | 留空 | required 拦截 | L5-一致性 |
-| D-19-3 | 类型三选查询 | 功能 | 三类数据 | 按 MATERIAL/MACHINE/LABOR 筛选 | 结果正确 | 无 |
-| D-19-4 | 表单类型字段提交 | 功能 | 无 | 新增带类型 | 类型持久化 | 无 |
+| D-19-3 | 类型三选查询 | 功能 | 三类数据 | 按 MATERIAL/MACHINE/LABOR 筛选 | 结果正确 | L1 basedata-message-matrix.component.test.ts（2026-08-20，supplierType 随查询参数提交+三选项源码钉住） |
+| D-19-4 | 表单类型字段提交 | 功能 | 无 | 新增带类型 | 类型持久化 | L1 basedata-message-matrix.component.test.ts（2026-08-20，新增默认 supplierType=MATERIAL） |
 | D-19-5 | 名称重复 | 负向 | 同名存在 | 新增同名 | 冲突提示 | 无 |
 | D-19-6 | 黑名单供应商标识联动 | 集成 | 供应商在黑名单 | 查看列表/选择 | 状态可见或受限（依源码现状记录） | 无 |
 | D-19-7 | 分页翻页 | 功能 | 数据充足 | 翻页 | 正确 | L5-API |
@@ -1632,8 +1632,8 @@
 | D-22-1 | 方案 CRUD | 功能 | 无 | 增改查删 | 成功 | L5-一致性 |
 | D-22-2 | schemeName/schemeType 必填 | 负向 | 无 | 留空 | required 拦截 | L5-一致性 |
 | D-22-3 | 类型 QUALITY/SAFETY | 功能 | 无 | 两类分别创建查询 | 过滤正确 | 无 |
-| D-22-4 | 启用/停用切换 | 功能 | 方案存在 | 切换 ENABLED/DISABLED | 状态更新 | 无 |
-| D-22-5 | 检查项模板维护 | 负向 | 背景需求 | 尝试维护检查项 | **源码无检查项 UI**（差距，不可执行） | 无 |
+| D-22-4 | 启用/停用切换 | 功能 | 方案存在 | 切换 ENABLED/DISABLED | 状态更新 | L1 basedata-message-matrix.component.test.ts（2026-08-20，差距钉住：源码无启停入口，状态仅展示 tag） |
+| D-22-5 | 检查项模板维护 | 负向 | 背景需求 | 尝试维护检查项 | **源码无检查项 UI**（差距，不可执行） | L1 basedata-message-matrix.component.test.ts（2026-08-20，差距现状钉住：无检查项/itemCount 维护 UI） |
 | D-22-6 | 停用方案不可被现场引用 | 集成 | 方案停用 | 现场端选择方案 | 不可选（依后端规则） | 无 |
 | D-22-7 | 名称重复 | 负向 | 同名存在 | 新增 | 冲突提示 | 无 |
 | D-22-8 | 查询+分页 | 功能 | 数据充足 | 查询翻页 | 正确 | L5-一致性 |
@@ -1644,10 +1644,10 @@
 |---|---|---|---|---|---|---|
 | D-23-1 | 新增评价 | 功能 | 供应商存在 | 选供应商+评分提交 | 成功 | L5-一致性 |
 | D-23-2 | supplierName/score 必填 | 负向 | 无 | 留空 | required 拦截 | L5-一致性 |
-| D-23-3 | score 边界 1/100 | 边界 | 无 | 输入 0/101 | min=1 max=100 钳制 | 无 |
-| D-23-4 | 无编辑入口 | 边界 | 评价存在 | 查看操作列 | 仅新增+删除（源码现状） | 无 |
-| D-23-5 | 删除评价确认 | 负向 | 评价存在 | 删除 | confirm 后删除 | 无 |
-| D-23-6 | 五维评分 | 负向 | 背景需求 | 尝试分维度评分 | **源码仅单一 score**（差距，不可执行） | 无 |
+| D-23-3 | score 边界 1/100 | 边界 | 无 | 输入 0/101 | min=1 max=100 钳制 | L1 basedata-message-matrix.component.test.ts（2026-08-20，:min="1" :max="100" 源码钉住+默认 80） |
+| D-23-4 | 无编辑入口 | 边界 | 评价存在 | 查看操作列 | 仅新增+删除（源码现状） | L1 basedata-message-matrix.component.test.ts（2026-08-20，页面零 handleEdit；API 层 updateSupplierEvaluation 存在但未被页面消费） |
+| D-23-5 | 删除评价确认 | 负向 | 评价存在 | 删除 | confirm 后删除 | L1 resign-evaluation.component.test.ts（2026-08-15，确认后调 delete 并刷新） |
+| D-23-6 | 五维评分 | 负向 | 背景需求 | 尝试分维度评分 | **源码仅单一 score**（差距，不可执行） | L1 basedata-message-matrix.component.test.ts（2026-08-20，差距现状钉住：无分维度字段） |
 | D-23-7 | 分页接口兼容 | 一致性 | 有数据 | 分页查询 | 根路径 GET 分页（无 /page 别名） | L5-API(200/404) |
 | D-23-8 | 同供应商重复评价 | 边界 | 已有评价 | 再评同一供应商 | 允许多条或约束（记录现状） | 无 |
 | D-23-9 | 低分评价联动黑名单 | 集成 | 低分 | 查看供应商状态 | 提示或人工转黑名单（现状记录） | 无 |
@@ -1658,11 +1658,11 @@
 |---|---|---|---|---|---|---|
 | D-24-1 | 新增黑名单 | 功能 | 供应商存在 | 填写原因提交 | 成功 | L5-一致性 |
 | D-24-2 | supplierName/reason 必填 | 负向 | 无 | 留空 | required 拦截 | L5-一致性 |
-| D-24-3 | 移出黑名单确认 | 负向 | 黑名单存在 | 移出→confirm | 确认后移出；取消不生效 | 无 |
+| D-24-3 | 移出黑名单确认 | 负向 | 黑名单存在 | 移出→confirm | 确认后移出；取消不生效 | L1 supplier-blacklist.component.test.ts（2026-08-15，确认后调 delete 并刷新） |
 | D-24-4 | 重复拉黑 | 负向 | 已在黑名单 | 再次拉黑 | 冲突/重复提示 | 无 |
 | D-24-5 | 分页接口兼容 | 一致性 | 有数据 | 分页查询 | 根路径 GET（无 /page 别名） | L5-API(200/404) |
 | D-24-6 | 黑名单供应商选择拦截 | 集成 | 采购/分包选择供应商 | 选择黑名单供应商 | 不可选或警示 | 无 |
-| D-24-7 | 原因超长输入 | 边界 | 无 | reason 超长 | 按约束处理 | 无 |
+| D-24-7 | 原因超长输入 | 边界 | 无 | reason 超长 | 按约束处理 | L1 basedata-message-matrix.component.test.ts（2026-08-20，现状钉住：reason textarea 无 maxlength，前端不拦截） |
 | D-24-8 | 无权限访问 | 权限 | 无权限 | 访问 | 守卫拦截 | L1 |
 
 ### D-X3 基础数据跨模块集成
@@ -1673,7 +1673,7 @@
 | D-24-10 | 供应商类型→对应支出模块可选范围 | 集成 | LABOR 供应商 | 仅劳务模块可选 | 无 |
 | D-24-11 | 字典(basedata 相关)→useDict 渲染 | 集成 | 修改字典值 | 各页下拉同步 | L1(use-dict) |
 
-## D-4 消息管理（/message，4 页）
+## D-4 消息管理（/message，4 页，2026-08-20 M9：L1 basedata-message-matrix +24 例（与基础数据域合文件），新覆 20 行 + 回填既有 7 行）
 
 **业务概述**：通知（title/content required，发布按钮 :disabled="row.status==='PUBLISHED'"，无编辑/删除）、公告（DRAFT→PUBLISHED→REVOKED 状态机，按钮 disabled 规则严格按状态）、推送配置（businessType 必填且**编辑时 disabled**、四渠道 switch、模板下拉 v-show 联动，分页用 page/size）、消息中心（未读/全部 tab、badge max=99、异地登录 LOGIN_LOCATION/SECURITY 特殊渲染并跳转 /user/devices）。
 
@@ -1683,10 +1683,10 @@
 |---|---|---|---|---|---|---|
 | D-25-1 | 新增通知 | 功能 | 无 | 填 title/content 提交 | DRAFT 创建 | L5-一致性 |
 | D-25-2 | title/content 必填 | 负向 | 无 | 留空 | required 拦截 | L5-一致性 |
-| D-25-3 | 发布通知 | 功能 | DRAFT 通知 | 发布→confirm | 状态变 PUBLISHED | 无 |
-| D-25-4 | 已发布禁再发布 | 边界 | PUBLISHED | 查看发布按钮 | disabled(row.status==='PUBLISHED') | 无 |
-| D-25-5 | 无编辑/删除入口 | 边界 | 任意通知 | 查看操作列 | 源码仅新增+发布（现状记录） | 无 |
-| D-25-6 | 发布取消 | 负向 | DRAFT | confirm 取消 | 状态不变 | 无 |
+| D-25-3 | 发布通知 | 功能 | DRAFT 通知 | 发布→confirm | 状态变 PUBLISHED | L1 notice-crud.component.test.ts（2026-08-15，发布确认后调 publishNotice 并刷新） |
+| D-25-4 | 已发布禁再发布 | 边界 | PUBLISHED | 查看发布按钮 | disabled(row.status==='PUBLISHED') | L1 notice-crud.component.test.ts（2026-08-15，已发布行发布按钮禁用状态机守卫） |
+| D-25-5 | 无编辑/删除入口 | 边界 | 任意通知 | 查看操作列 | 源码仅新增+发布（现状记录） | L1 basedata-message-matrix.component.test.ts（2026-08-20，现状钉住：零 handleEdit/handleDelete/updateNotice/deleteNotice） |
+| D-25-6 | 发布取消 | 负向 | DRAFT | confirm 取消 | 状态不变 | L1 basedata-message-matrix.component.test.ts（2026-08-20，confirm 拒绝后零 publishNotice 零刷新） |
 | D-25-7 | 标题超长 | 边界 | 无 | 超长 title | 按约束处理 | 无 |
 | D-25-8 | 发布后消息中心触达 | 集成 | 发布通知 | 用户消息中心 | 出现对应消息 | 无 |
 | D-25-9 | 无权限隐藏发布按钮 | 权限 | 无权限 | 访问 | v-permission 隐藏 | L1 |
@@ -1697,14 +1697,14 @@
 |---|---|---|---|---|---|---|
 | D-26-1 | 新增公告 | 功能 | 无 | 填 title/content/scope | DRAFT 创建 | L5-一致性 |
 | D-26-2 | 三字段必填 | 负向 | 无 | 逐项留空 | required 拦截 | L5-一致性 |
-| D-26-3 | 发布→PUBLISHED | 功能 | DRAFT | 发布 | 状态与 tag 更新（statusLabel/statusTagType map） | 无 |
-| D-26-4 | 撤回→REVOKED | 功能 | PUBLISHED | 撤回 | 状态 REVOKED | 无 |
-| D-26-5 | 已发布禁编辑/发布/删除 | 边界 | PUBLISHED | 查看按钮 | 三按钮 disabled | 无 |
-| D-26-6 | 非已发布禁撤回 | 边界 | DRAFT/REVOKED | 查看撤回按钮 | disabled | 无 |
-| D-26-7 | scope ALL/DEPARTMENT | 功能 | 无 | 两种范围创建 | 持久化正确 | 无 |
-| D-26-8 | isTop 置顶 | 功能 | 公告存在 | 开置顶 | 列表排序优先 | 无 |
-| D-26-9 | REVOKED 再发布 | 边界 | REVOKED | 发布 | 按源码 disabled 规则允许/拒绝（记录现状） | 无 |
-| D-26-10 | 删除 DRAFT 确认 | 负向 | DRAFT | 删除→取消 | 不删除 | 无 |
+| D-26-3 | 发布→PUBLISHED | 功能 | DRAFT | 发布 | 状态与 tag 更新（statusLabel/statusTagType map） | L1 announcement-crud.component.test.ts（2026-08-15，确认后调 publishAnnouncement+状态标签映射三态） |
+| D-26-4 | 撤回→REVOKED | 功能 | PUBLISHED | 撤回 | 状态 REVOKED | L1 announcement-crud.component.test.ts（2026-08-15，确认后调 revokeAnnouncement 并刷新） |
+| D-26-5 | 已发布禁编辑/发布/删除 | 边界 | PUBLISHED | 查看按钮 | 三按钮 disabled | L1 basedata-message-matrix.component.test.ts（2026-08-20，三按钮 :disabled="row.status === 'PUBLISHED'" 源码钉住） |
+| D-26-6 | 非已发布禁撤回 | 边界 | DRAFT/REVOKED | 查看撤回按钮 | disabled | L1 basedata-message-matrix.component.test.ts（2026-08-20，撤回 :disabled="row.status !== 'PUBLISHED'" 源码钉住） |
+| D-26-7 | scope ALL/DEPARTMENT | 功能 | 无 | 两种范围创建 | 持久化正确 | L1 basedata-message-matrix.component.test.ts（2026-08-20，两选项源码钉住+默认 ALL） |
+| D-26-8 | isTop 置顶 | 功能 | 公告存在 | 开置顶 | 列表排序优先 | L1 basedata-message-matrix.component.test.ts（2026-08-20，el-switch 绑定+默认 false 钉住；排序依后端） |
+| D-26-9 | REVOKED 再发布 | 边界 | REVOKED | 发布 | 按源码 disabled 规则允许/拒绝（记录现状） | L1 basedata-message-matrix.component.test.ts（2026-08-20，现状钉住：禁用条件仅排除 PUBLISHED，REVOKED 可再发布） |
+| D-26-10 | 删除 DRAFT 确认 | 负向 | DRAFT | 删除→取消 | 不删除 | L1 basedata-message-matrix.component.test.ts（2026-08-20，confirm 拒绝后零 deleteAnnouncement） |
 | D-26-11 | 公告全员可见性 | 集成 | scope=ALL 发布 | 普通用户查看 | 可见 | 无 |
 
 ### D27 推送配置（/message/push-config）
@@ -1713,13 +1713,13 @@
 |---|---|---|---|---|---|---|
 | D-27-1 | 新增配置 | 功能 | 无 | 填 businessType/TypeName+渠道 | 成功 | L5-一致性 |
 | D-27-2 | businessType/TypeName 必填 | 负向 | 无 | 留空 | required 拦截 | L5-一致性 |
-| D-27-3 | 编辑时业务类型锁定 | 功能 | 配置存在 | 点编辑 | businessType disabled(:disabled="isEdit") | 无 |
+| D-27-3 | 编辑时业务类型锁定 | 功能 | 配置存在 | 点编辑 | businessType disabled(:disabled="isEdit") | L1 basedata-message-matrix.component.test.ts（2026-08-20，:disabled="isEdit" 源码钉住+编辑回显实证） |
 | D-27-4 | 业务类型唯一性 409 | 负向 | 已有配置 | 新建同 businessType | 唯一性冲突提示 | 无 |
-| D-27-5 | 四渠道 switch | 功能 | 无 | 逐渠道开关 | 状态持久化 | 无 |
-| D-27-6 | 模板下拉联动 | 功能 | 渠道开启 | 选模板 | v-show 联动，loadTemplates(page:1,size:200) | 无 |
-| D-27-7 | 分页参数 page/size | 一致性 | 数据充足 | 翻页 | 请求用 page/size（与全局 pageNum/pageSize 不一致） | 无 |
-| D-27-8 | 删除配置确认 | 负向 | 配置存在 | 删除 | confirm 后删除 | 无 |
-| D-27-9 | 全渠道关闭保存 | 边界 | 无 | 四渠道全关提交 | 允许保存或提示（记录现状） | 无 |
+| D-27-5 | 四渠道 switch | 功能 | 无 | 逐渠道开关 | 状态持久化 | L1 basedata-message-matrix.component.test.ts（2026-08-20，默认仅站内信开启其余三渠道关） |
+| D-27-6 | 模板下拉联动 | 功能 | 渠道开启 | 选模板 | v-show 联动，loadTemplates(page:1,size:200) | L1 basedata-message-matrix.component.test.ts（2026-08-20，getTemplatePage({page:1,size:200}) 实证+三模板项 v-show 钉住） |
+| D-27-7 | 分页参数 page/size | 一致性 | 数据充足 | 翻页 | 请求用 page/size（与全局 pageNum/pageSize 不一致） | L1 basedata-message-matrix.component.test.ts（2026-08-20，queryParams {page:1,size:10} 实证） |
+| D-27-8 | 删除配置确认 | 负向 | 配置存在 | 删除 | confirm 后删除 | L1 basedata-message-matrix.component.test.ts（2026-08-20，确认文案含业务类型名+确认后调 delete） |
+| D-27-9 | 全渠道关闭保存 | 边界 | 无 | 四渠道全关提交 | 允许保存或提示（记录现状） | L1 basedata-message-matrix.component.test.ts（2026-08-20，现状钉住：无渠道开关校验，仅 businessType/Name 必填） |
 | D-27-10 | 无权限访问 | 权限 | 无权限 | 访问 | 守卫拦截 | L1 |
 
 ### D28 消息中心（/message/center）
@@ -1727,15 +1727,15 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | D-28-1 | 未读/全部 tab | 功能 | 有消息 | 切 tab | 列表过滤正确 | L5-一致性 |
-| D-28-2 | badge max=99 | 边界 | 未读>99 | 查看角标 | 显示 99+ | 无 |
-| D-28-3 | 标记已读 | 功能 | 未读消息 | 点已读 | isRead 更新，按钮转 disabled(row.isRead) | 无 |
-| D-28-4 | 已读禁再标记 | 边界 | 已读消息 | 查看按钮 | disabled | 无 |
-| D-28-5 | 全部已读 | 功能 | 有未读 | 点全部已读 | 批量标记 | 无 |
-| D-28-6 | 无未读禁全部已读 | 边界 | unreadCount===0 | 查看按钮 | disabled | 无 |
-| D-28-7 | 异地登录特殊渲染 | 功能 | LOGIN_LOCATION/SECURITY 消息 | 查看列表 | 安全提醒 tag+行高亮 | 无 |
-| D-28-8 | 查看设备跳转 | 集成 | 异地登录消息 | 点查看设备 | router.push('/user/devices') | 无 |
+| D-28-2 | badge max=99 | 边界 | 未读>99 | 查看角标 | 显示 99+ | L1 basedata-message-matrix.component.test.ts（2026-08-20，:value="unreadCount" :max="99" 源码钉住） |
+| D-28-3 | 标记已读 | 功能 | 未读消息 | 点已读 | isRead 更新，按钮转 disabled(row.isRead) | L1 message-center.component.test.ts（2026-08-15，markAsRead+isRead 置位+未读数自减） |
+| D-28-4 | 已读禁再标记 | 边界 | 已读消息 | 查看按钮 | disabled | L1 basedata-message-matrix.component.test.ts（2026-08-20，:disabled="row.isRead" 源码钉住） |
+| D-28-5 | 全部已读 | 功能 | 有未读 | 点全部已读 | 批量标记 | L1 message-center.component.test.ts（2026-08-15，markAllAsRead+未读归零+刷新） |
+| D-28-6 | 无未读禁全部已读 | 边界 | unreadCount===0 | 查看按钮 | disabled | L1 basedata-message-matrix.component.test.ts（2026-08-20，:disabled="unreadCount === 0" 源码钉住） |
+| D-28-7 | 异地登录特殊渲染 | 功能 | LOGIN_LOCATION/SECURITY 消息 | 查看列表 | 安全提醒 tag+行高亮 | L1 basedata-message-matrix.component.test.ts（2026-08-20，isRemoteLoginMsg 双条件判定+alert-row 行高亮+安全提醒文案） |
+| D-28-8 | 查看设备跳转 | 集成 | 异地登录消息 | 点查看设备 | router.push('/user/devices') | L1 basedata-message-matrix.component.test.ts（2026-08-20，goToDevices 实证 push('/user/devices')） |
 | D-28-9 | 快捷入口批量保存 | 功能 | 背景提及 | 配置快捷入口 | 批量保存生效（按源码现状） | 无 |
-| D-28-10 | 空消息占位 | 边界 | 无消息 | 打开 | 空态展示 | 无 |
+| D-28-10 | 空消息占位 | 边界 | 无消息 | 打开 | 空态展示 | L1 basedata-message-matrix.component.test.ts（2026-08-20，空 records 表格渲染 No Data + total=0） |
 
 ### D-X4 消息跨模块集成
 
