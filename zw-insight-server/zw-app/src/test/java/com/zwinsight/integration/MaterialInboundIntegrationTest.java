@@ -42,6 +42,19 @@ class MaterialInboundIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setup() {
+        // save 自动编号的真实依赖：MATERIAL_INBOUND 编号规则（租户 9999）。
+        // 生产迁移 43_V2026_41 只种 tenant_id=1，L2 容器库需自补夹具（2026-08-20 全量 CI 暴露，
+        // 同域 PurchaseContractIntegrationTest.setupSerialRule 既有范式）
+        Integer ruleCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM serial_number_rule WHERE business_type = ? AND tenant_id = ?",
+                Integer.class, "MATERIAL_INBOUND", TEST_TENANT_ID);
+        if (ruleCount == null || ruleCount == 0) {
+            jdbcTemplate.update(
+                    "INSERT INTO serial_number_rule (id, business_type, rule_prefix, date_format, seq_length, tenant_id) " +
+                            "VALUES (?, ?, ?, ?, ?, ?)",
+                    99990902L, "MATERIAL_INBOUND", "RK", "yyyyMMdd", 4, TEST_TENANT_ID);
+        }
+
         // 清除残留（容器跨测试类复用，保持类间隔离）
         jdbcTemplate.update("DELETE FROM biz_material_inbound_detail WHERE tenant_id = ?", TEST_TENANT_ID);
         jdbcTemplate.update("DELETE FROM biz_material_inbound WHERE tenant_id = ?", TEST_TENANT_ID);
