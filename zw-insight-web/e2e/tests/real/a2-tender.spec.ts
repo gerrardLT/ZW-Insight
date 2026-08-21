@@ -273,4 +273,12 @@ test.describe('A-2 证件模块真实契约闭环（缺口#1 解除后翻正向�
     expect((pg.body?.data?.records || []).find((r: any) => String(r.id) === certId), '删除后不再回显').toBeUndefined()
     certId = ''
   })
+
+  // serial 链中断（前置用例失败）时 A6-04 不会执行，兜底删除防残留污染 consistency 阶段
+  test.afterAll(async () => {
+    if (certId) {
+      await apiJson('DELETE', `/api/v1/tender/certificate/person/${certId}`).catch(() => {})
+      certId = ''
+    }
+  })
 })

@@ -5,8 +5,8 @@
  * @matrix P1-预算管控 | tests/frontend-test-case-matrix.md 附录二
  *   A-14   → BLOCK/WARN_ONLY/EXEMPT 拦截语义端到端
  *   A-X15  → 预算批准→变更可选（预算 submit 直批 APPROVED 实证）
- *   A-X16/X17 → 变更审批链现状钉住：budget_change_approval BPMN 缺失（后端资源实证），
- *               submit 被拒为当前行为钉住 + 台账登记功能缺口
+ *   A-X16/X17 → 变更审批链正向闭环：budget_change_approval BPMN 已补齐（台账缺口#2 解除），
+ *               submit→SUBMITTED→withdraw→WITHDRAWN 状态机 + DRAFT 撤回负向
  *   A-X18/X19 → BLOCK 拦截支出合同提交、删除项目级配置回落全局
  *
  * 前置数据纪律（BudgetBlockIntegrationTest 同源模式）：
@@ -258,11 +258,12 @@ describe('22 - 预算管控端到端（租户 9999）', () => {
     })
 
     // @matrix A-X15
+    // changeReason 带 E2E_TEST_ 前缀：delete 守卫仅 DRAFT 放行，前缀经 E2eTestGuard 旁路保证清理
     it('创建变更单（仅 APPROVED 预算可选）', async () => {
       const resp = await client.post('/api/v1/budget/change', {
         projectId,
         budgetId,
-        changeReason: 'P1预算管控测试变更',
+        changeReason: `E2E_TEST_${Date.now()}_P1预算管控测试变更`,
         details: [{
           budgetDetailId: DETAIL_ID_LABOR,
           costCategory: 'LABOR',
@@ -280,27 +281,19 @@ describe('22 - 预算管控端到端（租户 9999）', () => {
       cleaner.add('删除变更单', () => client.delete(`/api/v1/budget/change/${changeId}`))
     })
 
-    // @matrix A-X16 现状钉住：budget_change_approval BPMN 缺失（后端资源目录与 ACT_RE_PROCDEF 双重实证），
-    // submit 抛 FlowableObjectNotFoundException 被全局处理器吞为 500「系统内部错误」（探针实证），
-    // 故仅断言非 200；功能缺口已登记台账，BPMN 补齐后本用例需改为正向断言
-    it('变更单提交：当前被拒（budget_change_approval 流程缺失，现状钉住）', async () => {
-      const resp = await client.post(`/api/v1/budget/change/${changeId}/submit`)
-      expect(resp.code, '流程缺失时 submit 应被拒（现状钉住）').not.toBe(200)
-    })
-
-    // @matrix A-X17（withdraw 状态机负向：DRAFT 不可撤回）
+    // @matrix A-X17（withdraw 状态机负向：DRAFT 不可撤回；必须在 submit 前执行）
     it('负向：DRAFT 状态变更单撤回被拒（仅 SUBMITTED 可撤回）', async () => {
       const resp = await client.post(`/api/v1/budget/change/${changeId}/withdraw`)
       expect(resp.code).not.toBe(200)
       expect(String(resp.message)).toContain('仅已提交状态可撤回')
     })
 
-    // @matrix A-X17
+    // @matrix A-X17（update 守卫：仅 DRAFT 可编辑，必须在 submit 前执行）
     it('变更单更新与 trace 查询', async () => {
       const updResp = await client.put(`/api/v1/budget/change/${changeId}`, {
         projectId,
         budgetId,
-        changeReason: 'P1预算管控测试变更-更新',
+        changeReason: `E2E_TEST_${Date.now()}_P1预算管控测试变更-更新`,
         details: [{
           budgetDetailId: DETAIL_ID_LABOR,
           costCategory: 'LABOR',
@@ -313,6 +306,25 @@ describe('22 - 预算管控端到端（租户 9999）', () => {
       const traceResp = await client.get('/api/v1/budget/change/trace', { projectId })
       expect(traceResp.code, '变更轨迹查询').toBe(200)
       expect(Array.isArray(traceResp.data)).toBe(true)
+    })
+
+    // @matrix A-X16（缺口#2 解除翻正向：budget_change_approval BPMN 已补齐并部署，run 32423703432）
+    it('变更单提交：budget_change_approval 流程启动成功（SUBMITTED）', async () => {
+      const resp = await client.post(`/api/v1/budget/change/${changeId}/submit`)
+      expect(resp.code, `submit：${resp.message}`).toBe(200)
+      const page = await client.get('/api/v1/budget/change', { page: 1, size: 10, projectId })
+      const change = (page.data?.records || []).find((c: any) => c.id === changeId)
+      expect(change?.status, '提交后状态应为 SUBMITTED').toBe('SUBMITTED')
+      expect(change?.workflowInstanceId, '流程实例应已创建').toBeTruthy()
+    })
+
+    // @matrix A-X17（withdraw 状态机正向：SUBMITTED 可撤回→WITHDRAWN）
+    it('提交后撤回成功（SUBMITTED→WITHDRAWN）', async () => {
+      const resp = await client.post(`/api/v1/budget/change/${changeId}/withdraw`)
+      expect(resp.code, `withdraw：${resp.message}`).toBe(200)
+      const page = await client.get('/api/v1/budget/change', { page: 1, size: 10, projectId })
+      const change = (page.data?.records || []).find((c: any) => c.id === changeId)
+      expect(change?.status, '撤回后状态应为 WITHDRAWN').toBe('WITHDRAWN')
     })
   })
 })
