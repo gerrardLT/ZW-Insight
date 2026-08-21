@@ -3,8 +3,10 @@
  *  A 证件管理 /tender/certificate  GET /v1/tender/certificate/person (默认 type=person)
  *  B 投标报名 /tender/register      GET /v1/tender/register/page
  *
- * 说明：certificate.status 内联三元（VALID→有效/EXPIRING→即将过期/其余→已过期），
- * 用 expect 自定义；register.depositAmount 用 toLocaleString() 无参（仅千分位），用 numeric。
+ * 说明：certificate 已按后端真实契约重写（台账缺口#1 解除）：personName/certificateType/
+ * certificateNo/issueDate/expireDate，状态三态由前端基于 expireDate 派生
+ * （>30天=有效/≤30天=即将过期/<今天=已过期，与 certificate.vue deriveStatus 同源）；
+ * register.depositAmount 用 toLocaleString() 无参（仅千分位），用 numeric。
  */
 import { test } from '@playwright/test'
 import {
@@ -16,13 +18,20 @@ import {
 import { TENDER_REGISTER_STATUS } from './enum-baseline'
 
 const CERT_COLUMNS: ColumnSpec[] = [
-  { label: '证件名称', index: 0, field: 'certName', type: 'text' },
-  { label: '证件编号', index: 1, field: 'certNo', type: 'text' },
-  { label: '持证人', index: 2, field: 'holderName', type: 'text' },
+  { label: '持证人', index: 0, field: 'personName', type: 'text' },
+  { label: '证件类型', index: 1, field: 'certificateType', type: 'text' },
+  { label: '证件编号', index: 2, field: 'certificateNo', type: 'text' },
   { label: '发证日期', index: 3, field: 'issueDate', type: 'date' },
-  { label: '到期日期', index: 4, field: 'expiryDate', type: 'date' },
-  { label: '发证机关', index: 5, field: 'issueOrgan', type: 'text' },
-  { label: '状态', index: 6, field: 'status', expect: (r) => (r.status === 'VALID' ? '有效' : r.status === 'EXPIRING' ? '即将过期' : '已过期') },
+  { label: '到期日期', index: 4, field: 'expireDate', type: 'date' },
+  { label: '状态', index: 5, field: 'status', expect: (r) => {
+    // 与 certificate.vue deriveStatus 同源：无到期日视为长期有效
+    if (!r.expireDate) return '有效'
+    const expire = new Date(r.expireDate)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (expire < today) return '已过期'
+    return (expire.getTime() - today.getTime()) / 86400000 <= 30 ? '即将过期' : '有效'
+  } },
 ]
 
 const REGISTER_COLUMNS: ColumnSpec[] = [
