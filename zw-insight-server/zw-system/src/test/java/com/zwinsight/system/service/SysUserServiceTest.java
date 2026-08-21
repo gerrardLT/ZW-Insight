@@ -10,7 +10,9 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
+import com.zwinsight.system.domain.SysOrg;
 import com.zwinsight.system.domain.SysUserRole;
+import com.zwinsight.system.mapper.SysOrgMapper;
 import com.zwinsight.system.mapper.SysUserRoleMapper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
@@ -36,6 +38,7 @@ class SysUserServiceTest {
 
     @Mock private SysUserMapper userMapper;
     @Mock private SysUserRoleMapper userRoleMapper;
+    @Mock private SysOrgMapper orgMapper;
     @Mock private BCryptPasswordEncoder passwordEncoder;
 
     @InjectMocks
@@ -47,6 +50,7 @@ class SysUserServiceTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysUser.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysUserRole.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysOrg.class);
     }
 
     @Test
@@ -97,6 +101,59 @@ class SysUserServiceTest {
         ArgumentCaptor<LambdaQueryWrapper<SysUser>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(userMapper).selectPage(any(Page.class), captor.capture());
         assertThat(captor.getValue().getSqlSegment()).doesNotContain("tenant_id");
+    }
+
+    @Test
+    @DisplayName("分页查询：按 orgId 批量回填 orgName（A3 修复：前端「所属机构」列展示）")
+    @SuppressWarnings("unchecked")
+    void testPage_fillOrgName() {
+        SecurityContextHolder.setTenantId(1L);
+        try {
+            SysUser u1 = new SysUser();
+            u1.setId(1L);
+            u1.setOrgId(100L);
+            SysUser u2 = new SysUser();
+            u2.setId(2L);
+            u2.setOrgId(200L);
+            SysUser u3 = new SysUser();
+            u3.setId(3L); // 无机构
+
+            Page<SysUser> page = new Page<>(1, 10);
+            page.setRecords(List.of(u1, u2, u3));
+            when(userMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+            SysOrg org1 = new SysOrg();
+            org1.setId(100L);
+            org1.setOrgName("总公司");
+            SysOrg org2 = new SysOrg();
+            org2.setId(200L);
+            org2.setOrgName("工程部");
+            when(orgMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(org1, org2));
+
+            PageResult<SysUser> result = userService.page(1, 10, null, null, null, null);
+
+            assertThat(result.getRecords().get(0).getOrgName()).isEqualTo("总公司");
+            assertThat(result.getRecords().get(1).getOrgName()).isEqualTo("工程部");
+            assertThat(result.getRecords().get(2).getOrgName()).isNull();
+        } finally {
+            SecurityContextHolder.clear();
+        }
+    }
+
+    @Test
+    @DisplayName("分页查询：全部用户无 orgId 时不触发机构查询")
+    @SuppressWarnings("unchecked")
+    void testPage_noOrgId_skipOrgQuery() {
+        SecurityContextHolder.clear();
+        SysUser u1 = new SysUser();
+        u1.setId(1L);
+        Page<SysUser> page = new Page<>(1, 10);
+        page.setRecords(List.of(u1));
+        when(userMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        userService.page(1, 10, null, null, null, null);
+
+        verify(orgMapper, never()).selectList(any(LambdaQueryWrapper.class));
     }
 
     @Test

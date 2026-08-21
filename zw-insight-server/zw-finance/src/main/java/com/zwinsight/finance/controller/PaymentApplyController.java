@@ -1,5 +1,6 @@
 package com.zwinsight.finance.controller;
 
+import com.zwinsight.common.annotation.OperLog;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
@@ -37,6 +38,7 @@ public class PaymentApplyController {
 
     @PostMapping
     @FinanceLockCheck(dateField = "paymentDate", operation = "新增")
+    @OperLog(module = "付款管理", operType = "INSERT", description = "新增付款申请")
     public R<Void> save(@RequestBody BizPaymentApply paymentApply) {
         paymentApplyService.save(paymentApply);
         return R.ok();
@@ -58,6 +60,7 @@ public class PaymentApplyController {
 
     @RequestMapping(value = "/{id}/submit", method = {RequestMethod.POST, RequestMethod.PUT})
     @RequiresPermission("finance:payment:submit")
+    @OperLog(module = "付款管理", operType = "UPDATE", description = "提交付款申请审批")
     public R<Void> submit(@PathVariable Long id) {
         paymentApplyService.submit(id);
         return R.ok();

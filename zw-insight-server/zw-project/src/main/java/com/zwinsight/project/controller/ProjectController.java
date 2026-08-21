@@ -1,5 +1,6 @@
 package com.zwinsight.project.controller;
 
+import com.zwinsight.common.annotation.OperLog;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
@@ -53,6 +54,7 @@ public class ProjectController {
 
     @PostMapping
     @RequiresPermission("project:create")
+    @OperLog(module = "项目管理", operType = "INSERT", description = "新增项目")
     public R<Void> save(@Valid @RequestBody ProjectCreateRequest request) {
         projectService.saveFromRequest(request);
         return R.ok();
@@ -60,6 +62,7 @@ public class ProjectController {
 
     @PutMapping("/{id}")
     @RequiresPermission("project:edit")
+    @OperLog(module = "项目管理", operType = "UPDATE", description = "编辑项目")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ProjectCreateRequest request) {
         projectService.updateFromRequest(id, request);
         return R.ok();
@@ -67,6 +70,7 @@ public class ProjectController {
 
     @DeleteMapping("/{id}")
     @RequiresPermission("project:delete")
+    @OperLog(module = "项目管理", operType = "DELETE", description = "删除项目")
     public R<Void> delete(@PathVariable Long id) {
         projectService.delete(id);
         return R.ok();
@@ -74,6 +78,7 @@ public class ProjectController {
 
     @DeleteMapping("/batch")
     @RequiresPermission("project:delete")
+    @OperLog(module = "项目管理", operType = "DELETE", description = "批量删除项目")
     public R<Void> batchDelete(@RequestBody List<Long> ids) {
         projectService.batchDelete(ids);
         return R.ok();

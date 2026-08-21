@@ -1,5 +1,6 @@
 package com.zwinsight.contract.controller;
 
+import com.zwinsight.common.annotation.OperLog;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
@@ -40,6 +41,7 @@ public class ContractController {
 
     @PostMapping
     @RequiresPermission("contract:contract:add")
+    @OperLog(module = "施工合同", operType = "INSERT", description = "新增施工合同")
     public R<Void> save(@Valid @RequestBody ContractCreateRequest request) {
         contractService.saveFromRequest(request);
         return R.ok();
@@ -54,6 +56,7 @@ public class ContractController {
 
     @PostMapping("/{id}/submit")
     @RequiresPermission("contract:contract:submit")
+    @OperLog(module = "施工合同", operType = "UPDATE", description = "提交施工合同审批")
     public R<Void> submit(@PathVariable Long id) {
         contractService.submit(id);
         return R.ok();
@@ -66,6 +69,7 @@ public class ContractController {
 
     @DeleteMapping("/{id}")
     @RequiresPermission("contract:contract:delete")
+    @OperLog(module = "施工合同", operType = "DELETE", description = "删除施工合同")
     public R<Void> delete(@PathVariable Long id) {
         contractService.delete(id);
         return R.ok();

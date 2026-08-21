@@ -20,6 +20,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { getPostList } from '@/api/system'
+import { extractRecords } from '@/utils/list-response'
 
 const props = withDefaults(defineProps<{
   modelValue?: number
@@ -44,8 +45,9 @@ watch(() => props.modelValue, (val) => {
 async function loadData() {
   loading.value = true
   try {
-    const res: any = await getPostList({})
-    options.value = res.data?.records || res.data || []
+    // 后端返回 PageResult{records,total}；下拉一次取全
+    const res: any = await getPostList({ page: 1, size: 100 })
+    options.value = extractRecords(res)
   } finally {
     loading.value = false
   }

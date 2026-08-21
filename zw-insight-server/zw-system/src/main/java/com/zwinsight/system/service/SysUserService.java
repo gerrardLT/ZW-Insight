@@ -11,8 +11,10 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
+import com.zwinsight.system.domain.SysOrg;
 import com.zwinsight.system.domain.SysUserRole;
 import com.zwinsight.system.dto.SysUserExcelDTO;
+import com.zwinsight.system.mapper.SysOrgMapper;
 import com.zwinsight.system.mapper.SysUserRoleMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,10 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 用户管理服务
@@ -36,6 +42,7 @@ public class SysUserService {
 
     private final SysUserMapper userMapper;
     private final SysUserRoleMapper userRoleMapper;
+    private final SysOrgMapper orgMapper;
     private final BCryptPasswordEncoder passwordEncoder;
 
     /**
@@ -56,7 +63,38 @@ public class SysUserService {
                         SysUser::getTenantId, SecurityContextHolder.getTenantId())
                 .orderByDesc(SysUser::getCreatedAt);
         Page<SysUser> result = userMapper.selectPage(pageParam, wrapper);
+        fillOrgName(result.getRecords());
         return PageResult.of(result);
+    }
+
+    /**
+     * 批量回填 orgName：实体仅持久化 orgId，列表需展示机构名称。
+     * 一次批量查询 sys_org 构建 id→name 映射（避免 N+1）；sys_* 表免 TenantLine
+     * 拦截器过滤，此处显式按当前租户过滤，与 page 查询口径一致。
+     */
+    private void fillOrgName(List<SysUser> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        Set<Long> orgIds = records.stream()
+                .map(SysUser::getOrgId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (orgIds.isEmpty()) {
+            return;
+        }
+        List<SysOrg> orgs = orgMapper.selectList(new LambdaQueryWrapper<SysOrg>()
+                .in(SysOrg::getId, orgIds)
+                .eq(SecurityContextHolder.getTenantId() != null,
+                        SysOrg::getTenantId, SecurityContextHolder.getTenantId()));
+        Map<Long, String> nameMap = orgs.stream()
+                .filter(o -> o.getOrgName() != null)
+                .collect(Collectors.toMap(SysOrg::getId, SysOrg::getOrgName, (a, b) -> a));
+        for (SysUser user : records) {
+            if (user.getOrgId() != null) {
+                user.setOrgName(nameMap.get(user.getOrgId()));
+            }
+        }
     }
 
     /**

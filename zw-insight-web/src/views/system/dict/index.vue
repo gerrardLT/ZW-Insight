@@ -118,6 +118,7 @@ import {
   getDictList, createDict, updateDict, deleteDict,
   getDictItemTree, createDictItem, updateDictItem, deleteDictItem
 } from '@/api/system'
+import { extractRecords } from '@/utils/list-response'
 
 const dictFormRef = ref<FormInstance>()
 const itemFormRef = ref<FormInstance>()
@@ -165,8 +166,9 @@ const filteredDictList = computed(() => {
 async function loadDictList() {
   dictLoading.value = true
   try {
-    const res: any = await getDictList()
-    dictList.value = res.data || []
+    // 后端返回 PageResult{records,total}；字典量级小，一次取全
+    const res: any = await getDictList({ page: 1, size: 100 })
+    dictList.value = extractRecords(res)
   } finally {
     dictLoading.value = false
   }

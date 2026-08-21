@@ -1,5 +1,6 @@
 package com.zwinsight.system.controller;
 
+import com.zwinsight.common.annotation.OperLog;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
@@ -48,6 +49,7 @@ public class SysUserController {
 
     @PostMapping
     @RequiresPermission("system:user:add")
+    @OperLog(module = "人员管理", operType = "INSERT", description = "新增用户")
     public R<Void> save(@RequestBody SysUser user) {
         userService.save(user);
         return R.ok();
@@ -55,6 +57,7 @@ public class SysUserController {
 
     @PutMapping("/{id}")
     @RequiresPermission("system:user:edit")
+    @OperLog(module = "人员管理", operType = "UPDATE", description = "编辑用户")
     public R<Void> update(@PathVariable Long id, @RequestBody SysUser user) {
         user.setId(id);
         userService.update(user);
@@ -63,6 +66,7 @@ public class SysUserController {
 
     @DeleteMapping("/{id}")
     @RequiresPermission("system:user:delete")
+    @OperLog(module = "人员管理", operType = "DELETE", description = "删除用户")
     public R<Void> delete(@PathVariable Long id) {
         userService.delete(id);
         return R.ok();
@@ -70,6 +74,7 @@ public class SysUserController {
 
     @DeleteMapping("/batch")
     @RequiresPermission("system:user:delete")
+    @OperLog(module = "人员管理", operType = "DELETE", description = "批量删除用户")
     public R<Void> batchDelete(@RequestBody List<Long> ids) {
         userService.batchDelete(ids);
         return R.ok();
@@ -112,6 +117,7 @@ public class SysUserController {
 
     @PutMapping("/{id}/reset-password")
     @RequiresPermission("system:user:reset-pwd")
+    @OperLog(module = "人员管理", operType = "UPDATE", description = "重置用户密码")
     public R<Void> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> params) {
         String newPassword = params.get("newPassword");
         userService.resetPassword(id, newPassword);

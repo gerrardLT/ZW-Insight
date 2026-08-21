@@ -1,6 +1,7 @@
 package com.zwinsight.security.service;
 
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.event.LoginSuccessEvent;
 import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.security.domain.SysTenant;
 import com.zwinsight.security.domain.SysUser;
@@ -16,6 +17,7 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -54,6 +56,8 @@ class AuthServiceSmsLoginTest {
     private DeviceManagerService deviceManagerService;
     @Mock
     private LoginLocationService loginLocationService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private AuthService authService;
@@ -108,6 +112,8 @@ class AuthServiceSmsLoginTest {
         InOrder order = inOrder(loginLocationService, deviceManagerService);
         order.verify(loginLocationService).detectAndNotify(eq(1L), eq("1.2.3.4"), any());
         order.verify(deviceManagerService).recordLogin(eq(1L), any(), eq("tk-sms"), eq("1.2.3.4"), any());
+        // 登录成功事件：system 模块监听落库 sys_login_log
+        verify(eventPublisher).publishEvent(any(LoginSuccessEvent.class));
     }
 
     @Test

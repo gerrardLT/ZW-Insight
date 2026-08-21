@@ -1,5 +1,6 @@
 package com.zwinsight.security.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.desensitize.Desensitize;
 import com.zwinsight.common.desensitize.DesensitizeType;
@@ -25,4 +26,10 @@ public class SysUser extends BaseEntity {
     private Integer status;
     private Long orgId;
     private Long postId;
+
+    /**
+     * 机构名称（非持久化，列表查询后按 orgId 批量回填，供前端「所属机构」列展示）
+     */
+    @TableField(exist = false)
+    private String orgName;
 }

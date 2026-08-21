@@ -50,12 +50,14 @@ public class ProjectService {
     /**
      * 列表查询（供前端下拉选择使用）
      * 按项目名称模糊匹配，按创建时间倒序，限制返回条数避免数据量过大。
+     * 上限 500：项目总量 209（2026 取证），原 50 上限导致下拉只显示前 50 条，
+     * 按创建时间倒序使较早创建的项目不可选。
      */
     public List<BizProject> list(String projectName) {
         LambdaQueryWrapper<BizProject> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(projectName), BizProject::getProjectName, projectName)
                 .orderByDesc(BizProject::getCreatedAt)
-                .last("LIMIT 50");
+                .last("LIMIT 500");
         return projectMapper.selectList(wrapper);
     }
 

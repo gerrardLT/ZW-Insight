@@ -1,6 +1,7 @@
 package com.zwinsight.security.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.event.LoginSuccessEvent;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.security.domain.SysTenant;
@@ -16,6 +17,7 @@ import com.zwinsight.security.util.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +36,7 @@ public class AuthService {
     private final RedisUtils redisUtils;
     private final DeviceManagerService deviceManagerService;
     private final LoginLocationService loginLocationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final BCryptPasswordEncoder ENCODER = new BCryptPasswordEncoder();
     private static final String TOKEN_PREFIX = "token:";
@@ -294,6 +297,14 @@ public class AuthService {
 
         // 设备记录 + 异地登录检测（安全增强，失败不阻断登录主流程）
         recordDeviceAndDetectLocation(user.getId(), clientIp, deviceInfo, token);
+
+        // 登录成功事件：system 模块监听落库 sys_login_log（事件解耦，失败不阻断登录）
+        try {
+            eventPublisher.publishEvent(new LoginSuccessEvent(this,
+                    user.getRealName(), user.getUsername(), clientIp, user.getTenantId()));
+        } catch (Exception e) {
+            log.warn("[LOGIN] 发布登录成功事件异常: userId={}", user.getId(), e);
+        }
 
         return response;
     }

@@ -1,6 +1,7 @@
 package com.zwinsight.system.aspect;
 
 import cn.hutool.json.JSONUtil;
+import com.zwinsight.common.annotation.OperLog;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
@@ -32,7 +33,7 @@ public class OperLogAspect {
     private final SysLogService logService;
     private final SysUserMapper userMapper;
 
-    @Around("@annotation(com.zwinsight.system.aspect.OperLog)")
+    @Around("@annotation(com.zwinsight.common.annotation.OperLog)")
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
         long startTime = System.currentTimeMillis();
 

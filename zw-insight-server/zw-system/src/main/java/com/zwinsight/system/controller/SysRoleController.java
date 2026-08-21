@@ -1,5 +1,6 @@
 package com.zwinsight.system.controller;
 
+import com.zwinsight.common.annotation.OperLog;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
@@ -39,6 +40,7 @@ public class SysRoleController {
 
     @PostMapping
     @RequiresPermission("system:role:add")
+    @OperLog(module = "角色管理", operType = "INSERT", description = "新增角色")
     public R<Void> save(@RequestBody SysRole role) {
         roleService.save(role);
         return R.ok();
@@ -46,6 +48,7 @@ public class SysRoleController {
 
     @PutMapping("/{id}")
     @RequiresPermission("system:role:edit")
+    @OperLog(module = "角色管理", operType = "UPDATE", description = "编辑角色")
     public R<Void> update(@PathVariable Long id, @RequestBody SysRole role) {
         role.setId(id);
         roleService.update(role);
@@ -54,6 +57,7 @@ public class SysRoleController {
 
     @DeleteMapping("/{id}")
     @RequiresPermission("system:role:delete")
+    @OperLog(module = "角色管理", operType = "DELETE", description = "删除角色")
     public R<Void> delete(@PathVariable Long id) {
         roleService.delete(id);
         return R.ok();
@@ -66,6 +70,7 @@ public class SysRoleController {
 
     @PutMapping("/{id}/menus")
     @RequiresPermission("system:role:assign-menu")
+    @OperLog(module = "角色管理", operType = "UPDATE", description = "分配角色菜单")
     public R<Void> assignMenus(@PathVariable Long id, @RequestBody List<Long> menuIds) {
         roleService.assignMenus(id, menuIds);
         return R.ok();

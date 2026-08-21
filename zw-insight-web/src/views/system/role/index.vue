@@ -130,6 +130,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, CheckboxValueType } from 'element-plus'
 import { getRoleList, createRole, updateRole, deleteRole, getRoleMenuIds, assignRoleMenus, getMenuTree, updateRoleDataScope } from '@/api/system'
+import { extractRecords } from '@/utils/list-response'
 
 const dataScopeOptions = [
   { value: 'ALL', label: '全部数据' },
@@ -184,8 +185,9 @@ const filteredRoles = computed(() => {
 })
 
 async function loadRoles() {
-  const res: any = await getRoleList()
-  roleList.value = res.data || []
+  // 后端返回 PageResult{records,total}；角色量级小，一次取全
+  const res: any = await getRoleList({ page: 1, size: 100 })
+  roleList.value = extractRecords(res)
 }
 
 async function loadMenuTree() {

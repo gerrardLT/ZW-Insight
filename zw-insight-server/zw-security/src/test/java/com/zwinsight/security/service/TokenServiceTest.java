@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -257,6 +258,8 @@ class TokenServiceTest {
         private DeviceManagerService deviceManagerService;
         @Mock
         private LoginLocationService loginLocationService;
+        @Mock
+        private ApplicationEventPublisher eventPublisher;
 
         @InjectMocks
         private AuthService authService;
@@ -645,6 +648,8 @@ class TokenServiceTest {
         private DeviceManagerService deviceManagerService;
         @Mock
         private LoginLocationService loginLocationService;
+        @Mock
+        private ApplicationEventPublisher eventPublisher;
 
         @InjectMocks
         private AuthService authService;

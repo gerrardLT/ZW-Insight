@@ -175,6 +175,7 @@ import {
 } from '@/api/system'
 import { useUserStore } from '@/stores/user'
 import { filterBatchIds } from '@/utils/batch-status'
+import { extractRecords } from '@/utils/list-response'
 
 const userStore = useUserStore()
 
@@ -348,13 +349,15 @@ async function loadOrgTree() {
 }
 
 async function loadRoleList() {
-  const res: any = await getRoleList()
-  roleList.value = res.data || []
+  // 后端返回 PageResult{records,total}，下拉一次取全
+  const res: any = await getRoleList({ page: 1, size: 100 })
+  roleList.value = extractRecords(res)
 }
 
 async function loadPostList() {
-  const res: any = await getPostList()
-  postList.value = res.data || []
+  // 后端返回 PageResult{records,total}，下拉一次取全
+  const res: any = await getPostList({ page: 1, size: 100 })
+  postList.value = extractRecords(res)
 }
 
 onMounted(() => {
