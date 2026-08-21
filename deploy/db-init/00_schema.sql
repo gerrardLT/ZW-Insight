@@ -808,7 +808,7 @@ CREATE TABLE IF NOT EXISTS biz_output_report (
     id BIGINT NOT NULL COMMENT '主键ID',
     project_id BIGINT NOT NULL COMMENT '项目ID',
     contract_id BIGINT NOT NULL COMMENT '合同ID',
-    report_period VARCHAR(20) COMMENT '报告期间（如2024-01）',
+    report_period VARCHAR(32) COMMENT '报告期间（如2024-01）',
     current_output DECIMAL(18,2) DEFAULT 0 COMMENT '本期产值',
     cumulative_output DECIMAL(18,2) DEFAULT 0 COMMENT '累计产值',
     confirm_date DATE COMMENT '确认日期',

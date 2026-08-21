@@ -15,7 +15,8 @@
  *     「项目存在关联投标报名，不可删除」（引用检查不做旁路，
  *     ProjectService.delete + BizProjectMapper.countTenderRegisters）
  *   - 非草稿 resubmit 拦截 code=500「仅草稿状态可提交」（HTTP 200 + 业务 code）
- *   - 演示数据存在 1 条 COMPLETED 项目，close-check allPassed=false（未收款 2500000）→ A1-11 可测
+ *   - 演示数据存在 COMPLETED 且预检不通过项目（90002 未收款 2500000）→ A1-11 可测；
+ *     beforeAll 逐个 close-check 探测定位（排除可结项种子 90004）
  *   - 种子 90004（45_V2026_43）为可结项 COMPLETED 项目，close-check allPassed=true；
  *     结项链断言止于 CLOSING + withdraw-by-business 撤回回退 COMPLETED——
  *     CLOSED 后流程实例结束，withdraw 幂等 false 且无状态回滚通道（无 updateStatus 端点），
@@ -65,10 +66,18 @@ test.beforeAll(async () => {
   authed = await authedApiContext()
   mainProjectName = `${PREFIX}_项目主链`
   mainProjectId = await createProject(mainProjectName)
-  // 演示 COMPLETED 项目（A1-11 数据前提，探测实证存在 1 条）
-  const comp = await apiJson('GET', '/api/v1/project/page?pageNum=1&pageSize=1&status=COMPLETED')
-  completedProjectName = comp.body?.data?.records?.[0]?.projectName || ''
-  expect(completedProjectName, '数据前提：应存在 COMPLETED 演示项目（A1-11）').toBeTruthy()
+  // 演示 COMPLETED 且预检不通过的项目（A1-11 数据前提）：逐个 close-check 探测，
+  // 排除种子 90004（45_V2026_43 可结项，allPassed=true）；演示 90002 未收款 2500000 恒不通过
+  const comp = await apiJson('GET', '/api/v1/project/page?pageNum=1&pageSize=20&status=COMPLETED')
+  const candidates = (comp.body?.data?.records || []).filter((p: any) => String(p.id) !== '90004')
+  for (const p of candidates) {
+    const chk = await apiJson('GET', `/api/v1/project/${p.id}/close-check`)
+    if (chk.body?.code === 200 && chk.body?.data?.allPassed === false) {
+      completedProjectName = p.projectName
+      break
+    }
+  }
+  expect(completedProjectName, '数据前提：应存在预检不通过的 COMPLETED 演示项目（A1-11）').toBeTruthy()
   // 成员添加目标用户（排除创建者 id=1——新建项目已自动挂载）
   const users = await apiJson('GET', '/api/v1/system/user?pageNum=1&pageSize=20')
   memberUser = (users.body?.data?.records || [])

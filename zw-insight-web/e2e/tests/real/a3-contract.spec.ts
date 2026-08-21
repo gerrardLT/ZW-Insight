@@ -303,7 +303,7 @@ test.describe('A-3 BOQ 上传与产值审批闭环', () => {
       reportPeriod: period1, currentOutput: 400, confirmDate: TODAY,
       details: [{ boqItemId: dig.id, quantity: 4, amount: 400 }],
     })
-    expect(cr.body?.code, '创建产值').toBe(200)
+    expect(cr.body?.code, `创建产值: ${cr.body?.message || ''}`).toBe(200)
     const pg = await apiJson('GET', `/api/v1/contract/output?contractId=${contractAId}&page=1&size=50`)
     const report = (pg.body?.data?.records || []).find((r: any) => r.reportPeriod === period1)
     expect(report, '产值记录应可定位').toBeTruthy()

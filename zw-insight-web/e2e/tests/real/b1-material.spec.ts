@@ -234,8 +234,9 @@ test.describe('B-1 出库（PICK/RETURN/删除回填）', () => {
     })
     expect(cr.body?.code, `退货创建（退款流程已部署）: ${cr.body?.message || ''}`).toBe(200)
     expect(Number((await getStock(STEEL, projectAId))?.stockQuantity), 'save 即扣库存').toBe(before - 3)
+    // 出库主表无 totalAmount 字段（仅入库有，实证 MaterialOutboundService.save）→ 按状态定位
     const outbound = await findWhere(`/api/v1/material/outbound/page?page=1&size=10&projectId=${projectAId}&outboundType=RETURN`,
-      (r: any) => r.status === 'DRAFT' && Number(r.totalAmount) === 300)
+      (r: any) => r.status === 'DRAFT')
     expect(outbound, '退货单应可定位').toBeTruthy()
     // PENDING 退款自动生成：金额 = quantity × 入库单价（3 × 100 = 300）
     const refundPg = await apiJson('GET', `/api/v1/material/refund?page=1&size=20&contractId=${purchaseContractId}`)

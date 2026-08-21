@@ -253,7 +253,8 @@ test.describe('A-2 证件模块真实契约闭环（缺口#1 解除后翻正向�
     const p1 = await apiJson('GET', '/api/v1/tender/certificate/person?page=1&size=1')
     expect(p1.body?.code).toBe(200)
     expect(p1.body?.data?.records.length).toBeLessThanOrEqual(1)
-    expect(p1.body?.data?.total).toBeGreaterThanOrEqual(1)
+    // total 为 Long → Jackson 雪花序列化策略返回字符串，Number() 归一
+    expect(Number(p1.body?.data?.total), 'total≥1').toBeGreaterThanOrEqual(1)
   })
 
   test('@matrix A6-07 派生源数据契约：status 为 Integer 启用标记，三态由前端基于 expireDate 派生', async () => {
