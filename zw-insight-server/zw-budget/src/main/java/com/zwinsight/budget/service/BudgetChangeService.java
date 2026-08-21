@@ -187,6 +187,17 @@ public class BudgetChangeService {
 
         // 删除主表
         budgetChangeMapper.deleteById(id);
+
+        // 终止仍在运行的审批流程（E2E 旁路允许删除 SUBMITTED 单据，2026-08-21 run 32438728401
+        // 实证：单据删除后流程僵尸任务残留，被无关 complete 触发回调报「记录不存在」500）。
+        // 尽力终止：非发起人等场景不阻断删除主流程，仅告警留痕
+        if ("SUBMITTED".equals(change.getStatus())) {
+            try {
+                approvalService.withdrawByBusiness("BUDGET_CHANGE", id);
+            } catch (BusinessException e) {
+                log.warn("删除变更单后终止流程失败（不阻断删除）, changeId={}, reason={}", id, e.getMessage());
+            }
+        }
     }
 
     /**
@@ -305,7 +316,11 @@ public class BudgetChangeService {
     public void onApproved(Long changeId) {
         BizBudgetChange change = budgetChangeMapper.selectById(changeId);
         if (change == null) {
-            throw new BusinessException("预算变更记录不存在");
+            // 陈旧回调容错（2026-08-21 run 32438728401 实证）：单据已被删除而流程实例仍在，
+            // 完成其僵尸任务会触发本回调。抛异常会标记外层 complete 事务 rollback-only
+            // 导致无关审批请求 500，故告警短路（对齐 C1 幂等模式）
+            log.warn("预算变更审批回调：变更记录不存在（可能已删除），跳过, changeId={}", changeId);
+            return;
         }
 
         // C1 幂等守卫（2026-08-11）：重复的审批通过事件（监听器重派发/事件重放）
@@ -347,7 +362,9 @@ public class BudgetChangeService {
     public void onRejected(Long changeId) {
         BizBudgetChange change = budgetChangeMapper.selectById(changeId);
         if (change == null) {
-            throw new BusinessException("预算变更记录不存在");
+            // 陈旧回调容错：同 onApproved，告警短路不抛异常
+            log.warn("预算变更驳回回调：变更记录不存在（可能已删除），跳过, changeId={}", changeId);
+            return;
         }
 
         change.setStatus("REJECTED");
@@ -393,6 +410,11 @@ public class BudgetChangeService {
 
         change.setStatus("WITHDRAWN");
         budgetChangeMapper.updateById(change);
+
+        // 终止 Flowable 流程实例（businessKey O(1) 定位，幂等：无运行中流程返回 false）。
+        // 2026-08-21 run 32438728401 实证：仅置状态不终止流程会在 ACT_RU_TASK 留下
+        // 僵尸待办，隔离租户上被后续无关审批 complete 误消费并触发陈旧回调
+        approvalService.withdrawByBusiness("BUDGET_CHANGE", changeId);
 
         log.info("预算变更撤回成功, changeId={}", changeId);
     }

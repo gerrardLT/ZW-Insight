@@ -408,6 +408,27 @@ db_next_task() {
 }
 
 # ===========================================================================
+# pre_clean_flowable — 开跑前预清理租户 9999 的 Flowable 运行时残留
+# 背景（2026-08-21 run 32438728401 实证）：L5 api-tests（22-budget 等）在上一轮
+#   CI 的 L4 之后运行，其撤回/删除单据若未终止流程会在 ACT_RU_TASK 留下僵尸待办；
+#   cleanup_all 仅在脚本退出时触发，无法清掉开跑前已存在的跨套件残留，
+#   导致 approve() 按 CREATE_TIME_ 升序误消费僵尸任务并触发陈旧回调 500。
+#   故在登录后、阶段 1 之前主动清空运行时表（与 cleanup_all 2b 同源 SQL）。
+# ===========================================================================
+pre_clean_flowable() {
+  local MYSQL_PW="${ZWI_MYSQL_PASS:-zwinsight123}"
+  log "🧹 预清理：租户 $TEST_TENANT_ID Flowable 运行时残留（防跨套件僵尸待办）"
+  docker exec "$MYSQL_CT" mysql -uroot -p"$MYSQL_PW" zw_insight 2>/dev/null <<FLOW || true
+SET FOREIGN_KEY_CHECKS=0;
+DELETE FROM ACT_RU_TASK WHERE TENANT_ID_='$TEST_TENANT_ID';
+DELETE FROM ACT_RU_EXECUTION WHERE TENANT_ID_='$TEST_TENANT_ID';
+DELETE FROM ACT_HI_TASKINST WHERE TENANT_ID_='$TEST_TENANT_ID';
+DELETE FROM ACT_HI_PROCINST WHERE TENANT_ID_='$TEST_TENANT_ID';
+SET FOREIGN_KEY_CHECKS=1;
+FLOW
+}
+
+# ===========================================================================
 # approve() — 逐个完成当前租户的待办任务（从 ACT_RU_TASK 取 taskId）
 # 用法：approve "审批意见" [required]
 #   required=1：首轮无待办即判失败（有流程单据用，防流程未启动被静默放过）
@@ -1583,6 +1604,9 @@ main() {
     ABORT_REASON="登录失败"
     exit 1
   }
+
+  # 预清理：清除上一轮 CI（含 L5 api-tests 在本脚本之后运行留下的）僵尸流程任务
+  pre_clean_flowable
 
   # ─── 10 阶段业务流实现 ───
   stage_1_project_create

@@ -222,6 +222,49 @@ class BudgetChangeServiceFullTest {
         service.withdraw(1L);
 
         verify(budgetChangeMapper).updateById(argThat(c -> "WITHDRAWN".equals(c.getStatus())));
+        // 2026-08-21 run 32438728401 修复：撤回必须同步终止 Flowable 流程实例，
+        // 否则 ACT_RU_TASK 僵尸待办被后续无关审批 complete 误消费
+        verify(approvalService).withdrawByBusiness("BUDGET_CHANGE", 1L);
+    }
+
+    @Test
+    @DisplayName("delete - E2E 旁路删除 SUBMITTED 单据时尽力终止运行中流程")
+    void delete_submittedWithE2eMarker_terminatesProcess() {
+        BizBudgetChange submitted = change(3L, "SUBMITTED");
+        submitted.setChangeReason("E2E_TEST_单测探针变更");
+        when(budgetChangeMapper.selectById(3L)).thenReturn(submitted);
+
+        service.delete(3L);
+
+        verify(budgetChangeMapper).deleteById(3L);
+        verify(approvalService).withdrawByBusiness("BUDGET_CHANGE", 3L);
+    }
+
+    @Test
+    @DisplayName("delete - 终止流程失败（非发起人）不阻断删除主流程")
+    void delete_processTerminateFailure_doesNotBlockDelete() {
+        BizBudgetChange submitted = change(4L, "SUBMITTED");
+        submitted.setChangeReason("E2E_TEST_单测探针变更");
+        when(budgetChangeMapper.selectById(4L)).thenReturn(submitted);
+        when(approvalService.withdrawByBusiness("BUDGET_CHANGE", 4L))
+                .thenThrow(new BusinessException("仅流程发起人可撤回"));
+
+        service.delete(4L);
+
+        verify(budgetChangeMapper).deleteById(4L);
+    }
+
+    @Test
+    @DisplayName("onApproved/onRejected - 变更记录不存在（陈旧回调）告警短路不抛异常")
+    void callbacks_recordMissing_skipWithoutThrow() {
+        when(budgetChangeMapper.selectById(99L)).thenReturn(null);
+
+        // 不应抛异常（抛异常会标记外层 complete 事务 rollback-only 导致无关审批 500）
+        service.onApproved(99L);
+        service.onRejected(99L);
+
+        verify(budgetChangeMapper, never()).updateById(any());
+        verify(budgetDetailMapper, never()).addBudgetTotalPrice(any(), any());
     }
 
     @Test

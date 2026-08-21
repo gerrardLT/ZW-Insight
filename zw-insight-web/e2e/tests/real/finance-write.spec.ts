@@ -41,6 +41,9 @@ let seedTaxRateId: number | null = null
 // 科目额度 → 创建被拒「该科目未设置预算额度」（run10 实证）。用例开头将目标项目
 // 切 EXEMPT，afterAll 恢复原模式（记录基线）
 let budgetCfgRestore: { configId: string; controlMode: string; warningThreshold: number; projectId: string } | null = null
+// C6 自自建配置（run 32438728401 实证：全租户无项目级配置时原探测循环未命中，
+// 前提不得依赖其他 spec 的残留配置）：未命中时自行 POST EXEMPT，afterAll DELETE 回收
+let budgetCfgCreatedId: string | null = null
 
 test.beforeAll(async () => {
   const fs = await import('node:fs')
@@ -95,8 +98,11 @@ test.afterAll(async () => {
   if (seedTaxRateId) {
     await authed.delete(`${API_BASE}/api/v1/finance/tax-rate/${seedTaxRateId}`).catch(() => {})
   }
-  // 恢复 C6 临时切换的预算管控模式（PUT 复用同一配置，唯一键 uk_tenant_project 不可重建）
-  if (budgetCfgRestore) {
+  // 恢复 C6 临时切换的预算管控模式：自自建配置 DELETE 回收；复用他人配置 PUT 恢复基线
+  // （PUT 复用同一配置，唯一键 uk_tenant_project 不可重建）
+  if (budgetCfgCreatedId) {
+    await authed.delete(`${API_BASE}/api/v1/budget-control-configs/${budgetCfgCreatedId}`).catch(() => {})
+  } else if (budgetCfgRestore) {
     await authed.put(`${API_BASE}/api/v1/budget-control-configs/${budgetCfgRestore.configId}`, {
       data: {
         projectId: budgetCfgRestore.projectId,
@@ -526,6 +532,7 @@ test.describe('财务域 — C6 其他费用付款（@matrix C-6-1/2/3）', () =
     const projects = ((await prjResp.json()).data?.records || [])
       .filter((p: any) => !String(p.projectName).includes('E2E'))
     let exemptProjectName: string | null = null
+    let fallbackProject: { id: string; name: string } | null = null
     for (const p of projects) {
       const effResp = await request.get(`${API_BASE}/api/v1/budget-control-configs/project/${p.id}`)
       const eff = (await effResp.json()).data
@@ -543,8 +550,24 @@ test.describe('财务域 — C6 其他费用付款（@matrix C-6-1/2/3）', () =
         expect((await switchResp.json()).code, '临时切 EXEMPT（C6 创建前提）').toBe(200)
         break
       }
+      // 记录首个可自建配置的非 E2E 项目（回落全局默认 = 无项目级配置，POST 不撞唯一键）
+      if (!fallbackProject && eff) {
+        fallbackProject = { id: String(p.id), name: p.projectName }
+      }
     }
-    expect(exemptProjectName, '应定位到有项目级预算管控配置的非 E2E 项目').toBeTruthy()
+    // 回落自建（run 32438728401 实证：全租户项目级配置均为 E2E 项目残留被过滤后，
+    // 探测循环未命中）：前提自给自足，直接 POST EXEMPT，afterAll DELETE 回收
+    if (!exemptProjectName && fallbackProject) {
+      const createCfgResp = await request.post(`${API_BASE}/api/v1/budget-control-configs`, {
+        data: { projectId: fallbackProject.id, controlMode: 'EXEMPT', warningThreshold: 80 },
+      })
+      expect((await createCfgResp.json()).code, '自建项目级 EXEMPT 配置（C6 创建前提）').toBe(200)
+      const effResp = await request.get(`${API_BASE}/api/v1/budget-control-configs/project/${fallbackProject.id}`)
+      budgetCfgCreatedId = String((await effResp.json()).data?.id)
+      expect(budgetCfgCreatedId, '自建配置应可定位').toBeTruthy()
+      exemptProjectName = fallbackProject.name
+    }
+    expect(exemptProjectName, '应定位到有项目级预算管控配置（或可自建）的非 E2E 项目').toBeTruthy()
 
     const beforeResp = await request.get(`${API_BASE}/api/v1/finance/other-payment`, { params: { page: 1, size: 200 } })
     const beforeIds = new Set(((await beforeResp.json()).data?.records || []).map((r: any) => r.id))
