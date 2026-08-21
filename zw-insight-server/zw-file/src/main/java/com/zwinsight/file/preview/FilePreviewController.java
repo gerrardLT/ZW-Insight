@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 文件预览接口
+ * <p>权限豁免说明：文件预览为全模块公共能力（同 FileController 策略），
+ * 业务归属由宿主业务接口守卫，不加 {@code @RequiresPermission}。</p>
  */
 @RestController
 @RequestMapping("/api/v1/file")

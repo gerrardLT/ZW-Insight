@@ -1,9 +1,14 @@
 package com.zwinsight.site.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizInspection;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizInspectionDetail;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.InspectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/site/inspection")
 @RequiredArgsConstructor
+@RequiresPermission("site:view")
 public class InspectionController {
 
     private final InspectionService inspectionService;

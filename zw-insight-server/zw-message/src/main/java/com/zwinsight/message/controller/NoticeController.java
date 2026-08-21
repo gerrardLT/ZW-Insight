@@ -2,6 +2,7 @@ package com.zwinsight.message.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.message.domain.MsgNotice;
 import com.zwinsight.message.service.NoticeService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/message/notice")
 @RequiredArgsConstructor
+@RequiresPermission("message:view")
 public class NoticeController {
 
     private final NoticeService noticeService;
@@ -32,12 +34,14 @@ public class NoticeController {
     }
 
     @PostMapping
+    @RequiresPermission("message:notice:add")
     public R<Void> save(@RequestBody MsgNotice notice) {
         noticeService.save(notice);
         return R.ok();
     }
 
     @PostMapping("/{id}/publish")
+    @RequiresPermission("message:notice:publish")
     public R<Void> publish(@PathVariable Long id) {
         noticeService.publish(id);
         return R.ok();

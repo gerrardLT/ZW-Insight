@@ -1,6 +1,8 @@
 package com.zwinsight.dashboard.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.dashboard.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -15,6 +17,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/dashboard")
 @RequiredArgsConstructor
+@RequiresPermission("dashboard:view")
 public class DashboardController {
 
     private final DashboardService dashboardService;

@@ -275,7 +275,12 @@ public class AuthService {
         redisUtils.set(TOKEN_PREFIX + token, user.getId().toString(), jwtUtils.getExpiration(), TimeUnit.MILLISECONDS);
 
         List<String> roles = userMapper.selectRoleCodesByUserId(user.getId());
-        List<String> permissions = userMapper.selectPermissionsByUserId(user.getId());
+        List<String> permissions = new java.util.ArrayList<>(userMapper.selectPermissionsByUserId(user.getId()));
+        // 超级管理员通配权限：前端路由守卫 / v-permission 以 *:*:* 豁免一切校验
+        // （后端拦截器本身已按 SUPER_ADMIN 角色豁免，此处仅对齐前端语义）
+        if (roles != null && roles.contains("SUPER_ADMIN") && !permissions.contains("*:*:*")) {
+            permissions.add("*:*:*");
+        }
 
         LoginResponse response = new LoginResponse();
         response.setToken(token);

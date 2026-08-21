@@ -160,6 +160,58 @@ class PermissionInterceptorTest {
         verify(response).setStatus(403);
     }
 
+    // ==================== 类级注解场景（权限守卫 S3：模块视图码） ====================
+
+    @Test
+    @DisplayName("类级注解 - 持有模块视图码放行")
+    void classLevel_viewCodeMatched_shouldPass() throws Exception {
+        SecurityContextHolder.setUserId(USER_ID);
+        when(sysUserMapper.selectRoleCodesByUserId(USER_ID)).thenReturn(List.of("FINANCE_MANAGER"));
+        when(sysUserMapper.selectPermissionsByUserId(USER_ID)).thenReturn(List.of("budget:view"));
+
+        boolean result = interceptor.preHandle(request, response, classHandler("readEndpoint"));
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    @DisplayName("类级注解 - 缺少模块视图码返回 403")
+    void classLevel_missingViewCode_shouldReturn403() throws Exception {
+        stubErrorWriter();
+        SecurityContextHolder.setUserId(USER_ID);
+        when(sysUserMapper.selectRoleCodesByUserId(USER_ID)).thenReturn(List.of("STAFF"));
+        when(sysUserMapper.selectPermissionsByUserId(USER_ID)).thenReturn(List.of("dashboard:view"));
+
+        boolean result = interceptor.preHandle(request, response, classHandler("readEndpoint"));
+
+        assertThat(result).isFalse();
+        verify(response).setStatus(403);
+    }
+
+    @Test
+    @DisplayName("方法级注解优先于类级 - 仅持类级视图码访问写端点 403")
+    void methodLevelOverridesClassLevel_onlyViewCode_shouldReturn403() throws Exception {
+        stubErrorWriter();
+        SecurityContextHolder.setUserId(USER_ID);
+        when(sysUserMapper.selectRoleCodesByUserId(USER_ID)).thenReturn(List.of("FINANCE_MANAGER"));
+        when(sysUserMapper.selectPermissionsByUserId(USER_ID)).thenReturn(List.of("budget:view"));
+
+        boolean result = interceptor.preHandle(request, response, classHandler("writeEndpoint"));
+
+        assertThat(result).isFalse();
+        verify(response).setStatus(403);
+    }
+
+    @Test
+    @DisplayName("方法级注解优先于类级 - 持有方法级按钮码放行")
+    void methodLevelOverridesClassLevel_buttonCodeMatched_shouldPass() throws Exception {
+        SecurityContextHolder.setUserId(USER_ID);
+        when(sysUserMapper.selectRoleCodesByUserId(USER_ID)).thenReturn(List.of("FINANCE_MANAGER"));
+        when(sysUserMapper.selectPermissionsByUserId(USER_ID)).thenReturn(List.of("budget:add"));
+
+        boolean result = interceptor.preHandle(request, response, classHandler("writeEndpoint"));
+        assertThat(result).isTrue();
+    }
+
     // ==================== 辅助 ====================
 
     private void stubErrorWriter() throws Exception {
@@ -169,6 +221,12 @@ class PermissionInterceptorTest {
     private HandlerMethod handler(String methodName) throws NoSuchMethodException {
         DemoController bean = new DemoController();
         Method method = DemoController.class.getMethod(methodName);
+        return new HandlerMethod(bean, method);
+    }
+
+    private HandlerMethod classHandler(String methodName) throws NoSuchMethodException {
+        ClassLevelDemoController bean = new ClassLevelDemoController();
+        Method method = ClassLevelDemoController.class.getMethod(methodName);
         return new HandlerMethod(bean, method);
     }
 
@@ -184,6 +242,21 @@ class PermissionInterceptorTest {
         }
 
         public void plain() {
+        }
+    }
+
+    /**
+     * 类级注解控制器（模拟 S3 模式）：读端点回落类级模块视图码，
+     * 写端点以方法级按钮码覆盖（方法级优先）。
+     */
+    @RequiresPermission("budget:view")
+    static class ClassLevelDemoController {
+
+        public void readEndpoint() {
+        }
+
+        @RequiresPermission("budget:add")
+        public void writeEndpoint() {
         }
     }
 }

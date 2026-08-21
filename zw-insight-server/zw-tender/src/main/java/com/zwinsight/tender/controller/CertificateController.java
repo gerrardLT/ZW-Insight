@@ -1,10 +1,16 @@
 package com.zwinsight.tender.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.domain.BizCompanyCertificate;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.domain.BizPersonCertificate;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.service.CompanyCertificateService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.service.PersonCertificateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/tender/certificate")
 @RequiredArgsConstructor
+@RequiresPermission("tender:view")
 public class CertificateController {
 
     private final PersonCertificateService personCertificateService;

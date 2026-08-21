@@ -1,10 +1,16 @@
 package com.zwinsight.site.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizScheduleFeedback;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizSchedulePlan;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.ScheduleFeedbackService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.SchedulePlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/site/schedule")
 @RequiredArgsConstructor
+@RequiresPermission("site:view")
 public class ScheduleController {
 
     private final SchedulePlanService planService;

@@ -28,6 +28,7 @@ import java.util.List;
  *   <li>8.4 标识当前设备，禁止注销当前设备（由 {@link DeviceManagerService} 校验）</li>
  * </ul>
  */
+// 权限豁免：个人设备管理，按 userId 隔离（权限守卫修复 2026-08-21，不加 @RequiresPermission）
 @RestController
 @RequestMapping("/api/v1/user/devices")
 @RequiredArgsConstructor

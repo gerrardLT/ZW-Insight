@@ -16,6 +16,7 @@ import java.util.List;
  * 支持设置委托期间和代理人，期间内新审批自动转给代理人，委托结束恢复。
  * </p>
  */
+// 权限豁免：审批委托同 ApprovalController 策略（权限守卫修复 2026-08-21，不加 @RequiresPermission）
 @RestController
 @RequestMapping("/api/v1/workflow/delegate")
 @RequiredArgsConstructor

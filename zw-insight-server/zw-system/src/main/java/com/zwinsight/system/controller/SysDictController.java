@@ -17,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/system/dict")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SysDictController {
 
     private final SysDictService dictService;

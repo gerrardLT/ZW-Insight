@@ -3,12 +3,19 @@ package com.zwinsight.site.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.dto.InspectionSchemeVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.dto.SchemeSnapshotDTO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.mapper.InspectionSchemeQueryMapper;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.InspectionSchemeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +31,7 @@ import java.util.Map;
 @RestController("siteInspectionSchemeController")
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
+@RequiresPermission("site:view")
 public class InspectionSchemeController {
 
     private final InspectionSchemeService inspectionSchemeService;

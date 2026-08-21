@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+// 权限豁免：登录/注销/当前用户等个人级端点（权限守卫修复 2026-08-21，不加 @RequiresPermission）
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor

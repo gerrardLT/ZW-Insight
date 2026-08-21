@@ -1,8 +1,12 @@
 package com.zwinsight.basedata.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.domain.BdOwner;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.service.OwnerService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/basedata/owner")
 @RequiredArgsConstructor
+@RequiresPermission("basedata:view")
 public class OwnerController {
 
     private final OwnerService ownerService;

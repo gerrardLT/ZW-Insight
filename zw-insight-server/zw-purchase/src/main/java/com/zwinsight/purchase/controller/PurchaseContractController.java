@@ -1,9 +1,14 @@
 package com.zwinsight.purchase.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.domain.BizPurchaseContract;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.domain.BizPurchaseContractDetail;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.service.PurchaseContractService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/purchase/contract")
 @RequiredArgsConstructor
+@RequiresPermission("purchase:view")
 public class PurchaseContractController {
 
     private final PurchaseContractService purchaseContractService;

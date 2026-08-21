@@ -1,9 +1,14 @@
 package com.zwinsight.finance.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizOtherPayment;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.OtherPaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/finance/other-payment")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class OtherPaymentController {
 
     private final OtherPaymentService otherPaymentService;

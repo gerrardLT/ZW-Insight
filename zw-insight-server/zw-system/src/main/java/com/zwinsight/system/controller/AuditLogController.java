@@ -1,8 +1,12 @@
 package com.zwinsight.system.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysAuditLog;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/system/audit")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class AuditLogController {
 
     private final AuditLogService auditLogService;

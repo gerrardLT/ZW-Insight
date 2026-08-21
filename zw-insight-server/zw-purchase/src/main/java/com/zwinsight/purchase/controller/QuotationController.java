@@ -1,8 +1,12 @@
 package com.zwinsight.purchase.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.domain.BizQuotation;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.dto.QuotationSubmitDTO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.service.QuotationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/purchase/quotation")
 @RequiredArgsConstructor
+@RequiresPermission("purchase:view")
 public class QuotationController {
 
     private final QuotationService quotationService;

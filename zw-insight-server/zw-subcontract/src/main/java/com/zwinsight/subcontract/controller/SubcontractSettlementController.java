@@ -1,10 +1,16 @@
 package com.zwinsight.subcontract.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.subcontract.domain.BizSubcontractSettlement;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.subcontract.dto.SubcontractSettlementCreateRequest;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.subcontract.dto.SubcontractSettlementDetailVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.subcontract.service.SubcontractSettlementService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -19,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/subcontract/settlement")
 @RequiredArgsConstructor
+@RequiresPermission("subcontract:view")
 public class SubcontractSettlementController {
 
     private final SubcontractSettlementService settlementService;

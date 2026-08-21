@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/finance/payment-apply")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class PaymentApplyController {
 
     private final PaymentApplyService paymentApplyService;

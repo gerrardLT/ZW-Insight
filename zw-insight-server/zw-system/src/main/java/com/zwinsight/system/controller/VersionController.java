@@ -1,8 +1,12 @@
 package com.zwinsight.system.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysVersion;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.dto.VersionCreateRequest;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.service.VersionManagerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/system/version")
 @RequiredArgsConstructor
+@RequiresPermission("system:version:view")
 public class VersionController {
 
     private final VersionManagerService versionManagerService;

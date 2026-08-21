@@ -1,9 +1,14 @@
 package com.zwinsight.purchase.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.domain.BizPurchaseSettlement;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.readmodel.MaterialInboundView;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.service.PurchaseSettlementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/purchase/settlement")
 @RequiredArgsConstructor
+@RequiresPermission("purchase:view")
 public class PurchaseSettlementController {
 
     private final PurchaseSettlementService purchaseSettlementService;

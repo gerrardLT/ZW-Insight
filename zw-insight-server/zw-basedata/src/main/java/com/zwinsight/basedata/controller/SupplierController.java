@@ -1,8 +1,12 @@
 package com.zwinsight.basedata.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.domain.BdSupplier;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.service.SupplierService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/basedata/supplier")
 @RequiredArgsConstructor
+@RequiresPermission("basedata:view")
 public class SupplierController {
 
     private final SupplierService supplierService;

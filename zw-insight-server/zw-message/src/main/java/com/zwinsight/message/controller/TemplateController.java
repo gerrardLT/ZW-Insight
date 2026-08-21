@@ -2,6 +2,7 @@ package com.zwinsight.message.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.message.domain.MsgTemplate;
 import com.zwinsight.message.service.TemplateService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController("messageTemplateController")
 @RequestMapping("/api/v1/message/template")
 @RequiredArgsConstructor
+@RequiresPermission("message:view")
 public class TemplateController {
 
     private final TemplateService templateService;

@@ -1,7 +1,10 @@
 package com.zwinsight.finance.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.dto.InvoiceSummaryDTO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.InvoiceSummaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/finance/invoice-summary")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class InvoiceSummaryController {
 
     private final InvoiceSummaryService invoiceSummaryService;

@@ -1,8 +1,12 @@
 package com.zwinsight.hr.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.domain.BizEntryApply;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.service.EntryApplyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/hr/entry-apply")
 @RequiredArgsConstructor
+@RequiresPermission("hr:view")
 public class EntryApplyController {
 
     private final EntryApplyService entryApplyService;

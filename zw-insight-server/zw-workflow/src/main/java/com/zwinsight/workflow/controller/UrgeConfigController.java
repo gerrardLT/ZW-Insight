@@ -1,8 +1,12 @@
 package com.zwinsight.workflow.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.workflow.domain.WfUrgeConfig;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.workflow.dto.UrgeConfigRequest;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.workflow.service.UrgeConfigService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/workflow/urge-config")
 @RequiredArgsConstructor
+@RequiresPermission("workflow:view")
 public class UrgeConfigController {
 
     private final UrgeConfigService urgeConfigService;

@@ -1,13 +1,22 @@
 package com.zwinsight.dashboard.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.dashboard.dto.BudgetExecutionDTO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.dashboard.dto.ContractReceiptDTO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.dashboard.dto.OutputTrendDTO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.dashboard.dto.ProgressDTO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.dashboard.dto.ProjectDashboardDTO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.dashboard.service.ProjectDashboardService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.project.domain.BizProject;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/dashboard/project")
 @RequiredArgsConstructor
+@RequiresPermission("project-dashboard:view")
 public class ProjectDashboardController {
 
     private final ProjectDashboardService projectDashboardService;

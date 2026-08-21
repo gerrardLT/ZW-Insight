@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 验证码控制器
  * 提供图形验证码和短信验证码接口
+ * <p>权限豁免说明：/captcha/** 为免登录接口，已在 WebMvcConfig EXCLUDE_PATHS
+ * 白名单放行（AuthInterceptor 与 PermissionInterceptor 共用），
+ * 不加 {@code @RequiresPermission}。</p>
  */
 @RestController
 @RequestMapping("/api/v1/captcha")

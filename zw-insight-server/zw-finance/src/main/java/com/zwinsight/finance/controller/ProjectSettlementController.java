@@ -1,10 +1,16 @@
 package com.zwinsight.finance.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizProjectSettlement;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizSettlementContractDetail;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.dto.ProjectSettlementUpdateDTO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.ProjectSettlementService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/project-settlements")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class ProjectSettlementController {
 
     private final ProjectSettlementService settlementService;

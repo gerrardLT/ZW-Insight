@@ -2,6 +2,7 @@ package com.zwinsight.file.batch.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.batch.domain.BizExportSchedule;
 import com.zwinsight.file.batch.service.ExportScheduleService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/export-schedule")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class ExportScheduleController {
 
     private final ExportScheduleService exportScheduleService;

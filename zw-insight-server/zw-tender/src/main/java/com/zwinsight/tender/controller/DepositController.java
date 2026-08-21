@@ -1,10 +1,16 @@
 package com.zwinsight.tender.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.domain.BizDepositApply;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.domain.BizDepositReturn;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.service.DepositApplyService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.service.DepositReturnService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/tender/deposit")
 @RequiredArgsConstructor
+@RequiresPermission("tender:view")
 public class DepositController {
 
     private final DepositApplyService applyService;

@@ -1,8 +1,12 @@
 package com.zwinsight.labor.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.domain.BizLaborContract;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.service.LaborContractService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/labor/contract")
 @RequiredArgsConstructor
+@RequiresPermission("labor:view")
 public class LaborContractController {
 
     private final LaborContractService laborContractService;

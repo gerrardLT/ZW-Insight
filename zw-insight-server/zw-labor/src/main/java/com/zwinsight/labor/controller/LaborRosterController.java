@@ -1,8 +1,12 @@
 package com.zwinsight.labor.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.domain.BizLaborRoster;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.service.LaborRosterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/labor/roster")
 @RequiredArgsConstructor
+@RequiresPermission("labor:view")
 public class LaborRosterController {
 
     private final LaborRosterService rosterService;

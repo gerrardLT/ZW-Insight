@@ -21,6 +21,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/project")
 @RequiredArgsConstructor
+@RequiresPermission("project:view")
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -51,12 +52,14 @@ public class ProjectController {
     }
 
     @PostMapping
+    @RequiresPermission("project:create")
     public R<Void> save(@Valid @RequestBody ProjectCreateRequest request) {
         projectService.saveFromRequest(request);
         return R.ok();
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission("project:edit")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ProjectCreateRequest request) {
         projectService.updateFromRequest(id, request);
         return R.ok();

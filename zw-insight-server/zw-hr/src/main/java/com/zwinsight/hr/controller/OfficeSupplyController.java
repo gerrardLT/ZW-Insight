@@ -1,10 +1,16 @@
 package com.zwinsight.hr.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.domain.BizOfficeSupply;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.domain.BizOfficeSupplyInOut;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.service.OfficeSupplyInOutService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.service.OfficeSupplyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/hr/office-supply")
 @RequiredArgsConstructor
+@RequiresPermission("hr:view")
 public class OfficeSupplyController {
 
     private final OfficeSupplyService supplyService;

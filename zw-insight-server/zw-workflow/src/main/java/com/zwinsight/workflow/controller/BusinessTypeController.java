@@ -1,7 +1,10 @@
 package com.zwinsight.workflow.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.workflow.domain.WfBusinessType;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.workflow.service.BusinessTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/workflow/business-type")
 @RequiredArgsConstructor
+@RequiresPermission("workflow:view")
 public class BusinessTypeController {
 
     private final BusinessTypeService businessTypeService;

@@ -18,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/system/role")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SysRoleController {
 
     private final SysRoleService roleService;

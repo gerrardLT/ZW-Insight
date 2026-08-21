@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/contract/quantity")
 @RequiredArgsConstructor
+@RequiresPermission("contract:view")
 public class QuantityListController {
 
     private final QuantityListService quantityListService;

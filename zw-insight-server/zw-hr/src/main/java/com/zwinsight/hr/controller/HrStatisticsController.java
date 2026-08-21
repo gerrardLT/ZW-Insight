@@ -1,7 +1,10 @@
 package com.zwinsight.hr.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.domain.vo.HrStatisticsVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.service.HrStatisticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/hr/statistics")
 @RequiredArgsConstructor
+@RequiresPermission("hr:view")
 public class HrStatisticsController {
 
     private final HrStatisticsService hrStatisticsService;

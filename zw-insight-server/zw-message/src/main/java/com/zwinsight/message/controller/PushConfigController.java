@@ -2,6 +2,7 @@ package com.zwinsight.message.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.message.domain.MsgPushConfig;
 import com.zwinsight.message.service.PushConfigService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/message/push-config")
 @RequiredArgsConstructor
+@RequiresPermission("message:view")
 public class PushConfigController {
 
     private final PushConfigService pushConfigService;
@@ -48,6 +50,7 @@ public class PushConfigController {
      * 新增推送渠道配置
      */
     @PostMapping
+    @RequiresPermission("message:push-config:edit")
     public R<Void> save(@RequestBody MsgPushConfig config) {
         pushConfigService.save(config);
         return R.ok();
@@ -57,6 +60,7 @@ public class PushConfigController {
      * 更新推送渠道配置
      */
     @PutMapping("/{id}")
+    @RequiresPermission("message:push-config:edit")
     public R<Void> update(@PathVariable Long id, @RequestBody MsgPushConfig config) {
         config.setId(id);
         pushConfigService.update(config);
@@ -67,6 +71,7 @@ public class PushConfigController {
      * 删除推送渠道配置
      */
     @DeleteMapping("/{id}")
+    @RequiresPermission("message:push-config:edit")
     public R<Void> delete(@PathVariable Long id) {
         pushConfigService.delete(id);
         return R.ok();

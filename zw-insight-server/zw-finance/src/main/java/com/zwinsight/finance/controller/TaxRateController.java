@@ -16,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/finance/tax-rate")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class TaxRateController {
 
     private final TaxRateService taxRateService;

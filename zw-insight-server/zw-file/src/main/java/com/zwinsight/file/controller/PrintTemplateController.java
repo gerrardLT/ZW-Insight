@@ -1,10 +1,16 @@
 package com.zwinsight.file.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.template.PrintRenderRequest;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.template.PrintTemplateService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.template.SysTemplate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +33,7 @@ import java.net.URLEncoder;
 @RestController
 @RequestMapping("/api/v1/print-template")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class PrintTemplateController {
 
     private final PrintTemplateService printTemplateService;

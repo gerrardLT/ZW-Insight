@@ -1,7 +1,10 @@
 package com.zwinsight.purchase.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.domain.BizBidResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.service.BidRankingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/purchase/bid")
 @RequiredArgsConstructor
+@RequiresPermission("purchase:view")
 public class BidResultController {
 
     private final BidRankingService bidRankingService;

@@ -1,6 +1,7 @@
 package com.zwinsight.file.batch.controller;
 
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.batch.domain.ExportRequest;
 import com.zwinsight.file.batch.domain.ExportStatus;
 import com.zwinsight.file.batch.domain.ImportResult;
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @RequestMapping("/api/v1/batch")
+@RequiresPermission("system:view")
 @RequiredArgsConstructor
 public class BatchImportExportController {
 

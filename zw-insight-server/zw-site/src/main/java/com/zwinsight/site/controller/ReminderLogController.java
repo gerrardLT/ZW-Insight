@@ -1,8 +1,12 @@
 package com.zwinsight.site.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizReminderLog;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.dto.ReminderStatsVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.ReminderLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/site")
 @RequiredArgsConstructor
+@RequiresPermission("site:view")
 public class ReminderLogController {
 
     private final ReminderLogService reminderLogService;

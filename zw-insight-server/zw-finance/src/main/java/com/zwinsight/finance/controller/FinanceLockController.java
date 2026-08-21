@@ -17,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/finance/lock")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class FinanceLockController {
 
     private final FinanceLockService financeLockService;

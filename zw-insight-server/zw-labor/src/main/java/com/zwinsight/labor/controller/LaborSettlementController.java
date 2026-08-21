@@ -1,8 +1,12 @@
 package com.zwinsight.labor.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.domain.BizLaborSettlement;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.service.LaborSettlementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/labor/settlement")
 @RequiredArgsConstructor
+@RequiresPermission("labor:view")
 public class LaborSettlementController {
 
     private final LaborSettlementService settlementService;

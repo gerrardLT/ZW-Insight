@@ -19,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/budget/change")
 @RequiredArgsConstructor
+@RequiresPermission("budget:view")
 public class BudgetChangeController {
 
     private final BudgetChangeService budgetChangeService;

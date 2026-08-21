@@ -1,7 +1,10 @@
 package com.zwinsight.tender.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.domain.BizTenderTask;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.service.TenderTaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/tender/task")
 @RequiredArgsConstructor
+@RequiresPermission("tender:view")
 public class TenderTaskController {
 
     private final TenderTaskService taskService;

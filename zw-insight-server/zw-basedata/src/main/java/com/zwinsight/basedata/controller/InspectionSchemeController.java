@@ -1,8 +1,12 @@
 package com.zwinsight.basedata.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.domain.BdInspectionScheme;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.service.InspectionSchemeService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController("basedataInspectionSchemeController")
 @RequestMapping("/api/v1/basedata/inspection-scheme")
 @RequiredArgsConstructor
+@RequiresPermission("basedata:view")
 public class InspectionSchemeController {
 
     private final InspectionSchemeService schemeService;

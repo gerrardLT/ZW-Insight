@@ -1,7 +1,10 @@
 package com.zwinsight.file.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.domain.SerialNumberRule;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.service.SerialNumberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/file/serial")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SerialNumberController {
 
     private final SerialNumberService serialNumberService;

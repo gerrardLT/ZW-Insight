@@ -14,6 +14,7 @@ import java.util.Map;
 /**
  * 审批流程接口
  */
+// 权限豁免：审批操作跨业务域（各角色按 Flowable 任务候选人校验）（权限守卫修复 2026-08-21，不加 @RequiresPermission）
 @RestController
 @RequestMapping("/api/v1/workflow/approval")
 @RequiredArgsConstructor

@@ -1,9 +1,14 @@
 package com.zwinsight.archive.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.archive.service.ArchiveService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.archive.vo.OfficeSupplyArchiveVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.archive.vo.OtherContractArchiveVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +22,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/archive")
 @RequiredArgsConstructor
+@RequiresPermission("archive:view")
 public class ArchiveController {
 
     private final ArchiveService archiveService;

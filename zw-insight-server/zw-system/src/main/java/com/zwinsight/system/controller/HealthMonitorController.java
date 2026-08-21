@@ -1,7 +1,10 @@
 package com.zwinsight.system.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.vo.SystemHealthVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.service.SystemMetricsCollector;
 import io.micrometer.core.instrument.Counter;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +29,7 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/v1/system/monitor")
 @RequiredArgsConstructor
+@RequiresPermission("system:monitor:view")
 public class HealthMonitorController {
 
     private final SystemMetricsCollector metricsCollector;

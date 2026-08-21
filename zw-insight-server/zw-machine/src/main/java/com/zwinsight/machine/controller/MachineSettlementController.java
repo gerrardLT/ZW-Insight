@@ -1,8 +1,12 @@
 package com.zwinsight.machine.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.dto.*;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.service.MachineWorkSettlementService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/machine/settlement")
 @RequiredArgsConstructor
+@RequiresPermission("machine:view")
 public class MachineSettlementController {
 
     private final MachineWorkSettlementService machineWorkSettlementService;

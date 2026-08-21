@@ -17,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/contracts/{contractId}/boq")
 @RequiredArgsConstructor
+@RequiresPermission("contract:view")
 public class BoqController {
 
     private final BoqService boqService;

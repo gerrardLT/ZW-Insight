@@ -1,8 +1,12 @@
 package com.zwinsight.file.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.domain.FileStorage;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.service.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/file/storage")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class StorageController {
 
     private final StorageService storageService;

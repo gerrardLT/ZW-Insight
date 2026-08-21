@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/budget-control-configs")
 @RequiredArgsConstructor
+@RequiresPermission("budget:view")
 public class BudgetControlConfigController {
 
     private final BudgetControlConfigService budgetControlConfigService;

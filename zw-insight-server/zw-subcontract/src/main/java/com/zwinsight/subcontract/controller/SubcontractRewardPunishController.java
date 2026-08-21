@@ -1,8 +1,12 @@
 package com.zwinsight.subcontract.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.subcontract.domain.BizSubcontractRewardPunish;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.subcontract.service.SubcontractRewardPunishService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/subcontract/reward-punish")
 @RequiredArgsConstructor
+@RequiresPermission("subcontract:view")
 public class SubcontractRewardPunishController {
 
     private final SubcontractRewardPunishService rewardPunishService;

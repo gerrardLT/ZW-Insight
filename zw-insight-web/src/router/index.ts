@@ -25,13 +25,13 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
-        meta: { title: '首页', icon: 'HomeFilled' }
+        meta: { title: '首页', icon: 'HomeFilled', permission: 'dashboard:view' }
       },
       {
         path: 'project-dashboard',
         name: 'ProjectDashboard',
         component: () => import('@/views/dashboard/project-dashboard.vue'),
-        meta: { title: '项目看板', icon: 'DataAnalysis' }
+        meta: { title: '项目看板', icon: 'DataAnalysis', permission: 'project-dashboard:view' }
       }
     ]
   },
@@ -40,7 +40,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/system',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/system/org',
-    meta: { title: '系统管理', icon: 'Setting' },
+    meta: { title: '系统管理', icon: 'Setting', permission: 'system:view' },
     children: [
       {
         path: 'org',
@@ -148,7 +148,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/project',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/project/list',
-    meta: { title: '项目管理', icon: 'Briefcase' },
+    meta: { title: '项目管理', icon: 'Briefcase', permission: 'project:view' },
     children: [
       {
         path: 'list',
@@ -160,13 +160,13 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'create',
         name: 'ProjectCreate',
         component: () => import('@/views/project/form.vue'),
-        meta: { title: '新增项目', hidden: true }
+        meta: { title: '新增项目', hidden: true, permission: 'project:create' }
       },
       {
         path: 'edit/:id',
         name: 'ProjectEdit',
         component: () => import('@/views/project/form.vue'),
-        meta: { title: '编辑项目', hidden: true }
+        meta: { title: '编辑项目', hidden: true, permission: 'project:edit' }
       },
       {
         path: 'detail/:id',
@@ -181,7 +181,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/contract',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/contract/list',
-    meta: { title: '合同管理', icon: 'Notebook' },
+    meta: { title: '合同管理', icon: 'Notebook', permission: 'contract:view' },
     children: [
       {
         path: 'list',
@@ -220,7 +220,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/finance',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/finance/invoice-apply',
-    meta: { title: '财务管理', icon: 'Money' },
+    meta: { title: '财务管理', icon: 'Money', permission: 'finance:view' },
     children: [
       {
         path: 'invoice-apply',
@@ -313,7 +313,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/budget',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/budget/list',
-    meta: { title: '预算管理', icon: 'Coin' },
+    meta: { title: '预算管理', icon: 'Coin', permission: 'budget:view' },
     children: [
       {
         path: 'list',
@@ -346,7 +346,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/purchase',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/purchase/contract',
-    meta: { title: '采购管理', icon: 'ShoppingCart' },
+    meta: { title: '采购管理', icon: 'ShoppingCart', permission: 'purchase:view' },
     children: [
       {
         path: 'contract',
@@ -373,7 +373,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/labor',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/labor/contract',
-    meta: { title: '劳务管理', icon: 'Avatar' },
+    meta: { title: '劳务管理', icon: 'Avatar', permission: 'labor:view' },
     children: [
       {
         path: 'contract',
@@ -418,7 +418,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/material',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/material/inbound',
-    meta: { title: '材料库存', icon: 'Box' },
+    meta: { title: '材料库存', icon: 'Box', permission: 'material:view' },
     children: [
       {
         path: 'inbound',
@@ -457,7 +457,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/machine',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/machine/contract',
-    meta: { title: '机械管理', icon: 'Van' },
+    meta: { title: '机械管理', icon: 'Van', permission: 'machine:view' },
     children: [
       {
         path: 'contract',
@@ -514,7 +514,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/subcontract',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/subcontract/contract',
-    meta: { title: '分包管理', icon: 'Connection' },
+    meta: { title: '分包管理', icon: 'Connection', permission: 'subcontract:view' },
     children: [
       {
         path: 'contract',
@@ -535,7 +535,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/site',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/site/schedule',
-    meta: { title: '现场管理', icon: 'Place' },
+    meta: { title: '现场管理', icon: 'Place', permission: 'site:view' },
     children: [
       {
         path: 'schedule',
@@ -580,7 +580,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/tender',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/tender/register',
-    meta: { title: '投标管理', icon: 'Trophy' },
+    meta: { title: '投标管理', icon: 'Trophy', permission: 'tender:view' },
     children: [
       {
         path: 'register',
@@ -601,7 +601,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/hr',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/hr/entry',
-    meta: { title: '行政人事', icon: 'School' },
+    meta: { title: '行政人事', icon: 'School', permission: 'hr:view' },
     children: [
       {
         path: 'statistics',
@@ -640,7 +640,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/archive',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/archive/index',
-    meta: { title: '档案管理', icon: 'FolderOpened' },
+    meta: { title: '档案管理', icon: 'FolderOpened', permission: 'archive:view' },
     children: [
       {
         path: 'index',
@@ -673,7 +673,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/platform',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/platform/tenant',
-    meta: { title: '平台管理', icon: 'Platform' },
+    meta: { title: '平台管理', icon: 'Platform', permission: 'system:view' },
     children: [
       {
         path: 'tenant',
@@ -700,7 +700,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/workflow',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/workflow/designer',
-    meta: { title: '工作流管理', icon: 'Share' },
+    meta: { title: '工作流管理', icon: 'Share', permission: 'workflow:view' },
     children: [
       {
         path: 'designer',
@@ -739,7 +739,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/message',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/message/notice',
-    meta: { title: '消息管理', icon: 'Bell' },
+    meta: { title: '消息管理', icon: 'Bell', permission: 'message:view' },
     children: [
       {
         path: 'notice',
@@ -772,7 +772,7 @@ const constantRoutes: RouteRecordRaw[] = [
     path: '/basedata',
     component: () => import('@/layouts/DefaultLayout.vue'),
     redirect: '/basedata/material',
-    meta: { title: '基础数据', icon: 'Grid' },
+    meta: { title: '基础数据', icon: 'Grid', permission: 'basedata:view' },
     children: [
       {
         path: 'material',

@@ -1,9 +1,14 @@
 package com.zwinsight.material.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.material.domain.BizMaterialRefund;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.material.dto.MaterialRefundDetailVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.material.service.MaterialRefundService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,6 +26,7 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/v1/material/refund")
 @RequiredArgsConstructor
+@RequiresPermission("material:view")
 public class MaterialRefundController {
 
     private final MaterialRefundService materialRefundService;

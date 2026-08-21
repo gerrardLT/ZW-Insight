@@ -1,6 +1,7 @@
 package com.zwinsight.file.template;
 
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +14,7 @@ import java.util.Map;
 @RestController("fileTemplateController")
 @RequestMapping("/api/v1/file/template")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class TemplateController {
 
     private final TemplateService templateService;

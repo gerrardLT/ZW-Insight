@@ -16,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/contract/bom")
 @RequiredArgsConstructor
+@RequiresPermission("contract:view")
 public class BomItemController {
 
     private final BomItemService bomItemService;

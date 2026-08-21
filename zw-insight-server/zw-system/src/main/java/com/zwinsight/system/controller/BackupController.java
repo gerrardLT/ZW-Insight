@@ -2,13 +2,21 @@ package com.zwinsight.system.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.config.SecurityContextHolder;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.service.MinioService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysBackupRecord;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.mapper.SysBackupRecordMapper;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.service.BackupService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +41,7 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/api/v1/system/backup")
 @RequiredArgsConstructor
+@RequiresPermission("system:backup:list")
 public class BackupController {
 
     private final BackupService backupService;

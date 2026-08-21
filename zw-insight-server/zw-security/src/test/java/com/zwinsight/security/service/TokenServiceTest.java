@@ -378,6 +378,60 @@ class TokenServiceTest {
             verify(captchaService, never()).verifyImageCaptcha(anyString(), anyString());
         }
 
+        // --- SUPER_ADMIN 通配权限（权限守卫 S2：前端路由守卫/v-permission 语义对齐） ---
+
+        @Test
+        @DisplayName("密码登录 - SUPER_ADMIN 角色登录返回通配权限 *:*:*")
+        void login_superAdmin_returnsWildcardPermission() {
+            // Given
+            LoginRequest request = buildPasswordLoginRequest();
+            SysUser user = buildTestUser();
+            SysTenant tenant = buildTestTenant();
+
+            when(captchaService.isCaptchaEnabled()).thenReturn(false);
+            doNothing().when(captchaService).checkIpLock(TEST_IP);
+            when(redisUtils.get("login_fail:" + TEST_USERNAME)).thenReturn(null);
+            when(userMapper.selectOne(any())).thenReturn(user);
+            when(tenantMapper.selectById(9999L)).thenReturn(tenant);
+            when(jwtUtils.generateToken(anyLong(), anyLong(), anyString())).thenReturn("token-super");
+            when(jwtUtils.getExpiration()).thenReturn(86400000L);
+            when(userMapper.selectRoleCodesByUserId(anyLong())).thenReturn(List.of("SUPER_ADMIN"));
+            when(userMapper.selectPermissionsByUserId(anyLong()))
+                    .thenReturn(new java.util.ArrayList<>(List.of("system:user:list")));
+
+            // When
+            LoginResponse response = authService.login(request, TEST_IP);
+
+            // Then：通配权限追加，且原有权限保留
+            assertThat(response.getPermissions()).contains("*:*:*", "system:user:list");
+        }
+
+        @Test
+        @DisplayName("密码登录 - 非 SUPER_ADMIN 角色不返回通配权限")
+        void login_businessRole_noWildcardPermission() {
+            // Given
+            LoginRequest request = buildPasswordLoginRequest();
+            SysUser user = buildTestUser();
+            SysTenant tenant = buildTestTenant();
+
+            when(captchaService.isCaptchaEnabled()).thenReturn(false);
+            doNothing().when(captchaService).checkIpLock(TEST_IP);
+            when(redisUtils.get("login_fail:" + TEST_USERNAME)).thenReturn(null);
+            when(userMapper.selectOne(any())).thenReturn(user);
+            when(tenantMapper.selectById(9999L)).thenReturn(tenant);
+            when(jwtUtils.generateToken(anyLong(), anyLong(), anyString())).thenReturn("token-biz");
+            when(jwtUtils.getExpiration()).thenReturn(86400000L);
+            when(userMapper.selectRoleCodesByUserId(anyLong())).thenReturn(List.of("PROJECT_MANAGER"));
+            when(userMapper.selectPermissionsByUserId(anyLong()))
+                    .thenReturn(new java.util.ArrayList<>(List.of("project:view")));
+
+            // When
+            LoginResponse response = authService.login(request, TEST_IP);
+
+            // Then
+            assertThat(response.getPermissions()).containsExactly("project:view");
+        }
+
         // --- 密码错误 ---
 
         @Test

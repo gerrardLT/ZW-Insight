@@ -1,8 +1,12 @@
 package com.zwinsight.site.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizCompletionAcceptance;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.CompletionAcceptanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/site/completion")
 @RequiredArgsConstructor
+@RequiresPermission("site:view")
 public class CompletionController {
 
     private final CompletionAcceptanceService acceptanceService;

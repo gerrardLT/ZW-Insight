@@ -1,8 +1,12 @@
 package com.zwinsight.machine.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.domain.BizMachineWorkLog;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.service.MachineWorkLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/machine/work-log")
 @RequiredArgsConstructor
+@RequiresPermission("machine:view")
 public class MachineWorkLogController {
 
     private final MachineWorkLogService workLogService;

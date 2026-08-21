@@ -21,11 +21,13 @@ public class SysMenuController {
     private final SysMenuService menuService;
 
     @GetMapping
+    @RequiresPermission("system:view")
     public R<List<SysMenu>> list() {
         return R.ok(menuService.list());
     }
 
     @GetMapping("/{id}")
+    @RequiresPermission("system:view")
     public R<SysMenu> getById(@PathVariable Long id) {
         return R.ok(menuService.getById(id));
     }
@@ -54,6 +56,8 @@ public class SysMenuController {
 
     /**
      * 获取当前用户菜单（用于动态路由）
+     * <p>权限豁免说明：菜单收敛基座，全体登录用户（含无业务菜单角色）必须可达，
+     * 返回内容本身已按 userId 的角色-菜单绑定过滤，无越权读取面。</p>
      */
     @GetMapping("/user")
     public R<List<SysMenu>> getUserMenus() {

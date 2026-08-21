@@ -1,8 +1,12 @@
 package com.zwinsight.tender.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.domain.BizTenderFee;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.service.TenderFeeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/tender/fee")
 @RequiredArgsConstructor
+@RequiresPermission("tender:view")
 public class TenderFeeController {
 
     private final TenderFeeService feeService;

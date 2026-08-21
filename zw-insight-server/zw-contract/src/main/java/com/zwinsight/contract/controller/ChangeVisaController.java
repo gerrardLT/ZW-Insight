@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/contract/change-visa")
 @RequiredArgsConstructor
+@RequiresPermission("contract:view")
 public class ChangeVisaController {
 
     private final ChangeVisaService changeVisaService;

@@ -12,6 +12,7 @@ import java.util.List;
 /**
  * 文件管理接口
  */
+// 权限豁免：文件上传/下载为全模块公共能力，业务归属由宿主接口守卫（权限守卫修复 2026-08-21，不加 @RequiresPermission）
 @RestController
 @RequestMapping("/api/v1/file")
 @RequiredArgsConstructor

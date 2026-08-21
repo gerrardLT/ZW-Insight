@@ -1,10 +1,16 @@
 package com.zwinsight.finance.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizReserveFundApply;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizReserveFundReturn;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.ReserveFundApplyService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.ReserveFundReturnService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/finance/reserve-fund")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class ReserveFundController {
 
     private final ReserveFundApplyService applyService;

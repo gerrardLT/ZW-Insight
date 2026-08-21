@@ -1,10 +1,16 @@
 package com.zwinsight.project.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.project.domain.dto.ProjectMemberAddRequest;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.project.domain.dto.UpdateRolesRequest;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.project.domain.vo.ProjectMemberVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.project.service.ProjectMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/project/{projectId}/member")
 @RequiredArgsConstructor
+@RequiresPermission("project:view")
 public class ProjectMemberController {
 
     private final ProjectMemberService memberService;

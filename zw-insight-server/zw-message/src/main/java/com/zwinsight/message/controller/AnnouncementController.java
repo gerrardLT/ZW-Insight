@@ -2,6 +2,7 @@ package com.zwinsight.message.controller;
 
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.message.domain.MsgAnnouncement;
 import com.zwinsight.message.service.AnnouncementService;
 import lombok.RequiredArgsConstructor;
@@ -9,10 +10,13 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * 公告接口
+ * <p>类级 message:view：公告为公共读物，凡有消息菜单的角色可读；
+ * 公告写操作暂回落类级校验（独立按钮码随后续 spec 补齐）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/message/announcement")
 @RequiredArgsConstructor
+@RequiresPermission("message:view")
 public class AnnouncementController {
 
     private final AnnouncementService announcementService;

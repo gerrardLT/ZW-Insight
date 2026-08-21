@@ -16,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/system/post")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SysPostController {
 
     private final SysPostService postService;

@@ -1,9 +1,14 @@
 package com.zwinsight.finance.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizPaymentReceived;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.PaymentReceivedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/finance/payment-received")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class PaymentReceivedController {
 
     private final PaymentReceivedService paymentReceivedService;

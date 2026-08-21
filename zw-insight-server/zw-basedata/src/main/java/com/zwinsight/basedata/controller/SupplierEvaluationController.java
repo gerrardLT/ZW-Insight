@@ -1,8 +1,12 @@
 package com.zwinsight.basedata.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.domain.BizSupplierEvaluation;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.service.SupplierEvaluationService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +19,7 @@ import java.math.BigDecimal;
 @RestController
 @RequestMapping("/api/v1/basedata/supplier-evaluation")
 @RequiredArgsConstructor
+@RequiresPermission("basedata:view")
 public class SupplierEvaluationController {
 
     private final SupplierEvaluationService evaluationService;

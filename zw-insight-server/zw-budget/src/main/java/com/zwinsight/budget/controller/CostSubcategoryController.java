@@ -15,6 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/budget/subcategory")
 @RequiredArgsConstructor
+@RequiresPermission("budget:view")
 public class CostSubcategoryController {
 
     private final CostSubcategoryService costSubcategoryService;

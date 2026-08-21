@@ -1,12 +1,20 @@
 package com.zwinsight.hr.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.domain.BizVehicle;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.domain.BizVehicleApply;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.domain.BizVehicleMaintenance;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.service.VehicleApplyService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.service.VehicleMaintenanceService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.service.VehicleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/hr/vehicle")
 @RequiredArgsConstructor
+@RequiresPermission("hr:view")
 public class VehicleController {
 
     private final VehicleService vehicleService;

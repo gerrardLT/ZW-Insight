@@ -15,6 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/system/org")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SysOrgController {
 
     private final SysOrgService orgService;

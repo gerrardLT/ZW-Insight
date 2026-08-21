@@ -15,6 +15,8 @@ import java.util.List;
 
 /**
  * 用户快捷入口接口
+ * <p>权限豁免说明：个人级配置，按当前登录用户隔离（同 MessageController 策略），
+ * 不加 {@code @RequiresPermission}。</p>
  */
 @RestController
 @RequestMapping("/api/v1/message/shortcut")

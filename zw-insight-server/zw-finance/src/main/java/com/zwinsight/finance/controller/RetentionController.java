@@ -1,10 +1,16 @@
 package com.zwinsight.finance.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizRetentionMoney;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizRetentionReturn;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.RetentionMoneyService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.RetentionReturnService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/finance/retention")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class RetentionController {
 
     private final RetentionMoneyService retentionMoneyService;

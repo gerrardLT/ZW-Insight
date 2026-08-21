@@ -1,8 +1,12 @@
 package com.zwinsight.hr.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.domain.BizSealApply;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.hr.service.SealApplyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/hr/seal-apply")
 @RequiredArgsConstructor
+@RequiresPermission("hr:view")
 public class SealApplyController {
 
     private final SealApplyService sealApplyService;

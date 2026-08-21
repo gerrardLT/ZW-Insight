@@ -1,8 +1,12 @@
 package com.zwinsight.machine.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.domain.BizMachineOilRecord;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.service.MachineOilRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/machine/oil-record")
 @RequiredArgsConstructor
+@RequiresPermission("machine:view")
 public class MachineOilRecordController {
 
     private final MachineOilRecordService oilRecordService;

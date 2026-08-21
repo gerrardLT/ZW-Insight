@@ -1,8 +1,12 @@
 package com.zwinsight.machine.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.domain.BizMachineRepair;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.service.MachineRepairService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/machine/repair")
 @RequiredArgsConstructor
+@RequiresPermission("machine:view")
 public class MachineRepairController {
 
     private final MachineRepairService repairService;

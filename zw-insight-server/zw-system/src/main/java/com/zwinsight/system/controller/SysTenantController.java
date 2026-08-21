@@ -21,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/platform/tenant")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SysTenantController {
 
     private final SysTenantService tenantService;

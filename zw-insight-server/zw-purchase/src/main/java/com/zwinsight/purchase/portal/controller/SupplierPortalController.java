@@ -22,6 +22,10 @@ import java.util.Map;
  * <p>
  * 独立于主系统的供应商自助服务接口。
  * /auth/** 路径无需认证，其余路径需要供应商专用 JWT。
+ * </p>
+ * <p>权限豁免说明：/supplier-portal/** 全路径在 WebMvcConfig EXCLUDE_PATHS
+ * 白名单豁免（走独立的供应商 JWT 校验，不走主系统 PermissionInterceptor），
+ * 不加 {@code @RequiresPermission}。</p>
  */
 @RestController
 @RequestMapping("/api/v1/supplier-portal")

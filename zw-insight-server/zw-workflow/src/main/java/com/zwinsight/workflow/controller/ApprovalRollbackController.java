@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 审批数据回滚 REST API
  */
+// 权限豁免：审批回退同 ApprovalController 策略（权限守卫修复 2026-08-21，不加 @RequiresPermission）
 @RestController
 @RequestMapping("/api/v1/workflow/rollback")
 @RequiredArgsConstructor

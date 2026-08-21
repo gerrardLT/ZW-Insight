@@ -16,15 +16,20 @@ import java.util.Map;
 
 /**
  * 人员管理接口
+ * <p>类级 system:view：系统管理域读写默认仅管理员可达（SUPER_ADMIN 拦截器豁免）。
+ * page/getById 放宽为 system:view OR project:view：项目成员管理
+ * （ProjectMember.vue）需按用户选择成员，属项目域合法级联。</p>
  */
 @RestController
 @RequestMapping("/api/v1/system/user")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SysUserController {
 
     private final SysUserService userService;
 
     @GetMapping
+    @RequiresPermission({"system:view", "project:view"})
     public R<PageResult<SysUser>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -36,6 +41,7 @@ public class SysUserController {
     }
 
     @GetMapping("/{id}")
+    @RequiresPermission({"system:view", "project:view"})
     public R<SysUser> getById(@PathVariable Long id) {
         return R.ok(userService.getById(id));
     }

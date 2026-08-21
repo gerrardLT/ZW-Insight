@@ -1,8 +1,12 @@
 package com.zwinsight.workflow.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.config.SecurityContextHolder;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.workflow.domain.WfProcessDef;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.workflow.service.ProcessDefinitionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -20,6 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/workflow/process")
 @RequiredArgsConstructor
+@RequiresPermission("workflow:view")
 public class ProcessDefinitionController {
 
     private final ProcessDefinitionService processDefinitionService;

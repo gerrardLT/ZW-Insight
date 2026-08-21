@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/contract/other")
 @RequiredArgsConstructor
+@RequiresPermission("contract:view")
 public class OtherContractController {
 
     private final OtherContractService otherContractService;

@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * 站内消息接口
+ * <p>权限豁免说明：本 Controller 全部端点按 {@code SecurityContextHolder.getUserId()}
+ * 隔离个人数据，不存在越权读取面；且移动端/各角色消息铃铛普遍依赖，
+ * 故不加 {@code @RequiresPermission}（与 UserShortcutController 同策略）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/message/msg")

@@ -1,8 +1,12 @@
 package com.zwinsight.labor.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.service.SalaryStatisticsService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.vo.*;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/labor/salary")
 @RequiredArgsConstructor
+@RequiresPermission("labor:view")
 public class SalaryStatisticsController {
 
     private final SalaryStatisticsService salaryStatisticsService;

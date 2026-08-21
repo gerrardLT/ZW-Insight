@@ -1,8 +1,12 @@
 package com.zwinsight.tender.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.domain.BizTenderRegister;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.service.TenderRegisterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/tender/register")
 @RequiredArgsConstructor
+@RequiresPermission("tender:view")
 public class TenderRegisterController {
 
     private final TenderRegisterService registerService;

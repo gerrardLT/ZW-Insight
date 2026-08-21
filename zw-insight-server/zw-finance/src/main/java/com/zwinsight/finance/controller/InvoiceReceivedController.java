@@ -1,9 +1,14 @@
 package com.zwinsight.finance.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizInvoiceReceived;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.InvoiceReceivedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/finance/invoice-received")
 @RequiredArgsConstructor
+@RequiresPermission("finance:view")
 public class InvoiceReceivedController {
 
     private final InvoiceReceivedService invoiceReceivedService;

@@ -1,9 +1,14 @@
 package com.zwinsight.system.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysLoginLog;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysOperLog;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.service.SysLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/system/log")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SysLogController {
 
     private final SysLogService logService;

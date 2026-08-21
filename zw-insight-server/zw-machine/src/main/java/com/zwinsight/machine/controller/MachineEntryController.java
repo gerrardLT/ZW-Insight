@@ -1,8 +1,12 @@
 package com.zwinsight.machine.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.domain.BizMachineEntry;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.machine.service.MachineEntryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/machine/entry")
 @RequiredArgsConstructor
+@RequiresPermission("machine:view")
 public class MachineEntryController {
 
     private final MachineEntryService entryService;

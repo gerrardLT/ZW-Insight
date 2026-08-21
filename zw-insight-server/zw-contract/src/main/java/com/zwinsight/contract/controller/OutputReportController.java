@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/contract/output")
 @RequiredArgsConstructor
+@RequiresPermission("contract:view")
 public class OutputReportController {
 
     private final OutputReportService outputReportService;

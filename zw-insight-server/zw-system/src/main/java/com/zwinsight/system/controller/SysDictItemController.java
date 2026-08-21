@@ -1,7 +1,10 @@
 package com.zwinsight.system.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.SysDictItem;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.service.SysDictItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/system/dict-item")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SysDictItemController {
 
     private final SysDictItemService dictItemService;

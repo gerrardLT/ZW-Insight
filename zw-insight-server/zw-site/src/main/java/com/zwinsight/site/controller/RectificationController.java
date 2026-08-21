@@ -1,7 +1,10 @@
 package com.zwinsight.site.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizRectification;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.RectificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/site/rectification")
 @RequiredArgsConstructor
+@RequiresPermission("site:view")
 public class RectificationController {
 
     private final RectificationService rectificationService;

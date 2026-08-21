@@ -1,8 +1,12 @@
 package com.zwinsight.labor.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.domain.BizWorkOrder;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.labor.service.WorkOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/labor/work-order")
 @RequiredArgsConstructor
+@RequiresPermission("labor:view")
 public class WorkOrderController {
 
     private final WorkOrderService workOrderService;

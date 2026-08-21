@@ -1,7 +1,10 @@
 package com.zwinsight.tender.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.domain.BizOpenBidRecord;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.tender.service.OpenBidRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/tender/open-bid")
 @RequiredArgsConstructor
+@RequiresPermission("tender:view")
 public class OpenBidRecordController {
 
     private final OpenBidRecordService openBidRecordService;

@@ -1,9 +1,14 @@
 package com.zwinsight.site.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.config.SecurityContextHolder;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizReminderConfig;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.dto.ReminderConfigUpdateRequest;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.ReminderConfigService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/site/reminder-config")
 @RequiredArgsConstructor
+@RequiresPermission("site:view")
 public class ReminderConfigController {
 
     private final ReminderConfigService reminderConfigService;

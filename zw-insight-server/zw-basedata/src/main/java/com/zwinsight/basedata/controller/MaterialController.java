@@ -1,10 +1,16 @@
 package com.zwinsight.basedata.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.domain.BdMaterial;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.domain.BdMaterialCategory;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.service.MaterialCategoryService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.basedata.service.MaterialService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/basedata/material")
 @RequiredArgsConstructor
+@RequiresPermission("basedata:view")
 public class MaterialController {
 
     private final MaterialService materialService;

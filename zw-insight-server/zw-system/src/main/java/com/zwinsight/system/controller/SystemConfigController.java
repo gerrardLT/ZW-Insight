@@ -1,8 +1,12 @@
 package com.zwinsight.system.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.dto.ConfigUpdateRequest;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.domain.vo.SysConfigVO;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.service.SystemConfigService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/system/config")
 @RequiredArgsConstructor
+@RequiresPermission("system:view")
 public class SystemConfigController {
 
     private final SystemConfigService systemConfigService;

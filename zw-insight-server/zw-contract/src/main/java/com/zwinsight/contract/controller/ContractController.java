@@ -19,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/contract")
 @RequiredArgsConstructor
+@RequiresPermission("contract:view")
 public class ContractController {
 
     private final ConstructionContractService contractService;

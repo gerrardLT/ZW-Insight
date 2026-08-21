@@ -1,10 +1,16 @@
 package com.zwinsight.purchase.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.domain.BizInquiry;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.service.BidRankingService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.service.InquiryService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.purchase.service.QuotationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/purchase/inquiry")
 @RequiredArgsConstructor
+@RequiresPermission("purchase:view")
 public class InquiryController {
 
     private final InquiryService inquiryService;

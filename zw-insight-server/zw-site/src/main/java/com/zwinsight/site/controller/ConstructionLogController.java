@@ -1,8 +1,12 @@
 package com.zwinsight.site.controller;
 
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizConstructionLog;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.ConstructionLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -16,6 +20,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/v1/site/construction-log")
 @RequiredArgsConstructor
+@RequiresPermission("site:view")
 public class ConstructionLogController {
 
     private final ConstructionLogService logService;
