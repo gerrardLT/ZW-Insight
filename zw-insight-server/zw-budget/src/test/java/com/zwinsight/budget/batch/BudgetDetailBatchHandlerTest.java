@@ -1,12 +1,14 @@
 package com.zwinsight.budget.batch;
 
 import com.alibaba.excel.EasyExcel;
+import com.zwinsight.budget.domain.BizBudget;
 import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.service.BudgetService;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.file.batch.domain.ImportResult;
 import com.zwinsight.file.batch.dto.BudgetDetailExcelDTO;
+import com.zwinsight.file.batch.enums.ModuleCode;
 import com.zwinsight.file.batch.listener.AbstractImportListener;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -141,5 +144,99 @@ class BudgetDetailBatchHandlerTest {
         assertThat(result.getFailedRows()).isEqualTo(1);
         assertThat(result.getErrors().get(0).getErrorMessage()).contains("预算数量格式错误");
         verify(budgetService, never()).appendImportedDetails(any(), any());
+    }
+
+    @Test
+    @DisplayName("supports/getImportDtoClass - 仅支持 BUDGET_DETAIL 模块")
+    void supportsAndDtoClass() {
+        assertThat(handler.supports(ModuleCode.BUDGET_DETAIL)).isTrue();
+        assertThat(handler.supports(ModuleCode.PROJECT)).isFalse();
+        assertThat(handler.getImportDtoClass()).isEqualTo(BudgetDetailExcelDTO.class);
+    }
+
+    @Test
+    @DisplayName("单参 createImportListener - 无 extraParams 拒绝创建（不静默落库）")
+    void singleArgListener_missingBudgetId_rejected() {
+        assertThatThrownBy(() -> handler.createImportListener(100L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("请先选择要导入明细的预算");
+        assertThatThrownBy(() -> handler.createImportListener(100L, null))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    private BizBudgetDetail detail(String category, BigDecimal qty, BigDecimal price, BigDecimal total) {
+        BizBudgetDetail detail = new BizBudgetDetail();
+        detail.setCostCategory(category);
+        detail.setCostSubcategory("钢材");
+        detail.setItemName("螺纹钢");
+        detail.setSpecification("HRB400");
+        detail.setUnit("吨");
+        detail.setBudgetQuantity(qty);
+        detail.setBudgetUnitPrice(price);
+        detail.setBudgetTotalPrice(total);
+        detail.setRemark("含税");
+        return detail;
+    }
+
+    @Test
+    @DisplayName("queryExportData - 按 budgetId 导出（枚举类别转中文，未知/null 类别透传，金额转字符串）")
+    void queryExportData_byBudgetId() {
+        when(budgetDetailMapper.selectList(any())).thenReturn(List.of(
+                detail("MATERIAL", new BigDecimal("10"), new BigDecimal("4500"), new BigDecimal("45000")),
+                detail("UNKNOWN_CAT", null, null, null),
+                detail(null, null, null, null)
+        ));
+
+        List<?> result = handler.queryExportData(Map.of("budgetId", "7"));
+
+        assertThat(result).hasSize(3);
+        BudgetDetailExcelDTO dto = (BudgetDetailExcelDTO) result.get(0);
+        assertThat(dto.getCostCategory()).isEqualTo("材料");
+        assertThat(dto.getItemName()).isEqualTo("螺纹钢");
+        assertThat(dto.getBudgetQuantity()).isEqualTo("10");
+        assertThat(dto.getBudgetUnitPrice()).isEqualTo("4500");
+        assertThat(dto.getBudgetTotalPrice()).isEqualTo("45000");
+        BudgetDetailExcelDTO unknown = (BudgetDetailExcelDTO) result.get(1);
+        assertThat(unknown.getCostCategory()).isEqualTo("UNKNOWN_CAT");
+        assertThat(unknown.getBudgetQuantity()).isEmpty();
+        assertThat(((BudgetDetailExcelDTO) result.get(2)).getCostCategory()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("queryExportData - 各类别枚举转中文标签全覆盖")
+    void queryExportData_allCategoryLabels() {
+        when(budgetDetailMapper.selectList(any())).thenReturn(List.of(
+                detail("LABOR", null, null, null),
+                detail("MACHINE", null, null, null),
+                detail("SUBCONTRACT", null, null, null),
+                detail("INDIRECT", null, null, null),
+                detail("OTHER", null, null, null)
+        ));
+
+        List<?> result = handler.queryExportData(Map.of("budgetId", "7"));
+
+        assertThat(result.stream().map(r -> ((BudgetDetailExcelDTO) r).getCostCategory()).toList())
+                .containsExactly("人工", "机械", "分包", "间接费", "其他");
+    }
+
+    @Test
+    @DisplayName("queryExportData - 仅传 projectId 时回退查项目预算；预算不存在返回空列表")
+    void queryExportData_fallbackToProjectBudget() {
+        BizBudget budget = new BizBudget();
+        budget.setId(88L);
+        when(budgetService.getByProject(10L)).thenReturn(budget);
+        when(budgetDetailMapper.selectList(any())).thenReturn(List.of(detail("MATERIAL", null, null, null)));
+
+        assertThat(handler.queryExportData(Map.of("projectId", "10"))).hasSize(1);
+        verify(budgetService).getByProject(10L);
+    }
+
+    @Test
+    @DisplayName("queryExportData - 项目无预算/参数缺失/params 为 null 均返回空列表")
+    void queryExportData_emptyCases() {
+        when(budgetService.getByProject(99L)).thenReturn(null);
+        assertThat(handler.queryExportData(Map.of("projectId", "99"))).isEmpty();
+        assertThat(handler.queryExportData(Map.of())).isEmpty();
+        assertThat(handler.queryExportData(null)).isEmpty();
     }
 }
