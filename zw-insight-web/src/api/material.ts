@@ -109,6 +109,19 @@ export function getMaterialStockDetail(id: number) {
   return request.get(`/v1/material/stock/${id}`)
 }
 
+// ======================== 库存安全阈值配置 ========================
+export function getStockWarningConfigPage(params: { page?: number; size?: number; materialName?: string }) {
+  return request.get('/v1/material/stock-warning-config/page', { params })
+}
+
+export function saveStockWarningConfig(data: { id?: number; projectId?: number | null; materialId: number; materialName?: string; safetyStock: number; enabled?: number }) {
+  return request.post('/v1/material/stock-warning-config', data)
+}
+
+export function deleteStockWarningConfig(id: number) {
+  return request.delete(`/v1/material/stock-warning-config/${id}`)
+}
+
 // ======================== 材料退货（退款记录，只读） ========================
 // 后端：MaterialRefundController @RequestMapping("/api/v1/material/refund")
 // 退款由退货出库事件自动创建，无手动创建接口

@@ -16,6 +16,7 @@
 
       <div class="table-toolbar">
         <el-button type="primary" @click="handleAdd">新增设备</el-button>
+        <el-button @click="importVisible = true">批量导入</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
@@ -44,9 +45,11 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
+        <el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.size" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
       </div>
     </el-card>
+
+    <batch-import-dialog v-model:visible="importVisible" module-code="MACHINE_LEDGER" @success="loadData" />
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑设备' : '新增设备'" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
@@ -70,6 +73,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getMachineLedgerPage, createMachineLedger, updateMachineLedger, deleteMachineLedger } from '@/api/machine'
+import BatchImportDialog from '@/components/BatchImportDialog.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -78,14 +82,15 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
+const importVisible = ref(false)
 
-const queryParams = ref({ pageNum: 1, pageSize: 10, machineName: '', machineType: '' })
+const queryParams = ref({ page: 1, size: 10, machineName: '', machineType: '' })
 const formData = ref({ id: undefined as number | undefined, machineName: '', machineType: '', brand: '', specification: '', ownerType: 'OWN', currentProject: '' })
 const formRules = { machineName: [{ required: true, message: '请输入设备名称', trigger: 'blur' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getMachineLedgerPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
-function handleSearch() { queryParams.value.pageNum = 1; loadData() }
-function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, machineName: '', machineType: '' }; loadData() }
+function handleSearch() { queryParams.value.page = 1; loadData() }
+function handleReset() { queryParams.value = { page: 1, size: 10, machineName: '', machineType: '' }; loadData() }
 function handleAdd() { isEdit.value = false; formData.value = { id: undefined, machineName: '', machineType: '', brand: '', specification: '', ownerType: 'OWN', currentProject: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateMachineLedger(formData.value) : await createMachineLedger(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }

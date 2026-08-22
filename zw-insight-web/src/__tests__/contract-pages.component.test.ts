@@ -105,14 +105,14 @@ describe('contract/index.vue 施工合同列表', () => {
   it('搜索重置页码、重置清空条件', async () => {
     await mountPage()
     const st = wrapper.vm.$.setupState
-    st.queryParams.pageNum = 3
+    st.queryParams.page = 3
     mockContractPage.mockClear()
     st.handleSearch()
     await flushPromises()
-    expect(st.queryParams.pageNum).toBe(1)
+    expect(st.queryParams.page).toBe(1)
     st.handleReset()
     await flushPromises()
-    expect(st.queryParams.pageNum).toBe(1)
+    expect(st.queryParams.page).toBe(1)
   })
 })
 

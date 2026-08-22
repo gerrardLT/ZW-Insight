@@ -225,15 +225,15 @@ describe('site/inspection/index.vue 检查列表（C17）', () => {
     expect(inspIndexSrc).toContain("row.hasProblem === 1 ? '有问题' : '无问题'")
   })
 
-  it('@matrix C-17-1 tab 切换重载：quality→getQualityInspectionPage；safety→getSafetyInspectionPage 且 pageNum 归 1', async () => {
+  it('@matrix C-17-1 tab 切换重载：quality→getQualityInspectionPage；safety→getSafetyInspectionPage 且 page 归 1', async () => {
     const w = await mountPage()
     const st: any = w.vm.$.setupState
     expect(mocks.mockQualityPage).toHaveBeenCalledTimes(1)
     st.activeTab = 'safety'
-    st.queryParams.pageNum = 3
+    st.queryParams.page = 3
     st.handleTabChange()
     await flushPromises()
-    expect(st.queryParams.pageNum).toBe(1)
+    expect(st.queryParams.page).toBe(1)
     expect(mocks.mockSafetyPage).toHaveBeenCalledTimes(1)
   })
 

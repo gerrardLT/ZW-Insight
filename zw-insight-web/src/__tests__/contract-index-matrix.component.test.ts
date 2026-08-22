@@ -127,13 +127,13 @@ describe('contract/index.vue A7 矩阵', () => {
     const st = wrapper.vm.$.setupState
     st.queryParams.projectId = 5
     st.queryParams.status = 'EFFECTIVE'
-    st.queryParams.pageNum = 3
+    st.queryParams.page = 3
     mockContractPage.mockClear()
     st.handleReset()
     await flushPromises()
     expect(st.queryParams.projectId).toBeUndefined()
     expect(st.queryParams.status).toBe('')
-    expect(st.queryParams.pageNum).toBe(1)
+    expect(st.queryParams.page).toBe(1)
     expect(mockContractPage).toHaveBeenCalled()
   })
 

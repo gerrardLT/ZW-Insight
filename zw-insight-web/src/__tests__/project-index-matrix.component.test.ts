@@ -31,6 +31,8 @@ const {
 vi.mock('@/api/project', () => ({
   getProjectPage: mockProjectPage, deleteProject: mockProjectDelete, submitProject: mockProjectSubmit,
   closeProject: mockProjectClose, getProjectCloseCheck: mockCloseCheck,
+  // T7 组合看板面板使用，mock 防真实请求（空 statusList → 面板空态）
+  getProjectPortfolio: vi.fn(async (): Promise<any> => ({ code: 200, data: { statusList: [] } })),
 }))
 vi.mock('vue-router', async (importOriginal) => {
   const actual: any = await importOriginal()
@@ -68,17 +70,17 @@ async function mountPage(records: any[]) {
 }
 
 describe('project/index.vue 账本补测（@matrix A1）', () => {
-  it('@matrix A1-02 名称搜索重置 pageNum 为 1 并重新请求', async () => {
+  it('@matrix A1-02 名称搜索重置 page 为 1 并重新请求', async () => {
     await mountPage([])
     const st = wrapper.vm.$.setupState
     mockProjectPage.mockClear()
-    st.queryParams.pageNum = 3
+    st.queryParams.page = 3
     st.queryParams.projectName = '滨江'
     st.handleSearch()
     await flushPromises()
-    expect(st.queryParams.pageNum).toBe(1)
+    expect(st.queryParams.page).toBe(1)
     expect(mockProjectPage).toHaveBeenCalledTimes(1)
-    expect((mockProjectPage.mock.calls[0] as any[])[0]).toMatchObject({ pageNum: 1, projectName: '滨江' })
+    expect((mockProjectPage.mock.calls[0] as any[])[0]).toMatchObject({ page: 1, projectName: '滨江' })
   })
 
   it('@matrix A1-03 状态筛选随查询下发 status 参数', async () => {
@@ -101,17 +103,17 @@ describe('project/index.vue 账本补测（@matrix A1）', () => {
     }
   })
 
-  it('@matrix A1-04 重置清空条件并以 pageSize=10 重载', async () => {
+  it('@matrix A1-04 重置清空条件并以 size=10 重载', async () => {
     await mountPage([])
     const st = wrapper.vm.$.setupState
     st.queryParams.projectName = '脏值'
     st.queryParams.status = 'WON'
-    st.queryParams.pageSize = 50
-    st.queryParams.pageNum = 4
+    st.queryParams.size = 50
+    st.queryParams.page = 4
     mockProjectPage.mockClear()
     st.handleReset()
     await flushPromises()
-    expect(st.queryParams).toMatchObject({ pageNum: 1, pageSize: 10, projectName: '', status: '', projectType: '' })
+    expect(st.queryParams).toMatchObject({ page: 1, size: 10, projectName: '', status: '', projectType: '' })
     expect(mockProjectPage).toHaveBeenCalledTimes(1)
   })
 

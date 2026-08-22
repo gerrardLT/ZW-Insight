@@ -236,23 +236,23 @@ describe('material/stock.vue B4 矩阵', () => {
     st.queryParams.materialName = '钢筋'
     st.queryParams.projectName = '滨江'
     st.queryParams.warning = 'LOW'
-    st.queryParams.pageNum = 3
+    st.queryParams.page = 3
     mockStockPage.mockClear()
     st.handleReset()
     await flushPromises()
     expect(st.queryParams.materialName).toBe('')
     expect(st.queryParams.projectName).toBe('')
     expect(st.queryParams.warning).toBe('')
-    expect(st.queryParams.pageNum).toBe(1)
+    expect(st.queryParams.page).toBe(1)
     expect(mockStockPage).toHaveBeenCalled()
   })
 
-  it('B-4-7 分页参数 pageNum/pageSize（后端 page/size，参数被忽略——失配缺陷现状钉住）', async () => {
+  it('B-4-7 分页参数 page/size（前后端口径已统一，原失配缺陷已修复）', async () => {
     const w = await mountStock()
     const st = w.vm.$.setupState
-    expect(st.queryParams.pageNum).toBe(1)
-    expect(st.queryParams.pageSize).toBe(10)
-    expect(stockSrc).toContain('v-model:current-page="queryParams.pageNum"')
+    expect(st.queryParams.page).toBe(1)
+    expect(st.queryParams.size).toBe(10)
+    expect(stockSrc).toContain('v-model:current-page="queryParams.page"')
   })
 
   it('B-4-8 空结果渲染：无匹配记录表格空态不报错', async () => {

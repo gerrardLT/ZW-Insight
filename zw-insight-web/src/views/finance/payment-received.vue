@@ -15,6 +15,13 @@
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="认领状态">
+          <el-select v-model="queryParams.claimStatus" placeholder="全部" clearable style="width: 140px" @change="handleSearch">
+            <el-option label="待认领" value="UNCLAIMED" />
+            <el-option label="已认领" value="CLAIMED" />
+            <el-option label="已核销" value="WRITTEN_OFF" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>搜索
@@ -29,6 +36,7 @@
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增回款登记
         </el-button>
+        <el-button @click="exportVisible = true">导出</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
@@ -40,19 +48,38 @@
         <el-table-column prop="receiveType" label="收款方式" width="120" />
         <el-table-column prop="receiver" label="收款人" width="110" show-overflow-tooltip />
         <el-table-column prop="receiveBankAccount" label="收款账户" min-width="160" show-overflow-tooltip />
+        <el-table-column label="认领状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.claimStatus === 'CLAIMED'" type="success">已认领</el-tag>
+            <el-tag v-else-if="row.claimStatus === 'WRITTEN_OFF'" type="info">已核销</el-tag>
+            <el-tag v-else type="warning">待认领</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="createdAt" label="登记时间" width="170" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button
+              v-if="!row.claimStatus || row.claimStatus === 'UNCLAIMED'"
+              link
+              type="primary"
+              @click="handleClaim(row)"
+            >认领</el-button>
+            <el-button
+              v-if="row.claimStatus === 'CLAIMED'"
+              link
+              type="success"
+              @click="handleWriteOff(row)"
+            >核销</el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <div class="pagination-wrap">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.size"
           :page-sizes="[10, 20, 50]"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
@@ -61,6 +88,15 @@
         />
       </div>
     </el-card>
+
+    <stat-chart-panel
+      ref="ratePanelRef"
+      class="stat-panel"
+      title="回款率分析"
+      :fetch-data="fetchCollectionRate"
+      :build-option="buildCollectionRateOption"
+      empty-text="暂无开票回款数据"
+    />
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" destroy-on-close>
@@ -103,6 +139,12 @@
         <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <async-export-dialog
+      v-model:visible="exportVisible"
+      module-code="PAYMENT_RECEIVED"
+      :params="queryParams.projectId ? { projectId: queryParams.projectId } : undefined"
+    />
   </div>
 </template>
 
@@ -110,8 +152,11 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getPaymentReceivedPage, createPaymentReceived, updatePaymentReceived, deletePaymentReceived } from '@/api/finance'
+import { getPaymentReceivedPage, createPaymentReceived, updatePaymentReceived, deletePaymentReceived, claimPaymentReceived, writeOffPaymentReceived, getCollectionRate } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
+import StatChartPanel from '@/components/StatChartPanel.vue'
+import { toWan, clampPercent } from '@/utils/chart-format'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -121,11 +166,13 @@ const projectList = ref<any[]>([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增回款登记')
 const submitLoading = ref(false)
+const exportVisible = ref(false)
 
 const queryParams = ref({
-  pageNum: 1,
-  pageSize: 10,
-  projectId: undefined as number | undefined
+  page: 1,
+  size: 10,
+  projectId: undefined as number | undefined,
+  claimStatus: ''
 })
 
 const formData = ref({
@@ -166,13 +213,15 @@ async function loadData() {
 }
 
 function handleSearch() {
-  queryParams.value.pageNum = 1
+  queryParams.value.page = 1
   loadData()
+  ratePanelRef.value?.reload()
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined }
+  queryParams.value = { page: 1, size: 10, projectId: undefined, claimStatus: '' }
   loadData()
+  ratePanelRef.value?.reload()
 }
 
 function handleAdd() {
@@ -212,15 +261,60 @@ async function handleDelete(row: any) {
   loadData()
 }
 
+async function handleClaim(row: any) {
+  await ElMessageBox.confirm(`确认认领该笔回款（${formatMoney(row.receiveAmount)} 元）？`, '认领回款', { type: 'info' })
+  await claimPaymentReceived(row.id)
+  ElMessage.success('认领成功')
+  loadData()
+}
+
+async function handleWriteOff(row: any) {
+  await ElMessageBox.confirm(`确认核销该笔回款（${formatMoney(row.receiveAmount)} 元）？核销后不可撤销。`, '核销回款', { type: 'warning' })
+  await writeOffPaymentReceived(row.id)
+  ElMessage.success('核销成功')
+  loadData()
+}
+
 onMounted(() => {
   loadData()
   searchProject('')
 })
+
+// ================= 回款率分析面板 =================
+const ratePanelRef = ref<InstanceType<typeof StatChartPanel>>()
+
+async function fetchCollectionRate() {
+  if (!queryParams.value.projectId) throw new Error('请先选择项目后查看回款率分析')
+  const res: any = await getCollectionRate(queryParams.value.projectId)
+  return res.data
+}
+
+function buildCollectionRateOption(data: any) {
+  if (!data || data.totalInvoiced == null) return null
+  const rate = data.collectionRate == null ? null : clampPercent(Number(data.collectionRate))
+  const items = [
+    { name: '已回款', value: Number(data.totalReceived) || 0 },
+    { name: '未回款', value: Number(data.uncollectedAmount) || 0 }
+  ]
+  return {
+    title: rate != null ? { text: `回款率：${rate}%`, left: 'center', top: 0, textStyle: { fontSize: 13 } } : undefined,
+    tooltip: { trigger: 'item', valueFormatter: (v: number) => `${v} 万元` },
+    legend: { bottom: 0 },
+    series: [{
+      name: '回款构成', type: 'pie', radius: ['35%', '60%'], center: ['50%', '55%'],
+      label: { formatter: '{b}: {c} 万元' },
+      data: items.map(i => ({ name: i.name, value: toWan(i.value) }))
+    }]
+  }
+}
 </script>
 
 <style scoped>
 .finance-container {
   padding: 16px;
+}
+.stat-panel {
+  margin-bottom: 16px;
 }
 .table-toolbar {
   margin-bottom: 16px;

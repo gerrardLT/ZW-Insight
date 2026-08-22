@@ -54,6 +54,9 @@ export interface PaymentReceived {
   receiveType?: string
   receiveBankAccount?: string
   status?: string
+  claimStatus?: 'UNCLAIMED' | 'CLAIMED' | 'WRITTEN_OFF' | string
+  claimedBy?: ID
+  claimedAt?: string
   createdAt?: string
 }
 

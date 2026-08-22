@@ -37,6 +37,14 @@ vi.mock('@/api/finance', () => ({
   getPaymentReceivedPage: mockPaymentReceivedPage, createPaymentReceived: mockCreatePaymentReceived,
   updatePaymentReceived: mockUpdatePaymentReceived, deletePaymentReceived: mockDeletePaymentReceived,
   getProjectReimbursementPage: mockReimbPage, createProjectReimbursement: mockCreateReimb, submitProjectReimbursement: mockSubmitReimb,
+  // T7 回款率面板使用，mock 防真实请求（空 data → 面板空态）
+  getCollectionRate: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
+}))
+// 回款登记页导出/导入组件依赖；mock 防真实请求并避免 request→@/router→createRouter 链穿透 factory mock
+vi.mock('@/api/batch', () => ({
+  importData: vi.fn(), startExport: vi.fn(), getExportStatus: vi.fn(),
+  downloadExportFile: vi.fn(), downloadTemplate: vi.fn(async (): Promise<any> => new Blob(['x'])),
+  getFilePreviewUrl: vi.fn(), getTemplateList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
 }))
 vi.mock('@/api/finance-lock', () => ({
   getLockPage: mockLockPage, createLock: mockCreateLock, unlockPeriod: mockUnlock,

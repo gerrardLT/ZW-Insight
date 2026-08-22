@@ -49,7 +49,7 @@ import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { importData, downloadTemplate } from '@/api/batch'
 
-const props = defineProps<{ visible: boolean; moduleCode: string; projectId?: number }>()
+const props = defineProps<{ visible: boolean; moduleCode: string; projectId?: number; extraQuery?: Record<string, string | number> }>()
 const emit = defineEmits<{ (e: 'update:visible', v: boolean): void; (e: 'success'): void }>()
 
 const dialogVisible = ref(false)
@@ -67,10 +67,12 @@ async function handleImport() {
   if (!selectedFile.value) return
   uploading.value = true
   try {
-    const res: any = await importData(props.moduleCode, selectedFile.value, props.projectId)
+    const params: Record<string, any> = { ...props.extraQuery }
+    if (props.projectId) params.projectId = props.projectId
+    const res: any = await importData(props.moduleCode, selectedFile.value, params)
     importResult.value = res.data
-    if (res.data?.failedRows === 0) emit('success')
-  } catch { ElMessage.error('导入失败') } finally { uploading.value = false }
+    if (res.data?.successRows > 0) emit('success')
+  } catch (e: any) { ElMessage.error(e?.response?.data?.message || e?.message || '导入失败') } finally { uploading.value = false }
 }
 
 async function handleDownloadTemplate() {

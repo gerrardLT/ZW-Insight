@@ -64,6 +64,7 @@ crudPageSuite({
 crudPageSuite({
   title: 'machine/ledger.vue 设备台账',
   component: MachineLedger,
+  pageKey: 'page', // 台账页已统一为 page/size 口径（T1 接线）
   pageMock: mockLedgerPage, createMock: mockLedgerCreate, updateMock: mockLedgerUpdate, deleteMock: mockLedgerDelete,
   addButtonText: '新增设备',
   requiredError: '请输入设备名称',

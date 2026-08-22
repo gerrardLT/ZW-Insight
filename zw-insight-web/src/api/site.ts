@@ -112,6 +112,11 @@ export function assignRectification(id: number, data: any) {
 }
 
 // ======================== 整改管理 ========================
+/** 查询某条检查记录下的整改记录列表（按提交时间倒序） */
+export function getRectifications(inspectionId: number) {
+  return request.get(`/v1/site/rectification/by-inspection/${inspectionId}`)
+}
+
 export function submitRectification(inspectionId: number, data: any) {
   return request.post(`/v1/site/rectification/${inspectionId}/submit`, data)
 }

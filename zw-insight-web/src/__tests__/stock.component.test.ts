@@ -55,17 +55,17 @@ describe('stock.vue 库存查询', () => {
     expect(tags[2].classes().join(' ')).toContain('el-tag--success')
   })
 
-  it('搜索重置 pageNum 并带条件重新查询', async () => {
+  it('搜索重置 page 并带条件重新查询', async () => {
     const w = await mountPage([])
     const st = w.vm.$.setupState
     st.queryParams.materialName = '钢筋'
     st.queryParams.warning = 'LOW'
-    st.queryParams.pageNum = 3
+    st.queryParams.page = 3
     mockPage.mockClear()
     st.handleSearch()
     await flushPromises()
-    expect(st.queryParams.pageNum).toBe(1)
-    expect((mockPage.mock.calls as any)[0][0]).toMatchObject({ pageNum: 1, materialName: '钢筋', warning: 'LOW' })
+    expect(st.queryParams.page).toBe(1)
+    expect((mockPage.mock.calls as any)[0][0]).toMatchObject({ page: 1, materialName: '钢筋', warning: 'LOW' })
   })
 
   it('重置清空全部条件（含 warning 下拉）', async () => {
@@ -76,6 +76,6 @@ describe('stock.vue 库存查询', () => {
     st.queryParams.warning = 'LOW'
     st.handleReset()
     await flushPromises()
-    expect(st.queryParams).toEqual({ pageNum: 1, pageSize: 10, materialName: '', projectName: '', warning: '' })
+    expect(st.queryParams).toEqual({ page: 1, size: 10, materialName: '', projectName: '', warning: '' })
   })
 })

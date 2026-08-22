@@ -32,6 +32,7 @@ import { crudPageSuite } from './helpers/crud-page-tests'
 crudPageSuite({
   title: 'material.vue 材料字典管理',
   component: Material,
+  pageKey: 'page', // 材料字典页已统一为 page/size 口径（T1 接线）
   pageMock: mockPage,
   createMock: mockCreate,
   updateMock: mockUpdate,

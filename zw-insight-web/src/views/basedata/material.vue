@@ -16,6 +16,7 @@
 
       <div class="table-toolbar">
         <el-button type="primary" @click="handleAdd">新增材料</el-button>
+        <el-button @click="importVisible = true">批量导入</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
@@ -34,13 +35,16 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
+        <el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.size" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
       </div>
     </el-card>
+
+    <batch-import-dialog v-model:visible="importVisible" module-code="MATERIAL" @success="loadData" />
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑材料' : '新增材料'" width="550px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="材料名称" prop="materialName"><el-input v-model="formData.materialName" /></el-form-item>
+        <el-form-item label="材料编码"><el-input v-model="formData.materialCode" placeholder="用于移动端扫码出入库" /></el-form-item>
         <el-form-item label="分类"><el-input v-model="formData.categoryName" /></el-form-item>
         <el-form-item label="规格型号"><el-input v-model="formData.specification" /></el-form-item>
         <el-form-item label="计量单位"><el-input v-model="formData.unit" style="width: 120px" /></el-form-item>
@@ -59,6 +63,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getMaterialDictPage, createMaterialDict, updateMaterialDict, deleteMaterialDict } from '@/api/basedata'
+import BatchImportDialog from '@/components/BatchImportDialog.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -67,15 +72,16 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
+const importVisible = ref(false)
 
-const queryParams = ref({ pageNum: 1, pageSize: 10, materialName: '', categoryName: '' })
-const formData = ref({ id: undefined as number | undefined, materialName: '', categoryName: '', specification: '', unit: '', referencePrice: 0 })
+const queryParams = ref({ page: 1, size: 10, materialName: '', categoryName: '' })
+const formData = ref({ id: undefined as number | undefined, materialName: '', materialCode: '', categoryName: '', specification: '', unit: '', referencePrice: 0 })
 const formRules = { materialName: [{ required: true, message: '请输入材料名称', trigger: 'blur' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getMaterialDictPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
-function handleSearch() { queryParams.value.pageNum = 1; loadData() }
-function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, materialName: '', categoryName: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, materialName: '', categoryName: '', specification: '', unit: '', referencePrice: 0 }; dialogVisible.value = true }
+function handleSearch() { queryParams.value.page = 1; loadData() }
+function handleReset() { queryParams.value = { page: 1, size: 10, materialName: '', categoryName: '' }; loadData() }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, materialName: '', materialCode: '', categoryName: '', specification: '', unit: '', referencePrice: 0 }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateMaterialDict(formData.value) : await createMaterialDict(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteMaterialDict(row.id); ElMessage.success('删除成功'); loadData() }

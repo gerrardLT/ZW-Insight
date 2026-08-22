@@ -2,6 +2,9 @@
   <div class="payroll-container">
     <el-card shadow="never">
       <el-form :model="queryParams" inline>
+        <el-form-item label="所属项目">
+          <ProjectSelector v-model="queryParams.projectId" width="200px" />
+        </el-form-item>
         <el-form-item label="班组">
           <el-input v-model="queryParams.teamName" placeholder="班组名称" clearable style="width: 160px" />
         </el-form-item>
@@ -20,6 +23,7 @@
 
       <div class="table-toolbar">
         <el-button type="primary" @click="handleAdd">生成工资单</el-button>
+        <el-button @click="importVisible = true">批量导入</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
@@ -53,9 +57,20 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
+        <el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.size" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
       </div>
     </el-card>
+
+    <stat-chart-panel
+      ref="trendPanelRef"
+      class="stat-panel"
+      title="工资发放趋势"
+      :fetch-data="fetchPayrollTrend"
+      :build-option="buildPayrollTrendOption"
+      empty-text="暂无已审批的工资单"
+    />
+
+    <batch-import-dialog v-model:visible="importVisible" module-code="PAYROLL" @success="loadData" />
 
     <el-dialog v-model="dialogVisible" title="生成工资单" width="550px" destroy-on-close>
       <el-alert type="info" :closable="false" show-icon style="margin-bottom: 16px"
@@ -88,7 +103,11 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getPayrollPage, createPayroll, deletePayroll, submitPayroll, getLaborTeamPage } from '@/api/labor'
+import { getPayrollPage, createPayroll, deletePayroll, submitPayroll, getLaborTeamPage, getPayrollTrend } from '@/api/labor'
+import BatchImportDialog from '@/components/BatchImportDialog.vue'
+import ProjectSelector from '@/components/ProjectSelector.vue'
+import StatChartPanel from '@/components/StatChartPanel.vue'
+import { toWan } from '@/utils/chart-format'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -97,8 +116,9 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const teamOptions = ref<any[]>([])
+const importVisible = ref(false)
 
-const queryParams = ref({ pageNum: 1, pageSize: 10, teamName: '', status: '' })
+const queryParams = ref({ page: 1, size: 10, projectId: undefined as number | undefined, teamName: '', status: '' })
 const formData = ref({ teamId: undefined as number | undefined, projectId: undefined as number | undefined, orderType: 'FIXED', period: [] as string[] })
 const formRules = {
   teamId: [{ required: true, message: '请选择班组', trigger: 'change' }],
@@ -124,15 +144,15 @@ async function loadData() {
   }
 }
 async function loadTeamOptions() {
-  const res: any = await getLaborTeamPage({ pageNum: 1, pageSize: 200 })
+  const res: any = await getLaborTeamPage({ page: 1, size: 200 })
   teamOptions.value = res.data?.records || []
 }
 function handleTeamChange(teamId: number) {
   const team = teamOptions.value.find(t => t.id === teamId)
   formData.value.projectId = team?.projectId
 }
-function handleSearch() { queryParams.value.pageNum = 1; loadData() }
-function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, teamName: '', status: '' }; loadData() }
+function handleSearch() { queryParams.value.page = 1; loadData(); trendPanelRef.value?.reload() }
+function handleReset() { queryParams.value = { page: 1, size: 10, projectId: undefined, teamName: '', status: '' }; loadData(); trendPanelRef.value?.reload() }
 function handleAdd() {
   formData.value = { teamId: undefined, projectId: undefined, orderType: 'FIXED', period: [] }
   dialogVisible.value = true
@@ -169,10 +189,36 @@ async function handleDelete(row: any) {
   loadData()
 }
 onMounted(() => { loadData(); loadTeamOptions() })
+
+// ================= 工资发放趋势面板 =================
+const trendPanelRef = ref<InstanceType<typeof StatChartPanel>>()
+
+async function fetchPayrollTrend() {
+  if (!queryParams.value.projectId) throw new Error('请先选择项目后查看工资发放趋势')
+  const res: any = await getPayrollTrend(queryParams.value.projectId, 12)
+  return res.data
+}
+
+function buildPayrollTrendOption(list: any[]) {
+  if (!list?.length) return null
+  return {
+    tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} 万元` },
+    legend: { bottom: 0 },
+    grid: { left: '3%', right: '4%', bottom: '14%', containLabel: true },
+    xAxis: { type: 'category', data: list.map(i => i.month) },
+    yAxis: { type: 'value', name: '万元', axisLabel: { formatter: '{value} 万' } },
+    series: [
+      { name: '结算总额', type: 'bar', barMaxWidth: 28, data: list.map(i => toWan(Number(i.totalSettlement) || 0)) },
+      { name: '已付', type: 'bar', barMaxWidth: 28, data: list.map(i => toWan(Number(i.totalPaid) || 0)) },
+      { name: '未付', type: 'line', data: list.map(i => toWan(Number(i.totalUnpaid) || 0)) }
+    ]
+  }
+}
 </script>
 
 <style scoped>
 .payroll-container { padding: 16px; }
+.stat-panel { margin-bottom: 16px; }
 .table-toolbar { margin-bottom: 16px; }
 .pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

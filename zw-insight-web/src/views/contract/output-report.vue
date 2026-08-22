@@ -15,9 +15,20 @@
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
           <el-button type="success" @click="openCreateDialog">新增产值上报</el-button>
+          <el-button @click="exportVisible = true">导出</el-button>
         </el-form-item>
       </el-form>
     </el-card>
+
+    <!-- 产值完成率趋势面板 -->
+    <stat-chart-panel
+      ref="trendPanelRef"
+      class="filter-card"
+      title="产值完成率趋势"
+      :fetch-data="fetchOutputTrend"
+      :build-option="buildOutputTrendOption"
+      empty-text="暂无已审批的产值上报"
+    />
 
     <!-- 列表 -->
     <el-card shadow="never">
@@ -115,6 +126,13 @@
         <el-button type="primary" :loading="createLoading" @click="handleCreateSubmit">保存草稿</el-button>
       </template>
     </el-dialog>
+
+    <!-- 异步导出 -->
+    <async-export-dialog
+      v-model:visible="exportVisible"
+      module-code="OUTPUT_REPORT"
+      :params="queryParams.projectId ? { projectId: queryParams.projectId } : undefined"
+    />
   </div>
 </template>
 
@@ -122,8 +140,11 @@
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import ProjectSelector from '@/components/ProjectSelector.vue'
-import { getOutputReportPage, createOutputReport, submitOutputReport, deleteOutputReport, getContractPage } from '@/api/contract'
+import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
+import StatChartPanel from '@/components/StatChartPanel.vue'
+import { getOutputReportPage, createOutputReport, submitOutputReport, deleteOutputReport, getContractPage, getOutputTrend } from '@/api/contract'
 import { getBoqFlat } from '@/api/boq'
+import { toWan, clampPercent } from '@/utils/chart-format'
 import type { OutputReportDetail } from '@/types/contract'
 
 interface BoqRow {
@@ -140,6 +161,7 @@ const loading = ref(false)
 const total = ref(0)
 const tableData = ref<any[]>([])
 const contractOptions = ref<any[]>([])
+const exportVisible = ref(false)
 
 const queryParams = reactive({
   pageNum: 1,
@@ -181,11 +203,13 @@ async function loadContractOptions(projectId?: number, target: 'query' | 'form' 
 function handleContractReload() {
   queryParams.contractId = undefined
   loadContractOptions(queryParams.projectId, 'query')
+  trendPanelRef.value?.reload()
 }
 
 function handleSearch() {
   queryParams.pageNum = 1
   loadData()
+  trendPanelRef.value?.reload()
 }
 
 function handleReset() {
@@ -322,6 +346,36 @@ async function handleCreateSubmit() {
     loadData()
   } finally {
     createLoading.value = false
+  }
+}
+
+// ================= 产值趋势面板 =================
+const trendPanelRef = ref<InstanceType<typeof StatChartPanel>>()
+
+async function fetchOutputTrend() {
+  if (!queryParams.projectId) throw new Error('请先选择项目后查看产值趋势')
+  const res: any = await getOutputTrend(queryParams.projectId, 12)
+  return res.data
+}
+
+function buildOutputTrendOption(list: any[]) {
+  if (!list?.length) return null
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0 },
+    grid: { left: '3%', right: '4%', bottom: '14%', containLabel: true },
+    xAxis: { type: 'category', data: list.map(i => i.period) },
+    yAxis: [
+      { type: 'value', name: '万元', axisLabel: { formatter: '{value} 万' } },
+      { type: 'value', name: '完成率', max: 100, axisLabel: { formatter: '{value}%' } }
+    ],
+    series: [
+      { name: '本期产值', type: 'bar', barMaxWidth: 32, data: list.map(i => toWan(Number(i.monthlyOutput) || 0)) },
+      {
+        name: '完成率', type: 'line', yAxisIndex: 1,
+        data: list.map(i => (i.completionRate == null ? null : clampPercent(Number(i.completionRate))))
+      }
+    ]
   }
 }
 

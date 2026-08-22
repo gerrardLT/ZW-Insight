@@ -48,6 +48,8 @@ vi.mock('@/api/labor', () => ({
   getLaborRosterPage: mockRosterPage, createLaborRoster: mockRosterCreate,
   updateLaborRoster: vi.fn(async (): Promise<any> => ({ code: 200 })),
   deleteLaborRoster: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  entryLaborRoster: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  exitLaborRoster: vi.fn(async (): Promise<any> => ({ code: 200 })),
   getWorkOrderPage: mockWorkOrderPage, createWorkOrder: mockWorkOrderCreate,
   updateWorkOrder: vi.fn(async (): Promise<any> => ({ code: 200 })),
   deleteWorkOrder: vi.fn(async (): Promise<any> => ({ code: 200 })),
@@ -129,10 +131,10 @@ describe('labor/contract.vue B14 矩阵', () => {
     const st = w.vm.$.setupState
     st.queryParams.contractName = '某合同'
     st.queryParams.status = 'EFFECTIVE'
-    st.queryParams.pageNum = 3
+    st.queryParams.page = 3
     mockContractPage.mockClear()
     st.handleReset()
-    expect(st.queryParams).toEqual({ pageNum: 1, pageSize: 10, contractName: '', teamName: '', status: '' })
+    expect(st.queryParams).toEqual({ page: 1, size: 10, projectId: undefined, contractName: '', teamName: '', status: '' })
     expect(mockContractPage).toHaveBeenCalled()
   })
 
@@ -226,6 +228,18 @@ describe('labor/roster.vue B16 矩阵', () => {
     const w = await mountRoster()
     expect('exitDate' in w.vm.$.setupState.formData).toBe(false)
     expect(rosterSrc).toContain('prop="exitDate" label="退场日期"')
+  })
+
+  it('B-16-7 P0 Req5 进退场按钮门禁：在岗显退场登记、离岗显进场登记', async () => {
+    const w = await mountRoster([
+      { id: 1, workerName: '在场工人', status: 1 },
+      { id: 2, workerName: '离场工人', status: 0 },
+    ])
+    const text = w.text()
+    expect(text).toContain('退场登记')
+    expect(text).toContain('进场登记')
+    // 筛选参数接入 page 接口（entryStatus）
+    expect('entryStatus' in w.vm.$.setupState.queryParams).toBe(true)
   })
 })
 

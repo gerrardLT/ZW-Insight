@@ -61,6 +61,16 @@ vi.mock('@/api/budget-control-config', () => ({
 vi.mock('@/components/ProjectSelector.vue', () => ({
   default: { name: 'ProjectSelector', props: ['modelValue', 'width'], render: () => null },
 }))
+// T7：budget/index.vue 预算执行面板引用 dashboard 端点；batch 为批量导入组件依赖。
+// 两者均 mock，防真实请求并避免 request→@/router→createRouter 链穿透本文件的 factory mock
+vi.mock('@/api/dashboard', () => ({
+  getBudgetExecution: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
+}))
+vi.mock('@/api/batch', () => ({
+  importData: vi.fn(), startExport: vi.fn(), getExportStatus: vi.fn(),
+  downloadExportFile: vi.fn(), downloadTemplate: vi.fn(async (): Promise<any> => new Blob(['x'])),
+  getFilePreviewUrl: vi.fn(), getTemplateList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+}))
 vi.mock('vue-router', () => ({
   useRoute: () => ({ query: {}, params: {} }),
   useRouter: () => ({ push: mockPush }),
@@ -112,20 +122,20 @@ describe('budget/index.vue A11 矩阵', () => {
     expect(rows[2].text()).toContain('草稿')
   })
 
-  it('A11-02 项目筛选带 projectId 查询且 pageNum 复位；重置清空并重载', async () => {
+  it('A11-02 项目筛选带 projectId 查询且 page 复位；重置清空并重载', async () => {
     await mountPage(BudgetIndex)
     const st = wrapper.vm.$.setupState
     st.queryParams.projectId = 5
-    st.queryParams.pageNum = 3
+    st.queryParams.page = 3
     mockBudgetPage.mockClear()
     st.handleSearch()
     await flushPromises()
-    expect(st.queryParams.pageNum).toBe(1)
-    expect(mockBudgetPage).toHaveBeenCalledWith(expect.objectContaining({ projectId: 5, pageNum: 1 }))
+    expect(st.queryParams.page).toBe(1)
+    expect(mockBudgetPage).toHaveBeenCalledWith(expect.objectContaining({ projectId: 5, page: 1 }))
     st.handleReset()
     await flushPromises()
     expect(st.queryParams.projectId).toBeUndefined()
-    expect(st.queryParams.pageSize).toBe(10)
+    expect(st.queryParams.size).toBe(10)
     expect(mockBudgetPage).toHaveBeenCalledTimes(2)
   })
 

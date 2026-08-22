@@ -52,6 +52,7 @@ crudPageSuite({
   pageMock: mockContractPage, createMock: mockContractCreate, updateMock: mockContractUpdate, deleteMock: mockContractDelete,
   addButtonText: '新增劳务合同',
   requiredError: '请输入合同名称',
+  pageKey: 'page', // 劳务合同页已统一为 page/size 口径（与后端 @RequestParam 契约一致）
   records: [
     { id: 1, contractName: '木工劳务合同', teamName: '木工一班', contractAmount: 500000, status: 'DRAFT', startDate: '2026-01-01', endDate: '2026-12-31' },
     { id: 2, contractName: '钢筋劳务合同', teamName: '钢筋一班', contractAmount: 800000, status: 'EFFECTIVE', startDate: '2026-01-01', endDate: '2026-12-31' },
@@ -64,7 +65,7 @@ crudPageSuite({
   pageMock: mockWorkOrderPage, createMock: mockWorkOrderCreate, updateMock: mockWorkOrderUpdate, deleteMock: mockWorkOrderDelete,
   addButtonText: '新增派工单',
   requiredError: '请选择项目',
-  pageKey: 'page', // work-order 为 page/size 口径（contract 为 pageNum/pageSize）
+  pageKey: 'page', // work-order 为 page/size 口径（劳务域已统一）
   records: [
     { id: 1, projectName: '滨江花园一期', teamName: '木工一班', workDate: '2026-08-01', workerCount: 12, status: 'DRAFT' },
     { id: 2, projectName: '城南市政', teamName: '钢筋一班', workDate: '2026-08-02', workerCount: 8, status: 'APPROVED' },

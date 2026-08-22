@@ -36,6 +36,16 @@ vi.mock('@/api/budget-control-config', () => ({
 vi.mock('@/api/project', () => ({
   getProjectList: mockProjectList,
 }))
+// T7：budget/index.vue 预算执行面板引用 dashboard 端点，mock 防真实请求（并避免 request→router 链）
+vi.mock('@/api/dashboard', () => ({
+  getBudgetExecution: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
+}))
+// 批量导入组件依赖；同样避免 request→@/router→createRouter 链穿透 factory mock
+vi.mock('@/api/batch', () => ({
+  importData: vi.fn(), startExport: vi.fn(), getExportStatus: vi.fn(),
+  downloadExportFile: vi.fn(), downloadTemplate: vi.fn(async (): Promise<any> => new Blob(['x'])),
+  getFilePreviewUrl: vi.fn(), getTemplateList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+}))
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useRoute: () => ({ query: {}, params: {} }),
@@ -102,14 +112,14 @@ describe('budget/index.vue 预算管理', () => {
   it('搜索重置页码、重置清空条件', async () => {
     await mountPage()
     const st = wrapper.vm.$.setupState
-    st.queryParams.pageNum = 3
+    st.queryParams.page = 3
     mockBudgetPage.mockClear()
     st.handleSearch()
     await flushPromises()
-    expect(st.queryParams.pageNum).toBe(1)
+    expect(st.queryParams.page).toBe(1)
     st.handleReset()
     await flushPromises()
-    expect(st.queryParams.pageNum).toBe(1)
+    expect(st.queryParams.page).toBe(1)
   })
 })
 

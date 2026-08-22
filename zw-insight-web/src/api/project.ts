@@ -100,3 +100,11 @@ export function removeProjectMember(projectId: number | string, userId: number) 
 export function updateMemberRoles(projectId: number | string, userId: number, data: UpdateMemberRolesRequest) {
   return request.put<R<void>>(`/v1/project/${projectId}/member/${userId}/roles`, data)
 }
+
+// ======================== 项目组合看板 ========================
+
+/** 项目组合看板（状态 × 金额分布） */
+export function getProjectPortfolio() {
+  return request.get<R<any>>('/v1/project/portfolio')
+}
+

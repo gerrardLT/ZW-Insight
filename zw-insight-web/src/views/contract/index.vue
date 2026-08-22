@@ -40,6 +40,8 @@
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增合同
         </el-button>
+        <el-button @click="importVisible = true">批量导入</el-button>
+        <el-button @click="exportVisible = true">导出</el-button>
       </div>
 
       <!-- 表格 -->
@@ -78,8 +80,8 @@
       <!-- 分页 -->
       <div class="pagination-wrap">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.size"
           :page-sizes="[10, 20, 50, 100]"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
@@ -88,6 +90,29 @@
         />
       </div>
     </el-card>
+
+    <!-- 合同金额汇总面板 -->
+    <stat-chart-panel
+      ref="summaryPanelRef"
+      class="stat-panel"
+      title="合同金额汇总（按状态分布）"
+      :fetch-data="fetchAmountSummary"
+      :build-option="buildAmountSummaryOption"
+      empty-text="暂无合同金额数据"
+    />
+
+    <batch-import-dialog
+      v-model:visible="importVisible"
+      module-code="CONTRACT"
+      :project-id="queryParams.projectId"
+      @success="loadData"
+    />
+
+    <async-export-dialog
+      v-model:visible="exportVisible"
+      module-code="CONTRACT"
+      :params="queryParams.projectId ? { projectId: queryParams.projectId } : undefined"
+    />
   </div>
 </template>
 
@@ -95,19 +120,25 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getContractPage, deleteContract, submitContract } from '@/api/contract'
+import { getContractPage, deleteContract, submitContract, getContractAmountSummary } from '@/api/contract'
 import { getProjectList } from '@/api/project'
+import { toWan } from '@/utils/chart-format'
 import PrintButton from '@/components/PrintButton.vue'
+import BatchImportDialog from '@/components/BatchImportDialog.vue'
+import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
+import StatChartPanel from '@/components/StatChartPanel.vue'
 
 const router = useRouter()
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const total = ref(0)
 const projectList = ref<any[]>([])
+const importVisible = ref(false)
+const exportVisible = ref(false)
 
 const queryParams = ref({
-  pageNum: 1,
-  pageSize: 10,
+  page: 1,
+  size: 10,
   projectId: undefined as number | undefined,
   status: ''
 })
@@ -150,13 +181,15 @@ async function loadData() {
 }
 
 function handleSearch() {
-  queryParams.value.pageNum = 1
+  queryParams.value.page = 1
   loadData()
+  summaryPanelRef.value?.reload()
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined, status: '' }
+  queryParams.value = { page: 1, size: 10, projectId: undefined, status: '' }
   loadData()
+  summaryPanelRef.value?.reload()
 }
 
 function handleAdd() {
@@ -187,6 +220,35 @@ async function handleDelete(row: any) {
   loadData()
 }
 
+// ================= 合同金额汇总面板 =================
+const summaryPanelRef = ref<InstanceType<typeof StatChartPanel>>()
+
+async function fetchAmountSummary() {
+  if (!queryParams.value.projectId) throw new Error('请先选择项目后查看合同金额汇总')
+  const res: any = await getContractAmountSummary(queryParams.value.projectId)
+  return res.data
+}
+
+function buildAmountSummaryOption(data: any) {
+  const breakdown = data?.statusBreakdown || []
+  if (!breakdown.length) return null
+  return {
+    color: ['#3370ff', '#00b42a', '#ff7d00', '#f53f3f', '#722ed1', '#38bdf8'],
+    tooltip: {
+      trigger: 'item',
+      formatter: (p: any) => `${p.name}<br/>合同金额：${toWan(Number(p.value))} 万元（${p.percent}%）`
+    },
+    legend: { bottom: 0 },
+    series: [{
+      type: 'pie',
+      radius: ['45%', '70%'],
+      itemStyle: { borderRadius: 8, borderWidth: 2 },
+      label: { show: true, formatter: '{b}' },
+      data: breakdown.map((s: any) => ({ name: getStatusLabel(s.status), value: Number(s.amount) || 0 }))
+    }]
+  }
+}
+
 onMounted(() => {
   loadData()
   searchProject('')
@@ -196,6 +258,9 @@ onMounted(() => {
 <style scoped>
 .contract-container {
   padding: 16px;
+}
+.stat-panel {
+  margin-top: 16px;
 }
 .table-toolbar {
   margin-bottom: 16px;

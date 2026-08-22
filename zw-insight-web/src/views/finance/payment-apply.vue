@@ -78,6 +78,15 @@
       </div>
     </el-card>
 
+    <stat-chart-panel
+      ref="planPanelRef"
+      class="stat-panel"
+      title="资金计划（按月应付预测）"
+      :fetch-data="fetchFundPlan"
+      :build-option="buildFundPlanOption"
+      empty-text="暂无已审批的付款申请"
+    />
+
     <!-- 新增弹窗 -->
     <el-dialog v-model="dialogVisible" title="新增付款申请" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
@@ -140,7 +149,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getPaymentApplyPage, createPaymentApply, deletePaymentApply, submitPaymentApply } from '@/api/finance'
+import { getPaymentApplyPage, createPaymentApply, deletePaymentApply, submitPaymentApply, getFundPlan } from '@/api/finance'
 import { getProjectList } from '@/api/project'
 import { getOtherContractPage } from '@/api/contract'
 import { getPurchaseContractPage } from '@/api/purchase'
@@ -148,7 +157,9 @@ import { getLaborContractPage } from '@/api/labor'
 import { getMachineContractPage } from '@/api/machine'
 import { getSubcontractPage } from '@/api/subcontract'
 import SupplierSelector from '@/components/SupplierSelector.vue'
+import StatChartPanel from '@/components/StatChartPanel.vue'
 import { positiveAmount } from '@/utils/form-rules'
+import { toWan } from '@/utils/chart-format'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -253,11 +264,13 @@ async function loadData() {
 function handleSearch() {
   queryParams.value.pageNum = 1
   loadData()
+  planPanelRef.value?.reload()
 }
 
 function handleReset() {
   queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined, status: '' }
   loadData()
+  planPanelRef.value?.reload()
 }
 
 function handleAdd() {
@@ -301,11 +314,41 @@ onMounted(() => {
   loadData()
   searchProject('')
 })
+
+// ================= 资金计划面板 =================
+const planPanelRef = ref<InstanceType<typeof StatChartPanel>>()
+
+async function fetchFundPlan() {
+  if (!queryParams.value.projectId) throw new Error('请先选择项目后查看资金计划')
+  const res: any = await getFundPlan(queryParams.value.projectId, 6)
+  return res.data
+}
+
+function buildFundPlanOption(list: any[]) {
+  if (!list?.length) return null
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0 },
+    grid: { left: '3%', right: '4%', bottom: '14%', containLabel: true },
+    xAxis: { type: 'category', data: list.map(i => i.month) },
+    yAxis: [
+      { type: 'value', name: '万元', axisLabel: { formatter: '{value} 万' } },
+      { type: 'value', name: '申请笔数', minInterval: 1 }
+    ],
+    series: [
+      { name: '计划应付', type: 'bar', barMaxWidth: 36, data: list.map(i => toWan(Number(i.plannedAmount) || 0)) },
+      { name: '申请笔数', type: 'line', yAxisIndex: 1, data: list.map(i => Number(i.applyCount) || 0) }
+    ]
+  }
+}
 </script>
 
 <style scoped>
 .finance-container {
   padding: 16px;
+}
+.stat-panel {
+  margin-bottom: 16px;
 }
 .table-toolbar {
   margin-bottom: 16px;

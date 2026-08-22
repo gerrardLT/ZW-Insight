@@ -59,7 +59,7 @@ export function getInvoiceSummary(params: InvoiceSummaryQuery) {
 }
 
 // ======================== 回款登记 ========================
-export function getPaymentReceivedPage(params: { page?: number; size?: number; projectId?: number; contractId?: number }) {
+export function getPaymentReceivedPage(params: { page?: number; size?: number; projectId?: number; contractId?: number; claimStatus?: string }) {
   return request.get<R<PageResult<PaymentReceived>>>('/v1/finance/payment-received/page', { params })
 }
 
@@ -77,6 +77,14 @@ export function updatePaymentReceived(data: Partial<PaymentReceived> & { id: num
 
 export function deletePaymentReceived(id: number) {
   return request.delete<R<void>>(`/v1/finance/payment-received/${id}`)
+}
+
+export function claimPaymentReceived(id: number) {
+  return request.post<R<void>>(`/v1/finance/payment-received/${id}/claim`)
+}
+
+export function writeOffPaymentReceived(id: number) {
+  return request.post<R<void>>(`/v1/finance/payment-received/${id}/write-off`)
 }
 
 // ======================== 付款申请 ========================
@@ -182,3 +190,17 @@ export function createRetentionReturn(data: RetentionReturn) {
 export function submitRetentionReturn(id: number) {
   return request.post<R<void>>(`/v1/finance/retention/return/${id}/submit`)
 }
+
+// ======================== 财务统计 ========================
+// 后端：FinanceStatisticsController /api/v1/finance/statistics
+
+/** 回款率分析（已回款对比已开票） */
+export function getCollectionRate(projectId: number) {
+  return request.get<R<any>>('/v1/finance/statistics/collection-rate', { params: { projectId } })
+}
+
+/** 资金计划（按月应付预测，聚合已审批付款申请） */
+export function getFundPlan(projectId: number, months = 6) {
+  return request.get<R<any[]>>('/v1/finance/statistics/fund-plan', { params: { projectId, months } })
+}
+

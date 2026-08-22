@@ -112,6 +112,16 @@ export function deleteLaborRoster(id: number) {
   return request.delete(`/v1/labor/roster/${id}`)
 }
 
+/** 登记进场（P0 Req5：entry_date=当日、status=1 在岗；已在岗拒绝） */
+export function entryLaborRoster(id: number) {
+  return request.post(`/v1/labor/roster/${id}/entry`)
+}
+
+/** 登记退场（P0 Req5：exit_date=当日、status=0 离岗；已离岗拒绝） */
+export function exitLaborRoster(id: number) {
+  return request.post(`/v1/labor/roster/${id}/exit`)
+}
+
 // ======================== 用工单 ========================
 export function getWorkOrderPage(params: any) {
   return request.get('/v1/labor/work-order/page', { params })
@@ -188,3 +198,17 @@ export function exportSalaryExcel(projectId: number, month: string) {
     return res.blob()
   })
 }
+
+// ======================== 劳务统计 ========================
+// 后端：LaborStatisticsController /api/v1/labor/statistics
+
+/** 工资发放趋势（按月聚合结算/已付/未付） */
+export function getPayrollTrend(projectId: number, months = 12) {
+  return request.get('/v1/labor/statistics/payroll-trend', { params: { projectId, months } })
+}
+
+/** 劳务成本占比（结算总额对比生效劳务合同金额） */
+export function getLaborCostRatio(projectId: number) {
+  return request.get('/v1/labor/statistics/cost-ratio', { params: { projectId } })
+}
+

@@ -38,9 +38,10 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="180" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleImportDetail(row)">导入明细</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -49,8 +50,8 @@
 
       <div class="pagination-wrap">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.size"
           :page-sizes="[10, 20, 50]"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
@@ -59,6 +60,22 @@
         />
       </div>
     </el-card>
+
+    <stat-chart-panel
+      ref="execPanelRef"
+      class="stat-panel"
+      title="预算执行情况（按科目）"
+      :fetch-data="fetchBudgetExecution"
+      :build-option="buildExecutionOption"
+      empty-text="该项目暂无已批准的预算"
+    />
+
+    <batch-import-dialog
+      v-model:visible="importVisible"
+      module-code="BUDGET_DETAIL"
+      :extra-query="importBudgetId ? { budgetId: importBudgetId } : undefined"
+      @success="loadData"
+    />
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑预算' : '新增预算编制'" width="900px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
@@ -142,6 +159,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getBudgetPage, createBudget, updateBudget, deleteBudget, submitBudget, getBudgetDetailsByBudgetId } from '@/api/budget'
 import { getProjectList } from '@/api/project'
+import { getBudgetExecution } from '@/api/dashboard'
+import BatchImportDialog from '@/components/BatchImportDialog.vue'
+import StatChartPanel from '@/components/StatChartPanel.vue'
+import { toWan, clampPercent } from '@/utils/chart-format'
 
 // 费用类别（与后端 BizBudgetDetail.costCategory 枚举一致）
 const COST_CATEGORIES = [
@@ -169,10 +190,12 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
+const importVisible = ref(false)
+const importBudgetId = ref<number | undefined>(undefined)
 
 const queryParams = ref({
-  pageNum: 1,
-  pageSize: 10,
+  page: 1,
+  size: 10,
   projectId: undefined as number | undefined
 })
 
@@ -214,13 +237,20 @@ async function loadData() {
 }
 
 function handleSearch() {
-  queryParams.value.pageNum = 1
+  queryParams.value.page = 1
   loadData()
+  execPanelRef.value?.reload()
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined }
+  queryParams.value = { page: 1, size: 10, projectId: undefined }
   loadData()
+  execPanelRef.value?.reload()
+}
+
+function handleImportDetail(row: any) {
+  importBudgetId.value = row.id
+  importVisible.value = true
 }
 
 function handleAdd() {
@@ -299,10 +329,41 @@ onMounted(() => {
   searchProject('')
   loadData()
 })
+
+// ================= 预算执行面板（复用 /v1/dashboard/budget-execution） =================
+const execPanelRef = ref<InstanceType<typeof StatChartPanel>>()
+
+async function fetchBudgetExecution() {
+  if (!queryParams.value.projectId) throw new Error('请先选择项目后查看预算执行')
+  const res: any = await getBudgetExecution({ projectId: queryParams.value.projectId })
+  return res.data
+}
+
+function buildExecutionOption(data: any) {
+  const list = data?.categoryExecution
+  if (!list?.length) return null // 无已批准预算时后端返回 { budgetDetails: [] }
+  const categoryLabel: Record<string, string> = {
+    MATERIAL: '材料', LABOR: '人工', MACHINE: '机械', SUBCONTRACT: '分包', INDIRECT: '间接费', OTHER: '其他'
+  }
+  const total = Number(data.budgetTotalAmount) || 0
+  const paid = Number(data.totalPaid) || 0
+  return {
+    title: {
+      text: `预算总额：${toWan(total)} 万元　已付：${toWan(paid)} 万元　执行率：${total > 0 ? clampPercent(paid / total) : 0}%`,
+      left: 'center', top: 0, textStyle: { fontSize: 13 }
+    },
+    tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v} 万元` },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
+    xAxis: { type: 'category', data: list.map((i: any) => categoryLabel[i.category] || i.category) },
+    yAxis: { type: 'value', name: '万元', axisLabel: { formatter: '{value} 万' } },
+    series: [{ name: '预算金额', type: 'bar', barMaxWidth: 48, data: list.map((i: any) => toWan(Number(i.budgetAmount) || 0)) }]
+  }
+}
 </script>
 
 <style scoped>
 .budget-container { padding: 16px; }
+.stat-panel { margin-bottom: 16px; }
 .table-toolbar { margin-bottom: 16px; }
 .pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

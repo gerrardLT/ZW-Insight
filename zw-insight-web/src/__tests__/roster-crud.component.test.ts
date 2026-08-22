@@ -16,6 +16,8 @@ vi.mock('@/api/labor', () => ({
   createLaborRoster: mockCreate,
   updateLaborRoster: mockUpdate,
   deleteLaborRoster: mockDelete,
+  entryLaborRoster: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  exitLaborRoster: vi.fn(async (): Promise<any> => ({ code: 200 })),
 }))
 vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()
@@ -32,6 +34,7 @@ import { crudPageSuite } from './helpers/crud-page-tests'
 crudPageSuite({
   title: 'roster.vue 劳务花名册',
   component: Roster,
+  pageKey: 'page', // 花名册页已统一为 page/size 口径（T1 接线）
   pageMock: mockPage,
   createMock: mockCreate,
   updateMock: mockUpdate,

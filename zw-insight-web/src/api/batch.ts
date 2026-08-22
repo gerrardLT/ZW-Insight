@@ -2,11 +2,15 @@ import request from '@/utils/request'
 
 // ======================== 批量导入导出 ========================
 
-export function importData(moduleCode: string, file: File, projectId?: number) {
+export function importData(moduleCode: string, file: File, params?: Record<string, any>) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('moduleCode', moduleCode)
-  if (projectId) formData.append('projectId', String(projectId))
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') formData.append(key, String(value))
+    })
+  }
   return request.post('/v1/batch/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })

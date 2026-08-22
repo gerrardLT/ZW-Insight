@@ -32,12 +32,22 @@
       </el-form>
     </el-card>
 
+    <!-- 项目组合看板 -->
+    <stat-chart-panel
+      class="filter-card"
+      title="项目组合看板（状态×合同金额）"
+      :fetch-data="fetchPortfolio"
+      :build-option="buildPortfolioOption"
+      empty-text="暂无项目数据"
+    />
+
     <!-- 列表区 -->
     <el-card shadow="never" class="table-card">
       <div class="table-toolbar">
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增项目
         </el-button>
+        <el-button @click="importVisible = true">批量导入</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading">
@@ -69,8 +79,8 @@
       <!-- 分页 -->
       <div class="pagination-wrap">
         <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.size"
           :page-sizes="[10, 20, 50, 100]"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
@@ -79,6 +89,8 @@
         />
       </div>
     </el-card>
+
+    <batch-import-dialog v-model:visible="importVisible" module-code="PROJECT" @success="loadData" />
   </div>
 </template>
 
@@ -86,16 +98,20 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getProjectPage, deleteProject, submitProject, closeProject, getProjectCloseCheck } from '@/api/project'
+import { getProjectPage, deleteProject, submitProject, closeProject, getProjectCloseCheck, getProjectPortfolio } from '@/api/project'
+import BatchImportDialog from '@/components/BatchImportDialog.vue'
+import StatChartPanel from '@/components/StatChartPanel.vue'
+import { toWan } from '@/utils/chart-format'
 
 const router = useRouter()
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const total = ref(0)
+const importVisible = ref(false)
 
 const queryParams = ref({
-  pageNum: 1,
-  pageSize: 10,
+  page: 1,
+  size: 10,
   projectName: '',
   status: '',
   projectType: ''
@@ -132,12 +148,12 @@ async function loadData() {
 }
 
 function handleSearch() {
-  queryParams.value.pageNum = 1
+  queryParams.value.page = 1
   loadData()
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, projectName: '', status: '', projectType: '' }
+  queryParams.value = { page: 1, size: 10, projectName: '', status: '', projectType: '' }
   loadData()
 }
 
@@ -185,6 +201,35 @@ async function handleClose(row: any) {
 onMounted(() => {
   loadData()
 })
+
+// ================= 项目组合看板 =================
+async function fetchPortfolio() {
+  const res: any = await getProjectPortfolio()
+  return res.data
+}
+
+function buildPortfolioOption(data: any) {
+  if (!data?.statusList?.length) return null
+  return {
+    title: {
+      text: `项目总数：${data.totalProjectCount ?? 0}　合同总额：${toWan(Number(data.totalContractAmount) || 0)} 万元`,
+      left: 'center', top: 0, textStyle: { fontSize: 13 }
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: (p: any) => {
+        const item = data.statusList[p.dataIndex]
+        return `${p.name}<br/>项目数：${item.count}<br/>合同金额：${toWan(Number(item.contractAmount) || 0)} 万元<br/>预算金额：${toWan(Number(item.budgetAmount) || 0)} 万元<br/>累计产值：${toWan(Number(item.cumulativeOutput) || 0)} 万元`
+      }
+    },
+    legend: { bottom: 0 },
+    series: [{
+      name: '合同金额分布', type: 'pie', radius: ['35%', '60%'], center: ['50%', '55%'],
+      label: { formatter: '{b}: {d}%' },
+      data: data.statusList.map((s: any) => ({ name: getStatusLabel(s.status), value: toWan(Number(s.contractAmount) || 0), count: s.count }))
+    }]
+  }
+}
 </script>
 
 <style scoped>
