@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.system.domain.SysLoginLog;
 import com.zwinsight.system.domain.SysOperLog;
@@ -21,7 +22,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -81,6 +85,41 @@ class SysLogServiceTest {
 
         verify(operLogMapper).insert(operLog);
         verify(loginLogMapper).insert(loginLog);
+    }
+
+    @Test
+    @DisplayName("保存操作日志：落库前恢复租户/用户上下文，写毕清理（异步线程上下文补偿）")
+    void testSaveOperLog_restoresAndClearsContext() {
+        SysOperLog operLog = new SysOperLog();
+        operLog.setTenantId(5L);
+        operLog.setCreatedBy(9L);
+        Long[] tenantDuringInsert = new Long[1];
+        Long[] userDuringInsert = new Long[1];
+        doAnswer(inv -> {
+            tenantDuringInsert[0] = SecurityContextHolder.getTenantId();
+            userDuringInsert[0] = SecurityContextHolder.getUserId();
+            return 1;
+        }).when(operLogMapper).insert(any(SysOperLog.class));
+
+        sysLogService.saveOperLog(operLog);
+
+        assertThat(tenantDuringInsert[0]).isEqualTo(5L);
+        assertThat(userDuringInsert[0]).isEqualTo(9L);
+        // 写毕清理，防止线程池复用导致上下文串线程
+        assertThat(SecurityContextHolder.getTenantId()).isNull();
+        assertThat(SecurityContextHolder.getUserId()).isNull();
+    }
+
+    @Test
+    @DisplayName("保存操作日志：落库异常仍清理上下文")
+    void testSaveOperLog_clearsContextOnFailure() {
+        SysOperLog operLog = new SysOperLog();
+        operLog.setTenantId(5L);
+        doThrow(new RuntimeException("db down")).when(operLogMapper).insert(any(SysOperLog.class));
+
+        assertThatThrownBy(() -> sysLogService.saveOperLog(operLog))
+                .hasMessageContaining("db down");
+        assertThat(SecurityContextHolder.getTenantId()).isNull();
     }
 
     @Test

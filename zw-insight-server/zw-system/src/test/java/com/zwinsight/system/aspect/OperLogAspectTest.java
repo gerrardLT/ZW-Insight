@@ -113,9 +113,10 @@ class OperLogAspectTest {
     }
 
     @Test
-    @DisplayName("用户上下文存在时回填操作人姓名/账号")
+    @DisplayName("用户上下文存在时回填操作人姓名/账号，并预填租户/创建人（供异步落库恢复上下文）")
     void around_withUserContext_fillsOperName() throws Throwable {
         SecurityContextHolder.setUserId(7L);
+        SecurityContextHolder.setTenantId(3L);
         ProceedingJoinPoint pjp = buildJoinPoint("create", String.class);
         when(pjp.proceed()).thenReturn("ok");
         when(pjp.getArgs()).thenReturn(new Object[]{});
@@ -131,6 +132,8 @@ class OperLogAspectTest {
         SysOperLog log = captor.getValue();
         assertThat(log.getOperName()).isEqualTo("张三");
         assertThat(log.getOperAccount()).isEqualTo("zhangsan");
+        assertThat(log.getTenantId()).isEqualTo(3L);
+        assertThat(log.getCreatedBy()).isEqualTo(7L);
     }
 
     @Test

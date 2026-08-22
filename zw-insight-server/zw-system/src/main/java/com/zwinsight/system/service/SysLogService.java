@@ -59,10 +59,19 @@ public class SysLogService {
 
     /**
      * 保存操作日志（异步）
+     * <p>异步线程无请求线程的租户/用户 ThreadLocal 上下文，落库前先从实体字段
+     * （调用方在请求线程预填，见 OperLogAspect）恢复上下文，否则 MetaObjectHandler
+     * 写防护会拒绝 INSERT；写毕必须清理，防止线程池复用导致上下文串线程。</p>
      */
     @Async
     public void saveOperLog(SysOperLog operLog) {
-        operLogMapper.insert(operLog);
+        SecurityContextHolder.setTenantId(operLog.getTenantId());
+        SecurityContextHolder.setUserId(operLog.getCreatedBy());
+        try {
+            operLogMapper.insert(operLog);
+        } finally {
+            SecurityContextHolder.clear();
+        }
     }
 
     /**

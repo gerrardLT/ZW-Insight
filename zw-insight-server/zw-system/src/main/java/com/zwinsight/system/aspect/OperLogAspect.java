@@ -87,6 +87,11 @@ public class OperLogAspect {
                     }
                 }
 
+                // 预填租户/操作人：saveOperLog 异步线程无 ThreadLocal 上下文，
+                // 需在请求线程捕获后随实体传递（落库侧从中恢复上下文）
+                sysOperLog.setTenantId(SecurityContextHolder.getTenantId());
+                sysOperLog.setCreatedBy(userId);
+
                 // 异步保存日志
                 logService.saveOperLog(sysOperLog);
             } catch (Exception e) {
