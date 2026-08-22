@@ -110,6 +110,20 @@ npm test             # 运行属性测试（fast-check）
 - 包含模块级别的不一致项分类：`FEATURE_MISSING`、`HTTP_METHOD_MISMATCH`、`FRONTEND_EXTRA_API`、`BACKEND_ORPHAN_API` 等
 - 严重程度：Critical > Major > Minor
 
+## 功能深度账本工具
+
+位于 `tools/feature-ledger/`，是一个 Node.js CLI 工具，对 PC + 移动端全部功能页面做 L0-L4 成熟度评分与八维缺口标注，产出可排期的 ROI 差距清单。与一致性审计正交：审计评接口对齐，账本评功能能力成熟度。
+
+```bash
+cd tools/feature-ledger
+npm install
+npm run dev -- scan     # 扫描 → data/ledger-data.json（manual 人工字段不受影响）
+npm run dev -- report   # 生成 audit-reports/feature-ledger/feature-ledger-report.md
+npm test                # 规则/评分/合并单元测试
+```
+
+账本数据 `data/ledger-data.json` 按条目分 auto（脚本覆写）/ manual（人工填写保留）两层；人工判断填 `levelFinal` / `gapNotes` / `benchmarkNote` / `roi`。信号规则集中在 `src/signals.ts`，改动后须将 `SIGNAL_VERSION` +1。详见 `tools/feature-ledger/README.md`。
+
 ## Steering 规则
 
 项目级 Steering 规则位于：

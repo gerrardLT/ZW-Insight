@@ -1,0 +1,33 @@
+{
+  "name": "zw-feature-ledger",
+  "version": "1.0.0",
+  "description": "中维智营全模块功能深度账本：L0-L4 成熟度评分 + 八维缺口标注 + ROI 差距清单",
+  "type": "module",
+  "main": "dist/cli.js",
+  "bin": {
+    "zw-ledger": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "feature",
+    "ledger",
+    "maturity",
+    "zw-insight"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "tsx": "4.19.2",
+    "typescript": "5.8.3",
+    "vitest": "2.1.9"
+  }
+}

@@ -76,6 +76,8 @@ pnpm-debug.log*
 # Docker Data Volumes
 # ========================
 data/
+# 功能深度账本数据需入库（含人工复核判断）
+!tools/feature-ledger/data/
 
 # ========================
 # Build Output
