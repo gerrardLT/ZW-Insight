@@ -32,8 +32,10 @@ vi.mock('@/api/common', () => ({
   rejectTask: vi.fn(),
   getProjectList: vi.fn(),
   getMaterialDict: vi.fn(),
+  getMaterialByCode: vi.fn(),
   saveMaterialInbound: vi.fn(),
   saveMaterialOutbound: vi.fn(),
+  batchApproveTasks: vi.fn(),
 }))
 
 vi.mock('@/utils/request', () => ({ default: vi.fn() }))
@@ -44,7 +46,8 @@ import InboundPage from '@/pages/material/inbound.vue'
 import OutboundPage from '@/pages/material/outbound.vue'
 import {
   getTodoTasks, getDoneTasks, getMyInitiatedTasks, completeTask,
-  rejectTask, getProjectList, saveMaterialInbound, saveMaterialOutbound,
+  rejectTask, getProjectList, getMaterialByCode, saveMaterialInbound, saveMaterialOutbound,
+  batchApproveTasks,
 } from '@/api/common'
 import request from '@/utils/request'
 import { resetUniStorage, getUni } from '../setup'
@@ -92,6 +95,70 @@ describe('approval/index.vue 审批列表页', () => {
     expect((getUni() as any).navigateTo).toHaveBeenCalledWith({
       url: '/pages/approval/detail?taskId=T9&processInstanceId=PI-1',
     })
+    wrapper.unmount()
+  })
+
+  it('P0 Req8 批量同意：未勾选禁用；全选后提交 taskIds，成功后刷新列表', async () => {
+    vi.mocked(getTodoTasks).mockResolvedValue({ code: 200, data: { records: [{ id: 'T1' }, { id: 'T2' }] } })
+    vi.mocked(batchApproveTasks).mockResolvedValue({ code: 200 })
+    ;(getUni() as any).showModal = vi.fn((opts: any) => opts.success?.({ confirm: true }))
+    const toast = vi.fn()
+    ;(getUni() as any).showToast = toast
+
+    const wrapper = mount(ApprovalIndex)
+    hooks.onShowCb?.()
+    await flushPromises()
+
+    // 未勾选：按钮禁用，直接点击不发请求
+    expect(wrapper.vm.selectedIds).toHaveLength(0)
+    wrapper.vm.handleBatchApprove()
+    expect(vi.mocked(batchApproveTasks)).not.toHaveBeenCalled()
+
+    // 全选 → 提交批量同意
+    wrapper.vm.toggleSelectAll()
+    expect(wrapper.vm.selectedIds).toEqual(['T1', 'T2'])
+    wrapper.vm.toggleSelect({ id: 'T1' })
+    expect(wrapper.vm.selectedIds).toEqual(['T2'])
+    wrapper.vm.toggleSelect({ id: 'T1' })
+    await wrapper.vm.handleBatchApprove()
+    await flushPromises()
+
+    expect(vi.mocked(batchApproveTasks)).toHaveBeenCalledWith({ taskIds: ['T2', 'T1'], comment: '' })
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '批量审批成功' }))
+    expect(wrapper.vm.selectedIds).toHaveLength(0)
+    wrapper.unmount()
+  })
+
+  it('P0 Req8 批量同意失败不静默：展示后端错误后刷新列表', async () => {
+    vi.mocked(getTodoTasks).mockResolvedValue({ code: 200, data: { records: [{ id: 'T1' }] } })
+    vi.mocked(batchApproveTasks).mockRejectedValue(new Error('任务已被他人处理'))
+    ;(getUni() as any).showModal = vi.fn((opts: any) => opts.success?.({ confirm: true }))
+
+    const wrapper = mount(ApprovalIndex)
+    hooks.onShowCb?.()
+    await flushPromises()
+    const callsBefore = vi.mocked(getTodoTasks).mock.calls.length
+
+    wrapper.vm.toggleSelectAll()
+    await wrapper.vm.handleBatchApprove()
+    await flushPromises()
+
+    // 失败后仍刷新列表（以最新状态为准），不静默吞错
+    expect(vi.mocked(getTodoTasks).mock.calls.length).toBeGreaterThan(callsBefore)
+    expect(wrapper.vm.batchApproving).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('P0 Req8.5 列表加载失败展示失败态，不空 catch', async () => {
+    vi.mocked(getTodoTasks).mockRejectedValue(new Error('服务异常'))
+
+    const wrapper = mount(ApprovalIndex)
+    hooks.onShowCb?.()
+    await flushPromises()
+
+    expect(wrapper.vm.loadFailed).toBe(true)
+    expect(wrapper.text()).toContain('任务列表加载失败')
+    expect(wrapper.text()).toContain('重试')
     wrapper.unmount()
   })
 })
@@ -186,6 +253,39 @@ describe('material/inbound.vue 材料入库页', () => {
     expect((getUni() as any).navigateBack).toHaveBeenCalled()
     wrapper.unmount()
     vi.useRealTimers()
+  })
+
+  it('P0 Req6 编码查询带出材料信息填充表单；编码不存在不自动创建', async () => {
+    vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [] } })
+    vi.mocked(getMaterialByCode).mockResolvedValue({ code: 200, data: { materialName: '钢筋', specification: 'HRB400', unit: '吨' } })
+    const toast = vi.fn()
+    ;(getUni() as any).showToast = toast
+    const wrapper = mount(InboundPage)
+    await flushPromises()
+
+    // 空编码拦截，不发请求
+    wrapper.vm.materialCode = '  '
+    await wrapper.vm.handleCodeConfirm()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入材料编码' }))
+    expect(vi.mocked(getMaterialByCode)).not.toHaveBeenCalled()
+
+    // 有效编码：调 by-code 端点并填充表单
+    wrapper.vm.materialCode = ' M001 '
+    await wrapper.vm.handleCodeConfirm()
+    await flushPromises()
+    expect(vi.mocked(getMaterialByCode)).toHaveBeenCalledWith('M001')
+    expect(wrapper.vm.form.materialName).toBe('钢筋')
+    expect(wrapper.vm.form.specification).toBe('HRB400')
+    expect(wrapper.vm.form.unit).toBe('吨')
+    expect(vi.mocked(saveMaterialInbound)).not.toHaveBeenCalled()
+
+    // 编码不存在：后端 404 语义拒绝，页面不自动创建材料（请求层 toast 后端提示）
+    vi.mocked(getMaterialByCode).mockRejectedValue(new Error('材料编码不存在，请先维护材料字典'))
+    wrapper.vm.materialCode = 'NO_CODE'
+    await wrapper.vm.handleCodeConfirm()
+    await flushPromises()
+    expect(vi.mocked(saveMaterialInbound)).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 })
 

@@ -13,12 +13,14 @@ import { setActivePinia, createPinia } from 'pinia'
 
 const hooks = vi.hoisted(() => ({
   onShowCb: null as any,
+  onHideCb: null as any,
   onLoadCb: null as any,
   pullRefreshCb: null as any,
 }))
 
 vi.mock('@dcloudio/uni-app', () => ({
   onShow: (cb: any) => { hooks.onShowCb = cb },
+  onHide: (cb: any) => { hooks.onHideCb = cb },
   onLoad: (cb: any) => { hooks.onLoadCb = cb },
   onPullDownRefresh: (cb: any) => { hooks.pullRefreshCb = cb },
 }))
@@ -60,6 +62,7 @@ beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
   hooks.onShowCb = null
+  hooks.onHideCb = null
   hooks.onLoadCb = null
   hooks.pullRefreshCb = null
   ;(getUni() as any).navigateTo = vi.fn()
@@ -113,7 +116,7 @@ describe('home/index.vue 首页', () => {
 describe('workbench/index.vue 工作台', () => {
   function mockBase() {
     vi.mocked(getCompanyOverview).mockResolvedValue({ code: 200, data: {} })
-    vi.mocked(getTodoTasks).mockResolvedValue({ code: 200, data: { total: 7 } })
+    vi.mocked(getTodoTasks).mockResolvedValue({ code: 200, data: { total: 7, records: [{ id: 'T1', processName: '付款审批', startUserName: '张三', processInstanceId: 'PI-1' }] } })
   }
 
   it('待办总数展示；项目满 10 条可加载更多，不足则 hasMore=false', async () => {
@@ -125,7 +128,8 @@ describe('workbench/index.vue 工作台', () => {
     hooks.onShowCb?.()
     await flushPromises()
 
-    expect(vi.mocked(getTodoTasks)).toHaveBeenCalledWith({ page: 1, size: 1 })
+    // P0 Req7：待办区取前 5 条，同次请求带回总数与列表
+    expect(vi.mocked(getTodoTasks)).toHaveBeenCalledWith({ page: 1, size: 5 })
     expect(wrapper.vm.projects.length).toBe(10)
     expect(wrapper.vm.hasMore).toBe(true)
 
@@ -150,6 +154,80 @@ describe('workbench/index.vue 工作台', () => {
     wrapper.vm.goArchive(88)
     expect((getUni() as any).navigateTo).toHaveBeenCalledWith({ url: '/pages/project/archive?projectId=88' })
     wrapper.unmount()
+  })
+
+  it('P0 Req7 三分区失败态+重试：接口失败不静默，重试重新发起同一请求', async () => {
+    vi.mocked(getCompanyOverview).mockRejectedValue(new Error('服务异常'))
+    vi.mocked(getTodoTasks).mockRejectedValue(new Error('服务异常'))
+    vi.mocked(getProjectList).mockRejectedValue(new Error('服务异常'))
+
+    const wrapper = mount(WorkbenchPage)
+    hooks.onShowCb?.()
+    await flushPromises()
+
+    expect(wrapper.vm.overviewFailed).toBe(true)
+    expect(wrapper.vm.todoFailed).toBe(true)
+    expect(wrapper.vm.projectsFailed).toBe(true)
+    expect(wrapper.text()).toContain('项目看板加载失败')
+    expect(wrapper.text()).toContain('重试')
+
+    // 恢复后重试：失败态清除并重新拉取
+    vi.mocked(getCompanyOverview).mockResolvedValue({ code: 200, data: { inProgressCount: 2 } })
+    vi.mocked(getTodoTasks).mockResolvedValue({ code: 200, data: { total: 0, records: [] } })
+    vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [] } })
+    await wrapper.vm.loadOverview()
+    await wrapper.vm.refreshTodo()
+    await wrapper.vm.loadProjects()
+    expect(wrapper.vm.overviewFailed).toBe(false)
+    expect(wrapper.vm.todoFailed).toBe(false)
+    expect(wrapper.vm.projectsFailed).toBe(false)
+    expect(wrapper.vm.overview.inProgressCount).toBe(2)
+    wrapper.unmount()
+  })
+
+  it('P0 Req7 待办列表前 5 条展示，点击跳审批详情带 taskId/processInstanceId', async () => {
+    mockBase()
+    vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [] } })
+    const wrapper = mount(WorkbenchPage)
+    hooks.onShowCb?.()
+    await flushPromises()
+
+    expect(wrapper.vm.todoTasks).toHaveLength(1)
+    expect(wrapper.text()).toContain('付款审批')
+    wrapper.vm.goApprovalDetail({ id: 'T1', processInstanceId: 'PI-1' })
+    expect((getUni() as any).navigateTo).toHaveBeenCalledWith({ url: '/pages/approval/detail?taskId=T1&processInstanceId=PI-1' })
+    wrapper.unmount()
+  })
+
+  it('P0 Req7 待办 60s 轮询：onShow 启动，到点刷新，onHide 停止', async () => {
+    vi.useFakeTimers()
+    mockBase()
+    vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [] } })
+    const wrapper = mount(WorkbenchPage)
+    hooks.onShowCb?.()
+    await flushPromises()
+    const callsAfterShow = vi.mocked(getTodoTasks).mock.calls.length
+
+    vi.advanceTimersByTime(60 * 1000)
+    await flushPromises()
+    expect(vi.mocked(getTodoTasks).mock.calls.length).toBe(callsAfterShow + 1)
+
+    hooks.onHideCb?.()
+    vi.advanceTimersByTime(180 * 1000)
+    await flushPromises()
+    expect(vi.mocked(getTodoTasks).mock.calls.length).toBe(callsAfterShow + 1)
+
+    // 重新显示后轮询恢复
+    hooks.onShowCb?.()
+    await flushPromises()
+    const callsAfterReshow = vi.mocked(getTodoTasks).mock.calls.length
+    vi.advanceTimersByTime(60 * 1000)
+    await flushPromises()
+    expect(vi.mocked(getTodoTasks).mock.calls.length).toBe(callsAfterReshow + 1)
+
+    hooks.onHideCb?.()
+    wrapper.unmount()
+    vi.useRealTimers()
   })
 })
 

@@ -94,7 +94,10 @@ onMounted(async () => {
   try {
     const res: any = await getProjectList({ page: 1, size: 100 })
     projects.value = res.data?.records || []
-  } catch {}
+  } catch (e) {
+    // 错误已在 request 层统一 toast 提示
+    projects.value = []
+  }
 })
 
 function selectProject(p: any) {
@@ -112,22 +115,52 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
-    await saveInspection({
+    const hasProblem = form.value.result === '不合格' ? 1 : 0
+    // 后端 BizInspection 无检查日期/检查人独立字段，随检查内容一并留存，避免用户输入丢失
+    const contentParts: string[] = []
+    if (form.value.checkDate) contentParts.push(`检查日期：${form.value.checkDate}`)
+    if (form.value.checkPart) contentParts.push(`检查部位：${form.value.checkPart}`)
+    if (form.value.checkType) contentParts.push(`检查类型：${form.value.checkType}`)
+    if (form.value.inspector) contentParts.push(`检查人：${form.value.inspector}`)
+    if (form.value.description) contentParts.push(form.value.description)
+    const res: any = await saveInspection({
       projectId: form.value.projectId,
-      type: 'quality',
-      checkDate: form.value.checkDate,
-      checkPart: form.value.checkPart,
-      checkType: form.value.checkType,
-      result: form.value.result,
-      description: form.value.description,
-      rectification: form.value.rectification,
-      inspector: form.value.inspector
+      inspectionType: 'QUALITY',
+      inspectionContent: contentParts.join('；'),
+      hasProblem,
+      problemDescription: hasProblem === 1 ? form.value.rectification : ''
     })
+    const newId = res.data
     uni.showToast({ title: '提交成功', icon: 'success' })
-    setTimeout(() => { uni.navigateBack() }, 1500)
-  } catch {} finally {
+    if (hasProblem === 1 && newId) {
+      offerRectificationEntry(newId)
+    } else {
+      setTimeout(() => { uni.navigateBack() }, 1500)
+    }
+  } catch (e) {
+    // 错误已在 request 层统一 toast 提示
+  } finally {
     submitting.value = false
   }
+}
+
+/** 不合格检查提交后提供整改入口（跳转检查详情页整改闭环区） */
+function offerRectificationEntry(newId: number) {
+  setTimeout(() => {
+    uni.showModal({
+      title: '检查不合格',
+      content: '该检查存在问题，是否立即进入整改处理？',
+      confirmText: '去整改',
+      cancelText: '返回',
+      success: (modalRes) => {
+        if (modalRes.confirm) {
+          uni.navigateTo({ url: `/pages/site/inspection-detail?id=${newId}` })
+        } else {
+          uni.navigateBack()
+        }
+      }
+    })
+  }, 800)
 }
 </script>
 

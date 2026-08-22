@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import request, { BASE_URL } from '@/utils/request'
 
 // 审批
 export function getTodoTasks(params: any) {
@@ -15,6 +15,11 @@ export function completeTask(data: any) {
 }
 export function rejectTask(data: any) {
   return request({ url: '/v1/workflow/approval/reject-previous', method: 'POST', data })
+}
+// 批量通过（P0 Req8）：后端 ApprovalController#batchApprove，事务内逐条 complete，
+// 任一失败整体回滚并返回业务错误
+export function batchApproveTasks(data: { taskIds: string[]; comment?: string }) {
+  return request({ url: '/v1/workflow/approval/batch-approve', method: 'POST', data })
 }
 
 // 看板
@@ -55,6 +60,12 @@ export function getProjectList(params?: any) {
 // 后端真实接口：GET /api/v1/basedata/material（MaterialController#page）
 export function getMaterialDict(params?: { page?: number; size?: number; materialName?: string; categoryId?: number }) {
   return request({ url: '/v1/basedata/material', data: params })
+}
+
+// 按材料编码查询单个材料（P0 Req6 扫码出入库）
+// 后端：GET /api/v1/basedata/material/by-code（MaterialController#getByCode），未找到返回 404 语义业务错误
+export function getMaterialByCode(code: string) {
+  return request({ url: '/v1/basedata/material/by-code', data: { code } })
 }
 
 // 消息
@@ -110,6 +121,56 @@ export function getInspectionDetail(id: number) {
 
 export function submitInspectionResults(id: number, data: any) {
   return request({ url: `/v1/site/inspection/${id}/results`, method: 'POST', data })
+}
+
+// 整改闭环
+export function getRectifications(inspectionId: number) {
+  return request({ url: `/v1/site/rectification/by-inspection/${inspectionId}` })
+}
+export function submitRectification(inspectionId: number, data: any) {
+  return request({ url: `/v1/site/rectification/${inspectionId}/submit`, method: 'POST', data })
+}
+export function approveRectification(id: number) {
+  return request({ url: `/v1/site/rectification/${id}/approve`, method: 'POST' })
+}
+
+/**
+ * 上传整改佐证照片到 zw-file，返回文件记录 ID
+ * <p>uni.uploadFile 不走 request 封装，此处单独处理鉴权与错误提示（不吞错）。</p>
+ */
+export function uploadRectificationPhoto(filePath: string, inspectionId: number): Promise<number> {
+  const token = uni.getStorageSync('token')
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: BASE_URL + '/v1/file/upload',
+      filePath,
+      name: 'file',
+      formData: { businessType: 'RECTIFICATION', businessId: String(inspectionId) },
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      success: (res) => {
+        try {
+          const body = JSON.parse(res.data as string)
+          if (body.code === 200 && body.data?.id != null) {
+            resolve(body.data.id)
+          } else if (body.code === 401) {
+            uni.removeStorageSync('token')
+            uni.reLaunch({ url: '/pages/login/index' })
+            reject(new Error('登录已过期'))
+          } else {
+            uni.showToast({ title: body.message || '照片上传失败', icon: 'none' })
+            reject(new Error(body.message || '照片上传失败'))
+          }
+        } catch {
+          uni.showToast({ title: '照片上传失败', icon: 'none' })
+          reject(new Error('照片上传失败'))
+        }
+      },
+      fail: () => {
+        uni.showToast({ title: '网络异常，照片上传失败', icon: 'none' })
+        reject(new Error('网络异常'))
+      }
+    })
+  })
 }
 
 // 财务

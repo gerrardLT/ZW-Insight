@@ -20,6 +20,10 @@ vi.mock('@/api/common', () => ({
   saveConstructionLog: vi.fn(),
   getInspectionDetail: vi.fn(),
   submitInspectionResults: vi.fn(),
+  getRectifications: vi.fn(),
+  submitRectification: vi.fn(),
+  approveRectification: vi.fn(),
+  uploadRectificationPhoto: vi.fn(),
 }))
 
 import ProgressFeedback from '@/pages/site/progress-feedback.vue'
@@ -30,6 +34,7 @@ import InspectionDetail from '@/pages/site/inspection-detail.vue'
 import {
   getProjectList, saveProgressFeedback, saveInspection,
   saveConstructionLog, getInspectionDetail, submitInspectionResults,
+  getRectifications,
 } from '@/api/common'
 import { resetUniStorage, getUni } from '../setup'
 
@@ -38,6 +43,7 @@ beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
   vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [{ id: 1, projectName: 'P1' }] } })
+  vi.mocked(getRectifications).mockResolvedValue({ code: 200, data: [] })
   ;(getUni() as any).navigateBack = vi.fn()
 })
 
@@ -66,7 +72,7 @@ describe('site/progress-feedback.vue 进度反馈页', () => {
 })
 
 describe('site/quality-check.vue 质量检查页', () => {
-  it('提交 type=quality 钉住；默认结果合格', async () => {
+  it('提交 inspectionType=QUALITY 钉住；默认结果合格 hasProblem=0', async () => {
     vi.mocked(saveInspection).mockResolvedValue({ code: 200 })
     const wrapper = mount(QualityCheck)
     await flushPromises()
@@ -78,14 +84,44 @@ describe('site/quality-check.vue 质量检查页', () => {
     await flushPromises()
 
     expect(vi.mocked(saveInspection)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 1, type: 'quality', checkPart: '三层剪力墙', result: '合格',
+      projectId: 1, inspectionType: 'QUALITY', hasProblem: 0,
     }))
+    const payload = vi.mocked(saveInspection).mock.calls[0][0] as any
+    expect(payload.inspectionContent).toContain('三层剪力墙')
+    wrapper.unmount()
+  })
+
+  it('不合格检查 hasProblem=1 且返回 id 时弹出去整改入口', async () => {
+    const navigateTo = vi.fn()
+    ;(getUni() as any).navigateTo = navigateTo
+    const modalCalls: any[] = []
+    ;(getUni() as any).showModal = (options: any) => modalCalls.push(options)
+    vi.mocked(saveInspection).mockResolvedValue({ code: 200, data: 555 })
+    const wrapper = mount(QualityCheck)
+    await flushPromises()
+    vi.useFakeTimers()
+
+    wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
+    wrapper.vm.form.checkPart = '三层剪力墙'
+    wrapper.vm.form.result = '不合格'
+    wrapper.vm.form.rectification = '重新绑扎'
+    await wrapper.vm.handleSubmit()
+    await flushPromises()
+
+    expect(vi.mocked(saveInspection)).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: 1, inspectionType: 'QUALITY', hasProblem: 1, problemDescription: '重新绑扎',
+    }))
+    vi.advanceTimersByTime(900)
+    expect(modalCalls.length).toBeGreaterThan(0)
+    modalCalls[0].success({ confirm: true })
+    expect(navigateTo).toHaveBeenCalledWith(expect.objectContaining({ url: '/pages/site/inspection-detail?id=555' }))
+    vi.useRealTimers()
     wrapper.unmount()
   })
 })
 
 describe('site/safety-check.vue 安全检查页', () => {
-  it('检查区域守卫；提交 type=safety 钉住', async () => {
+  it('检查区域守卫；提交 inspectionType=SAFETY 钉住', async () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
     vi.mocked(saveInspection).mockResolvedValue({ code: 200 })
@@ -100,8 +136,10 @@ describe('site/safety-check.vue 安全检查页', () => {
     await wrapper.vm.handleSubmit()
     await flushPromises()
     expect(vi.mocked(saveInspection)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 1, type: 'safety', checkArea: '塔吊作业区',
+      projectId: 1, inspectionType: 'SAFETY', hasProblem: 0,
     }))
+    const payload = vi.mocked(saveInspection).mock.calls[0][0] as any
+    expect(payload.inspectionContent).toContain('塔吊作业区')
     wrapper.unmount()
   })
 })

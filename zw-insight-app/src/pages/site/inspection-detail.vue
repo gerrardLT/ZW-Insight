@@ -17,6 +17,12 @@
           <text class="info-label">检查项数</text>
           <text class="info-value">{{ checkItems.length }} 项</text>
         </view>
+        <view class="info-row" v-if="inspection.hasProblem === 1">
+          <text class="info-label">整改状态</text>
+          <text class="info-value" :class="'rect-' + (inspection.rectificationStatus || 'PENDING')">
+            {{ rectStatusText(inspection.rectificationStatus) }}
+          </text>
+        </view>
       </view>
 
       <!-- 无方案提示 -->
@@ -78,13 +84,64 @@
         </view>
         <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交检查结果</button>
       </view>
+
+      <!-- 整改闭环区：仅有问题的检查记录展示 -->
+      <view class="rect-card" v-if="inspection.hasProblem === 1">
+        <view class="rect-title">整改闭环</view>
+
+        <!-- 提交整改表单：仅待整改状态可提交 -->
+        <template v-if="inspection.rectificationStatus === 'PENDING'">
+          <view class="rect-form">
+            <textarea
+              v-model="rectForm.rectificationContent"
+              placeholder="请描述整改措施与结果"
+              class="rect-textarea"
+              :maxlength="500"
+            />
+            <button class="photo-btn" :loading="photoUploading" @click="takeRectPhoto">📷 上传整改照片</button>
+            <view class="rect-photo-list" v-if="rectPhotos.length">
+              <view class="rect-photo-item" v-for="(p, idx) in rectPhotos" :key="idx">
+                <image :src="p.localPath" mode="aspectFill" class="rect-thumb" @click="previewRectPhoto(idx)" />
+                <text class="rect-remove" @click="removeRectPhoto(idx)">×</text>
+              </view>
+            </view>
+            <button class="rect-submit-btn" :loading="rectSubmitting" @click="handleSubmitRectification">提交整改</button>
+          </view>
+          <view class="rect-divider"></view>
+        </template>
+
+        <!-- 整改记录列表 -->
+        <view class="rect-loading" v-if="rectLoading"><text>加载整改记录...</text></view>
+        <template v-else>
+          <view class="rect-empty" v-if="rectifications.length === 0"><text>暂无整改记录</text></view>
+          <view class="rect-record" v-for="rec in rectifications" :key="rec.id">
+            <view class="rect-record-head">
+              <text class="rect-status" :class="'st-' + rec.status">{{ rectStatusText(rec.status) }}</text>
+              <text class="rect-time">{{ rec.createdAt }}</text>
+            </view>
+            <view class="rect-record-content"><text>{{ rec.rectificationContent }}</text></view>
+            <button
+              v-if="rec.status === 'SUBMITTED'"
+              class="rect-approve-btn"
+              @click="handleApprove(rec)"
+            >复查通过</button>
+          </view>
+        </template>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { getInspectionDetail, submitInspectionResults } from '@/api/common'
+import {
+  getInspectionDetail,
+  submitInspectionResults,
+  getRectifications,
+  submitRectification,
+  approveRectification,
+  uploadRectificationPhoto
+} from '@/api/common'
 
 interface CheckItem {
   itemName: string
@@ -98,11 +155,34 @@ interface SchemeInfo {
   schemeName: string
 }
 
+interface RectPhoto {
+  localPath: string
+}
+
+const RECT_MAP: Record<string, string> = {
+  PENDING: '待整改',
+  SUBMITTED: '待复查',
+  APPROVED: '已闭环',
+  REJECTED: '已驳回'
+}
+function rectStatusText(s?: string) {
+  return s ? (RECT_MAP[s] ?? s) : '待整改'
+}
+
 const pageLoading = ref(true)
 const submitting = ref(false)
 const inspectionId = ref<number>(0)
 const schemeInfo = ref<SchemeInfo>({ schemeId: null, schemeName: '' })
 const checkItems = ref<CheckItem[]>([])
+const inspection = ref<any>({})
+
+// 整改闭环状态
+const rectifications = ref<any[]>([])
+const rectLoading = ref(false)
+const rectSubmitting = ref(false)
+const rectForm = ref({ rectificationContent: '' })
+const rectPhotos = ref<RectPhoto[]>([])
+const photoUploading = ref(false)
 
 // 统计
 const passCount = computed(() => checkItems.value.filter(i => i.result === 'PASS').length)
@@ -117,6 +197,7 @@ onMounted(() => {
 
   if (inspectionId.value) {
     loadInspectionDetail()
+    loadRectifications()
   } else {
     pageLoading.value = false
   }
@@ -125,13 +206,14 @@ onMounted(() => {
 async function loadInspectionDetail() {
   try {
     const res: any = await getInspectionDetail(inspectionId.value)
-    const inspection = res.data
+    const inspectionData = res.data
+    inspection.value = inspectionData || {}
 
     // 解析 schemeSnapshot JSON
-    if (inspection.schemeSnapshot) {
-      const snapshot = typeof inspection.schemeSnapshot === 'string'
-        ? JSON.parse(inspection.schemeSnapshot)
-        : inspection.schemeSnapshot
+    if (inspectionData.schemeSnapshot) {
+      const snapshot = typeof inspectionData.schemeSnapshot === 'string'
+        ? JSON.parse(inspectionData.schemeSnapshot)
+        : inspectionData.schemeSnapshot
 
       schemeInfo.value = {
         schemeId: snapshot.schemeId || null,
@@ -139,7 +221,7 @@ async function loadInspectionDetail() {
       }
 
       // 构建检查项列表，合并已有结果
-      const existingResults = inspection.details || []
+      const existingResults = inspectionData.details || []
       const items: CheckItem[] = (snapshot.items || []).map((item: any, idx: number) => {
         const existing = existingResults[idx]
         return {
@@ -192,10 +274,98 @@ async function doSubmit() {
     uni.showToast({ title: '提交成功', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch (e) {
-    // 错误已在 request 中统一处理
+    // 错误已在 request 层统一 toast 提示，此处不重复弹框
   } finally {
     submitting.value = false
   }
+}
+
+// ================= 整改闭环 =================
+async function loadRectifications() {
+  rectLoading.value = true
+  try {
+    const res: any = await getRectifications(inspectionId.value)
+    rectifications.value = res.data || []
+  } catch (e) {
+    // 错误已在 request 层统一 toast 提示
+    rectifications.value = []
+  } finally {
+    rectLoading.value = false
+  }
+}
+
+/** 选择整改佐证照片（本地缓存，提交整改时逐张上传） */
+function takeRectPhoto() {
+  uni.chooseImage({
+    count: 9 - rectPhotos.value.length,
+    sourceType: ['camera', 'album'],
+    success: (res) => {
+      const paths = res.tempFilePaths || []
+      paths.forEach((p) => rectPhotos.value.push({ localPath: p }))
+    },
+    fail: (err) => {
+      // 用户取消不提示；其他错误明示
+      if ((err as any)?.errMsg && !(err as any).errMsg.includes('cancel')) {
+        uni.showToast({ title: '选取照片失败', icon: 'none' })
+      }
+    }
+  })
+}
+
+function previewRectPhoto(idx: number) {
+  uni.previewImage({ urls: rectPhotos.value.map(p => p.localPath), current: idx })
+}
+
+function removeRectPhoto(idx: number) {
+  rectPhotos.value.splice(idx, 1)
+}
+
+async function handleSubmitRectification() {
+  if (!rectForm.value.rectificationContent || !rectForm.value.rectificationContent.trim()) {
+    uni.showToast({ title: '请填写整改内容', icon: 'none' })
+    return
+  }
+  rectSubmitting.value = true
+  photoUploading.value = true
+  try {
+    // 逐张上传照片，收集附件 ID（上传失败会在 uploadRectificationPhoto 内 toast 并 reject）
+    const attachmentIds: number[] = []
+    for (const photo of rectPhotos.value) {
+      const fileId = await uploadRectificationPhoto(photo.localPath, inspectionId.value)
+      attachmentIds.push(fileId)
+    }
+    await submitRectification(inspectionId.value, {
+      rectificationContent: rectForm.value.rectificationContent.trim(),
+      attachmentIds: attachmentIds.join(',')
+    })
+    uni.showToast({ title: '整改提交成功', icon: 'success' })
+    rectForm.value.rectificationContent = ''
+    rectPhotos.value = []
+    // 刷新检查详情与整改记录
+    await Promise.all([loadInspectionDetail(), loadRectifications()])
+  } catch (e) {
+    // 错误已在 request/upload 层统一 toast 提示
+  } finally {
+    rectSubmitting.value = false
+    photoUploading.value = false
+  }
+}
+
+function handleApprove(rec: any) {
+  uni.showModal({
+    title: '复查确认',
+    content: '确认该整改已复查通过并闭环？',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await approveRectification(rec.id)
+        uni.showToast({ title: '复查通过', icon: 'success' })
+        await Promise.all([loadInspectionDetail(), loadRectifications()])
+      } catch (e) {
+        // 错误已在 request 层统一 toast 提示
+      }
+    }
+  })
 }
 </script>
 
@@ -357,6 +527,138 @@ async function doSubmit() {
   background: #409eff;
   color: #fff;
   font-size: 32rpx;
+  border-radius: 8rpx;
+  border: none;
+}
+/* 整改状态文案色 */
+.rect-PENDING { color: #e6a23c; }
+.rect-SUBMITTED { color: #909399; }
+.rect-APPROVED { color: #67c23a; }
+.rect-REJECTED { color: #f56c6c; }
+/* 整改闭环卡片 */
+.rect-card {
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-top: 20rpx;
+}
+.rect-title {
+  font-size: 30rpx;
+  color: #303133;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+.rect-form {
+  padding-bottom: 8rpx;
+}
+.rect-textarea {
+  width: 100%;
+  height: 180rpx;
+  border: 1rpx solid #f0f0f0;
+  border-radius: 8rpx;
+  padding: 16rpx;
+  font-size: 26rpx;
+  box-sizing: border-box;
+  margin-bottom: 16rpx;
+}
+.photo-btn {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: #ecf5ff;
+  color: #409eff;
+  font-size: 28rpx;
+  border-radius: 8rpx;
+  border: 1rpx dashed #409eff;
+  margin-bottom: 16rpx;
+}
+.rect-photo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.rect-photo-item {
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+}
+.rect-thumb {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 8rpx;
+}
+.rect-remove {
+  position: absolute;
+  top: -12rpx;
+  right: -12rpx;
+  width: 36rpx;
+  height: 36rpx;
+  line-height: 32rpx;
+  text-align: center;
+  background: #f56c6c;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 28rpx;
+}
+.rect-submit-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #67c23a;
+  color: #fff;
+  font-size: 32rpx;
+  border-radius: 8rpx;
+  border: none;
+}
+.rect-divider {
+  height: 1rpx;
+  background: #f0f0f0;
+  margin: 24rpx 0;
+}
+.rect-loading,
+.rect-empty {
+  text-align: center;
+  padding: 40rpx 0;
+  color: #c0c4cc;
+  font-size: 26rpx;
+}
+.rect-record {
+  border: 1rpx solid #f0f0f0;
+  border-radius: 8rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+}
+.rect-record-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+.rect-status {
+  font-size: 26rpx;
+  font-weight: 500;
+}
+.rect-status.st-SUBMITTED { color: #909399; }
+.rect-status.st-APPROVED { color: #67c23a; }
+.rect-status.st-REJECTED { color: #f56c6c; }
+.rect-status.st-PENDING { color: #e6a23c; }
+.rect-time {
+  font-size: 24rpx;
+  color: #c0c4cc;
+}
+.rect-record-content {
+  font-size: 26rpx;
+  color: #606266;
+  margin-bottom: 12rpx;
+}
+.rect-approve-btn {
+  width: 100%;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #67c23a;
+  color: #fff;
+  font-size: 28rpx;
   border-radius: 8rpx;
   border: none;
 }

@@ -15,6 +15,18 @@
     <!-- 入库信息 -->
     <view class="form-section">
       <view class="form-item">
+        <text class="form-label">材料编码</text>
+        <view class="form-input code-wrap">
+          <input v-model="materialCode" placeholder="扫码或输入编码" class="code-input" />
+          <!-- #ifndef H5 -->
+          <text class="scan-btn" @click="handleScan">扫码</text>
+          <!-- #endif -->
+          <!-- #ifdef H5 -->
+          <text class="scan-btn" @click="handleCodeConfirm">手动输入编码·查询</text>
+          <!-- #endif -->
+        </view>
+      </view>
+      <view class="form-item">
         <text class="form-label">材料名称</text>
         <input v-model="form.materialName" placeholder="请输入材料名称" class="form-input" />
       </view>
@@ -74,7 +86,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { saveMaterialInbound } from '@/api/common'
+import { saveMaterialInbound, getMaterialByCode } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 
@@ -82,6 +94,7 @@ const submitting = ref(false)
 const showProjectPicker = ref(false)
 const projects = ref<any[]>([])
 const projectEmptyTip = ref('暂无项目')
+const materialCode = ref('')
 
 const form = ref({
   projectId: null as number | null,
@@ -107,6 +120,43 @@ function selectProject(p: any) {
   form.value.projectId = p.id
   form.value.projectName = p.projectName
   showProjectPicker.value = false
+}
+
+// ── 扫码/手输编码带出材料信息（P0 Req6）──
+// #ifndef H5
+function handleScan() {
+  uni.scanCode({
+    onlyFromCamera: false,
+    success: (res) => {
+      materialCode.value = res.result
+      fetchMaterialByCode(res.result)
+    },
+    fail: () => {
+      uni.showToast({ title: '扫码已取消或失败，可手动输入编码', icon: 'none' })
+    }
+  })
+}
+// #endif
+
+function handleCodeConfirm() {
+  const code = materialCode.value.trim()
+  if (!code) {
+    uni.showToast({ title: '请输入材料编码', icon: 'none' }); return
+  }
+  fetchMaterialByCode(code)
+}
+
+async function fetchMaterialByCode(code: string) {
+  try {
+    const res: any = await getMaterialByCode(code)
+    const m = res.data || {}
+    form.value.materialName = m.materialName || ''
+    form.value.specification = m.specification || ''
+    form.value.unit = m.unit || ''
+    uni.showToast({ title: '已带出材料信息', icon: 'success' })
+  } catch {
+    // 编码不存在时请求层已 toast 后端提示「材料编码不存在，请先维护材料字典」，不自动创建材料
+  }
 }
 
 function showDatePicker() {
@@ -171,6 +221,9 @@ async function handleSubmit() {
 .form-label { font-size: 28rpx; color: #303133; min-width: 160rpx; }
 .form-input { flex: 1; font-size: 28rpx; color: #303133; text-align: right; }
 .form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
+.code-wrap { display: flex; align-items: center; justify-content: flex-end; }
+.code-input { flex: 1; font-size: 28rpx; color: #303133; text-align: right; }
+.scan-btn { margin-left: 16rpx; padding: 6rpx 20rpx; background: #409eff; color: #fff; font-size: 24rpx; border-radius: 8rpx; flex-shrink: 0; }
 .placeholder { color: #c0c4cc; }
 .arrow { margin-left: 8rpx; color: #c0c4cc; font-size: 32rpx; }
 .submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: #409eff; color: #fff; font-size: 32rpx; border-radius: 8rpx; border: none; }
