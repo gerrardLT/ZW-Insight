@@ -57,6 +57,11 @@ public class BatchImportExportServiceImpl implements BatchImportExportService {
 
     @Override
     public ImportResult importData(String moduleCode, MultipartFile file, Long projectId) {
+        return importData(moduleCode, file, projectId, java.util.Collections.emptyMap());
+    }
+
+    @Override
+    public ImportResult importData(String moduleCode, MultipartFile file, Long projectId, Map<String, Object> extraParams) {
         ModuleCode module = ModuleCode.fromCode(moduleCode);
 
         if (file == null || file.isEmpty()) {
@@ -71,7 +76,8 @@ public class BatchImportExportServiceImpl implements BatchImportExportService {
         BatchModuleHandler handler = getHandler(module);
 
         try {
-            AbstractImportListener<?> listener = handler.createImportListener(projectId);
+            AbstractImportListener<?> listener = handler.createImportListener(projectId,
+                    extraParams == null ? java.util.Collections.emptyMap() : extraParams);
             Class<?> dtoClass = handler.getImportDtoClass();
 
             EasyExcel.read(file.getInputStream(), dtoClass, listener)

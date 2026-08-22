@@ -728,4 +728,69 @@ class BudgetServiceTest {
             ));
         }
     }
+
+    // =====================================================================
+    // 追加导入明细测试（P0 预算明细批量导入）
+    // =====================================================================
+
+    @Nested
+    @DisplayName("追加导入的预算明细行")
+    class AppendImportedDetailsTests {
+
+        @Test
+        @DisplayName("草稿预算追加成功 - 合计缺省按 数量×单价 计算并回写总额")
+        void appendDraftBudget_computesTotalAndWritesBack() {
+            // given
+            when(budgetMapper.selectById(1L)).thenReturn(sampleBudget);
+            BizBudgetDetail detail = new BizBudgetDetail();
+            detail.setCostCategory("MATERIAL");
+            detail.setItemName("螺纹钢");
+            detail.setBudgetQuantity(new BigDecimal("10"));
+            detail.setBudgetUnitPrice(new BigDecimal("4500"));
+            // 明细插入后汇总查询返回同一实例（此时合计已由追加逻辑补齐）
+            when(budgetDetailMapper.selectList(any(LambdaQueryWrapper.class)))
+                    .thenReturn(Collections.singletonList(detail));
+
+            // when
+            budgetService.appendImportedDetails(1L, Collections.singletonList(detail));
+
+            // then
+            verify(budgetDetailMapper).insert(argThat(d ->
+                    d.getBudgetId().equals(1L)
+                            && new BigDecimal("45000").compareTo(d.getBudgetTotalPrice()) == 0
+            ));
+            verify(budgetMapper).updateById(argThat(budget ->
+                    new BigDecimal("45000").compareTo(budget.getTotalAmount()) == 0
+            ));
+        }
+
+        @Test
+        @DisplayName("非草稿预算追加被拒绝 - 不插入明细")
+        void appendNonDraftBudget_rejected() {
+            // given
+            sampleBudget.setStatus("APPROVED");
+            when(budgetMapper.selectById(1L)).thenReturn(sampleBudget);
+
+            // when / then
+            assertThatThrownBy(() -> budgetService.appendImportedDetails(1L,
+                    Collections.singletonList(new BizBudgetDetail())))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅草稿状态的预算可追加明细");
+            verify(budgetDetailMapper, never()).insert(any(BizBudgetDetail.class));
+        }
+
+        @Test
+        @DisplayName("预算不存在 - 抛出业务异常")
+        void appendBudgetNotFound_throws() {
+            // given
+            when(budgetMapper.selectById(999L)).thenReturn(null);
+
+            // when / then
+            assertThatThrownBy(() -> budgetService.appendImportedDetails(999L,
+                    Collections.singletonList(new BizBudgetDetail())))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("预算不存在");
+            verify(budgetDetailMapper, never()).insert(any(BizBudgetDetail.class));
+        }
+    }
 }

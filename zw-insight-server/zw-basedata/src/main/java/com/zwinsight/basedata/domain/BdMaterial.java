@@ -19,6 +19,11 @@ public class BdMaterial extends BaseEntity {
     private String materialName;
 
     /**
+     * 材料编码（条码，移动端扫码出入库定位材料）
+     */
+    private String materialCode;
+
+    /**
      * 规格
      */
     private String specification;

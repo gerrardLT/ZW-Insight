@@ -2,6 +2,7 @@ package com.zwinsight.finance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizConstructionContract;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 收款登记服务
@@ -24,17 +26,25 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class PaymentReceivedService {
 
+    /** 认领状态：待认领 */
+    private static final String CLAIM_UNCLAIMED = "UNCLAIMED";
+    /** 认领状态：已认领 */
+    private static final String CLAIM_CLAIMED = "CLAIMED";
+    /** 认领状态：已核销 */
+    private static final String CLAIM_WRITTEN_OFF = "WRITTEN_OFF";
+
     private final BizPaymentReceivedMapper paymentReceivedMapper;
     private final BizProjectMapper projectMapper;
     private final BizConstructionContractMapper contractMapper;
 
     /**
-     * 分页查询
+     * 分页查询（支持按认领状态筛选）
      */
-    public PageResult<BizPaymentReceived> page(int page, int size, Long projectId) {
+    public PageResult<BizPaymentReceived> page(int page, int size, Long projectId, String claimStatus) {
         Page<BizPaymentReceived> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizPaymentReceived> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizPaymentReceived::getProjectId, projectId)
+                .eq(claimStatus != null && !claimStatus.isBlank(), BizPaymentReceived::getClaimStatus, claimStatus)
                 .orderByDesc(BizPaymentReceived::getCreatedAt);
         Page<BizPaymentReceived> result = paymentReceivedMapper.selectPage(pageParam, wrapper);
         ProjectNameFiller.fill(result.getRecords(), projectMapper,
@@ -102,6 +112,38 @@ public class PaymentReceivedService {
             throw new BusinessException("收款记录不存在");
         }
         return record;
+    }
+
+    /**
+     * 认领回款：UNCLAIMED → CLAIMED，记录认领人与认领时间。
+     * 非法流转（已认领/已核销再认领）抛 BusinessException。
+     * 存量数据无 claim_status 列默认值时按待认领处理。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void claim(Long id) {
+        BizPaymentReceived record = getById(id);
+        String current = record.getClaimStatus() == null ? CLAIM_UNCLAIMED : record.getClaimStatus();
+        if (!CLAIM_UNCLAIMED.equals(current)) {
+            throw new BusinessException("当前状态不允许认领：仅待认领的回款可以认领");
+        }
+        record.setClaimStatus(CLAIM_CLAIMED);
+        record.setClaimedBy(SecurityContextHolder.getUserId());
+        record.setClaimedAt(LocalDateTime.now());
+        paymentReceivedMapper.updateById(record);
+    }
+
+    /**
+     * 核销回款：CLAIMED → WRITTEN_OFF。
+     * 非法流转（未认领直接核销/重复核销）抛 BusinessException。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void writeOff(Long id) {
+        BizPaymentReceived record = getById(id);
+        if (!CLAIM_CLAIMED.equals(record.getClaimStatus())) {
+            throw new BusinessException("当前状态不允许核销：仅已认领的回款可以核销");
+        }
+        record.setClaimStatus(CLAIM_WRITTEN_OFF);
+        paymentReceivedMapper.updateById(record);
     }
 
     /**

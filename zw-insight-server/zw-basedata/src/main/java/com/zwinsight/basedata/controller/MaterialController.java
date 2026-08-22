@@ -54,6 +54,14 @@ public class MaterialController {
         return R.ok(materialService.getById(id));
     }
 
+    /**
+     * 按材料编码查询（移动端扫码出入库，P0 Req6；未找到返回 404 语义业务错误）
+     */
+    @GetMapping("/by-code")
+    public R<BdMaterial> getByCode(@RequestParam String code) {
+        return R.ok(materialService.getByCode(code));
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody BdMaterial material) {
         materialService.save(material);

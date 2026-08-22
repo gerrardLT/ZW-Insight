@@ -1,14 +1,10 @@
 package com.zwinsight.site.controller;
 
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizInspection;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.domain.BizInspectionDetail;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.site.service.InspectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -33,8 +29,9 @@ public class InspectionController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) String inspectionType) {
-        return R.ok(inspectionService.page(page, size, projectId, inspectionType));
+            @RequestParam(required = false) String inspectionType,
+            @RequestParam(required = false) String rectificationStatus) {
+        return R.ok(inspectionService.page(page, size, projectId, inspectionType, rectificationStatus));
     }
 
     @GetMapping("/{id}")
@@ -43,9 +40,8 @@ public class InspectionController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody BizInspection inspection) {
-        inspectionService.save(inspection);
-        return R.ok();
+    public R<Long> save(@RequestBody BizInspection inspection) {
+        return R.ok(inspectionService.save(inspection));
     }
 
     @PutMapping("/{id}/details")

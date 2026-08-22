@@ -48,6 +48,22 @@ public class MaterialService {
     }
 
     /**
+     * 按材料编码查询单个材料（移动端扫码出入库，P0 Req6）。
+     * 未找到抛 404 语义业务异常，不自动创建材料。
+     */
+    public BdMaterial getByCode(String code) {
+        if (StrUtil.isBlank(code)) {
+            throw new BusinessException("材料编码不能为空");
+        }
+        BdMaterial material = materialMapper.selectOne(new LambdaQueryWrapper<BdMaterial>()
+                .eq(BdMaterial::getMaterialCode, code.trim()).last("LIMIT 1"));
+        if (material == null) {
+            throw new BusinessException("材料编码不存在，请先维护材料字典");
+        }
+        return material;
+    }
+
+    /**
      * 新增材料
      */
     public void save(BdMaterial material) {

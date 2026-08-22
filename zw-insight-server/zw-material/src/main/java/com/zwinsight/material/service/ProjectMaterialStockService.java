@@ -139,4 +139,35 @@ public class ProjectMaterialStockService {
         fillMinStock(records);
         return records;
     }
+
+    /**
+     * 导出查询：不分页返回全部匹配库存（回填项目名与最低库存，支持预警过滤）
+     */
+    public List<BizProjectMaterialStock> listForExport(Long projectId, String materialName,
+                                                       String projectName, String warning) {
+        List<Long> nameMatchedIds = null;
+        if (StrUtil.isNotBlank(projectName)) {
+            LambdaQueryWrapper<BizProject> projectWrapper = new LambdaQueryWrapper<>();
+            projectWrapper.like(BizProject::getProjectName, projectName);
+            nameMatchedIds = projectMapper.selectList(projectWrapper).stream()
+                    .map(BizProject::getId).collect(Collectors.toList());
+            if (nameMatchedIds.isEmpty()) {
+                return Collections.emptyList();
+            }
+        }
+        LambdaQueryWrapper<BizProjectMaterialStock> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(projectId != null, BizProjectMaterialStock::getProjectId, projectId)
+                .in(nameMatchedIds != null, BizProjectMaterialStock::getProjectId, nameMatchedIds)
+                .like(StrUtil.isNotBlank(materialName), BizProjectMaterialStock::getMaterialName, materialName)
+                .orderByAsc(BizProjectMaterialStock::getMaterialName);
+        List<BizProjectMaterialStock> records = stockMapper.selectList(wrapper);
+        fillMinStock(records);
+        ProjectNameFiller.fill(records, projectMapper,
+                BizProjectMaterialStock::getProjectId, BizProjectMaterialStock::setProjectName);
+        if (StrUtil.isNotBlank(warning)) {
+            boolean wantLow = "LOW".equalsIgnoreCase(warning);
+            return records.stream().filter(s -> isLowStock(s) == wantLow).collect(Collectors.toList());
+        }
+        return records;
+    }
 }

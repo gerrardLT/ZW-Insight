@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
+
 /**
  * 批量导入导出 REST API
  */
@@ -26,18 +28,27 @@ public class BatchImportExportController {
      * 批量导入
      * <p>
      * POST /api/v1/batch/import?moduleCode=MACHINE_LEDGER&projectId=123
+     * <p>
+     * 支持额外业务参数透传（如 teamId），除 moduleCode/file/projectId 外的
+     * 表单字段均作为 extraParams 传递给模块处理器。
      *
      * @param moduleCode 模块编码
      * @param file       Excel 文件
      * @param projectId  项目ID（可选）
+     * @param allParams  全部表单参数（含额外业务参数）
      * @return 导入结果
      */
     @PostMapping("/import")
     public R<ImportResult> importData(
             @RequestParam("moduleCode") String moduleCode,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "projectId", required = false) Long projectId) {
-        ImportResult result = batchImportExportService.importData(moduleCode, file, projectId);
+            @RequestParam(value = "projectId", required = false) Long projectId,
+            @RequestParam Map<String, Object> allParams) {
+        Map<String, Object> extraParams = new java.util.HashMap<>(allParams);
+        extraParams.remove("moduleCode");
+        extraParams.remove("file");
+        extraParams.remove("projectId");
+        ImportResult result = batchImportExportService.importData(moduleCode, file, projectId, extraParams);
         if (result.isAllSuccess()) {
             return R.ok("导入成功，共导入 " + result.getSuccessRows() + " 条数据", result);
         } else {

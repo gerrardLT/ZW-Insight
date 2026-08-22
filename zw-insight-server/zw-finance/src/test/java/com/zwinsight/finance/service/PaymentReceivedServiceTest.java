@@ -1,5 +1,6 @@
 package com.zwinsight.finance.service;
 
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
@@ -349,6 +350,119 @@ class PaymentReceivedServiceTest {
             updated.setReceiveAmount(new BigDecimal("100"));
 
             assertThatThrownBy(() -> paymentReceivedService.update(updated))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("收款记录不存在");
+        }
+    }
+
+    @Nested
+    @DisplayName("回款认领/核销状态机（P0 Req4）")
+    class ClaimStateTests {
+
+        private BizPaymentReceived withClaimStatus(String claimStatus) {
+            BizPaymentReceived r = new BizPaymentReceived();
+            r.setId(1L);
+            r.setProjectId(100L);
+            r.setClaimStatus(claimStatus);
+            return r;
+        }
+
+        @Test
+        @DisplayName("认领成功：UNCLAIMED → CLAIMED，记录认领人与时间")
+        void claim_unclaimed_success() {
+            BizPaymentReceived record = withClaimStatus("UNCLAIMED");
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(record);
+            try (var sc = mockStatic(SecurityContextHolder.class)) {
+                sc.when(SecurityContextHolder::getUserId).thenReturn(88L);
+
+                paymentReceivedService.claim(1L);
+            }
+
+            assertThat(record.getClaimStatus()).isEqualTo("CLAIMED");
+            assertThat(record.getClaimedBy()).isEqualTo(88L);
+            assertThat(record.getClaimedAt()).isNotNull();
+            verify(paymentReceivedMapper).updateById(record);
+        }
+
+        @Test
+        @DisplayName("存量数据 claimStatus 为 null：按待认领处理可认领")
+        void claim_nullStatus_treatedAsUnclaimed() {
+            BizPaymentReceived record = withClaimStatus(null);
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(record);
+            try (var sc = mockStatic(SecurityContextHolder.class)) {
+                sc.when(SecurityContextHolder::getUserId).thenReturn(88L);
+
+                paymentReceivedService.claim(1L);
+            }
+
+            assertThat(record.getClaimStatus()).isEqualTo("CLAIMED");
+        }
+
+        @Test
+        @DisplayName("重复认领：CLAIMED 再认领拒绝")
+        void claim_alreadyClaimed_rejected() {
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(withClaimStatus("CLAIMED"));
+
+            assertThatThrownBy(() -> paymentReceivedService.claim(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅待认领的回款可以认领");
+            verify(paymentReceivedMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("已核销再认领：拒绝")
+        void claim_writtenOff_rejected() {
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(withClaimStatus("WRITTEN_OFF"));
+
+            assertThatThrownBy(() -> paymentReceivedService.claim(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅待认领的回款可以认领");
+            verify(paymentReceivedMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("核销成功：CLAIMED → WRITTEN_OFF")
+        void writeOff_claimed_success() {
+            BizPaymentReceived record = withClaimStatus("CLAIMED");
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(record);
+
+            paymentReceivedService.writeOff(1L);
+
+            assertThat(record.getClaimStatus()).isEqualTo("WRITTEN_OFF");
+            verify(paymentReceivedMapper).updateById(record);
+        }
+
+        @Test
+        @DisplayName("未认领直接核销：拒绝")
+        void writeOff_unclaimed_rejected() {
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(withClaimStatus("UNCLAIMED"));
+
+            assertThatThrownBy(() -> paymentReceivedService.writeOff(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅已认领的回款可以核销");
+            verify(paymentReceivedMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("重复核销：拒绝")
+        void writeOff_alreadyWrittenOff_rejected() {
+            when(paymentReceivedMapper.selectById(1L)).thenReturn(withClaimStatus("WRITTEN_OFF"));
+
+            assertThatThrownBy(() -> paymentReceivedService.writeOff(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅已认领的回款可以核销");
+            verify(paymentReceivedMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("记录不存在：认领/核销均拒绝")
+        void claimAndWriteOff_notFound_throws() {
+            when(paymentReceivedMapper.selectById(999L)).thenReturn(null);
+
+            assertThatThrownBy(() -> paymentReceivedService.claim(999L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("收款记录不存在");
+            assertThatThrownBy(() -> paymentReceivedService.writeOff(999L))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("收款记录不存在");
         }

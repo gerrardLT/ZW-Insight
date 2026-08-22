@@ -39,6 +39,20 @@ public interface BatchModuleHandler {
     AbstractImportListener<?> createImportListener(Long projectId);
 
     /**
+     * 创建导入监听器实例（携带额外业务参数，如 teamId）
+     * <p>
+     * 默认忽略额外参数委托单参方法，需要时由具体处理器覆写。
+     * </p>
+     *
+     * @param projectId   项目ID（可选）
+     * @param extraParams 额外业务参数（可选）
+     * @return 导入监听器
+     */
+    default AbstractImportListener<?> createImportListener(Long projectId, Map<String, Object> extraParams) {
+        return createImportListener(projectId);
+    }
+
+    /**
      * 查询导出数据
      *
      * @param params 查询参数

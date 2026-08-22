@@ -36,6 +36,12 @@ public class LaborRosterBatchHandler implements BatchModuleHandler {
 
     @Override
     public AbstractImportListener<?> createImportListener(Long projectId) {
+        return createImportListener(projectId, Map.of());
+    }
+
+    @Override
+    public AbstractImportListener<?> createImportListener(Long projectId, Map<String, Object> extraParams) {
+        Long teamId = parseTeamId(extraParams);
         return new LaborRosterImportListener(
                 // 唯一性校验：检查身份证号是否存在
                 idCard -> {
@@ -54,6 +60,7 @@ public class LaborRosterBatchHandler implements BatchModuleHandler {
                         entity.setPhone(StrUtil.trimToNull(dto.getPhone()));
                         entity.setWorkerType(StrUtil.trimToNull(dto.getWorkerType()));
                         entity.setProjectId(projectId);
+                        entity.setTeamId(teamId);
                         entity.setStatus(1); // 在岗
 
                         laborRosterMapper.insert(entity);
@@ -62,9 +69,35 @@ public class LaborRosterBatchHandler implements BatchModuleHandler {
         );
     }
 
+    /**
+     * 从额外参数解析班组ID（非法格式视为未指定，不静默落库错误值）
+     */
+    private Long parseTeamId(Map<String, Object> extraParams) {
+        Object value = extraParams == null ? null : extraParams.get("teamId");
+        if (value == null || StrUtil.isBlank(value.toString())) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value.toString().trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("teamId 参数格式非法: " + value);
+        }
+    }
+
     @Override
     public List<?> queryExportData(Map<String, Object> params) {
-        List<BizLaborRoster> list = laborRosterMapper.selectList(null);
+        LambdaQueryWrapper<BizLaborRoster> wrapper = new LambdaQueryWrapper<>();
+        if (params != null) {
+            Object projectId = params.get("projectId");
+            if (projectId != null && StrUtil.isNotBlank(projectId.toString())) {
+                wrapper.eq(BizLaborRoster::getProjectId, Long.valueOf(projectId.toString().trim()));
+            }
+            Object teamId = params.get("teamId");
+            if (teamId != null && StrUtil.isNotBlank(teamId.toString())) {
+                wrapper.eq(BizLaborRoster::getTeamId, Long.valueOf(teamId.toString().trim()));
+            }
+        }
+        List<BizLaborRoster> list = laborRosterMapper.selectList(wrapper);
         return list.stream().map(entity -> {
             LaborRosterExcelDTO dto = new LaborRosterExcelDTO();
             dto.setWorkerName(entity.getWorkerName());

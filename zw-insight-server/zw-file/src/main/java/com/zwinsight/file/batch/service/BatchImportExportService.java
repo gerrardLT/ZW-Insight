@@ -23,6 +23,22 @@ public interface BatchImportExportService {
     ImportResult importData(String moduleCode, MultipartFile file, Long projectId);
 
     /**
+     * 批量导入数据（携带额外业务参数）
+     * <p>
+     * 默认忽略额外参数委托三参方法，需要时由实现类覆写。
+     * </p>
+     *
+     * @param moduleCode  模块编码（如 MACHINE_LEDGER）
+     * @param file        Excel 文件
+     * @param projectId   项目ID（可选，部分模块需要）
+     * @param extraParams 额外业务参数（可选，如 teamId）
+     * @return 导入结果
+     */
+    default ImportResult importData(String moduleCode, MultipartFile file, Long projectId, Map<String, Object> extraParams) {
+        return importData(moduleCode, file, projectId);
+    }
+
+    /**
      * 发起异步导出
      *
      * @param moduleCode 模块编码

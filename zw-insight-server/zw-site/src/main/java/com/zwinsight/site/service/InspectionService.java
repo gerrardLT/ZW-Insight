@@ -32,11 +32,12 @@ public class InspectionService {
     /**
      * 分页查询
      */
-    public PageResult<BizInspection> page(int page, int size, Long projectId, String inspectionType) {
+    public PageResult<BizInspection> page(int page, int size, Long projectId, String inspectionType, String rectificationStatus) {
         Page<BizInspection> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizInspection> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizInspection::getProjectId, projectId)
                 .eq(StrUtil.isNotBlank(inspectionType), BizInspection::getInspectionType, inspectionType)
+                .eq(StrUtil.isNotBlank(rectificationStatus), BizInspection::getRectificationStatus, rectificationStatus)
                 .orderByDesc(BizInspection::getCreatedAt);
         Page<BizInspection> result = inspectionMapper.selectPage(pageParam, wrapper);
         ProjectNameFiller.fill(result.getRecords(), projectMapper,
@@ -46,14 +47,23 @@ public class InspectionService {
 
     /**
      * 新增检查记录（含明细）
+     * <p>有问题的检查自动初始化为待整改（PENDING），移动端提交后可直接进入整改闭环；
+     * PC「指派整改」assign 仅补充责任人与期限。</p>
+     *
+     * @return 新检查记录 ID
      */
     @Transactional(rollbackFor = Exception.class)
-    public void save(BizInspection inspection) {
+    public Long save(BizInspection inspection) {
         if (inspection.getHasProblem() == null) {
             inspection.setHasProblem(0);
         }
+        if (inspection.getHasProblem() == 1
+                && StrUtil.isBlank(inspection.getRectificationStatus())) {
+            inspection.setRectificationStatus("PENDING");
+        }
         inspectionMapper.insert(inspection);
         saveDetails(inspection.getId(), inspection.getDetails());
+        return inspection.getId();
     }
 
     /**

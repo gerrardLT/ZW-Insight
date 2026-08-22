@@ -8,6 +8,7 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 收款登记实体
@@ -44,4 +45,13 @@ public class BizPaymentReceived extends BaseEntity {
 
     /** 状态（DRAFT/APPROVED） */
     private String status;
+
+    /** 认领状态（UNCLAIMED待认领/CLAIMED已认领/WRITTEN_OFF已核销） */
+    private String claimStatus;
+
+    /** 认领人ID */
+    private Long claimedBy;
+
+    /** 认领时间 */
+    private LocalDateTime claimedAt;
 }

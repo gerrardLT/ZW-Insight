@@ -1,14 +1,11 @@
 package com.zwinsight.finance.controller;
 
-import com.zwinsight.common.security.RequiresPermission;
+import com.zwinsight.common.annotation.OperLog;
 import com.zwinsight.common.result.PageResult;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizPaymentReceived;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.PaymentReceivedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -28,8 +25,9 @@ public class PaymentReceivedController {
     public R<PageResult<BizPaymentReceived>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(paymentReceivedService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String claimStatus) {
+        return R.ok(paymentReceivedService.page(page, size, projectId, claimStatus));
     }
 
     @GetMapping("/{id}")
@@ -55,6 +53,28 @@ public class PaymentReceivedController {
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         paymentReceivedService.delete(id);
+        return R.ok();
+    }
+
+    /**
+     * 认领回款（UNCLAIMED → CLAIMED）
+     */
+    @PostMapping("/{id}/claim")
+    @RequiresPermission("finance:paymentreceived:claim")
+    @OperLog(module = "收款登记", operType = "UPDATE", description = "认领回款")
+    public R<Void> claim(@PathVariable Long id) {
+        paymentReceivedService.claim(id);
+        return R.ok();
+    }
+
+    /**
+     * 核销回款（CLAIMED → WRITTEN_OFF）
+     */
+    @PostMapping("/{id}/write-off")
+    @RequiresPermission("finance:paymentreceived:writeoff")
+    @OperLog(module = "收款登记", operType = "UPDATE", description = "核销回款")
+    public R<Void> writeOff(@PathVariable Long id) {
+        paymentReceivedService.writeOff(id);
         return R.ok();
     }
 }

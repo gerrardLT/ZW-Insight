@@ -455,4 +455,50 @@ class ProjectServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("项目不存在");
     }
+
+    // =====================================================================
+    // portfolio
+    // =====================================================================
+
+    private BizProject portfolioProject(String status, String contractAmount, String budgetAmount, String output) {
+        BizProject p = new BizProject();
+        p.setStatus(status);
+        p.setContractAmount(new BigDecimal(contractAmount));
+        p.setBudgetAmount(new BigDecimal(budgetAmount));
+        p.setCumulativeOutput(new BigDecimal(output));
+        return p;
+    }
+
+    @Test
+    @DisplayName("项目组合看板：状态 × 金额分布聚合")
+    void testPortfolio_aggregatesByStatus() {
+        when(projectMapper.selectList(any())).thenReturn(java.util.List.of(
+                portfolioProject("CONSTRUCTION", "100000", "90000", "30000"),
+                portfolioProject("CONSTRUCTION", "200000", "180000", "50000"),
+                portfolioProject("CLOSED", "50000", "45000", "50000")));
+
+        com.zwinsight.project.vo.ProjectPortfolioVO vo = projectService.portfolio();
+
+        assertThat(vo.getTotalProjectCount()).isEqualTo(3);
+        assertThat(vo.getTotalContractAmount()).isEqualByComparingTo("350000");
+        assertThat(vo.getStatusList()).hasSize(2);
+        // TreeMap 按状态字典序：CLOSED 在前
+        assertThat(vo.getStatusList().get(0).getStatus()).isEqualTo("CLOSED");
+        assertThat(vo.getStatusList().get(1).getStatus()).isEqualTo("CONSTRUCTION");
+        assertThat(vo.getStatusList().get(1).getCount()).isEqualTo(2);
+        assertThat(vo.getStatusList().get(1).getContractAmount()).isEqualByComparingTo("300000");
+        assertThat(vo.getStatusList().get(1).getCumulativeOutput()).isEqualByComparingTo("80000");
+    }
+
+    @Test
+    @DisplayName("项目组合看板：空项目列表返回零值")
+    void testPortfolio_empty() {
+        when(projectMapper.selectList(any())).thenReturn(java.util.Collections.emptyList());
+
+        com.zwinsight.project.vo.ProjectPortfolioVO vo = projectService.portfolio();
+
+        assertThat(vo.getTotalProjectCount()).isZero();
+        assertThat(vo.getTotalContractAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(vo.getStatusList()).isEmpty();
+    }
 }

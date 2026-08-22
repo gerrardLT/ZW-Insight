@@ -124,6 +124,34 @@ public class BudgetService {
     }
 
     /**
+     * 追加导入的预算明细行（仅草稿状态可追加；budgetTotalPrice 缺省按 数量×单价 计算，并回写预算总额）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void appendImportedDetails(Long budgetId, List<BizBudgetDetail> details) {
+        BizBudget budget = budgetMapper.selectById(budgetId);
+        if (budget == null) {
+            throw new BusinessException("预算不存在");
+        }
+        if (!"DRAFT".equals(budget.getStatus())) {
+            throw new BusinessException("仅草稿状态的预算可追加明细");
+        }
+        if (details == null || details.isEmpty()) {
+            return;
+        }
+        for (BizBudgetDetail detail : details) {
+            detail.setBudgetId(budgetId);
+            if (detail.getBudgetTotalPrice() == null) {
+                BigDecimal qty = detail.getBudgetQuantity() != null ? detail.getBudgetQuantity() : BigDecimal.ZERO;
+                BigDecimal price = detail.getBudgetUnitPrice() != null ? detail.getBudgetUnitPrice() : BigDecimal.ZERO;
+                detail.setBudgetTotalPrice(qty.multiply(price));
+            }
+            budgetDetailMapper.insert(detail);
+        }
+        budget.setTotalAmount(calculateTotalAmount(budgetId));
+        budgetMapper.updateById(budget);
+    }
+
+    /**
      * 保存预算（校验每项目仅1条ORIGINAL）
      */
     @Transactional(rollbackFor = Exception.class)

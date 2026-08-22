@@ -185,4 +185,30 @@ class RectificationServiceTest {
         assertThat(rectification.getStatus()).isEqualTo("APPROVED");
         verify(inspectionMapper, org.mockito.Mockito.never()).updateById(org.mockito.ArgumentMatchers.any(BizInspection.class));
     }
+
+    @Test
+    @DisplayName("查询整改记录：按检查ID过滤并倒序返回")
+    void listByInspection_returnsRecords() {
+        BizRectification r1 = new BizRectification();
+        r1.setInspectionId(1L);
+        r1.setStatus("APPROVED");
+        when(rectificationMapper.selectList(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.List.of(r1));
+
+        java.util.List<BizRectification> result = rectificationService.listByInspection(1L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getStatus()).isEqualTo("APPROVED");
+    }
+
+    @Test
+    @DisplayName("查询整改记录：无记录返回空列表而非 null")
+    void listByInspection_emptyWhenNone() {
+        when(rectificationMapper.selectList(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.List.of());
+
+        java.util.List<BizRectification> result = rectificationService.listByInspection(999L);
+
+        assertThat(result).isEmpty();
+    }
 }

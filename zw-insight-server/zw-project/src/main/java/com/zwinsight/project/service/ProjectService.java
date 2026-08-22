@@ -12,14 +12,19 @@ import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.domain.dto.ProjectCreateRequest;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.vo.ProjectPortfolioVO;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.function.Function;
 
 /**
  * 项目服务
@@ -350,5 +355,43 @@ public class ProjectService {
         if (!passed) {
             failedReasons.add(name + ": " + message);
         }
+    }
+
+    /**
+     * 项目组合看板（状态 × 金额分布）
+     * <p>dashboard company-overview 仅提供状态数量分布，此处补充金额维度。</p>
+     */
+    public ProjectPortfolioVO portfolio() {
+        List<BizProject> projects = projectMapper.selectList(new LambdaQueryWrapper<>());
+
+        ProjectPortfolioVO vo = new ProjectPortfolioVO();
+        vo.setTotalProjectCount(projects.size());
+        vo.setTotalContractAmount(sumAmount(projects, BizProject::getContractAmount));
+        vo.setTotalBudgetAmount(sumAmount(projects, BizProject::getBudgetAmount));
+        vo.setTotalCumulativeOutput(sumAmount(projects, BizProject::getCumulativeOutput));
+
+        // 按状态分组（TreeMap 保证状态枚举顺序输出）
+        Map<String, List<BizProject>> byStatus = new TreeMap<>();
+        for (BizProject project : projects) {
+            String status = project.getStatus() != null ? project.getStatus() : "UNKNOWN";
+            byStatus.computeIfAbsent(status, k -> new ArrayList<>()).add(project);
+        }
+        List<ProjectPortfolioVO.StatusItem> statusList = new ArrayList<>();
+        for (Map.Entry<String, List<BizProject>> entry : byStatus.entrySet()) {
+            ProjectPortfolioVO.StatusItem item = new ProjectPortfolioVO.StatusItem();
+            item.setStatus(entry.getKey());
+            item.setCount(entry.getValue().size());
+            item.setContractAmount(sumAmount(entry.getValue(), BizProject::getContractAmount));
+            item.setBudgetAmount(sumAmount(entry.getValue(), BizProject::getBudgetAmount));
+            item.setCumulativeOutput(sumAmount(entry.getValue(), BizProject::getCumulativeOutput));
+            statusList.add(item);
+        }
+        vo.setStatusList(statusList);
+        return vo;
+    }
+
+    private BigDecimal sumAmount(List<BizProject> list, Function<BizProject, BigDecimal> getter) {
+        return list.stream().map(getter).filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

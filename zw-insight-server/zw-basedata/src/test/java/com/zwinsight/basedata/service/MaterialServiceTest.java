@@ -93,4 +93,37 @@ class MaterialServiceTest {
 
         verify(materialMapper).deleteById(1L);
     }
+
+    @Test
+    @DisplayName("按编码查询：存在返回材料（P0 Req6）")
+    void testGetByCode_found() {
+        BdMaterial material = new BdMaterial();
+        material.setId(1L);
+        material.setMaterialCode("M001");
+        material.setMaterialName("钢筋");
+        when(materialMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(material);
+
+        BdMaterial result = materialService.getByCode(" M001 ");
+
+        assertThat(result.getMaterialName()).isEqualTo("钢筋");
+    }
+
+    @Test
+    @DisplayName("按编码查询：不存在抛业务异常（404 语义，不自动创建）")
+    void testGetByCode_notFound() {
+        when(materialMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        assertThatThrownBy(() -> materialService.getByCode("NO_SUCH_CODE"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("材料编码不存在");
+    }
+
+    @Test
+    @DisplayName("按编码查询：空编码抛业务异常")
+    void testGetByCode_blank() {
+        assertThatThrownBy(() -> materialService.getByCode("  "))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("材料编码不能为空");
+        verify(materialMapper, never()).selectOne(any(LambdaQueryWrapper.class));
+    }
 }

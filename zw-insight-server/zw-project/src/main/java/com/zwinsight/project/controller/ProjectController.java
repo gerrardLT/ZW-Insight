@@ -9,6 +9,7 @@ import com.zwinsight.project.domain.BizProjectMember;
 import com.zwinsight.project.domain.dto.ProjectCreateRequest;
 import com.zwinsight.project.service.ProjectMemberService;
 import com.zwinsight.project.service.ProjectService;
+import com.zwinsight.project.vo.ProjectPortfolioVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -50,6 +51,14 @@ public class ProjectController {
     @GetMapping("/{id}")
     public R<BizProject> getById(@PathVariable Long id) {
         return R.ok(projectService.getById(id));
+    }
+
+    /**
+     * 项目组合看板（状态 × 金额分布）
+     */
+    @GetMapping("/portfolio")
+    public R<ProjectPortfolioVO> portfolio() {
+        return R.ok(projectService.portfolio());
     }
 
     @PostMapping

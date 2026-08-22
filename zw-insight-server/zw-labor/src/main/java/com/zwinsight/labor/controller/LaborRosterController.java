@@ -31,8 +31,9 @@ public class LaborRosterController {
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) String workerName,
             @RequestParam(required = false) String teamName,
-            @RequestParam(required = false) String workType) {
-        return R.ok(rosterService.page(page, size, projectId, teamId, workerName, teamName, workType));
+            @RequestParam(required = false) String workType,
+            @RequestParam(required = false) String entryStatus) {
+        return R.ok(rosterService.page(page, size, projectId, teamId, workerName, teamName, workType, entryStatus));
     }
 
     @PostMapping
@@ -51,6 +52,24 @@ public class LaborRosterController {
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         rosterService.delete(id);
+        return R.ok();
+    }
+
+    /**
+     * 登记进场（写进场日期与在岗状态；已在岗拒绝）
+     */
+    @PostMapping("/{id}/entry")
+    public R<Void> entry(@PathVariable Long id) {
+        rosterService.entry(id);
+        return R.ok();
+    }
+
+    /**
+     * 登记退场（写退场日期与离岗状态；已离岗拒绝）
+     */
+    @PostMapping("/{id}/exit")
+    public R<Void> exit(@PathVariable Long id) {
+        rosterService.exit(id);
         return R.ok();
     }
 

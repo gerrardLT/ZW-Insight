@@ -1,10 +1,18 @@
 package com.zwinsight.site.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.result.PageResult;
+import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.site.domain.BizInspection;
 import com.zwinsight.site.domain.BizInspectionDetail;
 import com.zwinsight.site.mapper.BizInspectionDetailMapper;
 import com.zwinsight.site.mapper.BizInspectionMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,8 +40,18 @@ class InspectionServiceTest {
     @Mock
     private BizInspectionDetailMapper inspectionDetailMapper;
 
+    @Mock
+    private BizProjectMapper projectMapper;
+
     @InjectMocks
     private InspectionService inspectionService;
+
+    @BeforeAll
+    static void initTableInfo() {
+        // 纯单元测试环境无 MyBatis 容器，需预初始化 Lambda 列缓存
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), BizInspection.class);
+    }
 
     @Test
     @DisplayName("新增：默认无问题并持久化明细")
@@ -48,9 +66,11 @@ class InspectionServiceTest {
         d2.setCheckResult("PASS");
         inspection.setDetails(List.of(d1, d2));
 
-        inspectionService.save(inspection);
+        Long newId = inspectionService.save(inspection);
 
         assertThat(inspection.getHasProblem()).isEqualTo(0);
+        assertThat(inspection.getRectificationStatus()).isNull();
+        assertThat(newId).isEqualTo(inspection.getId());
         verify(inspectionMapper).insert(inspection);
 
         ArgumentCaptor<BizInspectionDetail> captor = ArgumentCaptor.forClass(BizInspectionDetail.class);
@@ -73,6 +93,33 @@ class InspectionServiceTest {
 
         verify(inspectionMapper).insert(inspection);
         verify(inspectionDetailMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("新增：有问题的检查自动初始化为待整改")
+    void testSave_hasProblem_setsPendingStatus() {
+        BizInspection inspection = new BizInspection();
+        inspection.setProjectId(100L);
+        inspection.setHasProblem(1);
+        inspection.setProblemDescription("临边防护缺失");
+
+        inspectionService.save(inspection);
+
+        assertThat(inspection.getRectificationStatus()).isEqualTo("PENDING");
+        verify(inspectionMapper).insert(inspection);
+    }
+
+    @Test
+    @DisplayName("新增：已指定整改状态时不覆盖")
+    void testSave_hasProblem_keepsExplicitStatus() {
+        BizInspection inspection = new BizInspection();
+        inspection.setProjectId(100L);
+        inspection.setHasProblem(1);
+        inspection.setRectificationStatus("APPROVED");
+
+        inspectionService.save(inspection);
+
+        assertThat(inspection.getRectificationStatus()).isEqualTo("APPROVED");
     }
 
     @Test
@@ -199,5 +246,40 @@ class InspectionServiceTest {
         assertThatThrownBy(() -> inspectionService.assignRectification(999L, 200L, java.time.LocalDate.now()))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("检查记录不存在");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("分页：传入整改状态时查询条件包含 rectification_status")
+    void testPage_withRectificationStatusFilter() {
+        Page<BizInspection> pageResult = new Page<>(1, 10);
+        pageResult.setRecords(List.of());
+        pageResult.setTotal(0);
+        when(inspectionMapper.selectPage(any(), any())).thenReturn(pageResult);
+
+        PageResult<BizInspection> result = inspectionService.page(1, 10, null, null, "PENDING");
+
+        assertThat(result).isNotNull();
+        ArgumentCaptor<LambdaQueryWrapper<BizInspection>> captor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(inspectionMapper).selectPage(any(), captor.capture());
+        assertThat(captor.getValue().getSqlSegment()).contains("rectification_status");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("分页：未传整改状态时查询条件不含 rectification_status")
+    void testPage_withoutRectificationStatusFilter() {
+        Page<BizInspection> pageResult = new Page<>(1, 10);
+        pageResult.setRecords(List.of());
+        pageResult.setTotal(0);
+        when(inspectionMapper.selectPage(any(), any())).thenReturn(pageResult);
+
+        inspectionService.page(1, 10, null, null, null);
+
+        ArgumentCaptor<LambdaQueryWrapper<BizInspection>> captor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(inspectionMapper).selectPage(any(), captor.capture());
+        assertThat(captor.getValue().getSqlSegment()).doesNotContain("rectification_status");
     }
 }

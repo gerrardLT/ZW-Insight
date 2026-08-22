@@ -5,12 +5,14 @@ import com.zwinsight.site.domain.BizInspection;
 import com.zwinsight.site.domain.BizRectification;
 import com.zwinsight.site.mapper.BizInspectionMapper;
 import com.zwinsight.site.mapper.BizRectificationMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 整改服务
@@ -27,6 +29,17 @@ public class RectificationService {
     private final BizRectificationMapper rectificationMapper;
     private final BizInspectionMapper inspectionMapper;
     private final ReminderDeduplicationService reminderDeduplicationService;
+
+    /**
+     * 查询某条检查记录下的整改记录（按提交时间倒序，无记录返回空列表）
+     */
+    public List<BizRectification> listByInspection(Long inspectionId) {
+        return rectificationMapper.selectList(
+                new LambdaQueryWrapper<BizRectification>()
+                        .eq(BizRectification::getInspectionId, inspectionId)
+                        .orderByDesc(BizRectification::getCreatedAt)
+        );
+    }
 
     /**
      * 提交整改结果

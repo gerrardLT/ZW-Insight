@@ -25,6 +25,9 @@ public class BizRectification extends BaseEntity {
     /** 状态（SUBMITTED/APPROVED/REJECTED） */
     private String status;
 
+    /** 附件ID列表（逗号分隔，整改佐证照片等） */
+    private String attachmentIds;
+
     /** 流程实例ID */
     private String workflowInstanceId;
 }
