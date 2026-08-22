@@ -34,7 +34,7 @@ import InspectionDetail from '@/pages/site/inspection-detail.vue'
 import {
   getProjectList, saveProgressFeedback, saveInspection,
   saveConstructionLog, getInspectionDetail, submitInspectionResults,
-  getRectifications,
+  getRectifications, submitRectification, approveRectification, uploadRectificationPhoto,
 } from '@/api/common'
 import { resetUniStorage, getUni } from '../setup'
 
@@ -238,6 +238,149 @@ describe('site/inspection-detail.vue 检查详情页', () => {
         { index: 1, itemName: '项B', result: 'UNCHECKED' },
       ],
     })
+    wrapper.unmount()
+  })
+
+  // ── P0 差距收口：整改闭环（提交/照片/复查/失败分支）──
+  function mountPendingRectPage(id: number) {
+    ;(globalThis as any).getCurrentPages = () => [{ $page: { options: { id: String(id) } } }]
+    vi.mocked(getInspectionDetail).mockResolvedValue({
+      code: 200,
+      data: {
+        hasProblem: 1,
+        rectificationStatus: 'PENDING',
+        schemeSnapshot: JSON.stringify({ schemeId: 9, schemeName: 'S', items: [{ itemName: '项A' }] }),
+        details: [],
+      },
+    })
+    return mount(InspectionDetail)
+  }
+
+  it('整改提交：空内容拦截；照片逐张上传后载荷带 attachmentIds 并刷新', async () => {
+    const wrapper = mountPendingRectPage(80)
+    await flushPromises()
+    const toast = vi.fn()
+    ;(getUni() as any).showToast = toast
+
+    // 空内容拦截
+    await wrapper.vm.handleSubmitRectification()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请填写整改内容' }))
+    expect(vi.mocked(submitRectification)).not.toHaveBeenCalled()
+
+    // 选照片（chooseImage success）+ 预览 + 删除
+    ;(getUni() as any).chooseImage = (opts: any) => opts.success({ tempFilePaths: ['file://r1.jpg', 'file://r2.jpg'] })
+    ;(getUni() as any).previewImage = vi.fn()
+    wrapper.vm.takeRectPhoto()
+    expect(wrapper.vm.rectPhotos).toHaveLength(2)
+    wrapper.vm.previewRectPhoto(0)
+    expect((getUni() as any).previewImage).toHaveBeenCalledWith(expect.objectContaining({ current: 0 }))
+    wrapper.vm.removeRectPhoto(1)
+    expect(wrapper.vm.rectPhotos).toHaveLength(1)
+
+    // 提交：逐张上传收集附件 ID
+    vi.mocked(uploadRectificationPhoto).mockResolvedValue(321 as any)
+    vi.mocked(submitRectification).mockResolvedValue({ code: 200 })
+    wrapper.vm.rectForm.rectificationContent = ' 已重新绑扎 '
+    await wrapper.vm.handleSubmitRectification()
+    await flushPromises()
+
+    expect(vi.mocked(uploadRectificationPhoto)).toHaveBeenCalledWith('file://r1.jpg', 80)
+    expect(vi.mocked(submitRectification)).toHaveBeenCalledWith(80, {
+      rectificationContent: '已重新绑扎',
+      attachmentIds: '321',
+    })
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '整改提交成功' }))
+    expect(wrapper.vm.rectForm.rectificationContent).toBe('')
+    expect(wrapper.vm.rectPhotos).toHaveLength(0)
+    wrapper.unmount()
+  })
+
+  it('选照取消不提示、选照失败明示；上传失败不静默提交', async () => {
+    const wrapper = mountPendingRectPage(81)
+    await flushPromises()
+    const toast = vi.fn()
+    ;(getUni() as any).showToast = toast
+
+    // 用户取消：不 toast
+    ;(getUni() as any).chooseImage = (opts: any) => opts.fail({ errMsg: 'chooseImage:fail cancel' })
+    wrapper.vm.takeRectPhoto()
+    expect(toast).not.toHaveBeenCalled()
+
+    // 其他错误：明示
+    ;(getUni() as any).chooseImage = (opts: any) => opts.fail({ errMsg: 'chooseImage:fail auth deny' })
+    wrapper.vm.takeRectPhoto()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '选取照片失败' }))
+
+    // 上传失败 → 不提交整改（upload 层已 toast）
+    ;(getUni() as any).chooseImage = (opts: any) => opts.success({ tempFilePaths: ['file://x.jpg'] })
+    wrapper.vm.takeRectPhoto()
+    vi.mocked(uploadRectificationPhoto).mockRejectedValue(new Error('上传失败') as any)
+    wrapper.vm.rectForm.rectificationContent = '内容'
+    await wrapper.vm.handleSubmitRectification()
+    await flushPromises()
+    expect(vi.mocked(submitRectification)).not.toHaveBeenCalled()
+    expect(wrapper.vm.rectSubmitting).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('复查通过：确认框取消不提交；确认后 approveRectification 并刷新', async () => {
+    ;(globalThis as any).getCurrentPages = () => [{ $page: { options: { id: '82' } } }]
+    vi.mocked(getInspectionDetail).mockResolvedValue({
+      code: 200,
+      data: { hasProblem: 1, rectificationStatus: 'SUBMITTED', schemeSnapshot: null, details: [] },
+    })
+    vi.mocked(getRectifications).mockResolvedValue({
+      code: 200,
+      data: [{ id: 901, status: 'SUBMITTED', rectificationContent: '已整改', createdAt: '2026-08-22' }],
+    })
+    vi.mocked(approveRectification).mockResolvedValue({ code: 200 })
+    const modalCalls: any[] = []
+    ;(getUni() as any).showModal = (options: any) => modalCalls.push(options)
+
+    const wrapper = mount(InspectionDetail)
+    await flushPromises()
+    expect(wrapper.vm.rectifications).toHaveLength(1)
+    expect(wrapper.vm.rectStatusText('SUBMITTED')).toBe('待复查')
+    expect(wrapper.vm.rectStatusText(undefined)).toBe('待整改')
+
+    // 取消确认 → 不调 approve
+    wrapper.vm.handleApprove({ id: 901 })
+    expect(modalCalls).toHaveLength(1)
+    modalCalls[0].success({ confirm: false })
+    await flushPromises()
+    expect(vi.mocked(approveRectification)).not.toHaveBeenCalled()
+
+    // 确认 → approve 并刷新详情与记录
+    wrapper.vm.handleApprove({ id: 901 })
+    modalCalls[1].success({ confirm: true })
+    await flushPromises()
+    expect(vi.mocked(approveRectification)).toHaveBeenCalledWith(901)
+    wrapper.unmount()
+  })
+
+  it('详情加载失败 toast 提示；整改记录加载失败回落空列表（不静默不卡 loading）', async () => {
+    ;(globalThis as any).getCurrentPages = () => [{ $page: { options: { id: '83' } } }]
+    const toast = vi.fn()
+    ;(getUni() as any).showToast = toast
+    vi.mocked(getInspectionDetail).mockRejectedValue(new Error('服务异常'))
+    vi.mocked(getRectifications).mockRejectedValue(new Error('服务异常'))
+
+    const wrapper = mount(InspectionDetail)
+    await flushPromises()
+
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '加载检查详情失败' }))
+    expect(wrapper.vm.pageLoading).toBe(false)
+    expect(wrapper.vm.rectifications).toHaveLength(0)
+    expect(wrapper.vm.rectLoading).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('无 id 参数不加载直接结束 loading', async () => {
+    ;(globalThis as any).getCurrentPages = () => [{ $page: { options: {} } }]
+    const wrapper = mount(InspectionDetail)
+    await flushPromises()
+    expect(vi.mocked(getInspectionDetail)).not.toHaveBeenCalled()
+    expect(wrapper.vm.pageLoading).toBe(false)
     wrapper.unmount()
   })
 })

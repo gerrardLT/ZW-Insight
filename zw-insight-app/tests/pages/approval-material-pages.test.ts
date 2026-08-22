@@ -287,6 +287,30 @@ describe('material/inbound.vue 材料入库页', () => {
     expect(vi.mocked(saveMaterialInbound)).not.toHaveBeenCalled()
     wrapper.unmount()
   })
+
+  it('P0 Req6 扫码成功自动查询带出材料；扫码失败提示可手输', async () => {
+    vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [] } })
+    vi.mocked(getMaterialByCode).mockResolvedValue({ code: 200, data: { materialName: '混凝土', specification: 'C30', unit: 'm³' } })
+    const toast = vi.fn()
+    ;(getUni() as any).showToast = toast
+    const wrapper = mount(InboundPage)
+    await flushPromises()
+
+    // 扫码成功 → 自动填充编码并查询带出材料信息
+    ;(getUni() as any).scanCode = (opts: any) => opts.success({ result: 'M100' })
+    wrapper.vm.handleScan()
+    await flushPromises()
+    expect(wrapper.vm.materialCode).toBe('M100')
+    expect(vi.mocked(getMaterialByCode)).toHaveBeenCalledWith('M100')
+    expect(wrapper.vm.form.materialName).toBe('混凝土')
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '已带出材料信息' }))
+
+    // 扫码取消/失败 → 明示可手输，不阻断流程
+    ;(getUni() as any).scanCode = (opts: any) => opts.fail({ errMsg: 'scanCode:fail cancel' })
+    wrapper.vm.handleScan()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '扫码已取消或失败，可手动输入编码' }))
+    wrapper.unmount()
+  })
 })
 
 describe('material/outbound.vue 材料出库页', () => {
