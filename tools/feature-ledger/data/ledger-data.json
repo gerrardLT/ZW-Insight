@@ -1,6 +1,6 @@
 {
   "signalVersion": 3,
-  "generatedAt": "2026-08-22T05:31:05.780Z",
+  "generatedAt": "2026-08-22T15:44:29.774Z",
   "warnings": [
     "清单差异: views 有文件但无路由: zw-insight-web/src/views/project/components/ProjectMember.vue",
     "PC 功能页数 105 与基准 104 不符（前端路由可能已增删，属正常演进，请复核清单差异）"
@@ -218,28 +218,29 @@
       "title": "预算编制",
       "signals": {
         "query": {
-          "count": 11,
+          "count": 13,
           "evidence": [
             "zw-insight-web/src/views/budget/index.vue:6 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/budget/index.vue:66 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/budget/index.vue:92 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/budget/index.vue:83 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/budget/index.vue:109 [筛选控件(下拉)]",
             "zw-insight-web/src/views/budget/index.vue:7 [查询区输入框]",
-            "zw-insight-web/src/views/budget/index.vue:52 [查询区输入框]"
+            "zw-insight-web/src/views/budget/index.vue:53 [查询区输入框]"
           ]
         },
         "state": {
-          "count": 3,
+          "count": 4,
           "evidence": [
             "zw-insight-web/src/views/budget/index.vue:44 [状态门禁(按钮)]",
             "zw-insight-web/src/views/budget/index.vue:45 [状态门禁(按钮)]",
+            "zw-insight-web/src/views/budget/index.vue:46 [状态门禁(按钮)]",
             "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/BudgetController.java:53 [流转端点(submit/approve/withdraw/reject)]"
           ]
         },
         "error": {
           "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/budget/index.vue:285 [错误提示分支]",
-            "zw-insight-web/src/views/budget/index.vue:292 [错误提示分支]"
+            "zw-insight-web/src/views/budget/index.vue:315 [错误提示分支]",
+            "zw-insight-web/src/views/budget/index.vue:322 [错误提示分支]"
           ]
         },
         "permission": {
@@ -254,14 +255,14 @@
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 309,
+      "lineCount": 370,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
       "ruleHits": {
         "筛选控件(下拉)": 3,
-        "查询区输入框": 6,
-        "状态门禁(按钮)": 2,
+        "查询区输入框": 8,
+        "状态门禁(按钮)": 3,
         "错误提示分支": 2,
         "可选查询参数": 2,
         "流转端点(submit/approve/withdraw/reject)": 1,
@@ -269,11 +270,11 @@
       },
       "levelFinal": 3,
       "gapNotes": {
-        "efficiency": "无批量导入/导出：预算明细 Excel 导入是行业标配（广联达/新中大均支持）",
+        "efficiency": "无预算明细 Excel 批量导入（后端无 BUDGET 导入 Handler）",
         "audit": "无变更记录追溯：预算调整历史不可查",
-        "value": "无预算执行率/偏差分析看板"
+        "value": "执行率/偏差面板缺口为前端断线：GET /v1/dashboard/budget-execution 端点已就绪但预算页未引用"
       },
-      "benchmarkNote": "行业产品预算模块普遍含：多版本对比、Excel 明细导入、执行偏差预警——本页仅有编制+提交审批",
+      "benchmarkNote": "预算执行端点已存在待接线；明细 Excel 导入与调整追溯为真实新建项",
       "roi": {
         "impact": 5,
         "effort": 3,
@@ -447,31 +448,37 @@
       "pageFile": "zw-insight-web/src/views/contract/index.vue",
       "title": "施工合同",
       "signals": {
+        "efficiency": {
+          "count": 1,
+          "evidence": [
+            "zw-insight-web/src/views/contract/index.vue:43 [Excel导入]"
+          ]
+        },
         "query": {
-          "count": 11,
+          "count": 15,
           "evidence": [
             "zw-insight-web/src/views/contract/index.vue:7 [筛选控件(下拉)]",
             "zw-insight-web/src/views/contract/index.vue:20 [筛选控件(下拉)]",
             "zw-insight-web/src/views/contract/index.vue:8 [查询区输入框]",
             "zw-insight-web/src/views/contract/index.vue:20 [查询区输入框]",
-            "zw-insight-web/src/views/contract/index.vue:81 [查询区输入框]"
+            "zw-insight-web/src/views/contract/index.vue:83 [查询区输入框]"
           ]
         },
         "state": {
-          "count": 11,
+          "count": 12,
           "evidence": [
-            "zw-insight-web/src/views/contract/index.vue:56 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/index.vue:57 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/index.vue:115 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/index.vue:123 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/index.vue:124 [状态渲染映射]"
+            "zw-insight-web/src/views/contract/index.vue:58 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/index.vue:59 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/index.vue:146 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/index.vue:154 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/index.vue:155 [状态渲染映射]"
           ]
         },
         "error": {
           "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/contract/index.vue:177 [错误提示分支]",
-            "zw-insight-web/src/views/contract/index.vue:184 [错误提示分支]"
+            "zw-insight-web/src/views/contract/index.vue:210 [错误提示分支]",
+            "zw-insight-web/src/views/contract/index.vue:217 [错误提示分支]"
           ]
         },
         "audit": {
@@ -495,14 +502,15 @@
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 209,
+      "lineCount": 274,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
       "ruleHits": {
+        "Excel导入": 1,
         "筛选控件(下拉)": 2,
-        "查询区输入框": 7,
-        "状态渲染映射": 7,
+        "查询区输入框": 11,
+        "状态渲染映射": 8,
         "状态门禁(按钮)": 3,
         "错误提示分支": 2,
         "可选查询参数": 2,
@@ -532,30 +540,30 @@
       "title": "产值上报",
       "signals": {
         "query": {
-          "count": 23,
+          "count": 26,
           "evidence": [
             "zw-insight-web/src/views/contract/output-report.vue:10 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/contract/output-report.vue:65 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/contract/output-report.vue:70 [筛选控件(日期)]",
-            "zw-insight-web/src/views/contract/output-report.vue:73 [筛选控件(日期)]",
+            "zw-insight-web/src/views/contract/output-report.vue:76 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/contract/output-report.vue:81 [筛选控件(日期)]",
+            "zw-insight-web/src/views/contract/output-report.vue:84 [筛选控件(日期)]",
             "zw-insight-web/src/views/contract/output-report.vue:7 [查询区输入框]"
           ]
         },
         "state": {
           "count": 10,
           "evidence": [
-            "zw-insight-web/src/views/contract/output-report.vue:35 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/output-report.vue:334 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/output-report.vue:340 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/output-report.vue:341 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/output-report.vue:343 [状态渲染映射]"
+            "zw-insight-web/src/views/contract/output-report.vue:46 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/output-report.vue:388 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/output-report.vue:394 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/output-report.vue:395 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/output-report.vue:397 [状态渲染映射]"
           ]
         },
         "error": {
           "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/contract/output-report.vue:200 [错误提示分支]",
-            "zw-insight-web/src/views/contract/output-report.vue:207 [错误提示分支]"
+            "zw-insight-web/src/views/contract/output-report.vue:224 [错误提示分支]",
+            "zw-insight-web/src/views/contract/output-report.vue:231 [错误提示分支]"
           ]
         },
         "permission": {
@@ -579,14 +587,14 @@
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 377,
+      "lineCount": 431,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×2（L3 协同流转）"
       ],
       "ruleHits": {
         "筛选控件(下拉)": 2,
         "筛选控件(日期)": 2,
-        "查询区输入框": 15,
+        "查询区输入框": 18,
         "状态渲染映射": 6,
         "状态门禁(按钮)": 2,
         "错误提示分支": 2,
@@ -629,19 +637,19 @@
         "query": {
           "count": 4,
           "evidence": [
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:35 [可选查询参数]",
             "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:36 [可选查询参数]",
             "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:37 [可选查询参数]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:46 [可选查询参数]"
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:38 [可选查询参数]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:47 [可选查询参数]"
           ]
         },
         "audit": {
           "count": 4,
           "evidence": [
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:57 [操作日志注解]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:65 [操作日志注解]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:73 [操作日志注解]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:81 [操作日志注解]"
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:66 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:74 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:82 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:90 [操作日志注解]"
           ]
         }
       },
@@ -684,24 +692,24 @@
             "zw-insight-web/src/views/project/form.vue:43 [筛选控件(下拉)]",
             "zw-insight-web/src/views/project/form.vue:62 [筛选控件(下拉)]",
             "zw-insight-web/src/views/project/form.vue:78 [筛选控件(下拉)]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:35 [可选查询参数]"
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:36 [可选查询参数]"
           ]
         },
         "state": {
           "count": 3,
           "evidence": [
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:87 [流转端点(submit/approve/withdraw/reject)]",
             "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:96 [流转端点(submit/approve/withdraw/reject)]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:105 [流转端点(submit/approve/withdraw/reject)]"
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:105 [流转端点(submit/approve/withdraw/reject)]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:114 [流转端点(submit/approve/withdraw/reject)]"
           ]
         },
         "audit": {
           "count": 4,
           "evidence": [
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:57 [操作日志注解]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:65 [操作日志注解]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:73 [操作日志注解]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:81 [操作日志注解]"
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:66 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:74 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:82 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:90 [操作日志注解]"
           ]
         }
       },
@@ -737,6 +745,12 @@
       "pageFile": "zw-insight-web/src/views/project/index.vue",
       "title": "项目报备",
       "signals": {
+        "efficiency": {
+          "count": 1,
+          "evidence": [
+            "zw-insight-web/src/views/project/index.vue:50 [Excel导入]"
+          ]
+        },
         "query": {
           "count": 13,
           "evidence": [
@@ -744,47 +758,48 @@
             "zw-insight-web/src/views/project/index.vue:7 [查询区输入框]",
             "zw-insight-web/src/views/project/index.vue:10 [查询区输入框]",
             "zw-insight-web/src/views/project/index.vue:22 [查询区输入框]",
-            "zw-insight-web/src/views/project/index.vue:72 [查询区输入框]"
+            "zw-insight-web/src/views/project/index.vue:82 [查询区输入框]"
           ]
         },
         "state": {
-          "count": 14,
+          "count": 15,
           "evidence": [
-            "zw-insight-web/src/views/project/index.vue:52 [状态渲染映射]",
-            "zw-insight-web/src/views/project/index.vue:53 [状态渲染映射]",
-            "zw-insight-web/src/views/project/index.vue:104 [状态渲染映射]",
-            "zw-insight-web/src/views/project/index.vue:115 [状态渲染映射]",
-            "zw-insight-web/src/views/project/index.vue:116 [状态渲染映射]"
+            "zw-insight-web/src/views/project/index.vue:62 [状态渲染映射]",
+            "zw-insight-web/src/views/project/index.vue:63 [状态渲染映射]",
+            "zw-insight-web/src/views/project/index.vue:120 [状态渲染映射]",
+            "zw-insight-web/src/views/project/index.vue:131 [状态渲染映射]",
+            "zw-insight-web/src/views/project/index.vue:132 [状态渲染映射]"
           ]
         },
         "error": {
           "count": 3,
           "evidence": [
-            "zw-insight-web/src/views/project/index.vue:157 [错误提示分支]",
-            "zw-insight-web/src/views/project/index.vue:164 [错误提示分支]",
-            "zw-insight-web/src/views/project/index.vue:179 [错误提示分支]"
+            "zw-insight-web/src/views/project/index.vue:173 [错误提示分支]",
+            "zw-insight-web/src/views/project/index.vue:180 [错误提示分支]",
+            "zw-insight-web/src/views/project/index.vue:195 [错误提示分支]"
           ]
         },
         "audit": {
           "count": 4,
           "evidence": [
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:57 [操作日志注解]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:65 [操作日志注解]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:73 [操作日志注解]",
-            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:81 [操作日志注解]"
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:66 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:74 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:82 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:90 [操作日志注解]"
           ]
         }
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 222,
+      "lineCount": 267,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×3（L3 协同流转）"
       ],
       "ruleHits": {
+        "Excel导入": 1,
         "筛选控件(下拉)": 1,
         "查询区输入框": 8,
-        "状态渲染映射": 7,
+        "状态渲染映射": 8,
         "状态门禁(按钮)": 4,
         "错误提示分支": 3,
         "可选查询参数": 4,
@@ -952,12 +967,19 @@
       "pageFile": "zw-insight-web/src/views/labor/contract.vue",
       "title": "劳务合同",
       "signals": {
-        "query": {
-          "count": 14,
+        "efficiency": {
+          "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/labor/contract.vue:12 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/labor/contract.vue:64 [筛选控件(日期)]",
-            "zw-insight-web/src/views/labor/contract.vue:65 [筛选控件(日期)]",
+            "zw-insight-web/src/views/labor/contract.vue:28 [Excel导入]",
+            "zw-insight-web/src/views/labor/contract.vue:124 [Excel导入]"
+          ]
+        },
+        "query": {
+          "count": 19,
+          "evidence": [
+            "zw-insight-web/src/views/labor/contract.vue:15 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/labor/contract.vue:84 [筛选控件(日期)]",
+            "zw-insight-web/src/views/labor/contract.vue:85 [筛选控件(日期)]",
             "zw-insight-web/src/views/labor/contract.vue:6 [查询区输入框]",
             "zw-insight-web/src/views/labor/contract.vue:9 [查询区输入框]"
           ]
@@ -965,28 +987,29 @@
         "state": {
           "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/labor/contract.vue:46 [状态门禁(按钮)]",
+            "zw-insight-web/src/views/labor/contract.vue:50 [状态门禁(按钮)]",
             "zw-insight-server/zw-labor/src/main/java/com/zwinsight/labor/controller/LaborContractController.java:60 [流转端点(submit/approve/withdraw/reject)]"
           ]
         },
         "error": {
           "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/labor/contract.vue:101 [错误提示分支]",
-            "zw-insight-web/src/views/labor/contract.vue:103 [错误提示分支]"
+            "zw-insight-web/src/views/labor/contract.vue:132 [错误提示分支]",
+            "zw-insight-web/src/views/labor/contract.vue:134 [错误提示分支]"
           ]
         }
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 112,
+      "lineCount": 172,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
       "ruleHits": {
+        "Excel导入": 2,
         "筛选控件(下拉)": 1,
         "筛选控件(日期)": 2,
-        "查询区输入框": 7,
+        "查询区输入框": 12,
         "状态门禁(按钮)": 1,
         "错误提示分支": 2,
         "可选查询参数": 4,
@@ -1013,42 +1036,49 @@
       "pageFile": "zw-insight-web/src/views/labor/payroll.vue",
       "title": "工资单",
       "signals": {
-        "query": {
-          "count": 17,
+        "efficiency": {
+          "count": 1,
           "evidence": [
-            "zw-insight-web/src/views/labor/payroll.vue:9 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/labor/payroll.vue:65 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/labor/payroll.vue:70 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/labor/payroll.vue:76 [筛选控件(日期)]",
+            "zw-insight-web/src/views/labor/payroll.vue:26 [Excel导入]"
+          ]
+        },
+        "query": {
+          "count": 20,
+          "evidence": [
+            "zw-insight-web/src/views/labor/payroll.vue:12 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/labor/payroll.vue:80 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/labor/payroll.vue:85 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/labor/payroll.vue:91 [筛选控件(日期)]",
             "zw-insight-web/src/views/labor/payroll.vue:6 [查询区输入框]"
           ]
         },
         "state": {
           "count": 3,
           "evidence": [
-            "zw-insight-web/src/views/labor/payroll.vue:49 [状态门禁(按钮)]",
-            "zw-insight-web/src/views/labor/payroll.vue:50 [状态门禁(按钮)]",
+            "zw-insight-web/src/views/labor/payroll.vue:53 [状态门禁(按钮)]",
+            "zw-insight-web/src/views/labor/payroll.vue:54 [状态门禁(按钮)]",
             "zw-insight-server/zw-labor/src/main/java/com/zwinsight/labor/controller/LaborPayrollController.java:60 [流转端点(submit/approve/withdraw/reject)]"
           ]
         },
         "error": {
           "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/labor/payroll.vue:160 [错误提示分支]",
-            "zw-insight-web/src/views/labor/payroll.vue:166 [错误提示分支]"
+            "zw-insight-web/src/views/labor/payroll.vue:180 [错误提示分支]",
+            "zw-insight-web/src/views/labor/payroll.vue:186 [错误提示分支]"
           ]
         }
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 179,
+      "lineCount": 225,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
       "ruleHits": {
+        "Excel导入": 1,
         "筛选控件(下拉)": 3,
         "筛选控件(日期)": 1,
-        "查询区输入框": 6,
+        "查询区输入框": 9,
         "状态门禁(按钮)": 2,
         "错误提示分支": 2,
         "可选查询参数": 7,
@@ -1075,41 +1105,60 @@
       "pageFile": "zw-insight-web/src/views/labor/roster.vue",
       "title": "劳务花名册",
       "signals": {
-        "query": {
-          "count": 13,
+        "efficiency": {
+          "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/labor/roster.vue:57 [筛选控件(日期)]",
-            "zw-insight-web/src/views/labor/roster.vue:6 [查询区输入框]",
-            "zw-insight-web/src/views/labor/roster.vue:9 [查询区输入框]",
-            "zw-insight-web/src/views/labor/roster.vue:12 [查询区输入框]",
-            "zw-insight-web/src/views/labor/roster.vue:46 [查询区输入框]"
+            "zw-insight-web/src/views/labor/roster.vue:35 [Excel导入]",
+            "zw-insight-web/src/views/labor/roster.vue:132 [Excel导入]"
+          ]
+        },
+        "query": {
+          "count": 27,
+          "evidence": [
+            "zw-insight-web/src/views/labor/roster.vue:6 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/labor/roster.vue:11 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/labor/roster.vue:22 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/labor/roster.vue:78 [筛选控件(日期)]",
+            "zw-insight-web/src/views/labor/roster.vue:6 [查询区输入框]"
+          ]
+        },
+        "state": {
+          "count": 1,
+          "evidence": [
+            "zw-insight-web/src/views/labor/roster.vue:55 [状态门禁(按钮)]"
           ]
         },
         "error": {
-          "count": 1,
+          "count": 7,
           "evidence": [
-            "zw-insight-web/src/views/labor/roster.vue:91 [错误提示分支]"
+            "zw-insight-web/src/views/labor/roster.vue:122 [错误提示分支]",
+            "zw-insight-web/src/views/labor/roster.vue:126 [错误提示分支]",
+            "zw-insight-web/src/views/labor/roster.vue:138 [错误提示分支]",
+            "zw-insight-web/src/views/labor/roster.vue:140 [错误提示分支]",
+            "zw-insight-web/src/views/labor/roster.vue:141 [错误提示分支]"
           ]
         }
       },
-      "levelAuto": 1,
+      "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 100,
+      "lineCount": 155,
       "scoreReasons": [
-        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
+        "存在状态渲染/状态门禁信号 ×1（L2 规则完整）"
       ],
       "ruleHits": {
+        "Excel导入": 2,
+        "筛选控件(下拉)": 3,
         "筛选控件(日期)": 1,
-        "查询区输入框": 7,
-        "错误提示分支": 1,
-        "可选查询参数": 5
+        "查询区输入框": 14,
+        "状态门禁(按钮)": 1,
+        "错误提示分支": 7,
+        "可选查询参数": 9
       },
       "levelFinal": 1,
       "gapNotes": {
-        "efficiency": "花名册无批量导入/导出",
-        "state": "无进退场状态管理"
+        "state": "进退场已闭环：status+entryDate/exitDate 字段，POST entry/exit 端点（在场才可退场等门禁），前端 entryStatus 筛选+操作列进退场登记按钮"
       },
-      "benchmarkNote": "实名制花名册是劳务管理基础数据，批量导入为刚需",
+      "benchmarkNote": "后端就绪度高于账本初评，剩余工作为前端接线 + 进退场字段",
       "roi": {
         "impact": 4,
         "effort": 1,
@@ -1408,30 +1457,37 @@
       "pageFile": "zw-insight-web/src/views/machine/ledger.vue",
       "title": "机械台账",
       "signals": {
+        "efficiency": {
+          "count": 1,
+          "evidence": [
+            "zw-insight-web/src/views/machine/ledger.vue:19 [Excel导入]"
+          ]
+        },
         "query": {
           "count": 9,
           "evidence": [
-            "zw-insight-web/src/views/machine/ledger.vue:57 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/machine/ledger.vue:60 [筛选控件(下拉)]",
             "zw-insight-web/src/views/machine/ledger.vue:6 [查询区输入框]",
             "zw-insight-web/src/views/machine/ledger.vue:9 [查询区输入框]",
-            "zw-insight-web/src/views/machine/ledger.vue:47 [查询区输入框]",
-            "zw-insight-web/src/views/machine/ledger.vue:86 [查询区输入框]"
+            "zw-insight-web/src/views/machine/ledger.vue:48 [查询区输入框]",
+            "zw-insight-web/src/views/machine/ledger.vue:91 [查询区输入框]"
           ]
         },
         "error": {
           "count": 1,
           "evidence": [
-            "zw-insight-web/src/views/machine/ledger.vue:92 [错误提示分支]"
+            "zw-insight-web/src/views/machine/ledger.vue:97 [错误提示分支]"
           ]
         }
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 101,
+      "lineCount": 106,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
       "ruleHits": {
+        "Excel导入": 1,
         "筛选控件(下拉)": 1,
         "查询区输入框": 6,
         "错误提示分支": 1,
@@ -1931,35 +1987,64 @@
       "pageFile": "zw-insight-web/src/views/material/stock.vue",
       "title": "库存查询",
       "signals": {
+        "efficiency": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-web/src/views/material/stock.vue:20 [导出]",
+            "zw-insight-web/src/views/material/stock.vue:136 [导出]"
+          ]
+        },
         "query": {
-          "count": 12,
+          "count": 18,
           "evidence": [
             "zw-insight-web/src/views/material/stock.vue:12 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/material/stock.vue:57 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/material/stock.vue:71 [筛选控件(下拉)]",
             "zw-insight-web/src/views/material/stock.vue:6 [查询区输入框]",
-            "zw-insight-web/src/views/material/stock.vue:9 [查询区输入框]",
-            "zw-insight-web/src/views/material/stock.vue:12 [查询区输入框]",
-            "zw-insight-web/src/views/material/stock.vue:41 [查询区输入框]"
+            "zw-insight-web/src/views/material/stock.vue:9 [查询区输入框]"
+          ]
+        },
+        "error": {
+          "count": 1,
+          "evidence": [
+            "zw-insight-web/src/views/material/stock.vue:220 [错误提示分支]"
+          ]
+        },
+        "audit": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-server/zw-material/src/main/java/com/zwinsight/material/controller/StockWarningConfigController.java:43 [操作日志注解]",
+            "zw-insight-server/zw-material/src/main/java/com/zwinsight/material/controller/StockWarningConfigController.java:51 [操作日志注解]"
+          ]
+        },
+        "permission": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-server/zw-material/src/main/java/com/zwinsight/material/controller/StockWarningConfigController.java:42 [方法级权限注解]",
+            "zw-insight-server/zw-material/src/main/java/com/zwinsight/material/controller/StockWarningConfigController.java:50 [方法级权限注解]"
           ]
         }
       },
       "levelAuto": 1,
-      "confidence": "needs-review",
-      "lineCount": 67,
+      "confidence": "high",
+      "lineCount": 232,
       "scoreReasons": [
-        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）",
-        "页面 67 行（< 80），信号稀疏"
+        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
       "ruleHits": {
-        "筛选控件(下拉)": 1,
-        "查询区输入框": 7,
-        "可选查询参数": 4
+        "导出": 2,
+        "筛选控件(下拉)": 3,
+        "查询区输入框": 10,
+        "错误提示分支": 1,
+        "可选查询参数": 5,
+        "操作日志注解": 2,
+        "方法级权限注解": 2
       },
       "levelFinal": 1,
       "gapNotes": {
-        "efficiency": "无库存导出",
-        "value": "无库存预警/周转分析"
+        "value": "库存预警已闭环：minStock 已回填（项目级优先全局兜底）+预警状态列+定时预警；剩余：配置管理端点与站内信通知未接"
       },
-      "benchmarkNote": "只读库存查询页（67 行），补安全库存预警价值最高",
+      "benchmarkNote": "预警体系后端就绪度高于账本初评，剩余为补全+接线",
       "roi": {
         "impact": 4,
         "effort": 2,
@@ -2040,24 +2125,24 @@
       "title": "材料入库",
       "signals": {
         "error": {
-          "count": 5,
+          "count": 8,
           "evidence": [
-            "zw-insight-app/src/pages/material/inbound.vue:120 [移动端反馈提示(uni)]",
             "zw-insight-app/src/pages/material/inbound.vue:135 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/inbound.vue:138 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/inbound.vue:141 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/inbound.vue:158 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/material/inbound.vue:144 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/inbound.vue:156 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/inbound.vue:170 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/inbound.vue:185 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 185,
+      "lineCount": 238,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端反馈提示(uni)": 5
+        "移动端反馈提示(uni)": 8
       },
       "levelFinal": 2,
       "gapNotes": {
@@ -2080,23 +2165,24 @@
       "title": "材料出库",
       "signals": {
         "error": {
-          "count": 4,
+          "count": 7,
           "evidence": [
-            "zw-insight-app/src/pages/material/outbound.vue:111 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/outbound.vue:114 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/outbound.vue:117 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/outbound.vue:135 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/material/outbound.vue:132 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/outbound.vue:141 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/outbound.vue:153 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/outbound.vue:161 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/outbound.vue:164 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 162,
+      "lineCount": 215,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端反馈提示(uni)": 4
+        "移动端反馈提示(uni)": 7
       },
       "levelFinal": 2,
       "gapNotes": {
@@ -2750,13 +2836,13 @@
       "title": "付款申请",
       "signals": {
         "query": {
-          "count": 16,
+          "count": 18,
           "evidence": [
             "zw-insight-web/src/views/finance/payment-apply.vue:6 [筛选控件(下拉)]",
             "zw-insight-web/src/views/finance/payment-apply.vue:21 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/finance/payment-apply.vue:85 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/finance/payment-apply.vue:98 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/finance/payment-apply.vue:107 [筛选控件(下拉)]"
+            "zw-insight-web/src/views/finance/payment-apply.vue:94 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/finance/payment-apply.vue:107 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/finance/payment-apply.vue:116 [筛选控件(下拉)]"
           ]
         },
         "state": {
@@ -2765,15 +2851,15 @@
             "zw-insight-web/src/views/finance/payment-apply.vue:19 [状态渲染映射]",
             "zw-insight-web/src/views/finance/payment-apply.vue:54 [状态渲染映射]",
             "zw-insight-web/src/views/finance/payment-apply.vue:55 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/payment-apply.vue:215 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/payment-apply.vue:224 [状态渲染映射]"
+            "zw-insight-web/src/views/finance/payment-apply.vue:226 [状态渲染映射]",
+            "zw-insight-web/src/views/finance/payment-apply.vue:235 [状态渲染映射]"
           ]
         },
         "error": {
           "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/finance/payment-apply.vue:287 [错误提示分支]",
-            "zw-insight-web/src/views/finance/payment-apply.vue:294 [错误提示分支]"
+            "zw-insight-web/src/views/finance/payment-apply.vue:300 [错误提示分支]",
+            "zw-insight-web/src/views/finance/payment-apply.vue:307 [错误提示分支]"
           ]
         },
         "audit": {
@@ -2792,14 +2878,14 @@
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 319,
+      "lineCount": 362,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
       "ruleHits": {
         "筛选控件(下拉)": 5,
         "筛选控件(日期)": 1,
-        "查询区输入框": 7,
+        "查询区输入框": 9,
         "状态渲染映射": 8,
         "状态门禁(按钮)": 2,
         "错误提示分支": 2,
@@ -2829,34 +2915,52 @@
       "title": "回款登记",
       "signals": {
         "query": {
-          "count": 11,
+          "count": 17,
           "evidence": [
             "zw-insight-web/src/views/finance/payment-received.vue:6 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/finance/payment-received.vue:69 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/finance/payment-received.vue:87 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/finance/payment-received.vue:84 [筛选控件(日期)]",
-            "zw-insight-web/src/views/finance/payment-received.vue:7 [查询区输入框]"
+            "zw-insight-web/src/views/finance/payment-received.vue:19 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/finance/payment-received.vue:105 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/finance/payment-received.vue:123 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/finance/payment-received.vue:120 [筛选控件(日期)]"
           ]
         },
         "error": {
-          "count": 1,
+          "count": 3,
           "evidence": [
-            "zw-insight-web/src/views/finance/payment-received.vue:209 [错误提示分支]"
+            "zw-insight-web/src/views/finance/payment-received.vue:258 [错误提示分支]",
+            "zw-insight-web/src/views/finance/payment-received.vue:265 [错误提示分支]",
+            "zw-insight-web/src/views/finance/payment-received.vue:272 [错误提示分支]"
+          ]
+        },
+        "audit": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-server/zw-finance/src/main/java/com/zwinsight/finance/controller/PaymentReceivedController.java:64 [操作日志注解]",
+            "zw-insight-server/zw-finance/src/main/java/com/zwinsight/finance/controller/PaymentReceivedController.java:75 [操作日志注解]"
+          ]
+        },
+        "permission": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-server/zw-finance/src/main/java/com/zwinsight/finance/controller/PaymentReceivedController.java:63 [方法级权限注解]",
+            "zw-insight-server/zw-finance/src/main/java/com/zwinsight/finance/controller/PaymentReceivedController.java:74 [方法级权限注解]"
           ]
         }
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 234,
+      "lineCount": 328,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
       "ruleHits": {
-        "筛选控件(下拉)": 3,
+        "筛选控件(下拉)": 4,
         "筛选控件(日期)": 1,
-        "查询区输入框": 6,
-        "错误提示分支": 1,
-        "可选查询参数": 1
+        "查询区输入框": 10,
+        "错误提示分支": 3,
+        "可选查询参数": 2,
+        "操作日志注解": 2,
+        "方法级权限注解": 2
       },
       "levelFinal": 1,
       "gapNotes": {
@@ -3961,40 +4065,42 @@
       "title": "质量安全检查",
       "signals": {
         "query": {
-          "count": 10,
+          "count": 15,
           "evidence": [
             "zw-insight-web/src/views/site/inspection/index.vue:14 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/site/inspection/index.vue:11 [查询区输入框]",
-            "zw-insight-web/src/views/site/inspection/index.vue:14 [查询区输入框]",
-            "zw-insight-web/src/views/site/inspection/index.vue:55 [查询区输入框]",
-            "zw-insight-web/src/views/site/inspection/index.vue:91 [查询区输入框]"
+            "zw-insight-web/src/views/site/inspection/index.vue:20 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/site/inspection/index.vue:72 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/site/inspection/index.vue:85 [筛选控件(日期)]",
+            "zw-insight-web/src/views/site/inspection/index.vue:11 [查询区输入框]"
           ]
         },
         "error": {
-          "count": 1,
+          "count": 3,
           "evidence": [
-            "zw-insight-web/src/views/site/inspection/index.vue:116 [错误提示分支]"
+            "zw-insight-web/src/views/site/inspection/index.vue:152 [错误提示分支]",
+            "zw-insight-web/src/views/site/inspection/index.vue:186 [错误提示分支]",
+            "zw-insight-web/src/views/site/inspection/index.vue:211 [错误提示分支]"
           ]
         }
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 130,
+      "lineCount": 225,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
       "ruleHits": {
-        "筛选控件(下拉)": 1,
-        "查询区输入框": 7,
-        "错误提示分支": 1,
-        "可选查询参数": 2
+        "筛选控件(下拉)": 3,
+        "筛选控件(日期)": 1,
+        "查询区输入框": 8,
+        "错误提示分支": 3,
+        "可选查询参数": 3
       },
       "levelFinal": 1,
       "gapNotes": {
-        "state": "检查单无整改闭环状态（检查→整改→复查）——质安管理核心缺失",
-        "efficiency": "无检查计划批量生成"
+        "state": "整改闭环已接线：assign 派发+整改状态筛选+整改期限表单"
       },
-      "benchmarkNote": "质安检查仅 CRUD+删除（api 实证），整改闭环是行业强制流程，缺口最大",
+      "benchmarkNote": "后端闭环完整（PENDING→SUBMITTED→APPROVED + 催办），缺口集中在前端接线",
       "roi": {
         "impact": 5,
         "effort": 3,
@@ -4010,35 +4116,50 @@
       "pageFile": "zw-insight-web/src/views/site/inspection/detail.vue",
       "title": "检查详情",
       "signals": {
-        "error": {
-          "count": 1,
+        "state": {
+          "count": 3,
           "evidence": [
-            "zw-insight-web/src/views/site/inspection/detail.vue:119 [错误提示分支]"
+            "zw-insight-web/src/views/site/inspection/detail.vue:100 [状态门禁(按钮)]",
+            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/RectificationController.java:28 [流转端点(submit/approve/withdraw/reject)]",
+            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/RectificationController.java:34 [流转端点(submit/approve/withdraw/reject)]"
+          ]
+        },
+        "error": {
+          "count": 5,
+          "evidence": [
+            "zw-insight-web/src/views/site/inspection/detail.vue:148 [错误提示分支]",
+            "zw-insight-web/src/views/site/inspection/detail.vue:163 [错误提示分支]",
+            "zw-insight-web/src/views/site/inspection/detail.vue:170 [错误提示分支]",
+            "zw-insight-web/src/views/site/inspection/detail.vue:176 [错误提示分支]",
+            "zw-insight-web/src/views/site/inspection/detail.vue:223 [错误提示分支]"
           ]
         },
         "query": {
-          "count": 2,
+          "count": 3,
           "evidence": [
-            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/InspectionController.java:35 [可选查询参数]",
-            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/InspectionController.java:36 [可选查询参数]"
+            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/InspectionController.java:31 [可选查询参数]",
+            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/InspectionController.java:32 [可选查询参数]",
+            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/InspectionController.java:33 [可选查询参数]"
           ]
         }
       },
-      "levelAuto": 1,
+      "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 145,
+      "lineCount": 253,
       "scoreReasons": [
-        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
+        "存在流转端点 submit/approve 等 ×2（L3 协同流转）"
       ],
       "ruleHits": {
-        "错误提示分支": 1,
-        "可选查询参数": 2
+        "状态门禁(按钮)": 1,
+        "错误提示分支": 5,
+        "可选查询参数": 3,
+        "流转端点(submit/approve/withdraw/reject)": 2
       },
       "levelFinal": 1,
       "gapNotes": {
-        "state": "无整改记录展示"
+        "state": "整改闭环已接线：整改提交/审批+整改记录列表（GET 按检查单查询端点已补）"
       },
-      "benchmarkNote": "检查详情 L1，随整改闭环一并升级",
+      "benchmarkNote": "随整改闭环前端接线一并升级，后端仅补查询端点",
       "roi": {
         "impact": 4,
         "effort": 2,
@@ -4055,13 +4176,13 @@
       "title": "编辑检查",
       "signals": {
         "query": {
-          "count": 5,
+          "count": 6,
           "evidence": [
             "zw-insight-web/src/views/site/inspection/form.vue:23 [筛选控件(下拉)]",
             "zw-insight-web/src/views/site/inspection/form.vue:36 [筛选控件(下拉)]",
             "zw-insight-web/src/views/site/inspection/form.vue:110 [筛选控件(下拉)]",
-            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/InspectionController.java:35 [可选查询参数]",
-            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/InspectionController.java:36 [可选查询参数]"
+            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/InspectionController.java:31 [可选查询参数]",
+            "zw-insight-server/zw-site/src/main/java/com/zwinsight/site/controller/InspectionController.java:32 [可选查询参数]"
           ]
         },
         "error": {
@@ -4082,7 +4203,7 @@
       "ruleHits": {
         "筛选控件(下拉)": 3,
         "错误提示分支": 3,
-        "可选查询参数": 2
+        "可选查询参数": 3
       },
       "levelFinal": 1,
       "gapNotes": {
@@ -4201,22 +4322,24 @@
       "title": "检查方案详情",
       "signals": {
         "error": {
-          "count": 3,
+          "count": 8,
           "evidence": [
-            "zw-insight-app/src/pages/site/inspection-detail.vue:155 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/inspection-detail.vue:169 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/inspection-detail.vue:192 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/site/inspection-detail.vue:237 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/inspection-detail.vue:251 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/inspection-detail.vue:274 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/inspection-detail.vue:309 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/inspection-detail.vue:325 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 364,
+      "lineCount": 666,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端反馈提示(uni)": 3
+        "移动端反馈提示(uni)": 8
       },
       "levelFinal": 2,
       "gapNotes": {},
@@ -4273,28 +4396,29 @@
       "title": "质量检查",
       "signals": {
         "error": {
-          "count": 3,
+          "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/site/quality-check.vue:108 [移动端反馈提示(uni)]",
             "zw-insight-app/src/pages/site/quality-check.vue:111 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/quality-check.vue:126 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/site/quality-check.vue:114 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/quality-check.vue:134 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/quality-check.vue:150 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 157,
+      "lineCount": 190,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端反馈提示(uni)": 3
+        "移动端反馈提示(uni)": 4
       },
       "levelFinal": 2,
       "gapNotes": {
-        "efficiency": "无拍照取证快录"
+        "efficiency": "整改动作为前端断线（同套端点已就绪）；拍照上传可复用 construction-log 的 uni.chooseImage 既有模式"
       },
-      "benchmarkNote": "移动端质量检查 L2；现场拍照+定位是行业标配",
+      "benchmarkNote": "端点就绪，移动端接线 + 拍照复用既有模式",
       "roi": {
         "impact": 4,
         "effort": 2,
@@ -4311,28 +4435,29 @@
       "title": "安全检查",
       "signals": {
         "error": {
-          "count": 3,
+          "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/site/safety-check.vue:113 [移动端反馈提示(uni)]",
             "zw-insight-app/src/pages/site/safety-check.vue:116 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/safety-check.vue:132 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/site/safety-check.vue:119 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/safety-check.vue:143 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/safety-check.vue:159 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 163,
+      "lineCount": 199,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端反馈提示(uni)": 3
+        "移动端反馈提示(uni)": 4
       },
       "levelFinal": 2,
       "gapNotes": {
-        "efficiency": "无拍照取证快录"
+        "efficiency": "整改动作为前端断线（同套端点已就绪）；拍照上传可复用 construction-log 的 uni.chooseImage 既有模式"
       },
-      "benchmarkNote": "移动端安全检查 L2；现场拍照+定位是行业标配",
+      "benchmarkNote": "端点就绪，移动端接线 + 拍照复用既有模式",
       "roi": {
         "impact": 4,
         "effort": 2,
@@ -4657,39 +4782,46 @@
       "pageFile": "zw-insight-web/src/views/basedata/material.vue",
       "title": "材料字典",
       "signals": {
+        "efficiency": {
+          "count": 1,
+          "evidence": [
+            "zw-insight-web/src/views/basedata/material.vue:19 [Excel导入]"
+          ]
+        },
         "query": {
           "count": 12,
           "evidence": [
             "zw-insight-web/src/views/basedata/material.vue:6 [查询区输入框]",
             "zw-insight-web/src/views/basedata/material.vue:9 [查询区输入框]",
-            "zw-insight-web/src/views/basedata/material.vue:37 [查询区输入框]",
-            "zw-insight-web/src/views/basedata/material.vue:75 [查询区输入框]",
-            "zw-insight-web/src/views/basedata/material.vue:76 [查询区输入框]"
+            "zw-insight-web/src/views/basedata/material.vue:38 [查询区输入框]",
+            "zw-insight-web/src/views/basedata/material.vue:81 [查询区输入框]",
+            "zw-insight-web/src/views/basedata/material.vue:82 [查询区输入框]"
           ]
         },
         "error": {
           "count": 1,
           "evidence": [
-            "zw-insight-web/src/views/basedata/material.vue:81 [错误提示分支]"
+            "zw-insight-web/src/views/basedata/material.vue:87 [错误提示分支]"
           ]
         }
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 90,
+      "lineCount": 96,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
       "ruleHits": {
+        "Excel导入": 1,
         "查询区输入框": 6,
         "错误提示分支": 1,
         "可选查询参数": 6
       },
       "levelFinal": 1,
       "gapNotes": {
-        "efficiency": "材料字典无批量导入"
+        "efficiency": "批量导入已接线 BatchImportDialog(MATERIAL Handler)；导出未接"
       },
-      "benchmarkNote": "材料字典批量导入是初始化刚需",
+      "benchmarkNote": "后端就绪，剩余为前端接线 + 安全库存维护入口",
       "roi": {
         "impact": 3,
         "effort": 1,
@@ -5473,14 +5605,14 @@
         "efficiency": {
           "count": 2,
           "evidence": [
-            "zw-insight-app/src/pages/workbench/index.vue:29 [移动端列表加载(loadMore)]",
-            "zw-insight-app/src/pages/workbench/index.vue:89 [移动端列表加载(loadMore)]"
+            "zw-insight-app/src/pages/workbench/index.vue:53 [移动端列表加载(loadMore)]",
+            "zw-insight-app/src/pages/workbench/index.vue:148 [移动端列表加载(loadMore)]"
           ]
         }
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 123,
+      "lineCount": 196,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
@@ -6851,25 +6983,33 @@
           "count": 2,
           "evidence": [
             "zw-insight-app/src/pages/approval/index.vue:17 [移动端列表加载(loadMore)]",
-            "zw-insight-app/src/pages/approval/index.vue:95 [移动端列表加载(loadMore)]"
+            "zw-insight-app/src/pages/approval/index.vue:122 [移动端列表加载(loadMore)]"
+          ]
+        },
+        "error": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-app/src/pages/approval/index.vue:172 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/approval/index.vue:180 [移动端反馈提示(uni)]"
           ]
         }
       },
-      "levelAuto": 1,
+      "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 141,
+      "lineCount": 233,
       "scoreReasons": [
-        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
+        "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端列表加载(loadMore)": 2
+        "移动端列表加载(loadMore)": 2,
+        "移动端反馈提示(uni)": 2
       },
       "levelFinal": 1,
       "gapNotes": {
-        "error": "无审批失败降级",
-        "efficiency": "无批量审批"
+        "error": "失败态+重试已实现（空 catch 已消除）",
+        "efficiency": "批量审批已接线 batch-approve（多选+全选+未勾选禁用）"
       },
-      "benchmarkNote": "移动端我的审批是高频入口，补状态筛选与批量操作",
+      "benchmarkNote": "后端批量审批就绪，剩余为移动端接线 + 状态筛选 + 降级",
       "roi": {
         "impact": 4,
         "effort": 2,

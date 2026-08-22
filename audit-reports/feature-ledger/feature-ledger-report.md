@@ -4,7 +4,7 @@
 > 人工判断请编辑 `tools/feature-ledger/data/ledger-data.json` 的 manual 字段
 > （levelFinal / gapNotes / benchmarkNote / roi），再重跑 `npm run dev -- report` 刷新本报告。
 
-- 生成时间：2026/8/22 13:31:05
+- 生成时间：2026/8/22 23:44:29
 - 信号规则版本：v3
 - 条目：133（PC 105 / 移动端 28）
 - 人工复核进度：133 / 133（100%）
@@ -23,13 +23,13 @@
 
 | 维度 | PC 缺失 | 移动端缺失* |
 |---|---:|---:|
-| 效率(批量/导入导出) | 94/105 | 25/28 |
+| 效率(批量/导入导出) | 86/105 | 25/28 |
 | 查询(组合筛选) | 13/105 | — |
-| 状态(状态机) | 57/105 | — |
-| 追溯(审计日志) | 89/105 | — |
+| 状态(状态机) | 55/105 | — |
+| 追溯(审计日志) | 87/105 | — |
 | 通知(消息触达) | 104/105 | 28/28 |
-| 权限(按钮级) | 78/105 | — |
-| 异常(错误恢复) | 23/105 | 3/28 |
+| 权限(按钮级) | 76/105 | — |
+| 异常(错误恢复) | 22/105 | 2/28 |
 | 价值(聚合分析) | 98/105 | — |
 
 \* 移动端仅评效率/异常/通知三维子集，其余维度不适用。
@@ -50,16 +50,16 @@
 | 8 | 业务类型 | D-workflow | L1 | 效查状追通权值 | ✓ |
 | 9 | 系统设置 | D-system | L1 | 效查状追通权值 | ✓ |
 | 10 | 版本管理 | D-system | L1 | 效状追通异值 | ✓ |
-| 11 | 我的审批 | D-workflow | L1 | 异通 | ✓ |
-| 12 | 工作台 | D-nav | L1 | 异通 | ✓ |
-| 13 | 检查详情 | C-site | L1 | 效状追通权值 | ✓ |
-| 14 | 供应商黑名单 | D-basedata | L1 | 效状追通权值 | ✓ |
-| 15 | 流程定义 | D-workflow | L1 | 查状追通权值 | ✓ |
-| 16 | 菜单管理 | D-system | L1 | 效查状追通值 | ✓ |
-| 17 | 档案查询 | D-archive | L1 | 效状追通权值 | ✓ |
-| 18 | 流程设计器 | D-workflow | L1 | 查状追通权值 | ✓ |
-| 19 | 数据字典 | D-system | L1 | 效状追通值 | ✓ |
-| 20 | 发票汇总 | C-finance | L1 | 效状追通权异值 | ✓ |
+| 11 | 工作台 | D-nav | L1 | 异通 | ✓ |
+| 12 | 供应商黑名单 | D-basedata | L1 | 效状追通权值 | ✓ |
+| 13 | 流程定义 | D-workflow | L1 | 查状追通权值 | ✓ |
+| 14 | 菜单管理 | D-system | L1 | 效查状追通值 | ✓ |
+| 15 | 我的审批 | D-workflow | L2→L1 | 通 | ✓ |
+| 16 | 档案查询 | D-archive | L1 | 效状追通权值 | ✓ |
+| 17 | 流程设计器 | D-workflow | L1 | 查状追通权值 | ✓ |
+| 18 | 数据字典 | D-system | L1 | 效状追通值 | ✓ |
+| 19 | 发票汇总 | C-finance | L1 | 效状追通权异值 | ✓ |
+| 20 | 供应商评价 | D-basedata | L1 | 效状追通权值 | ✓ |
 
 ## 三、ROI 差距清单
 
@@ -72,18 +72,18 @@
 | P0 | 施工合同 | L3 | 5/5 | 3/5 | 效值 |
 | P0 | 工资单 | L3 | 5/5 | 3/5 | 效值 |
 | P0 | 付款申请 | L3 | 5/5 | 3/5 | 值 |
-| P0 | 质量安全检查 | L1 | 5/5 | 3/5 | 状效 |
-| P0 | 劳务花名册 | L1 | 4/5 | 1/5 | 效状 |
+| P0 | 质量安全检查 | L1 | 5/5 | 3/5 | 状 |
+| P0 | 劳务花名册 | L2→L1 | 4/5 | 1/5 | 状 |
 | P0 | 产值上报 | L3 | 4/5 | 2/5 | 效值 |
-| P0 | 库存查询 | L1 | 4/5 | 2/5 | 效值 |
+| P0 | 库存查询 | L1 | 4/5 | 2/5 | 值 |
 | P0 | 材料入库 | L2 | 4/5 | 2/5 | 效 |
 | P0 | 材料出库 | L2 | 4/5 | 2/5 | 效 |
 | P0 | 回款登记 | L1 | 4/5 | 2/5 | 状值 |
-| P0 | 检查详情 | L1 | 4/5 | 2/5 | 状 |
+| P0 | 检查详情 | L3→L1 | 4/5 | 2/5 | 状 |
 | P0 | 质量检查 | L2 | 4/5 | 2/5 | 效 |
 | P0 | 安全检查 | L2 | 4/5 | 2/5 | 效 |
 | P0 | 工作台 | L1 | 4/5 | 2/5 | 异通 |
-| P0 | 我的审批 | L1 | 4/5 | 2/5 | 异效 |
+| P0 | 我的审批 | L2→L1 | 4/5 | 2/5 | 异效 |
 | P0 | 目标成本变更 | L3 | 4/5 | 3/5 | 效追 |
 | P0 | 劳务合同 | L3 | 4/5 | 3/5 | 效值 |
 | P0 | 材料字典 | L1 | 3/5 | 1/5 | 效 |
@@ -216,11 +216,11 @@
 | 预算编制 | /budget/list | budget | L3 | high | 效追通值 | ✓ |
 | BOQ 上传 | /contract/boq/:contractId | contract | L3 | high | 通值 | ✓ |
 | 编辑合同 | /contract/edit/:id | contract | L3 | high | 效通异值 | ✓ |
-| 施工合同 | /contract/list | contract | L3 | high | 效通值 | ✓ |
+| 施工合同 | /contract/list | contract | L3 | high | 通值 | ✓ |
 | 产值上报 | /contract/output-report | contract | L3 | high | 效通值 | ✓ |
 | 项目详情 | /project/detail/:id | project | L3 | high | 效通权异值 | ✓ |
 | 编辑项目 | /project/edit/:id | project | L3 | high | 效通权异值 | ✓ |
-| 项目报备 | /project/list | project | L3 | high | 效通权值 | ✓ |
+| 项目报备 | /project/list | project | L3 | high | 通权值 | ✓ |
 | 项目档案 | pages/project/archive | project | L1 | ⚠ | 效异通 | ✓ |
 | 证件管理 | /tender/certificate | tender | L1 | high | 效状追通权值 | ✓ |
 | 投标报名 | /tender/register | tender | L3 | high | 效追通权值 | ✓ |
@@ -229,15 +229,15 @@
 
 | 页面 | 路由 | 模块 | 等级 | 置信度 | 缺口 | 人工 |
 |---|---|---|---|:---:|---|:---:|
-| 劳务合同 | /labor/contract | labor | L3 | high | 效追通权值 | ✓ |
-| 工资单 | /labor/payroll | labor | L3 | high | 效追通权值 | ✓ |
-| 劳务花名册 | /labor/roster | labor | L1 | high | 效状追通权值 | ✓ |
+| 劳务合同 | /labor/contract | labor | L3 | high | 追通权值 | ✓ |
+| 工资单 | /labor/payroll | labor | L3 | high | 追通权值 | ✓ |
+| 劳务花名册 | /labor/roster | labor | L2→L1 | high | 追通权值 | ✓ |
 | 薪资统计 | /labor/salary-stats | labor | L4 | high | 状追通权 | ✓ |
 | 班组管理 | /labor/team | labor | L1 | high | 效状追通权值 | ✓ |
 | 用工单 | /labor/work-order | labor | L3 | high | 效追通权值 | ✓ |
 | 机械合同 | /machine/contract | machine | L3 | high | 效追通权值 | ✓ |
 | 进出场登记 | /machine/entry | machine | L1 | high | 效状追通权值 | ✓ |
-| 机械台账 | /machine/ledger | machine | L1 | high | 效状追通权值 | ✓ |
+| 机械台账 | /machine/ledger | machine | L1 | high | 状追通权值 | ✓ |
 | 故障维修 | /machine/repair | machine | L1 | high | 效状追通权值 | ✓ |
 | 机械结算 | /machine/settlement | machine | L4 | high | 追通权 | ✓ |
 | 新建结算单 | /machine/settlement/create | machine | L4 | high | 效追通权异 | ✓ |
@@ -246,7 +246,7 @@
 | 到货入库 | /material/inbound | material | L3 | high | 效追通权值 | ✓ |
 | 领料出库 | /material/outbound | material | L3 | high | 效追通权值 | ✓ |
 | 退货退款 | /material/refund | material | L2 | high | 效追通权异值 | ✓ |
-| 库存查询 | /material/stock | material | L1 | ⚠ | 效状追通权异值 | ✓ |
+| 库存查询 | /material/stock | material | L1 | high | 状通值 | ✓ |
 | 材料调拨 | /material/transfer | material | L3 | high | 效追通权值 | ✓ |
 | 材料入库 | pages/material/inbound | material | L2 | high | 效通 | ✓ |
 | 材料出库 | pages/material/outbound | material | L2 | high | 效通 | ✓ |
@@ -267,7 +267,7 @@
 | 发票汇总 | /finance/invoice-summary | finance | L1 | high | 效状追通权异值 | ✓ |
 | 其他费用付款 | /finance/other-payment | finance | L2 | high | 效追通权异值 | ✓ |
 | 付款申请 | /finance/payment-apply | finance | L3 | high | 效通值 | ✓ |
-| 回款登记 | /finance/payment-received | finance | L1 | high | 效状追通权值 | ✓ |
+| 回款登记 | /finance/payment-received | finance | L1 | high | 效状通值 | ✓ |
 | 个人报销 | /finance/personal-reimbursement | finance | L3 | high | 效追通权值 | ✓ |
 | 项目报销 | /finance/project-reimbursement | finance | L3 | high | 效追通权值 | ✓ |
 | 备用金管理 | /finance/reserve-fund | finance | L3 | high | 效追通权值 | ✓ |
@@ -291,7 +291,7 @@
 | 车辆管理 | /hr/vehicle | hr | L3 | high | 效追通权值 | ✓ |
 | 施工日志 | /site/construction-log | site | L1 | high | 效状追通权值 | ✓ |
 | 质量安全检查 | /site/inspection | site | L1 | high | 效状追通权值 | ✓ |
-| 检查详情 | /site/inspection/detail/:id | site | L1 | high | 效状追通权值 | ✓ |
+| 检查详情 | /site/inspection/detail/:id | site | L3→L1 | high | 效追通权值 | ✓ |
 | 编辑检查 | /site/inspection/form/:id | site | L1 | high | 效状追通权值 | ✓ |
 | 进度计划 | /site/schedule | site | L3 | high | 效追通权值 | ✓ |
 | 施工日志 | pages/site/construction-log | site | L2 | high | 效通 | ✓ |
@@ -312,7 +312,7 @@
 | 其它收入合同档案 | /archive/other-income-contract | archive | L1 | high | 效状追通权异值 | ✓ |
 | 自持公司 | /basedata/company | basedata | L1 | high | 效状追通权值 | ✓ |
 | 检查方案 | /basedata/inspection-scheme | basedata | L1 | high | 效状追通权值 | ✓ |
-| 材料字典 | /basedata/material | basedata | L1 | high | 效状追通权值 | ✓ |
+| 材料字典 | /basedata/material | basedata | L1 | high | 状追通权值 | ✓ |
 | 甲方单位 | /basedata/owner | basedata | L1 | high | 效状追通权值 | ✓ |
 | 供应商 | /basedata/supplier | basedata | L1 | high | 效状追通权值 | ✓ |
 | 供应商黑名单 | /basedata/supplier-blacklist | basedata | L1 | high | 效状追通权值 | ✓ |
@@ -357,7 +357,7 @@
 | 流程定义 | /workflow/process | workflow | L1 | high | 查状追通权值 | ✓ |
 | 审批回滚 | /workflow/rollback | workflow | L3 | high | 效追通权异值 | ✓ |
 | 审批详情 | pages/approval/detail | workflow | L2 | high | 效通 | ✓ |
-| 我的审批 | pages/approval/index | workflow | L1 | high | 异通 | ✓ |
+| 我的审批 | pages/approval/index | workflow | L2→L1 | high | 通 | ✓ |
 
 ## 附录
 
