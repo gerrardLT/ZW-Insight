@@ -78,10 +78,10 @@
 - [x] 9.1 受影响后端模块单测全绿（用户决策 2026-08-22：Java 后端测试一律走 CI/远端）→ CI run 32584843669（HEAD a955cf5）Backend Build 全绿：23 模块 BUILD SUCCESS、约 3605 单测；含修复 a955cf5（BatchImportExportControllerTest 打桩与 Controller 四参 importData 透传同步）
 - [x] 9.2 前端 vitest 全绿（zw-insight-web 102文件/1085用例 + zw-insight-app 16文件/125用例，2026-08-22；app 补测后 119→125）
 - [x] 9.3 一致性审计 npm run dev 无新增 Critical（2026-08-22：Critical=0；15 项 Major HTTP_METHOD_MISMATCH 为存量 submit 类接口与扫描口径差异，HEAD 基线前已存在，非本期引入）
-- [ ] 9.4 覆盖率基线更新（新增类登记 tests/coverage-baseline.json，只升不降）→ 审计发现 CI 覆盖率门禁自引入起长期零输出空转（python3 错误被 `2>/dev/null || true` 吞掉），deploy.yml 已修复待提交（grep 解析 + COMPARED==0 防空转守卫）；artifact 复算 5 模块低于基线，回退原因调查已完成（2026-08-23，对比 run 32489568434 d66fdda vs run 32584843669 HEAD 逐类 JaCoCo 数据）：① zw-file -106‰：1ba8223 新增 5 个 ImportListener + 8 个 ExcelDTO 共约 248 行零覆盖；② zw-contract -18‰：ConstructionContractBatchHandler 45 行零覆盖；③ zw-budget -48‰：BudgetDetailBatchHandler 68 行仅 412‰（有测试但不足）；④ zw-project -11‰：ProjectBatchHandler 34 行零覆盖；⑤ zw-security -7‰：无实质回退，CI 实测 d66fdda 658‰ vs HEAD 657‰ 基本持平，基线 663 为 8-21 本地校准偏高值（校准偏差非代码回退）——结论：4 模块属新增代码缺测试需补测，security 属基线校准偏差；处置方案待用户决策
+- [x] 9.4 覆盖率基线更新（新增类登记 tests/coverage-baseline.json，只升不降）→ 审计发现 CI 覆盖率门禁自引入起长期零输出空转（python3 错误被 `2>/dev/null || true` 吞掉）；artifact 复算 5 模块低于基线，回退原因调查完成（对比 run 32489568434 d66fdda vs run 32584843669 HEAD 逐类 JaCoCo 数据）：① zw-file -106‰：1ba8223 新增 5 个 ImportListener + 8 个 ExcelDTO 共约 248 行零覆盖；② zw-contract -18‰：ConstructionContractBatchHandler 45 行零覆盖；③ zw-budget -48‰：BudgetDetailBatchHandler 68 行仅 412‰（有测试但不足）；④ zw-project -11‰：ProjectBatchHandler 34 行零覆盖；⑤ zw-security -7‰：无实质回退，属 8-21 本地校准偏差（非代码回退）。用户决策（2026-08-22）：4 模块先补测达标再推门禁 + security 基线修正为实测值。执行：补测 9 文件 1193 行（d8db2a4：zw-file 5 Listener 测试 + ExcelDTO 测试、project/contract Handler 测试、budget 补充用例）+ 编译修复（e1044ed 补 Mockito.when 导入）+ security 基线 663→656（eb84e72，int 截断口径）；run 32587853740 全绿，artifact 复算 22 模块全部达标（file 647/budget 825/contract 818/project 635/security 656‰，均 ≥ 基线）；门禁修复 ca50cb5（grep 解析 + COMPARED==0 防空转守卫 + 未登记模块显式 warning），run 32604915058 Backend Build 实测输出 22 行 ✅ + 「基线比对完成：共 22 个模块参与比对」，门禁正式生效
 - [x] 9.5 重跑账本 scan+report：levelFinal 复核 133/133 保持，20 项上调已在 HEAD 落定；本期实现的 6 条 gapNotes 同步更新为已闭环事实（2026-08-22）
 - [x] 9.6 迁移脚本远程导入验证 + L3 脚本抽检（用户决策走远端 SSH）→ 迁移 49 远端导入 IMPORT_OK/VERIFY_OK（bd_material.material_code 列 + idx_material_code 索引实测存在）+ L3 抽检 4/4 PASS（material 49/labor 38/site 51/finance 全过，真实登录真实接口，2026-08-22/23）
-- [ ] 9.7 临时文件清理自查 + 分阶段提交
+- [x] 9.7 临时文件清理自查 + 分阶段提交 → 本期产生的临时文件全部清理：keys/_p0_*.sh（3 个）、_backend_build_log*.txt（3 个）、_bb_log4.txt/_bb_log5.txt（CI 日志）、_log_parse.js/_jacoco_diff.js（解析脚本）、_jacoco_new/_jacoco_check/_jacoco_old（artifact 复算目录）；远端 /tmp/49_p0_gap_closeout.sql + _p0_*.sh（3 个）已删除并 ls 确认；分阶段提交：业务代码 4 段 → tasks.md 41653e1 → 补测 d8db2a4 → 基线修正 eb84e72 → 编译修复 e1044ed → 门禁修复 ca50cb5
 
 ---
 
@@ -90,5 +90,5 @@
 | 日期 | 层级 | 测试项 | 分类 | 原因 | 影响范围 | 处置决策 | 决策人 | 状态 |
 |---|---|---|---|---|---|---|---|---|
 | 2026-08-22 | L1 | p0-gap-closeout 9.1 受影响后端模块 mvn test | ENV | 用户指令禁止启动 java/openjdk，无法运行 surefire | 后端 9 模块单测无法本地复跑（zw-labor/zw-basedata 已于 8-16/8-21 会话实测全绿） | 用户决策改走 CI：run 32584843669 Backend Build 全绿（23 模块约 3605 单测） | 用户 | 已完成 |
-| 2026-08-22 | 覆盖率 | p0-gap-closeout 9.4 JaCoCo 覆盖率基线实测 | ENV | 同上（JaCoCo 依赖 JVM） | 新增类（MaterialService.getByCode 等）覆盖率未实测入 baseline | 改走 CI artifact 复算：门禁长期空转已修复 deploy.yml（待提交）；回退调查完成：4 模块为 1ba8223 新增类缺测试、security 为基线校准偏差，处置方案待用户决策 | 用户 | 待用户决策 |
+| 2026-08-22 | 覆盖率 | p0-gap-closeout 9.4 JaCoCo 覆盖率基线实测 | ENV | 同上（JaCoCo 依赖 JVM） | 新增类（MaterialService.getByCode 等）覆盖率未实测入 baseline | 改走 CI artifact 复算：用户决策 4 模块先补测达标再推门禁（9 文件 1193 行 d8db2a4）+ security 修正为实测值 656（eb84e72）；门禁修复 ca50cb5，run 32604915058 实测输出 22 ✅，22 模块全达标 | 用户 | 已完成 |
 | 2026-08-22 | L3 | p0-gap-closeout 9.6 远程迁移导入+L3 脚本抽检 | ENV | 同上（依赖远程 Java 服务） | 迁移 49 material_code 列与 L3 契约未远程验证 | 用户决策改走远端 SSH：迁移 49 IMPORT_OK/VERIFY_OK + L3 4/4 PASS | 用户 | 已完成 |
