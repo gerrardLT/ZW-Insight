@@ -80,6 +80,12 @@ jobs:
       # 覆盖率不回退守护：逐模块比对 tests/coverage-baseline.json（千分比，容忍 ±1‰ 波动），
       # 任一模块下降即构建失败。基线只许升不许降，更新需提交新 JSON。
       # 见 .kiro/specs/test-maturity-upgrade/design.md D1
+      #
+      # 2026-08-22 修复（run 32584843669 审计发现）：原实现用 python3 解析基线 JSON 且
+      # `2>/dev/null || true` 吞掉一切错误，python3 不可用时 base 恒为空 → 全部 continue，
+      # 门禁自引入起长期零输出空转（历史成功 run 日志均无 ✅/❌ 行可证）。
+      # 现改用纯 grep 解析（无 python3 依赖），并加「零比对即失败」防空转守卫；
+      # 基线未登记模块改为显式 warning（不再静默跳过），awk 无覆盖数据行显式标注。
       - name: Coverage baseline check (no regression)
         working-directory: zw-insight-server
         run: |
@@ -89,16 +95,24 @@ jobs:
             exit 1
           fi
           FAIL=0
+          COMPARED=0
           for csv in zw-*/target/site/jacoco/jacoco.csv; do
             [ -f "$csv" ] || continue
             module=$(echo "$csv" | cut -d/ -f1)
-            base=$(python3 -c "import json,sys; d=json.load(open('$BASELINE')); v=d.get('$module'); sys.exit(0) if v is None else print(v)" 2>/dev/null || true)
-            [ -n "$base" ] || continue
+            base=$(grep -oE "\"$module\"[[:space:]]*:[[:space:]]*[0-9]+" "$BASELINE" | head -1 | grep -oE '[0-9]+$' || true)
+            if [ -z "$base" ]; then
+              echo "::warning::$module 未在基线 JSON 中登记，跳过（新模块需实测后登记基线）"
+              continue
+            fi
+            COMPARED=$((COMPARED+1))
             awk -F, -v base="$base" -v m="$module" '
               NR>1 { cov += $9; miss += $8 }
               END {
                 total = cov + miss
-                if (total == 0) exit 0
+                if (total == 0) {
+                  printf "\xe2\x9a\xa0\xef\xb8\x8f %s 覆盖率报告无数据行（csv 仅表头），无法比对\n", m
+                  exit 0
+                }
                 cur = int(cov * 1000 / total)
                 if (cur < base - 1) {
                   printf "\xe2\x9d\x8c %s 覆盖率回退: 当前 %d\xe2\x80\xb0 < 基线 %d\xe2\x80\xb0\n", m, cur, base
@@ -108,6 +122,11 @@ jobs:
                 }
               }' "$csv" || FAIL=1
           done
+          if [ "$COMPARED" -eq 0 ]; then
+            echo "::error::基线比对空转：未比对任何模块（jacoco.csv 或基线 JSON 缺失），门禁未实际执行"
+            exit 1
+          fi
+          echo "基线比对完成：共 $COMPARED 个模块参与比对"
           if [ "$FAIL" -ne 0 ]; then
             echo "::error::存在模块覆盖率低于基线，请补测或说明后更新基线 JSON（只许升不许降）"
             exit 1
