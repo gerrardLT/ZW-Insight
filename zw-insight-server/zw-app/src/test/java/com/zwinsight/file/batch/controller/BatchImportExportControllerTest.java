@@ -39,7 +39,8 @@ class BatchImportExportControllerTest {
     void should_import_data() throws Exception {
         ImportResult result = new ImportResult();
         result.setTotalRows(10); result.setSuccessRows(10); result.setFailedRows(0);
-        when(batchImportExportService.importData(eq("MACHINE_LEDGER"), any(), any())).thenReturn(result);
+        // Controller 走四参 default 方法（extraParams 透传），须按四参匹配打桩
+        when(batchImportExportService.importData(eq("MACHINE_LEDGER"), any(), any(), anyMap())).thenReturn(result);
 
         MockMultipartFile file = new MockMultipartFile("file", "test.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "dummy".getBytes());
@@ -50,6 +51,7 @@ class BatchImportExportControllerTest {
                         .param("projectId", "100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+        verify(batchImportExportService).importData(eq("MACHINE_LEDGER"), any(), eq(100L), eq(java.util.Map.of()));
     }
 
     @Test @DisplayName("POST /api/v1/batch/export - 发起异步导出")
