@@ -257,9 +257,9 @@ test.describe('支出域 — 机械结算 create 页（@matrix B-11/B-12/B-13）
     expect(body.code, '预览查询应成功').toBe(200)
   })
 
-  // @matrix 盲点 12 现状钉住：预览为空时保存无守卫（可直接提交空结算单）——
-  // 本用例断言"空预览区域展示"行为，提交守卫待产品决策后补修复+翻转
-  test('盲点 12 现状钉住：无使用记录时预览合计为 0', async ({ page }) => {
+  // @matrix 盲点 12 守卫（2026-08-24 翻转，原现状钉住）：预览为空时保存按钮禁用，
+  // 防空结算单提交；后端「无可结算工作量」拦截由 b2-machine.spec.ts API 层钉住
+  test('盲点 12 守卫：无使用记录时预览合计为 0 且保存按钮禁用', async ({ page }) => {
     test.setTimeout(90_000)
     await page.goto('/machine/settlement/create')
     await page.waitForLoadState('networkidle')
@@ -275,14 +275,17 @@ test.describe('支出域 — 机械结算 create 页（@matrix B-11/B-12/B-13）
     await endInput.fill('2020-01-02')
     await endInput.press('Enter')
     await page.waitForTimeout(2000)
-    // 远古周期必无使用记录：预览区域为空表或合计 0（不阻断，现状钉住）
+    // 远古周期必无使用记录：预览区域为空表或合计 0
     const totalText = await page.locator('.preview-total').innerText().catch(() => '')
     if (totalText) {
       expect(totalText).toContain('¥ 0')
     } else {
-      // 预览区未显示（previewVisible=false 亦为合法现状）
+      // 预览区未显示（previewVisible=false，表单不齐备分支）
       expect(await page.locator('.preview-section').count()).toBeLessThanOrEqual(1)
     }
+    // 守卫断言：保存按钮禁用（canSave=false），防空结算单提交
+    const saveBtn = page.locator('button:has-text("保存结算单")')
+    await expect(saveBtn).toBeDisabled({ timeout: 10_000 })
   })
 })
 

@@ -515,7 +515,7 @@
 | B-12-2 | 预览仅双条件齐备时加载 | 功能 | 只选项目 | 查看预览区 | previewVisible=false | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
 | B-12-3 | 预览金额=工作天数×单价，合计=sum(amount) | 功能 | 有 usage 数据 | 选项目+周期 | computed totalAmount 与明细一致 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
 | B-12-4 | 切换项目/周期自动重载预览 | 功能 | 已预览 | 改周期 | handlePeriodChange→loadPreview | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |
-| B-12-5 | 预览为空仍可保存 | 负向 | 周期内无台班 | 保存 | 前端无空明细守卫（盲点）→创建 0 元结算单 | L1 machine-settlement-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；后端「无可结算的工作量记录」守卫实证兑底） |
+| B-12-5 | 空预览拦截保存（盲点 12 守卫） | 负向 | 周期内无台班 | 保存 | 前端守卫 canSave=false 禁用保存按钮 + handleSave 兜底 warning 不发请求（2026-08-24 修复，原现状钉住翻转）；后端「无可结算的工作量记录」拦截由 E2E API 层钉住 | L1 machine-settlement-matrix.component.test.ts（B-12-5 翻转为守卫断言）+ E2E expense-write.spec.ts 盲点 12 守卫用例（保存按钮 disabled）+ b2-machine.spec.ts（后端拦截 API 层，真实模式） |
 | B-12-6 | 保存 payload 与跳转 | 功能 | 合法输入 | 保存 | createMachineSettlement 后跳转列表+成功提示 | L1 machine-settlement-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿；台班计价 2×500=1000+编号 JXJS- 前缀+周期倒置拦截实证） |
 | B-12-7 | 同项目同周期重复结算 | 负向 | 已存在同周期单 | 再次保存 | 前端无重复守卫，依赖后端。**2026-08-19 实证**：后端守卫存在「该项目在选定周期内已存在结算单，结算周期不能重叠」 | L1 machine-settlement-matrix.component.test.ts（2026-08-19）+ E2E b2-machine.spec.ts（真实模式，2026-08-19 全绿） |
 | B-12-8 | usage 接口失败降级 | 负向 | mock 失败 | 选条件 | previewData=[]，不阻断 | L1 machine-settlement-matrix.component.test.ts（2026-08-19） |

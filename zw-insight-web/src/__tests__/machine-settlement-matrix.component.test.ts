@@ -14,7 +14,7 @@ const {
   mockSettlementPage, mockSubmitSettlement, mockSummary, mockExport,
   mockCreateSettlement, mockUsagePage, mockSettlementDetail,
   mockProjectList, mockRouteParams, mockPush, mockBack,
-  mockSuccess, mockError, mockConfirm,
+  mockSuccess, mockError, mockWarning, mockConfirm,
 } = vi.hoisted(() => ({
   mockSettlementPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockSubmitSettlement: vi.fn(async (): Promise<any> => ({ code: 200 })),
@@ -29,6 +29,7 @@ const {
   mockBack: vi.fn(),
   mockSuccess: vi.fn(),
   mockError: vi.fn(),
+  mockWarning: vi.fn(),
   mockConfirm: vi.fn(async () => 'confirm'),
 }))
 
@@ -52,7 +53,7 @@ vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
     ...actual,
-    ElMessage: { success: mockSuccess, error: mockError, warning: vi.fn(), info: vi.fn() },
+    ElMessage: { success: mockSuccess, error: mockError, warning: mockWarning, info: vi.fn() },
     ElMessageBox: { ...actual.ElMessageBox, confirm: mockConfirm },
   }
 })
@@ -240,18 +241,21 @@ describe('settlement/create.vue B12 矩阵', () => {
     expect(st.previewVisible).toBe(true)
   })
 
-  it('B-12-5 预览为空仍可保存（盲点钉住）：前端无空明细守卫，直接调 createMachineSettlement', async () => {
+  it('B-12-5 空预览拦截保存（盲点 12 守卫，2026-08-24 翻转）：canSave=false + handleSave 不发请求仅 warning', async () => {
     const w = await mountCreate()
     const st = w.vm.$.setupState
     mockUsagePage.mockResolvedValue({ code: 200, data: { records: [], total: 0 } })
     st.formData.projectId = 1
     st.formData.period = ['2026-08-01', '2026-08-31']
     await st.loadPreview()
+    expect(st.canSave, '空预览应禁用保存').toBe(false)
     await st.handleSave()
     await flushPromises()
-    expect(mockCreateSettlement).toHaveBeenCalledWith({ projectId: 1, periodStart: '2026-08-01', periodEnd: '2026-08-31' })
-    expect(mockSuccess).toHaveBeenCalledWith('结算单创建成功')
-    expect(mockPush).toHaveBeenCalledWith('/machine/settlement')
+    expect(mockCreateSettlement, '空预览不得发起创建请求').not.toHaveBeenCalled()
+    expect(mockWarning).toHaveBeenCalledWith('当前周期内无可结算的机械使用明细，无法保存')
+    // 有明细后 canSave 翻转为 true（正常路径不受影响）
+    st.previewData = [{ machineName: '挖机', amount: 200 }]
+    expect(st.canSave).toBe(true)
   })
 
   it('B-12-8 usage 接口失败降级：previewData=[] 不阻断', async () => {

@@ -62,7 +62,9 @@
 
       <div class="form-actions">
         <el-button @click="router.back()">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSave">保存结算单</el-button>
+        <!-- 盲点 12 守卫（2026-08-24）：预览为空/加载中禁用保存，防空结算单提交；
+             后端 MachineWorkSettlementService 已有「无可结算工作量」拦截，此为前端体验对齐 -->
+        <el-button type="primary" :loading="submitLoading" :disabled="!canSave" @click="handleSave">保存结算单</el-button>
       </div>
     </el-card>
   </div>
@@ -97,6 +99,9 @@ const formRules = {
 const totalAmount = computed(() => {
   return previewData.value.reduce((sum, item) => sum + (item.amount || 0), 0)
 })
+
+// 盲点 12 守卫：预览齐备且有明细才可保存（空预览/加载中禁用）
+const canSave = computed(() => previewVisible.value && !previewLoading.value && previewData.value.length > 0)
 
 async function loadProjects() {
   try {
@@ -141,6 +146,11 @@ async function loadPreview() {
 
 async function handleSave() {
   await formRef.value?.validate()
+  if (!canSave.value) {
+    // 按钮已禁用，此处为编程调用/竞态兜底：空预览不发请求（后端亦会拦截「无可结算工作量」）
+    ElMessage.warning('当前周期内无可结算的机械使用明细，无法保存')
+    return
+  }
   submitLoading.value = true
   try {
     await createMachineSettlement({

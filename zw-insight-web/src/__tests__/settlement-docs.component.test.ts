@@ -143,6 +143,9 @@ describe('machine/settlement/create.vue 机械结算创建', () => {
     st.formRef = { validate: vi.fn(async () => true) }
     st.formData.projectId = 1
     st.formData.period = ['2026-08-01', '2026-08-31']
+    // 盲点 12 守卫（2026-08-24）：正常保存需预览齐备且有明细
+    st.previewVisible = true
+    st.previewData = [{ machineName: '挖机', amount: 500 }]
     await st.handleSave()
     await flushPromises()
     expect(mockMSettleCreate).toHaveBeenCalledWith({
