@@ -2,21 +2,15 @@ package com.zwinsight.system.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.config.SecurityContextHolder;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.exception.BusinessException;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.file.service.MinioService;
-import com.zwinsight.common.security.RequiresPermission;
+import com.zwinsight.security.annotation.SecondaryConfirm;
 import com.zwinsight.system.domain.SysBackupRecord;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.mapper.SysBackupRecordMapper;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.system.service.BackupService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -162,11 +156,13 @@ public class BackupController {
     /**
      * 从指定备份恢复数据库。
      *
-     * <p>高风险操作：从 MinIO 下载备份 → 解压 → 执行 mysql 恢复。
-     * 二次确认（@SecondaryConfirm）待 6.6 任务落地后补充。
+     * <p>高风险操作：从 MinIO 下载备份 → 解压 → 执行 mysql 恢复，会覆盖当前库全部数据。
+     * {@link SecondaryConfirm} 切面要求请求头 {@code X-Confirm-Password} 携带登录密码
+     * 二次确认（缺失→449 由前端拦截器弹密码框重试；错误→403，15 分钟 5 次→423 锁定）。
      *
      * @param id 源备份记录ID
      */
+    @SecondaryConfirm(message = "数据库恢复为高风险操作，将覆盖当前库全部数据，请输入登录密码确认")
     @PostMapping("/restore/{id}")
     public R<Void> restore(@PathVariable Long id) {
         Long operatorId = SecurityContextHolder.getUserId();
