@@ -46,7 +46,7 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
+        <el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.size" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
       </div>
     </el-card>
 
@@ -133,13 +133,14 @@ const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
 
-const queryParams = ref({ pageNum: 1, pageSize: 10, title: '', status: '' })
+// 后端 InquiryController.page 收 page/size（后端为 SoT）；传 pageNum/pageSize 会被忽略致分页失配（2026-08-14 P2 实证缺陷，payroll.vue 同款已修）
+const queryParams = ref({ page: 1, size: 10, title: '', status: '' })
 const formData = ref({ id: undefined as number | undefined, title: '', materialName: '', specification: '', quantity: 1, deadline: '', requirement: '' })
 const formRules = { title: [{ required: true, message: '请输入询价标题', trigger: 'blur' }], materialName: [{ required: true, message: '请输入材料名称', trigger: 'blur' }], quantity: [{ required: true, message: '请输入数量', trigger: 'blur' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getInquiryPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
-function handleSearch() { queryParams.value.pageNum = 1; loadData() }
-function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, title: '', status: '' }; loadData() }
+function handleSearch() { queryParams.value.page = 1; loadData() }
+function handleReset() { queryParams.value = { page: 1, size: 10, title: '', status: '' }; loadData() }
 function handleAdd() { isEdit.value = false; formData.value = { id: undefined, title: '', materialName: '', specification: '', quantity: 1, deadline: '', requirement: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 
