@@ -156,6 +156,38 @@
 
 ---
 
+## 11. 遗留项修复批次（2026-08-24，用户指令「遗留项修复」）
+
+### 11.1 R6-01 备份恢复补挂 @SecondaryConfirm（commit be00de8）
+
+- 调研实证：@SecondaryConfirm 注解体系（注解 + SecondaryConfirmAspect 449/403/423 语义 + 前端 449 拦截器密码框）在 zw-security 早已完整落地，但全后端零消费方；restore 为高危操作（覆盖全库）无任何二次确认
+- 修复：BackupController.restore 补挂 `@SecondaryConfirm`（message 明示高风险+登录密码确认）+ 清理 8 处重复 import；前端 449 链路已就绪无需改动
+- 测试：新增 BackupControllerSecondaryConfirmTest 反射钉住 3 例（注解存在且 message 合规 / @PostMapping 恰为 /restore/{id} / execute 无注解防过度拦截），不启容器适配本地禁 JVM 约束，CI 验证
+
+### 11.2 盲点 12 机械结算空预览提交守卫（commit 5d884bf）
+
+- 调研实证：后端 MachineWorkSettlementService.createSettlement 已有 `workLogs.isEmpty()` → BusinessException「该周期内无可结算的工作量记录」拦截，仅缺前端 UI 守卫
+- 修复：create.vue 新增 canSave computed（预览齐备且有明细才可保存，按钮 disabled）+ handleSave 编程调用/竞态兜底 warning
+- 测试翻转：B-12-5 单测（canSave=false + 不发请求 + warning 文案 + 置数据后 true）、settlement-docs 保存用例补 preview 字段、E2E expense-write 断言保存按钮禁用、frontend-test-case-matrix 同步。定向 36 passed，全量 vitest 1085 passed
+
+### 11.3 S5 截图补拍完成
+
+Playwright 复用 storageState（token 过期走真实登录刷新）补拍 9 页全 OK 无重定向，dashboard 实证真实数据（项目 29/合同总额 13200 万/已收款 7100 万）。工具链与截图任务结束已清理
+
+### 11.4 k6 run 32653198393 失败根因与修复（commit 7974969）
+
+**根因链（双问题叠加）**：
+1. 直接原因：手动触发 k6（16:55 UTC）撞上 push d5ec371 部署 run 32652602551 的容器替换窗口（zwi-backend StartedAt 16:57:19 UTC 实证），login.js 前 1 分钟打到不可用后端，http_req_failed 99.9% > 阈值 0.1 → k6 exit 99 → exit 5。调度撞车，非代码缺陷
+2. 存量问题（被绿灯掩盖）：payment-submit.js 硬编码租户 1 种子合同 91501/项目 90001，与 CI 账号 t9999admin（租户 9999）错位——创建草稿成功但 submit 被「关联合同不存在」拒绝，业务码 check 0/121 全挂；成功 run 32648184572 同样全挂（k6 check 失败不影响 exit code）。附产物：租户 9999 堆 243 条 DRAFT 遗骸（已经真实 DELETE 接口清为 0）
+
+**修复（用户决策「租户 9999 自建数据」）**：payment-submit.js 新增 setup() 在租户 9999 走真实接口自建数据（幂等复用）：项目报备（submit 直接 FILED）→ OTHER_EXPENSE 其他支出合同（创建时直接携带累计结算 1000 万，与 L4 阶段 9D 同口径）→ default 用 setup 返回的真实 ID。setup 失败即 throw（k6 终止，不静默）
+
+**实证**：Node 探针等价复现全链路——项目 DRAFT→FILED、合同创建、付款草稿、**submit 业务码 500→200**、withdraw 200。自建数据 projectId=2091646682238349313 / contractId=2091646683106570241（供 setup 幂等复用；被 L4 兜底清理后自动重建）
+
+**复验**：push 7974969 部署全绿（run 32669290246，含 R6-01 新测试 Backend Build 验证）后触发 performance-k6 workflow_dispatch run 32670003331（等部署完成再触发，避免重蹈撞车）。**结果：三场景真全绿**——login.js 996/996（100%）、page-query.js 72804/72804（100%）、**payment-submit.js 363/363（100%，含业务码 200 check，修复前 0/121 全挂）**，各场景 http_req_failed 均 0%，setup 幂等复用自建合同（未重复创建）。k6 payment 业务链首次真实跑通
+
+---
+
 ## 受阻项登记表
 
 | 日期 | 层级 | 测试项 | 分类 | 原因 | 影响范围 | 处置决策 | 决策人 | 状态 |
@@ -164,3 +196,4 @@
 | 2026-08-22 | 覆盖率 | p0-gap-closeout 9.4 JaCoCo 覆盖率基线实测 | ENV | 同上（JaCoCo 依赖 JVM） | 新增类（MaterialService.getByCode 等）覆盖率未实测入 baseline | 改走 CI artifact 复算：用户决策 4 模块先补测达标再推门禁（9 文件 1193 行 d8db2a4）+ security 修正为实测值 656（eb84e72）；门禁修复 ca50cb5，run 32604915058 实测输出 22 ✅，22 模块全达标 | 用户 | 已完成 |
 | 2026-08-22 | L3 | p0-gap-closeout 9.6 远程迁移导入+L3 脚本抽检 | ENV | 同上（依赖远程 Java 服务） | 迁移 49 material_code 列与 L3 契约未远程验证 | 用户决策改走远端 SSH：迁移 49 IMPORT_OK/VERIFY_OK + L3 4/4 PASS | 用户 | 已完成 |
 | 2026-08-23 | L5-UI | 全量套件 run 32644242233：finance-write C5 前提断言双败（serial 连带 19 用例 did not run） | DATA | 租户 1 项目表 214 条 E2E 残留把种子项目挤出首页（total 229），只拉 page1 的 spec 项目解析全空；余额充足非耗尽（探针实证） | 仅 C5 前提定位及 4 处同类脆弱调用点；产品无缺陷；其余层全绿 | 测试侧 fetchAllProjects 翻页硬化（5 处切换，commit 4bc4225）+ 演示库 E2E 残留项目 API 清理 210 条（守卫拦截 4 条 WON 项目跳过）；本地实跑 32 passed 0 failed | AI 自诊自修（根因探针实证，非降级） | 已解除（2026-08-23 全量套件 run 32647849931 全链绿：L3 25/25、L4 26/26、L5-API 445、L5-UI 168 passed/3 skipped/UI_REAL_EXIT=0、一致性 55，HEAD 4bc4225） |
+| 2026-08-24 | k6 | run 32653198393 failure：login.js http_req_failed 99.9% 超阈 + payment_submit 业务码 0/121 | ENV+DATA | ①手动触发撞上 push 部署容器替换窗口（调度撞车）；②payment-submit.js 租户 1 种子数据与 t9999admin（租户 9999）错位，submit 被「关联合同不存在」拒绝（存量问题，历轮被 k6 exit code 绿灯掩盖） | payment 场景业务链从未真实跑通；租户 9999 堆 243 条 DRAFT 遗骸（已清 0）；login/page 场景本身无缺陷 | 用户决策「租户 9999 自建数据」：setup 真实接口自建项目+OTHER_EXPENSE 合同（commit 7974969）+ 243 遗骸 API 清理；Node 探针实证 submit 业务码 500→200 | 用户（数据口径方案选择） | 已解除（2026-08-24 run 32670003331 三场景真全绿：login 996/996、page 72804/72804、payment 363/363 含业务码 200，http_req_failed 均 0%，HEAD 7974969） |
