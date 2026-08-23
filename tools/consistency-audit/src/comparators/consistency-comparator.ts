@@ -170,7 +170,10 @@ export class ConsistencyComparator implements IComparator {
           pathMatched = true;
           matchedBackendEntry = beEntry;
 
-          if (feEntry.httpMethod === beEntry.httpMethod) {
+          if (
+            feEntry.httpMethod === beEntry.httpMethod ||
+            (beEntry.additionalMethods ?? []).includes(feEntry.httpMethod)
+          ) {
             methodMatched = true;
             matchedBackendIndices.add(i);
             break;
@@ -190,14 +193,16 @@ export class ConsistencyComparator implements IComparator {
         });
       } else if (!methodMatched && matchedBackendEntry) {
         // 路径匹配但 HTTP 方法不一致 → HTTP_METHOD_MISMATCH
+        // 后端声明多方法时（method = {POST, PUT}）展示全部声明方法
+        const backendMethods = [matchedBackendEntry.httpMethod, ...(matchedBackendEntry.additionalMethods ?? [])].join('/');
         items.push({
           type: 'HTTP_METHOD_MISMATCH',
           severity: 'Major',
           module: feEntry.module,
           frontendFilePath: feEntry.filePath,
           backendFilePath: matchedBackendEntry.filePath,
-          description: `${sourceLabel}使用 ${feEntry.httpMethod} 请求 ${feEntry.requestPath}，但后端声明为 ${matchedBackendEntry.httpMethod}`,
-          suggestion: `统一 HTTP 方法：前端改为 ${matchedBackendEntry.httpMethod} 或后端添加 ${feEntry.httpMethod} 映射`,
+          description: `${sourceLabel}使用 ${feEntry.httpMethod} 请求 ${feEntry.requestPath}，但后端声明为 ${backendMethods}`,
+          suggestion: `统一 HTTP 方法：前端改为 ${backendMethods} 之一或后端添加 ${feEntry.httpMethod} 映射`,
         });
         // HTTP 方法不匹配时，也标记后端为已匹配（路径存在，只是方法不同）
         const backendIndex = backendEntries.indexOf(matchedBackendEntry);

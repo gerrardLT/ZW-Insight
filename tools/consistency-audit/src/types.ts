@@ -20,8 +20,10 @@ export interface BackendApiEntry {
   controllerClass: string;
   /** 方法名 */
   methodName: string;
-  /** HTTP 方法 */
+  /** HTTP 方法（@RequestMapping 声明多方法时取第一个） */
   httpMethod: HttpMethod;
+  /** 额外声明的 HTTP 方法（method = {POST, PUT} 数组形式的其余方法，2026-08-23 修复误报新增） */
+  additionalMethods?: HttpMethod[];
   /** 完整路径 (e.g., "/api/v1/finance/invoice-apply") */
   fullPath: string;
   /** 请求参数类型 */

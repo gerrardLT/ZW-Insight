@@ -90,22 +90,35 @@ function mappingTypeToHttpMethod(mappingType: string): HttpMethod {
 }
 
 /**
- * 从 @RequestMapping 的 method 属性中提取 HTTP 方法
- * 如：method = RequestMethod.POST
+ * 从 @RequestMapping 的 method 属性中提取 HTTP 方法（可多个）
+ *
+ * 支持格式：
+ * - method = RequestMethod.POST（单值）
+ * - method = {RequestMethod.POST, RequestMethod.PUT}（数组形式，2026-08-23 修复）
+ *
+ * 旧实现的正则 `(?:RequestMethod\.)?(\w+)` 无法匹配 `{` 开头的数组形式，
+ * 导致返回 null 后被兑底为 GET，造成全项目 15 项 submit 端点 HTTP_METHOD_MISMATCH 误报。
  */
-function extractRequestMethodFromAnnotation(annotationText: string): HttpMethod | null {
-  const methodMatch = annotationText.match(
-    /method\s*=\s*(?:RequestMethod\.)?(\w+)/
-  );
-  if (methodMatch) {
-    return mappingTypeToHttpMethod(methodMatch[1]);
+function extractRequestMethodsFromAnnotation(annotationText: string): HttpMethod[] {
+  // 先匹配 {…} 数组整体（内含逗号，不能用 [^,]+ 截断），再匹配单值形式
+  const methodMatch = annotationText.match(/method\s*=\s*(\{[^}]*\}|[^,)]+)/);
+  if (!methodMatch) {
+    return [];
   }
-  return null;
+  const methods: HttpMethod[] = [];
+  const enumRegex = /RequestMethod\.(\w+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = enumRegex.exec(methodMatch[1])) !== null) {
+    methods.push(mappingTypeToHttpMethod(m[1]));
+  }
+  return methods;
 }
 
 /** 方法级注解解析结果 */
 interface MethodMappingResult {
   httpMethod: HttpMethod;
+  /** @RequestMapping 数组形式声明的其余方法 */
+  additionalMethods?: HttpMethod[];
   path: string;
   lineNumber: number;
 }
@@ -208,11 +221,14 @@ function extractMethodMappings(content: string): MethodMappingResult[] {
           /(?:value\s*=\s*)?["']([^"']+)["']/
         );
         const methodPath = pathMatch ? pathMatch[1] : '';
-        // 提取 HTTP 方法
-        const httpMethod = extractRequestMethodFromAnnotation(annotationContent) || 'GET';
+        // 提取 HTTP 方法（支持 method = {POST, PUT} 数组形式）
+        const declaredMethods = extractRequestMethodsFromAnnotation(annotationContent);
+        const httpMethod = declaredMethods.length > 0 ? declaredMethods[0] : 'GET';
+        const additionalMethods = declaredMethods.length > 1 ? declaredMethods.slice(1) : undefined;
 
         results.push({
           httpMethod,
+          additionalMethods,
           path: methodPath,
           lineNumber: i + 1,
         });
@@ -393,6 +409,7 @@ export class BackendScanner implements IScanner<BackendApiEntry> {
         controllerClass,
         methodName,
         httpMethod: mapping.httpMethod,
+        additionalMethods: mapping.additionalMethods,
         fullPath,
         requestParamType,
         responseType,

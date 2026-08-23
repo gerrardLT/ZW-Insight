@@ -184,6 +184,35 @@ describe('ConsistencyComparator', () => {
       expect(result[0].severity).toBe('Major');
     });
 
+    it('后端声明多方法（{POST, PUT}）：前端用 PUT 命中 additionalMethods → 不算不一致', () => {
+      const backend = [
+        makeBackend({ httpMethod: 'POST', additionalMethods: ['PUT'] }),
+      ];
+      const pcWeb = [makeFrontend({ httpMethod: 'PUT' })];
+      const result = comparator.compare(backend, pcWeb, []);
+      expect(result).toHaveLength(0);
+    });
+
+    it('后端声明多方法（{POST, PUT}）：前端用 POST 命中主方法 → 不算不一致', () => {
+      const backend = [
+        makeBackend({ httpMethod: 'POST', additionalMethods: ['PUT'] }),
+      ];
+      const pcWeb = [makeFrontend({ httpMethod: 'POST' })];
+      const result = comparator.compare(backend, pcWeb, []);
+      expect(result).toHaveLength(0);
+    });
+
+    it('后端声明多方法但前端方法均不命中 → 报 MISMATCH 且描述含全部方法', () => {
+      const backend = [
+        makeBackend({ httpMethod: 'POST', additionalMethods: ['PUT'] }),
+      ];
+      const pcWeb = [makeFrontend({ httpMethod: 'GET' })];
+      const result = comparator.compare(backend, pcWeb, []);
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('HTTP_METHOD_MISMATCH');
+      expect(result[0].description).toContain('POST/PUT');
+    });
+
     it('移动端接口也能正确比对', () => {
       const backend = [makeBackend()];
       const mobile = [

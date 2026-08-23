@@ -288,6 +288,63 @@ public class InvoiceApplyController {
     });
   });
 
+  describe('parseJavaFile - @RequestMapping method 数组形式（2026-08-23 误报修复）', () => {
+    it('method = {POST, PUT} 应解析为 POST + additionalMethods=[PUT]，而非兑底 GET', async () => {
+      const scanner = new BackendScanner();
+      const tempDir = path.resolve(__dirname, '../.temp-test-multi-method');
+      const controllerDir = path.join(
+        tempDir,
+        'zw-insight-server',
+        'zw-finance',
+        'src', 'main', 'java', 'com', 'zwinsight', 'finance', 'controller'
+      );
+      fs.mkdirSync(controllerDir, { recursive: true });
+
+      const javaContent = `package com.zwinsight.finance.controller;
+
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1/finance/invoice-apply")
+public class MultiMethodController {
+
+    @RequestMapping(value = "/{id}/submit", method = {RequestMethod.POST, RequestMethod.PUT})
+    public R<Void> submit(@PathVariable Long id) {
+        return R.ok();
+    }
+
+    @RequestMapping(value = "/{id}/withdraw", method = RequestMethod.POST)
+    public R<Void> withdraw(@PathVariable Long id) {
+        return R.ok();
+    }
+}
+`;
+      fs.writeFileSync(
+        path.join(controllerDir, 'MultiMethodController.java'),
+        javaContent
+      );
+
+      try {
+        const entries = await scanner.scan(tempDir);
+        expect(entries.length).toBe(2);
+
+        // 数组形式：POST 主方法 + PUT 附加方法
+        const submit = entries.find(e => e.fullPath === '/api/v1/finance/invoice-apply/{id}/submit');
+        expect(submit).toBeDefined();
+        expect(submit!.httpMethod).toBe('POST');
+        expect(submit!.additionalMethods).toEqual(['PUT']);
+
+        // 单值形式：行为不变，无附加方法
+        const withdraw = entries.find(e => e.fullPath === '/api/v1/finance/invoice-apply/{id}/withdraw');
+        expect(withdraw).toBeDefined();
+        expect(withdraw!.httpMethod).toBe('POST');
+        expect(withdraw!.additionalMethods).toBeUndefined();
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('模块列表覆盖', () => {
     it('应定义全部 20 个业务模块', () => {
       const expectedModules = [
