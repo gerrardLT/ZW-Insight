@@ -11,6 +11,9 @@
  *   2. 封账页 canOperate = permissions 含 "*:*:*" 或 roles ∈ ["FINANCE_ADMIN","ADMIN"]
  *      → wangqiang（FINANCE_STAFF）新增封账按钮同样隐藏（以代码契约为准）
  *   3. 后端写接口 @RequiresPermission（finance:financelock:create/unlock）= 真实权限边界
+ *   4. 2026-08-23 契约变更：d66fdda 权限守卫 S5 给 /finance 父路由加 meta.permission='finance:view'，
+ *      vue-router to.meta 合并父链 → lina（无视图码）被路由守卫直接重定向 /403，
+ *      到不了封账页；「页内入口隐藏」断言由 C-13-1（wangqiang 可进页但无操作角色）承担
  *
  * 纯只读 + 一次被拒的写调用（前后差集校验无落库），无数据清理需求。
  */
@@ -116,15 +119,17 @@ test.describe('权限视角 — 非 admin 真实登录（@matrix C-13/PERM-GAP�
     }
   })
 
-  test('C-13-2 lina（STAFF）— 新增封账按钮与操作列均隐藏', async ({ browser }) => {
+  test('C-13-2 lina（STAFF）— 无 finance:view 被路由层拦截重定向 /403（2026-08-23 契约）', async ({ browser }) => {
+    // 契约变更（2026-08-23，d66fdda 权限守卫 S5）：/finance 父路由 meta.permission='finance:view'，
+    // vue-router to.meta 合并父链 meta → lina（STAFF 无视图码）被 beforeEach 重定向 /403，
+    // 无法到达封账页（原断言「页内按钮/操作列隐藏」的前提不再成立，改由 C-13-1 wangqiang 承担）。
     const ctx = await browser.newContext({ storageState: buildStorageState(linaLogin) })
     const page = await ctx.newPage()
     try {
       await page.goto('/finance/finance-lock')
-      await page.waitForSelector('.el-table__row, .el-table__empty-block', { timeout: 30_000 })
+      await page.waitForURL(/\/403/, { timeout: 30_000 })
+      expect(page.url(), 'lina 无 finance:view → 路由守卫重定向 /403').toContain('/403')
       await expect(page.locator('button:has-text("新增封账")')).toHaveCount(0)
-      // :text-is 精确匹配，避免误伤「操作人」「操作时间」两个包含“操作”的表头列
-      await expect(page.locator('.el-table th:text-is("操作")')).toHaveCount(0)
     } finally {
       await ctx.close()
     }
@@ -145,12 +150,21 @@ test.describe('权限视角 — 非 admin 真实登录（@matrix C-13/PERM-GAP�
   })
 
   test('lina token 直调封账写接口被拒 — 且无落库（前后差集校验）', async () => {
+    // 2026-08-23 契约变更（d66fdda）：FinanceLockController 加类级 @RequiresPermission("finance:view")，
+    // lina 无 finance:view → 读接口同样 403，前后差集改由 wangqiang（持 finance:view）读取校验。
     const ctx = await pwRequest.newContext({
       extraHTTPHeaders: { Authorization: `Bearer ${linaLogin.token}` },
     })
+    const readCtx = await pwRequest.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${wangqiangLogin.token}` },
+    })
     try {
-      const beforeResp = await ctx.get(`${API_BASE}/api/v1/finance/lock/page`, { params: { pageNum: 1, pageSize: 50 } })
-      expect(beforeResp.status(), 'lina 读封账列表（GET 无注解，开放）').toBe(200)
+      // lina 读封账列表也被拒（类级 finance:view 生效）
+      const linaRead = await ctx.get(`${API_BASE}/api/v1/finance/lock/page`, { params: { pageNum: 1, pageSize: 50 } })
+      expect(linaRead.status(), 'lina 无 finance:view → 读列表同样 403').toBe(403)
+
+      const beforeResp = await readCtx.get(`${API_BASE}/api/v1/finance/lock/page`, { params: { pageNum: 1, pageSize: 50 } })
+      expect(beforeResp.status(), 'wangqiang 读封账列表（持 finance:view）').toBe(200)
       const beforeIds = new Set((((await beforeResp.json()).data?.records) || []).map((r: any) => r.id))
 
       const resp = await ctx.post(`${API_BASE}/api/v1/finance/lock`, {
@@ -159,12 +173,13 @@ test.describe('权限视角 — 非 admin 真实登录（@matrix C-13/PERM-GAP�
       const blocked = resp.status() === 403 || ((await resp.json()).code !== 200)
       expect(blocked, 'lina 无 finance:financelock:create → 写被拒（403 或业务错误码）').toBeTruthy()
 
-      const afterResp = await ctx.get(`${API_BASE}/api/v1/finance/lock/page`, { params: { pageNum: 1, pageSize: 50 } })
+      const afterResp = await readCtx.get(`${API_BASE}/api/v1/finance/lock/page`, { params: { pageNum: 1, pageSize: 50 } })
       const after = (((await afterResp.json()).data?.records) || []).map((r: any) => r.id)
       const diff = after.filter((id: any) => !beforeIds.has(id))
       expect(diff, '被拒的写请求不应落库').toHaveLength(0)
     } finally {
       await ctx.dispose()
+      await readCtx.dispose()
     }
   })
 })

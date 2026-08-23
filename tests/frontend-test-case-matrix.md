@@ -964,7 +964,7 @@
 | 用例ID | 测试点 | 类型 | 前置条件 | 操作步骤 | 预期结果 | 现有覆盖 |
 |---|---|---|---|---|---|---|
 | C-13-1 | canOperate：*:*:* 或 FINANCE_ADMIN/ADMIN 显示新增按钮 | 权限 | 财务管理员登录 | 打开页面 | 新增封账按钮+操作列可见。**2026-08 契约实证**：FINANCE_STAFF（wangqiang）不在 OPERATE_ROLES，按钮同样隐藏 | E2E permission.spec.ts（真实模式 wangqiang 视角，2026-08-18 全绿） |
-| C-13-2 | 普通用户隐藏新增与操作列 | 权限 | 普通角色登录 | 打开页面 | 按钮与操作列均隐藏（`:text-is` 精确匹配，排除「操作人/操作时间」列误伤） | E2E permission.spec.ts（真实模式 lina/STAFF 视角，2026-08-18 全绿） |
+| C-13-2 | 普通用户无 finance:view 被路由层拦截 /403（2026-08-23 契约：d66fdda 给 /finance 父路由加 meta.permission，to.meta 合并父链，到不了页；页内入口隐藏改由 C-13-1 wangqiang 承担） | 权限 | 普通角色登录 | 访问封账页 | 重定向 /403，页面无新增封账按钮 | E2E permission.spec.ts（真实模式 lina/STAFF 视角，2026-08-23 契约对齐） |
 | C-13-3 | period month-picker 格式 YYYY-MM | 功能 | 弹窗打开 | 选 2026-08 | 提交参数 period='2026-08' | 无 |
 | C-13-4 | lockType MONTHLY/QUARTERLY | 功能 | 弹窗打开 | 切换类型提交 | 类型正确保存 | 无 |
 | C-13-5 | 新增封账成功→状态 LOCKED（已封账/danger） | 功能 | 未封账月份 | 新增封账 | 列表出现已封账红标签 | 无 |

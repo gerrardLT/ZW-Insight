@@ -6,7 +6,11 @@
 #   A1. 无 token 访问受保护接口 → 401（AuthInterceptor）
 #   A2. 无效 token 访问 → 401（validateToken 拒绝）
 #   A3. 低权限用户（t9999user，无权限点）访问未标注接口 → 200（opt-in 放行，
-#       证明拦截不是一刀切）
+#       证明拦截不是一刀切）。目标端点用 GET /api/v1/system/menu/user（豁免，
+#       全体登录用户可达，SysMenuController 注释明示）。
+#       2026-08-23 契约变更：d66fdda 权限守卫修复给 ProjectController 加类级
+#       @RequiresPermission("project:view")，原 /api/v1/project/page 不再是
+#       未标注接口（t9999user 403 为正确行为），故换豁免端点。
 #   A4. 低权限用户调用 @RequiresPermission("project:delete") 接口 → 403
 #   A5. 低权限用户调用 @RequiresPermission("system:user:delete") 接口 → 403
 #   A6. 对照：t9999admin（SUPER_ADMIN 豁免）调用同一接口 → 非 403
@@ -121,9 +125,9 @@ if ! login_as "t9999user" "123456"; then
   exit 1
 fi
 
-log "▶ A3 低权限访问未标注接口（opt-in 放行）"
-authed_call GET "/api/v1/project/page?page=1&size=1"
-assert_code 200 "低权限访问未标注接口 /api/v1/project/page"
+log "▶ A3 低权限访问未标注接口（opt-in 放行，menu/user 豁免端点）"
+authed_call GET "/api/v1/system/menu/user"
+assert_code 200 "低权限访问未标注接口 /api/v1/system/menu/user"
 
 log "▶ A4 低权限调用 project:delete 接口"
 authed_call DELETE "/api/v1/project/999999999999"
