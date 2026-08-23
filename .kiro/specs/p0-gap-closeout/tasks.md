@@ -103,7 +103,7 @@
 
 **回滚方案**：revert e5b92f8 即恢复原扫描逻辑（Major 误报回归），无数据/接口影响。
 
-### 10.2 全量套件 run 32641133319 两处失败定位与修复（复验中）
+### 10.2 全量套件 run 32641133319 两处失败定位与修复（已闭环）
 
 **触发**：用户指令手动触发全量套件（gh workflow run deploy.yml -f run_tests=true）。首跑（ac2b0fe）被自己后续 push 触发的 run 经 concurrency cancel-in-progress 取消（操作教训：等套件跑完再推代码）；HEAD b7f08ba 重触发 run 32641133319，Backend Build/前端/Deploy 全绿，Integration Test 失败。
 
@@ -121,7 +121,29 @@
 - tests/frontend-test-case-matrix.md C-13-2 行同步；受阻台账（test-maturity-upgrade）登记
 - 验证：bash -n 语法 OK、playwright --list 可解析、router-guard 单测已钉住「无视图码→/403」守卫逻辑
 
-**复验**：commit 36c7400 push 后手动触发全量套件 run 32644242233（同 HEAD 的 push run 按 concurrency 设计被取消，手动 run 含 build+deploy 无影响）。结果待回填。
+**复验**：commit 36c7400 push 后手动触发全量套件 run 32644242233（同 HEAD 的 push run 按 concurrency 设计被取消）。**结果：两处修复全部生效**——L3 25/25 全绿（含 authz A3）、permission.spec 全过（含 C-13-2）、L4 210/0、L5-API 445 passed、一致性 55 passed。但 Integration Test 暴露新失败，见 10.3。
+
+### 10.3 全量套件 run 32644242233 新失败定位与修复（复验中）
+
+**失败现象**（artifact integration-test-results 完整 l5-ui-real.log 实证，CI 步骤仅 tail -6 看不到细节）：L5 UI Real `1 failed / 1 flaky / 3 skipped / 19 did not run / 147 passed`，UI_REAL_EXIT=1。
+- 真失败：finance-write.spec.ts:205 C5 付款申请完整写流程——前提断言「应存在可付余额 >= 1 元且项目可解析的采购/劳务/机械合同」首跑+retry 双败（故 exit 1，非 flaky 所致）
+- serial 连带：finance-write `mode:'serial'`（L27），C5 失败后同文件后续 19 用例 did not run（86-104/121-139 号）
+- expense-write-2.spec.ts:435 B-21 为 flaky（重试过），非独立失败；其首跑错误与 C5 同源（项目解析空）
+
+**根因**（DATA + 测试侧脆弱前提，非产品缺陷；服务器真实探针实证）：
+- 租户 1 项目表 total=229，其中 214 条为 E2E 残留（E2E审批UI_×180 + E2E自动化测试项目_×30 + E2E_TEST_×4，历轮实跑累积）；project/page 按创建时间倒序，首页 200 条几乎全是残留
+- 种子项目 90001（滨江花园一期工程）/90002/90003/90004 被挤到第二页；而有余额合同（水泥砂石采购 91501 余额 999970、钢材采购 91502 余额 1000000、劳务 91601/91602 各 500000）的 projectId 均指向种子项目
+- spec 只拉 page=1&size=200 → 项目解析全空 → 前提断言失败。排除余额耗尽假设（余额充足）
+
+**修复**（双管齐下，非降级，commit 4bc4225）：
+1. 测试侧硬化：real-helper.ts 新增 `fetchAllProjects` 翻页全量拉取（按 total 翻页，上限 20 页）；5 处调用点切换——finance-write C5/C1/C6 + expense-write-2 resolveDemoProject/B-21。断言语义不变
+2. 数据卫生：演示库 E2E 残留项目经真实 API（DELETE /api/v1/project/{id}）删除 210/222 条；4 条 WON 投标项目被「存在关联投标报名」引用守卫拦截（守卫生效正向实证，与既有台账残留同类，巡检兜底）；项目总数 229→19，种子项目回首页
+
+**本地验证**：playwright --list 171 tests 可解析；实跑 finance-write + expense-write-2 共 32 passed / 0 failed / 1 flaky（C6 一例 UI 时序等待超时重试过，与修复无关）；日志无「演示数据前提/无法解析/did not run」错误。
+
+**复验**：push 后手动触发全量套件 run 32647849931（HEAD 4bc4225，push run 32647849265 按 concurrency 取消）。结果待回填。
+
+**回滚方案**：`git revert 4bc4225` 即恢复单页拉取（脆弱前提回归，仅影响测试稳定性，不影响产品代码）。
 
 ---
 
@@ -132,3 +154,4 @@
 | 2026-08-22 | L1 | p0-gap-closeout 9.1 受影响后端模块 mvn test | ENV | 用户指令禁止启动 java/openjdk，无法运行 surefire | 后端 9 模块单测无法本地复跑（zw-labor/zw-basedata 已于 8-16/8-21 会话实测全绿） | 用户决策改走 CI：run 32584843669 Backend Build 全绿（23 模块约 3605 单测） | 用户 | 已完成 |
 | 2026-08-22 | 覆盖率 | p0-gap-closeout 9.4 JaCoCo 覆盖率基线实测 | ENV | 同上（JaCoCo 依赖 JVM） | 新增类（MaterialService.getByCode 等）覆盖率未实测入 baseline | 改走 CI artifact 复算：用户决策 4 模块先补测达标再推门禁（9 文件 1193 行 d8db2a4）+ security 修正为实测值 656（eb84e72）；门禁修复 ca50cb5，run 32604915058 实测输出 22 ✅，22 模块全达标 | 用户 | 已完成 |
 | 2026-08-22 | L3 | p0-gap-closeout 9.6 远程迁移导入+L3 脚本抽检 | ENV | 同上（依赖远程 Java 服务） | 迁移 49 material_code 列与 L3 契约未远程验证 | 用户决策改走远端 SSH：迁移 49 IMPORT_OK/VERIFY_OK + L3 4/4 PASS | 用户 | 已完成 |
+| 2026-08-23 | L5-UI | 全量套件 run 32644242233：finance-write C5 前提断言双败（serial 连带 19 用例 did not run） | DATA | 租户 1 项目表 214 条 E2E 残留把种子项目挤出首页（total 229），只拉 page1 的 spec 项目解析全空；余额充足非耗尽（探针实证） | 仅 C5 前提定位及 4 处同类脆弱调用点；产品无缺陷；其余层全绿 | 测试侧 fetchAllProjects 翻页硬化（5 处切换，commit 4bc4225）+ 演示库 E2E 残留项目 API 清理 210 条（守卫拦截 4 条 WON 项目跳过）；本地实跑 32 passed 0 failed | AI 自诊自修（根因探针实证，非降级） | 待复验（run 32647849931） |
