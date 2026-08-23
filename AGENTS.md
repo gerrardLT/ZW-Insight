@@ -104,6 +104,15 @@ npm run build        # 编译 TypeScript
 npm test             # 运行属性测试（fast-check）
 ```
 
+> ⚠️ **必须在项目根目录运行**（或显式传 `--root <项目根>`）。CLI 默认以 `process.cwd()` 为扫描根目录，在 tools 子目录下运行会扫不到任何 API，产出「后端 API: 0 + 174 Critical」的无效报告（2026-07-24、2026-08-23 两次踩坑）。正确姿势：
+>
+> ```bash
+> # 在 tools/consistency-audit 目录内运行时须显式指定根目录与输出目录
+> npx tsx src/cli.ts --root ../../ --output ../../audit-reports
+> ```
+>
+> 验证报告有效性：确认摘要中「后端 API: 740 / 已审核模块: 20/20」非零后再采信结论。
+
 ### 审计输出
 
 - 报告自动生成到 `audit-reports/` 目录（JSON + Markdown 双格式）
