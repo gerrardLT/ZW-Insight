@@ -19,6 +19,7 @@
  *   - 入库/出库/结算：用非 E2E 演示项目（真实合同/库存前提）
  */
 import { test, expect, request as pwRequest } from '@playwright/test'
+import { fetchAllProjects } from './real-helper'
 
 // 写路径用例文件内串行（多弹窗/共享数据态用例并行互扰，expense-write 实证）
 test.describe.configure({ mode: 'serial' })
@@ -99,10 +100,9 @@ async function selectProjectByName(page: any, container: any, name: string) {
   await page.waitForTimeout(800)
 }
 
-/** 解析演示项目（非 E2E 前缀首个），返回 {id, name} */
+/** 解析演示项目（非 E2E 前缀首个），返回 {id, name}；项目表翻页全量拉取（2026-08-23 硬化） */
 async function resolveDemoProject(request: any): Promise<{ id: string; name: string }> {
-  const resp = await request.get(`${API_BASE}/api/v1/project/page`, { params: { page: 1, size: 200 } })
-  const recs = ((await resp.json()).data?.records || [])
+  const recs = await fetchAllProjects(request)
   const demo = recs.find((p: any) => !String(p.projectName).includes('E2E'))
   expect(demo, '演示数据前提：应存在非 E2E 项目').toBeTruthy()
   return { id: String(demo.id), name: demo.projectName }
@@ -439,8 +439,8 @@ test.describe('支出域 — 分包结算写路径（@matrix B-21）', () => {
     const ctResp = await request.get(`${API_BASE}/api/v1/subcontract/contract/page`, { params: { page: 1, size: 100 } })
     const contracts = ((await ctResp.json()).data?.records || []).filter((c: any) => c.projectId)
     expect(contracts.length, '演示数据前提：应存在分包合同').toBeGreaterThan(0)
-    const pr = await request.get(`${API_BASE}/api/v1/project/page`, { params: { page: 1, size: 200 } })
-    const pmap = new Map(((await pr.json()).data?.records || []).map((p: any) => [String(p.id), p.projectName]))
+    // 项目表翻页全量拉取（2026-08-23 硬化，run 32644242233 实证：E2E 残留项目把种子项目挤出首页）
+    const pmap = new Map((await fetchAllProjects(request)).map((p: any) => [String(p.id), p.projectName]))
     const resolved = contracts
       .map((c: any) => ({ name: pmap.get(String(c.projectId)) }))
       .filter((x: any) => x.name && !String(x.name).includes('E2E'))

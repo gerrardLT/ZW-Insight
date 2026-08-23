@@ -22,6 +22,7 @@
  *     → API 层差集定位直接用 page/size；UI 层列表恒为 size=10 首页（现状钉住）
  */
 import { test, expect, request as pwRequest } from '@playwright/test'
+import { fetchAllProjects } from './real-helper'
 
 // 写路径用例文件内串行（多弹窗/共享数据态用例并行互扰，expense-write 实证）
 test.describe.configure({ mode: 'serial' })
@@ -213,9 +214,10 @@ test.describe('财务域 — C5 付款申请★ 完整写流程（@matrix C-5-1/
     // PaymentApplyService.validatePaymentLimit 实证）。历轮实跑审批回写会消耗采购合同余额
     // （run6 撞「最大可付金额：0.00」），按 PURCHASE→LABOR→MACHINE 顺序找余额 >= 1 元者。
     // 前提守卫（2026-08-20 修复）：候选合同必须能解析到存在的项目——历史残留的
-    // E2E_TEST_ 孤儿合同（挂项目已被删除）会带审批回写余额，命中即致定位项目失败
-    const prAll = await request.get(`${API_BASE}/api/v1/project/page`, { params: { page: 1, size: 200 } })
-    const projectMap = new Map(((await prAll.json()).data?.records || []).map((p: any) => [String(p.id), p.projectName]))
+    // E2E_TEST_ 孤儿合同（挂项目已被删除）会带审批回写余额，命中即致定位项目失败。
+    // 项目表翻页全量拉取（2026-08-23 硬化，run 32644242233 实证：214 条 E2E 残留项目
+    // 把种子项目挤出首页，只拉 page1 致项目不可解析）
+    const projectMap = new Map((await fetchAllProjects(request)).map((p: any) => [String(p.id), p.projectName]))
     const CATS = [
       { cat: 'PURCHASE', label: '采购合同', url: '/api/v1/purchase/contract/page' },
       { cat: 'LABOR', label: '劳务合同', url: '/api/v1/labor/contract/page' },
@@ -328,8 +330,8 @@ test.describe('财务域 — C1 开票申请（@matrix C-1-1/2）', () => {
     const ctResp = await request.get(`${API_BASE}/api/v1/contract/page`, { params: { page: 1, size: 100 } })
     const ctRecords = (await ctResp.json()).data?.records || []
     expect(ctRecords.length, '演示数据前提：应存在施工合同').toBeGreaterThan(0)
-    const pr = await request.get(`${API_BASE}/api/v1/project/page`, { params: { page: 1, size: 200 } })
-    const pmap = new Map(((await pr.json()).data?.records || []).map((p: any) => [String(p.id), p.projectName]))
+    // 项目表翻页全量拉取（2026-08-23 硬化，同 C5）
+    const pmap = new Map((await fetchAllProjects(request)).map((p: any) => [String(p.id), p.projectName]))
     const resolved = ctRecords
       .map((r: any) => ({ name: pmap.get(String(r.projectId)) }))
       .filter((x: any) => x.name)
@@ -528,8 +530,8 @@ test.describe('财务域 — C6 其他费用付款（@matrix C-6-1/2/3）', () =
     // 预算管控前置（run10 实证）：other-payment save 挂 @BudgetCheck，演示项目 BLOCK
     // 且无 OTHER 科目额度 → code=500「该科目未设置预算额度」。定位一个有项目级配置
     // （生效配置 isDefault=0）的非 E2E 项目，临时切 EXEMPT，afterAll PUT 恢复基线
-    const prjResp = await request.get(`${API_BASE}/api/v1/project/page`, { params: { page: 1, size: 200 } })
-    const projects = ((await prjResp.json()).data?.records || [])
+    // 项目表翻页全量拉取（2026-08-23 硬化，同 C5）
+    const projects = (await fetchAllProjects(request))
       .filter((p: any) => !String(p.projectName).includes('E2E'))
     let exemptProjectName: string | null = null
     let fallbackProject: { id: string; name: string } | null = null

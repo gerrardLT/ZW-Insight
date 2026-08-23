@@ -104,3 +104,30 @@ export function runRemote(command: string): string {
 export function expectOkJson(resp: { status(): number }, what: string) {
   expect(resp.status(), `${what} HTTP 状态`).toBe(200)
 }
+
+/**
+ * 项目表翻页全量拉取（2026-08-23 硬化）。
+ *
+ * 实证先例：全量套件 run 32644242233 —— 租户 1 项目 229 条中 214 条为 E2E 残留
+ * （E2E审批UI_×180 + E2E自动化测试项目_×30 + E2E_TEST_×4），按创建时间倒序排首页，
+ * 种子项目（90001 滨江花园一期等）被挤出 page=1&size=200 范围；只拉首页的 spec
+ * 无法解析有余额合同的 projectId（均指向种子项目），finance-write C5 前提断言
+ * 首跑+retry 双败，serial 连带 19 用例 did not run。
+ * 翻页全量拉取消除「项目表不超一页」脆弱前提；断言语义不变，非降级。
+ */
+export async function fetchAllProjects(
+  request: AuthedContext,
+  apiBase: string = API_BASE
+): Promise<any[]> {
+  const all: any[] = []
+  for (let page = 1; page <= 20; page++) {
+    const resp = await request.get(`${apiBase}/api/v1/project/page`, { params: { page, size: 200 } })
+    expect(resp.status(), 'project/page HTTP 状态').toBe(200)
+    const data = (await resp.json()).data || {}
+    const recs = data.records || []
+    all.push(...recs)
+    const total = Number(data.total ?? all.length)
+    if (recs.length === 0 || all.length >= total) break
+  }
+  return all
+}
