@@ -85,6 +85,46 @@
 
 ---
 
+## 10. 收口后续任务（2026-08-23，用户指令两项）
+
+### 10.1 一致性审计工具 15 项 Major 误报修复（已闭环）
+
+**变更原因**：存量 15 项 Major（HTTP_METHOD_MISMATCH）全部集中在 submit 类接口。根因：backend-scanner.ts 的 method 提取正则仅支持单值形式 `method = RequestMethod.POST`，无法解析数组形式 `method = {RequestMethod.POST, RequestMethod.PUT}`（15 个 submit 端点的真实注解），返回 null 后被 `|| 'GET'` 兜底，全部误判为 GET 与前端 POST 失配。
+
+**变更明细**（commit e5b92f8，5 文件）：
+- types.ts：BackendApiEntry 新增 `additionalMethods?: HttpMethod[]`
+- backend-scanner.ts：`extractRequestMethodsFromAnnotation` 重写，正则 `method\s*=\s*(\{[^}]*\}|[^,)]+)` 支持数组（注意：数组内含逗号，不可用 `[^,]+` 截断——首版自检出并修正）；主方法取第一个、其余入 additionalMethods
+- consistency-comparator.ts：方法匹配改集合包含（主方法或 additionalMethods 命中即匹配），mismatch 描述展示全部方法（POST/PUT）
+- 补 4 个单测（backend-scanner 数组形式 + comparator 多方法匹配 3 例），198 测试全绿
+
+**验证结果**：重跑审计（audit-report-2026-08-23T12-48-54）Major 15→0、Critical=0、Minor 268、一致率 80.1%→81.2%（后端 740 API / PC 628 / 移动端 57 / 20 模块全审）。
+
+**附带处置**（commit 3b5656c）：删除 tools/consistency-audit/audit-reports/ 3 份无效报告（在 tools 子目录误跑产出：后端 API=0 全假）；AGENTS.md 补根目录坑警示（commit b7f08ba）——正确姿势 `npx tsx src/cli.ts --root ../../ --output ../../audit-reports`。
+
+**回滚方案**：revert e5b92f8 即恢复原扫描逻辑（Major 误报回归），无数据/接口影响。
+
+### 10.2 全量套件 run 32641133319 两处失败定位与修复（复验中）
+
+**触发**：用户指令手动触发全量套件（gh workflow run deploy.yml -f run_tests=true）。首跑（ac2b0fe）被自己后续 push 触发的 run 经 concurrency cancel-in-progress 取消（操作教训：等套件跑完再推代码）；HEAD b7f08ba 重触发 run 32641133319，Backend Build/前端/Deploy 全绿，Integration Test 失败。
+
+**失败定位**（日志逐段解析）：
+1. L3 24/25：test-api-authz.sh A3「低权限访问未标注接口 /api/v1/project/page」得 403（期望 200）
+2. L5-UI 165 passed/1 failed：permission.spec.ts C-13-2 lina 封账页断言（serial 连带 C-13-1 等 skipped）；L4 210/210、L5-API 445 passed、一致性 55 passed 全绿
+
+**根因**（非产品缺陷，守卫行为正确）：d66fdda 权限守卫系统性修复（08-21）后测试契约过期——①ProjectController 类级 @RequiresPermission("project:view") 使 /api/v1/project/page 不再是未标注接口，t9999user 403 为正确行为；②/finance 父路由 meta.permission='finance:view'（vue-router to.meta 合并父链）+ FinanceLockController 类级 finance:view，lina 被路由层重定向 /403 到不了封账页、读列表也 403。
+
+**真实探针实证**（SSH Redis 验证码真实登录，全部契约成立）：t9999user GET menu/user=200 / project/page=403；lina 封账读=403 / 写=403 / menu/user=200；wangqiang 封账读=200。
+
+**修复**（commit 36c7400，测试侧契约对齐，非降级）：
+- keys/test-api-authz.sh：A3 改豁免端点 GET /api/v1/system/menu/user（期望 200）
+- permission.spec.ts：C-13-2 改断言路由层重定向 /403；末用例「写被拒无落库」前后差集改由 wangqiang（持 finance:view）读取，新增 lina 读列表 403 断言
+- tests/frontend-test-case-matrix.md C-13-2 行同步；受阻台账（test-maturity-upgrade）登记
+- 验证：bash -n 语法 OK、playwright --list 可解析、router-guard 单测已钉住「无视图码→/403」守卫逻辑
+
+**复验**：commit 36c7400 push 后手动触发全量套件 run 32644242233（同 HEAD 的 push run 按 concurrency 设计被取消，手动 run 含 build+deploy 无影响）。结果待回填。
+
+---
+
 ## 受阻项登记表
 
 | 日期 | 层级 | 测试项 | 分类 | 原因 | 影响范围 | 处置决策 | 决策人 | 状态 |
