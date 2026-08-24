@@ -14,9 +14,21 @@ const {
   mockPrintPage, mockPrintCreate, mockPrintUpdate, mockPrintDelete, mockPrintRender,
   mockBatchTemplateList, mockBatchCreate, mockBatchUpdate, mockBatchDelete,
   mockSaveXML, mockImportXML,
+  mockUpdateProperties, modelerConstructorOptions, mockModelerGet,
 } = vi.hoisted(() => {
   const page = () => vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } }))
   const ok = () => vi.fn(async (): Promise<any> => ({ code: 200 }))
+  const mockCanvasZoom = vi.fn()
+  const mockUpdateProperties = vi.fn()
+  const mockSelectionGet = vi.fn((): any[] => [])
+  // Modeler.get 服务路由：canvas/selection/modeling（属性面板与 zoom 依赖）
+  const mockModelerGet = vi.fn((service: string) => {
+    if (service === 'canvas') return { zoom: mockCanvasZoom }
+    if (service === 'selection') return { get: mockSelectionGet }
+    if (service === 'modeling') return { updateProperties: mockUpdateProperties }
+    return undefined
+  })
+  const modelerConstructorOptions: any[] = []
   return {
     mockTodo: page(), mockDone: page(), mockComplete: ok(), mockRejectPrev: ok(), mockRejectStart: ok(),
     mockTerminate: ok(), mockBatchApprove: ok(),
@@ -34,6 +46,7 @@ const {
     mockBatchCreate: ok(), mockBatchUpdate: ok(), mockBatchDelete: ok(),
     mockSaveXML: vi.fn(async () => ({ xml: '<xml/>' })),
     mockImportXML: vi.fn(async () => undefined),
+    mockUpdateProperties, modelerConstructorOptions, mockModelerGet,
   }
 })
 
@@ -59,14 +72,16 @@ vi.mock('@/api/batch', () => ({
   renderTemplate: vi.fn(), downloadTemplate: vi.fn(), importData: vi.fn(),
   startExport: vi.fn(), getExportStatus: vi.fn(), downloadExportFile: vi.fn(), getFilePreviewUrl: vi.fn(),
 }))
-// bpmn-js Modeler stub（canvas 依赖隔离）
+// bpmn-js Modeler stub（canvas 依赖隔离；捕获构造参数钉住 moddleExtensions）
 vi.mock('bpmn-js/lib/Modeler', () => ({
   default: class {
+    constructor(options: any) { modelerConstructorOptions.push(options) }
     createDiagram = vi.fn(async () => undefined)
     importXML = mockImportXML
     saveXML = mockSaveXML
     destroy = vi.fn()
     on = vi.fn()
+    get = mockModelerGet
   },
 }))
 vi.mock('bpmn-js/dist/assets/diagram-js.css', () => ({}))
@@ -92,6 +107,7 @@ vi.mock('element-plus', async (importOriginal) => {
 import Approval from '@/views/workflow/approval/index.vue'
 import BusinessType from '@/views/workflow/business-type/index.vue'
 import Designer from '@/views/workflow/designer/index.vue'
+import PropertiesPanel from '@/views/workflow/designer/PropertiesPanel.vue'
 import Process from '@/views/workflow/process/index.vue'
 import Rollback from '@/views/workflow/rollback/index.vue'
 import PrintTemplate from '@/views/system/print-template/index.vue'
@@ -226,6 +242,79 @@ describe('workflow/designer/index.vue 流程设计器', () => {
     await flushPromises()
     expect(mockSaveXML).toHaveBeenCalled()
     expect(mockDeploy).toHaveBeenCalled()
+  })
+
+  it('Modeler 创建参数含 moddleExtensions.flowable（Flowable 命名空间）', async () => {
+    wrapper = mount(Designer, { global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    const opts = modelerConstructorOptions[modelerConstructorOptions.length - 1]
+    expect(opts.moddleExtensions?.flowable).toBeTruthy()
+    expect(opts.moddleExtensions.flowable.uri).toBe('http://flowable.org/bpmn')
+    expect(opts.moddleExtensions.flowable.prefix).toBe('flowable')
+  })
+})
+
+describe('workflow/designer/PropertiesPanel.vue 属性面板', () => {
+  function userTaskEl(attrs: Record<string, string> = {}) {
+    return {
+      type: 'bpmn:UserTask',
+      businessObject: { get: (k: string) => attrs[k] },
+    }
+  }
+
+  it('选中 UserTask 渲染 4 字段表单并回显属性', async () => {
+    const el = userTaskEl({ name: '审批', 'flowable:assignee': '${initiator}' })
+    const fakeModeler = {
+      on: vi.fn(),
+      get: (svc: string) =>
+        svc === 'selection' ? { get: () => [el] }
+          : svc === 'modeling' ? { updateProperties: mockUpdateProperties }
+            : undefined,
+    }
+    wrapper = mount(PropertiesPanel, { props: { modeler: fakeModeler }, global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    const text = wrapper.text()
+    expect(text).toContain('节点名称')
+    expect(text).toContain('审批人')
+    expect(text).toContain('候选组')
+    expect(text).toContain('候选人')
+    const inputs = wrapper.findAll('input')
+    expect(inputs[0].element.value).toBe('审批')
+    expect(inputs[1].element.value).toBe('${initiator}')
+  })
+
+  it('回写调 updateProperties：name 与 flowable:assignee，空串写 undefined', async () => {
+    const el = userTaskEl({ name: '审批' })
+    const fakeModeler = {
+      on: vi.fn(),
+      get: (svc: string) =>
+        svc === 'selection' ? { get: () => [el] }
+          : svc === 'modeling' ? { updateProperties: mockUpdateProperties }
+            : undefined,
+    }
+    wrapper = mount(PropertiesPanel, { props: { modeler: fakeModeler }, global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    mockUpdateProperties.mockClear()
+    const inputs = wrapper.findAll('input')
+    await inputs[1].setValue('zhangwei')
+    await inputs[1].trigger('change')
+    expect(mockUpdateProperties).toHaveBeenCalledWith(el, { 'flowable:assignee': 'zhangwei' })
+    await inputs[0].setValue('合同审批')
+    await inputs[0].trigger('change')
+    expect(mockUpdateProperties).toHaveBeenCalledWith(el, { name: '合同审批' })
+    // 空串 → undefined（移除属性）
+    await inputs[1].setValue('')
+    await inputs[1].trigger('change')
+    expect(mockUpdateProperties).toHaveBeenCalledWith(el, { 'flowable:assignee': undefined })
+  })
+
+  it('未选中时显示说明卡：processKey 语义 + ${initiator} 示例', async () => {
+    const fakeModeler = { on: vi.fn(), get: (svc: string) => (svc === 'selection' ? { get: () => [] } : undefined) }
+    wrapper = mount(PropertiesPanel, { props: { modeler: fakeModeler }, global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    const text = wrapper.text()
+    expect(text).toContain('processKey')
+    expect(text).toContain('${initiator}')
   })
 })
 

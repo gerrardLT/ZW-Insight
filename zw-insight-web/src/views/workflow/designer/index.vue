@@ -25,13 +25,16 @@
       </el-button>
     </div>
 
-    <!-- BPMN 画布 -->
-    <div ref="canvasRef" class="designer-canvas"></div>
+    <!-- BPMN 画布 + 右侧属性面板 -->
+    <div class="designer-body">
+      <div ref="canvasRef" class="designer-canvas"></div>
+      <PropertiesPanel v-if="modelerInstance" :modeler="modelerInstance" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, shallowRef, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import BpmnModeler from 'bpmn-js/lib/Modeler'
@@ -39,9 +42,13 @@ import 'bpmn-js/dist/assets/diagram-js.css'
 import 'bpmn-js/dist/assets/bpmn-js.css'
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css'
 import { deployProcess } from '@/api/workflow'
+import { flowableDescriptor } from './flowable-moddle'
+import PropertiesPanel from './PropertiesPanel.vue'
 
 const canvasRef = ref<HTMLDivElement>()
 let modeler: InstanceType<typeof BpmnModeler> | null = null
+// 传给属性面板的响应式引用（shallowRef 避免深度代理 bpmn 内部对象）
+const modelerInstance = shallowRef<InstanceType<typeof BpmnModeler> | null>(null)
 
 // 默认空白流程模板
 const DEFAULT_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -92,13 +99,17 @@ onBeforeUnmount(() => {
   if (modeler) {
     modeler.destroy()
     modeler = null
+    modelerInstance.value = null
   }
 })
 
 async function initModeler() {
   modeler = new BpmnModeler({
-    container: canvasRef.value
+    container: canvasRef.value,
+    // Flowable 扩展属性（assignee/candidateUsers/candidateGroups）命名空间支持
+    moddleExtensions: { flowable: flowableDescriptor }
   })
+  modelerInstance.value = modeler
   try {
     await modeler.importXML(DEFAULT_XML)
     const canvas = modeler.get('canvas')
@@ -185,6 +196,12 @@ async function handleNewProcess() {
   padding: 12px 16px;
   border-bottom: 1px solid #ebeef5;
   background: #fff;
+}
+
+.designer-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 .designer-canvas {
