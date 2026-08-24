@@ -74,6 +74,23 @@ describe('system/role/index.vue 角色管理', () => {
     expect(w.vm.$.setupState.menuTree).toHaveLength(1)
   })
 
+  it('平铺接口数据树化后 getAllMenuKeys 总数不变（修复角色授权树平铺缺陷）', async () => {
+    // 后端实际返回平铺列表；树化仅改变层级展示，节点集合不变，
+    // 且 el-tree 为 check-strictly 父子不联动，勾选行为与层级无关
+    mockRoleList.mockResolvedValue({ code: 200, data: [] })
+    mockMenuTree.mockResolvedValue({ code: 200, data: [
+      { id: 1, parentId: 0, menuName: '系统' },
+      { id: 2, parentId: 1, menuName: '用户' },
+      { id: 3, parentId: 1, menuName: '角色' },
+    ] })
+    const w = await mount(Role, { global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    const st = w.vm.$.setupState
+    expect(st.menuTree).toHaveLength(1)
+    expect(st.menuTree[0].children.map((c: any) => c.id)).toEqual([2, 3])
+    expect(st.getAllMenuKeys(st.menuTree).sort()).toEqual([1, 2, 3])
+  })
+
   it('getDataScopeLabel：已知 scope 映射、空/未知回退「仅本人」', async () => {
     const w = await mountPage()
     const st = w.vm.$.setupState

@@ -104,7 +104,12 @@ describe('system/org/index.vue 机构管理（树形）', () => {
 
 describe('system/menu/index.vue 菜单管理（树形）', () => {
   async function mountPage() {
-    mockMenuTree.mockResolvedValue({ code: 200, data: [{ id: 1, menuName: '系统管理', children: [] }] })
+    // 后端实际返回平铺列表（SysMenuService.list 注释约定建树职责在前端）
+    mockMenuTree.mockResolvedValue({ code: 200, data: [
+      { id: 1, parentId: 0, menuName: '系统管理' },
+      { id: 2, parentId: 1, menuName: '用户管理' },
+      { id: 3, parentId: 1, menuName: '角色管理' },
+    ] })
     wrapper = mount(Menu, { global: { plugins: [ElementPlus] } })
     await flushPromises()
     return wrapper
@@ -117,6 +122,17 @@ describe('system/menu/index.vue 菜单管理（树形）', () => {
     expect(st.menuTreeForSelect).toHaveLength(1)
     expect(st.menuTreeForSelect[0].menuName).toBe('顶级菜单') // 包装节点钉住
     expect(st.menuTreeForSelect[0].id).toBe(0)
+  })
+
+  it('平铺接口数据按 parentId 建树（修复菜单页平铺显示缺陷）', async () => {
+    const w = await mountPage()
+    const st = w.vm.$.setupState
+    // el-table 树模式依赖 children 嵌套，无 children 则全部顶级行平铺
+    expect(st.menuTree).toHaveLength(1)
+    expect(st.menuTree[0].menuName).toBe('系统管理')
+    expect(st.menuTree[0].children.map((c: any) => c.id)).toEqual([2, 3])
+    // 上级菜单下拉同样拿到树形数据
+    expect(st.menuTreeForSelect[0].children[0].children).toHaveLength(2)
   })
 
   it('展开/折叠切换触发树重渲染', async () => {
