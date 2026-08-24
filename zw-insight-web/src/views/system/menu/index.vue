@@ -120,6 +120,7 @@ import { ref, nextTick, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getMenuTree, createMenu, updateMenu, deleteMenu } from '@/api/system'
+import { listToTree } from '@/utils/tree'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -154,8 +155,10 @@ async function loadMenuTree() {
   loading.value = true
   try {
     const res: any = await getMenuTree()
-    menuTree.value = res.data || []
-    menuTreeForSelect.value = [{ id: 0, menuName: '顶级菜单', children: res.data || [] }]
+    // 后端返回平铺列表，前端按 parentId 建树（SysMenuService.list 注释约定）
+    const tree = listToTree(res.data || [])
+    menuTree.value = tree
+    menuTreeForSelect.value = [{ id: 0, menuName: '顶级菜单', children: tree }]
   } finally {
     loading.value = false
   }

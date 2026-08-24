@@ -125,6 +125,7 @@ import type { UploadFile, UploadInstance, UploadRawFile } from 'element-plus'
 import { uploadBoq, getBoqTree, deleteBoq } from '@/api/boq'
 import { getContractDetail } from '@/api/contract'
 import { isXlsxFile } from './boq-utils'
+import { listToTree } from '@/utils/tree'
 
 const route = useRoute()
 // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
@@ -244,36 +245,10 @@ async function loadBoqTree() {
 }
 
 /**
- * 将平铺数据按 parentId 构建树形结构
+ * 将平铺数据按 parentId 构建树形结构（委托共享工具 utils/tree.ts）
  */
 function buildTree(list: any[]): any[] {
-  // 如果后端已返回树形结构（带 children），直接使用
-  if (list.length > 0 && list[0].children !== undefined) {
-    return list
-  }
-  // 否则根据 parentId 前端构建树
-  const map = new Map<number, any>()
-  const roots: any[] = []
-
-  list.forEach(item => {
-    map.set(item.id, { ...item, children: [] })
-  })
-
-  list.forEach(item => {
-    const node = map.get(item.id)!
-    if (!item.parentId || item.parentId === 0) {
-      roots.push(node)
-    } else {
-      const parent = map.get(item.parentId)
-      if (parent) {
-        parent.children.push(node)
-      } else {
-        roots.push(node)
-      }
-    }
-  })
-
-  return roots
+  return listToTree(list)
 }
 
 /**

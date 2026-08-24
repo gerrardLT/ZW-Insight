@@ -131,6 +131,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, CheckboxValueType } from 'element-plus'
 import { getRoleList, createRole, updateRole, deleteRole, getRoleMenuIds, assignRoleMenus, getMenuTree, updateRoleDataScope } from '@/api/system'
 import { extractRecords } from '@/utils/list-response'
+import { listToTree } from '@/utils/tree'
 
 const dataScopeOptions = [
   { value: 'ALL', label: '全部数据' },
@@ -192,7 +193,8 @@ async function loadRoles() {
 
 async function loadMenuTree() {
   const res: any = await getMenuTree()
-  menuTree.value = res.data || []
+  // 后端返回平铺列表，前端按 parentId 建树（SysMenuService.list 注释约定）
+  menuTree.value = listToTree(res.data || [])
 }
 
 async function handleSelectRole(role: any) {
