@@ -14,6 +14,11 @@
     <name>ZW Insight Subcontract</name>
     <description>分包管理模块 - 分包合同、产值、结算、奖罚</description>
 
+    <properties>
+        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比（672‰），补测后上调并同步基线 -->
+        <jacoco.min.coverage>0.672</jacoco.min.coverage>
+    </properties>
+
     <dependencies>
         <!-- 内部模块 -->
         <dependency>
