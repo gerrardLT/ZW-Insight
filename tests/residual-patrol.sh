@@ -43,7 +43,10 @@ DB_USER=$(echo "$ENV_DUMP" | grep '^SPRING_DATASOURCE_USERNAME=' | cut -d= -f2-)
 DB_PASS=$(echo "$ENV_DUMP" | grep '^SPRING_DATASOURCE_PASSWORD=' | cut -d= -f2-)
 DB_URL=$(echo "$ENV_DUMP" | grep '^SPRING_DATASOURCE_URL=' | cut -d= -f2-)
 # jdbc:mysql://mysql:3306/<db>?params → <db>
-DB_NAME=$(echo "$DB_URL" | sed -n 's#.*/[0-9]\{1,\}/\([^?]*\).*#\1#p')
+# （参数展开实现；2026-08-24 实证旧 sed BRE 方案失败：.* 贪婪吃到最后一个 /，
+# 剩余段不再匹配 [0-9]{1,}/ 导致整体零匹配，DB_NAME 恒空）
+DB_URL_NOPARAM="${DB_URL%%\?*}"
+DB_NAME="${DB_URL_NOPARAM##*/}"
 if [ -z "$DB_USER" ] || [ -z "$DB_PASS" ] || [ -z "$DB_NAME" ]; then
   echo "[ENV-FAIL] 无法从 $BACKEND_CT 解析数据源凭证（user/pass/db 缺失）"
   exit 2
@@ -84,17 +87,23 @@ for t in $TABLES; do
 done
 [ "$RESIDUAL" -eq 0 ] && echo "[OK] 租户 $TENANT 零残留"
 
-# ---------- 检查 2：E2E_TEST_ 前缀泄漏（任意租户，检测演示租户污染） ----------
-echo "--- 检查 2：E2E_TEST_ 前缀泄漏（全租户） ---"
+# ---------- 检查 2：E2E_TEST_ 前缀泄漏（仅非测试租户；租户 9999 的 E2E_TEST_ 行是合法测试数据，归检查 1/清理管） ----------
+echo "--- 检查 2：E2E_TEST_ 前缀泄漏（非租户 $TENANT） ---"
 LEAK=0
 NAME_COLS="'name','title','code','contract_name','project_name','inquiry_title','team_name','material_name','announcement_title'"
 for t in $TABLES; do
   cols=$(Q "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$DB_NAME' AND TABLE_NAME='$t' AND COLUMN_NAME IN ($NAME_COLS)")
+  has_tenant=$(Q "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$DB_NAME' AND TABLE_NAME='$t' AND COLUMN_NAME='tenant_id'")
   for c in $cols; do
-    n=$(Q "SELECT COUNT(*) FROM \`$t\` WHERE \`$c\` LIKE 'E2E\\_TEST\\_%'")
+    if [ "$has_tenant" = "1" ]; then
+      # 有 tenant_id 列：仅统计非测试租户（测试租户归检查 1）
+      n=$(Q "SELECT COUNT(*) FROM \`$t\` WHERE \`$c\` LIKE 'E2E\\_TEST\\_%' AND tenant_id<>$TENANT")
+    else
+      n=$(Q "SELECT COUNT(*) FROM \`$t\` WHERE \`$c\` LIKE 'E2E\\_TEST\\_%'")
+    fi
     n=${n:-0}
     if [ "$n" -gt 0 ] 2>/dev/null; then
-      echo "[泄漏] $t.$c : $n 行（E2E_TEST_ 前缀，含非测试租户）"
+      echo "[泄漏] $t.$c : $n 行（E2E_TEST_ 前缀，非租户 $TENANT，疑似演示/其他租户污染）"
       LEAK=1
     fi
   done
