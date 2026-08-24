@@ -223,6 +223,27 @@ Playwright 复用 storageState（token 过期走真实登录刷新）补拍 9 �
 - 设计器：默认说明卡 + 点击「审批」节点切换 4 字段表单（audit-reports/designer-default-panel-full.png、designer-usertask-panel.png）
 - dashboard：饼图图例与悬浮全部中文（audit-reports/dashboard-status-pie-zh-final.png，7 状态合计 29 与项目总数吻合；后端仍返英文枚举键，前端映射无遗漏）
 
+### 11.7 菜单管理/角色授权树平铺缺陷修复（2026-08-24，用户报障）
+
+**问题**：系统管理→菜单管理呈平铺列表而非树形结构
+
+**根因（代码实证）**：后端 `GET /v1/system/menu` 返回平铺列表（SysMenuService.list() 注释「用于前端构建树」，建树职责委托前端）；但 menu/index.vue 与 role/index.vue 的 loadMenuTree 直接赋值未建树，el-table 树模式（row-key + tree-props）/el-tree/el-tree-select 收不到 children 全部顶级平铺——前后端之间树构建断链
+
+**改动（commit 4a7fd3c）**：
+- 新增共享工具 `zw-insight-web/src/utils/tree.ts` listToTree：对齐 boq-upload 既有 buildTree 行为（首项已含 children 透传/Map 两遍法浅拷贝不污染原始响应/孤儿节点回落根）
+- menu 页 loadMenuTree 建树（menuTree + 上级菜单下拉同享）；role 页授权树同接入
+- boq-upload buildTree 改薄包装委托共享工具，消除重复实现（既有 @matrix A9-09 测试不破）
+- 勾选安全性实证：角色树 check-strictly 父子不联动 + getAllMenuKeys 递归遍历，树化不改变勾选集合
+
+**测试（commit 4588df6）**：utils-tree 单测 6 例（空数组/单层/多层嵌套/孤儿回落根/已含 children 透传/浅拷贝不污染）+ system-pages-3 菜单页 mock 改平铺真实形状钉住建树 + system-pages-4 角色页树化后 getAllMenuKeys 总数不变；全量回归 103 文件 1098 passed / 2 skipped（基线 1090，只增不减）
+
+**线上验证**（部署 run 32685957329 全绿后）：
+- 菜单管理表格层级树：目录→菜单→按钮三级缩进 0/16/32px 实测（audit-reports/menu-tree-fixed.png）
+- 新增菜单「上级菜单」下拉分层树：顶级菜单→目录→子菜单（audit-reports/menu-tree-select-fixed.png）
+- 角色管理授权树分层 + 全选/全不选 102 节点正常，勾选集合不受层级影响（audit-reports/role-menu-tree-fixed.png）
+
+**否决备选**：后端 list() 返树（破 API 契约且违背既有设计）；api 层包装转换（隐藏转换排查困难）；仅修菜单页（同根因遗留已知缺陷）
+
 ---
 
 ## 受阻项登记表
