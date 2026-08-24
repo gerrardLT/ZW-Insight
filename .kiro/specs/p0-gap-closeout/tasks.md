@@ -196,6 +196,28 @@ Playwright 复用 storageState（token 过期走真实登录刷新）补拍 9 �
 
 **部署前临时方案**：F12 控制台 `localStorage.clear(); location.href='/login'` 后 admin/123456 重新登录
 
+### 11.6 乱码二轮订正 + 设计器属性面板 + dashboard 状态映射（2026-08-25，用户三问题报障）
+
+**问题**：① dashboard 项目状态分布展示英文枚举；② 菜单管理/角色管理出现乱码；③ 流程设计器无属性面板，不会配审批人
+
+**乱码根因（与 48 号同根因）**：49 号迁移在生产手动执行时 mysql 客户端连接字符集非 utf8mb4，中文双重编码写入；INSERT IGNORE 幂等致源文件修正无法覆盖坏行
+
+**取证与执行（生产实测）**：
+- 1.1 取证：sys_menu 20082-20085（回款认领/回款核销/库存预警配置维护/删除）HEX 全带 0xC3 乱码特征；全表扫描 `CAST(menu_name AS BINARY) LIKE CONCAT(0xC3,'%')` 仅此 4 条无遗漏
+- 1.2 新增迁移 `deploy/db-init/50_V2026_48__mojibake_fix_round2.sql`：沿用 48 号「精确 id + 乱码特征」双条件 UPDATE 模板 + 尾部自检
+- 1.3 执行：run-migration.sh（--default-character-set=utf8mb4 已固化）首次执行自检 sys_menu_left=0；幂等重跑 0 行变化
+- 1.4 验证：DB 复查 4 条正确中文 + `GET /v1/system/menu` 接口返回「回款认领/回款核销/库存预警配置维护/库存预警配置删除」（前后端一致性）
+
+**设计器属性面板（零新依赖）**：
+- 新增 `flowable-moddle.ts`：最小 moddle descriptor（uri `http://flowable.org/bpmn`，与仓库既有 BPMN 命名空间实证一致），UserTask 扩展 assignee/candidateUsers/candidateGroups
+- 新增 `PropertiesPanel.vue`：选中单个 UserTask 显示 4 字段表单（节点名称/审批人/候选组/候选人），updateProperties 回写（空串写 undefined 移除属性）；未选中时显示说明卡（process id 须与业务类型 processKey 一致才生效 + `${initiator}` 示例）
+- `designer/index.vue`：`moddleExtensions: { flowable }` + 横向布局（画布 flex:1 + 右侧 320px 面板）
+- 测试钉住 3 行为：① Modeler 创建参数含 moddleExtensions.flowable；② 选中 UserTask 渲染 4 字段并回显；③ 回写 updateProperties 参数正确（name/flowable:assignee/空串 undefined）。workflow-pages 21/21 过
+
+**dashboard 状态映射**：`dashboard/index.vue` 新增 STATUS_LABEL（英文枚举→中文，与项目列表 statusMap 同口径，未命中回退原值），饼图 name 映射
+
+**回归**：前端全量 102 文件 1090 passed / 2 skipped（基线 1086 + 新增 4）无回归
+
 ---
 
 ## 受阻项登记表
