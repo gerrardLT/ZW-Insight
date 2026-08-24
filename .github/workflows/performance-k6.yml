@@ -28,6 +28,16 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
+      - name: Residual data patrol (clean before k6)
+        run: |
+          # 残留巡检（事项 3-A，2026-08-24）：k6 前先用 --clean 模式巡检并清理测试残留，
+          # 避免历史残留（AWARDED 询价/SUBMITTED 报名等）污染性能基准；
+          # 巡检失败（残留清不掉/环境异常）→ 非零退出，job 标红，k6 不跑（不静默吞错）
+          scp -i ~/.ssh/deploy_key tests/residual-patrol.sh \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/tmp/residual-patrol.sh"
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+            "bash /tmp/residual-patrol.sh --clean"
+
       - name: Execute k6 performance tests
         run: |
           # 上传仓库内最新性能脚本（与源码保持一致，避免服务器残留旧版）
