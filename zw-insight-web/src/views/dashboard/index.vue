@@ -95,6 +95,18 @@ const statCards = computed(() => [
   { key: 'advance', label: '垫资(万)', value: formatWan(stats.value.advanceFund), icon: 'Warning', color: '#f53f3f', bg: 'rgba(245,63,63,0.12)' }
 ])
 
+// 项目状态英文枚举→中文（与项目列表 statusMap 同口径；未命中回退原值）
+const STATUS_LABEL: Record<string, string> = {
+  DRAFT: '草稿',
+  FILED: '已报备',
+  TENDERING: '招标中',
+  WON: '已中标',
+  CONSTRUCTION: '施工中',
+  COMPLETED: '已竣工',
+  CLOSING: '结项审批中',
+  CLOSED: '已关闭'
+}
+
 async function loadStats() {
   try {
     const res: any = await getCompanyOverview()
@@ -113,8 +125,9 @@ async function loadPieChart() {
   try {
     const res: any = await getCompanyOverview()
     // 后端 statusDistribution 为 Map<状态,数量>，转换为 echarts 饼图 [{name,value}]
+    // 状态键为英文枚举（与项目列表 statusMap 同口径），展示前映射为中文
     const dist = res.data?.statusDistribution || {}
-    const data = Object.entries(dist).map(([name, value]) => ({ name, value: Number(value) || 0 }))
+    const data = Object.entries(dist).map(([name, value]) => ({ name: STATUS_LABEL[name as string] || name, value: Number(value) || 0 }))
     pieChart.setOption({
       color: ['#3370ff', '#00b42a', '#ff7d00', '#f53f3f', '#722ed1', '#38bdf8'],
       tooltip: { trigger: 'item' },
