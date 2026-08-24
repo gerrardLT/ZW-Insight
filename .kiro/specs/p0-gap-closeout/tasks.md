@@ -186,6 +186,16 @@ Playwright 复用 storageState（token 过期走真实登录刷新）补拍 9 �
 
 **复验**：push 7974969 部署全绿（run 32669290246，含 R6-01 新测试 Backend Build 验证）后触发 performance-k6 workflow_dispatch run 32670003331（等部署完成再触发，避免重蹈撞车）。**结果：三场景真全绿**——login.js 996/996（100%）、page-query.js 72804/72804（100%）、**payment-submit.js 363/363（100%，含业务码 200 check，修复前 0/121 全挂）**，各场景 http_req_failed 均 0%，setup 幂等复用自建合同（未重复创建）。k6 payment 业务链首次真实跑通
 
+### 11.5 403 页重新登录自愈入口（2026-08-24，用户报障线上 403）
+
+**现象**：用户访问 129.204.3.200:18081 被重定向 /403，且「返回首页/返回上一页」均循环回 403，无自助恢复手段
+
+**根因（实测）**：线上登录接口正常（探针实测 admin：roles=[SUPER_ADMIN]、34 条 permissions 含 *:*:* 与 dashboard:view）。问题在浏览器陈旧持久化态——8-22 版前端上线路由权限守卫（业务路由需视图码，登录时写入 localStorage 持久化），陈旧态 token 存在但 permissions 为空 → 守卫判无视图码 → /403；/403 在白名单直接展示，页面原无恢复入口
+
+**修复**：403.vue 增加「重新登录」按钮（userStore.logout() 清 token/permissions → router.push('/login')），陈旧态用户自助恢复；static-pages.component.test.ts 新增 1 例钉住行为（清 token + push /login；provide routerKey 满足 script setup 内 useRouter inject）。前端全量 1086 passed / 2 skipped 无回归
+
+**部署前临时方案**：F12 控制台 `localStorage.clear(); location.href='/login'` 后 admin/123456 重新登录
+
 ---
 
 ## 受阻项登记表

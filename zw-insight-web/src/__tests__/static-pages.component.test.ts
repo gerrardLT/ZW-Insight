@@ -5,11 +5,14 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
-import { HomeFilled } from '@element-plus/icons-vue'
+import { HomeFilled, RefreshRight } from '@element-plus/icons-vue'
+import { createPinia, setActivePinia } from 'pinia'
+import { routerKey } from 'vue-router'
 
 import Page403 from '@/views/error/403.vue'
 import Page404 from '@/views/error/404.vue'
 import Monitor from '@/views/system/monitor/index.vue'
+import { useUserStore } from '@/stores/user'
 
 let wrapper: any = null
 afterEach(() => {
@@ -18,11 +21,16 @@ afterEach(() => {
 
 const mockPush = vi.fn()
 const mockBack = vi.fn()
+// 403.vue 引入 user store（重新登录自愈入口）后需要 pinia 环境
+const pinia = createPinia()
+setActivePinia(pinia)
 const mountOpts = {
   global: {
-    plugins: [ElementPlus],
+    plugins: [ElementPlus, pinia],
     mocks: { $router: { push: mockPush, back: mockBack } },
-    components: { HomeFilled },
+    // 403.vue script setup 内 useRouter() 走 inject(routerKey)，需单独 provide
+    provide: { [routerKey]: { push: mockPush, back: mockBack } },
+    components: { HomeFilled, RefreshRight },
   },
 }
 
@@ -46,6 +54,15 @@ describe('error/403.vue', () => {
     wrapper = mount(Page403, mountOpts)
     await wrapper.findAll('button').find((b: any) => b.text().includes('返回上一页'))!.trigger('click')
     expect(mockBack).toHaveBeenCalled()
+  })
+
+  it('重新登录按钮清除登录态并跳 /login（陈旧态自愈入口）', async () => {
+    mockPush.mockClear()
+    useUserStore().setToken('tk-stale')
+    wrapper = mount(Page403, mountOpts)
+    await wrapper.findAll('button').find((b: any) => b.text().includes('重新登录'))!.trigger('click')
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(mockPush).toHaveBeenCalledWith('/login')
   })
 })
 

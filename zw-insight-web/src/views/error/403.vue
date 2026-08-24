@@ -9,10 +9,31 @@
           <el-icon><HomeFilled /></el-icon>返回首页
         </el-button>
         <el-button @click="$router.back()">返回上一页</el-button>
+        <el-button type="success" @click="reLogin">
+          <el-icon><RefreshRight /></el-icon>重新登录
+        </el-button>
       </div>
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+
+const router = useRouter()
+const userStore = useUserStore()
+
+/**
+ * 重新登录（403 自愈入口，2026-08-24）：
+ * 陈旧持久化态（token 存在但 permissions 为空）命中路由守卫会循环跳 /403，
+ * 此处清除登录态回登录页重新加载权限，作为用户自助恢复手段。
+ */
+function reLogin() {
+  userStore.logout()
+  router.push('/login')
+}
+</script>
 
 <style scoped>
 .error-page {
