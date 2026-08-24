@@ -218,6 +218,11 @@ Playwright 复用 storageState（token 过期走真实登录刷新）补拍 9 �
 
 **回归**：前端全量 102 文件 1090 passed / 2 skipped（基线 1086 + 新增 4）无回归
 
+**线上验证**（部署 run 32679896413 全绿后，避免撞车）：
+- 菜单管理：4 条名称浏览器实测正确中文（截图级确认，临时截图随任务收尾清理）
+- 设计器：默认说明卡 + 点击「审批」节点切换 4 字段表单（audit-reports/designer-default-panel-full.png、designer-usertask-panel.png）
+- dashboard：饼图图例与悬浮全部中文（audit-reports/dashboard-status-pie-zh-final.png，7 状态合计 29 与项目总数吻合；后端仍返英文枚举键，前端映射无遗漏）
+
 ---
 
 ## 受阻项登记表
