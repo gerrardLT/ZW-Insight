@@ -73,9 +73,15 @@ log "验证码桥就绪（真实 captcha/image + Redis 读取，无 mock）"
 # ---- 预取真实 token（page/payment 场景用）：真实登录流程，不伪造 ----
 fetch_token() {
   local cap uuid code resp token
-  cap=$(curl -s -m 5 "http://127.0.0.1:$BRIDGE_PORT/captcha") || return 1
-  uuid=$(echo "$cap" | grep -oE '"uuid":"[^"]+"' | sed -E 's/.*"uuid":"([^"]+)"/\1/')
-  code=$(echo "$cap" | grep -oE '"code":"[^"]+"' | sed -E 's/.*"code":"([^"]+)"/\1/')
+  cap=$(curl -s -m 5 "http://127.0.0.1:$BRIDGE_PORT/captcha") || { log "ERROR: 验证码桥 /captcha 请求失败"; return 1; }
+  # 正则容许冒号后空格：captcha-bridge.py 用 json.dumps 序列化（如 "uuid": "..."），
+  # 2026-08-24 验证码开启预检实证：旧版不容空格取码为空，开关关闭时被假象掩盖，开启后登录 400
+  uuid=$(echo "$cap" | grep -oE '"uuid" *: *"[^"]+"' | head -1 | sed -E 's/.*"uuid" *: *"([^"]+)"/\1/')
+  code=$(echo "$cap" | grep -oE '"code" *: *"[^"]+"' | head -1 | sed -E 's/.*"code" *: *"([^"]+)"/\1/')
+  if [ -z "$uuid" ] || [ -z "$code" ]; then
+    log "ERROR: 桥响应解析失败（uuid/code 为空，脱敏响应: $(echo "$cap" | head -c 120)）"
+    return 1
+  fi
   resp=$(curl -s -m 10 -X POST "$BASE_HOST/api/v1/auth/login" \
     -H 'Content-Type: application/json' \
     -d "{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"captchaUuid\":\"$uuid\",\"captchaCode\":\"$code\"}")

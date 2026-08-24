@@ -72,8 +72,10 @@ jwt:
 
 # 认证配置
 auth:
-  # 联调测试期临时关闭图形验证码，便于自动化 API 测试登录；上线前须改回 true
-  captcha-enabled: false
+  # 图形验证码已开启（2026-08-24 事项 4-A 灰度固化）：开启前预检三判据全过
+  # （keys/verify-captcha-enabled.sh：正确码登录/错码被拒/一次性消费）+ k6 三场景带码复跑 100%；
+  # 各层带验证码能力：L2 自适应探测开关、L3/L4 verify-base 真实取码、k6 captcha-bridge
+  captcha-enabled: true
   # 接口级功能权限校验开关：true=对 @RequiresPermission 标注接口做服务端强制；false=全局停用（灰度/回滚用）
   permission-check-enabled: true
   lock-enabled: true
