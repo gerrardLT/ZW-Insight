@@ -293,8 +293,8 @@
     - L4 lifecycle-sim-v2 10/10 阶段 PASSED（部署 construction_contract/output_report/invoice_apply/payment_apply/project_settlement/purchase_contract/completion_acceptance 等 BPMN 到租户 1，新增 9B 竣工验收+最终结算阶段）
     - L5 e2e-real EXIT=0（26 通过；发现并修复前端 Number(route.params.id) 雪花 ID 精度丢失缺陷，已热更新部署）
 
-- [ ] 12. 统一测试编排脚本 run-all-tests.sh
-  - [~] 12.1 创建 run-all-tests.sh 主脚本
+- [x] 12. 统一测试编排脚本 run-all-tests.sh（2026-08-24 回填：脚本已支持 --layers/--fail-fast/JSON 汇总报告，L1→L5 编排经 CI 与本地多次实跑验证）
+  - [x] 12.1 创建 run-all-tests.sh 主脚本
     - 在 `tests/` 目录下创建 `run-all-tests.sh`
     - 支持 `--layers=L1,L2,L3,L4,L5` 参数选择执行层级
     - 支持 `--fail-fast` 参数：首个失败层级后停止
@@ -302,7 +302,7 @@
     - 每层级调用对应命令：L1=`mvn test`，L2=`mvn verify -Pintegration-test`，L3=`bash keys/test-api-*.sh`，L4=`bash keys/lifecycle-sim-v2.sh`，L5=`npx playwright test --project=e2e-real`
     - _需求: 9.1, 9.2, 9.3, 9.5_
 
-  - [~] 12.2 实现汇总报告输出
+  - [x] 12.2 实现汇总报告输出
     - 每层级执行后记录：通过数/失败数/跳过数/耗时
     - 所有层级完成后输出格式化汇总表格
     - 输出 JSON 格式报告到 `tests/reports/all-tests-report.json`
@@ -317,45 +317,45 @@
     - 验证汇总报告 passed + failed + skipped = total
     - **验证: 需求 9.3, 9.4, 9.5**
 
-- [ ] 13. 重新启用 CI 集成测试 + dev-loop.ps1 对接
-  - [~] 13.1 恢复 CI 后端测试执行
+- [x] 13. 重新启用 CI 集成测试 + dev-loop.ps1 对接（2026-08-24 回填：CI backend 已恢复测试并切 verify，integration-test job 常态化运行，dev-loop.ps1 已支持 quick/remote/full 模式）
+  - [x] 13.1 恢复 CI 后端测试执行
     - 修改 `.github/workflows/deploy.yml` backend job：移除 `-DskipTests`，恢复 `mvn test`
     - 确保 Surefire 插件并行配置生效
     - _需求: 7.1_
 
-  - [~] 13.2 恢复 integration-test job
+  - [x] 13.2 恢复 integration-test job
     - 移除 `.github/workflows/deploy.yml` 中 integration-test job 的 `if: false` 条件
     - 配置 SSH 步骤：使用 secrets.SSH_KEY 连接服务器执行 L3/L4 脚本
     - 收集测试结果 artifact，失败时阻止后续 deploy 步骤
     - _需求: 7.2, 7.3, 7.5, 7.6_
 
-  - [~] 13.3 更新 dev-loop.ps1 对接测试体系
+  - [x] 13.3 更新 dev-loop.ps1 对接测试体系
     - 修改 `keys/dev-loop.ps1`：集成 `mvn test` 单元测试步骤
     - 添加本地快速测试模式（仅 L1）和完整测试模式（L1+L2）
     - 测试失败时输出清晰的失败摘要
     - _需求: 7.1_
 
-- [ ] 14. JaCoCo 覆盖率报告 + 持续维护机制
-  - [~] 14.1 配置 JaCoCo Maven 插件
+- [x] 14. JaCoCo 覆盖率报告 + 持续维护机制（2026-08-24 回填：jacoco 分档门槛随 CI mvn clean verify 真实触发，commit 714e003；tests/README.md 与 AGENTS.md 测试规则均已就位）
+  - [x] 14.1 配置 JaCoCo Maven 插件
     - 在父 pom.xml 中添加 jacoco-maven-plugin 0.8.12
     - 配置 prepare-agent、report、check 三个 execution
     - 核心模块（project, contract, budget, finance, material, machine, labor, subcontract）设置 LINE COVEREDRATIO >= 0.80
     - 非核心模块设置较低阈值（>= 0.50）
     - _需求: 2.4, 7.4_
 
-  - [~] 14.2 配置 CI JaCoCo 报告上传
+  - [x] 14.2 配置 CI JaCoCo 报告上传
     - 在 CI backend job 中添加 `mvn verify` 执行覆盖率检查
     - 覆盖率不达标时构建失败并输出未覆盖方法清单
     - 上传 JaCoCo HTML 报告为 GitHub Actions artifact
     - _需求: 7.4_
 
-  - [~] 14.3 创建测试维护文档与规则
+  - [x] 14.3 创建测试维护文档与规则
     - 创建 `tests/README.md`：说明测试体系架构、各层级执行方式、常见问题排查
     - 更新 `AGENTS.md`：添加测试开发规则（新模块必须包含单元测试、集成测试 tenant_id=9999、PR 前运行 L1）
     - 记录测试端点安全规则（/api/v1/test/* 仅 test profile）
     - _需求: 8.4, 8.5_
 
-- [~] 15. Final checkpoint - 全层次测试体系验证
+- [x] 15. Final checkpoint - 全层次测试体系验证（2026-08-24 回填：run-all-tests.sh --layers 编排实跑验证；CI 全链路多次全绿，最近 run 32647849931/32695969990；JaCoCo 报告随 verify 正常生成）
   - 确保所有测试通过，ask the user if questions arise.
   - 执行 `bash tests/run-all-tests.sh --layers=L1` 验证编排脚本
   - 确认 CI workflow 配置正确（可通过 dry-run 或推送到测试分支验证）

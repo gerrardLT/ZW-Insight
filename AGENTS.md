@@ -204,7 +204,7 @@ cd tools/consistency-audit && npm run dev
 
 - 每个新建 Service 类的 public 方法至少编写 1 个正常路径 + 1 个异常路径测试
 - 使用 `@ExtendWith(MockitoExtension.class)` + Mockito Mock 所有外部依赖
-- 覆盖率治理（2026-08-13 实测校准）：**实际生效的门槛是 `tests/coverage-baseline.json` 基线对比（只升不降，CI 逐模块比对，回落即构建失败）**。pom 中 jacoco check 0.80 绑定 verify 阶段，但 CI 跑 `mvn package` 不触发 verify，故 80% 门槛目前未实际强制执行（目标值，待阶段三达成后将 CI 命令切到 verify 启用）。各模块实际行覆盖率 14.9%~85%（基线 JSON 为千分比），实测明细见 `tests/TESTING-MATURITY.md` 附录 A
+- 覆盖率治理（2026-08-24 更新，commit 714e003）：**双重门槛真生效**——①`tests/coverage-baseline.json` 基线对比（只升不降，CI 逐模块比对，回落即构建失败）；②根 pom `jacoco.min.coverage` 属性化（默认 0.80），22 模块按基线 JSON 分档覆盖（342‰~884‰），CI backend job 已切 `mvn clean verify` 真实触发 jacoco check（run 32695969990 全绿验证）。各模块实际行覆盖率明细见 `tests/TESTING-MATURITY.md` 附录 A
 
 #### 集成测试使用 tenant_id=9999
 
@@ -216,9 +216,9 @@ cd tools/consistency-audit && npm run dev
 #### PR 前运行 L1 单元测试
 
 - 提交 PR 前必须在本地运行 `mvn test` 确认单元测试通过（注意：勿在本地跑全量并行构建 `mvn -T 1C clean package`，22 模块并行 fork 几十个 JVM 会卡死机器，重型验证一律 CI/服务器执行）
-- CI backend job 执行 `mvn -B -T 1C clean package`（运行全量单元测试 + JaCoCo 报告），并与 `tests/coverage-baseline.json` 对比：任一模块覆盖率回落即构建失败。注：-T 1C 在 2 vCPU runner 上实测无提速效果（510s vs 串行 503s，2026-08-14 run 31762169585），保留仅为多核 runner 兼容；实测提速来自 L2 门控（省 302s）与前端镜像缓存（省 ~50s）
+- CI backend job 执行 `mvn -B -T 1C clean verify`（运行全量单元测试 + JaCoCo 分档 check 真实触发），并与 `tests/coverage-baseline.json` 对比：任一模块覆盖率回落即构建失败。注：-T 1C 在 2 vCPU runner 上实测无提速效果（510s vs 串行 503s，2026-08-14 run 31762169585），保留仅为多核 runner 兼容；实测提速来自 L2 门控（省 302s）与前端镜像缓存（省 ~50s）
 - **CI 测试套件触发策略（2026-08-13 用户决策，2026-08-14 扩展）**：push 默认只跑 Backend Build（L1 单测 + 覆盖率基线）→ Deploy → 部署冒烟（健康检查 + API 文档收敛断言），**L2 Testcontainers、Integration Test（L3/L4/L5）与 k6 默认不跑**（全量约 40 分钟，L2 单项实测 302s）。全量套件唯一触发入口：手动 workflow_dispatch 选 `run_tests=true`（`gh workflow run deploy.yml -f run_tests=true`）
-- pom jacoco check（minimum 0.80，BUNDLE LINE）绑定 verify 阶段，CI 当前跑 package 不触发；阶段三目标达成后 CI 切到 verify 强制（见 spec 3.3）
+- pom jacoco check（`jacoco.min.coverage` 属性化，默认 0.80，BUNDLE LINE）绑定 verify 阶段，CI 已切 `mvn clean verify` 真实触发（2026-08-24，commit 714e003）；22 模块按基线分档覆盖，棘轮式逐档上调
 
 #### L3 API 契约验证
 
@@ -278,7 +278,6 @@ AI 代理在开发、调试、评审过程中产生的临时产物必须遵循�
 ---
 
 **测试开发约定**：
-- **实际生效门槛：覆盖率基线只升不降**（CI 逐模块比对 coverage-baseline.json，回落即失败）
-- pom jacoco check 0.80（verify 阶段）为目标门槛，当前 CI 跑 package 未触发，阶段三达成后启用
+- **双重门槛真生效**：①覆盖率基线只升不降（CI 逐模块比对 coverage-baseline.json，回落即失败）；②jacoco 分档 check（默认 0.80，按模块基线分档）随 CI `mvn clean verify` 真实触发（2026-08-24 起）
 - 新增模块必须同步登记覆盖率基线（实测值入 baseline JSON）才允许合并
-- 存量模块按阶段目标逐步提升：当前实际 14.9%~85%，目标 80%
+- 存量模块按分档棘轮逐步提升至 80% 目标（当前各模块 342‰~884‰，明细见 TESTING-MATURITY.md 附录 A）
