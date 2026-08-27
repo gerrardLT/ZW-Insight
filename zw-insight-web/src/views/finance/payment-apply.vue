@@ -142,6 +142,30 @@
         <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 详情抽屉（真实数据源：GET /v1/finance/payment-apply/{id}；
+         后端 getById 不回填 projectName，项目名回落取列表行同源字段） -->
+    <el-drawer v-model="detailVisible" title="付款申请详情" size="480px" data-testid="payment-detail-drawer">
+      <div v-loading="detailLoading">
+        <div v-if="detailError" class="detail-error" data-testid="detail-error">
+          <span>加载失败：{{ detailError }}</span>
+          <el-button size="small" type="primary" @click="retryDetail">重试</el-button>
+        </div>
+        <el-descriptions v-else-if="detailData" :column="1" border size="small">
+          <el-descriptions-item label="项目名称">{{ detailData.projectName || detailRow?.projectName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同类型">{{ getCategoryLabel(detailData.contractCategory) }}</el-descriptions-item>
+          <el-descriptions-item label="收款单位">{{ detailData.supplierName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="付款金额">{{ formatMoney(detailData.paymentAmount) }}</el-descriptions-item>
+          <el-descriptions-item label="付款日期">{{ detailData.paymentDate || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="累计结算快照">{{ formatMoney(detailData.cumulativeSettlementSnapshot) }}</el-descriptions-item>
+          <el-descriptions-item label="未付金额快照">{{ formatMoney(detailData.unpaidAmountSnapshot) }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusType(detailData.status)" size="small">{{ getStatusLabel(detailData.status) }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ detailData.createdAt || '-' }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -149,7 +173,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getPaymentApplyPage, createPaymentApply, deletePaymentApply, submitPaymentApply, getFundPlan } from '@/api/finance'
+import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, getFundPlan } from '@/api/finance'
 import { getProjectList } from '@/api/project'
 import { getOtherContractPage } from '@/api/contract'
 import { getPurchaseContractPage } from '@/api/purchase'
@@ -280,7 +304,54 @@ function handleAdd() {
 }
 
 function handleView(row: any) {
-  ElMessage.info('查看详情功能开发中')
+  loadDetail(row)
+}
+
+// ================= 详情抽屉（真实接口 /v1/finance/payment-apply/{id}） =================
+const detailVisible = ref(false)
+const detailLoading = ref(false)
+const detailError = ref('')
+const detailData = ref<any>(null)
+const detailRow = ref<any>(null)
+
+// 合同类型枚举与新增表单选项同源（后端 PaymentApplyService 按 contractCategory 路由）
+const categoryMap: Record<string, string> = {
+  OTHER_EXPENSE: '其他支出合同',
+  PURCHASE: '采购合同',
+  LABOR: '劳务合同',
+  MACHINE: '机械合同',
+  SUBCONTRACT: '分包合同'
+}
+
+function getCategoryLabel(category: string) {
+  return categoryMap[category] || category || '-'
+}
+
+async function loadDetail(row: any) {
+  detailRow.value = row
+  detailData.value = null
+  detailError.value = ''
+  detailVisible.value = true
+  detailLoading.value = true
+  try {
+    const res: any = await getPaymentApplyDetail(row.id)
+    detailData.value = res.data || null
+    if (!res.data) {
+      // 不静默：返回空数据显式进入错误态
+      detailError.value = '接口未返回详情数据'
+      ElMessage.error('加载付款申请详情失败：接口未返回数据')
+    }
+  } catch (e: any) {
+    // 不静默：失败显式提示并在抽屉内提供重试入口
+    detailError.value = e?.message || '接口异常'
+    ElMessage.error('加载付款申请详情失败：' + (e?.message || '接口异常'))
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function retryDetail() {
+  if (detailRow.value) loadDetail(detailRow.value)
 }
 
 async function handleFormSubmit() {
@@ -357,5 +428,12 @@ function buildFundPlanOption(list: any[]) {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+.detail-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--el-color-danger);
+  padding: 8px 0;
 }
 </style>

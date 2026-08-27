@@ -8,8 +8,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
-const { mockPage, mockCreate, mockDelete, mockSubmit, mockProjectList } = vi.hoisted(() => ({
+const { mockPage, mockDetail, mockCreate, mockDelete, mockSubmit, mockProjectList } = vi.hoisted(() => ({
   mockPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: null })),
   mockCreate: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockDelete: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockSubmit: vi.fn(async (): Promise<any> => ({ code: 200 })),
@@ -18,6 +19,7 @@ const { mockPage, mockCreate, mockDelete, mockSubmit, mockProjectList } = vi.hoi
 
 vi.mock('@/api/finance', () => ({
   getInvoiceApplyPage: mockPage,
+  getInvoiceApplyDetail: mockDetail,
   createInvoiceApply: mockCreate,
   deleteInvoiceApply: mockDelete,
   submitInvoiceApply: mockSubmit,
@@ -139,5 +141,44 @@ describe('invoice-apply.vue 开票申请', () => {
     st.handleReset()
     await flushPromises()
     expect(st.queryParams).toEqual({ pageNum: 1, pageSize: 10, projectId: undefined, status: '' })
+  })
+
+  it('查看详情：调 getInvoiceApplyDetail(row.id) 打开抽屉并回显详情（真实接口非 stub）', async () => {
+    const w = await mountPage()
+    const st = w.vm.$.setupState
+    mockDetail.mockResolvedValueOnce({
+      code: 200,
+      data: {
+        id: 1, projectName: '滨江花园一期', invoiceAmount: 100000, taxRate: 9,
+        invoiceType: '增值税专用发票', invoiceTitle: '甲方公司', taxpayerId: '91330000X',
+        status: 'DRAFT', applyDate: '2026-08-01',
+        contractAmountSnapshot: 5000000, settlementAmountSnapshot: 3000000,
+        historicalInvoicedSnapshot: 500000, createdAt: '2026-08-01 09:00:00'
+      }
+    })
+    await st.handleView(RECORDS[0])
+    await flushPromises()
+    expect(mockDetail).toHaveBeenCalledWith(1)
+    expect(st.detailVisible).toBe(true)
+    expect(st.detailData.invoiceTitle).toBe('甲方公司')
+    expect(st.detailError).toBe('')
+  })
+
+  it('详情加载失败不静默：错误写入 detailError，抽屉内提供重试入口', async () => {
+    const w = await mountPage()
+    const st = w.vm.$.setupState
+    mockDetail.mockRejectedValueOnce(new Error('invoice detail down'))
+    await st.handleView(RECORDS[0])
+    await flushPromises()
+    expect(st.detailVisible).toBe(true)
+    expect(st.detailData).toBeNull()
+    expect(st.detailError).toContain('invoice detail down')
+    // 重试入口重新发起请求
+    mockDetail.mockResolvedValueOnce({ code: 200, data: { id: 1, invoiceAmount: 100000, status: 'DRAFT' } })
+    await st.retryDetail()
+    await flushPromises()
+    expect(mockDetail).toHaveBeenCalledTimes(2)
+    expect(st.detailData.invoiceAmount).toBe(100000)
+    expect(st.detailError).toBe('')
   })
 })

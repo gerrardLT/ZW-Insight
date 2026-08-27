@@ -113,6 +113,35 @@
         <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 详情抽屉（真实数据源：GET /v1/finance/invoice-apply/{id}；
+         后端 getById 不回填 projectName，项目名回落取列表行同源字段） -->
+    <el-drawer v-model="detailVisible" title="开票申请详情" size="480px" data-testid="invoice-detail-drawer">
+      <div v-loading="detailLoading">
+        <div v-if="detailError" class="detail-error" data-testid="detail-error">
+          <span>加载失败：{{ detailError }}</span>
+          <el-button size="small" type="primary" @click="retryDetail">重试</el-button>
+        </div>
+        <el-descriptions v-else-if="detailData" :column="1" border size="small">
+          <el-descriptions-item label="项目名称">{{ detailData.projectName || detailRow?.projectName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="申请日期">{{ detailData.applyDate || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="发票类型">{{ detailData.invoiceType || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="开票金额">{{ formatMoney(detailData.invoiceAmount) }}</el-descriptions-item>
+          <el-descriptions-item label="税率">{{ detailData.taxRate != null ? detailData.taxRate + '%' : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="发票抬头">{{ detailData.invoiceTitle || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="纳税人识别号">{{ detailData.taxpayerId || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="银行名称">{{ detailData.bankName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="银行账号">{{ detailData.bankAccount || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同金额快照">{{ formatMoney(detailData.contractAmountSnapshot) }}</el-descriptions-item>
+          <el-descriptions-item label="结算金额快照">{{ formatMoney(detailData.settlementAmountSnapshot) }}</el-descriptions-item>
+          <el-descriptions-item label="历史已开票快照">{{ formatMoney(detailData.historicalInvoicedSnapshot) }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusType(detailData.status)" size="small">{{ getStatusLabel(detailData.status) }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ detailData.createdAt || '-' }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -120,7 +149,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getInvoiceApplyPage, createInvoiceApply, deleteInvoiceApply, submitInvoiceApply } from '@/api/finance'
+import { getInvoiceApplyPage, getInvoiceApplyDetail, createInvoiceApply, deleteInvoiceApply, submitInvoiceApply } from '@/api/finance'
 import { getProjectList } from '@/api/project'
 import TaxRateSelector from '@/components/TaxRateSelector.vue'
 import ContractSelector from '@/components/ContractSelector.vue'
@@ -209,7 +238,41 @@ function handleAdd() {
 }
 
 function handleView(row: any) {
-  ElMessage.info('查看详情功能开发中')
+  loadDetail(row)
+}
+
+// ================= 详情抽屉（真实接口 /v1/finance/invoice-apply/{id}） =================
+const detailVisible = ref(false)
+const detailLoading = ref(false)
+const detailError = ref('')
+const detailData = ref<any>(null)
+const detailRow = ref<any>(null)
+
+async function loadDetail(row: any) {
+  detailRow.value = row
+  detailData.value = null
+  detailError.value = ''
+  detailVisible.value = true
+  detailLoading.value = true
+  try {
+    const res: any = await getInvoiceApplyDetail(row.id)
+    detailData.value = res.data || null
+    if (!res.data) {
+      // 不静默：返回空数据显式进入错误态
+      detailError.value = '接口未返回详情数据'
+      ElMessage.error('加载开票申请详情失败：接口未返回数据')
+    }
+  } catch (e: any) {
+    // 不静默：失败显式提示并在抽屉内提供重试入口
+    detailError.value = e?.message || '接口异常'
+    ElMessage.error('加载开票申请详情失败：' + (e?.message || '接口异常'))
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function retryDetail() {
+  if (detailRow.value) loadDetail(detailRow.value)
 }
 
 async function handleFormSubmit() {
@@ -256,5 +319,12 @@ onMounted(() => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+.detail-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--el-color-danger);
+  padding: 8px 0;
 }
 </style>

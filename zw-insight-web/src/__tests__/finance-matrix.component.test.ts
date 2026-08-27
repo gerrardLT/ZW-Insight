@@ -26,6 +26,7 @@ const settleSrc = readFileSync(resolve(__dirname, '../views/finance/settlement/i
 
 const mocks = vi.hoisted(() => ({
   mockInvoiceApplyPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockInvoiceApplyDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: null })),
   mockInvoiceApplyCreate: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockInvoiceApplyDelete: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockInvoiceApplySubmit: vi.fn(async (): Promise<any> => ({ code: 200 })),
@@ -48,6 +49,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/api/finance', () => ({
   getInvoiceApplyPage: mocks.mockInvoiceApplyPage,
+  getInvoiceApplyDetail: mocks.mockInvoiceApplyDetail,
   createInvoiceApply: mocks.mockInvoiceApplyCreate,
   deleteInvoiceApply: mocks.mockInvoiceApplyDelete,
   submitInvoiceApply: mocks.mockInvoiceApplySubmit,
@@ -122,10 +124,16 @@ describe('finance/invoice-apply.vue 开票申请（C1）', () => {
     expect(invoiceApplySrc).toContain('v-if="row.status === \'DRAFT\'" link type="danger" @click="handleDelete(row)"')
   })
 
-  it('@matrix C-1-8 查看详情为 stub：handleView 仅提示「查看详情功能开发中」', async () => {
+  it('@matrix C-1-8 查看详情为真实接口：handleView 调 getInvoiceApplyDetail(row.id) 打开抽屉（2026-08-28 补全，原「开发中」stub 已移除）', async () => {
+    mocks.mockInvoiceApplyDetail.mockResolvedValueOnce({ code: 200, data: { id: 1, invoiceAmount: 100, status: 'DRAFT' } })
     const w = await mountPage()
-    w.vm.$.setupState.handleView({ id: 1 })
-    expect(mocks.mockInfo).toHaveBeenCalledWith('查看详情功能开发中')
+    const st: any = w.vm.$.setupState
+    await st.handleView({ id: 1 })
+    await flushPromises()
+    expect(mocks.mockInvoiceApplyDetail).toHaveBeenCalledWith(1)
+    expect(st.detailVisible).toBe(true)
+    expect(st.detailData.id).toBe(1)
+    expect(mocks.mockInfo).not.toHaveBeenCalledWith('查看详情功能开发中')
   })
 
   it('@matrix C-1-10 statusMap：SUBMITTED 与 APPROVING 均映射「审批中」warning', async () => {

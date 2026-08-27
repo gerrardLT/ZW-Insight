@@ -16,6 +16,7 @@ import ElementPlus from 'element-plus'
 
 const {
   mockGetPaymentApplyPage,
+  mockGetPaymentApplyDetail,
   mockCreatePaymentApply,
   mockDeletePaymentApply,
   mockSubmitPaymentApply,
@@ -27,6 +28,7 @@ const {
   mockGetSubcontractPage,
 } = vi.hoisted(() => ({
   mockGetPaymentApplyPage: vi.fn(async (_p?: any): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockGetPaymentApplyDetail: vi.fn(async (_id?: any): Promise<any> => ({ code: 200, data: null })),
   mockCreatePaymentApply: vi.fn(async (_p?: any): Promise<any> => ({ code: 200 })),
   mockDeletePaymentApply: vi.fn(async (_p?: any): Promise<any> => ({ code: 200 })),
   mockSubmitPaymentApply: vi.fn(async (_p?: any): Promise<any> => ({ code: 200 })),
@@ -40,6 +42,7 @@ const {
 
 vi.mock('@/api/finance', () => ({
   getPaymentApplyPage: mockGetPaymentApplyPage,
+  getPaymentApplyDetail: mockGetPaymentApplyDetail,
   createPaymentApply: mockCreatePaymentApply,
   deletePaymentApply: mockDeletePaymentApply,
   submitPaymentApply: mockSubmitPaymentApply,
@@ -258,5 +261,55 @@ describe('payment-apply.vue 审计缺陷修复钉住（D4/D7，2026-08-17）', (
       vi.useRealTimers()
       document.body.innerHTML = ''
     }
+  })
+})
+
+describe('payment-apply.vue 详情抽屉（真实接口，2026-08-28 补全）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetPaymentApplyPage.mockResolvedValue({ code: 200, data: { records: [], total: 0 } })
+  })
+
+  it('查看详情：调 getPaymentApplyDetail(row.id) 打开抽屉并回显详情（真实接口非 stub）', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    mockGetPaymentApplyDetail.mockResolvedValueOnce({
+      code: 200,
+      data: {
+        id: 9, projectName: '滨江花园一期', supplierName: '某建设公司',
+        paymentAmount: 100000, paymentDate: '2026-08-01', contractCategory: 'PURCHASE',
+        status: 'SUBMITTED', cumulativeSettlementSnapshot: 500000,
+        unpaidAmountSnapshot: 200000, createdAt: '2026-08-01 10:00:00'
+      }
+    })
+    await st.handleView({ id: 9, projectName: '滨江花园一期' })
+    await flushPromises()
+    expect(mockGetPaymentApplyDetail).toHaveBeenCalledWith(9)
+    expect(st.detailVisible).toBe(true)
+    expect(st.detailData.supplierName).toBe('某建设公司')
+    expect(st.detailError).toBe('')
+    // 合同类型枚举映射为中文（与新增表单同源）
+    expect(st.getCategoryLabel('PURCHASE')).toBe('采购合同')
+    expect(st.getCategoryLabel('OTHER_EXPENSE')).toBe('其他支出合同')
+    expect(st.getCategoryLabel('')).toBe('-')
+    wrapper.unmount()
+  })
+
+  it('详情加载失败不静默：错误写入 detailError，重试入口重新发起请求', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    mockGetPaymentApplyDetail.mockRejectedValueOnce(new Error('payment detail down'))
+    await st.handleView({ id: 9, projectName: '滨江花园一期' })
+    await flushPromises()
+    expect(st.detailVisible).toBe(true)
+    expect(st.detailData).toBeNull()
+    expect(st.detailError).toContain('payment detail down')
+    mockGetPaymentApplyDetail.mockResolvedValueOnce({ code: 200, data: { id: 9, paymentAmount: 100000, status: 'DRAFT' } })
+    await st.retryDetail()
+    await flushPromises()
+    expect(mockGetPaymentApplyDetail).toHaveBeenCalledTimes(2)
+    expect(st.detailData.paymentAmount).toBe(100000)
+    expect(st.detailError).toBe('')
+    wrapper.unmount()
   })
 })
