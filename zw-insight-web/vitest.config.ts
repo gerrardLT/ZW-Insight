@@ -21,9 +21,10 @@ export default defineConfig({
       'src/**/*.property.test.ts',
     ],
     // 覆盖率采集（2026-08-14 M3：前端覆盖率度量，基线见 tests/frontend-coverage-baseline.json）
+    // 增加 lcov reporter 供 Codecov/GHA 上传
     coverage: {
       provider: 'v8',
-      reporter: ['json-summary', 'text'],
+      reporter: ['json-summary', 'text', 'lcov'],
       include: ['src/**'],
       exclude: ['src/__tests__/**'],
     },
