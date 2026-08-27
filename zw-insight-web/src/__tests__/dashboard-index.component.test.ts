@@ -16,6 +16,8 @@ import ElementPlus from 'element-plus'
 // vi.hoisted 先于模块 import 执行，不可引用顶部 import 的 helper，内联构造
 const {
   mockGetCompanyOverview,
+  mockGetOverdueRetention,
+  mockHasPermission,
   chartInstances,
   chartInit,
   mockError,
@@ -34,6 +36,8 @@ const {
   })
   return {
     mockGetCompanyOverview: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
+    mockGetOverdueRetention: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+    mockHasPermission: vi.fn((): boolean => true),
     chartInstances: instances,
     chartInit: init,
     mockError: vi.fn(),
@@ -43,8 +47,20 @@ const {
 vi.mock('@/api/dashboard', () => ({
   getCompanyOverview: mockGetCompanyOverview,
 }))
+vi.mock('@/api/finance', () => ({
+  getOverdueRetention: mockGetOverdueRetention,
+}))
 vi.mock('@/stores/user', () => ({
   useUserStore: () => ({ userInfo: { realName: '测试管理员' } }),
+}))
+// reactive 状态：主题切换重绘用例需在挂载后翻转 isDark
+vi.mock('@/stores/app', async () => {
+  const { reactive } = await import('vue')
+  const state = reactive({ isDark: false })
+  return { useAppStore: () => state }
+})
+vi.mock('@/composables/usePermission', () => ({
+  usePermission: () => ({ hasPermission: mockHasPermission }),
 }))
 vi.mock('echarts', () => ({ init: chartInit }))
 // ElMessage 实例会向 happy-dom body 附加 DOM 并持定时器，partial mock 防累积拖慢
@@ -57,6 +73,7 @@ vi.mock('element-plus', async (importOriginal) => {
 })
 
 import DashboardIndex from '@/views/dashboard/index.vue'
+import { chartThemeDark } from '@/constants/chart-theme'
 
 let currentWrapper: any = null
 
@@ -78,6 +95,8 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
     vi.clearAllMocks()
     chartInstances.length = 0
     mockGetCompanyOverview.mockResolvedValue({ code: 200, data: {} })
+    mockGetOverdueRetention.mockResolvedValue({ code: 200, data: [] })
+    mockHasPermission.mockReturnValue(true)
   })
 
   afterEach(() => {
@@ -203,5 +222,76 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
     currentWrapper = null
     expect(pie.dispose).toHaveBeenCalled()
     expect(bar.dispose).toHaveBeenCalled()
+  })
+
+  // ===== 逾期风险告警卡（真实接口 /v1/finance/retention/overdue） =====
+  it('存在逾期质保金 → 脉冲徽章 + 笔数/未返还金额/最长天数汇总', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 27, 10, 0))
+    mockGetOverdueRetention.mockResolvedValue({
+      code: 200,
+      data: [
+        { id: 1, retentionAmount: 50000, returnedAmount: 10000, expireDate: '2026-08-17', status: 'ACTIVE' },
+        { id: 2, retentionAmount: 30000, returnedAmount: 0, expireDate: '2026-08-07', status: 'ACTIVE' },
+      ],
+    })
+    const wrapper = await mountPage()
+    const badge = wrapper.find('[data-testid="overdue-badge"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toContain('2 笔逾期')
+    // 未返还金额 = (50000-10000)+(30000-0) = 70000 → 7.0 万
+    expect(wrapper.find('[data-testid="overdue-panel"]').text()).toContain('7.0')
+    // 最长逾期 = 2026-08-07 → 20 天
+    expect(wrapper.find('[data-testid="overdue-panel"]').text()).toContain('20 天')
+  })
+
+  it('无逾期质保金 → 显示「无逾期」，不渲染告警徽章', async () => {
+    const wrapper = await mountPage()
+    expect(wrapper.find('[data-testid="overdue-clear"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="overdue-badge"]').exists()).toBe(false)
+  })
+
+  it('逾期接口失败 → 显式提示 + 卡内错误态与重试入口，不静默', async () => {
+    mockGetOverdueRetention.mockRejectedValue(new Error('overdue down'))
+    const wrapper = await mountPage()
+    expect(mockError).toHaveBeenCalledWith(expect.stringContaining('加载逾期质保金失败'))
+    const errBox = wrapper.find('[data-testid="overdue-error"]')
+    expect(errBox.exists()).toBe(true)
+    expect(errBox.text()).toContain('overdue down')
+    expect(errBox.find('button').exists()).toBe(true)
+  })
+
+  it('无 finance:view 权限 → 逾期卡不渲染且不请求逾期接口（非财务角色首页零报错）', async () => {
+    mockHasPermission.mockReturnValue(false)
+    const wrapper = await mountPage()
+    expect(wrapper.find('[data-testid="overdue-panel"]').exists()).toBe(false)
+    expect(mockGetOverdueRetention).not.toHaveBeenCalled()
+  })
+
+  it('主题切换 → 以缓存数据重绘两图，不重复请求接口', async () => {
+    mockGetCompanyOverview.mockResolvedValue({
+      code: 200,
+      data: { statusDistribution: { CONSTRUCTION: 3 }, totalIncome: 1000000, totalExpense: 500000 },
+    })
+    const wrapper = await mountPage()
+    // 首渲：loadStats + 饼图 + 柱图 共 3 次请求
+    const callsBefore = mockGetCompanyOverview.mock.calls.length
+    expect(callsBefore).toBe(3)
+
+    const appStore = setupState(wrapper).appStore
+    appStore.isDark = true
+    await flushPromises()
+
+    // 验收核心：主题切换不产生新请求
+    expect(mockGetCompanyOverview.mock.calls.length).toBe(callsBefore)
+    // 两图以暗色主题重建 option（饼图色板 / 柱图高亮色）
+    const pie = chartInstances[0]
+    const pieOpt = pie.setOption.mock.calls[pie.setOption.mock.calls.length - 1][0]
+    expect(pieOpt.color).toEqual(chartThemeDark.palette)
+    const bar = chartInstances[1]
+    const barOpt = bar.setOption.mock.calls[bar.setOption.mock.calls.length - 1][0]
+    expect(barOpt.series[0].data[0].itemStyle.color).toBe(chartThemeDark.highlight)
+    appStore.isDark = false
+    await flushPromises()
   })
 })

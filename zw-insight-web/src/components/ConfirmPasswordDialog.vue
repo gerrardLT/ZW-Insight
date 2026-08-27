@@ -41,7 +41,7 @@
  */
 import { ref, reactive, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import type { FormInstance, FormRules, InputInstance } from 'element-plus'
-import { Lock } from '@element-plus/icons-vue'
+import { Lock } from '@/components/icons/registry'
 import {
   registerConfirmOpener,
   unregisterConfirmOpener,

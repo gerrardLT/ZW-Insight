@@ -300,42 +300,42 @@ watch(() => props.projectId, () => {
 
 .gantt-task-in-progress .gantt_task_progress,
 .gantt-task-in-progress .gantt_task_content {
-  background-color: #409EFF !important;
+  background-color: var(--zw-info) !important;
 }
 .gantt-task-in-progress .gantt_task_line {
-  background-color: #409EFF !important;
-  border-color: #3a8ee6 !important;
+  background-color: var(--zw-info) !important;
+  border-color: var(--zw-info) !important;
 }
 
 .gantt-task-completed .gantt_task_progress,
 .gantt-task-completed .gantt_task_content {
-  background-color: #67C23A !important;
+  background-color: var(--zw-success) !important;
 }
 .gantt-task-completed .gantt_task_line {
-  background-color: #67C23A !important;
-  border-color: #5daf34 !important;
+  background-color: var(--zw-success) !important;
+  border-color: var(--zw-success) !important;
 }
 
+/* 延期 = 告警语言：danger 红 */
 .gantt-task-delayed .gantt_task_progress,
 .gantt-task-delayed .gantt_task_content {
-  background-color: #F56C6C !important;
+  background-color: var(--zw-danger) !important;
 }
 .gantt-task-delayed .gantt_task_line {
-  background-color: #F56C6C !important;
-  border-color: #e65d5d !important;
+  background-color: var(--zw-danger) !important;
+  border-color: var(--zw-danger) !important;
 }
 
-/* 关键路径高亮 */
+/* 关键路径高亮：warning 黄，去光晕 */
 .critical_task .gantt_task_line {
-  border: 2px solid #E6A23C !important;
-  box-shadow: 0 0 4px rgba(230, 162, 60, 0.5);
+  border: 2px solid var(--zw-warning) !important;
 }
 
 .critical_link .gantt_line_wrapper div {
-  background-color: #E6A23C !important;
+  background-color: var(--zw-warning) !important;
 }
 
 .critical_link .gantt_link_arrow {
-  border-color: #E6A23C !important;
+  border-color: var(--zw-warning) !important;
 }
 </style>

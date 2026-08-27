@@ -12,12 +12,19 @@
       <!-- 失败态：显示后端错误消息（空数据的业务提示同样由此透传），提供重试 -->
       <div v-if="errorMsg" class="panel-state" data-testid="stat-panel-error">
         <el-empty :description="errorMsg">
+          <template #image>
+            <HelmetIcon class="zw-empty-icon" />
+          </template>
           <el-button type="primary" size="small" @click="load">重试</el-button>
         </el-empty>
       </div>
       <!-- 空态：接口成功但无可绘制数据 -->
       <div v-else-if="isEmpty" class="panel-state" data-testid="stat-panel-empty">
-        <el-empty :description="emptyText" />
+        <el-empty :description="emptyText">
+          <template #image>
+            <BlueprintCornerIcon class="zw-empty-icon" />
+          </template>
+        </el-empty>
       </div>
       <!-- 图表容器常驻 DOM（v-show），避免 echarts 重复 init -->
       <div
@@ -40,9 +47,14 @@
  * - buildOption 返回 null → 空态 el-empty
  * - 成功 → echarts setOption（notMerge=true 防残留序列）
  */
-import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh } from '@/components/icons/registry'
+import { BlueprintCornerIcon, HelmetIcon } from '@/components/icons/zw'
+import { useAppStore } from '@/stores/app'
+import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
+
+const appStore = useAppStore()
 
 const props = withDefaults(defineProps<{
   /** 面板标题 */
@@ -65,6 +77,15 @@ const errorMsg = ref('')
 const isEmpty = ref(false)
 const chartRef = ref<HTMLElement>()
 let chart: echarts.ECharts | null = null
+/** 最近一次成功加载的业务数据：暗色/亮色切换时不重复请求，直接重绘 */
+let lastData: any = null
+
+/** 由数据构建并应用当前主题的 option；返回 null 表示空数据 */
+function buildThemedOption(data: any) {
+  const option = props.buildOption(data)
+  if (!option) return null
+  return applyChartTheme(option, pickChartTheme(appStore.isDark))
+}
 
 async function load() {
   loading.value = true
@@ -72,11 +93,13 @@ async function load() {
   isEmpty.value = false
   try {
     const data = await props.fetchData()
-    const option = props.buildOption(data)
+    const option = buildThemedOption(data)
     if (!option) {
       isEmpty.value = true
+      lastData = null
       return
     }
+    lastData = data
     await nextTick()
     if (!chartRef.value) return
     if (!chart || chart.isDisposed()) {
@@ -86,10 +109,18 @@ async function load() {
   } catch (e: any) {
     // 不静默：错误消息直接展示（后端空数据的业务提示也走此通道）
     errorMsg.value = e?.message || '加载统计数据失败'
+    lastData = null
   } finally {
     loading.value = false
   }
 }
+
+// 主题切换即时重绘（echarts 为 canvas 绘制，颜色在 option 创建时固化，需重建）
+watch(() => appStore.isDark, () => {
+  if (!lastData || errorMsg.value || isEmpty.value || !chart || chart.isDisposed()) return
+  const option = buildThemedOption(lastData)
+  if (option) chart.setOption(option, true)
+})
 
 function handleResize() {
   chart?.resize()

@@ -30,8 +30,17 @@ const { chartInstances, chartInit } = vi.hoisted(() => {
 })
 
 vi.mock('echarts', () => ({ init: chartInit }))
+// 组件引入 useAppStore（暗色联动）后需 mock，避免无 pinia 环境报 getActivePinia；
+// 用 reactive 状态使 isDark 可测试性切换，钉住主题重绘行为
+vi.mock('@/stores/app', async () => {
+  const { reactive } = await import('vue')
+  const state = reactive({ isDark: false })
+  return { useAppStore: () => state }
+})
 
 import StatChartPanel from '@/components/StatChartPanel.vue'
+import { useAppStore } from '@/stores/app'
+import { applyChartTheme, chartThemeLight, chartThemeDark } from '@/constants/chart-theme'
 
 let currentWrapper: any = null
 
@@ -48,6 +57,7 @@ describe('StatChartPanel 三态契约（T7）', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     chartInstances.length = 0
+    ;(useAppStore() as any).isDark = false
   })
 
   afterEach(() => {
@@ -89,11 +99,13 @@ describe('StatChartPanel 三态契约（T7）', () => {
     const emptyBox = wrapper.find('[data-testid="stat-panel-empty"]')
     expect(emptyBox.exists()).toBe(true)
     expect(emptyBox.text()).toContain('暂无已审批的付款申请')
+    // 空态插图为自绘蓝图角标（SVG + zw-empty-icon），替代 el-empty 默认插画
+    expect(emptyBox.find('svg.zw-empty-icon').exists()).toBe(true)
     expect(wrapper.find('[data-testid="stat-panel-error"]').exists()).toBe(false)
     expect(chartInit).not.toHaveBeenCalled()
   })
 
-  it('成功且有数据 → echarts.init + setOption(option, true)（notMerge）', async () => {
+  it('成功且有数据 → echarts.init + setOption(主题化 option, true)（notMerge）', async () => {
     const option = { xAxis: { type: 'category', data: ['2026-01'] }, series: [{ type: 'bar', data: [1] }] }
     const fetchData = vi.fn(async () => ({ ok: true }))
     const buildOption = vi.fn(() => option)
@@ -103,7 +115,28 @@ describe('StatChartPanel 三态契约（T7）', () => {
     expect(wrapper.find('[data-testid="stat-panel-error"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="stat-panel-empty"]').exists()).toBe(false)
     expect(chartInit).toHaveBeenCalledTimes(1)
-    expect(chartInstances[0].setOption).toHaveBeenCalledWith(option, true)
+    // option 经 applyChartTheme 填充亮色主题默认值（色板/轴/tooltip），业务字段不变
+    const themed = applyChartTheme(option, chartThemeLight)
+    expect(chartInstances[0].setOption).toHaveBeenCalledWith(themed, true)
+    expect(themed.series).toEqual(option.series)
+  })
+
+  it('暗色切换 → 不重复请求，以缓存数据重建暗色 option 重绘', async () => {
+    const option = { xAxis: { type: 'category', data: ['2026-01'] }, series: [{ type: 'bar', data: [1] }] }
+    const fetchData = vi.fn(async () => ({ ok: true }))
+    const buildOption = vi.fn(() => option)
+    const wrapper = mountPanel({ title: '工资发放趋势', fetchData, buildOption })
+    await flushPromises()
+    expect(fetchData).toHaveBeenCalledTimes(1)
+    expect(chartInstances[0].setOption).toHaveBeenCalledTimes(1)
+
+    ;(useAppStore() as any).isDark = true
+    await flushPromises()
+
+    expect(fetchData).toHaveBeenCalledTimes(1) // 不重复请求接口
+    expect(buildOption).toHaveBeenCalledTimes(2)
+    expect(chartInstances[0].setOption).toHaveBeenCalledTimes(2)
+    expect(chartInstances[0].setOption).toHaveBeenLastCalledWith(applyChartTheme(option, chartThemeDark), true)
   })
 
   it('暴露 reload：重复加载复用同一图表实例，不重复 init', async () => {

@@ -80,7 +80,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus } from '@/components/icons/registry'
 import {
   createVersion,
   getVersionList,

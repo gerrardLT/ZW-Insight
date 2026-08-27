@@ -172,7 +172,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus } from '@/components/icons/registry'
 import type { FormInstance } from 'element-plus'
 import {
   getTenantPage,

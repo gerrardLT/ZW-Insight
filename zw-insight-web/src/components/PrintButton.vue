@@ -27,7 +27,7 @@
  */
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Printer } from '@element-plus/icons-vue'
+import { Printer } from '@/components/icons/registry'
 import {
   renderPrintTemplate,
   getPrintTemplatePage

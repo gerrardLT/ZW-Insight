@@ -1,22 +1,20 @@
 <template>
   <div class="login-page">
-    <!-- 左侧品牌视觉区 -->
+    <!-- 左侧品牌视觉区（石墨黑 Hero：工程铭牌语言） -->
     <div class="login-brand">
-      <div class="brand-orb orb-1"></div>
-      <div class="brand-orb orb-2"></div>
-      <div class="brand-orb orb-3"></div>
-      <div class="brand-grid"></div>
+      <div class="brand-hazard hazard-divider"></div>
       <div class="brand-content">
         <div class="brand-logo">
           <div class="brand-logo-icon">ZW</div>
           <span class="brand-logo-text">中维智营</span>
         </div>
+        <div class="brand-eyebrow">Project Management Platform</div>
         <h1 class="brand-slogan">工程项目全生命周期<br />智能管理平台</h1>
         <p class="brand-desc">涵盖项目、合同、预算、财务、材料、机械、劳务、分包全流程协同，让工程管理更高效。</p>
         <div class="brand-features">
-          <div class="feature-item"><span class="feature-dot"></span>全链路业务数字化</div>
-          <div class="feature-item"><span class="feature-dot"></span>多组织多项目协同</div>
-          <div class="feature-item"><span class="feature-dot"></span>实时数据看板决策</div>
+          <div class="feature-item"><BlueprintCornerIcon class="feature-icon" />全链路业务数字化</div>
+          <div class="feature-item"><TowerCraneIcon class="feature-icon" />多组织多项目协同</div>
+          <div class="feature-item"><HelmetIcon class="feature-icon" />实时数据看板决策</div>
         </div>
       </div>
     </div>
@@ -62,6 +60,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getImageCaptcha } from '@/api/captcha'
 import request from '@/utils/request'
+import { BlueprintCornerIcon, TowerCraneIcon, HelmetIcon } from '@/components/icons/zw'
 import type { FormInstance } from 'element-plus'
 
 const router = useRouter()
@@ -139,66 +138,25 @@ function goForgotPassword() {
   background-color: var(--zw-bg-card);
 }
 
-/* ===== 左侧品牌区 ===== */
+/* ===== 左侧品牌区（石墨黑全幅画布，无渐变无光斑） ===== */
 .login-brand {
   position: relative;
   width: 55%;
   flex-shrink: 0;
   overflow: hidden;
-  background: linear-gradient(135deg, #1e2a5e 0%, #3370ff 55%, #6b46c1 100%);
+  background: var(--zw-bg-sidebar);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.brand-grid {
+/* 顶部 4px 警示条纹：品牌识别线 */
+.brand-hazard {
   position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mask-image: radial-gradient(ellipse at center, black 40%, transparent 75%);
-}
-
-.brand-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.5;
-}
-
-.orb-1 {
-  width: 380px;
-  height: 380px;
-  background: #5b8cff;
-  top: -80px;
-  left: -60px;
-  animation: float 12s ease-in-out infinite;
-}
-
-.orb-2 {
-  width: 300px;
-  height: 300px;
-  background: #a855f7;
-  bottom: -60px;
-  right: 40px;
-  animation: float 15s ease-in-out infinite reverse;
-}
-
-.orb-3 {
-  width: 240px;
-  height: 240px;
-  background: #38bdf8;
-  top: 45%;
-  left: 55%;
-  animation: float 18s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -40px) scale(1.08); }
-  66% { transform: translate(-20px, 30px) scale(0.95); }
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
 }
 
 .brand-content {
@@ -206,14 +164,14 @@ function goForgotPassword() {
   z-index: 1;
   max-width: 460px;
   padding: 0 48px;
-  color: #fff;
+  color: #f2f3f1;
 }
 
 .brand-logo {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 48px;
+  margin-bottom: 40px;
 }
 
 .brand-logo-icon {
@@ -222,10 +180,9 @@ function goForgotPassword() {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--zw-radius-xs);
+  background: var(--zw-brand);
+  color: var(--zw-on-primary);
   font-weight: 700;
   font-size: 16px;
   letter-spacing: 0.5px;
@@ -234,20 +191,33 @@ function goForgotPassword() {
 .brand-logo-text {
   font-size: 22px;
   font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
+/* 大写英文副线（Display 层签名） */
+.brand-eyebrow {
+  font-family: var(--zw-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--zw-brand);
+  margin-bottom: 16px;
+}
+
+/* 中文铭牌：重黑 + 宽字距 */
 .brand-slogan {
   font-size: 40px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.25;
   margin-bottom: 20px;
-  letter-spacing: -0.5px;
+  letter-spacing: 0.04em;
 }
 
 .brand-desc {
   font-size: 15px;
   line-height: 1.7;
-  color: rgba(255, 255, 255, 0.8);
+  color: #c6c9cc;
   margin-bottom: 40px;
 }
 
@@ -262,15 +232,14 @@ function goForgotPassword() {
   align-items: center;
   gap: 12px;
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.9);
+  color: #f2f3f1;
 }
 
-.feature-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+/* 自绘工程图标（方帽直角，品牌橙） */
+.feature-icon {
+  font-size: 20px;
+  color: var(--zw-brand);
+  flex-shrink: 0;
 }
 
 /* ===== 右侧表单区 ===== */

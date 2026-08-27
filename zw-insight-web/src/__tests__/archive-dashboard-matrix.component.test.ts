@@ -67,6 +67,9 @@ vi.mock('@/api/dashboard', () => ({
 vi.mock('@/stores/user', () => ({
   useUserStore: () => ({ userInfo: { realName: '测试管理员' } }),
 }))
+vi.mock('@/stores/app', () => ({
+  useAppStore: () => ({ isDark: false }),
+}))
 vi.mock('@/components/ProjectSelector.vue', () => ({
   default: { name: 'ProjectSelector', render: () => null },
 }))

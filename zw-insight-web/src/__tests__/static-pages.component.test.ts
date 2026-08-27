@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
-import { HomeFilled, RefreshRight } from '@element-plus/icons-vue'
+import { HomeFilled, RefreshRight } from '@/components/icons/registry'
 import { createPinia, setActivePinia } from 'pinia'
 import { routerKey } from 'vue-router'
 

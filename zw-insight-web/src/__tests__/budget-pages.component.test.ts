@@ -59,6 +59,10 @@ vi.mock('element-plus', async (importOriginal) => {
   }
 })
 
+// 暗色联动引入 useAppStore 后：无 pinia 环境的组件测试统一 mock，防 getActivePinia
+vi.mock('@/stores/app', () => ({
+  useAppStore: () => ({ isDark: false }),
+}))
 import Budget from '@/views/budget/index.vue'
 import BudgetChange from '@/views/budget/change/index.vue'
 import ControlConfig from '@/views/budget/control-config/index.vue'

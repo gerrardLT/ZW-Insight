@@ -165,7 +165,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Download } from '@element-plus/icons-vue'
+import { Download } from '@/components/icons/registry'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import { getSalaryStats, getSalaryDetail, getSalaryCompare, exportSalaryExcel } from '@/api/labor'
 

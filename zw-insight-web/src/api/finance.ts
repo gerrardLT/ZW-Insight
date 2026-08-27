@@ -183,6 +183,11 @@ export function getExpiringRetention(days = 30) {
   return request.get<R<RetentionMoney[]>>('/v1/finance/retention/expiring', { params: { days } })
 }
 
+// 已逾期质保金（到期日早于今天且未返还，工作台逾期统计卡数据源）
+export function getOverdueRetention() {
+  return request.get<R<RetentionMoney[]>>('/v1/finance/retention/overdue')
+}
+
 export function createRetentionReturn(data: RetentionReturn) {
   return request.post<R<void>>('/v1/finance/retention/return', data)
 }

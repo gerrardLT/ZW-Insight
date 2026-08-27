@@ -60,6 +60,14 @@ public class RetentionController {
     }
 
     /**
+     * 查询已逾期质保金（到期日早于今天且未返还，工作台逾期统计卡数据源）
+     */
+    @GetMapping("/overdue")
+    public R<List<BizRetentionMoney>> getOverdue() {
+        return R.ok(retentionMoneyService.getOverdue());
+    }
+
+    /**
      * 新增返还申请
      */
     @PostMapping("/return")

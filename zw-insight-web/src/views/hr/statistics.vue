@@ -9,7 +9,7 @@
               <span class="stat-label">在职总人数</span>
               <span class="stat-value">{{ overview.totalActive || 0 }}</span>
             </div>
-            <el-icon class="stat-icon" style="color: #409eff"><User /></el-icon>
+            <el-icon class="stat-icon stat-icon--info"><User /></el-icon>
           </div>
         </el-card>
       </el-col>
@@ -20,7 +20,7 @@
               <span class="stat-label">本月入职</span>
               <span class="stat-value">{{ overview.monthlyEntry || 0 }}</span>
             </div>
-            <el-icon class="stat-icon" style="color: #67c23a"><CirclePlus /></el-icon>
+            <el-icon class="stat-icon stat-icon--success"><CirclePlus /></el-icon>
           </div>
         </el-card>
       </el-col>
@@ -31,7 +31,7 @@
               <span class="stat-label">本月离职</span>
               <span class="stat-value">{{ overview.monthlyResign || 0 }}</span>
             </div>
-            <el-icon class="stat-icon" style="color: #f56c6c"><Remove /></el-icon>
+            <el-icon class="stat-icon stat-icon--danger"><Remove /></el-icon>
           </div>
         </el-card>
       </el-col>
@@ -80,13 +80,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getHrStatisticsOverview } from '@/api/hr'
+import { useAppStore } from '@/stores/app'
+import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
 
-// 汇总数据
+const appStore = useAppStore()
+
+// 汇总数据（原始响应缓存：主题切换时不重复请求，直接重绘）
 const overview = ref<any>({})
+let lastStatData: any = null
 
 // 图表 DOM 引用
 const deptChartRef = ref<HTMLElement>()
@@ -109,10 +114,8 @@ async function loadData() {
       monthlyEntry: data.monthlyEntry || 0,
       monthlyResign: data.monthlyResign || 0
     }
-    renderDeptChart(data.byDept || [])
-    renderPostChart(data.byPost || [])
-    renderSeniorityChart(data.bySeniority || [])
-    renderTrendChart(data.monthlyTrend || [])
+    lastStatData = data
+    renderAll(data)
   } catch (e: any) {
     // C-20-7 修复（2026-08-14 P2 补测）：不静默处理，接口失败显式提示
     //（对齐 dashboard/index.vue loadStats 范式）
@@ -120,12 +123,32 @@ async function loadData() {
   }
 }
 
+function renderAll(data: any) {
+  renderDeptChart(data.byDept || [])
+  renderPostChart(data.byPost || [])
+  renderSeniorityChart(data.bySeniority || [])
+  renderTrendChart(data.monthlyTrend || [])
+}
+
+// 主题切换即时重绘（canvas 颜色固化，需以新主题重建 option）
+watch(() => appStore.isDark, () => {
+  if (lastStatData) renderAll(lastStatData)
+})
+
+/** 容器已有实例则复用，避免主题切换重绘时重复 init */
+function ensureChart(current: echarts.ECharts | null, el: HTMLElement | undefined): echarts.ECharts | null {
+  if (!el) return current
+  if (current && !current.isDisposed()) return current
+  return echarts.init(el)
+}
+
 function renderDeptChart(byDept: Array<{ deptName: string; count: number }>) {
-  if (!deptChartRef.value) return
-  deptChart = echarts.init(deptChartRef.value)
+  deptChart = ensureChart(deptChart, deptChartRef.value)
+  if (!deptChart) return
+  const theme = pickChartTheme(appStore.isDark)
   const names = byDept.map(item => item.deptName)
   const counts = byDept.map(item => item.count)
-  deptChart.setOption({
+  deptChart.setOption(applyChartTheme({
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
     xAxis: { type: 'category', data: names, axisLabel: { rotate: names.length > 6 ? 30 : 0 } },
@@ -133,36 +156,39 @@ function renderDeptChart(byDept: Array<{ deptName: string; count: number }>) {
     series: [{
       type: 'bar',
       data: counts,
-      itemStyle: { color: '#409eff', borderRadius: [4, 4, 0, 0] },
+      itemStyle: { color: theme.highlight, borderRadius: [2, 2, 0, 0] },
       barMaxWidth: 40
     }]
-  })
+  }, theme), true)
 }
 
 function renderPostChart(byPost: Array<{ postName: string; count: number }>) {
-  if (!postChartRef.value) return
-  postChart = echarts.init(postChartRef.value)
+  postChart = ensureChart(postChart, postChartRef.value)
+  if (!postChart) return
+  const theme = pickChartTheme(appStore.isDark)
   const data = byPost.map(item => ({ name: item.postName, value: item.count }))
-  postChart.setOption({
+  postChart.setOption(applyChartTheme({
     tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
     legend: { bottom: 0, type: 'scroll' },
     series: [{
       type: 'pie',
       radius: ['35%', '65%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
-      label: { show: true, formatter: '{b}: {c}' },
+      itemStyle: { borderRadius: 2, borderColor: theme.surface.card, borderWidth: 2 },
+      label: { show: true, formatter: '{b}: {c}', color: theme.text.secondary },
       data
     }]
-  })
+  }, theme), true)
 }
 
 function renderSeniorityChart(bySeniority: Array<{ range: string; count: number }>) {
-  if (!seniorityChartRef.value) return
-  seniorityChart = echarts.init(seniorityChartRef.value)
+  seniorityChart = ensureChart(seniorityChart, seniorityChartRef.value)
+  if (!seniorityChart) return
+  const theme = pickChartTheme(appStore.isDark)
   const names = bySeniority.map(item => item.range)
   const counts = bySeniority.map(item => item.count)
-  seniorityChart.setOption({
+  const s = theme.semantic
+  seniorityChart.setOption(applyChartTheme({
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
     xAxis: { type: 'category', data: names },
@@ -172,23 +198,24 @@ function renderSeniorityChart(bySeniority: Array<{ range: string; count: number 
       data: counts,
       itemStyle: {
         color: (params: any) => {
-          const colors = ['#67c23a', '#409eff', '#e6a23c', '#f56c6c']
+          const colors = [s.success, s.info, s.warning, s.danger]
           return colors[params.dataIndex % colors.length]
         },
-        borderRadius: [4, 4, 0, 0]
+        borderRadius: [2, 2, 0, 0]
       },
       barMaxWidth: 50
     }]
-  })
+  }, theme), true)
 }
 
 function renderTrendChart(monthlyTrend: Array<{ month: string; entryCount: number; resignCount: number }>) {
-  if (!trendChartRef.value) return
-  trendChart = echarts.init(trendChartRef.value)
+  trendChart = ensureChart(trendChart, trendChartRef.value)
+  if (!trendChart) return
+  const theme = pickChartTheme(appStore.isDark)
   const months = monthlyTrend.map(item => item.month)
   const entryData = monthlyTrend.map(item => item.entryCount)
   const resignData = monthlyTrend.map(item => item.resignCount)
-  trendChart.setOption({
+  trendChart.setOption(applyChartTheme({
     tooltip: { trigger: 'axis' },
     legend: { data: ['入职', '离职'] },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
@@ -200,19 +227,19 @@ function renderTrendChart(monthlyTrend: Array<{ month: string; entryCount: numbe
         type: 'line',
         data: entryData,
         smooth: true,
-        itemStyle: { color: '#67c23a' },
-        areaStyle: { color: 'rgba(103, 194, 58, 0.1)' }
+        itemStyle: { color: theme.semantic.success },
+        areaStyle: { opacity: 0.1 }
       },
       {
         name: '离职',
         type: 'line',
         data: resignData,
         smooth: true,
-        itemStyle: { color: '#f56c6c' },
-        areaStyle: { color: 'rgba(245, 108, 108, 0.1)' }
+        itemStyle: { color: theme.semantic.danger },
+        areaStyle: { opacity: 0.1 }
       }
     ]
-  })
+  }, theme), true)
 }
 
 function handleResize() {
@@ -257,17 +284,26 @@ onBeforeUnmount(() => {
 }
 .stat-label {
   font-size: 14px;
-  color: #909399;
+  color: var(--zw-text-secondary);
   margin-bottom: 8px;
 }
 .stat-value {
   font-size: 28px;
   font-weight: bold;
-  color: #303133;
+  color: var(--zw-text-primary);
 }
 .stat-icon {
   font-size: 48px;
   opacity: 0.8;
+}
+.stat-icon--info {
+  color: var(--zw-info);
+}
+.stat-icon--success {
+  color: var(--zw-success);
+}
+.stat-icon--danger {
+  color: var(--zw-danger);
 }
 .chart-row {
   margin-bottom: 16px;

@@ -1,6 +1,7 @@
 <template>
   <div class="forgot-container">
-    <el-card class="forgot-card">
+    <div class="forgot-hazard hazard-divider"></div>
+    <el-card class="forgot-card" shadow="never">
       <h2 class="forgot-title">找回密码</h2>
       <p class="forgot-subtitle">通过手机号短信验证码重置登录密码</p>
 
@@ -243,12 +244,21 @@ function goLogin() {
 </script>
 
 <style scoped>
+/* 石墨画布 + 顶部警示条纹（与登录页同一语言） */
 .forgot-container {
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--zw-bg-sidebar);
+  position: relative;
+}
+.forgot-hazard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
 }
 .forgot-card {
   width: 460px;
@@ -258,11 +268,13 @@ function goLogin() {
   text-align: center;
   margin-bottom: 4px;
   font-size: 24px;
-  color: #303133;
+  font-weight: var(--zw-font-weight-bold);
+  letter-spacing: 0.04em;
+  color: var(--zw-text-primary);
 }
 .forgot-subtitle {
   text-align: center;
-  color: #909399;
+  color: var(--zw-text-tertiary);
   margin-bottom: 24px;
 }
 .forgot-steps {
@@ -273,7 +285,7 @@ function goLogin() {
 }
 .tip-text {
   font-size: 13px;
-  color: #909399;
+  color: var(--zw-text-tertiary);
 }
 .back-login {
   text-align: center;

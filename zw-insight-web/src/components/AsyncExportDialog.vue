@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading } from '@/components/icons/registry'
 import { startExport, getExportStatus, downloadExportFile } from '@/api/batch'
 
 const props = defineProps<{ visible: boolean; moduleCode: string; params?: any }>()

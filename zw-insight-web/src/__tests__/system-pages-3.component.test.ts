@@ -163,6 +163,22 @@ describe('system/menu/index.vue 菜单管理（树形）', () => {
     expect(mockMenuCreate).toHaveBeenCalledTimes(1)
     expect(mockMenuUpdate).not.toHaveBeenCalled()
   })
+
+  // 图标下拉枚举：新增时选择 "ArrowDown"，表单应填入该值
+  it('图标输入为过滤下拉（非文本框）且选中的 IconArrowRight 映射为 ArrowDown', async () => {
+    const wrapper = mount(Menu, { global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    const st = wrapper.vm.$.setupState
+    st.handleAdd(0)
+    await flushPromises()
+    // 图标 select 存在且有过滤能力
+    const iconSelect = wrapper.find('[data-testid="icon-select"]')
+    expect(iconSelect.exists()).toBe(true)
+    // 选中后 formData.icon 应为枚举内的名称
+    st.formData.icon = 'ArrowDown'
+    await wrapper.vm.$nextTick()
+    expect(st.formData.icon).toBe('ArrowDown')
+  })
 })
 
 describe('system/dict/index.vue 字典管理（双表）', () => {

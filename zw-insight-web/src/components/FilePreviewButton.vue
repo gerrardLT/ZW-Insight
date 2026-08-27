@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { View } from '@element-plus/icons-vue'
+import { View } from '@/components/icons/registry'
 import { getFilePreviewUrl } from '@/api/batch'
 
 const props = defineProps<{ fileId: number }>()

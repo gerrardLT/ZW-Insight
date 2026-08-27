@@ -21,14 +21,14 @@
               v-if="route.singleChild"
               :index="route.singleChild.fullPath"
             >
-              <el-icon v-if="route.singleChild.icon"><component :is="route.singleChild.icon" /></el-icon>
+              <el-icon class="menu-item-icon"><component :is="resolveMenuIcon(route.singleChild.icon)" /></el-icon>
               <template #title>{{ route.singleChild.title }}</template>
             </el-menu-item>
 
             <!-- 多层目录 -->
             <el-sub-menu v-else :index="route.path">
               <template #title>
-                <el-icon v-if="route.icon"><component :is="route.icon" /></el-icon>
+                <el-icon class="sub-menu-icon"><component :is="resolveMenuIcon(route.icon)" /></el-icon>
                 <span>{{ route.title }}</span>
               </template>
               <el-menu-item
@@ -36,7 +36,7 @@
                 :key="child.fullPath"
                 :index="child.fullPath"
               >
-                <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
+                <el-icon class="child-menu-icon"><component :is="resolveMenuIcon(child.icon)" /></el-icon>
                 <template #title>{{ child.title }}</template>
               </el-menu-item>
             </el-sub-menu>
@@ -113,6 +113,8 @@ import { useAppStore } from '@/stores/app'
 import { getUserMenus } from '@/api/system'
 import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
+import { Expand, Fold, Moon, Sunny, ArrowDown, Bell } from '@/components/icons/registry'
+import { resolveMenuIcon } from '@/components/icons/registry'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -299,9 +301,9 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--zw-radius-sm);
-  background: var(--zw-brand-gradient);
-  color: #fff;
+  border-radius: var(--zw-radius-xs);
+  background: var(--zw-brand);
+  color: var(--zw-on-primary);
   font-weight: var(--zw-font-weight-bold);
   font-size: 13px;
   letter-spacing: 0.5px;
@@ -338,9 +340,11 @@ function handleLogout() {
   background-color: var(--zw-bg-sidebar-hover);
 }
 
+/* 激活态：深一档底 + 橙字 + 左侧 2px 橙竖条（工程定位标） */
 .side-menu :deep(.el-menu-item.is-active) {
-  color: #fff;
-  background: var(--zw-brand-gradient);
+  color: var(--zw-brand);
+  background-color: var(--zw-bg-sidebar-active);
+  border-left: 2px solid var(--zw-brand);
 }
 
 .side-menu :deep(.el-sub-menu .el-menu-item) {
@@ -364,7 +368,7 @@ function handleLogout() {
   justify-content: space-between;
   padding: 0 var(--zw-space-lg);
   background-color: var(--zw-bg-card);
-  box-shadow: var(--zw-shadow-header);
+  border-bottom: 1px solid var(--zw-border);
   z-index: var(--zw-z-sticky);
 }
 
@@ -414,7 +418,7 @@ function handleLogout() {
   align-items: center;
   gap: 8px;
   padding: 4px 8px 4px 4px;
-  border-radius: var(--zw-radius-full);
+  border-radius: var(--zw-radius-sm);
   cursor: pointer;
   transition: background-color var(--zw-transition-fast);
 }
@@ -423,15 +427,16 @@ function handleLogout() {
   background-color: var(--zw-bg-hover);
 }
 
+/* 方形首字母头像（直角纪律，不用渐变圆） */
 .user-avatar {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: var(--zw-radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--zw-brand-gradient);
-  color: #fff;
+  background: var(--zw-bg-surface-3);
+  color: var(--zw-text-primary);
   font-size: var(--zw-font-size-sm);
   font-weight: var(--zw-font-weight-semibold);
 }
@@ -445,6 +450,17 @@ function handleLogout() {
 .user-arrow {
   font-size: 12px;
   color: var(--zw-text-tertiary);
+}
+
+/* ===== 菜单图标 ===== */
+.menu-item-icon,
+.sub-menu-icon,
+.child-menu-icon {
+  font-size: 18px;
+  color: var(--zw-text-secondary);
+}
+.icon-fallback-marked {
+  color: var(--zw-warning) !important;
 }
 
 /* ===== 主内容区 ===== */

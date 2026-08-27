@@ -29,9 +29,9 @@
             <el-tag v-else type="info" size="small">按钮</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="图标" width="70" align="center">
+        <el-table-column label="图标" width="100" align="center">
           <template #default="{ row }">
-            <el-icon v-if="row.icon"><component :is="row.icon" /></el-icon>
+            <el-icon v-if="row.icon" class="icon-fallback-marked"><component :is="resolveMenuIcon(row.icon)" /></el-icon>
           </template>
         </el-table-column>
         <el-table-column prop="path" label="路由路径" width="160" />
@@ -86,7 +86,28 @@
           <el-input v-model="formData.component" placeholder="请输入组件路径" />
         </el-form-item>
         <el-form-item v-if="formData.menuType !== 'BUTTON'" label="图标">
-          <el-input v-model="formData.icon" placeholder="请输入图标名称" />
+          <el-select
+            v-model="formData.icon"
+            filterable
+            clearable
+            placeholder="请选择图标"
+            style="width: 100%"
+            data-testid="icon-select"
+          >
+            <!-- 编辑时若为未知图标名，先显示该选项作为兜底 -->
+            <el-option
+              v-if="formData.icon && !MENU_ICON_OPTIONS.includes(formData.icon)"
+              :value="formData.icon"
+              :label="`${formData.icon} (unidentified)`"
+              disabled
+            />
+            <el-option v-for="name in MENU_ICON_OPTIONS" :key="name" :value="name" :label="name">
+              <span class="icon-option">
+                <el-icon><component :is="name" /></el-icon>
+                <span>{{ name }}</span>
+              </span>
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item v-if="formData.menuType === 'BUTTON'" label="权限标识">
           <el-input v-model="formData.permission" placeholder="如：sys:user:add" />
@@ -119,6 +140,7 @@
 import { ref, nextTick, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
+import { MENU_ICON_OPTIONS, resolveMenuIcon } from '@/components/icons/registry'
 import { getMenuTree, createMenu, updateMenu, deleteMenu } from '@/api/system'
 import { listToTree } from '@/utils/tree'
 
@@ -231,5 +253,18 @@ onMounted(() => {
 }
 .table-toolbar {
   margin-bottom: 16px;
+}
+/* 图标选项预览 */
+.icon-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.icon-option :deep(.el-icon) {
+  font-size: 16px;
+}
+/* 解析失败显式标记（警告三角形，避免静默丢失） */
+.icon-fallback-marked {
+  color: var(--zw-warning);
 }
 </style>

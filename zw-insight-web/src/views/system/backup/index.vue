@@ -93,7 +93,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { FolderAdd } from '@element-plus/icons-vue'
+import { FolderAdd } from '@/components/icons/registry'
 import {
   executeBackup,
   getBackupPage,

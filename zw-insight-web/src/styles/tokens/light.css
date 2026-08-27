@@ -1,62 +1,71 @@
-/* ZW-Insight Design Tokens - 浅色主题 */
+/* ZW-Insight Design Tokens - 浅色主题（Industrial Precision） */
+/* 依据 docs/DESIGN-mix-industrial-precision.md：混凝土白画布 + 石墨黑控制室 + 安全橙 */
 :root[data-theme="light"] {
   /* 背景 */
-  --zw-bg-page: #f7f8fa;
+  --zw-bg-page: #f6f7f5;
   --zw-bg-card: #ffffff;
   --zw-bg-elevated: #ffffff;
-  --zw-bg-sidebar: #1e1e2d;
-  --zw-bg-sidebar-hover: rgba(255, 255, 255, 0.06);
-  --zw-bg-sidebar-active: rgba(255, 255, 255, 0.1);
-  --zw-bg-hover: #f2f3f5;
-  --zw-bg-active: #e8f3ff;
-  --zw-bg-mask: rgba(0, 0, 0, 0.45);
-  --zw-bg-tag: #f2f3f5;
+  --zw-bg-sidebar: #101214;
+  --zw-bg-sidebar-hover: #16181c;
+  --zw-bg-sidebar-active: #1c1f24;
+  --zw-bg-hover: #eef0ed;
+  --zw-bg-active: #fff0e3;
+  --zw-bg-mask: rgba(20, 22, 26, 0.45);
+  --zw-bg-tag: #eef0ed;
+  --zw-bg-surface-3: #e4e7e3;
 
-  /* 文字 */
-  --zw-text-primary: #1d2129;
-  --zw-text-secondary: #4e5969;
-  --zw-text-tertiary: #86909c;
-  --zw-text-quaternary: #c9cdd4;
+  /* 文字（正文最小色阶 = secondary/ink-muted，tertiary 仅辅助） */
+  --zw-text-primary: #14161a;
+  --zw-text-secondary: #4a4f57;
+  --zw-text-tertiary: #7c828c;
+  --zw-text-quaternary: #a3a8b0;
   --zw-text-inverse: #ffffff;
-  --zw-text-sidebar: rgba(255, 255, 255, 0.65);
-  --zw-text-sidebar-active: #ffffff;
+  --zw-text-sidebar: #c6c9cc;
+  --zw-text-sidebar-active: #ff6b00;
 
-  /* 边框 */
-  --zw-border: #e5e6eb;
-  --zw-border-light: #f2f3f5;
-  --zw-border-hover: #c9cdd4;
+  /* 边框（hairline 双级） */
+  --zw-border: #d9dcd6;
+  --zw-border-light: #e4e7e3;
+  --zw-border-hover: #b9bdb6;
+  --zw-border-strong: #b9bdb6;
 
-  /* 品牌色 */
-  --zw-brand: #3370ff;
-  --zw-brand-hover: #4e83fd;
-  --zw-brand-active: #245bdb;
-  --zw-brand-light: #e8f3ff;
-  --zw-brand-lighter: #f0f7ff;
-  --zw-brand-gradient: linear-gradient(135deg, #3370ff 0%, #5b8cff 100%);
-  --zw-brand-gradient-hover: linear-gradient(135deg, #4e83fd 0%, #6b9bff 100%);
+  /* 品牌色：Construction Safety Orange（无渐变，渐变变量保留但值为纯色） */
+  --zw-brand: #ff6b00;
+  --zw-brand-hover: #ff8a2e;
+  --zw-brand-active: #e05f00;
+  --zw-brand-light: #fff0e3;
+  --zw-brand-lighter: #fff7f0;
+  --zw-brand-gradient: #ff6b00;
+  --zw-brand-gradient-hover: #ff8a2e;
+  /* 橙底永远配深色字（白字对比度仅 2.9:1） */
+  --zw-on-primary: #14161a;
 
-  /* 功能色 */
-  --zw-success: #00b42a;
-  --zw-success-light: #e8ffea;
-  --zw-warning: #ff7d00;
-  --zw-warning-light: #fff7e8;
-  --zw-danger: #f53f3f;
-  --zw-danger-light: #ffece8;
-  --zw-info: #86909c;
-  --zw-info-light: #f2f3f5;
+  /* 功能色（与品牌橙色相分离：黄橙分明） */
+  --zw-success: #1f9d55;
+  --zw-success-light: #e0f3e8;
+  --zw-warning: #f7b500;
+  --zw-warning-light: #fdf3d7;
+  --zw-danger: #d92d20;
+  --zw-danger-light: #fbe5e2;
+  --zw-info: #2b6cb0;
+  --zw-info-light: #e2ecf7;
 
-  /* 阴影（浅色主题专用） */
-  --zw-shadow-card: 0 1px 4px rgba(0, 0, 0, 0.04);
-  --zw-shadow-card-hover: 0 6px 20px rgba(0, 0, 0, 0.08);
-  --zw-shadow-header: 0 1px 4px rgba(0, 0, 0, 0.04);
-  --zw-shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.08);
+  /* Hazard：仅警示条纹专用 */
+  --zw-hazard-black: #14161a;
+  --zw-hazard-yellow: #ffc400;
+
+  /* 阴影：静态组件禁用，浮层用 overlay */
+  --zw-shadow-card: none;
+  --zw-shadow-card-hover: none;
+  --zw-shadow-header: none;
+  --zw-shadow-dropdown: var(--zw-shadow-overlay);
 
   /* 表格 */
-  --zw-table-header-bg: #fafbfc;
-  --zw-table-row-hover: rgba(51, 112, 255, 0.04);
-  --zw-table-border: #f2f3f5;
+  --zw-table-header-bg: #eef0ed;
+  --zw-table-row-hover: rgba(238, 240, 237, 0.5);
+  --zw-table-border: #d9dcd6;
 
   /* 滚动条 */
-  --zw-scrollbar-thumb: #c9cdd4;
+  --zw-scrollbar-thumb: #b9bdb6;
   --zw-scrollbar-track: transparent;
 }

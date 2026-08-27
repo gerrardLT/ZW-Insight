@@ -153,7 +153,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
+import { Plus, Delete } from '@/components/icons/registry'
 import type { FormInstance } from 'element-plus'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import {

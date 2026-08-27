@@ -1,12 +1,17 @@
-/* Element Plus 主题覆盖 — 桥接 ZW Design Tokens */
+/* Element Plus 主题覆盖 — 桥接 ZW Design Tokens（Industrial Precision）
+ * 承重规则（依据 docs/DESIGN-mix-industrial-precision.md）：
+ *   1. 橙底永远配深色字（白字对比度仅 2.9:1）——主按钮/勾选/开关全部深字
+ *   2. 无渐变、静态组件无阴影；唯一合法阴影 = --zw-shadow-overlay（仅临时浮层）
+ *   3. 直角纪律：--el-border-radius-base 2px；胶囊形只属于状态徽章（el-tag）
+ */
 
 :root {
-  /* 品牌色映射 */
+  /* 品牌色映射（安全橙） */
   --el-color-primary: var(--zw-brand);
-  --el-color-primary-light-3: var(--zw-brand-hover);
-  --el-color-primary-light-5: var(--zw-brand-light);
-  --el-color-primary-light-7: var(--zw-brand-lighter);
-  --el-color-primary-light-8: var(--zw-brand-lighter);
+  --el-color-primary-light-3: #ff9b4d;
+  --el-color-primary-light-5: #ffb580;
+  --el-color-primary-light-7: #ffd0ad;
+  --el-color-primary-light-8: var(--zw-brand-light);
   --el-color-primary-light-9: var(--zw-brand-lighter);
   --el-color-primary-dark-2: var(--zw-brand-active);
 
@@ -17,6 +22,7 @@
   --el-color-warning-light-9: var(--zw-warning-light);
   --el-color-danger: var(--zw-danger);
   --el-color-danger-light-9: var(--zw-danger-light);
+  --el-color-error: var(--zw-danger);
   --el-color-info: var(--zw-info);
   --el-color-info-light-9: var(--zw-info-light);
 
@@ -37,8 +43,8 @@
   --el-border-color-lighter: var(--zw-border-light);
   --el-border-color-hover: var(--zw-border-hover);
 
-  /* 圆角 */
-  --el-border-radius-base: var(--zw-radius-sm);
+  /* 圆角（直角纪律） */
+  --el-border-radius-base: var(--zw-radius-xs);
   --el-border-radius-small: var(--zw-radius-xs);
   --el-border-radius-round: var(--zw-radius-full);
 
@@ -55,47 +61,100 @@
   /* 遮罩 */
   --el-mask-color: var(--zw-bg-mask);
 
-  /* 过渡 */
+  /* 过渡（对齐 motion tokens：默认 150-200ms ease-out） */
   --el-transition-duration: 0.2s;
   --el-transition-duration-fast: 0.15s;
 }
 
-/* ===== 组件级增强 ===== */
+/* ===== Button ===== */
 
-/* Button - 主按钮渐变 */
+/* 主按钮：安全橙实色 + 深色字（橙底黑字，警示牌惯例） */
 .el-button--primary {
-  background: var(--zw-brand-gradient);
-  border-color: transparent;
-  transition: all var(--zw-transition-base);
+  background: var(--zw-brand);
+  border-color: var(--zw-brand);
+  color: var(--zw-on-primary);
+  transition: background-color var(--zw-transition-fast), border-color var(--zw-transition-fast), transform var(--zw-duration-instant) var(--zw-ease-out);
 
   &:hover,
   &:focus {
-    background: var(--zw-brand-gradient-hover);
-    border-color: transparent;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(51, 112, 255, 0.3);
+    background: var(--zw-brand-hover);
+    border-color: var(--zw-brand-hover);
+    color: var(--zw-on-primary);
   }
 
+  /* 压合（Press-Fit）：机械压入感，不用上浮 */
   &:active {
-    transform: translateY(0);
-    box-shadow: none;
+    background: var(--zw-brand-active);
+    border-color: var(--zw-brand-active);
+    transform: translateY(1px);
   }
 
-  &.is-disabled {
-    background: var(--zw-brand-light);
-    color: var(--zw-brand);
-    opacity: 0.6;
+  /* disabled 可见不隐形：灰阶化 */
+  &.is-disabled,
+  &.is-disabled:hover,
+  &.is-disabled:active,
+  &.is-disabled:focus {
+    background: var(--zw-bg-tag);
+    border-color: transparent;
+    color: var(--zw-text-quaternary);
     transform: none;
-    box-shadow: none;
+  }
+
+  /* plain 变体 */
+  &.is-plain {
+    background: var(--zw-brand-light);
+    border-color: var(--zw-brand);
+    color: var(--zw-brand-active);
+
+    &:hover,
+    &:focus {
+      background: var(--zw-brand-light);
+      border-color: var(--zw-brand-hover);
+      color: var(--zw-brand-active);
+    }
   }
 }
 
-/* Card - 现代卡片 */
+/* warning 按钮：黄底配深字（警示黄做前景仅 1.8:1） */
+.el-button--warning {
+  color: var(--zw-on-primary);
+
+  &:hover,
+  &:focus {
+    color: var(--zw-on-primary);
+  }
+
+  &.is-plain {
+    color: var(--zw-text-primary);
+    background: var(--zw-warning-light);
+    border-color: var(--zw-warning);
+  }
+}
+
+/* 次按钮悬停：边框升级而非阴影 */
+.el-button--default {
+  border-color: var(--zw-border);
+  transition: border-color var(--zw-transition-fast), background-color var(--zw-transition-fast);
+
+  &:hover,
+  &:focus {
+    border-color: var(--zw-border-strong);
+    background-color: var(--zw-bg-hover);
+    color: var(--zw-text-primary);
+  }
+}
+
+/* 按钮键盘焦点环（无障碍：永不移除） */
+.el-button:focus-visible {
+  outline: 2px solid var(--zw-brand);
+  outline-offset: 2px;
+}
+
+/* ===== Card（静态组件禁阴影，纵深 = hairline） ===== */
 .el-card {
-  border: none;
-  border-radius: var(--zw-radius-md);
-  box-shadow: var(--zw-shadow-card);
-  transition: box-shadow var(--zw-transition-base), transform var(--zw-transition-base);
+  border: 1px solid var(--zw-border);
+  border-radius: var(--zw-radius-sm);
+  box-shadow: none;
   background-color: var(--zw-bg-card);
 
   .el-card__header {
@@ -109,7 +168,7 @@
   }
 }
 
-/* Table - 无边框现代表格 */
+/* ===== Table ===== */
 .el-table {
   --el-table-border-color: var(--zw-table-border);
   --el-table-header-bg-color: var(--zw-table-header-bg);
@@ -119,11 +178,11 @@
   --el-table-text-color: var(--zw-text-primary);
   --el-table-header-text-color: var(--zw-text-secondary);
 
-  border-radius: var(--zw-radius-md);
+  border-radius: var(--zw-radius-sm);
 
   .el-table__header th {
-    font-weight: var(--zw-font-weight-medium);
-    font-size: var(--zw-font-size-sm);
+    font-weight: var(--zw-font-weight-semibold);
+    font-size: var(--zw-font-size-xs);
     color: var(--zw-text-secondary);
   }
 
@@ -131,38 +190,72 @@
     transition: background-color var(--zw-transition-fast);
   }
 
-  /* 去除最外层 border */
-  &::before {
-    height: 0;
-  }
-
-  .el-table__inner-wrapper::before {
-    height: 0;
+  /* 数字列等宽账本 */
+  .cell.num-cell,
+  td .stat-number {
+    font-family: var(--zw-font-mono);
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* Tag - 柔和标签 */
+/* ===== Tag：状态徽章 = 唯一胶囊形 ===== */
 .el-tag {
-  border-radius: var(--zw-radius-xs);
+  border-radius: var(--zw-radius-full);
   border: none;
+  padding: 2px 10px;
   font-weight: var(--zw-font-weight-medium);
 }
 
-/* Input / Select - 圆角增强 */
+/* warning tag/message：黄色禁做前景文字，统一深字 */
+.el-tag--warning {
+  color: var(--zw-text-primary);
+}
+
+/* ===== Input / Select 焦点环（橙 + 25% 外扩） ===== */
 .el-input__wrapper,
 .el-select__wrapper {
-  border-radius: var(--zw-radius-sm);
-  transition: box-shadow var(--zw-transition-fast), border-color var(--zw-transition-fast);
+  border-radius: var(--zw-radius-xs);
+  transition: box-shadow var(--zw-transition-fast);
 }
 
 .el-input__wrapper:focus-within,
 .el-select__wrapper.is-focused {
-  box-shadow: 0 0 0 2px rgba(51, 112, 255, 0.2);
+  box-shadow: 0 0 0 1px var(--zw-brand) inset, 0 0 0 3px rgba(255, 107, 0, 0.25);
 }
 
-/* Dialog - 圆角增强 */
+/* error 态焦点 */
+.el-form-item.is-error .el-input__wrapper:focus-within {
+  box-shadow: 0 0 0 1px var(--zw-danger) inset, 0 0 0 3px rgba(217, 45, 32, 0.2);
+}
+
+/* ===== Checkbox / Radio / Switch：橙底深色勾（白勾 2.9:1 不达标） ===== */
+.el-checkbox__input.is-checked .el-checkbox__inner::after,
+.el-checkbox__input.is-indeterminate .el-checkbox__inner::after {
+  border-color: var(--zw-on-primary);
+}
+
+.el-radio__input.is-checked .el-radio__inner::after {
+  background-color: var(--zw-on-primary);
+}
+
+.el-switch.is-checked .el-switch__core .el-switch__action {
+  background-color: var(--zw-on-primary);
+}
+
+/* ===== Steps：方形节点（圆形节点禁用，直角纪律） ===== */
+.el-step__icon {
+  border-radius: var(--zw-radius-xs);
+
+  .el-step__icon-inner {
+    border-radius: var(--zw-radius-xs);
+  }
+}
+
+/* ===== Dialog（临时浮层 = 唯一合法阴影 + hairline） ===== */
 .el-dialog {
-  border-radius: var(--zw-radius-lg);
+  border-radius: var(--zw-radius-md);
+  border: 1px solid var(--zw-border);
+  box-shadow: var(--zw-shadow-overlay);
   overflow: hidden;
 
   .el-dialog__header {
@@ -179,66 +272,81 @@
   }
 }
 
-/* Pagination */
+/* ===== Pagination：当前页深块（不用橙色） ===== */
 .el-pagination {
-  --el-pagination-border-radius: var(--zw-radius-sm);
+  --el-pagination-border-radius: var(--zw-radius-xs);
 
   .el-pager li {
-    border-radius: var(--zw-radius-sm);
+    border-radius: var(--zw-radius-xs);
+    border: 1px solid transparent;
+
+    &:hover {
+      border-color: var(--zw-border);
+    }
+
+    &.is-active {
+      background-color: var(--zw-bg-sidebar);
+      color: #f2f3f1;
+    }
   }
 
   .btn-prev,
   .btn-next {
-    border-radius: var(--zw-radius-sm);
+    border-radius: var(--zw-radius-xs);
   }
 }
 
-/* Message - 圆角阴影 */
+/* ===== Message（浮层：白底 + hairline + overlay 阴影） ===== */
 .el-message {
-  border-radius: var(--zw-radius-md);
-  border: none;
-  box-shadow: var(--zw-shadow-dropdown);
+  border-radius: var(--zw-radius-sm);
+  border: 1px solid var(--zw-border);
+  background-color: var(--zw-bg-card);
+  box-shadow: var(--zw-shadow-overlay);
 }
 
-/* Dropdown */
+.el-message--warning .el-message__content {
+  color: var(--zw-text-primary);
+}
+
+/* ===== Dropdown / Popper 浮层 ===== */
 .el-dropdown-menu {
-  border-radius: var(--zw-radius-md);
-  border: none;
-  box-shadow: var(--zw-shadow-dropdown);
+  border-radius: var(--zw-radius-sm);
+  border: 1px solid var(--zw-border);
+  box-shadow: var(--zw-shadow-overlay);
   padding: 6px;
 
   .el-dropdown-menu__item {
-    border-radius: var(--zw-radius-sm);
+    border-radius: var(--zw-radius-xs);
     margin: 2px 0;
   }
 }
 
-/* Menu - 侧边栏菜单 */
+.el-popper.is-light {
+  border: 1px solid var(--zw-border);
+  box-shadow: var(--zw-shadow-overlay);
+}
+
+/* ===== Menu - 侧边栏菜单 ===== */
 .el-menu {
   border-right: none;
 
   .el-menu-item,
   .el-sub-menu__title {
-    border-radius: var(--zw-radius-sm);
+    border-radius: var(--zw-radius-xs);
     margin: 2px 8px;
     height: 42px;
     line-height: 42px;
-    transition: all var(--zw-transition-fast);
-  }
-
-  .el-menu-item.is-active {
-    background-color: var(--zw-bg-sidebar-active);
-    font-weight: var(--zw-font-weight-medium);
+    transition: background-color var(--zw-transition-fast), color var(--zw-transition-fast);
   }
 }
 
-/* Form */
+/* ===== Form ===== */
 .el-form-item__label {
   color: var(--zw-text-secondary);
   font-weight: var(--zw-font-weight-medium);
 }
 
-/* Breadcrumb */
+/* ===== Breadcrumb ===== */
 .el-breadcrumb__inner {
   color: var(--zw-text-tertiary);
   font-weight: var(--zw-font-weight-normal);
@@ -251,4 +359,27 @@
 .el-breadcrumb__item:last-child .el-breadcrumb__inner {
   color: var(--zw-text-primary);
   font-weight: var(--zw-font-weight-medium);
+}
+
+/* ===== Tabs：激活页签 2px 橙色下划线 ===== */
+.el-tabs__item.is-active {
+  color: var(--zw-text-primary);
+  font-weight: var(--zw-font-weight-semibold);
+}
+
+.el-tabs__active-bar {
+  height: 2px;
+  background-color: var(--zw-brand);
+}
+
+/* ===== Progress：浇筑线签名（橙色填充 + 黄色立边） ===== */
+.el-progress-bar__outer {
+  border-radius: 0;
+  background-color: var(--zw-bg-surface-3);
+}
+
+.el-progress-bar__inner {
+  border-radius: 0;
+  background-color: var(--zw-brand);
+  border-right: 2px solid var(--zw-hazard-yellow);
 }

@@ -177,7 +177,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Download } from '@element-plus/icons-vue'
+import { Download } from '@/components/icons/registry'
 import { getSettlement, submitSettlement, exportSettlement, getUnsettledContracts, updateSettlement } from '@/api/settlement'
 
 const route = useRoute()

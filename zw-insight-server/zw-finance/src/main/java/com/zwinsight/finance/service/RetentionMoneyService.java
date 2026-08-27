@@ -70,4 +70,18 @@ public class RetentionMoneyService {
                 .orderByAsc(BizRetentionMoney::getExpireDate);
         return retentionMoneyMapper.selectList(wrapper);
     }
+
+    /**
+     * 查询已逾期质保金列表（状态 ACTIVE 且到期日早于今天，与 RetentionWarningTask 的 OVERDUE 判定同口径）
+     * 限制返回数量避免大数据量导致的卡顿
+     */
+    public List<BizRetentionMoney> getOverdue() {
+        LocalDate now = LocalDate.now();
+        LambdaQueryWrapper<BizRetentionMoney> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BizRetentionMoney::getStatus, "ACTIVE")
+                .lt(BizRetentionMoney::getExpireDate, now)
+                .orderByAsc(BizRetentionMoney::getExpireDate);
+        // 最多返回 100 条（工作台卡片展示 + 分页入口兜底）
+        return retentionMoneyMapper.selectList(wrapper).stream().limit(100).toList();
+    }
 }

@@ -1,4 +1,6 @@
-/* ZW-Insight 全局样式 — 基于 Design Token 体系 */
+/* ZW-Insight 全局样式 — Industrial Precision 主题
+ * 依据 docs/DESIGN-mix-industrial-precision.md
+ */
 
 /* ===== Reset & Base ===== */
 * {
@@ -18,7 +20,12 @@ html, body, #app {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ===== 滚动条 ===== */
+/* 数字一律等宽账本 */
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== 滚动条（方形，无圆角） ===== */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -26,7 +33,7 @@ html, body, #app {
 
 ::-webkit-scrollbar-thumb {
   background-color: var(--zw-scrollbar-thumb);
-  border-radius: 3px;
+  border-radius: 0;
 
   &:hover {
     background-color: var(--zw-text-tertiary);
@@ -37,10 +44,16 @@ html, body, #app {
   background-color: var(--zw-scrollbar-track);
 }
 
-/* ===== 文本选中 ===== */
+/* ===== 文本选中（橙底深字） ===== */
 ::selection {
-  background-color: var(--zw-brand-light);
-  color: var(--zw-brand);
+  background-color: var(--zw-brand);
+  color: var(--zw-on-primary);
+}
+
+/* ===== 全局焦点环（无障碍：永不移除） ===== */
+:focus-visible {
+  outline: 2px solid var(--zw-brand);
+  outline-offset: 2px;
 }
 
 /* ===== 页面容器 ===== */
@@ -71,7 +84,7 @@ html, body, #app {
   }
 }
 
-/* ===== 区块标题（表单分区） ===== */
+/* ===== 区块标题（表单分区）：纯色直角竖标 ===== */
 .section-title {
   display: flex;
   align-items: center;
@@ -86,8 +99,8 @@ html, body, #app {
     display: inline-block;
     width: 3px;
     height: 16px;
-    border-radius: 2px;
-    background: var(--zw-brand-gradient);
+    border-radius: 0;
+    background: var(--zw-brand);
   }
 }
 
@@ -120,22 +133,129 @@ html, body, #app {
   margin-right: var(--zw-space-md);
 }
 
-/* ===== 统计数字字体 ===== */
+/* ===== 统计数字字体（等宽账本） ===== */
 .stat-number {
   font-family: var(--zw-font-mono);
   font-weight: var(--zw-font-weight-bold);
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ===== 页面过渡动画 ===== */
+/* ===== 大写眉题（Display 层，Barlow Condensed） ===== */
+.eyebrow-cap {
+  font-family: var(--zw-font-display);
+  font-size: var(--zw-font-size-xs);
+  font-weight: var(--zw-font-weight-bold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--zw-text-secondary);
+}
+
+/* ===== 蓝图角标卡片（品牌签名组件） =====
+ * 默认两角（左上+右下，"图纸未完成"）；--full 变体四角（正式文档/重点数据）
+ * 角标实现使用分层背景直线，非视觉渐变效果 */
+.card-corner-marked {
+  position: relative;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+    transition: border-color var(--zw-duration-base) var(--zw-ease-out);
+  }
+
+  &::before {
+    top: 8px;
+    left: 8px;
+    border-top: 1px solid var(--zw-border-strong);
+    border-left: 1px solid var(--zw-border-strong);
+  }
+
+  &::after {
+    bottom: 8px;
+    right: 8px;
+    border-bottom: 1px solid var(--zw-border-strong);
+    border-right: 1px solid var(--zw-border-strong);
+  }
+
+  &:hover::before,
+  &:hover::after {
+    border-color: var(--zw-brand);
+  }
+
+  &--full {
+    background-image:
+      linear-gradient(var(--zw-border-strong) 0 0),
+      linear-gradient(var(--zw-border-strong) 0 0),
+      linear-gradient(var(--zw-border-strong) 0 0),
+      linear-gradient(var(--zw-border-strong) 0 0);
+    background-repeat: no-repeat;
+    background-size: 12px 1px, 1px 12px, 12px 1px, 1px 12px;
+    background-position:
+      8px 8px, 8px 8px,
+      calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) calc(100% - 8px);
+  }
+}
+
+/* ===== 警示条纹（仅逾期告警/危险确认/登录页顶部） ===== */
+.hazard-divider {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--zw-hazard-black) 0 8px,
+    var(--zw-hazard-yellow) 8px 16px
+  );
+}
+
+/* ===== 逾期徽章（专属告警语言：红底红字 + 8px 竖纹） ===== */
+.status-badge-overdue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: var(--zw-radius-full);
+  background-color: var(--zw-danger-light);
+  color: var(--zw-danger);
+  font-size: var(--zw-font-size-xs);
+
+  &::before {
+    content: '';
+    width: 8px;
+    height: 12px;
+    background: repeating-linear-gradient(
+      45deg,
+      var(--zw-hazard-black) 0 3px,
+      var(--zw-hazard-yellow) 3px 6px
+    );
+  }
+}
+
+/* 脉冲仅限工作台汇总区使用：--pulse 修饰类显式开启 */
+@keyframes hazard-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.status-badge-overdue--pulse {
+  animation: hazard-pulse var(--zw-duration-shimmer) var(--zw-ease-in-out) infinite;
+}
+
+/* ===== 页面过渡动画（统一 150ms ease-out） ===== */
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity var(--zw-duration-fast) var(--zw-ease-out), transform var(--zw-duration-fast) var(--zw-ease-out);
 }
 
 .fade-slide-enter-from {
   opacity: 0;
   transform: translateY(8px);
+}
+
+/* 出场 = 入场 × 70%，退场不阻断 */
+.fade-slide-leave-active {
+  transition-duration: 105ms;
 }
 
 .fade-slide-leave-to {
@@ -175,18 +295,57 @@ html, body, #app {
   font-weight: var(--zw-font-weight-semibold);
 }
 
+/* ===== 空态自绘图标（el-empty #image 插槽，1em 尺寸由 font-size 缩放） ===== */
+.zw-empty-icon {
+  font-size: 64px;
+  color: var(--zw-text-quaternary);
+}
+
 /* ===== Element Plus 菜单折叠修复 ===== */
 .el-menu--collapse .el-sub-menu__title span,
 .el-menu--collapse .el-sub-menu__title .el-sub-menu__icon-arrow {
   display: none;
 }
 
-/* ===== NProgress 品牌色 ===== */
+/* ===== NProgress 品牌色（纯色，无光晕） ===== */
 #nprogress .bar {
-  background: var(--zw-brand-gradient) !important;
+  background: var(--zw-brand) !important;
   height: 3px !important;
 }
 
 #nprogress .peg {
-  box-shadow: 0 0 10px var(--zw-brand), 0 0 5px var(--zw-brand) !important;
+  box-shadow: none !important;
+}
+
+/* ===== 旋转方块 loading（签名加载符：三面灰 + 一面橙，800ms/圈） ===== */
+.el-loading-spinner .circular {
+  display: none;
+}
+
+.el-loading-spinner::before {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 24px;
+  margin: 0 auto;
+  border: 2px solid var(--zw-border-strong);
+  border-top-color: var(--zw-brand);
+  border-radius: var(--zw-radius-xs);
+  animation: zw-cube-spin 800ms var(--zw-ease-linear) infinite;
+}
+
+@keyframes zw-cube-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ===== 无障碍：动效降级 ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.1s !important;
+  }
 }

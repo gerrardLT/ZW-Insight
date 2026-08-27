@@ -55,6 +55,10 @@ vi.mock('@/components/ProjectSelector.vue', () => ({
 }))
 vi.mock('echarts', () => ({ init: chartInit }))
 
+// 暗色联动引入 useAppStore 后：无 pinia 环境的组件测试统一 mock，防 getActivePinia
+vi.mock('@/stores/app', () => ({
+  useAppStore: () => ({ isDark: false }),
+}))
 import ProjectDashboard from '@/views/dashboard/project-dashboard.vue'
 
 let currentWrapper: any = null

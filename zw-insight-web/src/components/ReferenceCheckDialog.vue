@@ -50,7 +50,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading } from '@/components/icons/registry'
 
 interface ReferenceItem {
   refType: string

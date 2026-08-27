@@ -64,6 +64,10 @@ vi.mock('element-plus', async (importOriginal) => {
   }
 })
 
+// 暗色联动引入 useAppStore 后：无 pinia 环境的组件测试统一 mock，防 getActivePinia
+vi.mock('@/stores/app', () => ({
+  useAppStore: () => ({ isDark: false }),
+}))
 import MSettleIndex from '@/views/machine/settlement/index.vue'
 import MSettleCreate from '@/views/machine/settlement/create.vue'
 import MSettleDetail from '@/views/machine/settlement/detail.vue'

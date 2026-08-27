@@ -123,6 +123,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getContractPage, deleteContract, submitContract, getContractAmountSummary } from '@/api/contract'
 import { getProjectList } from '@/api/project'
 import { toWan } from '@/utils/chart-format'
+import { pickChartTheme, chartTooltipStyle } from '@/constants/chart-theme'
+import { useAppStore } from '@/stores/app'
 import PrintButton from '@/components/PrintButton.vue'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
@@ -232,17 +234,19 @@ async function fetchAmountSummary() {
 function buildAmountSummaryOption(data: any) {
   const breakdown = data?.statusBreakdown || []
   if (!breakdown.length) return null
+  const theme = pickChartTheme(useAppStore().isDark)
   return {
-    color: ['#3370ff', '#00b42a', '#ff7d00', '#f53f3f', '#722ed1', '#38bdf8'],
+    color: theme.palette,
     tooltip: {
       trigger: 'item',
-      formatter: (p: any) => `${p.name}<br/>合同金额：${toWan(Number(p.value))} 万元（${p.percent}%）`
+      formatter: (p: any) => `${p.name}<br/>合同金额：${toWan(Number(p.value))} 万元（${p.percent}%）`,
+      ...chartTooltipStyle(theme)
     },
     legend: { bottom: 0 },
     series: [{
       type: 'pie',
       radius: ['45%', '70%'],
-      itemStyle: { borderRadius: 8, borderWidth: 2 },
+      itemStyle: { borderRadius: 2, borderColor: theme.surface.card, borderWidth: 2 },
       label: { show: true, formatter: '{b}' },
       data: breakdown.map((s: any) => ({ name: getStatusLabel(s.status), value: Number(s.amount) || 0 }))
     }]

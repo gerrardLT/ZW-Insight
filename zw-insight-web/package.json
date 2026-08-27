@@ -15,7 +15,9 @@
     "test:e2e:visual:update": "npx playwright test --project=visual-real --update-snapshots"
   },
   "dependencies": {
-    "@element-plus/icons-vue": "^2.3.1",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@tabler/icons-vue": "^3.46.0",
     "axios": "^1.6.8",
     "bpmn-js": "17.11.1",
     "dhtmlx-gantt": "^8.0.6",

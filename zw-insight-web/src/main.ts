@@ -4,11 +4,17 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import { EP_ICON_MAP } from './components/icons/registry'
 
 import App from './App.vue'
 import router from './router'
 import { permissionDirective } from './utils/permission'
+
+// 字体（自托管子集，零 CDN）：Display 层 Barlow Condensed（D-DIN 开源替代）+ 账本数字 JetBrains Mono；中文零 webfont 走系统栈
+import '@fontsource/barlow-condensed/latin-700.css'
+import '@fontsource/jetbrains-mono/latin-400.css'
+import '@fontsource/jetbrains-mono/latin-500.css'
+import '@fontsource/jetbrains-mono/latin-700.css'
 
 // Design System - 必须在 Element Plus 样式之后引入
 import './styles/tokens/base.css'
@@ -30,8 +36,8 @@ app.use(router)
 // Element Plus
 app.use(ElementPlus, { locale: zhCn })
 
-// 注册所有图标
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+// 注册图标：存量名称经 EP→Tabler 映射层统一切换底层实现（模板/路由/菜单字符串零改动）
+for (const [key, component] of Object.entries(EP_ICON_MAP)) {
   app.component(key, component)
 }
 

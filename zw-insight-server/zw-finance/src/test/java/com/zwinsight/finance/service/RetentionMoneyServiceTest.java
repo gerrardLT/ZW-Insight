@@ -127,6 +127,44 @@ class RetentionMoneyServiceTest {
         assertThat(params).contains(now, now.plusDays(30), "ACTIVE");
     }
 
+    @SuppressWarnings("rawtypes")
+    @Test
+    @DisplayName("getOverdue - 逾期查询：仅 ACTIVE 且到期日 < 今天（与预警任务 OVERDUE 同口径）")
+    void getOverdue_windowBoundaries() {
+        when(retentionMoneyMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.emptyList());
+
+        service.getOverdue();
+
+        ArgumentCaptor<LambdaQueryWrapper> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(retentionMoneyMapper).selectList(captor.capture());
+        String sql = captor.getValue().getSqlSegment();
+        assertThat(sql).contains("expire_date <").doesNotContain("expire_date >=").contains("status =");
+        java.util.Collection<Object> params = captor.getValue().getParamNameValuePairs().values();
+        assertThat(params).contains(LocalDate.now(), "ACTIVE");
+    }
+
+    @Test
+    @DisplayName("getOverdue - 无逾期记录返回空列表，不抛异常")
+    void getOverdue_emptyResult() {
+        when(retentionMoneyMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.emptyList());
+
+        assertThat(service.getOverdue()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getOverdue - 有逾期记录按到期日升序透传返回")
+    void getOverdue_delegates() {
+        BizRetentionMoney m = money(1L);
+        m.setExpireDate(LocalDate.now().minusDays(5));
+        when(retentionMoneyMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.singletonList(m));
+
+        assertThat(service.getOverdue()).hasSize(1);
+        assertThat(service.getOverdue().get(0).getExpireDate()).isBefore(LocalDate.now());
+    }
+
     @Test
     @DisplayName("save - 质保金金额负/零/null 拒绝（P0 FIN-RTN-04）")
     void save_invalidAmount_rejected() {

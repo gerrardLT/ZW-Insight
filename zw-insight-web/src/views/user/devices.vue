@@ -70,7 +70,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Monitor, Refresh } from '@element-plus/icons-vue'
+import { Monitor, Refresh } from '@/components/icons/registry'
 import { getLoginDevices, revokeLoginDevice, type LoginDevice } from '@/api/device'
 
 const activeTab = ref('devices')

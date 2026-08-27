@@ -13,7 +13,11 @@
     </el-card>
 
     <!-- 未选择项目时的引导提示 -->
-    <el-empty v-if="!selectedProjectId" description="请先选择一个项目以查看看板数据" />
+    <el-empty v-if="!selectedProjectId" description="请先选择一个项目以查看看板数据">
+      <template #image>
+        <TowerCraneIcon class="zw-empty-icon" />
+      </template>
+    </el-empty>
 
     <!-- 四宫格看板布局 -->
     <template v-else>
@@ -32,7 +36,11 @@
                 show-icon
                 :closable="false"
               />
-              <el-empty v-else-if="!budget.loading && isEmpty(budget.data)" description="暂无数据" :image-size="80" />
+              <el-empty v-else-if="!budget.loading && isEmpty(budget.data)" description="暂无数据">
+                <template #image>
+                  <BlueprintCornerIcon class="zw-empty-icon" />
+                </template>
+              </el-empty>
               <!-- 图表占位容器（task 8.3 渲染 ECharts） -->
               <div v-show="!budget.error && !isEmpty(budget.data)" ref="budgetChartRef" class="chart-box"></div>
             </div>
@@ -53,7 +61,11 @@
                 show-icon
                 :closable="false"
               />
-              <el-empty v-else-if="!progress.loading && isEmpty(progress.data)" description="暂无数据" :image-size="80" />
+              <el-empty v-else-if="!progress.loading && isEmpty(progress.data)" description="暂无数据">
+                <template #image>
+                  <BlueprintCornerIcon class="zw-empty-icon" />
+                </template>
+              </el-empty>
               <div v-show="!progress.error && !isEmpty(progress.data)" ref="progressChartRef" class="chart-box"></div>
             </div>
           </el-card>
@@ -75,7 +87,11 @@
                 show-icon
                 :closable="false"
               />
-              <el-empty v-else-if="!contract.loading && isEmpty(contract.data)" description="暂无数据" :image-size="80" />
+              <el-empty v-else-if="!contract.loading && isEmpty(contract.data)" description="暂无数据">
+                <template #image>
+                  <BlueprintCornerIcon class="zw-empty-icon" />
+                </template>
+              </el-empty>
               <div v-show="!contract.error && !isEmpty(contract.data)" ref="contractChartRef" class="chart-box"></div>
             </div>
           </el-card>
@@ -95,7 +111,11 @@
                 show-icon
                 :closable="false"
               />
-              <el-empty v-else-if="!output.loading && isEmpty(output.data)" description="暂无数据" :image-size="80" />
+              <el-empty v-else-if="!output.loading && isEmpty(output.data)" description="暂无数据">
+                <template #image>
+                  <BlueprintCornerIcon class="zw-empty-icon" />
+                </template>
+              </el-empty>
               <div v-show="!output.error && !isEmpty(output.data)" ref="outputChartRef" class="chart-box"></div>
             </div>
           </el-card>
@@ -109,6 +129,7 @@
 import { ref, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
 import ProjectSelector from '@/components/ProjectSelector.vue'
+import { TowerCraneIcon, BlueprintCornerIcon } from '@/components/icons/zw'
 import {
   getProjectBudget,
   getProjectProgress,
@@ -120,6 +141,10 @@ import {
   type OutputTrendDTO
 } from '@/api/dashboard'
 import { toAmount2, toWan, clampPercent, nonNegativeRemaining } from '@/utils/chart-format'
+import { useAppStore } from '@/stores/app'
+import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
+
+const appStore = useAppStore()
 
 // 当前选中的项目 ID
 const selectedProjectId = ref<number>()
@@ -223,31 +248,35 @@ function ensureChart(
 function renderBudgetChart(data: BudgetExecutionDTO) {
   budgetChart = ensureChart(budgetChart, budgetChartRef.value)
   if (!budgetChart) return
+  const theme = pickChartTheme(appStore.isDark)
   const used = toAmount2(data.usedAmount)
   // 剩余预算不为负：超预算时剩余按 0 处理（nonNegativeRemaining 语义，chart-format 单一事实源）
   const remaining = toAmount2(nonNegativeRemaining(data.totalBudget, data.usedAmount))
   budgetChart.setOption(
-    {
-      tooltip: {
-        trigger: 'item',
-        valueFormatter: (v: number) => `${Number(v).toFixed(2)} 元`
+    applyChartTheme(
+      {
+        tooltip: {
+          trigger: 'item',
+          valueFormatter: (v: number) => `${Number(v).toFixed(2)} 元`
+        },
+        legend: { bottom: 0 },
+        series: [
+          {
+            name: '预算执行',
+            type: 'pie',
+            radius: ['40%', '70%'],
+            avoidLabelOverlap: false,
+            itemStyle: { borderRadius: 2, borderColor: theme.surface.card, borderWidth: 2 },
+            label: { show: true, formatter: '{b}: {c} 元', color: theme.text.secondary },
+            data: [
+              { name: '已执行金额', value: used, itemStyle: { color: theme.semantic.danger } },
+              { name: '剩余预算', value: remaining, itemStyle: { color: theme.semantic.success } }
+            ]
+          }
+        ]
       },
-      legend: { bottom: 0 },
-      series: [
-        {
-          name: '预算执行',
-          type: 'pie',
-          radius: ['40%', '70%'],
-          avoidLabelOverlap: false,
-          itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
-          label: { show: true, formatter: '{b}: {c} 元' },
-          data: [
-            { name: '已执行金额', value: used, itemStyle: { color: '#f56c6c' } },
-            { name: '剩余预算', value: remaining, itemStyle: { color: '#67c23a' } }
-          ]
-        }
-      ]
-    },
+      theme
+    ),
     true
   )
 }
@@ -256,6 +285,7 @@ function renderBudgetChart(data: BudgetExecutionDTO) {
 function renderProgressChart(data: ProgressDTO) {
   progressChart = ensureChart(progressChart, progressChartRef.value)
   if (!progressChart) return
+  const theme = pickChartTheme(appStore.isDark)
   // 后端 completionRate 为 0~1 的比率（保留4位小数）→ 转百分比整数，显示区间裁剪到 0–100
   const percent = clampPercent(data.completionRate)
   progressChart.setOption(
@@ -274,9 +304,9 @@ function renderProgressChart(data: ProgressDTO) {
             overlap: false,
             roundCap: true,
             clip: false,
-            itemStyle: { color: '#409eff' }
+            itemStyle: { color: theme.highlight }
           },
-          axisLine: { lineStyle: { width: 18 } },
+          axisLine: { lineStyle: { width: 18, color: [[1, theme.axis.splitLine]] } },
           splitLine: { show: false },
           axisTick: { show: false },
           axisLabel: { show: false },
@@ -286,7 +316,7 @@ function renderProgressChart(data: ProgressDTO) {
             formatter: '{value}%',
             fontSize: 28,
             offsetCenter: [0, 0],
-            color: '#303133'
+            color: theme.text.primary
           }
         }
       ]
@@ -299,33 +329,37 @@ function renderProgressChart(data: ProgressDTO) {
 function renderContractChart(data: ContractReceiptDTO) {
   contractChart = ensureChart(contractChart, contractChartRef.value)
   if (!contractChart) return
+  const theme = pickChartTheme(appStore.isDark)
   contractChart.setOption(
-    {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        valueFormatter: (v: number) => `${Number(v).toFixed(2)} 万元`
-      },
-      legend: { bottom: 0, data: ['合同金额', '回款金额'] },
-      grid: { left: '3%', right: '4%', bottom: '12%', containLabel: true },
-      xAxis: { type: 'category', data: ['合同 / 回款'] },
-      yAxis: { type: 'value', name: '万元', axisLabel: { formatter: '{value}' } },
-      series: [
-        {
-          name: '合同金额',
-          type: 'bar',
-          barGap: '20%',
-          data: [toWan(data.contractTotal)],
-          itemStyle: { color: '#409eff' }
+    applyChartTheme(
+      {
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          valueFormatter: (v: number) => `${Number(v).toFixed(2)} 万元`
         },
-        {
-          name: '回款金额',
-          type: 'bar',
-          data: [toWan(data.receivedAmount)],
-          itemStyle: { color: '#67c23a' }
-        }
-      ]
-    },
+        legend: { bottom: 0, data: ['合同金额', '回款金额'] },
+        grid: { left: '3%', right: '4%', bottom: '12%', containLabel: true },
+        xAxis: { type: 'category', data: ['合同 / 回款'] },
+        yAxis: { type: 'value', name: '万元', axisLabel: { formatter: '{value}' } },
+        series: [
+          {
+            name: '合同金额',
+            type: 'bar',
+            barGap: '20%',
+            data: [toWan(data.contractTotal)],
+            itemStyle: { color: theme.seriesGray[0] }
+          },
+          {
+            name: '回款金额',
+            type: 'bar',
+            data: [toWan(data.receivedAmount)],
+            itemStyle: { color: theme.highlight }
+          }
+        ]
+      },
+      theme
+    ),
     true
   )
 }
@@ -334,28 +368,32 @@ function renderContractChart(data: ContractReceiptDTO) {
 function renderOutputChart(data: OutputTrendDTO) {
   outputChart = ensureChart(outputChart, outputChartRef.value)
   if (!outputChart) return
+  const theme = pickChartTheme(appStore.isDark)
   const trend = data.trend || []
   outputChart.setOption(
-    {
-      tooltip: {
-        trigger: 'axis',
-        valueFormatter: (v: number) => `${Number(v).toFixed(2)} 万元`
+    applyChartTheme(
+      {
+        tooltip: {
+          trigger: 'axis',
+          valueFormatter: (v: number) => `${Number(v).toFixed(2)} 万元`
+        },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', boundaryGap: false, data: trend.map((t) => t.month) },
+        yAxis: { type: 'value', name: '万元', axisLabel: { formatter: '{value}' } },
+        series: [
+          {
+            name: '月度产值',
+            type: 'line',
+            smooth: true,
+            areaStyle: { opacity: 0.15 },
+            data: trend.map((t) => toWan(t.amount)),
+            itemStyle: { color: theme.highlight },
+            lineStyle: { color: theme.highlight }
+          }
+        ]
       },
-      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-      xAxis: { type: 'category', boundaryGap: false, data: trend.map((t) => t.month) },
-      yAxis: { type: 'value', name: '万元', axisLabel: { formatter: '{value}' } },
-      series: [
-        {
-          name: '月度产值',
-          type: 'line',
-          smooth: true,
-          areaStyle: { opacity: 0.15 },
-          data: trend.map((t) => toWan(t.amount)),
-          itemStyle: { color: '#e6a23c' },
-          lineStyle: { color: '#e6a23c' }
-        }
-      ]
-    },
+      theme
+    ),
     true
   )
 }
@@ -412,6 +450,17 @@ watch(
   }
 )
 
+// 主题切换即时重绘：以当前已加载的各维度数据重建 option，不重复请求接口
+watch(
+  () => appStore.isDark,
+  () => {
+    if (budget.data && !budget.error && !isEmpty(budget.data)) nextTick(() => renderBudgetChart(budget.data!))
+    if (progress.data && !progress.error && !isEmpty(progress.data)) nextTick(() => renderProgressChart(progress.data!))
+    if (contract.data && !contract.error && !isEmpty(contract.data)) nextTick(() => renderContractChart(contract.data!))
+    if (output.data && !output.error && !isEmpty(output.data)) nextTick(() => renderOutputChart(output.data!))
+  }
+)
+
 // 窗口尺寸变化时，防抖（300ms）内完成四个图表自适应重绘
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
 function handleResize() {
@@ -451,7 +500,7 @@ defineExpose({ budgetChartRef, progressChartRef, contractChartRef, outputChartRe
 }
 .selector-label {
   font-size: 14px;
-  color: #606266;
+  color: var(--zw-text-secondary);
   margin-right: 8px;
 }
 .panel-row {
@@ -462,7 +511,7 @@ defineExpose({ budgetChartRef, progressChartRef, contractChartRef, outputChartRe
 }
 .panel-title {
   font-weight: 600;
-  color: #303133;
+  color: var(--zw-text-primary);
 }
 .panel-body {
   min-height: 320px;

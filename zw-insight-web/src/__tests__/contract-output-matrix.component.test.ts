@@ -53,6 +53,10 @@ vi.mock('element-plus', async (importOriginal) => {
   }
 })
 
+// 暗色联动引入 useAppStore 后：无 pinia 环境的组件测试统一 mock，防 getActivePinia
+vi.mock('@/stores/app', () => ({
+  useAppStore: () => ({ isDark: false }),
+}))
 import OutputReport from '@/views/contract/output-report.vue'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'

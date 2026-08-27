@@ -80,6 +80,10 @@ vi.mock('element-plus', async (importOriginal) => {
   }
 })
 
+// 暗色联动引入 useAppStore 后：无 pinia 环境的组件测试统一 mock，防 getActivePinia
+vi.mock('@/stores/app', () => ({
+  useAppStore: () => ({ isDark: false }),
+}))
 import HrStatistics from '@/views/hr/statistics.vue'
 import HrEntry from '@/views/hr/entry.vue'
 import OfficeSupply from '@/views/hr/office-supply.vue'

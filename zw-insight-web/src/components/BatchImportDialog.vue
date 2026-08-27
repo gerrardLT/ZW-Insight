@@ -46,7 +46,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { UploadFilled } from '@/components/icons/registry'
 import { importData, downloadTemplate } from '@/api/batch'
 
 const props = defineProps<{ visible: boolean; moduleCode: string; projectId?: number; extraQuery?: Record<string, string | number> }>()
