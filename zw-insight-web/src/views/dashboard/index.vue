@@ -35,14 +35,15 @@
     <el-card v-if="canViewFinance" shadow="never" class="overdue-card" data-testid="overdue-panel">
       <div class="hazard-divider overdue-divider"></div>
       <div class="overdue-head">
-        <span class="overdue-title">质保金逾期风险</span>
-        <span
-          v-if="overdueStats.count > 0"
-          class="status-badge-overdue status-badge-overdue--pulse"
-          data-testid="overdue-badge"
-        >{{ overdueStats.count }} 笔逾期</span>
-        <span v-else-if="!overdueError" class="overdue-clear" data-testid="overdue-clear">无逾期</span>
-      </div>
+        <div class="overdue-title-wrap">
+          <span class="overdue-title">质保金逾期风险</span>
+          <span
+            v-if="overdueStats.count > 0"
+            class="status-badge-overdue status-badge-overdue--pulse"
+            data-testid="overdue-badge"
+          >{{ overdueStats.count }} 笔逾期</span>
+          <span v-else-if="!overdueError" class="overdue-clear" data-testid="overdue-clear">无逾期</span>
+        </div>
         <el-button link type="primary" @click="$router.push({ name: 'Retention' })">
           查看质保金<el-icon><IconArrowRight /></el-icon>
         </el-button>

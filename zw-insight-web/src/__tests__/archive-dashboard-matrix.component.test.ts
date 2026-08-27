@@ -70,6 +70,11 @@ vi.mock('@/stores/user', () => ({
 vi.mock('@/stores/app', () => ({
   useAppStore: () => ({ isDark: false }),
 }))
+// dashboard 逾期卡经 usePermission 读 finance:view：本文件不挂 pinia 且未 mock @/api/finance，
+// 置 false 使逾期卡不渲染、不发起真实请求（C-29-11 仅断言统计卡）
+vi.mock('@/composables/usePermission', () => ({
+  usePermission: () => ({ hasPermission: () => false }),
+}))
 vi.mock('@/components/ProjectSelector.vue', () => ({
   default: { name: 'ProjectSelector', render: () => null },
 }))
