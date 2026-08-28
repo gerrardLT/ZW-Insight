@@ -251,50 +251,51 @@ onMounted(() => {
 
 <style scoped>
 .shortcut-edit-page { padding: 20rpx; padding-bottom: 160rpx; }
-.section { background: #fff; border-radius: 12rpx; padding: 24rpx; margin-bottom: 24rpx; }
+.section { background: var(--zw-bg-card); border-radius: var(--zw-radius-lg); padding: 24rpx; margin-bottom: 24rpx; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
-.section-title { font-size: 30rpx; font-weight: bold; color: #303133; }
-.section-tip { font-size: 22rpx; color: #909399; }
+.section-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); }
+.section-tip { font-size: 22rpx; color: var(--zw-text-tertiary); }
 
 /* 已选功能区 - 竖向列表，便于拖拽排序 */
 .selected-list { display: flex; flex-direction: column; gap: 16rpx; }
 .selected-item {
   display: flex; align-items: center; padding: 20rpx 16rpx;
-  background: #f5f7fa; border-radius: 10rpx; transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  background: var(--zw-bg-hover); border-radius: var(--zw-radius-sm); transition: transform 0.15s, background 0.15s;
 }
 .selected-item.dragging {
-  background: #ecf5ff; box-shadow: 0 6rpx 20rpx rgba(64,158,255,0.3);
+  background: var(--zw-brand-light); border: 1rpx solid var(--zw-brand);
   transform: scale(1.03); z-index: 10;
 }
-.drag-handle { font-size: 36rpx; color: #c0c4cc; margin-right: 16rpx; }
+.drag-handle { font-size: 36rpx; color: var(--zw-text-quaternary); margin-right: 16rpx; }
 .item-icon { font-size: 40rpx; margin-right: 16rpx; }
-.item-name { flex: 1; font-size: 28rpx; color: #303133; }
+.item-name { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); }
 .remove-btn {
-  width: 48rpx; height: 48rpx; border-radius: 50%; background: #fde2e2;
+  width: 48rpx; height: 48rpx; border-radius: 50%; background: var(--zw-danger-light);
   display: flex; align-items: center; justify-content: center;
 }
-.remove-icon { font-size: 24rpx; color: #f56c6c; }
+.remove-icon { font-size: 24rpx; color: var(--zw-danger); }
 
 /* 可选功能区 - 网格 */
 .available-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20rpx; }
 .available-item {
   position: relative; display: flex; flex-direction: column; align-items: center;
-  padding: 24rpx 0; background: #f5f7fa; border-radius: 10rpx;
+  padding: 24rpx 0; background: var(--zw-bg-hover); border-radius: var(--zw-radius-sm);
 }
-.available-name { font-size: 22rpx; color: #606266; margin-top: 8rpx; }
+.available-name { font-size: 22rpx; color: var(--zw-text-secondary); margin-top: 8rpx; }
 .add-badge {
   position: absolute; top: 6rpx; right: 6rpx; width: 32rpx; height: 32rpx;
-  border-radius: 50%; background: #409eff; color: #fff;
+  border-radius: 50%; background: var(--zw-brand); color: var(--zw-on-primary);
   display: flex; align-items: center; justify-content: center; font-size: 24rpx; line-height: 1;
 }
 
-.empty { text-align: center; padding: 40rpx; color: #c0c4cc; font-size: 26rpx; }
+.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
 
 /* 底部保存栏 */
 .footer {
   position: fixed; left: 0; right: 0; bottom: 0; padding: 20rpx 32rpx;
-  background: #fff; box-shadow: 0 -2rpx 12rpx rgba(0,0,0,0.05);
+  background: var(--zw-bg-card); border-top: 1rpx solid var(--zw-border-light);
 }
-.save-btn { background: #409eff; color: #fff; border-radius: 44rpx; font-size: 30rpx; }
-.save-btn[disabled] { background: #a0cfff; color: #fff; }
+.save-btn { background: var(--zw-brand); color: var(--zw-on-primary); border-radius: var(--zw-radius-sm); font-size: 30rpx; }
+.save-btn:active { transform: translateY(1px); } /* 压合反馈，替代悬浮上浮 */
+.save-btn[disabled] { background: var(--zw-brand); opacity: 0.4; }
 </style>

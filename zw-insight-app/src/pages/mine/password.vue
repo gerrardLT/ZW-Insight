@@ -67,12 +67,12 @@ async function handleSubmit() {
 
 <style scoped>
 .form-page { padding: 20rpx; }
-.form-section { background: #fff; border-radius: 12rpx; padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #f5f5f5; }
+.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
+.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item:last-child { border-bottom: none; }
-.form-label { font-size: 28rpx; color: #303133; min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: #303133; text-align: right; }
+.form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
+.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
 .tips { padding: 12rpx 24rpx; }
-.tip-text { font-size: 24rpx; color: #909399; }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: #409eff; color: #fff; font-size: 32rpx; border-radius: 8rpx; border: none; }
+.tip-text { font-size: 24rpx; color: var(--zw-text-tertiary); }
+.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; } /* 橙底深字承重规则 */
 </style>
