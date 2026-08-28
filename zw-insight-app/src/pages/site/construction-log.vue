@@ -241,7 +241,7 @@ async function handleSubmit() {
 .arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
 .textarea { width: 100%; height: 200rpx; border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-sm); padding: 16rpx; font-size: 26rpx; margin-top: 12rpx; box-sizing: border-box; }
 .submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; border-radius: var(--zw-radius-sm); border: none; }
-.picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; display: flex; align-items: flex-end; }
+.picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
 .picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
@@ -252,6 +252,6 @@ async function handleSubmit() {
 .image-list { display: flex; flex-wrap: wrap; gap: 16rpx; padding-bottom: 16rpx; }
 .image-item { position: relative; width: 160rpx; height: 160rpx; }
 .thumb { width: 160rpx; height: 160rpx; border-radius: var(--zw-radius-sm); }
-.remove { position: absolute; top: -12rpx; right: -12rpx; width: 36rpx; height: 36rpx; line-height: 32rpx; text-align: center; background: var(--zw-danger); color: #fff; border-radius: 50%; font-size: 28rpx; }
+.remove { position: absolute; top: -12rpx; right: -12rpx; width: 36rpx; height: 36rpx; line-height: 32rpx; text-align: center; background: var(--zw-danger); color: var(--zw-text-inverse); border-radius: 50%; font-size: 28rpx; } /* 红底配 inverse 字：暗色 danger 提亮后自动翻深 */
 .empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); }
 </style>

@@ -145,7 +145,7 @@ onMounted(() => { loadData() })
 .edit-icon { font-size: 26rpx; margin-right: 6rpx; }
 .edit-text { font-size: 24rpx; }
 .more-arrow { font-size: 30rpx; color: var(--zw-brand); margin-left: 4rpx; }
-.badge { background: var(--zw-danger); color: #fff; font-size: 22rpx; padding: 2rpx 12rpx; border-radius: 9999px; margin-left: 12rpx; font-weight: normal; }
+.badge { background: var(--zw-danger); color: var(--zw-text-inverse); font-size: 22rpx; padding: 2rpx 12rpx; border-radius: 9999px; margin-left: 12rpx; font-weight: normal; } /* 红底配 inverse 字：暗色 danger 提亮后自动翻深 */
 .shortcut-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20rpx; }
 .shortcut-item { display: flex; flex-direction: column; align-items: center; padding: 16rpx 0; font-size: 24rpx; color: var(--zw-text-secondary); }
 .shortcut-icon { width: 88rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; background: var(--zw-brand-light); border-radius: var(--zw-radius-md); font-size: 44rpx; margin-bottom: 8rpx; } /* 品牌浅底方块 */

@@ -222,7 +222,7 @@ onShow(() => {
 .failed-tip { font-size: 26rpx; color: var(--zw-danger); }
 .retry-btn { margin-left: 20rpx; padding: 6rpx 24rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-sm); }
 .task-check { margin-right: 16rpx; display: flex; align-items: center; }
-.checkbox { display: inline-flex; align-items: center; justify-content: center; width: 36rpx; height: 36rpx; border: 2rpx solid var(--zw-text-quaternary); border-radius: var(--zw-radius-sm); font-size: 24rpx; color: #fff; background: var(--zw-bg-card); }
+.checkbox { display: inline-flex; align-items: center; justify-content: center; width: 36rpx; height: 36rpx; border: 2rpx solid var(--zw-text-quaternary); border-radius: var(--zw-radius-sm); font-size: 24rpx; color: transparent; background: var(--zw-bg-card); } /* 未选态对勾透明隐藏（白字藏底在暗色下会显形） */
 .checkbox.checked { background: var(--zw-brand); border-color: var(--zw-brand); color: var(--zw-on-primary); } /* 橙底深字承重规则 */
 .batch-bar { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid var(--zw-border-light); }
 .batch-check { display: flex; align-items: center; }

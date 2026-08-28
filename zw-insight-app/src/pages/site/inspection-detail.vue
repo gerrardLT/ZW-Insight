@@ -595,7 +595,7 @@ function handleApprove(rec: any) {
   line-height: 32rpx;
   text-align: center;
   background: var(--zw-danger);
-  color: #fff;
+  color: var(--zw-text-inverse); /* 红底配 inverse 字：暗色 danger 提亮后自动翻深 */
   border-radius: 50%;
   font-size: 28rpx;
 }
@@ -604,7 +604,7 @@ function handleApprove(rec: any) {
   height: 88rpx;
   line-height: 88rpx;
   background: var(--zw-success);
-  color: #fff;
+  color: var(--zw-text-inverse); /* 绿底配 inverse 字：暗色 success 提亮后自动翻深 */
   font-size: 32rpx;
   border-radius: var(--zw-radius-sm);
   border: none;
@@ -655,7 +655,7 @@ function handleApprove(rec: any) {
   height: 72rpx;
   line-height: 72rpx;
   background: var(--zw-success);
-  color: #fff;
+  color: var(--zw-text-inverse); /* 绿底配 inverse 字：暗色 success 提亮后自动翻深 */
   font-size: 28rpx;
   border-radius: var(--zw-radius-sm);
   border: none;

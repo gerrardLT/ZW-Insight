@@ -11,6 +11,7 @@ page {
   --zw-bg-sidebar: #101214; /* 石墨黑控制室：登录画布/我的头部 */
   --zw-bg-hover: #eef0ed;
   --zw-bg-active: #fff0e3;
+  --zw-bg-mask: rgba(0, 0, 0, 0.5); /* 弹层遮罩 */
 
   /* 文字（正文最小色阶 = tertiary） */
   --zw-text-primary: #14161a;
@@ -67,4 +68,48 @@ page {
   --zw-duration-fast: 150ms;
   --zw-duration-base: 200ms;
   --zw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ===== 暗色主题：跟随系统（纯 CSS，零 JS；H5 与 mp-weixin 均原生支持） =====
+ * 镜像 PC zw-insight-web/src/styles/tokens/dark.css 石墨阶梯 #101214 → #23262c
+ * 不改项：bg-sidebar（登录画布/我的头部恒石墨黑）、hazard 双色、圆角、字体、动效 */
+@media (prefers-color-scheme: dark) {
+  :root,
+  page {
+    /* 背景（石墨阶梯） */
+    --zw-bg-page: #101214;
+    --zw-bg-card: #16181c;
+    --zw-bg-elevated: #1c1f24;
+    --zw-bg-hover: #1c1f24;
+    --zw-bg-active: #3a2413;
+    --zw-bg-mask: rgba(0, 0, 0, 0.55);
+
+    /* 文字 */
+    --zw-text-primary: #f2f3f1;
+    --zw-text-secondary: #c6c9cc;
+    --zw-text-tertiary: #8a8f98;
+    --zw-text-quaternary: #5a5f66;
+    --zw-text-inverse: #14161a; /* 亮色为 #fff，暗色翻深：红底白字承重规则 */
+
+    /* 边框 */
+    --zw-border: #2b2e34;
+    --zw-border-light: #23262c;
+    --zw-border-strong: #3d4048;
+
+    /* 品牌色（暗面同橙，深底浅字；brand/hover/active/on-primary 不变） */
+    --zw-brand-light: #3a2413;
+    --zw-brand-lighter: #2a1d10;
+
+    /* 功能色（暗面提亮 + 深色 soft 底） */
+    --zw-success: #2fb768;
+    --zw-success-light: #12271c;
+    --zw-warning-light: #2c2310;
+    --zw-danger: #f2555a;
+    --zw-danger-light: #2e1a18;
+    --zw-info: #5993d1;
+    --zw-info-light: #16232f;
+
+    /* 唯一浮层阴影：暗面加深 */
+    --zw-shadow-overlay: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
 }
