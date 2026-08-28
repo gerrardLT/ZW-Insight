@@ -112,15 +112,15 @@ async function loadArchive(projectId: number) {
 
 <style scoped>
 .archive-page { padding: 20rpx; }
-.loading-mask { display: flex; justify-content: center; align-items: center; height: 400rpx; color: #909399; }
-.section { background: #fff; border-radius: 12rpx; padding: 24rpx; margin-bottom: 20rpx; }
-.section-title { font-size: 28rpx; font-weight: bold; color: #303133; margin-bottom: 16rpx; padding-bottom: 12rpx; border-bottom: 1rpx solid #f0f0f0; }
+.loading-mask { display: flex; justify-content: center; align-items: center; height: 400rpx; color: var(--zw-text-tertiary); }
+.section { background: var(--zw-bg-card); border-radius: var(--zw-radius-lg); padding: 24rpx; margin-bottom: 20rpx; }
+.section-title { font-size: 28rpx; font-weight: bold; color: var(--zw-text-primary); margin-bottom: 16rpx; padding-bottom: 12rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .info-row { display: flex; justify-content: space-between; padding: 12rpx 0; }
-.info-label { font-size: 26rpx; color: #909399; }
-.info-value { font-size: 26rpx; color: #303133; }
+.info-label { font-size: 26rpx; color: var(--zw-text-tertiary); }
+.info-value { font-size: 26rpx; color: var(--zw-text-primary); }
 .progress-bar-wrap { display: flex; align-items: center; gap: 16rpx; }
-.progress-bar { flex: 1; height: 16rpx; background: #f0f0f0; border-radius: 8rpx; overflow: hidden; }
-.progress-inner { height: 100%; background: #409eff; border-radius: 8rpx; transition: width 0.3s; }
-.progress-text { font-size: 26rpx; color: #409eff; font-weight: bold; }
-.empty { text-align: center; padding: 80rpx; color: #c0c4cc; font-size: 26rpx; }
+.progress-bar { flex: 1; height: 16rpx; background: var(--zw-bg-hover); border-radius: var(--zw-radius-sm); overflow: hidden; }
+.progress-inner { height: 100%; background: var(--zw-brand); border-radius: var(--zw-radius-sm); transition: width 0.3s; }
+.progress-text { font-size: 26rpx; color: var(--zw-brand); font-weight: bold; }
+.empty { text-align: center; padding: 80rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
 </style>

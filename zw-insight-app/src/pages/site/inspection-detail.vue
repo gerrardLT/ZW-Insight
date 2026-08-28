@@ -374,19 +374,19 @@ function handleApprove(rec: any) {
   padding: 20rpx;
   padding-bottom: 200rpx;
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--zw-bg-page);
 }
 .loading-state {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 100rpx 0;
-  color: #909399;
+  color: var(--zw-text-tertiary);
   font-size: 28rpx;
 }
 .info-card {
-  background: #fff;
-  border-radius: 12rpx;
+  background: var(--zw-bg-card);
+  border-radius: var(--zw-radius-lg);
   padding: 24rpx;
   margin-bottom: 20rpx;
 }
@@ -398,11 +398,11 @@ function handleApprove(rec: any) {
 }
 .info-label {
   font-size: 26rpx;
-  color: #909399;
+  color: var(--zw-text-tertiary);
 }
 .info-value {
   font-size: 28rpx;
-  color: #303133;
+  color: var(--zw-text-primary);
   font-weight: 500;
 }
 .empty-state {
@@ -413,14 +413,14 @@ function handleApprove(rec: any) {
 }
 .empty-text {
   font-size: 28rpx;
-  color: #c0c4cc;
+  color: var(--zw-text-quaternary);
 }
 .check-list {
   margin-bottom: 20rpx;
 }
 .check-item {
-  background: #fff;
-  border-radius: 12rpx;
+  background: var(--zw-bg-card);
+  border-radius: var(--zw-radius-lg);
   padding: 24rpx;
   margin-bottom: 16rpx;
 }
@@ -434,8 +434,7 @@ function handleApprove(rec: any) {
   height: 44rpx;
   line-height: 44rpx;
   text-align: center;
-  background: #409eff;
-  color: #fff;
+  background: var(--zw-brand); color: var(--zw-on-primary);
   border-radius: 50%;
   font-size: 24rpx;
   margin-right: 16rpx;
@@ -443,7 +442,7 @@ function handleApprove(rec: any) {
 }
 .item-name {
   font-size: 30rpx;
-  color: #303133;
+  color: var(--zw-text-primary);
   font-weight: 500;
   flex: 1;
 }
@@ -453,12 +452,12 @@ function handleApprove(rec: any) {
 }
 .detail-label {
   font-size: 24rpx;
-  color: #909399;
+  color: var(--zw-text-tertiary);
   flex-shrink: 0;
 }
 .detail-text {
   font-size: 24rpx;
-  color: #606266;
+  color: var(--zw-text-secondary);
   flex: 1;
 }
 .result-section {
@@ -466,11 +465,11 @@ function handleApprove(rec: any) {
   align-items: center;
   margin-top: 20rpx;
   padding-top: 20rpx;
-  border-top: 1rpx solid #f0f0f0;
+  border-top: 1rpx solid var(--zw-border-light);
 }
 .result-label {
   font-size: 26rpx;
-  color: #606266;
+  color: var(--zw-text-secondary);
   margin-right: 16rpx;
   flex-shrink: 0;
 }
@@ -481,33 +480,33 @@ function handleApprove(rec: any) {
 }
 .result-option {
   padding: 10rpx 24rpx;
-  border: 1rpx solid #dcdfe6;
-  border-radius: 6rpx;
+  border: 1rpx solid var(--zw-border);
+  border-radius: var(--zw-radius-sm);
   font-size: 24rpx;
-  color: #606266;
+  color: var(--zw-text-secondary);
   text-align: center;
 }
 .result-option.active.pass {
-  border-color: #67c23a;
-  color: #67c23a;
-  background: #f0f9eb;
+  border-color: var(--zw-success);
+  color: var(--zw-success);
+  background: var(--zw-success-light);
 }
 .result-option.active.fail {
-  border-color: #f56c6c;
-  color: #f56c6c;
-  background: #fef0f0;
+  border-color: var(--zw-danger);
+  color: var(--zw-danger);
+  background: var(--zw-danger-light);
 }
 .result-option.active.unchecked {
-  border-color: #e6a23c;
-  color: #e6a23c;
-  background: #fdf6ec;
+  border-color: var(--zw-warning);
+  color: var(--zw-warning);
+  background: var(--zw-warning-light);
 }
 .submit-area {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: #fff;
+  background: var(--zw-bg-card);
   padding: 20rpx 32rpx;
   box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.06);
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
@@ -518,33 +517,32 @@ function handleApprove(rec: any) {
 }
 .summary-text {
   font-size: 24rpx;
-  color: #909399;
+  color: var(--zw-text-tertiary);
 }
 .submit-btn {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background: #409eff;
-  color: #fff;
+  background: var(--zw-brand); color: var(--zw-on-primary);
   font-size: 32rpx;
-  border-radius: 8rpx;
+  border-radius: var(--zw-radius-sm);
   border: none;
 }
 /* 整改状态文案色 */
-.rect-PENDING { color: #e6a23c; }
-.rect-SUBMITTED { color: #909399; }
-.rect-APPROVED { color: #67c23a; }
-.rect-REJECTED { color: #f56c6c; }
+.rect-PENDING { color: var(--zw-warning); }
+.rect-SUBMITTED { color: var(--zw-text-tertiary); }
+.rect-APPROVED { color: var(--zw-success); }
+.rect-REJECTED { color: var(--zw-danger); }
 /* 整改闭环卡片 */
 .rect-card {
-  background: #fff;
-  border-radius: 12rpx;
+  background: var(--zw-bg-card);
+  border-radius: var(--zw-radius-lg);
   padding: 24rpx;
   margin-top: 20rpx;
 }
 .rect-title {
   font-size: 30rpx;
-  color: #303133;
+  color: var(--zw-text-primary);
   font-weight: 600;
   margin-bottom: 20rpx;
 }
@@ -554,8 +552,8 @@ function handleApprove(rec: any) {
 .rect-textarea {
   width: 100%;
   height: 180rpx;
-  border: 1rpx solid #f0f0f0;
-  border-radius: 8rpx;
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
   padding: 16rpx;
   font-size: 26rpx;
   box-sizing: border-box;
@@ -565,11 +563,11 @@ function handleApprove(rec: any) {
   width: 100%;
   height: 80rpx;
   line-height: 80rpx;
-  background: #ecf5ff;
-  color: #409eff;
+  background: var(--zw-brand-light);
+  color: var(--zw-brand);
   font-size: 28rpx;
-  border-radius: 8rpx;
-  border: 1rpx dashed #409eff;
+  border-radius: var(--zw-radius-sm);
+  border: 1rpx dashed var(--zw-brand);
   margin-bottom: 16rpx;
 }
 .rect-photo-list {
@@ -586,7 +584,7 @@ function handleApprove(rec: any) {
 .rect-thumb {
   width: 160rpx;
   height: 160rpx;
-  border-radius: 8rpx;
+  border-radius: var(--zw-radius-sm);
 }
 .rect-remove {
   position: absolute;
@@ -596,7 +594,7 @@ function handleApprove(rec: any) {
   height: 36rpx;
   line-height: 32rpx;
   text-align: center;
-  background: #f56c6c;
+  background: var(--zw-danger);
   color: #fff;
   border-radius: 50%;
   font-size: 28rpx;
@@ -605,27 +603,27 @@ function handleApprove(rec: any) {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background: #67c23a;
+  background: var(--zw-success);
   color: #fff;
   font-size: 32rpx;
-  border-radius: 8rpx;
+  border-radius: var(--zw-radius-sm);
   border: none;
 }
 .rect-divider {
   height: 1rpx;
-  background: #f0f0f0;
+  background: var(--zw-bg-hover);
   margin: 24rpx 0;
 }
 .rect-loading,
 .rect-empty {
   text-align: center;
   padding: 40rpx 0;
-  color: #c0c4cc;
+  color: var(--zw-text-quaternary);
   font-size: 26rpx;
 }
 .rect-record {
-  border: 1rpx solid #f0f0f0;
-  border-radius: 8rpx;
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
   padding: 20rpx;
   margin-bottom: 16rpx;
 }
@@ -639,27 +637,27 @@ function handleApprove(rec: any) {
   font-size: 26rpx;
   font-weight: 500;
 }
-.rect-status.st-SUBMITTED { color: #909399; }
-.rect-status.st-APPROVED { color: #67c23a; }
-.rect-status.st-REJECTED { color: #f56c6c; }
-.rect-status.st-PENDING { color: #e6a23c; }
+.rect-status.st-SUBMITTED { color: var(--zw-text-tertiary); }
+.rect-status.st-APPROVED { color: var(--zw-success); }
+.rect-status.st-REJECTED { color: var(--zw-danger); }
+.rect-status.st-PENDING { color: var(--zw-warning); }
 .rect-time {
   font-size: 24rpx;
-  color: #c0c4cc;
+  color: var(--zw-text-quaternary);
 }
 .rect-record-content {
   font-size: 26rpx;
-  color: #606266;
+  color: var(--zw-text-secondary);
   margin-bottom: 12rpx;
 }
 .rect-approve-btn {
   width: 100%;
   height: 72rpx;
   line-height: 72rpx;
-  background: #67c23a;
+  background: var(--zw-success);
   color: #fff;
   font-size: 28rpx;
-  border-radius: 8rpx;
+  border-radius: var(--zw-radius-sm);
   border: none;
 }
 </style>
