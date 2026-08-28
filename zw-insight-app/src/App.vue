@@ -46,8 +46,14 @@ onLaunch(() => {
 </script>
 
 <style>
+/* Industrial Precision 主题桥接（2026-08-28 迁移 Phase 1）：
+   tokens = 与 PC 同名变量；signature = 签名工具类（按钮/角标/条纹/眉题/徽章/卡片） */
+@import './styles/tokens.css';
+@import './styles/signature.css';
+
 page {
-  background-color: #f5f5f5;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--zw-bg-page);
+  font-family: var(--zw-font-family);
+  color: var(--zw-text-primary);
 }
 </style>

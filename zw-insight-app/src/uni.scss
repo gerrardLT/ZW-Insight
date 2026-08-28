@@ -1,8 +1,10 @@
-$uni-primary: #409eff;
-$uni-success: #67c23a;
-$uni-warning: #e6a23c;
-$uni-danger: #f56c6c;
-$uni-text-color: #303133;
-$uni-text-color-secondary: #909399;
-$uni-border-color: #dcdfe6;
-$uni-bg-color: #f5f5f5;
+/* Industrial Precision 色板（2026-08-28 迁移 Phase 1）
+ * 变量名保留 uni 约定（防内置组件隐式引用），值与 tokens.css 同源 */
+$uni-primary: #ff6b00;
+$uni-success: #1f9d55;
+$uni-warning: #f7b500;
+$uni-danger: #d92d20;
+$uni-text-color: #14161a;
+$uni-text-color-secondary: #7c828c;
+$uni-border-color: #d9dcd6;
+$uni-bg-color: #f6f7f5;

@@ -1,0 +1,114 @@
+/* ZW-Insight 移动端签名工具类（2026-08-28 迁移 Phase 1）
+ * 从 PC zw-insight-web/src/styles/global.scss 移植，按移动端尺寸适配；
+ * 纯 CSS（app 无 sass 依赖），三条承重规则同守：橙底深字 / 唯一浮层阴影 / 直角纪律 */
+
+/* ===== 主按钮：44px 高（Mobile Shell 章）、直角、橙底深字、压合反馈 ===== */
+.zw-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  background: var(--zw-brand);
+  color: var(--zw-on-primary);
+  border: none;
+  border-radius: var(--zw-radius-sm);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: var(--zw-shadow-card);
+  transition: background var(--zw-duration-fast) var(--zw-ease-out);
+}
+/* uni-app button 默认 ::after 边框清除 */
+.zw-btn-primary::after {
+  border: none;
+}
+.zw-btn-primary:active {
+  background: var(--zw-brand-active);
+  transform: translateY(1px);
+}
+.zw-btn-primary[disabled],
+.zw-btn-primary.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ===== 蓝图角标卡片（品牌签名组件，移动端禁描画动效仅静态角标） =====
+ * 默认两角（左上+右下）；角标实现使用分层直线，非视觉渐变 */
+.card-corner-marked {
+  position: relative;
+}
+.card-corner-marked::before,
+.card-corner-marked::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+.card-corner-marked::before {
+  top: 8px;
+  left: 8px;
+  border-top: 1px solid var(--zw-border-strong);
+  border-left: 1px solid var(--zw-border-strong);
+}
+.card-corner-marked::after {
+  bottom: 8px;
+  right: 8px;
+  border-bottom: 1px solid var(--zw-border-strong);
+  border-right: 1px solid var(--zw-border-strong);
+}
+
+/* ===== 警示条纹（仅离线告警/危险确认/登录铭牌顶部） ===== */
+.hazard-divider {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--zw-hazard-black) 0 8px,
+    var(--zw-hazard-yellow) 8px 16px
+  );
+}
+
+/* ===== 大写眉题（铭牌/区块标题） ===== */
+.eyebrow-cap {
+  font-family: var(--zw-font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--zw-text-secondary);
+}
+
+/* ===== 状态徽章（soft 底 + 深字；warning 黄禁做前景字，配深色） ===== */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.status-badge-success {
+  background: var(--zw-success-light);
+  color: var(--zw-success);
+}
+.status-badge-warning {
+  background: var(--zw-warning-light);
+  color: var(--zw-text-primary);
+}
+.status-badge-danger {
+  background: var(--zw-danger-light);
+  color: var(--zw-danger);
+}
+.status-badge-info {
+  background: var(--zw-info-light);
+  color: var(--zw-info);
+}
+
+/* ===== 卡片：白底 + hairline + 直角 + 无阴影 ===== */
+.zw-card {
+  background: var(--zw-bg-card);
+  border: 1px solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  box-shadow: var(--zw-shadow-card);
+}
