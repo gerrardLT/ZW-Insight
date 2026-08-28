@@ -109,11 +109,25 @@
 - grep 审计：26 个旧色值（含渐变）全库零残留；字面量圆角仅剩 2/4rpx（在上限内）
 - 目视核对：登录页截图归档 `audit-reports/login-mobile-viewport.png`——石墨黑画布、橙方块 ZW 铭牌、橙底深字按钮三项均确认；其余 4 关键页（首页/工作台/审批/我的）需登录态，预览服务核验（实事求是标注）
 
+### 暗色批次（2026-08-28 追加，遗留项 1 关闭）
+
+**机制**：纯 CSS 跟随系统——[tokens.css](../zw-insight-app/src/styles/tokens.css) 末尾 `@media (prefers-color-scheme: dark)` 覆盖块，选择器 `:root, page` 双写；零 JS、零持久化，H5 与 mp-weixin 均原生支持该 media query。色值镜像 PC `tokens/dark.css` 石墨阶梯（`#101214 → #23262c`）。
+
+| 提交 | 内容 |
+|---|---|
+| `1b54594` | 暗色 token 覆盖块 + 新增 `--zw-bg-mask` 替换 14 处硬编码遮罩；语义色实心底白字 ×5（红/绿）改 `--zw-text-inverse`（暗色提亮后自动翻深，承重规则同源）；checkbox「白勾藏底」改 transparent（暗色下会显形） |
+| `885f97a` | `tests/tokens-dark.test.ts` 契约测试（media 块存在 / 双写选择器 / 石墨阶梯关键值 / 遮罩零残留） |
+| `b3cb00c` | H5 兜底：原生导航栏/tabBar 内联静态色不读 token，media 内 `uni-page-head`/`uni-tabbar` 元素选择器 `!important` 覆盖（仅 H5 存在，mp-weixin 天然失效） |
+
+**验证**：18 测试文件 / 134 用例全绿；行覆盖率 874.5‰ 持平；`build:h5` 通过；Playwright `colorScheme: 'dark'` 真实 scheme 截图归档 `audit-reports/{login,home}-dark-mode.png`——页面背景 `#101214`、卡片 `#16181c`、橙底深字按钮、导航栏/tabBar 暗底均确认。
+
+**新遗留**：`pages.json` `globalStyle.backgroundColor` 与 mp-weixin 原生导航栏/tabBar 为静态值，暗色下小程序端窗体底色仍亮（H5 已兜底）；随 mp-weixin 真机核验遗留项一并处理。
+
 ### 遗留项（移动端）
 
-1. **移动端暗色模式未建**：移动端当前无暗色基建，29 页需逐页暗色核对，同批交付会使范围翻倍；token 已 dark-ready，单独立项。
+1. ~~**移动端暗色模式未建**~~ → **已落地**（2026-08-28 暗色批次，见上）。
 2. **间距层级未全量清扫**：页边距/卡间现状已接近 16/12，收益低风险高，保持现状。
-3. **mp-weixin 真机 CSS 变量核验**：tokens 选择器已 `:root, page` 双写，本批以 H5 为验证基准，小程序真机渲染待核验。
+3. **mp-weixin 真机 CSS 变量核验**：tokens 选择器已 `:root, page` 双写，本批以 H5 为验证基准，小程序真机渲染（含原生导航栏/tabBar 静态色）待核验。
 4. **首页/工作台/审批/我的目视核对**：依赖登录态与真实后端数据，随部署后人工补齐截图。
 
 ## 遗留项
