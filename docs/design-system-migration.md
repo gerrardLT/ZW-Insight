@@ -63,10 +63,63 @@
 - 目视核对：橙底深字按钮、侧边栏激活橙条、统计卡角标、登录页 hazard 条纹、空态塔吊/蓝图自绘图标均符合设计文档
 - 事实订正（2026-08-28 核验）：`e5bfbf4` 自身携带 `dashboard/index.vue` 模板闭合损坏，推送后 CI 三连败，由 `e84d921` 修复并部署；上表验证结论以修复后状态为准
 
+## 移动端迁移（2026-08-28 批次）
+
+> 范围：`zw-insight-app`（uni-app，29 页面）样式层；零业务逻辑改动、零新增 Vue 组件、零 webfont（系统字体栈）；仅交付亮色主题（token 结构 dark-ready）。
+> 目标：与 PC 端 token 同名（`--zw-*`）、签名组件同源、三条承重规则同守（橙底必配深字 / 唯一浮层阴影 / 直角纪律）。
+
+### 提交粒度（每 Phase 独立提交，可单独 revert——吸取 PC 单提交 `e5bfbf4` 教训）
+
+| 提交 | 阶段 | 内容 |
+|---|---|---|
+| `78428b3` | Phase 0 | 签到孤儿路由修复（`pages/mine/sign` 注册）+ `pages-registry.test.ts` 双向钉住死路由/孤儿页 |
+| `9e90204` | Phase 1 | `src/styles/{tokens,signature}.css` 新增（`:root, page` 双写）、App.vue 引入、uni.scss 色板重写、pages.json tabBar 文本化（删 8 个 11 字节占位坏图）、vite H5 代理 |
+| `f3dc2cc` | Phase 2 | 壳层签名时刻：登录/忘记密码（石墨黑画布 + 橙方块 ZW 铭牌 + eyebrow）、我的（石墨黑头部）、首页（L 角标统计卡 + 眉题）、工作台（status-badge）、OfflineBanner（hazard 竖条）、签到（品牌橙纯色卡） |
+| `d854b2c` | Phase 3a | finance 9 页 + material 3 页 hex 清扫 |
+| `6e8af83` | Phase 3b | site 5 页 + approval 2 页 + project/archive 进度条 hex 清扫 |
+| `87d7573` | Phase 3c | message-center / password / shortcut-edit 清扫；shortcut-edit 去悬浮上浮阴影改压合（`:active translateY(1px)`）+ 顶部 hairline |
+
+### 色值映射表（清扫依据，与 PC `tokens/light.css` 同名）
+
+| 旧值 | 新值 | 语义 |
+|---|---|---|
+| `#409eff`（文字/边框/图标） | `var(--zw-brand)` | 品牌橙 |
+| `#409eff` 填充背景且配 `#fff` | `var(--zw-brand)` + `var(--zw-on-primary)` | 橙底深字承重规则 |
+| `#409eff` / `#a0cfff` 禁态 | `var(--zw-brand)` + `opacity: 0.4` | 避免橙底白字违承重规则 |
+| `#66b1ff` / `#a0cfff` / `#b3d8ff` / `#ecf5ff` | `--zw-brand-hover` / `--zw-brand-light` | 品牌阶梯 |
+| `#303133` / `#606266` / `#909399` / `#c0c4cc` | `--zw-text-{primary,secondary,tertiary,quaternary}` | 文字四级 |
+| `#dcdfe6` / `#e4e7ed` / `#ebeef5` | `--zw-border` / `--zw-border-light` | hairline 双级 |
+| `#f5f5f5` / `#f0f0f0` / `#f5f7fa` | `--zw-bg-page` / `--zw-bg-hover` | 画布与分区底 |
+| `#f56c6c` / `#fef0f0` / `#fde2e2` | `--zw-danger` / `--zw-danger-light` | 语义红 |
+| `#67c23a` / `#f0f9eb` | `--zw-success` / `--zw-success-light` | 语义绿 |
+| `#e6a23c` / `#fdf6ec` / `#faecd8` / `#ffd666` | `--zw-warning` / `--zw-warning-light` | 语义黄（与品牌橙分离） |
+| `135deg 紫渐变 #667eea→#764ba2` | `--zw-bg-sidebar` 纯色 | 石墨黑控制室 |
+| `135deg 蓝渐变 #409eff→#66b1ff` | `--zw-brand` 纯色 | 去渐变纪律 |
+| `border-radius 10/12/16rpx`（按钮 `44rpx` 药丸） | 上限 `--zw-radius-lg`（8px）/ 按钮 `--zw-radius-sm`（4px） | 直角纪律 |
+
+### 签名工具类（从 PC `global.scss` 移植，rpx 适配）
+
+`.zw-btn-primary`（44px 高、直角、橙底深字、压合反馈）、`.card-corner-marked`（L 角标）、`.hazard-divider`（45° 黑黄斜纹）、`.eyebrow-cap`（大写宽字距眉题）、`.status-badge-{success,warning,danger,info}`（soft 底 + 深字）、`.zw-card`（白底 + hairline + 直角）。
+
+### 验证结果
+
+- `npx vitest run`：17 个测试文件 / 127 用例全绿（含 Phase 0 新增 `pages-registry.test.ts`）
+- 行覆盖率 874.5‰（基线 875‰，样式层改动对覆盖率中性，千分位精度内持平）
+- `npm run build:h5` 通过
+- grep 审计：26 个旧色值（含渐变）全库零残留；字面量圆角仅剩 2/4rpx（在上限内）
+- 目视核对：登录页截图归档 `audit-reports/login-mobile-viewport.png`——石墨黑画布、橙方块 ZW 铭牌、橙底深字按钮三项均确认；其余 4 关键页（首页/工作台/审批/我的）需登录态，预览服务核验（实事求是标注）
+
+### 遗留项（移动端）
+
+1. **移动端暗色模式未建**：移动端当前无暗色基建，29 页需逐页暗色核对，同批交付会使范围翻倍；token 已 dark-ready，单独立项。
+2. **间距层级未全量清扫**：页边距/卡间现状已接近 16/12，收益低风险高，保持现状。
+3. **mp-weixin 真机 CSS 变量核验**：tokens 选择器已 `:root, page` 双写，本批以 H5 为验证基准，小程序真机渲染待核验。
+4. **首页/工作台/审批/我的目视核对**：依赖登录态与真实后端数据，随部署后人工补齐截图。
+
 ## 遗留项
 
 1. **监控大屏模式未建**：设计文档 Large Display 章节当前无页面载体。
-2. **移动端壳层未建**：设计文档 Mobile Shell 章节当前无页面载体。
+2. ~~**移动端壳层未建**~~ → **主题已落地**（2026-08-28）：`zw-insight-app` 已完成 Industrial Precision 迁移（见上文「移动端迁移」章节），遗留移动端暗色模式与 mp-weixin 真机核验。
 3. **D-DIN 许可**：确认后可将 `--zw-font-display` 首项替换为 D-DIN，回退链不变。
 
 ## 已完成的原遗留项（2026-08-27 追加批次）
