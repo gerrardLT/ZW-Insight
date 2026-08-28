@@ -1,8 +1,10 @@
 <template>
   <view class="login-page">
+    <!-- 品牌铭牌（设计文档：登录页 = 表单 + 品牌铭牌，不渲染 hero-band） -->
     <view class="login-header">
+      <view class="brand-mark"><text>ZW</text></view>
       <text class="app-title">中维智营</text>
-      <text class="app-subtitle">工程项目管理平台</text>
+      <text class="app-subtitle eyebrow-cap">Engineering Project Management</text>
     </view>
     <view class="login-form">
       <!-- Tab 切换 -->
@@ -191,47 +193,64 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--zw-bg-sidebar); /* 石墨黑画布（去渐变纪律） */
   padding: 40rpx;
 }
 .login-header {
   text-align: center;
-  margin-bottom: 80rpx;
+  margin-bottom: 64rpx;
+}
+.brand-mark {
+  width: 96rpx;
+  height: 96rpx;
+  margin: 0 auto 24rpx;
+  background: var(--zw-brand);
+  color: var(--zw-on-primary); /* 橙底深字承重规则 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--zw-radius-xs);
+}
+.brand-mark text {
+  font-family: var(--zw-font-display);
+  font-size: 40rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
 }
 .app-title {
-  font-size: 56rpx;
+  font-size: 48rpx;
   color: #fff;
   font-weight: bold;
+  letter-spacing: 8rpx;
   display: block;
 }
 .app-subtitle {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.8);
   margin-top: 16rpx;
   display: block;
+  color: rgba(255, 255, 255, 0.6);
 }
 .login-form {
   width: 100%;
-  background: #fff;
-  border-radius: 16rpx;
+  background: var(--zw-bg-card);
+  border-radius: var(--zw-radius-lg); /* 直角纪律 */
   padding: 40rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+  box-shadow: var(--zw-shadow-card);
 }
 .login-tabs {
   display: flex;
   margin-bottom: 40rpx;
-  border-bottom: 1rpx solid #ebeef5;
+  border-bottom: 1rpx solid var(--zw-border-light);
 }
 .tab-item {
   flex: 1;
   text-align: center;
   padding-bottom: 20rpx;
   font-size: 28rpx;
-  color: #909399;
+  color: var(--zw-text-tertiary);
   position: relative;
 }
 .tab-item.active {
-  color: #409eff;
+  color: var(--zw-brand);
   font-weight: bold;
 }
 .tab-item.active::after {
@@ -242,16 +261,15 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   transform: translateX(-50%);
   width: 60%;
   height: 4rpx;
-  background: #409eff;
-  border-radius: 2rpx;
+  background: var(--zw-brand);
 }
 .form-item {
   margin-bottom: 32rpx;
 }
 .input {
-  height: 88rpx;
-  border: 1rpx solid #dcdfe6;
-  border-radius: 8rpx;
+  height: 88rpx; /* Mobile Shell 章：输入控件 44px */
+  border: 1rpx solid var(--zw-border);
+  border-radius: var(--zw-radius-sm);
   padding: 0 24rpx;
   font-size: 28rpx;
 }
@@ -268,28 +286,33 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   height: 88rpx;
   line-height: 88rpx;
   font-size: 24rpx;
-  color: #409eff;
-  background: #ecf5ff;
-  border: 1rpx solid #b3d8ff;
-  border-radius: 8rpx;
+  color: var(--zw-brand);
+  background: var(--zw-brand-light);
+  border: 1rpx solid var(--zw-brand-light);
+  border-radius: var(--zw-radius-sm);
   padding: 0;
   white-space: nowrap;
 }
 .sms-btn[disabled] {
-  color: #c0c4cc;
-  background: #f5f7fa;
-  border-color: #e4e7ed;
+  color: var(--zw-text-quaternary);
+  background: var(--zw-bg-hover);
+  border-color: var(--zw-border-light);
 }
 .login-btn {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background: #409eff;
-  color: #fff;
+  background: var(--zw-brand);
+  color: var(--zw-on-primary); /* 橙底深字承重规则 */
   font-size: 32rpx;
-  border-radius: 8rpx;
+  font-weight: 600;
+  border-radius: var(--zw-radius-sm);
   margin-top: 40rpx;
   border: none;
+}
+.login-btn:active {
+  background: var(--zw-brand-active);
+  transform: translateY(2rpx); /* 压合反馈，150ms 预算内 */
 }
 .login-extra {
   text-align: center;
@@ -297,6 +320,6 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
 }
 .forgot-link {
   font-size: 26rpx;
-  color: #409eff;
+  color: var(--zw-brand);
 }
 </style>

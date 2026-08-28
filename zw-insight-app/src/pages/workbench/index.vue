@@ -1,7 +1,7 @@
 <template>
   <view class="workbench-page">
     <!-- 项目概览 -->
-    <view class="section">
+    <view class="section zw-card">
       <view class="section-title">项目看板</view>
       <view v-if="overviewFailed" class="failed-state">
         <text class="failed-tip">项目看板加载失败</text>
@@ -28,7 +28,7 @@
     </view>
 
     <!-- 待办审批（P0 Req7：前 5 条，点击跳审批详情） -->
-    <view class="section">
+    <view class="section zw-card">
       <view class="section-title">待办审批</view>
       <view v-if="todoFailed" class="failed-state">
         <text class="failed-tip">待办任务加载失败</text>
@@ -44,7 +44,7 @@
     </view>
 
     <!-- 我的项目列表 -->
-    <view class="section">
+    <view class="section zw-card">
       <view class="section-title">我的项目</view>
       <view v-if="projectsFailed && !projects.length" class="failed-state">
         <text class="failed-tip">项目列表加载失败</text>
@@ -54,7 +54,7 @@
         <view class="project-item" v-for="item in projects" :key="item.id" @click="goArchive(item.id)">
           <view class="project-name">{{ item.projectName }}</view>
           <view class="project-info">
-            <text class="project-status">{{ item.statusText }}</text>
+            <text class="project-status status-badge status-badge-info">{{ item.statusText }}</text>
             <text class="project-amount">{{ (item.contractAmount / 10000).toFixed(1) }}万</text>
           </view>
         </view>
@@ -167,29 +167,29 @@ onUnmounted(() => { stopTodoPolling() })
 
 <style scoped>
 .workbench-page { padding: 20rpx; }
-.section { background: #fff; border-radius: 12rpx; padding: 24rpx; margin-bottom: 24rpx; }
-.section-title { font-size: 30rpx; font-weight: bold; color: #303133; margin-bottom: 20rpx; }
+.section { padding: 24rpx; margin-bottom: 24rpx; } /* 底色/描边/直角由全局 .zw-card 提供 */
+.section-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); margin-bottom: 20rpx; }
 .kanban-cards { display: flex; gap: 12rpx; }
-.kanban-card { flex: 1; padding: 20rpx 12rpx; border-radius: 8rpx; text-align: center; }
-.kanban-card.blue { background: #ecf5ff; }
-.kanban-card.green { background: #f0f9eb; }
-.kanban-card.orange { background: #fdf6ec; }
-.kanban-card.red { background: #fef0f0; }
-.kanban-value { font-size: 36rpx; font-weight: bold; display: block; color: #303133; }
-.kanban-label { font-size: 22rpx; color: #909399; margin-top: 4rpx; display: block; }
+.kanban-card { flex: 1; padding: 20rpx 12rpx; border-radius: var(--zw-radius-sm); text-align: center; }
+.kanban-card.blue { background: var(--zw-info-light); }
+.kanban-card.green { background: var(--zw-success-light); }
+.kanban-card.orange { background: var(--zw-warning-light); }
+.kanban-card.red { background: var(--zw-danger-light); }
+.kanban-value { font-size: 36rpx; font-weight: bold; display: block; color: var(--zw-text-primary); font-family: var(--zw-font-mono); }
+.kanban-label { font-size: 22rpx; color: var(--zw-text-tertiary); margin-top: 4rpx; display: block; }
 .project-list { max-height: 600rpx; }
-.project-item { padding: 20rpx 0; border-bottom: 1rpx solid #f0f0f0; }
-.project-name { font-size: 28rpx; color: #303133; font-weight: 500; }
-.project-info { display: flex; justify-content: space-between; margin-top: 8rpx; }
-.project-status { font-size: 24rpx; color: #409eff; }
-.project-amount { font-size: 24rpx; color: #909399; }
-.empty { text-align: center; padding: 40rpx; color: #c0c4cc; font-size: 26rpx; }
-.loading-more { text-align: center; padding: 20rpx; color: #909399; font-size: 24rpx; }
+.project-item { padding: 20rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
+.project-name { font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
+.project-info { display: flex; justify-content: space-between; align-items: center; margin-top: 8rpx; }
+.project-status { font-size: 24rpx; } /* 徽章底色由全局 .status-badge-info 提供 */
+.project-amount { font-size: 24rpx; color: var(--zw-text-tertiary); font-family: var(--zw-font-mono); }
+.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
+.loading-more { text-align: center; padding: 20rpx; color: var(--zw-text-tertiary); font-size: 24rpx; }
 .failed-state { display: flex; align-items: center; justify-content: center; padding: 40rpx 0; }
-.failed-tip { font-size: 26rpx; color: #f56c6c; }
-.retry-btn { margin-left: 20rpx; padding: 6rpx 24rpx; background: #409eff; color: #fff; font-size: 24rpx; border-radius: 8rpx; }
-.todo-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid #f0f0f0; }
+.failed-tip { font-size: 26rpx; color: var(--zw-danger); }
+.retry-btn { margin-left: 20rpx; padding: 6rpx 24rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-sm); } /* 橙底深字承重规则 */
+.todo-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .todo-item:last-child { border-bottom: none; }
-.todo-title { font-size: 28rpx; color: #303133; flex: 1; }
-.todo-applicant { font-size: 24rpx; color: #909399; margin-left: 16rpx; }
+.todo-title { font-size: 28rpx; color: var(--zw-text-primary); flex: 1; }
+.todo-applicant { font-size: 24rpx; color: var(--zw-text-tertiary); margin-left: 16rpx; }
 </style>

@@ -143,20 +143,21 @@ onMounted(() => {
 
 <style scoped>
 .sign-page { padding: 20rpx; }
-.sign-card { background: linear-gradient(135deg, #409eff, #66b1ff); border-radius: 16rpx; padding: 48rpx 32rpx; text-align: center; color: #fff; margin-bottom: 24rpx; }
-.sign-time { font-size: 56rpx; font-weight: bold; margin-bottom: 12rpx; }
-.sign-location { font-size: 24rpx; opacity: 0.9; margin-bottom: 32rpx; }
-.sign-btn { width: 200rpx; height: 200rpx; border-radius: 50%; background: rgba(255,255,255,0.2); border: 4rpx solid rgba(255,255,255,0.6); color: #fff; font-size: 30rpx; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
-.sign-btn.signed { background: rgba(103,194,58,0.3); border-color: rgba(103,194,58,0.8); }
-.sign-range-tip { margin-top: 16rpx; font-size: 24rpx; color: #ffd666; }
-.calendar-section { background: #fff; border-radius: 12rpx; padding: 24rpx; }
+/* 签到卡：品牌橙纯色块（去渐变纪律）+ 深字承重规则 */
+.sign-card { background: var(--zw-brand); border-radius: var(--zw-radius-lg); padding: 48rpx 32rpx; text-align: center; color: var(--zw-on-primary); margin-bottom: 24rpx; }
+.sign-time { font-size: 56rpx; font-weight: bold; margin-bottom: 12rpx; font-family: var(--zw-font-mono); }
+.sign-location { font-size: 24rpx; opacity: 0.85; margin-bottom: 32rpx; }
+.sign-btn { width: 200rpx; height: 200rpx; border-radius: var(--zw-radius-lg); background: rgba(20,22,26,0.15); border: 4rpx solid var(--zw-on-primary); color: var(--zw-on-primary); font-size: 30rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+.sign-btn.signed { background: var(--zw-success-light); border-color: var(--zw-success); color: var(--zw-success); }
+.sign-range-tip { margin-top: 16rpx; font-size: 24rpx; font-weight: 600; color: var(--zw-on-primary); }
+.calendar-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 24rpx; }
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
-.calendar-title { font-size: 30rpx; font-weight: bold; color: #303133; }
-.calendar-stat { font-size: 24rpx; color: #409eff; }
+.calendar-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); }
+.calendar-stat { font-size: 24rpx; color: var(--zw-brand); }
 .calendar-grid { display: flex; flex-wrap: wrap; gap: 8rpx; }
-.calendar-day { width: calc(14.28% - 8rpx); aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8rpx; background: #f5f7fa; }
-.calendar-day.signed { background: #ecf5ff; }
-.calendar-day.today { border: 2rpx solid #409eff; }
-.day-num { font-size: 24rpx; color: #606266; }
-.day-dot { color: #67c23a; font-size: 16rpx; }
+.calendar-day { width: calc(14.28% - 8rpx); aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--zw-radius-sm); background: var(--zw-bg-hover); }
+.calendar-day.signed { background: var(--zw-brand-light); }
+.calendar-day.today { border: 2rpx solid var(--zw-brand); }
+.day-num { font-size: 24rpx; color: var(--zw-text-secondary); font-family: var(--zw-font-mono); }
+.day-dot { color: var(--zw-success); font-size: 16rpx; }
 </style>

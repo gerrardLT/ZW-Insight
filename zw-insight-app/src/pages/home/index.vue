@@ -1,21 +1,21 @@
 <template>
   <view class="home-page">
     <OfflineBanner />
-    <!-- 顶部卡片 -->
+    <!-- 顶部卡片（蓝图角标：品牌签名组件） -->
     <view class="stat-cards">
-      <view class="stat-card">
+      <view class="stat-card card-corner-marked">
         <text class="stat-value">{{ overview.projectTotal || 0 }}</text>
         <text class="stat-label">项目总数</text>
       </view>
-      <view class="stat-card">
+      <view class="stat-card card-corner-marked">
         <text class="stat-value">{{ formatWan(overview.totalContractAmount) }}</text>
         <text class="stat-label">合同总额(万)</text>
       </view>
-      <view class="stat-card">
+      <view class="stat-card card-corner-marked">
         <text class="stat-value">{{ formatWan(overview.totalIncome) }}</text>
         <text class="stat-label">已收款(万)</text>
       </view>
-      <view class="stat-card">
+      <view class="stat-card card-corner-marked">
         <text class="stat-value">{{ formatWan(overview.advanceFund) }}</text>
         <text class="stat-label">垫资(万)</text>
       </view>
@@ -24,7 +24,10 @@
     <!-- 快捷功能 -->
     <view class="section">
       <view class="section-header">
-        <text class="section-title">常用功能</text>
+        <view class="section-heading">
+          <text class="eyebrow-cap">Shortcuts</text>
+          <text class="section-title">常用功能</text>
+        </view>
         <view class="edit-entry" @click="goShortcutEdit">
           <text class="edit-icon">✎</text><text class="edit-text">编辑</text>
         </view>
@@ -46,7 +49,10 @@
     <!-- 消息提醒 -->
     <view class="section">
       <view class="section-header">
-        <view class="section-title">消息提醒<text class="badge" v-if="unreadCount">{{ unreadCount }}</text></view>
+        <view class="section-heading">
+          <text class="eyebrow-cap">Inbox</text>
+          <view class="section-title">消息提醒<text class="badge" v-if="unreadCount">{{ unreadCount }}</text></view>
+        </view>
         <view class="edit-entry" @click="goMessageCenter">
           <text class="edit-text">信息中心</text><text class="more-arrow">›</text>
         </view>
@@ -126,24 +132,26 @@ onMounted(() => { loadData() })
 <style scoped>
 .home-page { padding: 20rpx; }
 .stat-cards { display: flex; flex-wrap: wrap; gap: 16rpx; margin-bottom: 24rpx; }
-.stat-card { flex: 1; min-width: 45%; background: #fff; border-radius: 12rpx; padding: 24rpx; text-align: center; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); }
-.stat-value { font-size: 40rpx; font-weight: bold; color: #303133; display: block; }
-.stat-label { font-size: 24rpx; color: #909399; margin-top: 8rpx; display: block; }
-.section { background: #fff; border-radius: 12rpx; padding: 24rpx; margin-bottom: 24rpx; }
-.section-title { font-size: 30rpx; font-weight: bold; color: #303133; margin-bottom: 20rpx; position: relative; }
+.stat-card { flex: 1; min-width: 45%; background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 24rpx; text-align: center; box-shadow: var(--zw-shadow-card); }
+.stat-value { font-size: 40rpx; font-weight: bold; color: var(--zw-text-primary); display: block; font-family: var(--zw-font-mono); } /* 等宽数字 */
+.stat-label { font-size: 24rpx; color: var(--zw-text-tertiary); margin-top: 8rpx; display: block; }
+.section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 24rpx; margin-bottom: 24rpx; }
+.section-heading { display: flex; flex-direction: column; }
+.section-heading .eyebrow-cap { margin-bottom: 4rpx; }
+.section-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); margin-bottom: 20rpx; position: relative; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
 .section-header .section-title { margin-bottom: 0; }
-.edit-entry { display: flex; align-items: center; color: #409eff; font-size: 24rpx; }
+.edit-entry { display: flex; align-items: center; color: var(--zw-brand); font-size: 24rpx; }
 .edit-icon { font-size: 26rpx; margin-right: 6rpx; }
 .edit-text { font-size: 24rpx; }
-.more-arrow { font-size: 30rpx; color: #409eff; margin-left: 4rpx; }
-.badge { background: #f56c6c; color: #fff; font-size: 22rpx; padding: 2rpx 12rpx; border-radius: 20rpx; margin-left: 12rpx; font-weight: normal; }
+.more-arrow { font-size: 30rpx; color: var(--zw-brand); margin-left: 4rpx; }
+.badge { background: var(--zw-danger); color: #fff; font-size: 22rpx; padding: 2rpx 12rpx; border-radius: 9999px; margin-left: 12rpx; font-weight: normal; }
 .shortcut-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20rpx; }
-.shortcut-item { display: flex; flex-direction: column; align-items: center; padding: 16rpx 0; font-size: 24rpx; color: #606266; }
-.shortcut-icon { font-size: 48rpx; margin-bottom: 8rpx; }
+.shortcut-item { display: flex; flex-direction: column; align-items: center; padding: 16rpx 0; font-size: 24rpx; color: var(--zw-text-secondary); }
+.shortcut-icon { width: 88rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; background: var(--zw-brand-light); border-radius: var(--zw-radius-md); font-size: 44rpx; margin-bottom: 8rpx; } /* 品牌浅底方块 */
 .msg-list { }
-.msg-item { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 0; border-bottom: 1rpx solid #f0f0f0; }
-.msg-title { font-size: 26rpx; color: #303133; flex: 1; }
-.msg-time { font-size: 22rpx; color: #c0c4cc; margin-left: 16rpx; }
-.empty { text-align: center; padding: 40rpx; color: #c0c4cc; font-size: 26rpx; }
+.msg-item { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
+.msg-title { font-size: 26rpx; color: var(--zw-text-primary); flex: 1; }
+.msg-time { font-size: 22rpx; color: var(--zw-text-quaternary); margin-left: 16rpx; font-family: var(--zw-font-mono); }
+.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
 </style>

@@ -1,6 +1,8 @@
 <template>
   <view class="forgot-page">
+    <!-- 品牌铭牌（与登录页同画布语言） -->
     <view class="forgot-header">
+      <view class="brand-mark"><text>ZW</text></view>
       <text class="page-title">找回密码</text>
       <text class="page-subtitle">通过手机号短信验证码重置登录密码</text>
     </view>
@@ -184,7 +186,7 @@ function goLogin() {
 <style scoped>
 .forgot-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--zw-bg-sidebar); /* 石墨黑画布（去渐变纪律） */
   padding: 60rpx 40rpx;
   display: flex;
   flex-direction: column;
@@ -192,17 +194,35 @@ function goLogin() {
 }
 .forgot-header {
   text-align: center;
-  margin-bottom: 60rpx;
+  margin-bottom: 48rpx;
+}
+.brand-mark {
+  width: 80rpx;
+  height: 80rpx;
+  margin: 0 auto 24rpx;
+  background: var(--zw-brand);
+  color: var(--zw-on-primary); /* 橙底深字承重规则 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--zw-radius-xs);
+}
+.brand-mark text {
+  font-family: var(--zw-font-display);
+  font-size: 36rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
 }
 .page-title {
-  font-size: 48rpx;
+  font-size: 44rpx;
   color: #fff;
   font-weight: bold;
+  letter-spacing: 6rpx;
   display: block;
 }
 .page-subtitle {
   font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.6);
   margin-top: 16rpx;
   display: block;
 }
@@ -222,45 +242,48 @@ function goLogin() {
 .step-dot {
   width: 56rpx;
   height: 56rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
+  border-radius: var(--zw-radius-xs); /* 直角纪律：方块节点 */
+  background: rgba(255, 255, 255, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 12rpx;
 }
 .step-dot.active {
-  background: #fff;
+  background: var(--zw-brand);
 }
 .step-dot.done {
-  background: #67c23a;
+  background: var(--zw-success);
 }
 .step-no {
   font-size: 26rpx;
-  color: #764ba2;
+  color: var(--zw-on-primary);
   font-weight: bold;
+}
+.step-dot:not(.active):not(.done) .step-no {
+  color: rgba(255, 255, 255, 0.7);
 }
 .step-label {
   font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.6);
 }
 .step-label.active {
   color: #fff;
 }
 .forgot-form {
   width: 100%;
-  background: #fff;
-  border-radius: 16rpx;
+  background: var(--zw-bg-card);
+  border-radius: var(--zw-radius-lg); /* 直角纪律 */
   padding: 40rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+  box-shadow: var(--zw-shadow-card);
 }
 .form-item {
   margin-bottom: 32rpx;
 }
 .input {
-  height: 88rpx;
-  border: 1rpx solid #dcdfe6;
-  border-radius: 8rpx;
+  height: 88rpx; /* Mobile Shell 章：输入控件 44px */
+  border: 1rpx solid var(--zw-border);
+  border-radius: var(--zw-radius-sm);
   padding: 0 24rpx;
   font-size: 28rpx;
 }
@@ -269,7 +292,7 @@ function goLogin() {
 }
 .form-tip text {
   font-size: 24rpx;
-  color: #909399;
+  color: var(--zw-text-tertiary);
 }
 .code-item {
   display: flex;
@@ -284,16 +307,16 @@ function goLogin() {
   height: 88rpx;
   line-height: 88rpx;
   font-size: 24rpx;
-  color: #409eff;
-  background: #ecf5ff;
-  border: 1rpx solid #b3d8ff;
-  border-radius: 8rpx;
+  color: var(--zw-brand);
+  background: var(--zw-brand-light);
+  border: 1rpx solid var(--zw-brand-light);
+  border-radius: var(--zw-radius-sm);
   padding: 0;
 }
 .code-btn[disabled] {
-  color: #c0c4cc;
-  background: #f5f7fa;
-  border-color: #e4e7ed;
+  color: var(--zw-text-quaternary);
+  background: var(--zw-bg-hover);
+  border-color: var(--zw-border-light);
 }
 .btn-row {
   display: flex;
@@ -307,31 +330,36 @@ function goLogin() {
   width: 100%;
   height: 88rpx;
   line-height: 88rpx;
-  background: #409eff;
-  color: #fff;
+  background: var(--zw-brand);
+  color: var(--zw-on-primary); /* 橙底深字承重规则 */
   font-size: 30rpx;
-  border-radius: 8rpx;
+  font-weight: 600;
+  border-radius: var(--zw-radius-sm);
   border: none;
   margin-top: 16rpx;
 }
+.primary-btn:active {
+  background: var(--zw-brand-active);
+  transform: translateY(2rpx); /* 压合反馈 */
+}
 .primary-btn[disabled] {
-  background: #a0cfff;
+  opacity: 0.5;
 }
 .ghost-btn {
   flex: 1;
   height: 88rpx;
   line-height: 88rpx;
-  background: #fff;
-  color: #606266;
+  background: var(--zw-bg-card);
+  color: var(--zw-text-secondary);
   font-size: 30rpx;
-  border: 1rpx solid #dcdfe6;
-  border-radius: 8rpx;
+  border: 1rpx solid var(--zw-border);
+  border-radius: var(--zw-radius-sm);
 }
 .back-login {
   margin-top: 40rpx;
 }
 .back-login text {
   font-size: 28rpx;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.8);
 }
 </style>
