@@ -10,14 +10,14 @@
 
 ## 四阶段影响范围与回滚
 
-每阶段为独立提交粒度，可单独 `git revert`。
+> 事实订正（2026-08-28 核验）：四阶段实际合并在**单个提交 `e5bfbf4`**（70 文件，带 `[skip ci]`）中落地，**无法按阶段单独 revert**；下表「影响文件」列仍按阶段划分供定位参考，回滚只能整体 `git revert e5bfbf4`。注意后续提交 `e84d921`（修复本提交引入的 dashboard 模板损坏）、`3854462`（详情抽屉）均触碰 `dashboard/index.vue`，revert 会产生冲突需人工解决。
 
 | 阶段 | 影响文件 | 回滚方式 |
 |---|---|---|
-| Phase 1：Token 与 Element 桥接 | `src/styles/tokens/{base,light,dark}.css`、`src/styles/element-override.scss`、`src/styles/global.scss`、`src/main.ts`（字体引入）、`package.json`（+3 依赖） | `git revert <P1-commit>` |
-| Phase 2：壳层与签名时刻 | `src/layouts/DefaultLayout.vue`、`src/views/login/index.vue`、`src/views/login/forgot-password.vue`、`src/views/dashboard/index.vue`、`src/components/GanttChart.vue` | `git revert <P2-commit>` |
-| Phase 3：动效与图标 | `src/styles/global.scss`（旋转方块/脉冲）、`src/components/icons/zw/*`（新增）、`src/views/login/index.vue`（图标引用） | `git revert <P3-commit>` |
-| Phase 4：图表色板/硬编码/基线 | `src/constants/chart-theme.ts`（新增）、`src/views/dashboard/index.vue`、`src/views/contract/index.vue`、`src/__tests__/{dashboard-index,archive-dashboard-matrix}.component.test.ts`、`e2e/visual-snapshots/*`（7 页基线重生成） | `git revert <P4-commit>` |
+| Phase 1：Token 与 Element 桥接 | `src/styles/tokens/{base,light,dark}.css`、`src/styles/element-override.scss`、`src/styles/global.scss`、`src/main.ts`（字体引入）、`package.json`（+3 依赖） | 整体 revert `e5bfbf4`（见上注） |
+| Phase 2：壳层与签名时刻 | `src/layouts/DefaultLayout.vue`、`src/views/login/index.vue`、`src/views/login/forgot-password.vue`、`src/views/dashboard/index.vue`、`src/components/GanttChart.vue` | 整体 revert `e5bfbf4`（见上注） |
+| Phase 3：动效与图标 | `src/styles/global.scss`（旋转方块/脉冲）、`src/components/icons/zw/*`（新增）、`src/views/login/index.vue`（图标引用） | 整体 revert `e5bfbf4`（见上注） |
+| Phase 4：图表色板/硬编码/基线 | `src/constants/chart-theme.ts`（新增）、`src/views/dashboard/index.vue`、`src/views/contract/index.vue`、`src/__tests__/{dashboard-index,archive-dashboard-matrix}.component.test.ts`、`e2e/visual-snapshots/*`（7 页基线重生成） | 整体 revert `e5bfbf4`（见上注） |
 
 ## Token 新旧映射表（核心）
 
@@ -61,13 +61,13 @@
 - 后端 `RetentionMoneyServiceTest` 9/9 通过（`mvn -pl zw-finance test`，含 `/overdue` 查询窗口边界断言）
 - `npm run test:e2e:visual:update`：7 页基线重新生成；`test:e2e:visual` 复跑 8/8 通过（`maxDiffPixelRatio: 0.02` 未放宽）
 - 目视核对：橙底深字按钮、侧边栏激活橙条、统计卡角标、登录页 hazard 条纹、空态塔吊/蓝图自绘图标均符合设计文档
+- 事实订正（2026-08-28 核验）：`e5bfbf4` 自身携带 `dashboard/index.vue` 模板闭合损坏，推送后 CI 三连败，由 `e84d921` 修复并部署；上表验证结论以修复后状态为准
 
 ## 遗留项
 
 1. **监控大屏模式未建**：设计文档 Large Display 章节当前无页面载体。
 2. **移动端壳层未建**：设计文档 Mobile Shell 章节当前无页面载体。
 3. **D-DIN 许可**：确认后可将 `--zw-font-display` 首项替换为 D-DIN，回退链不变。
-4. **后端 `/overdue` 端点待部署**：`GET /api/v1/finance/retention/overdue` 代码与单测已就绪但尚未提交/CI 部署，远程联调服务器仍 404；当前 `dashboard.png` 基线如实包含该卡的错误态（显式提示+重试，不静默）。**部署后须重跑 `test:e2e:visual:update` 刷新基线**。
 
 ## 已完成的原遗留项（2026-08-27 追加批次）
 
@@ -75,3 +75,8 @@
 2. **图表暗色即时联动**：`applyChartTheme` + 缓存重绘，主题切换不刷新页面，原遗留项 4 关闭。
 3. **逾期徽章载体落地**：`.status-badge-overdue--pulse` 首接工作台「质保金逾期风险」卡（真实端点 `/overdue`，与催办任务同口径：ACTIVE 且 expireDate < 当日）。
 4. **空状态接自绘图标**：`StatChartPanel`（空态蓝图角标/失败态安全帽）与 `project-dashboard`（引导塔吊 + 四维度蓝图角标）经 `#image` 插槽接入。
+
+## 已完成的原遗留项（2026-08-28 追加批次）
+
+1. **`/overdue` 端点部署 + 基线刷新**：端点随 `e5bfbf4` 后端改动经 2026-08-28 部署上线（裸探活 401 非 404，鉴权生效）；同日重跑 `test:e2e:visual:update`，`dashboard.png` 重生成（逾期卡由错误态转为真实数据态，67KB→52KB），比对复跑 8/8 通过（`maxDiffPixelRatio: 0.02` 未放宽）。原遗留项 4 关闭。
+2. **文档事实订正**：回滚粒度（四阶段实为单提交 `e5bfbf4`，无法分阶段 revert）与 CI 三连败事实（`e84d921` 修复）已在上文标注。
