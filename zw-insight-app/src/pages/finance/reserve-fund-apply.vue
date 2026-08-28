@@ -95,16 +95,16 @@ async function handleSubmit() {
 
 <style scoped>
 .form-page { padding: 20rpx; }
-.form-section { background: #fff; border-radius: 12rpx; padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #f5f5f5; }
+.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
+.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item:last-child { border-bottom: none; }
-.form-label { font-size: 28rpx; color: #303133; min-width: 160rpx; }
-.form-value { flex: 1; font-size: 28rpx; color: #303133; text-align: right; }
-.form-value.placeholder { color: #c0c4cc; }
-.form-input { flex: 1; font-size: 28rpx; color: #303133; text-align: right; }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: #409eff; color: #fff; font-size: 32rpx; border-radius: 8rpx; border: none; }
+.form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
+.form-value { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
+.form-value.placeholder { color: var(--zw-text-quaternary); }
+.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
+.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; } /* 橙底深字承重规则 */
 .picker-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; z-index: 99; }
-.picker-panel { width: 100%; max-height: 60vh; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 20rpx; overflow-y: auto; }
+.picker-panel { width: 100%; max-height: 60vh; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; padding: 20rpx; overflow-y: auto; }
 .picker-title { text-align: center; font-size: 30rpx; font-weight: bold; padding: 16rpx 0; }
-.picker-item { padding: 24rpx; border-bottom: 1rpx solid #f5f5f5; font-size: 28rpx; }
+.picker-item { padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
 </style>

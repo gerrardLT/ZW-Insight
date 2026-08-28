@@ -139,22 +139,22 @@ async function handleSubmit() {
 
 <style scoped>
 .form-page { padding: 20rpx; padding-bottom: 120rpx; }
-.form-section { background: #fff; border-radius: 12rpx; padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #f5f5f5; }
+.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
+.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item:last-child { border-bottom: none; }
-.form-label { font-size: 28rpx; color: #303133; min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: #303133; text-align: right; }
+.form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
+.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
 .form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
-.placeholder { color: #c0c4cc; }
-.arrow { margin-left: 8rpx; color: #c0c4cc; font-size: 32rpx; }
+.placeholder { color: var(--zw-text-quaternary); }
+.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
 .radio-group { display: flex; gap: 20rpx; flex: 1; justify-content: flex-end; }
-.radio-item { padding: 8rpx 24rpx; border: 1rpx solid #dcdfe6; border-radius: 6rpx; font-size: 26rpx; color: #606266; }
-.radio-item.active { border-color: #409eff; color: #409eff; background: #ecf5ff; }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: #409eff; color: #fff; font-size: 32rpx; border-radius: 8rpx; border: none; }
+.radio-item { padding: 8rpx 24rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); font-size: 26rpx; color: var(--zw-text-secondary); }
+.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); }
+.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; } /* 橙底深字承重规则 */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; display: flex; align-items: flex-end; }
-.picker-content { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; max-height: 70vh; }
-.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid #f0f0f0; }
+.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
-.picker-item { padding: 24rpx 32rpx; border-bottom: 1rpx solid #f5f5f5; font-size: 28rpx; }
+.picker-item { padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
 </style>
