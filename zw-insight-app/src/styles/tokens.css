@@ -112,4 +112,18 @@ page {
     /* 唯一浮层阴影：暗面加深 */
     --zw-shadow-overlay: 0 4px 16px rgba(0, 0, 0, 0.4);
   }
+
+  /* H5-only 兜底：原生导航栏/tabBar 不读 CSS 变量（内联静态色），以元素选择器覆盖。
+   * mp-weixin 无 uni-page-head/uni-tabbar 元素，选择器天然失效，安全。
+   * tabBar 文字色为内联（选中橙/未选中灰），暗底可读，不动。 */
+  uni-page-head .uni-page-head {
+    background-color: #16181c !important;
+    color: #f2f3f1 !important;
+  }
+  uni-tabbar .uni-tabbar {
+    background-color: #16181c !important;
+  }
+  uni-tabbar .uni-tabbar-border {
+    background-color: #23262c !important;
+  }
 }
