@@ -15,19 +15,24 @@
 
 ```
 ZW-Insight/                     # Monorepo 根目录
-├── zw-insight-server/          # 后端（22 个 Maven 子模块，90+ Controller）
+├── zw-insight-server/          # 后端（22 个 Maven 子模块，144 Controller，340 测试类）
 ├── zw-insight-web/             # PC 前端（Vue 3 + Element Plus）
 ├── zw-insight-app/             # 移动端（uni-app）
+├── zw-supplier-portal/         # 供应商报价门户（Vue 3 + Tailwind，独立部署）
 ├── tools/                      # 开发工具
-│   └── consistency-audit/      # 三端一致性审计 CLI（Node.js + TypeScript）
+│   ├── consistency-audit/      # 三端一致性审计 CLI（Node.js + TypeScript）
+│   └── feature-ledger/         # 功能深度账本 CLI（L0-L4 成熟度评分 + 八维缺口）
+├── tests/                      # 五层测试编排脚本 + 覆盖率基线（只升不降）
 ├── deploy/                     # 部署配置（Dockerfile · docker-compose · DB 迁移脚本）
 ├── docs/                       # 产品文档 & 功能表
 ├── audit-reports/              # 审计报告存档
 ├── keys/                       # 联调脚本与凭证（已 gitignore）
 ├── sql/                        # 增量 SQL 迁移
 ├── docker-compose.yml          # 本地开发依赖（MySQL/Redis/MinIO/RabbitMQ/kkFileView）
-└── .kiro/specs/                # Spec 驱动开发文档（需求 → 设计 → 任务）
+└── .kiro/specs/                # Spec 驱动开发文档（需求 → 设计 → 任务，15 个 spec）
 ```
+
+> 三端前端**不共享** workspace（无 pnpm-workspace / lerna），各自独立安装依赖、独立构建。
 
 ## 开发环境要求
 
@@ -100,7 +105,16 @@ docker-compose -f docker-compose.deploy.yml up -d
 包含：
 - `Dockerfile` — 后端 JAR 构建镜像
 - `docker-compose.deploy.yml` — 全栈编排
-- `db-init/` — 数据库初始化 & 增量迁移脚本（00 ~ 21）
+- `db-init/` — 数据库初始化 & 增量迁移脚本（序号 `00` ~ `51` + `99_data-menu`，共 46 个）
+
+### 数据库迁移双轨
+
+| 轨道 | 位置 | 数量 | 执行方式 |
+|------|------|------|----------|
+| Flyway | `zw-insight-server/zw-app/src/main/resources/db/migration/` | 35 个 `V*__*.sql` | 应用启动自动执行 |
+| 部署脚本 | `deploy/db-init/` | 46 个（`00_schema` 起） | 手工执行，或用 `deploy/run-migration.sh` |
+
+> ⚠️ 手工执行 SQL 时必须强制 `utf8mb4`，否则中文注释与字典值会乱码。仓库中 `48_V2026_46__mojibake_fix.sql`、`50_V2026_48__mojibake_fix_round2.sql` 是两轮真实乱码修复记录，`run-migration.sh` 已内置该防护。
 
 ## 联调状态
 
