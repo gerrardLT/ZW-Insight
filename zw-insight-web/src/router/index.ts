@@ -32,6 +32,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'ProjectDashboard',
         component: () => import('@/views/dashboard/project-dashboard.vue'),
         meta: { title: '项目看板', icon: 'DataAnalysis', permission: 'project-dashboard:view' }
+      },
+      {
+        path: 'project-cost-control',
+        name: 'ProjectCostControl',
+        component: () => import('@/views/dashboard/project-cost-control.vue'),
+        meta: { title: '成本主线看板', icon: 'TrendCharts', permission: 'dashboard:costcontrol:view' }
       }
     ]
   },
@@ -173,6 +179,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'ProjectDetail',
         component: () => import('@/views/project/detail.vue'),
         meta: { title: '项目详情', hidden: true }
+      },
+      {
+        path: 'wbs',
+        name: 'ProjectWbs',
+        component: () => import('@/views/project/wbs/index.vue'),
+        meta: { title: 'WBS结构', icon: 'Share', permission: 'project:wbs:view' }
       }
     ]
   },
@@ -212,6 +224,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'OutputReport',
         component: () => import('@/views/contract/output-report.vue'),
         meta: { title: '产值上报', icon: 'TrendCharts' }
+      },
+      {
+        path: 'change-event',
+        name: 'ChangeEventList',
+        component: () => import('@/views/contract/change-event/index.vue'),
+        meta: { title: '变更事件', icon: 'Switch', permission: 'contract:changeevent:view' }
       }
     ]
   },
@@ -338,6 +356,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'BudgetControlConfig',
         component: () => import('@/views/budget/control-config/index.vue'),
         meta: { title: '预算控制配置', icon: 'Setting' }
+      },
+      {
+        path: 'cost-account',
+        name: 'CostAccountList',
+        component: () => import('@/views/budget/cost-account/index.vue'),
+        meta: { title: '成本账户CBS', icon: 'Coin', permission: 'budget:costaccount:view' }
       }
     ]
   },

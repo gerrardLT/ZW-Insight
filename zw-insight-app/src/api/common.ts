@@ -223,3 +223,88 @@ export function saveInvoiceReceived(data: any) {
 export function getProjectArchive(projectId: number) {
   return request({ url: `/v1/archive/project/${projectId}` })
 }
+
+// ==================== 变更事件（Cost Control Backbone Phase 1）====================
+// 后端：ChangeEventController（/api/v1/contract/change-event）
+// 现场登记变更事件 → 商务评估影响 → 审批 → 驱动 CBS 当前预算调整
+// 状态机：DRAFT → ASSESSING → APPROVING → APPROVED / REJECTED（或 CANCELLED）
+
+/** 变更事件分页查询 */
+export function getChangeEventPage(params?: {
+  page?: number
+  size?: number
+  projectId?: number
+  status?: string
+  sourceType?: string
+  category?: string
+  keyword?: string
+}) {
+  return request({ url: '/v1/contract/change-event/page', data: params })
+}
+
+/** 变更事件详情 */
+export function getChangeEventDetail(id: number) {
+  return request({ url: `/v1/contract/change-event/${id}` })
+}
+
+/** 登记变更事件（草稿）—— 现场最低成本记录「发生了什么」 */
+export function saveChangeEvent(data: any) {
+  return request({ url: '/v1/contract/change-event', method: 'POST', data })
+}
+
+/** 更新变更事件（仅草稿/评估中可改） */
+export function updateChangeEvent(id: number, data: any) {
+  return request({ url: `/v1/contract/change-event/${id}`, method: 'PUT', data })
+}
+
+/** 转入评估中（现场登记完成，交商务测算） */
+export function startChangeEventAssessment(id: number) {
+  return request({ url: `/v1/contract/change-event/${id}/start-assessment`, method: 'POST' })
+}
+
+/** 提交影响评估（成本 + 工期 + 理由），流转至审批中 */
+export function submitChangeEventAssessment(id: number, data: {
+  costDelta: number
+  scheduleDelayDays?: number
+  rationale: string
+  assessmentNotes?: string
+}) {
+  return request({ url: `/v1/contract/change-event/${id}/assessment`, method: 'POST', data })
+}
+
+/** 作废变更事件（已批准的不可作废，须登记反向变更冲销） */
+export function cancelChangeEvent(id: number, reason?: string) {
+  return request({
+    url: `/v1/contract/change-event/${id}/cancel`,
+    method: 'POST',
+    data: reason ? { reason } : undefined
+  })
+}
+
+/** 项目下待处理变更事件数（工作台角标） */
+export function getChangeEventOpenCount(projectId: number) {
+  return request({ url: '/v1/contract/change-event/open-count', data: { projectId } })
+}
+
+// ==================== WBS / CBS（成本主线基础数据，移动端只读消费）====================
+
+/** WBS 下拉列表（仅 ACTIVE 节点） */
+export function getWbsSelectList(projectId: number) {
+  return request({ url: `/v1/project/${projectId}/wbs/nodes/select-list` })
+}
+
+/** CBS 成本账户分页（移动端查看成本主线用） */
+export function getCostAccountPage(params?: {
+  page?: number
+  size?: number
+  projectId?: number
+  costCategory?: string
+  status?: string
+}) {
+  return request({ url: '/v1/budget/cost-account/page', data: params })
+}
+
+/** 项目成本控制看板（Project Cost 360 六维指标） */
+export function getProjectCostControl(projectId: number) {
+  return request({ url: `/v1/dashboard/project/${projectId}/cost-control` })
+}

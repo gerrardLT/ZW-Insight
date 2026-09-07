@@ -152,3 +152,130 @@ export function getProjectOutput(projectId: number) {
 export function getProjectOverview(projectId: number) {
   return request.get(`/v1/dashboard/project/${projectId}/overview`)
 }
+
+/** 查询指定项目的成本控制数据（Project Cost 360） */
+export function getProjectCostControl(projectId: number) {
+  return request.get(`/v1/dashboard/project/${projectId}/cost-control`)
+}
+
+// ======================================================================
+// 项目成本控制看板（Project Cost 360） - Cost Control Backbone
+// 后端：ProjectDashboardController.getCostControl()
+//   GET /api/v1/dashboard/project/{projectId}/cost-control → ProjectCostControlDTO
+// ======================================================================
+
+/** 成本汇总指标 */
+export interface ProjectCostTotals {
+  /** 基准预算总额 */
+  baselineTotal?: number
+  /** 当前预算总额 */
+  currentTotal?: number
+  /** 已承诺总额 */
+  commitmentTotal?: number
+  /** 实际成本总额 */
+  actualTotal?: number
+  /** 预测完工总额 (EAC) */
+  forecastTotal?: number
+  /** 剩余预算 */
+  remainingBudget?: number
+  /** 偏差金额 */
+  varianceAmount?: number
+  /** 偏差率 (%) */
+  varianceRate?: number
+  /** 预算使用率 (%) */
+  usageRate?: number
+  /** 承诺率 (%) */
+  commitmentRate?: number
+}
+
+/** 成本账户摘要 */
+export interface CostAccountSummary {
+  /** 账户 ID */
+  accountId: number
+  /** 账户编码 */
+  code: string
+  /** 账户名称 */
+  name: string
+  /** 费用类别 */
+  costCategory?: string
+  /** 费用子类 */
+  costSubcategory?: string
+  /** WBS 编码 */
+  wbsCode?: string
+  /** WBS 名称 */
+  wbsName?: string
+  /** 基准预算 */
+  baseline: number
+  /** 当前预算 */
+  current: number
+  /** 已承诺 */
+  commitment: number
+  /** 实际成本 */
+  actual: number
+  /** 预测（EAC） */
+  forecast: number
+  /** 剩余预算 */
+  remaining: number
+  /** 偏差金额 */
+  variance: number
+  /** 使用率 (%) */
+  usageRate: number
+  /** 状态 */
+  status: string
+}
+
+/** 按费用类别分组汇总 */
+export interface CategorySummary {
+  /** 费用类别 */
+  costCategory?: string
+  /** 类别名称 */
+  categoryName: string
+  /** 基准预算 */
+  baseline: number
+  /** 当前预算 */
+  current: number
+  /** 已承诺 */
+  commitment: number
+  /** 实际成本 */
+  actual: number
+  /** 预测 */
+  forecast: number
+  /** 偏差 */
+  variance: number
+  /** 账户数量 */
+  accountCount: number
+}
+
+/** 月度趋势数据 */
+export interface MonthlyTrend {
+  /** 月份 YYYY-MM */
+  month: string
+  /** 当月实际成本 */
+  monthlyActual: number
+  /** 累计实际成本 */
+  cumulativeActual: number
+  /** 累计承诺 */
+  cumulativeCommitment: number
+  /** 累计预测 */
+  cumulativeForecast: number
+}
+
+/** 项目成本控制看板聚合数据 */
+export interface ProjectCostControlDTO {
+  /** 项目 ID */
+  projectId: number
+  /** 项目名称 */
+  projectName: string
+  /** WBS 节点数量 */
+  wbsCount: number
+  /** 成本账户数量 */
+  accountCount: number
+  /** 汇总指标 */
+  totals: ProjectCostTotals
+  /** 成本账户明细列表 */
+  accounts: CostAccountSummary[]
+  /** 按费用类别分组汇总 */
+  categorySummaries: CategorySummary[]
+  /** 趋势数据 */
+  trends: MonthlyTrend[]
+}

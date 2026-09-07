@@ -13,6 +13,10 @@ import com.zwinsight.dashboard.dto.ProgressDTO;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.dashboard.dto.ProjectDashboardDTO;
 import com.zwinsight.common.security.RequiresPermission;
+import com.zwinsight.dashboard.dto.ProjectCostControlDTO;
+import com.zwinsight.common.security.RequiresPermission;
+import com.zwinsight.dashboard.service.ProjectCostControlService;
+import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.dashboard.service.ProjectDashboardService;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.project.domain.BizProject;
@@ -39,6 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProjectDashboardController {
 
     private final ProjectDashboardService projectDashboardService;
+    private final ProjectCostControlService projectCostControlService;
     private final BizProjectMapper projectMapper;
 
     /**
@@ -114,6 +119,25 @@ public class ProjectDashboardController {
             return notFound;
         }
         return R.ok(projectDashboardService.getProjectOverview(projectId));
+    }
+
+    /**
+     * 项目成本控制看板数据（Project Cost 360）
+     * <p>
+     * 聚合 CBS 成本账户数据，提供 Baseline / Current / Commitment / Actual / Forecast / Variance
+     * 六个维度的成本视图，支持按 WBS 和费用类别下钻分析。
+     * </p>
+     *
+     * @param projectId 项目ID
+     * @return 成本控制DTO（汇总指标、账户明细、类别汇总、趋势数据）
+     */
+    @GetMapping("/{projectId}/cost-control")
+    public R<ProjectCostControlDTO> getCostControl(@PathVariable Long projectId) {
+        R<ProjectCostControlDTO> notFound = checkProjectExists(projectId);
+        if (notFound != null) {
+            return notFound;
+        }
+        return R.ok(projectCostControlService.getCostControl(projectId));
     }
 
     /**
