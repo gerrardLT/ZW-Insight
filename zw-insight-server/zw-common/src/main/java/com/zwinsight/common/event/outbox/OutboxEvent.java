@@ -12,11 +12,21 @@ import java.time.LocalDateTime;
  *
  * <h3>状态机</h3>
  * <pre>
- *   PENDING ──(attempt ≤ max)──▶ DELIVERED / FAILED ──retry──▶ PENDING ──...
- *                                                      │
- *                                          attempt > max ▼
- *                                                   DEAD
+ *   PENDING ──claim（乐观占用，attempts+1）──▶ DELIVERING
+ *                                                │
+ *                              ┌─────────────────┴─────────────────┐
+ *                            成功                                 失败
+ *                              │                                    │
+ *                              ▼                       attempts+1 &lt; maxAttempts ?
+ *                          DELIVERED                        │是                │否
+ *                       （保留 30 天后 purge）               ▼                  ▼
+ *                                                     PENDING               DEAD
+ *                                              （next_retry_at 指数退避    （死信，人工介入，
+ *                                                60s × 2^(n-1)，等下轮）     永不 purge）
  * </pre>
+ *
+ * <p>关键点：<b>不存在 FAILED 状态</b>——投递失败要么回落 PENDING 等重试，
+ * 要么直接转 DEAD，二者由 {@code OutboxDispatcher.handleFailure} 依 maxAttempts 判定。</p>
  *
  * <h3>幂等键</h3>
  * <p>
@@ -51,7 +61,11 @@ public class OutboxEvent {
     /** JSON 负载（event payload） */
     private String payload;
 
-    /** 投递状态（PENDING/DELIVERED/FAILED/DEAD） */
+    /**
+     * 投递状态（PENDING/DELIVERING/DELIVERED/DEAD）
+     * <p>取值以 {@link OutboxStatus} 枚举为唯一权威；<b>无 FAILED 态</b>，
+     * 投递失败按 maxAttempts 回落 PENDING 重试或转 DEAD。</p>
+     */
     private String status;
 
     /** 已尝试次数 */

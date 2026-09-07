@@ -15,8 +15,10 @@
     <description>公共模块 - 通用工具、基础类、常量定义</description>
 
     <properties>
-        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比（342‰），补测后上调并同步基线 -->
-        <jacoco.min.coverage>0.342</jacoco.min.coverage>
+        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比（530‰），补测后上调并同步基线。
+             2026-09-07：补 Outbox 机制与 ChangeEventApprovedEvent 契约单测（84 例）后实测 532‰，
+             由 342‰ 上调至 530‰，留 2‰ 缓冲抗 jqwik RANDOMIZED property test 的行覆盖微小波动。 -->
+        <jacoco.min.coverage>0.530</jacoco.min.coverage>
     </properties>
 
     <dependencies>

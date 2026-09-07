@@ -50,7 +50,18 @@ public class OutboxMessage<T> {
     /** 事件写入时间 */
     private LocalDateTime createdAt;
 
-    /** 是否最后一次尝试（attempts 已达 maxAttempts，失败即转死信） */
+    /**
+     * 是否为非首次投递（{@code attempts >= 1}）。
+     *
+     * <p><b>注意：本方法不表示「最后一次尝试」。</b>claim 时 attempts 已自增，
+     * 因此首次投递即为 1 就返回 true。原因是本类不携带 {@code maxAttempts}，
+     * 无法在此复现死信判定。</p>
+     *
+     * <p>死信判定的唯一权威实现是 {@code OutboxDispatcher.handleFailure}
+     * （{@code attempts + 1 >= maxAttempts} 转 DEAD，否则指数退避重试）。
+     * 消费方若需要「最后一次尝试走降级分支」的语义，不能依赖本方法——
+     * 请改为抛异常交由调度器重试，或在负载中自带业务判定依据。</p>
+     */
     public boolean isLastAttempt() {
         return attempts != null && attempts >= 1;
     }

@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS sys_outbox_event (
     aggregate_id BIGINT NOT NULL COMMENT '聚合根ID',
     idempotency_key VARCHAR(160) NOT NULL COMMENT '幂等键（aggregateType:aggregateId:eventType:version）',
     payload JSON DEFAULT NULL COMMENT '事件负载',
-    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '投递状态（PENDING/DELIVERED/FAILED/DEAD）',
+    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '投递状态（PENDING/DELIVERING/DELIVERED/DEAD，无 FAILED：失败按 max_attempts 回落 PENDING 重试或转 DEAD）',
     attempts INT DEFAULT 0 COMMENT '已尝试次数',
     max_attempts INT DEFAULT 5 COMMENT '最大尝试次数（超出转 DEAD）',
     next_retry_at DATETIME DEFAULT NULL COMMENT '下次重试时间（指数退避）',
