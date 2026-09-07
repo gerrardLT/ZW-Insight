@@ -15,8 +15,13 @@
     <description>驾驶舱模块 - 数据看板、统计分析</description>
 
     <properties>
-        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比（457‰），补测后上调并同步基线 -->
-        <jacoco.min.coverage>0.457</jacoco.min.coverage>
+        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比，补测后上调并同步基线。
+             2026-09-07：补 ProjectCostControlService（20 例）与 ProjectDashboardController.getCostControl（3 例）后
+             clean verify 实测 487/851 = 0.572268（CI 千分比截断 572‰），由 0.457 上调至 0.570，留约 2.3‰ 缓冲。
+             回归参照：cost-control-backbone(5735439) 引入的 ProjectCostControlService(125 行) 与
+             ProjectCostControlDTO(53 行) 曾零测试覆盖，移出本批测试后 clean verify 实测 306/851 = 0.359，触发
+             「Rule violated ... ratio is 0.359, but expected minimum is 0.457」BUILD FAILURE。 -->
+        <jacoco.min.coverage>0.570</jacoco.min.coverage>
     </properties>
 
     <dependencies>
