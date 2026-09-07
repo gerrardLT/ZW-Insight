@@ -210,6 +210,13 @@ jobs:
       - name: Coverage baseline check (no regression)
         run: node tests/check-frontend-coverage.mjs ${{ matrix.project }}
 
+      # 移动端 H5 构建门禁（2026-08-29 移动端评估修复新增）：单测不保证可构建，
+      # build:h5 失败即红灯；仅 zw-insight-app 有该脚本，其余项目跳过。
+      - name: Build H5 bundle (uni-app)
+        if: matrix.project == 'zw-insight-app'
+        working-directory: ${{ matrix.project }}
+        run: npm run build:h5
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
