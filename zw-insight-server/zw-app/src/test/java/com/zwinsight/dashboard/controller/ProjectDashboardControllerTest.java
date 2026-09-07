@@ -5,6 +5,7 @@ import com.zwinsight.dashboard.dto.BudgetExecutionDTO;
 import com.zwinsight.dashboard.dto.ProgressDTO;
 import com.zwinsight.dashboard.dto.ProjectDashboardDTO;
 import com.zwinsight.dashboard.service.ProjectDashboardService;
+import com.zwinsight.dashboard.service.ProjectCostControlService;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.test.TestSecurityConfig;
@@ -28,6 +29,7 @@ class ProjectDashboardControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockBean private ProjectDashboardService projectDashboardService;
+    @MockBean private ProjectCostControlService projectCostControlService; // Fix for 5735439: controller gained constructor param
     @MockBean private BizProjectMapper projectMapper;
 
     @BeforeEach void setUp() { SecurityContextHolder.setTenantId(1L); SecurityContextHolder.setUserId(1L); }
