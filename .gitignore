@@ -144,9 +144,11 @@ keys/coldig.*
 tools/login-helper.js
 
 # ========================
-# Qoder 本地缓存
+# 本地工具缓存（不入库，可随时重建）
 # ========================
 .qoder/
+# mimosa hook 状态缓存（实测 15MB / 1790 文件，本地工具生成，可重建）
+.mimosa/
 
 # unplugin-vue-components 自动生成（不入库，构建时生成）
 zw-insight-web/src/components.d.ts
