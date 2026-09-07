@@ -309,13 +309,16 @@
     - 有任何失败时以非零退出码结束
     - _需求: 9.4_
 
-  - [ ]* 12.3 编写编排脚本属性测试
+  - [x] 12.3 编写编排脚本属性测试（2026-09-07 完成：tests/test-run-all-properties.sh，35 例全绿）
     - **Property 9: 编排脚本层级选择**
-    - 验证 --layers 参数解析正确：仅执行指定层级，未指定不执行
-    - 验证 --fail-fast 模式：首个失败后停止后续
+    - 验证 --layers 参数解析正确：仅执行指定层级，未指定不执行（9A/9B/9C/9D，含大小写不敏感）
+    - 验证 --fail-fast 模式：首个失败后停止后续（9E/9G），并以 9F 无 fail-fast 作对照证明非误跳过
     - **Property 7: 测试报告正确性**
-    - 验证汇总报告 passed + failed + skipped = total
+    - 验证汇总报告 passed + failed + skipped = total（7A），及 status/exitCode 与失败一致（7B/7C）
     - **验证: 需求 9.3, 9.4, 9.5**
+    - 实现要点：run-all-tests.sh 末尾加 source-guard（`[[ "${BASH_SOURCE[0]}" == "${0}" ]]` 才自动跑 main），
+      属性测试 source 后注入 env 驱动的 mock run_l1..l5，在子壳调用真实 main()，断言其生成的 JSON 报告。
+      不触发真实 mvn/playwright；跨平台路径经 cygpath -m 转换，JSON 解析 python3→python→node 回退。
 
 - [x] 13. 重新启用 CI 集成测试 + dev-loop.ps1 对接（2026-08-24 回填：CI backend 已恢复测试并切 verify，integration-test job 常态化运行，dev-loop.ps1 已支持 quick/remote/full 模式）
   - [x] 13.1 恢复 CI 后端测试执行
