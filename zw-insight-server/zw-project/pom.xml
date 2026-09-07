@@ -15,8 +15,13 @@
     <description>项目报备模块 - 项目信息管理、项目成员</description>
 
     <properties>
-        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比（572‰），补测后上调并同步基线 -->
-        <jacoco.min.coverage>0.572</jacoco.min.coverage>
+        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比，补测后上调并同步基线。
+             2026-09-07：补 ProjectWbsNodeService 单测（55 例）后 clean verify 实测 583/782 = 0.745524（CI 千分比截断 745‰），
+             由 0.572 上调至 0.744，留约 1.5‰ 缓冲。
+             回归参照：cost-control-backbone(5735439) 引入的 ProjectWbsNodeService 曾零测试覆盖，
+             移出本测试文件后 clean verify 实测 343/782 = 0.438，触发
+             「Rule violated ... ratio is 0.438, but expected minimum is 0.572」BUILD FAILURE。 -->
+        <jacoco.min.coverage>0.744</jacoco.min.coverage>
     </properties>
 
     <dependencies>
