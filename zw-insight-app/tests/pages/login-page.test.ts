@@ -13,6 +13,7 @@ import { setActivePinia, createPinia } from 'pinia'
 vi.mock('@/api/auth', () => ({
   login: vi.fn(),
   sendSmsCaptcha: vi.fn(),
+  getImageCaptcha: vi.fn(),
   logout: vi.fn(),
   changePassword: vi.fn(),
   sendResetCode: vi.fn(),
@@ -21,12 +22,15 @@ vi.mock('@/api/auth', () => ({
 }))
 
 import LoginPage from '@/pages/login/index.vue'
-import { login, sendSmsCaptcha } from '@/api/auth'
+import { login, sendSmsCaptcha, getImageCaptcha } from '@/api/auth'
+import { offlineCache } from '@/utils/offlineCache'
 import { useUserStore } from '@/stores/user'
+import { useNetworkStore } from '@/stores/network'
 import { resetUniStorage, getUni } from '../setup'
 
 const mockLogin = vi.mocked(login)
 const mockSendSms = vi.mocked(sendSmsCaptcha)
+const mockGetImageCaptcha = vi.mocked(getImageCaptcha)
 
 function mountPage() {
   return mount(LoginPage)
@@ -43,6 +47,8 @@ beforeEach(() => {
   resetUniStorage()
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  // 默认验证码图加载成功（密码登录必带 captchaUuid）
+  mockGetImageCaptcha.mockResolvedValue({ code: 200, data: { uuid: 'cap-uuid-1', imageBase64: 'data:image/png;base64,AAA' } })
   ;(getUni() as any).switchTab = vi.fn()
   ;(getUni() as any).navigateTo = vi.fn()
 })
@@ -74,20 +80,81 @@ describe('login/index.vue 登录页', () => {
     wrapper.unmount()
   })
 
-  it('密码登录成功：loginType=PASSWORD + 写 token + switchTab 首页', async () => {
-    mockLogin.mockResolvedValue({ code: 200, data: { token: 'tk-1', username: 'admin' } })
+  it('密码登录：验证码为空时拦截并提示，不调 login', async () => {
     const wrapper = mountPage()
+    await flushPromises() // 等 onMounted 验证码加载
+    const toast = vi.fn()
+    ;(getUni() as any).showToast = toast
 
     await wrapper.find('input[placeholder="请输入用户名"]').setValue('admin')
     await wrapper.find('input[placeholder="请输入密码"]').setValue('123456')
     await wrapper.find('.login-btn').trigger('click')
     await flushPromises()
 
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入验证码' }))
+    expect(mockLogin).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('密码登录成功：带 captchaUuid/captchaCode + 写 token + switchTab 首页', async () => {
+    const syncSpy = vi.spyOn(offlineCache, 'sync')
+    mockLogin.mockResolvedValue({ code: 200, data: { token: 'tk-1', username: 'admin' } })
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await wrapper.find('input[placeholder="请输入用户名"]').setValue('admin')
+    await wrapper.find('input[placeholder="请输入密码"]').setValue('123456')
+    await wrapper.find('input[placeholder="请输入验证码"]').setValue('AB12')
+    await wrapper.find('.login-btn').trigger('click')
+    await flushPromises()
+
     expect(mockLogin).toHaveBeenCalledWith(
-      expect.objectContaining({ username: 'admin', password: '123456', loginType: 'PASSWORD' }),
+      expect.objectContaining({
+        username: 'admin', password: '123456', loginType: 'PASSWORD',
+        captchaCode: 'AB12', captchaUuid: 'cap-uuid-1',
+      }),
     )
     expect(useUserStore().token).toBe('tk-1')
     expect((getUni() as any).switchTab).toHaveBeenCalledWith({ url: '/pages/home/index' })
+    // 登录成功后补触发离线缓存初始同步（在线时）
+    expect(syncSpy).toHaveBeenCalled()
+    syncSpy.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('登录成功但离线：不触发缓存同步（离线无法拉取）', async () => {
+    const syncSpy = vi.spyOn(offlineCache, 'sync')
+    useNetworkStore().setNetworkType('none')
+    mockLogin.mockResolvedValue({ code: 200, data: { token: 'tk-3', username: 'admin' } })
+    const wrapper = mountPage()
+    await flushPromises()
+
+    await wrapper.find('input[placeholder="请输入用户名"]').setValue('admin')
+    await wrapper.find('input[placeholder="请输入密码"]').setValue('123456')
+    await wrapper.find('input[placeholder="请输入验证码"]').setValue('AB12')
+    await wrapper.find('.login-btn').trigger('click')
+    await flushPromises()
+
+    expect(useUserStore().token).toBe('tk-3')
+    expect(syncSpy).not.toHaveBeenCalled()
+    syncSpy.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('密码登录失败：清空验证码输入并刷新新图（验证码一次性消费）', async () => {
+    mockLogin.mockRejectedValue(new Error('用户名或密码错误'))
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(mockGetImageCaptcha).toHaveBeenCalledTimes(1)
+
+    await wrapper.find('input[placeholder="请输入用户名"]').setValue('admin')
+    await wrapper.find('input[placeholder="请输入密码"]').setValue('wrong')
+    await wrapper.find('input[placeholder="请输入验证码"]').setValue('XXXX')
+    await wrapper.find('.login-btn').trigger('click')
+    await flushPromises()
+
+    expect(mockGetImageCaptcha).toHaveBeenCalledTimes(2)
+    expect((wrapper.vm as any).passwordForm.captchaCode).toBe('')
     wrapper.unmount()
   })
 

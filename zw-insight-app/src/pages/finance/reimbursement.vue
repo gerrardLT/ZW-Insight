@@ -67,6 +67,7 @@
           <view class="picker-item" v-for="p in projects" :key="p.id" @click="selectProject(p)">
             <text>{{ p.projectName }}</text>
           </view>
+          <view class="empty" v-if="!projects.length"><text>{{ projectEmptyTip }}</text></view>
         </scroll-view>
       </view>
     </view>
@@ -75,11 +76,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getProjectList, saveReimbursement } from '@/api/common'
+import { saveReimbursement } from '@/api/common'
+import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
+import { submitOrQueue } from '@/utils/offlineSubmit'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
 const projects = ref<any[]>([])
+const projectEmptyTip = ref('暂无项目')
 
 const form = ref({
   projectId: null as number | null,
@@ -95,10 +99,10 @@ const form = ref({
 onMounted(async () => {
   const now = new Date()
   form.value.expenseDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  try {
-    const res: any = await getProjectList({ page: 1, size: 100 })
-    projects.value = res.data?.records || []
-  } catch {}
+  // 在线优先 + 离线回退缓存（需求 4.2、4.8）
+  const res = await loadProjectList({ page: 1, size: 100 })
+  projects.value = res.records
+  projectEmptyTip.value = res.empty && res.fromCache ? NO_OFFLINE_DATA_TIP : '暂无项目'
 })
 
 function selectProject(p: any) {
@@ -119,7 +123,7 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
-    await saveReimbursement({
+    const payload = {
       projectId: form.value.projectId,
       amount: Number(form.value.amount),
       expenseType: form.value.expenseType,
@@ -127,8 +131,15 @@ async function handleSubmit() {
       description: form.value.description,
       invoiceCount: Number(form.value.invoiceCount) || 0,
       remark: form.value.remark
+    }
+    // 离线时入队（需求 5.1），联网后由 syncEngine 自动提交
+    const { queued } = await submitOrQueue(() => saveReimbursement(payload), {
+      endpoint: '/v1/finance/project-reimbursement',
+      payload
     })
-    uni.showToast({ title: '提交成功', icon: 'success' })
+    if (!queued) {
+      uni.showToast({ title: '提交成功', icon: 'success' })
+    }
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally {
     submitting.value = false
@@ -158,4 +169,5 @@ async function handleSubmit() {
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
 .picker-item { padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); }
 </style>

@@ -142,6 +142,7 @@ import {
   approveRectification,
   uploadRectificationPhoto
 } from '@/api/common'
+import { rejectIfOffline } from '@/utils/offlineSubmit'
 
 interface CheckItem {
   itemName: string
@@ -263,6 +264,8 @@ async function handleSubmit() {
 }
 
 async function doSubmit() {
+  // 后端接口为 POST 且属检查结果闭环动作，离线不入队，明确拒绝（不静默）
+  if (rejectIfOffline('检查结果提交需联网操作，请联网后重试')) return
   submitting.value = true
   try {
     const results = checkItems.value.map((item, index) => ({
@@ -325,6 +328,8 @@ async function handleSubmitRectification() {
     uni.showToast({ title: '请填写整改内容', icon: 'none' })
     return
   }
+  // 整改含照片上传（临时路径不可序列化）且为审批闭环动作，离线无法入队，明确拒绝（不静默）
+  if (rejectIfOffline('整改提交含照片上传，需联网操作，请联网后重试')) return
   rectSubmitting.value = true
   photoUploading.value = true
   try {
@@ -357,6 +362,8 @@ function handleApprove(rec: any) {
     content: '确认该整改已复查通过并闭环？',
     success: async (res) => {
       if (!res.confirm) return
+      // 复查通过为审批强一致动作，离线不入队，明确拒绝（不静默）
+      if (rejectIfOffline('复查通过需联网操作，请联网后重试')) return
       try {
         await approveRectification(rec.id)
         uni.showToast({ title: '复查通过', icon: 'success' })

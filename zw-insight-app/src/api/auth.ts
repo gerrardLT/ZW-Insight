@@ -3,8 +3,10 @@ import request from '@/utils/request'
 interface PasswordLoginData {
   username: string
   password: string
-  captcha?: string
-  captchaKey?: string
+  /** 图形验证码（后端 auth.captcha-enabled=true 时必填） */
+  captchaCode?: string
+  /** 图形验证码 uuid（GET /v1/captcha/image 返回） */
+  captchaUuid?: string
   tenantCode?: string
   loginType?: 'PASSWORD'
 }
@@ -14,6 +16,11 @@ interface SmsLoginData {
   smsCode: string
   loginType: 'SMS'
   tenantCode?: string
+}
+
+/** 获取图形验证码（CaptchaController GET /image，返回 { uuid, imageBase64 }，base64 带 data:image/png 前缀） */
+export function getImageCaptcha() {
+  return request({ url: '/v1/captcha/image' })
 }
 
 export function login(data: PasswordLoginData | SmsLoginData) {

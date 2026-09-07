@@ -28,7 +28,7 @@
         <view class="picker-item" v-for="p in projects" :key="p.id" @click="selectProject(p)">
           <text>{{ p.projectName }}</text>
         </view>
-        <view v-if="!projects.length" class="picker-item"><text>暂无项目</text></view>
+        <view v-if="!projects.length" class="picker-item"><text>{{ projectEmptyTip }}</text></view>
       </view>
     </view>
   </view>
@@ -36,12 +36,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getProjectList, saveReserveFundApply, submitReserveFundApply } from '@/api/common'
+import { saveReserveFundApply, submitReserveFundApply } from '@/api/common'
+import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
+import { rejectIfOffline } from '@/utils/offlineSubmit'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
 const projects = ref<any[]>([])
+const projectEmptyTip = ref('暂无项目')
 const form = ref({
   projectId: null as number | null,
   projectName: '',
@@ -53,10 +56,10 @@ const form = ref({
 onMounted(async () => {
   const now = new Date()
   form.value.applyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  try {
-    const res: any = await getProjectList({ page: 1, size: 100 })
-    projects.value = res.data?.records || []
-  } catch {}
+  // 在线优先 + 离线回退缓存（需求 4.2、4.8）
+  const res = await loadProjectList({ page: 1, size: 100 })
+  projects.value = res.records
+  projectEmptyTip.value = res.empty && res.fromCache ? NO_OFFLINE_DATA_TIP : '暂无项目'
 })
 
 function selectProject(p: any) {
@@ -76,6 +79,8 @@ async function handleSubmit() {
   if (!Number.isFinite(amount) || amount <= 0) {
     uni.showToast({ title: '申请金额必须大于0', icon: 'none' }); return
   }
+  // 两段式审批无法离线入队（只入队 save 会遗留永久 DRAFT），离线时明确拒绝（不静默）
+  if (rejectIfOffline('备用金申请需联网提交审批，请联网后重试')) return
   submitting.value = true
   try {
     // 两段式提交（与 web 端一致）：save 落 DRAFT 返回 id → submit 启动审批置 APPROVED，

@@ -42,6 +42,30 @@ onLaunch(() => {
         })
     }
   })
+
+  // 4. H5 兜底：浏览器存在 navigator.connection 时 uni 仅监听其 change 事件，
+  // 实测不捕获 window offline/online（2026-08-29 H5 走查实证），补原生监听，
+  // 否则 H5 断网不切离线模式、联网不重放离线队列（需求 4.7 / 5.2）
+  // #ifdef H5
+  window.addEventListener('offline', () => {
+    network.setNetworkType('none')
+  })
+  window.addEventListener('online', () => {
+    const wasOffline = network.isOffline
+    // 恢复瞬间无法精确判定网络类型，非 none 即视为在线（真实类型由后续请求自然验证）
+    network.setNetworkType('unknown')
+    if (wasOffline) {
+      const t = uni.getStorageSync('token')
+      if (!t) return
+      syncEngine
+        .syncAll()
+        .then(() => syncEngine.compareVersions())
+        .catch((e) => {
+          console.warn('[offline] 联网同步失败', e)
+        })
+    }
+  })
+  // #endif
 })
 </script>
 

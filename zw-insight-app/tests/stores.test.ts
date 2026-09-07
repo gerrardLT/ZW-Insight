@@ -30,6 +30,22 @@ describe('user store', () => {
     expect(useUserStore().token).toBe('tk-persisted')
   })
 
+  it('setUserInfo：state 与 uni 存储双写（D3 冷启动 USER_INFO 缓存依赖）', () => {
+    const store = useUserStore()
+    store.setUserInfo({ id: 7, realName: '张三' })
+    expect(store.userInfo).toEqual({ id: 7, realName: '张三' })
+    expect(getUni().getStorageSync('userInfo')).toEqual({ id: 7, realName: '张三' })
+  })
+
+  it('初始化从存储恢复 userInfo；置空时移除存储', () => {
+    getUni().setStorageSync('userInfo', { id: 8, realName: '李四' })
+    setActivePinia(createPinia())
+    const store = useUserStore()
+    expect(store.userInfo).toEqual({ id: 8, realName: '李四' })
+    store.setUserInfo(null)
+    expect(getUni().getStorageSync('userInfo')).toBe('')
+  })
+
   it('logout：清 token/userInfo + 移除存储 + reLaunch 登录页', () => {
     const store = useUserStore()
     store.setToken('tk-x')
@@ -40,6 +56,7 @@ describe('user store', () => {
     expect(store.token).toBe('')
     expect(store.userInfo).toBeNull()
     expect(getUni().getStorageSync('token')).toBe('')
+    expect(getUni().getStorageSync('userInfo')).toBe('')
     expect((getUni() as any).reLaunch).toHaveBeenCalledWith({ url: '/pages/login/index' })
   })
 })

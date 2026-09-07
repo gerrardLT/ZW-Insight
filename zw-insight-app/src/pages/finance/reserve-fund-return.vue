@@ -41,6 +41,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getReserveFundApplyPage, saveReserveFundReturn } from '@/api/common'
+import { submitOrQueue } from '@/utils/offlineSubmit'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const submitting = ref(false)
@@ -100,12 +101,19 @@ async function handleSubmit() {
   submitting.value = true
   try {
     // 后端 BizReserveFundReturn：reserveApplyId/returnAmount/returnDate
-    await saveReserveFundReturn({
+    const payload = {
       reserveApplyId: form.value.reserveApplyId,
       returnAmount: amount,
       returnDate: form.value.returnDate
+    }
+    // 离线时入队（需求 5.1），联网后由 syncEngine 自动提交
+    const { queued } = await submitOrQueue(() => saveReserveFundReturn(payload), {
+      endpoint: '/v1/finance/reserve-fund/return',
+      payload
     })
-    uni.showToast({ title: '归还成功', icon: 'success' })
+    if (!queued) {
+      uni.showToast({ title: '归还成功', icon: 'success' })
+    }
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally { submitting.value = false }
 }

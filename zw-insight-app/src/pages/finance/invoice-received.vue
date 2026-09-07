@@ -31,7 +31,7 @@
         <view class="picker-item" v-for="p in projects" :key="p.id" @click="selectProject(p)">
           <text>{{ p.projectName }}</text>
         </view>
-        <view v-if="!projects.length" class="picker-item"><text>暂无项目</text></view>
+        <view v-if="!projects.length" class="picker-item"><text>{{ projectEmptyTip }}</text></view>
       </view>
     </view>
   </view>
@@ -39,11 +39,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getProjectList, saveInvoiceReceived } from '@/api/common'
+import { saveInvoiceReceived } from '@/api/common'
+import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
+import { submitOrQueue } from '@/utils/offlineSubmit'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
 const projects = ref<any[]>([])
+const projectEmptyTip = ref('暂无项目')
 // 表单字段对齐后端 BizInvoiceReceived：projectId/supplierName/invoiceAmount/taxRate/invoiceDate
 const form = ref({
   projectId: null as number | null,
@@ -57,10 +60,10 @@ const form = ref({
 onMounted(async () => {
   const now = new Date()
   form.value.invoiceDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  try {
-    const res: any = await getProjectList({ page: 1, size: 100 })
-    projects.value = res.data?.records || []
-  } catch {}
+  // 在线优先 + 离线回退缓存（需求 4.2、4.8）
+  const res = await loadProjectList({ page: 1, size: 100 })
+  projects.value = res.records
+  projectEmptyTip.value = res.empty && res.fromCache ? NO_OFFLINE_DATA_TIP : '暂无项目'
 })
 
 function selectProject(p: any) {
@@ -83,14 +86,21 @@ async function handleSubmit() {
   submitting.value = true
   try {
     // 后端保存即生效（status=APPROVED）并回写合同累计收票（有 contractId 时）
-    await saveInvoiceReceived({
+    const payload = {
       projectId: form.value.projectId,
       supplierName: form.value.supplierName,
       invoiceAmount: amount,
       taxRate: form.value.taxRate === '' ? null : Number(form.value.taxRate),
       invoiceDate: form.value.invoiceDate
+    }
+    // 离线时入队（需求 5.1），联网后由 syncEngine 自动提交
+    const { queued } = await submitOrQueue(() => saveInvoiceReceived(payload), {
+      endpoint: '/v1/finance/invoice-received',
+      payload
     })
-    uni.showToast({ title: '提交成功', icon: 'success' })
+    if (!queued) {
+      uni.showToast({ title: '提交成功', icon: 'success' })
+    }
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally { submitting.value = false }
 }

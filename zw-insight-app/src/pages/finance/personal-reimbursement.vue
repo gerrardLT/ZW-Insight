@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { savePersonalReimbursement, submitPersonalReimbursement } from '@/api/common'
+import { rejectIfOffline } from '@/utils/offlineSubmit'
 
 const submitting = ref(false)
 // 表单字段对齐后端 BizPersonalReimbursement：totalAmount/reimbursementDate/remark
@@ -44,6 +45,8 @@ async function handleSubmit() {
   if (!form.value.reimbursementDate) {
     uni.showToast({ title: '请输入报销日期', icon: 'none' }); return
   }
+  // 两段式审批无法离线入队（只入队 save 会遗留永久 DRAFT），离线时明确拒绝（不静默）
+  if (rejectIfOffline('个人报销需联网提交审批，请联网后重试')) return
   submitting.value = true
   try {
     // 两段式提交（与 web 端一致）：save 落 DRAFT 返回 id → submit 启动审批

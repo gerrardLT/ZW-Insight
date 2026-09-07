@@ -66,6 +66,7 @@ import { ref, onMounted } from 'vue'
 import { saveMaterialOutbound } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
+import { submitOrQueue } from '@/utils/offlineSubmit'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
@@ -130,8 +131,9 @@ async function handleSubmit() {
   submitting.value = true
   try {
     // 材料退货 = 出库单 outboundType=RETURN（后端自动扣库存；关联采购合同时
-    // 发布 MaterialReturnCreatedEvent，按明细 unitPrice 自动生成退款申请并提交审批）
-    await saveMaterialOutbound({
+    // 发布 MaterialReturnCreatedEvent，按明细 unitPrice 自动生成退款申请并提交审批）；
+    // 离线时入队（需求 5.1），联网后由 syncEngine 自动提交，事件回写仍走真实后端链路
+    const payload = {
       projectId: form.value.projectId,
       outboundType: 'RETURN',
       outboundDate: form.value.outboundDate,
@@ -144,8 +146,14 @@ async function handleSubmit() {
         quantity: qty,
         unitPrice: price
       }]
+    }
+    const { queued } = await submitOrQueue(() => saveMaterialOutbound(payload), {
+      endpoint: '/v1/material/outbound',
+      payload
     })
-    uni.showToast({ title: '退货提交成功', icon: 'success' })
+    if (!queued) {
+      uni.showToast({ title: '退货提交成功', icon: 'success' })
+    }
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally { submitting.value = false }
 }

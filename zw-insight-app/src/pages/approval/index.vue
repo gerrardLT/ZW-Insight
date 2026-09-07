@@ -58,6 +58,7 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getTodoTasks, getDoneTasks, getMyInitiatedTasks, batchApproveTasks } from '@/api/common'
+import { rejectIfOffline } from '@/utils/offlineSubmit'
 
 const activeTab = ref('todo')
 const tasks = ref<any[]>([])
@@ -169,6 +170,8 @@ function toggleSelectAll() {
 
 function handleBatchApprove() {
   if (!selectedIds.value.length || batchApproving.value) return
+  // 审批为强一致操作，离线不入队，明确拒绝（不静默）
+  if (rejectIfOffline('审批操作需联网进行，请联网后重试')) return
   uni.showModal({
     title: '批量同意',
     content: `确定通过所选 ${selectedIds.value.length} 条审批吗？`,

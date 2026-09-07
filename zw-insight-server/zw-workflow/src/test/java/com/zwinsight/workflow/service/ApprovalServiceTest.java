@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.workflow.domain.WfApprovalRecord;
 import com.zwinsight.workflow.listener.ApprovalRejectEvent;
@@ -30,6 +31,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.*;
@@ -462,7 +464,37 @@ class ApprovalServiceTest {
         assertThat(result.getRecords()).hasSize(1);
         assertThat(result.getRecords().get(0).get("taskId")).isEqualTo("task-001");
         assertThat(result.getRecords().get(0).get("businessType")).isEqualTo("CONTRACT");
+        // 变量无 initiator 时 startUserName 为 null，且不触发用户表查询（无 N+1）
+        assertThat(result.getRecords().get(0).get("startUserName")).isNull();
         verify(taskService, never()).getVariables(anyString());
+        verify(sysUserMapper, never()).selectBatchIds(anyList());
+    }
+
+    @Test
+    @DisplayName("我的待办：发起人 userId 批量翻译为 realName 填充 startUserName")
+    void testGetMyTodoTasks_startUserName() {
+        TaskQuery taskQuery = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(taskQuery);
+        when(taskQuery.taskAssignee("100")).thenReturn(taskQuery);
+        when(taskQuery.count()).thenReturn(1L);
+        when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
+        when(taskQuery.orderByTaskCreateTime()).thenReturn(taskQuery);
+        when(taskQuery.desc()).thenReturn(taskQuery);
+        when(taskQuery.listPage(0, 10)).thenReturn(List.of(mockTask));
+        when(mockTask.getProcessVariables())
+                .thenReturn(Map.of("businessType", "CONTRACT", "initiator", "100"));
+
+        SysUser starter = new SysUser();
+        starter.setId(100L);
+        starter.setRealName("张三");
+        when(sysUserMapper.selectBatchIds(anyList())).thenReturn(List.of(starter));
+
+        PageResult<Map<String, Object>> result = approvalService.getMyTodoTasks(100L, 1, 10);
+
+        assertThat(result.getRecords()).hasSize(1);
+        assertThat(result.getRecords().get(0).get("startUserName")).isEqualTo("张三");
+        // 多个任务只批量查询一次用户表
+        verify(sysUserMapper, times(1)).selectBatchIds(anyList());
     }
 
     @Test
@@ -567,5 +599,139 @@ class ApprovalServiceTest {
                     .hasMessageContaining("仅流程发起人可撤回");
             verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
         }
+    }
+
+    // =====================================================================
+    // getTaskDetail（移动端审批详情聚合端点）
+    // =====================================================================
+
+    @Test
+    @DisplayName("审批详情：运行中任务聚合流程信息/业务数据去内部变量/审批时间线映射")
+    void testGetTaskDetail_runningTask_success() {
+        TaskQuery taskQuery = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(taskQuery);
+        when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
+        when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
+        when(taskQuery.singleResult()).thenReturn(mockTask);
+
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("businessType", "CONTRACT");
+        vars.put("businessId", 500L);
+        vars.put("initiator", "100");
+        vars.put("businessTitle", "办公楼装修合同");
+        vars.put("amount", 50000);
+        when(mockTask.getProcessVariables()).thenReturn(vars);
+
+        HistoricProcessInstanceQuery hpiQuery = mock(HistoricProcessInstanceQuery.class);
+        HistoricProcessInstance hpi = mock(HistoricProcessInstance.class);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
+        when(hpiQuery.processInstanceId("pi-001")).thenReturn(hpiQuery);
+        when(hpiQuery.singleResult()).thenReturn(hpi);
+        when(hpi.getProcessDefinitionName()).thenReturn("合同审批流程");
+        Date startTime = new Date();
+        when(hpi.getStartTime()).thenReturn(startTime);
+        when(hpi.getStartUserId()).thenReturn("100");
+
+        // 审批记录 assigneeName 为空 → 回退查 sys_user.realName
+        WfApprovalRecord record = new WfApprovalRecord();
+        record.setId(11L);
+        record.setTaskName("部门经理审批");
+        record.setAssignee("200");
+        record.setAssigneeName("");
+        record.setOperationType("APPROVE");
+        record.setComment("同意");
+        record.setOperTime(LocalDateTime.of(2026, 9, 1, 10, 0));
+        when(approvalRecordMapper.selectList(any())).thenReturn(List.of(record));
+
+        SysUser starter = new SysUser();
+        starter.setId(100L);
+        starter.setRealName("张三");
+        SysUser approver = new SysUser();
+        approver.setId(200L);
+        approver.setRealName("李四");
+        when(sysUserMapper.selectBatchIds(anyList())).thenReturn(List.of(starter, approver));
+
+        Map<String, Object> detail = approvalService.getTaskDetail("task-001");
+
+        assertThat(detail.get("taskId")).isEqualTo("task-001");
+        assertThat(detail.get("taskName")).isEqualTo("部门经理审批");
+        assertThat(detail.get("processName")).isEqualTo("合同审批流程");
+        assertThat(detail.get("createTime")).isEqualTo(startTime);
+        assertThat(detail.get("status")).isEqualTo("pending");
+        assertThat(detail.get("startUserName")).isEqualTo("张三");
+        assertThat(detail.get("businessType")).isEqualTo("CONTRACT");
+        assertThat(detail.get("businessId")).isEqualTo(500L);
+        assertThat(detail.get("businessTitle")).isEqualTo("办公楼装修合同");
+        // businessData 过滤内部变量（businessType/businessId/initiator），保留业务变量
+        assertThat(detail.get("businessData")).isEqualTo(Map.of("amount", 50000));
+
+        List<Map<String, Object>> recordMaps =
+                castList(detail.get("approvalRecords"));
+        assertThat(recordMaps).hasSize(1);
+        assertThat(recordMaps.get(0).get("result")).isEqualTo("approved");
+        assertThat(recordMaps.get(0).get("resultText")).isEqualTo("已通过");
+        assertThat(recordMaps.get(0).get("assigneeName")).isEqualTo("李四");
+        assertThat(recordMaps.get(0).get("comment")).isEqualTo("同意");
+    }
+
+    @Test
+    @DisplayName("审批详情：运行中任务不存在时回退历史任务，status=done")
+    void testGetTaskDetail_historicTask_statusDone() {
+        TaskQuery taskQuery = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(taskQuery);
+        when(taskQuery.taskId("task-h")).thenReturn(taskQuery);
+        when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
+        when(taskQuery.singleResult()).thenReturn(null);
+
+        HistoricTaskInstanceQuery histQuery = mock(HistoricTaskInstanceQuery.class);
+        HistoricTaskInstance hti = mock(HistoricTaskInstance.class);
+        when(historyService.createHistoricTaskInstanceQuery()).thenReturn(histQuery);
+        when(histQuery.taskId("task-h")).thenReturn(histQuery);
+        when(histQuery.includeProcessVariables()).thenReturn(histQuery);
+        when(histQuery.singleResult()).thenReturn(hti);
+        when(hti.getProcessInstanceId()).thenReturn("pi-h");
+        when(hti.getName()).thenReturn("历史审批任务");
+        when(hti.getProcessVariables()).thenReturn(Map.of("businessType", "PAYMENT"));
+
+        HistoricProcessInstanceQuery hpiQuery = mock(HistoricProcessInstanceQuery.class);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
+        when(hpiQuery.processInstanceId("pi-h")).thenReturn(hpiQuery);
+        when(hpiQuery.singleResult()).thenReturn(null);
+        when(approvalRecordMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        Map<String, Object> detail = approvalService.getTaskDetail("task-h");
+
+        assertThat(detail.get("status")).isEqualTo("done");
+        assertThat(detail.get("taskName")).isEqualTo("历史审批任务");
+        assertThat(detail.get("processName")).isNull();
+        assertThat(detail.get("startUserName")).isNull();
+        assertThat(detail.get("businessType")).isEqualTo("PAYMENT");
+        assertThat(detail.get("businessTitle")).isNull();
+        assertThat(castList(detail.get("approvalRecords"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("审批详情：运行中与历史任务均不存在抛 BusinessException")
+    void testGetTaskDetail_notFound() {
+        TaskQuery taskQuery = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(taskQuery);
+        when(taskQuery.taskId("nonexist")).thenReturn(taskQuery);
+        when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
+        when(taskQuery.singleResult()).thenReturn(null);
+
+        HistoricTaskInstanceQuery histQuery = mock(HistoricTaskInstanceQuery.class);
+        when(historyService.createHistoricTaskInstanceQuery()).thenReturn(histQuery);
+        when(histQuery.taskId("nonexist")).thenReturn(histQuery);
+        when(histQuery.includeProcessVariables()).thenReturn(histQuery);
+        when(histQuery.singleResult()).thenReturn(null);
+
+        assertThatThrownBy(() -> approvalService.getTaskDetail("nonexist"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("任务不存在");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> castList(Object obj) {
+        return (List<Map<String, Object>>) obj;
     }
 }

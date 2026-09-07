@@ -1,4 +1,7 @@
-export const BASE_URL = '/api'
+// 多端基址单一配置源：utils/env.ts（H5=/api；小程序与 App 端发布前需填正式 HTTPS 地址）
+import { BASE_URL } from './env'
+
+export { BASE_URL }
 
 interface RequestOptions {
   url: string

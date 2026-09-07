@@ -86,6 +86,7 @@ import { ref, onMounted } from 'vue'
 import { saveMaterialOutbound, getMaterialByCode } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
+import { submitOrQueue } from '@/utils/offlineSubmit'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
@@ -169,8 +170,8 @@ async function handleSubmit() {
   submitting.value = true
   try {
     // 后端 BizMaterialOutbound 契约为单头+明细数组；领料 outboundType=PICK，
-    // 后端按明细扣减库存（不足报「库存不足，无法领料」）
-    await saveMaterialOutbound({
+    // 后端按明细扣减库存（不足报「库存不足，无法领料」）；离线时入队（需求 5.1）
+    const payload = {
       projectId: form.value.projectId,
       outboundType: 'PICK',
       outboundDate: form.value.outboundDate,
@@ -181,8 +182,14 @@ async function handleSubmit() {
         unit: form.value.unit,
         quantity: Number(form.value.quantity)
       }]
+    }
+    const { queued } = await submitOrQueue(() => saveMaterialOutbound(payload), {
+      endpoint: '/v1/material/outbound',
+      payload
     })
-    uni.showToast({ title: '提交成功', icon: 'success' })
+    if (!queued) {
+      uni.showToast({ title: '提交成功', icon: 'success' })
+    }
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally {
     submitting.value = false

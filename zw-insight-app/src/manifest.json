@@ -9,10 +9,42 @@
     "devServer": {
       "proxy": {
         "/api": {
-          "target": "http://localhost:8080",
+          "target": "http://129.204.3.200:18080",
           "changeOrigin": true
         }
       }
+    }
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": true
+    },
+    "requiredPrivateInfos": ["getLocation"],
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于现场拍照水印标注 GPS 位置"
+      }
+    }
+  },
+  "app-plus": {
+    "distribute": {
+      "android": {
+        "permissions": [
+          "<uses-permission android:name=\"android.permission.CAMERA\"/>",
+          "<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>",
+          "<uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>"
+        ]
+      },
+      "ios": {},
+      "sdkConfigs": {}
+    },
+    "privacyDescription": {
+      "NSCameraUsageDescription": "用于拍摄现场施工照片",
+      "NSPhotoLibraryUsageDescription": "用于从相册选取整改照片",
+      "NSLocationWhenInUseUsageDescription": "用于照片水印标注 GPS 位置"
     }
   }
 }

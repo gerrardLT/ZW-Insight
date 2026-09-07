@@ -70,6 +70,7 @@ import { ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { completeTask, rejectTask } from '@/api/common'
 import request from '@/utils/request'
+import { rejectIfOffline } from '@/utils/offlineSubmit'
 
 const detail = ref<any>({})
 const comment = ref('')
@@ -98,6 +99,8 @@ async function loadDetail() {
 
 async function handleApprove() {
   if (submitting.value) return
+  // 审批为强一致操作，离线不入队，明确拒绝（不静默）
+  if (rejectIfOffline('审批操作需联网进行，请联网后重试')) return
   submitting.value = true
   try {
     await completeTask({ taskId, comment: comment.value, processInstanceId })
@@ -114,6 +117,8 @@ async function handleReject() {
     uni.showToast({ title: '退回需填写意见', icon: 'none' })
     return
   }
+  // 审批为强一致操作，离线不入队，明确拒绝（不静默）
+  if (rejectIfOffline('审批操作需联网进行，请联网后重试')) return
   submitting.value = true
   try {
     await rejectTask({ taskId, comment: comment.value, processInstanceId })

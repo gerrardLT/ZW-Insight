@@ -10,7 +10,7 @@ import vue from '@vitejs/plugin-vue'
 const UNI_TAGS = new Set([
   'view', 'text', 'scroll-view', 'swiper', 'swiper-item', 'navigator',
   'image', 'icon', 'progress', 'rich-text', 'cover-view', 'cover-image',
-  'movable-area', 'movable-view', 'web-view', 'ad',
+  'movable-area', 'movable-view', 'web-view', 'ad', 'picker',
 ])
 
 export default defineConfig({

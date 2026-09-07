@@ -1,5 +1,6 @@
 <template>
   <view class="mine-page">
+    <OfflineBanner />
     <!-- 用户信息头部 -->
     <view class="user-header">
       <view class="avatar">
@@ -36,6 +37,7 @@
 import { computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { logout as logoutApi } from '@/api/auth'
+import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const userStore = useUserStore()
 

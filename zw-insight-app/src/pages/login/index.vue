@@ -28,6 +28,11 @@
         <view class="form-item">
           <input v-model="passwordForm.password" type="password" placeholder="请输入密码" class="input" />
         </view>
+        <view class="form-item captcha-item">
+          <input v-model="passwordForm.captchaCode" placeholder="请输入验证码" class="input captcha-input" maxlength="4" />
+          <image v-if="captchaImage" :src="captchaImage" class="captcha-img" mode="aspectFit" @click="refreshCaptcha" />
+          <view v-else class="captcha-img captcha-placeholder" @click="refreshCaptcha"><text>点击加载</text></view>
+        </view>
         <button class="login-btn" :loading="loading" @click="handlePasswordLogin">登 录</button>
       </view>
 
@@ -61,16 +66,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { login, sendSmsCaptcha } from '@/api/auth'
+import { useNetworkStore } from '@/stores/network'
+import { login, sendSmsCaptcha, getImageCaptcha } from '@/api/auth'
+import { offlineCache } from '@/utils/offlineCache'
 
 const userStore = useUserStore()
 const loading = ref(false)
 const loginMode = ref<'password' | 'sms'>('password')
 
-// 密码登录表单
-const passwordForm = ref({ tenantCode: '', username: '', password: '' })
+// 密码登录表单（后端开启验证码时密码登录必带 captchaUuid/captchaCode）
+const passwordForm = ref({ tenantCode: '', username: '', password: '', captchaCode: '' })
+
+// 图形验证码（CaptchaController GET /image，imageBase64 带 data:image/png 前缀可直接绑定）
+const captchaImage = ref('')
+const captchaUuid = ref('')
+
+async function refreshCaptcha() {
+  try {
+    const res: any = await getImageCaptcha()
+    captchaUuid.value = res.data?.uuid || ''
+    captchaImage.value = res.data?.imageBase64 || ''
+  } catch {
+    // 加载失败展示占位，点击重试；不阻断页面（与 PC 端范式一致）
+    captchaImage.value = ''
+  }
+}
+
+onMounted(() => { refreshCaptcha() })
 
 // 短信登录表单
 const smsForm = ref({ tenantCode: '', phone: '', smsCode: '' })
@@ -126,23 +150,45 @@ async function handleSendSms() {
   }
 }
 
-// 密码登录
+// 登录成功后补触发离线缓存初始同步（需求 4.1）：
+// App.vue 仅在冷启动且已有 token 时同步，SPA 会话内登录成功不经过该时机，
+// 导致首次登录后离线缓存缺失（2026-08-29 H5 走查实证）
+function syncOfflineCacheAfterLogin() {
+  if (useNetworkStore().isOffline) return
+  offlineCache.sync().catch((e) => {
+    console.warn('[offline] 登录后初始同步失败，下次冷启动重试', e)
+  })
+}
+
+// 密码登录（验证码一次性消费，失败后后端会要求新验证码，故失败必刷新）
 async function handlePasswordLogin() {
   if (!passwordForm.value.username || !passwordForm.value.password) {
     uni.showToast({ title: '请输入用户名和密码', icon: 'none' })
+    return
+  }
+  if (!passwordForm.value.captchaCode) {
+    uni.showToast({ title: '请输入验证码', icon: 'none' })
+    return
+  }
+  if (!captchaUuid.value) {
+    uni.showToast({ title: '验证码未加载，请点击验证码图片重试', icon: 'none' })
     return
   }
   loading.value = true
   try {
     const res: any = await login({
       ...passwordForm.value,
+      captchaUuid: captchaUuid.value,
       loginType: 'PASSWORD'
     })
     userStore.setToken(res.data.token)
     userStore.setUserInfo(res.data)
+    syncOfflineCacheAfterLogin()
     uni.switchTab({ url: '/pages/home/index' })
   } catch (e) {
-    // 错误已在 request 中统一处理
+    // 错误已在 request 中统一处理；验证码已被消费或错误，刷新新图
+    passwordForm.value.captchaCode = ''
+    refreshCaptcha()
   } finally {
     loading.value = false
   }
@@ -177,6 +223,7 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
     })
     userStore.setToken(res.data.token)
     userStore.setUserInfo(res.data)
+    syncOfflineCacheAfterLogin()
     uni.switchTab({ url: '/pages/home/index' })
   } catch (e) {
     // 错误已在 request 中统一处理
@@ -277,6 +324,28 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   display: flex;
   align-items: center;
   gap: 16rpx;
+}
+.captcha-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.captcha-input {
+  flex: 1;
+}
+.captcha-img {
+  width: 220rpx;
+  height: 88rpx;
+  border: 1rpx solid var(--zw-border);
+  border-radius: var(--zw-radius-sm);
+  background: var(--zw-bg-hover);
+}
+.captcha-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: var(--zw-text-tertiary);
 }
 .sms-input {
   flex: 1;

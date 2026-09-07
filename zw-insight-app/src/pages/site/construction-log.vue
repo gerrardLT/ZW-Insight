@@ -92,6 +92,7 @@ import { ref, onMounted } from 'vue'
 import { saveConstructionLog } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
+import { submitOrQueue, rejectIfOffline } from '@/utils/offlineSubmit'
 import { watermarkCompositor } from '@/utils/watermarkCompositor'
 import { useUserStore } from '@/stores/user'
 
@@ -208,7 +209,11 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
-    await saveConstructionLog({
+    // 含照片时临时路径不可序列化，离线无法入队，明确拒绝（不静默）
+    if (photos.value.length > 0 && rejectIfOffline('含照片的日志需联网提交，请联网后重试')) {
+      return
+    }
+    const payload = {
       projectId: form.value.projectId,
       logDate: form.value.logDate,
       weather: form.value.weather,
@@ -219,8 +224,15 @@ async function handleSubmit() {
       safetyStatus: form.value.safetyStatus,
       remark: form.value.remark,
       photos: photos.value
+    }
+    // 离线且无照片时入队（需求 5.1），联网后由 syncEngine 自动提交
+    const { queued } = await submitOrQueue(() => saveConstructionLog(payload), {
+      endpoint: '/v1/site/construction-log',
+      payload
     })
-    uni.showToast({ title: '提交成功', icon: 'success' })
+    if (!queued) {
+      uni.showToast({ title: '提交成功', icon: 'success' })
+    }
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally {
     submitting.value = false

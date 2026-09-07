@@ -113,6 +113,14 @@ public class ApprovalController {
     }
 
     /**
+     * 审批详情（聚合：任务 + 流程信息 + 业务数据 + 审批记录时间线，运行中/已结束任务均支持）
+     */
+    @GetMapping("/detail/{taskId}")
+    public R<Map<String, Object>> getTaskDetail(@PathVariable String taskId) {
+        return R.ok(approvalService.getTaskDetail(taskId));
+    }
+
+    /**
      * 我的已办（分页）
      */
     @GetMapping("/done")

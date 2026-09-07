@@ -50,13 +50,15 @@
         <text class="form-label">供应商</text>
         <input v-model="form.supplierName" placeholder="请输入供应商" class="form-input" />
       </view>
-      <view class="form-item" @click="showDatePicker">
-        <text class="form-label">入库日期</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.inboundDate }">{{ form.inboundDate || '请选择日期' }}</text>
-          <text class="arrow">›</text>
+      <picker mode="date" :value="form.inboundDate" @change="onDateChange">
+        <view class="form-item">
+          <text class="form-label">入库日期</text>
+          <view class="form-input picker">
+            <text :class="{ placeholder: !form.inboundDate }">{{ form.inboundDate || '请选择日期' }}</text>
+            <text class="arrow">›</text>
+          </view>
         </view>
-      </view>
+      </picker>
       <view class="form-item">
         <text class="form-label">备注</text>
         <input v-model="form.remark" placeholder="请输入备注" class="form-input" />
@@ -89,6 +91,7 @@ import { ref, onMounted } from 'vue'
 import { saveMaterialInbound, getMaterialByCode } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
+import { submitOrQueue } from '@/utils/offlineSubmit'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
@@ -159,25 +162,9 @@ async function fetchMaterialByCode(code: string) {
   }
 }
 
-function showDatePicker() {
-  uni.showDatePicker
-  const now = new Date()
-  const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  // #ifdef H5
-  form.value.inboundDate = dateStr
-  // #endif
-  // #ifndef H5
-  uni.showModal({
-    title: '选择入库日期',
-    editable: true,
-    placeholderText: 'YYYY-MM-DD',
-    success: (res) => {
-      if (res.confirm && res.content) {
-        form.value.inboundDate = res.content
-      }
-    }
-  })
-  // #endif
+// picker mode=date 三端统一日期选择（替换原失效的 uni.showDatePicker 调用）
+function onDateChange(e: any) {
+  form.value.inboundDate = e.detail.value
 }
 
 async function handleSubmit() {
@@ -192,8 +179,9 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
-    // 后端 BizMaterialInbound 契约为单头+明细数组（details），单价/数量随明细提交
-    await saveMaterialInbound({
+    // 后端 BizMaterialInbound 契约为单头+明细数组（details），单价/数量随明细提交；
+    // 离线时入队（需求 5.1），联网后由 syncEngine 自动提交
+    const payload = {
       projectId: form.value.projectId,
       inboundDate: form.value.inboundDate,
       totalAmount: Number((Number(form.value.quantity) * Number(form.value.unitPrice || 0)).toFixed(2)),
@@ -204,8 +192,14 @@ async function handleSubmit() {
         quantity: Number(form.value.quantity),
         unitPrice: Number(form.value.unitPrice || 0)
       }]
+    }
+    const { queued } = await submitOrQueue(() => saveMaterialInbound(payload), {
+      endpoint: '/v1/material/inbound',
+      payload
     })
-    uni.showToast({ title: '提交成功', icon: 'success' })
+    if (!queued) {
+      uni.showToast({ title: '提交成功', icon: 'success' })
+    }
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally {
     submitting.value = false

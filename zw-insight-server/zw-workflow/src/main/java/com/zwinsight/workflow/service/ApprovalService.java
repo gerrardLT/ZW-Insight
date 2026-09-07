@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.workflow.domain.WfApprovalRecord;
 import com.zwinsight.workflow.listener.ApprovalRejectEvent;
@@ -45,6 +46,13 @@ public class ApprovalService {
 
     /** 超级管理员角色编码，拥有全部审批操作权限，跳过处理人校验 */
     private static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
+
+    /**
+     * 流程内部变量，不作为业务数据展示
+     *  - businessType/businessId/initiator：审批桥接标准协议字段
+     *  - businessTitle：已由 getTaskDetail() 提升为顶层业务摘要，避免在业务详情区重复渲染
+     */
+    private static final Set<String> INTERNAL_VARIABLES = Set.of("businessType", "businessId", "initiator", "businessTitle");
 
     /**
      * 发起流程
@@ -394,8 +402,122 @@ public class ApprovalService {
                 .map(this::taskToMap)
                 .collect(Collectors.toList());
 
+        // 批量补充发起人姓名（initiator 来自流程变量中的 userId 字符串，批量查询避免 N+1）
+        Map<String, String> initiatorNames = lookupRealNames(tasks.stream()
+                .map(this::extractInitiator)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList()));
+        for (int i = 0; i < records.size(); i++) {
+            String initiator = extractInitiator(tasks.get(i));
+            records.get(i).put("startUserName",
+                    initiator != null ? initiatorNames.getOrDefault(initiator, initiator) : null);
+        }
+
         long pages = (count + size - 1) / size;
         return new PageResult<>(records, count, page, size, pages);
+    }
+
+    /**
+     * 审批详情聚合查询（移动端审批详情页）
+     * <p>
+     * 一次聚合任务信息、流程信息（名称/发起人/发起时间）、业务数据（流程变量去内部变量）
+     * 与审批记录时间线；同时支持运行中任务（待办）与已结束任务（已办详情回看）。
+     * </p>
+     *
+     * @param taskId 任务ID（运行时或历史任务均可）
+     * @return 聚合详情 Map
+     * @throws BusinessException 任务不存在时
+     */
+    public Map<String, Object> getTaskDetail(String taskId) {
+        // 优先查运行中任务；不在则回退历史任务（已办详情）
+        Task runningTask = taskService.createTaskQuery()
+                .taskId(taskId).includeProcessVariables().singleResult();
+        String processInstanceId;
+        String taskName;
+        Map<String, Object> processVariables;
+        boolean running;
+        if (runningTask != null) {
+            running = true;
+            processInstanceId = runningTask.getProcessInstanceId();
+            taskName = runningTask.getName();
+            processVariables = runningTask.getProcessVariables() != null
+                    ? runningTask.getProcessVariables() : Collections.emptyMap();
+        } else {
+            HistoricTaskInstance historicTask = historyService.createHistoricTaskInstanceQuery()
+                    .taskId(taskId).includeProcessVariables().singleResult();
+            if (historicTask == null) {
+                throw new BusinessException("任务不存在: " + taskId);
+            }
+            running = false;
+            processInstanceId = historicTask.getProcessInstanceId();
+            taskName = historicTask.getName();
+            processVariables = historicTask.getProcessVariables() != null
+                    ? historicTask.getProcessVariables() : Collections.emptyMap();
+        }
+
+        HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
+                .processInstanceId(processInstanceId).singleResult();
+
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("taskId", taskId);
+        detail.put("taskName", taskName);
+        detail.put("processInstanceId", processInstanceId);
+        detail.put("processName", instance != null ? instance.getProcessDefinitionName() : null);
+        detail.put("createTime", instance != null ? instance.getStartTime() : null);
+        detail.put("status", running ? "pending" : "done");
+
+        // 申请人（发起时经 identityService 记录的 startUserId → sys_user.realName）
+        String startUserId = instance != null ? instance.getStartUserId() : null;
+        detail.put("startUserName", lookupRealNames(
+                startUserId != null ? List.of(startUserId) : Collections.emptyList()).get(startUserId));
+
+        // 业务信息：businessKey 同源变量 + 可选 businessTitle 变量
+        String businessType = processVariables.get("businessType") != null
+                ? String.valueOf(processVariables.get("businessType")) : null;
+        Object businessIdObj = processVariables.get("businessId");
+        detail.put("businessType", businessType);
+        detail.put("businessId", businessIdObj);
+        Object businessTitle = processVariables.get("businessTitle");
+        detail.put("businessTitle", businessTitle != null ? String.valueOf(businessTitle)
+                : (businessType != null && businessIdObj != null ? businessType + ":" + businessIdObj : null));
+
+        // 业务数据：流程变量去内部变量，前端按 key-value 渲染
+        Map<String, Object> businessData = new LinkedHashMap<>();
+        processVariables.forEach((k, v) -> {
+            if (!INTERNAL_VARIABLES.contains(k) && v != null) {
+                businessData.put(k, v);
+            }
+        });
+        detail.put("businessData", businessData);
+
+        // 审批记录时间线（operTime 升序）
+        List<WfApprovalRecord> records = approvalRecordMapper.selectList(
+                new LambdaQueryWrapper<WfApprovalRecord>()
+                        .eq(WfApprovalRecord::getProcessInstanceId, processInstanceId)
+                        .orderByAsc(WfApprovalRecord::getOperTime));
+        Map<String, String> assigneeNames = lookupRealNames(records.stream()
+                .map(WfApprovalRecord::getAssignee)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList()));
+        List<Map<String, Object>> recordMaps = records.stream().map(r -> {
+            Map<String, Object> m = new LinkedHashMap<String, Object>();
+            m.put("id", r.getId());
+            m.put("taskName", r.getTaskName());
+            m.put("assigneeName", r.getAssigneeName() != null && !r.getAssigneeName().isBlank()
+                    ? r.getAssigneeName()
+                    : assigneeNames.getOrDefault(r.getAssignee(), r.getAssignee()));
+            String[] mapped = mapOperationType(r.getOperationType());
+            m.put("result", mapped[0]);
+            m.put("resultText", mapped[1]);
+            m.put("comment", r.getComment());
+            m.put("endTime", r.getOperTime());
+            return m;
+        }).collect(Collectors.toList());
+        detail.put("approvalRecords", recordMaps);
+
+        return detail;
     }
 
     /**
@@ -521,6 +643,58 @@ public class ApprovalService {
         record.setComment(comment);
         record.setOperTime(LocalDateTime.now());
         approvalRecordMapper.insert(record);
+    }
+
+    /** 从任务流程变量提取发起人 userId 字符串（可能为 null） */
+    private String extractInitiator(Task task) {
+        Map<String, Object> vars = task.getProcessVariables();
+        Object initiator = vars == null ? null : vars.get("initiator");
+        return initiator == null ? null : String.valueOf(initiator);
+    }
+
+    /**
+     * 批量查询用户真实姓名（userId 字符串 → realName），容忍非法 ID（以原值兜底）。
+     */
+    private Map<String, String> lookupRealNames(List<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Long> ids = userIds.stream().map(id -> {
+            try {
+                return Long.valueOf(id);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        Map<String, String> result = new HashMap<>();
+        if (!ids.isEmpty()) {
+            List<SysUser> users = sysUserMapper.selectBatchIds(ids);
+            for (SysUser u : users) {
+                result.put(String.valueOf(u.getId()),
+                        u.getRealName() != null ? u.getRealName() : u.getUsername());
+            }
+        }
+        // 非法/未查到的 ID 以原值兜底，不丢失展示
+        for (String id : userIds) {
+            result.putIfAbsent(id, id);
+        }
+        return result;
+    }
+
+    /** 审批操作类型 → [前端样式类, 展示文案] */
+    private String[] mapOperationType(String operationType) {
+        if (operationType == null) {
+            return new String[]{"info", "已处理"};
+        }
+        switch (operationType) {
+            case "APPROVE": return new String[]{"approved", "已通过"};
+            case "REJECT": return new String[]{"rejected", "已退回"};
+            case "REJECT_TO_START": return new String[]{"rejected", "退回发起人"};
+            case "TERMINATE": return new String[]{"rejected", "已终止"};
+            case "TRANSFER": return new String[]{"info", "已转办"};
+            case "DELEGATE": return new String[]{"info", "已委托"};
+            default: return new String[]{"info", operationType};
+        }
     }
 
     private Map<String, Object> taskToMap(Task task) {

@@ -23,6 +23,7 @@ vi.mock('@/api/common', () => ({
 import { loadProjectList, loadMaterialDict, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { offlineCache, STORAGE_KEYS } from '@/utils/offlineCache'
 import { useNetworkStore } from '@/stores/network'
+import { useUserStore } from '@/stores/user'
 
 beforeEach(() => {
   resetUniStorage()
@@ -114,5 +115,37 @@ describe('loadMaterialDict 材料字典读取', () => {
 
     expect(result.fromCache).toBe(true)
     expect(result.records).toEqual([{ id: 5 }])
+  })
+
+  it('缓存结构无法提取 records 时返回空态（兜底分支）', async () => {
+    setOffline(true)
+    offlineCache.set(STORAGE_KEYS.MATERIAL_DICT, { foo: 'bar' }, 1)
+
+    const result = await loadMaterialDict()
+
+    expect(result).toEqual({
+      records: [], fromCache: true, empty: true, message: NO_OFFLINE_DATA_TIP,
+    })
+  })
+})
+
+describe('offlineCache.sync 离线缓存初始同步（需求 4.1）', () => {
+  it('拉取材料字典/项目列表并写入缓存，已登录时同步用户信息', async () => {
+    mockGetMaterialDict.mockResolvedValue({ code: 200, data: { records: [{ id: 1, materialName: '水泥' }] } })
+    mockGetProjectList.mockResolvedValue({ code: 200, data: { records: [{ id: 2, projectName: 'P同步' }] } })
+    useUserStore().setUserInfo({ username: 'u1', realName: '张三' })
+
+    await offlineCache.sync()
+
+    expect(mockGetMaterialDict).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }))
+    expect(mockGetProjectList).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }))
+    expect(offlineCache.get(STORAGE_KEYS.MATERIAL_DICT)?.data).toBeTruthy()
+    expect(offlineCache.get(STORAGE_KEYS.PROJECT_LIST)?.data).toBeTruthy()
+    expect(offlineCache.get(STORAGE_KEYS.USER_INFO)?.data).toEqual({ username: 'u1', realName: '张三' })
+  })
+
+  it('未登录时不写用户信息缓存', async () => {
+    await offlineCache.sync()
+    expect(offlineCache.get(STORAGE_KEYS.USER_INFO)).toBeNull()
   })
 })
