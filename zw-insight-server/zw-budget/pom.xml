@@ -15,8 +15,15 @@
     <description>预算模块 - 预算编制、预算变更、预算管控</description>
 
     <properties>
-        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比（816‰），补测后上调并同步基线 -->
-        <jacoco.min.coverage>0.816</jacoco.min.coverage>
+        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比，补测后上调并同步基线。
+             2026-09-07：补 CostAccountService(48 例) / CostRollUpTask(17 例) / CostAccountController(21 例) 共 86 例后
+             clean verify 实测 1264/1519 = 0.832126（CI 千分比截断 832‰），由 0.816 上调至 0.830，留约 2.1‰ 缓冲。
+             回归参照：cost-control-backbone(5735439) 在本模块新增 14 个主源码文件，其中
+             CostAccountService(137 行)/CostRollUpTask(56 行)/CostAccountController(25 行) 三类零测试覆盖，
+             实测把模块拉到 1033/1519 = 0.680，触发
+             「Rule violated ... ratio is 0.680, but expected minimum is 0.816」BUILD FAILURE。
+             注：zw-budget 基线档位高（816‰），本模块对新增零测试类最敏感，后续新增主源码须同批补测。 -->
+        <jacoco.min.coverage>0.830</jacoco.min.coverage>
     </properties>
 
     <dependencies>
