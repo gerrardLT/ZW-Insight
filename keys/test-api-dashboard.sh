@@ -168,6 +168,10 @@ if [ -n "$PROJECT_ID" ]; then
   call GET "/api/v1/dashboard/project/$PROJECT_ID/overview"
   assert_http 2 "项目看板-聚合 HTTP"
   assert_jq '.code==200 and (.data|type=="object")' "项目看板-聚合为对象"
+
+  call GET "/api/v1/dashboard/project/$PROJECT_ID/cost-control"
+  assert_http 2 "项目看板-成本控制 HTTP"
+  assert_jq '.code==200 and (.data|type=="object")' "项目看板-成本控制为对象"
 fi
 
 # 负向：项目不存在时看板返回 404（Controller checkProjectExists）

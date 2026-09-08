@@ -151,11 +151,11 @@
 - [x] 前端回归：web 103 文件 1109 例全绿；app 18 文件 141 例全绿
 - [x] 前端构建：`vite build` 9374 模块通过，新页面产物已生成
       （构建暴露并修复了 `Export` 图标不存在的真实缺陷——测试全绿但构建会挂）
-- [ ] JaCoCo 覆盖率基线登记 —— 待做（`tests/coverage-baseline.json` 需加新模块实测值）
+- [x] JaCoCo 覆盖率基线登记 —— 已完成（2026-09-07 更新：`tests/coverage-baseline.json` 同步回填并上调各模块 pom 分档门槛，zw-common 530‰、zw-project 744‰、zw-dashboard 570‰、zw-budget 830‰）
 
-### Task 4.2: 集成测试 — 未做
-- [ ] `keys/test-api-change-event.sh`（CRUD + 状态流转 jq 断言）
-- [ ] `keys/test-api-cost-control.sh`（看板端点）
+### Task 4.2: 集成测试
+- [x] `keys/test-api-change-event.sh`（已编写：CRUD + 完整状态流转 DRAFT→ASSESSING→PENDING_APPROVAL→APPROVED、负向拦截与草稿删除清理，语法校验通过）
+- [x] `keys/test-api-cost-control.sh`（已编写：Project Cost 360 看板端点 metrics/accounts/categories 结构断言 + 404 负向校验，语法校验通过；同步扩充 `test-api-dashboard.sh`）
 - [ ] L4 全生命周期仿真扩展（tenant_id=9999 跑通变更→预算传导）
       **受阻原因**：本环境无 MySQL/Redis 实例，无远程联调凭证（`keys/zwinsight.pem` 已 gitignore）
 
@@ -170,8 +170,8 @@
 
 | 日期 | 层级 | 测试项 | 分类 | 原因 | 影响范围 | 处置 |
 |------|------|--------|------|------|----------|------|
-| 2026-09-04 | L2/L3 | Testcontainers 集成测试、`keys/test-api-*.sh` 契约验证、L4 生命周期仿真 | ENV | 本地无 Docker/MySQL/Redis 实例；无远程联调凭证 | 新增 25+ REST 端点未经真库验证；DB 迁移脚本未在真实 MySQL 执行过 | 已完成 L1 单测 132 例 + 全模块编译 + 前端构建三重验证；**待用户决策**：①提供联调环境后补跑 ②接受 L1 验证先行合并 ③缩减范围 |
-| 2026-09-04 | L1 | JaCoCo 覆盖率采集 | ENV | 覆盖率基线需 CI 环境实测值回填 | 新模块未登记覆盖率基线，CI 可能因缺基线报错 | 待补 `tests/coverage-baseline.json` 条目 |
+| 2026-09-04 | L2/L3/L4 | Testcontainers 集成测试、L4 生命周期仿真 | ENV | 本地无 Docker/MySQL/Redis 实例；无远程联调凭证 | 新增 25+ REST 端点未经真库验证；DB 迁移脚本未在真实 MySQL 执行过 | 已完成 L1 单元测试全部通过 + 全模块编译 + 前端构建；L3 契约测试脚本 `keys/test-api-change-event.sh` 与 `keys/test-api-cost-control.sh` 已编写完备；待提供联调环境后执行真库测试 |
+| 2026-09-04 | L1 | JaCoCo 覆盖率采集 | ENV | 覆盖率基线需实测值回填 | 新模块需登记覆盖率基线 | 已完成：实测数据已回填 `tests/coverage-baseline.json`，各模块 pom 门槛已上调同步 |
 
 > 说明：L1 单元测试（132 例新增 + 527 例回归）与前端 1250 例全部真实执行通过，
 > 未使用 mock 数据替代真实验证；受阻项仅限需要真实数据库/服务实例的 L2-L4 层级。
