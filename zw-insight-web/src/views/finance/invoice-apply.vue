@@ -310,21 +310,21 @@ onMounted(() => {
 
 <style scoped>
 .finance-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }
 .detail-error {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--zw-space-sm-md);
   color: var(--el-color-danger);
-  padding: 8px 0;
+  padding: var(--zw-space-sm) 0;
 }
 </style>

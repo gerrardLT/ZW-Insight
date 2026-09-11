@@ -202,7 +202,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.announcement-container { padding: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.announcement-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 </style>

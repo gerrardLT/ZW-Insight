@@ -12,7 +12,7 @@
               </el-button>
             </div>
           </template>
-          <el-input v-model="filterText" placeholder="输入机构名称搜索" clearable style="margin-bottom: 12px" />
+          <el-input v-model="filterText" placeholder="输入机构名称搜索" clearable style="margin-bottom: var(--zw-space-sm-md)" />
           <el-tree
             ref="treeRef"
             :data="orgTree"
@@ -223,7 +223,7 @@ onMounted(() => {
 
 <style scoped>
 .org-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
@@ -233,7 +233,7 @@ onMounted(() => {
 .tree-node {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--zw-space-sm);
   flex: 1;
 }
 </style>

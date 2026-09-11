@@ -198,6 +198,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import { TowerCraneIcon, BlueprintCornerIcon } from '@/components/icons/zw'
@@ -255,7 +256,7 @@ async function loadChangeSignals() {
     openChangeCount.value = openRes.data || 0
     approvedChangeDelta.value = deltaRes.data || 0
   } catch (e: any) {
-    console.warn('加载变更信号失败', e?.message)
+    ElMessage.error(`加载变更信号失败：${e?.message || '请稍后重试'}`)
   } finally {
     changeLoading.value = false
   }
@@ -378,16 +379,15 @@ async function loadCostData() {
     const response = await getProjectCostControl(selectedProjectId.value!)
     costData.data = response.data
   } catch (error: any) {
-    console.error('加载成本数据失败:', error)
     costData.error = error.message || '加载失败，请稍后重试'
   } finally {
     costData.loading = false
   }
 }
 
-// 处理树节点点击
-function handleTreeNodeClick(node: any) {
-  console.log('选中节点:', node)
+// 处理树节点点击：将账户编码填入搜索框，联动右侧明细表过滤
+function handleTreeNodeClick(data: any) {
+  searchQuery.value = data?.code || ''
 }
 
 // 展开全部节点
@@ -395,9 +395,9 @@ function expandAllNodes() {
   treeRef.value?.expandAll(true)
 }
 
-// 查看详情
+// 查看详情：跳转成本账户 CBS 管理页（携带项目上下文，由目标页读取 query 初始化筛选）
 function viewAccountDetail(account: CostAccountSummary) {
-  console.log('查看详情:', account)
+  router.push({ path: '/budget/cost-account', query: { projectId: selectedProjectId.value ? String(selectedProjectId.value) : undefined } })
 }
 
 // 监听项目 ID 变化
@@ -554,8 +554,8 @@ watch(selectedProjectId, (newVal) => {
   .risk-title { font-size: var(--zw-font-size-sm); font-weight: var(--zw-font-weight-semibold); color: var(--zw-text-secondary); margin-bottom: var(--zw-space-sm); border-bottom: 1px dashed var(--zw-border-light); padding-bottom: 4px; }
   .risk-item {
     display: inline-flex; align-items: center; gap: 8px; margin: 0 8px 8px 0; padding: 6px 12px; background: var(--zw-bg-hover); border-radius: 6px; font-size: var(--zw-font-size-sm); cursor: default;
-    &.high { border-left: 3px solid var(--zw-danger); background-color: rgba(217, 45, 32, .05); }
-    &.low { border-left: 3px solid var(--zw-warning); background-color: rgba(247, 181, 0, .05); }
+    &.high { border: 1px solid var(--zw-danger-light); background-color: rgba(217, 45, 32, .06); }
+    &.low { border: 1px solid var(--zw-warning-light); background-color: rgba(247, 181, 0, .06); }
     .risk-account { font-weight: var(--zw-font-weight-medium); color: var(--zw-text-primary); }
     .risk-detail { font-size: var(--zw-font-size-xs); color: var(--zw-text-quaternary); }
   }

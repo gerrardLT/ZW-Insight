@@ -12,7 +12,7 @@
               </el-button>
             </div>
           </template>
-          <el-input v-model="searchName" placeholder="搜索角色名称" clearable style="margin-bottom: 12px" />
+          <el-input v-model="searchName" placeholder="搜索角色名称" clearable style="margin-bottom: var(--zw-space-sm-md)" />
           <div class="role-list">
             <div
               v-for="role in filteredRoles"
@@ -320,7 +320,7 @@ onMounted(() => {
 
 <style scoped>
 .role-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
@@ -332,11 +332,11 @@ onMounted(() => {
   overflow-y: auto;
 }
 .role-item {
-  padding: 10px 12px;
-  border-radius: 4px;
+  padding: var(--zw-space-sm-md) var(--zw-space-sm-md);
+  border-radius: var(--zw-radius-sm);
   cursor: pointer;
   border: 1px solid transparent;
-  margin-bottom: 4px;
+  margin-bottom: var(--zw-space-xs);
   transition: all 0.2s;
 }
 .role-item:hover {
@@ -355,24 +355,24 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 4px;
+  margin-top: var(--zw-space-xs);
 }
 .role-name {
   font-weight: 500;
 }
 .role-code {
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
   color: #909399;
 }
 .data-scope-tag {
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
 }
 .permission-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: var(--zw-space-md);
+  padding-bottom: var(--zw-space-sm-md);
   border-bottom: 1px solid #ebeef5;
 }
 </style>

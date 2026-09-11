@@ -4,33 +4,33 @@
 > 人工判断请编辑 `tools/feature-ledger/data/ledger-data.json` 的 manual 字段
 > （levelFinal / gapNotes / benchmarkNote / roi），再重跑 `npm run dev -- report` 刷新本报告。
 
-- 生成时间：2026/8/22 23:44:29
+- 生成时间：2026/9/10 15:10:30
 - 信号规则版本：v3
-- 条目：133（PC 105 / 移动端 28）
-- 人工复核进度：133 / 133（100%）
+- 条目：147（PC 109 / 移动端 38）
+- 人工复核进度：133 / 147（90%）
 
 ## 一、成熟度分布总览
 
 | 等级 | 条目数 | 占比 |
 |---|---:|---:|
 | L0 缺失/占位 | 1 | 1% |
-| L1 单路径CRUD | 55 | 41% |
-| L2 规则完整 | 30 | 23% |
-| L3 协同流转 | 40 | 30% |
+| L1 单路径CRUD | 59 | 40% |
+| L2 规则完整 | 37 | 25% |
+| L3 协同流转 | 43 | 29% |
 | L4 数据智能 | 7 | 5% |
 
 ### 八维缺口计数（适用维度中信号为 0 的条目数）
 
 | 维度 | PC 缺失 | 移动端缺失* |
 |---|---:|---:|
-| 效率(批量/导入导出) | 86/105 | 25/28 |
-| 查询(组合筛选) | 13/105 | — |
-| 状态(状态机) | 55/105 | — |
-| 追溯(审计日志) | 87/105 | — |
-| 通知(消息触达) | 104/105 | 28/28 |
-| 权限(按钮级) | 76/105 | — |
-| 异常(错误恢复) | 22/105 | 2/28 |
-| 价值(聚合分析) | 98/105 | — |
+| 效率(批量/导入导出) | 89/109 | 32/38 |
+| 查询(组合筛选) | 14/109 | — |
+| 状态(状态机) | 54/109 | — |
+| 追溯(审计日志) | 89/109 | — |
+| 通知(消息触达) | 108/109 | 38/38 |
+| 权限(按钮级) | 76/109 | — |
+| 异常(错误恢复) | 22/109 | 6/38 |
+| 价值(聚合分析) | 102/109 | — |
 
 \* 移动端仅评效率/异常/通知三维子集，其余维度不适用。
 
@@ -40,26 +40,26 @@
 
 | # | 页面 | 分组/模块 | 等级 | 缺口 | 复核 |
 |---:|---|---|---|---|:---:|
-| 1 | 系统监控 | D-system | L0 | 效状通异值 | ✓ |
+| 1 | 系统监控 | D-system | L1→L0 | 效查状追通值 | ✓ |
 | 2 | 项目档案 | A-project | L1 | 效异通 | ✓ |
-| 3 | 无权限 | D-403 | L1 | 效查状追通权异值 | ✓ |
-| 4 | 页面不存在 | D-404 | L1 | 效查状追通权异值 | ✓ |
-| 5 | 找回密码 | D-forgot-password | L1 | 效查状追通权异值 | ✓ |
-| 6 | 登录 | D-login | L1 | 效查状追通权异值 | ✓ |
-| 7 | 登录设备 | D-user | L1 | 效查状追通权值 | ✓ |
-| 8 | 业务类型 | D-workflow | L1 | 效查状追通权值 | ✓ |
-| 9 | 系统设置 | D-system | L1 | 效查状追通权值 | ✓ |
-| 10 | 版本管理 | D-system | L1 | 效状追通异值 | ✓ |
-| 11 | 工作台 | D-nav | L1 | 异通 | ✓ |
-| 12 | 供应商黑名单 | D-basedata | L1 | 效状追通权值 | ✓ |
-| 13 | 流程定义 | D-workflow | L1 | 查状追通权值 | ✓ |
-| 14 | 菜单管理 | D-system | L1 | 效查状追通值 | ✓ |
-| 15 | 我的审批 | D-workflow | L2→L1 | 通 | ✓ |
-| 16 | 档案查询 | D-archive | L1 | 效状追通权值 | ✓ |
-| 17 | 流程设计器 | D-workflow | L1 | 查状追通权值 | ✓ |
-| 18 | 数据字典 | D-system | L1 | 效状追通值 | ✓ |
-| 19 | 发票汇总 | C-finance | L1 | 效状追通权异值 | ✓ |
-| 20 | 供应商评价 | D-basedata | L1 | 效状追通权值 | ✓ |
+| 3 | 成本控制看板 | A-project | L1 | 效异通 | ⚠ |
+| 4 | 无权限 | D-403 | L1 | 效查状追通权异值 | ✓ |
+| 5 | 页面不存在 | D-404 | L1 | 效查状追通权异值 | ✓ |
+| 6 | 找回密码 | D-forgot-password | L1 | 效查状追通权异值 | ✓ |
+| 7 | 登录 | D-login | L1 | 效查状追通权异值 | ✓ |
+| 8 | 登录设备 | D-user | L1 | 效查状追通权值 | ✓ |
+| 9 | 业务类型 | D-workflow | L1 | 效查状追通权值 | ✓ |
+| 10 | 变更事件 | A-contract | L1 | 异通 |  |
+| 11 | 劳务点工 | B-labor | L1 | 异通 |  |
+| 12 | 机械台班 | B-machine | L1 | 异通 |  |
+| 13 | 系统设置 | D-system | L1 | 效查状追通权值 | ✓ |
+| 14 | 版本管理 | D-system | L1 | 效状追通异值 | ✓ |
+| 15 | 工作台 | D-nav | L1 | 异通 | ✓ |
+| 16 | 供应商黑名单 | D-basedata | L1 | 效状追通权值 | ✓ |
+| 17 | 流程定义 | D-workflow | L1 | 查状追通权值 | ✓ |
+| 18 | 我的审批 | D-workflow | L2→L1 | 通 | ✓ |
+| 19 | 菜单管理 | D-system | L1 | 效状追通值 | ✓ |
+| 20 | 档案查询 | D-archive | L1 | 效状追通权值 | ✓ |
 
 ## 三、ROI 差距清单
 
@@ -169,7 +169,7 @@
 | P2 | 供应商评价 | L1 | 2/5 | 2/5 | 值 |
 | P2 | 租户管理 | L2 | 2/5 | 2/5 | 状 |
 | P2 | 数据备份 | L1 | 2/5 | 2/5 | 状 |
-| P2 | 系统监控 | L0 | 2/5 | 2/5 | 值 |
+| P2 | 系统监控 | L1→L0 | 2/5 | 2/5 | 值 |
 | P2 | 税率管理 | L2 | 1/5 | 1/5 | — |
 | P2 | 备用金归还 | L2 | 1/5 | 1/5 | — |
 | P2 | 办公用品 | L3 | 1/5 | 1/5 | — |
@@ -192,7 +192,7 @@
 | P2 | 用户类型 | L1 | 1/5 | 1/5 | 效状追通权值 |
 | P2 | 系统设置 | L1 | 1/5 | 1/5 | 效查状追通权值 |
 | P2 | 数据字典 | L1 | 1/5 | 1/5 | 效状追通值 |
-| P2 | 菜单管理 | L1 | 1/5 | 1/5 | 效查状追通值 |
+| P2 | 菜单管理 | L1 | 1/5 | 1/5 | 效状追通值 |
 | P2 | 机构管理 | L1 | 1/5 | 1/5 | 效状追通值 |
 | P2 | 岗位管理 | L1 | 1/5 | 1/5 | 效状追通值 |
 | P2 | 编号规则管理 | L1 | 1/5 | 1/5 | 效状通值 |
@@ -206,26 +206,33 @@
 缺口列单字：效=批量/导入导出，查=组合筛选，状=状态机，追=审计日志，通=消息触达，
 权=按钮级权限，异=错误恢复，值=聚合分析。「人工」列=该条目含任意人工判断字段，内容见 JSON。
 
-### A 核心主链（14 条）
+### A 核心主链（21 条）
 
 | 页面 | 路由 | 模块 | 等级 | 置信度 | 缺口 | 人工 |
 |---|---|---|---|:---:|---|:---:|
 | 目标成本变更 | /budget/change | budget | L3 | high | 效追通值 | ✓ |
 | 变更单表单 | /budget/change/form | budget | L3 | high | 效追通值 | ✓ |
 | 预算控制配置 | /budget/control-config | budget | L1 | high | 效状追通值 | ✓ |
+| 成本账户CBS | /budget/cost-account | budget | L3 | high | 通值 |  |
 | 预算编制 | /budget/list | budget | L3 | high | 效追通值 | ✓ |
 | BOQ 上传 | /contract/boq/:contractId | contract | L3 | high | 通值 | ✓ |
+| 变更事件 | /contract/change-event | contract | L3 | high | 效通值 |  |
 | 编辑合同 | /contract/edit/:id | contract | L3 | high | 效通异值 | ✓ |
 | 施工合同 | /contract/list | contract | L3 | high | 通值 | ✓ |
 | 产值上报 | /contract/output-report | contract | L3 | high | 效通值 | ✓ |
+| 登记变更事件 | pages/contract/change-event/create | contract | L2 | high | 效通 |  |
+| 变更事件详情 | pages/contract/change-event/detail | contract | L2 | high | 效通 |  |
+| 变更事件 | pages/contract/change-event/index | contract | L1 | high | 异通 |  |
 | 项目详情 | /project/detail/:id | project | L3 | high | 效通权异值 | ✓ |
 | 编辑项目 | /project/edit/:id | project | L3 | high | 效通权异值 | ✓ |
 | 项目报备 | /project/list | project | L3 | high | 通权值 | ✓ |
+| WBS结构 | /project/wbs | project | L3 | high | 效通值 |  |
 | 项目档案 | pages/project/archive | project | L1 | ⚠ | 效异通 | ✓ |
+| 成本控制看板 | pages/project/cost-control/index | project | L1 | ⚠ | 效异通 |  |
 | 证件管理 | /tender/certificate | tender | L1 | high | 效状追通权值 | ✓ |
 | 投标报名 | /tender/register | tender | L3 | high | 效追通权值 | ✓ |
 
-### B 支出域（27 条）
+### B 支出域（31 条）
 
 | 页面 | 路由 | 模块 | 等级 | 置信度 | 缺口 | 人工 |
 |---|---|---|---|:---:|---|:---:|
@@ -235,6 +242,8 @@
 | 薪资统计 | /labor/salary-stats | labor | L4 | high | 状追通权 | ✓ |
 | 班组管理 | /labor/team | labor | L1 | high | 效状追通权值 | ✓ |
 | 用工单 | /labor/work-order | labor | L3 | high | 效追通权值 | ✓ |
+| 点工工时签认 | pages/labor/work-order/create | labor | L2 | high | 效通 |  |
+| 劳务点工 | pages/labor/work-order/index | labor | L1 | high | 异通 |  |
 | 机械合同 | /machine/contract | machine | L3 | high | 效追通权值 | ✓ |
 | 进出场登记 | /machine/entry | machine | L1 | high | 效状追通权值 | ✓ |
 | 机械台账 | /machine/ledger | machine | L1 | high | 状追通权值 | ✓ |
@@ -243,6 +252,8 @@
 | 新建结算单 | /machine/settlement/create | machine | L4 | high | 效追通权异 | ✓ |
 | 结算单详情 | /machine/settlement/detail/:id | machine | L4 | high | 追通权 | ✓ |
 | 台班/工作量 | /machine/work-log | machine | L1 | high | 效状追通权值 | ✓ |
+| 填报机械台班 | pages/machine/work-log/create | machine | L2 | high | 效通 |  |
+| 机械台班 | pages/machine/work-log/index | machine | L1 | high | 异通 |  |
 | 到货入库 | /material/inbound | material | L3 | high | 效追通权值 | ✓ |
 | 领料出库 | /material/outbound | material | L3 | high | 效追通权值 | ✓ |
 | 退货退款 | /material/refund | material | L2 | high | 效追通权异值 | ✓ |
@@ -257,7 +268,7 @@
 | 分包合同 | /subcontract/contract | subcontract | L3 | high | 效追通权值 | ✓ |
 | 分包结算 | /subcontract/settlement | subcontract | L3 | high | 效追通权值 | ✓ |
 
-### C 财务现场域（38 条）
+### C 财务现场域（39 条）
 
 | 页面 | 路由 | 模块 | 等级 | 置信度 | 缺口 | 人工 |
 |---|---|---|---|:---:|---|:---:|
@@ -299,8 +310,9 @@
 | 进度反馈 | pages/site/progress-feedback | site | L2 | high | 效通 | ✓ |
 | 质量检查 | pages/site/quality-check | site | L2 | high | 效通 | ✓ |
 | 安全检查 | pages/site/safety-check | site | L2 | high | 效通 | ✓ |
+| 工程水印相机 | pages/site/watermark-camera/index | site | L2 | high | 效通 |  |
 
-### D 平台支撑域（54 条）
+### D 平台支撑域（56 条）
 
 | 页面 | 路由 | 模块 | 等级 | 置信度 | 缺口 | 人工 |
 |---|---|---|---|:---:|---|:---:|
@@ -317,7 +329,7 @@
 | 供应商 | /basedata/supplier | basedata | L1 | high | 效状追通权值 | ✓ |
 | 供应商黑名单 | /basedata/supplier-blacklist | basedata | L1 | high | 效状追通权值 | ✓ |
 | 供应商评价 | /basedata/supplier-evaluation | basedata | L1 | high | 效状追通权值 | ✓ |
-| 首页 | /dashboard | dashboard | L4 | high | 效状追通权 | ✓ |
+| 首页 | /dashboard | dashboard | L4 | high | 效追通 | ✓ |
 | 找回密码 | /forgot-password | forgot-password | L1 | ⚠ | 效查状追通权异值 | ✓ |
 | 登录 | /login | login | L1 | ⚠ | 效查状追通权异值 | ✓ |
 | 找回密码 | pages/login/forgot-password | login | L2 | high | 效通 | ✓ |
@@ -331,17 +343,19 @@
 | 我的 | pages/mine/index | nav | L2 | high | 效通 | ✓ |
 | 修改密码 | pages/mine/password | nav | L2 | high | 效通 | ✓ |
 | 编辑快捷入口 | pages/mine/shortcut-edit | nav | L2 | high | 效通 | ✓ |
+| 定位签到 | pages/mine/sign | nav | L2 | high | 效通 |  |
 | 工作台 | pages/workbench/index | nav | L1 | high | 异通 | ✓ |
 | 存储管理 | /platform/storage | platform | L1 | ⚠ | 效状通值 | ✓ |
 | 租户管理 | /platform/tenant | platform | L2 | high | 效追通值 | ✓ |
 | 用户类型 | /platform/tenant-type | platform | L1 | high | 效状追通权值 | ✓ |
+| 成本主线看板 | /project-cost-control | project-cost-control | L2 | high | 效查追通权异值 |  |
 | 项目看板 | /project-dashboard | project-dashboard | L4 | ⚠ | 效查状追通权异 | ✓ |
 | 数据备份 | /system/backup | system | L1 | high | 效状追通值 | ✓ |
 | 系统设置 | /system/config | system | L1 | high | 效查状追通权值 | ✓ |
 | 数据字典 | /system/dict | system | L1 | high | 效状追通值 | ✓ |
 | 日志管理 | /system/log | system | L1 | high | 效状追通权异值 | ✓ |
-| 菜单管理 | /system/menu | system | L1 | high | 效查状追通值 | ✓ |
-| 系统监控 | /system/monitor | system | L0 | ⚠ | 效状通异值 | ✓ |
+| 菜单管理 | /system/menu | system | L1 | high | 效状追通值 | ✓ |
+| 系统监控 | /system/monitor | system | L1→L0 | high | 效查状追通值 | ✓ |
 | 机构管理 | /system/org | system | L1 | high | 效状追通值 | ✓ |
 | 岗位管理 | /system/post | system | L1 | high | 效状追通值 | ✓ |
 | 打印模板 | /system/print-template | system | L1 | ⚠ | 效状通值 | ✓ |
@@ -363,8 +377,12 @@
 
 ### 清单扫描警告
 
+- 移动端页面数 38 与基准 28 不符（pages.json 可能已增删，属正常演进）
+- 清单差异: views 有文件但无路由: zw-insight-web/src/views/contract/change-event/detail-drawer.vue
+- 清单差异: views 有文件但无路由: zw-insight-web/src/views/contract/change-event/form-modal.vue
 - 清单差异: views 有文件但无路由: zw-insight-web/src/views/project/components/ProjectMember.vue
-- PC 功能页数 105 与基准 104 不符（前端路由可能已增删，属正常演进，请复核清单差异）
+- 清单差异: views 有文件但无路由: zw-insight-web/src/views/workflow/designer/PropertiesPanel.vue
+- PC 功能页数 109 与基准 104 不符（前端路由可能已增删，属正常演进，请复核清单差异）
 
 ### 已下线页面（removed，保留历史判断）
 

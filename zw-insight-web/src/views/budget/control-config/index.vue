@@ -225,8 +225,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.control-config-container { padding: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
-.form-tip { font-size: 12px; color: #909399; margin-top: 4px; }
+.control-config-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
+.form-tip { font-size: var(--zw-font-size-xs); color: #909399; margin-top: var(--zw-space-xs); }
 </style>

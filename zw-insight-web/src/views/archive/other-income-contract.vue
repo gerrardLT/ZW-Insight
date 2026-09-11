@@ -6,7 +6,7 @@
         type="info"
         show-icon
         :closable="false"
-        style="margin-bottom: 16px"
+        style="margin-bottom: var(--zw-space-md)"
       />
 
       <el-form :model="queryParams" inline>
@@ -95,10 +95,10 @@ onMounted(() => {
 
 <style scoped>
 .archive-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

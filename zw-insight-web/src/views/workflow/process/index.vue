@@ -136,10 +136,10 @@ onMounted(() => {
 
 <style scoped>
 .process-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .process-image-wrap {
   display: flex;
@@ -153,6 +153,6 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   color: #909399;
-  gap: 8px;
+  gap: var(--zw-space-sm);
 }
 </style>

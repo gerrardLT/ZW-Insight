@@ -1,11 +1,20 @@
 <template>
-  <el-card shadow="never" class="stat-chart-panel">
+  <el-card shadow="never" class="stat-chart-panel card-corner-marked">
     <template #header>
       <div class="panel-header">
-        <span class="panel-title">{{ title }}</span>
-        <el-button link size="small" :loading="loading" @click="load">
-          <el-icon><Refresh /></el-icon>刷新
-        </el-button>
+        <div class="panel-title-wrap">
+          <div class="panel-eyebrow">METRICS // MEASUREMENT</div>
+          <span class="panel-title">{{ title }}</span>
+        </div>
+        <div class="header-actions">
+          <div v-if="hazardRibbon" class="hazard-badge">
+            <span class="hazard-stripe"></span>
+            <span class="hazard-text">{{ hazardRibbon }}</span>
+          </div>
+          <el-button link size="small" :loading="loading" @click="load">
+            <el-icon><Refresh /></el-icon>刷新
+          </el-button>
+        </div>
       </div>
     </template>
     <div class="panel-body">
@@ -34,6 +43,31 @@
         class="chart-box"
         :style="{ height: height }"
       ></div>
+      <!-- 首次加载骨架屏：覆盖图表区域，带蓝图机械网格与激光扫描动效 -->
+      <div
+        v-if="loading && !hasLoaded"
+        class="blueprint-skeleton-overlay"
+        data-testid="stat-panel-skeleton"
+        :style="{ height: height }"
+      >
+        <div class="blueprint-grid"></div>
+        <div class="blueprint-axis-y">
+          <span>100%</span>
+          <span>75%</span>
+          <span>50%</span>
+          <span>25%</span>
+          <span>0%</span>
+        </div>
+        <div class="blueprint-scanner"></div>
+        <div class="blueprint-rows">
+          <div class="skeleton-bar" style="height: 60%; width: 12%;"></div>
+          <div class="skeleton-bar" style="height: 85%; width: 12%;"></div>
+          <div class="skeleton-bar" style="height: 45%; width: 12%;"></div>
+          <div class="skeleton-bar" style="height: 70%; width: 12%;"></div>
+          <div class="skeleton-bar" style="height: 90%; width: 12%;"></div>
+        </div>
+        <div class="blueprint-caption">CALIBRATING INDUSTRIAL METRICS // 正在校准图表数据</div>
+      </div>
     </div>
   </el-card>
 </template>
@@ -63,6 +97,8 @@ const props = withDefaults(defineProps<{
   height?: string
   /** 空态文案 */
   emptyText?: string
+  /** 危险预警条文案（例如超支预警/风险告警） */
+  hazardRibbon?: string
   /** 数据加载函数，返回业务数据（res.data 解包由调用方完成），失败抛 Error */
   fetchData: () => Promise<any>
   /** 由数据构建 echarts option；返回 null 表示空数据，展示空态 */
@@ -75,6 +111,8 @@ const props = withDefaults(defineProps<{
 const loading = ref(false)
 const errorMsg = ref('')
 const isEmpty = ref(false)
+/** 是否完成过一次加载：首次加载展示骨架屏，后续刷新用 v-loading 遮罩防闪烁 */
+const hasLoaded = ref(false)
 const chartRef = ref<HTMLElement>()
 let chart: echarts.ECharts | null = null
 /** 最近一次成功加载的业务数据：暗色/亮色切换时不重复请求，直接重绘 */
@@ -112,6 +150,7 @@ async function load() {
     lastData = null
   } finally {
     loading.value = false
+    hasLoaded.value = true
   }
 }
 
@@ -147,6 +186,56 @@ defineExpose({ reload: load })
   justify-content: space-between;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 工业危险预警带 */
+.hazard-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  background: var(--zw-warning-light);
+  border: 1px solid var(--zw-warning);
+  border-radius: var(--zw-radius-xs);
+  gap: 6px;
+}
+
+.hazard-stripe {
+  width: 8px;
+  height: 14px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--zw-hazard-black) 0 4px,
+    var(--zw-hazard-yellow) 4px 8px
+  );
+}
+
+.hazard-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--zw-text-primary);
+  letter-spacing: 0.5px;
+}
+
+.panel-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.panel-eyebrow {
+  font-family: var(--zw-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--zw-text-tertiary);
+}
+
 .panel-title {
   font-weight: var(--zw-font-weight-semibold, 600);
   color: var(--zw-text-primary, #1d2129);
@@ -157,5 +246,91 @@ defineExpose({ reload: load })
   align-items: center;
   justify-content: center;
   min-height: 220px;
+}
+
+.panel-body {
+  position: relative;
+}
+
+/* 蓝图机械网格骨架屏 */
+.blueprint-skeleton-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: var(--zw-bg-card);
+  overflow: hidden;
+  border: 1px dashed var(--zw-border);
+  box-sizing: border-box;
+}
+
+/* 蓝图网格底纹 */
+.blueprint-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 107, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 107, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* 纵轴标尺 */
+.blueprint-axis-y {
+  position: absolute;
+  left: 8px;
+  top: 16px;
+  bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: var(--zw-font-mono);
+  font-size: 10px;
+  color: var(--zw-text-quaternary);
+  user-select: none;
+}
+
+/* 扫描激光束 */
+.blueprint-scanner {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(90deg, transparent, rgba(255, 107, 0, 0.15), transparent);
+  animation: laser-sweep 2s infinite linear;
+}
+
+@keyframes laser-sweep {
+  0% { left: -40px; }
+  100% { left: 100%; }
+}
+
+.blueprint-rows {
+  position: absolute;
+  left: 60px;
+  right: 24px;
+  bottom: 40px;
+  top: 30px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+}
+
+.skeleton-bar {
+  background: var(--zw-bg-hover);
+  border: 1px solid var(--zw-border-light);
+  border-radius: var(--zw-radius-xs);
+  transition: all 0.3s;
+}
+
+.blueprint-caption {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--zw-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--zw-brand);
+  letter-spacing: 1px;
 }
 </style>

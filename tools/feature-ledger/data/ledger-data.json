@@ -1,9 +1,13 @@
 {
   "signalVersion": 3,
-  "generatedAt": "2026-08-22T15:44:29.774Z",
+  "generatedAt": "2026-09-10T07:10:30.043Z",
   "warnings": [
+    "移动端页面数 38 与基准 28 不符（pages.json 可能已增删，属正常演进）",
+    "清单差异: views 有文件但无路由: zw-insight-web/src/views/contract/change-event/detail-drawer.vue",
+    "清单差异: views 有文件但无路由: zw-insight-web/src/views/contract/change-event/form-modal.vue",
     "清单差异: views 有文件但无路由: zw-insight-web/src/views/project/components/ProjectMember.vue",
-    "PC 功能页数 105 与基准 104 不符（前端路由可能已增删，属正常演进，请复核清单差异）"
+    "清单差异: views 有文件但无路由: zw-insight-web/src/views/workflow/designer/PropertiesPanel.vue",
+    "PC 功能页数 109 与基准 104 不符（前端路由可能已增删，属正常演进，请复核清单差异）"
   ],
   "entries": [
     {
@@ -209,6 +213,88 @@
       }
     },
     {
+      "featureId": "A-pc-budget-cost-account-index",
+      "module": "budget",
+      "group": "A",
+      "platform": "pc",
+      "pagePath": "/budget/cost-account",
+      "pageFile": "zw-insight-web/src/views/budget/cost-account/index.vue",
+      "title": "成本账户CBS",
+      "signals": {
+        "efficiency": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-web/src/views/budget/cost-account/index.vue:112 [批量操作(多选)]",
+            "zw-insight-web/src/views/budget/cost-account/index.vue:114 [批量操作(多选)]"
+          ]
+        },
+        "query": {
+          "count": 39,
+          "evidence": [
+            "zw-insight-web/src/views/budget/cost-account/index.vue:7 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/budget/cost-account/index.vue:21 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/budget/cost-account/index.vue:26 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/budget/cost-account/index.vue:201 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/budget/cost-account/index.vue:209 [筛选控件(下拉)]"
+          ]
+        },
+        "state": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-web/src/views/budget/cost-account/index.vue:167 [状态门禁(按钮)]",
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:116 [流转端点(submit/approve/withdraw/reject)]"
+          ]
+        },
+        "error": {
+          "count": 10,
+          "evidence": [
+            "zw-insight-web/src/views/budget/cost-account/index.vue:595 [错误提示分支]",
+            "zw-insight-web/src/views/budget/cost-account/index.vue:686 [错误提示分支]",
+            "zw-insight-web/src/views/budget/cost-account/index.vue:694 [错误提示分支]",
+            "zw-insight-web/src/views/budget/cost-account/index.vue:707 [错误提示分支]",
+            "zw-insight-web/src/views/budget/cost-account/index.vue:713 [错误提示分支]"
+          ]
+        },
+        "audit": {
+          "count": 10,
+          "evidence": [
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:74 [操作日志注解]",
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:85 [操作日志注解]",
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:96 [操作日志注解]",
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:107 [操作日志注解]",
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:118 [操作日志注解]"
+          ]
+        },
+        "permission": {
+          "count": 11,
+          "evidence": [
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:29 [方法级权限注解]",
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:73 [方法级权限注解]",
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:84 [方法级权限注解]",
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:95 [方法级权限注解]",
+            "zw-insight-server/zw-budget/src/main/java/com/zwinsight/budget/controller/CostAccountController.java:106 [方法级权限注解]"
+          ]
+        }
+      },
+      "levelAuto": 3,
+      "confidence": "high",
+      "lineCount": 970,
+      "scoreReasons": [
+        "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
+      ],
+      "ruleHits": {
+        "批量操作(多选)": 2,
+        "筛选控件(下拉)": 6,
+        "查询区输入框": 20,
+        "状态门禁(按钮)": 1,
+        "错误提示分支": 10,
+        "可选查询参数": 13,
+        "流转端点(submit/approve/withdraw/reject)": 1,
+        "操作日志注解": 10,
+        "方法级权限注解": 11
+      }
+    },
+    {
       "featureId": "A-pc-budget-index",
       "module": "budget",
       "group": "A",
@@ -304,17 +390,17 @@
           "evidence": [
             "zw-insight-web/src/views/contract/boq-upload.vue:12 [状态渲染映射]",
             "zw-insight-web/src/views/contract/boq-upload.vue:13 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/boq-upload.vue:152 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/boq-upload.vue:160 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/boq-upload.vue:161 [状态渲染映射]"
+            "zw-insight-web/src/views/contract/boq-upload.vue:153 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/boq-upload.vue:161 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/boq-upload.vue:162 [状态渲染映射]"
           ]
         },
         "error": {
           "count": 3,
           "evidence": [
-            "zw-insight-web/src/views/contract/boq-upload.vue:185 [错误提示分支]",
-            "zw-insight-web/src/views/contract/boq-upload.vue:193 [错误提示分支]",
-            "zw-insight-web/src/views/contract/boq-upload.vue:283 [错误提示分支]"
+            "zw-insight-web/src/views/contract/boq-upload.vue:186 [错误提示分支]",
+            "zw-insight-web/src/views/contract/boq-upload.vue:194 [错误提示分支]",
+            "zw-insight-web/src/views/contract/boq-upload.vue:258 [错误提示分支]"
           ]
         },
         "permission": {
@@ -345,7 +431,7 @@
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 350,
+      "lineCount": 325,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
@@ -367,6 +453,83 @@
         "impact": 4,
         "effort": 3,
         "priority": "P1"
+      }
+    },
+    {
+      "featureId": "A-pc-contract-change-event-index",
+      "module": "contract",
+      "group": "A",
+      "platform": "pc",
+      "pagePath": "/contract/change-event",
+      "pageFile": "zw-insight-web/src/views/contract/change-event/index.vue",
+      "title": "变更事件",
+      "signals": {
+        "query": {
+          "count": 12,
+          "evidence": [
+            "zw-insight-web/src/views/contract/change-event/index.vue:17 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/contract/change-event/index.vue:31 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/contract/change-event/index.vue:41 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/contract/change-event/index.vue:51 [筛选控件(下拉)]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:42 [可选查询参数]"
+          ]
+        },
+        "state": {
+          "count": 6,
+          "evidence": [
+            "zw-insight-web/src/views/contract/change-event/index.vue:146 [状态门禁(按钮)]",
+            "zw-insight-web/src/views/contract/change-event/index.vue:150 [状态门禁(按钮)]",
+            "zw-insight-web/src/views/contract/change-event/index.vue:154 [状态门禁(按钮)]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:69 [流转端点(submit/approve/withdraw/reject)]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:120 [流转端点(submit/approve/withdraw/reject)]"
+          ]
+        },
+        "error": {
+          "count": 7,
+          "evidence": [
+            "zw-insight-web/src/views/contract/change-event/index.vue:275 [错误提示分支]",
+            "zw-insight-web/src/views/contract/change-event/index.vue:320 [错误提示分支]",
+            "zw-insight-web/src/views/contract/change-event/index.vue:341 [错误提示分支]",
+            "zw-insight-web/src/views/contract/change-event/index.vue:362 [错误提示分支]",
+            "zw-insight-web/src/views/contract/change-event/index.vue:383 [错误提示分支]"
+          ]
+        },
+        "audit": {
+          "count": 9,
+          "evidence": [
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:79 [操作日志注解]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:89 [操作日志注解]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:99 [操作日志注解]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:109 [操作日志注解]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:122 [操作日志注解]"
+          ]
+        },
+        "permission": {
+          "count": 10,
+          "evidence": [
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:30 [方法级权限注解]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:78 [方法级权限注解]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:88 [方法级权限注解]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:98 [方法级权限注解]",
+            "zw-insight-server/zw-contract/src/main/java/com/zwinsight/contract/controller/ChangeEventController.java:108 [方法级权限注解]"
+          ]
+        }
+      },
+      "levelAuto": 3,
+      "confidence": "high",
+      "lineCount": 453,
+      "scoreReasons": [
+        "存在流转端点 submit/approve 等 ×3（L3 协同流转）"
+      ],
+      "ruleHits": {
+        "筛选控件(下拉)": 4,
+        "状态门禁(按钮)": 3,
+        "错误提示分支": 5,
+        "可选查询参数": 8,
+        "流转端点(submit/approve/withdraw/reject)": 3,
+        "操作日志注解": 9,
+        "方法级权限注解": 10,
+        "驳回/回滚端点": 2
       }
     },
     {
@@ -469,16 +632,16 @@
           "evidence": [
             "zw-insight-web/src/views/contract/index.vue:58 [状态渲染映射]",
             "zw-insight-web/src/views/contract/index.vue:59 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/index.vue:146 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/index.vue:154 [状态渲染映射]",
-            "zw-insight-web/src/views/contract/index.vue:155 [状态渲染映射]"
+            "zw-insight-web/src/views/contract/index.vue:148 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/index.vue:156 [状态渲染映射]",
+            "zw-insight-web/src/views/contract/index.vue:157 [状态渲染映射]"
           ]
         },
         "error": {
           "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/contract/index.vue:210 [错误提示分支]",
-            "zw-insight-web/src/views/contract/index.vue:217 [错误提示分支]"
+            "zw-insight-web/src/views/contract/index.vue:212 [错误提示分支]",
+            "zw-insight-web/src/views/contract/index.vue:219 [错误提示分支]"
           ]
         },
         "audit": {
@@ -502,7 +665,7 @@
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 274,
+      "lineCount": 278,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
@@ -613,6 +776,92 @@
         "impact": 4,
         "effort": 2,
         "priority": "P0"
+      }
+    },
+    {
+      "featureId": "A-mobile-contract-change-event-create",
+      "module": "contract",
+      "group": "A",
+      "platform": "mobile",
+      "pagePath": "pages/contract/change-event/create",
+      "pageFile": "zw-insight-app/src/pages/contract/change-event/create.vue",
+      "title": "登记变更事件",
+      "signals": {
+        "error": {
+          "count": 10,
+          "evidence": [
+            "zw-insight-app/src/pages/contract/change-event/create.vue:244 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/contract/change-event/create.vue:271 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/contract/change-event/create.vue:293 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/contract/change-event/create.vue:296 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/contract/change-event/create.vue:299 [移动端反馈提示(uni)]"
+          ]
+        }
+      },
+      "levelAuto": 2,
+      "confidence": "high",
+      "lineCount": 388,
+      "scoreReasons": [
+        "存在表单校验/错误分支（L2 规则完整）"
+      ],
+      "ruleHits": {
+        "移动端反馈提示(uni)": 10
+      }
+    },
+    {
+      "featureId": "A-mobile-contract-change-event-detail",
+      "module": "contract",
+      "group": "A",
+      "platform": "mobile",
+      "pagePath": "pages/contract/change-event/detail",
+      "pageFile": "zw-insight-app/src/pages/contract/change-event/detail.vue",
+      "title": "变更事件详情",
+      "signals": {
+        "error": {
+          "count": 4,
+          "evidence": [
+            "zw-insight-app/src/pages/contract/change-event/detail.vue:231 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/contract/change-event/detail.vue:234 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/contract/change-event/detail.vue:243 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/contract/change-event/detail.vue:247 [移动端反馈提示(uni)]"
+          ]
+        }
+      },
+      "levelAuto": 2,
+      "confidence": "high",
+      "lineCount": 356,
+      "scoreReasons": [
+        "存在表单校验/错误分支（L2 规则完整）"
+      ],
+      "ruleHits": {
+        "移动端反馈提示(uni)": 4
+      }
+    },
+    {
+      "featureId": "A-mobile-contract-change-event-index",
+      "module": "contract",
+      "group": "A",
+      "platform": "mobile",
+      "pagePath": "pages/contract/change-event/index",
+      "pageFile": "zw-insight-app/src/pages/contract/change-event/index.vue",
+      "title": "变更事件",
+      "signals": {
+        "efficiency": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-app/src/pages/contract/change-event/index.vue:37 [移动端列表加载(loadMore)]",
+            "zw-insight-app/src/pages/contract/change-event/index.vue:212 [移动端列表加载(loadMore)]"
+          ]
+        }
+      },
+      "levelAuto": 1,
+      "confidence": "high",
+      "lineCount": 295,
+      "scoreReasons": [
+        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
+      ],
+      "ruleHits": {
+        "移动端列表加载(loadMore)": 2
       }
     },
     {
@@ -819,6 +1068,80 @@
       }
     },
     {
+      "featureId": "A-pc-project-wbs-index",
+      "module": "project",
+      "group": "A",
+      "platform": "pc",
+      "pagePath": "/project/wbs",
+      "pageFile": "zw-insight-web/src/views/project/wbs/index.vue",
+      "title": "WBS结构",
+      "signals": {
+        "query": {
+          "count": 26,
+          "evidence": [
+            "zw-insight-web/src/views/project/wbs/index.vue:7 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/project/wbs/index.vue:21 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/project/wbs/index.vue:102 [筛选控件(日期)]",
+            "zw-insight-web/src/views/project/wbs/index.vue:8 [查询区输入框]",
+            "zw-insight-web/src/views/project/wbs/index.vue:21 [查询区输入框]"
+          ]
+        },
+        "error": {
+          "count": 4,
+          "evidence": [
+            "zw-insight-web/src/views/project/wbs/index.vue:257 [错误提示分支]",
+            "zw-insight-web/src/views/project/wbs/index.vue:350 [错误提示分支]",
+            "zw-insight-web/src/views/project/wbs/index.vue:359 [错误提示分支]",
+            "zw-insight-web/src/views/project/wbs/index.vue:374 [错误提示分支]"
+          ]
+        },
+        "audit": {
+          "count": 8,
+          "evidence": [
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectWbsNodeController.java:80 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectWbsNodeController.java:93 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectWbsNodeController.java:107 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectWbsNodeController.java:118 [操作日志注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:66 [操作日志注解]"
+          ]
+        },
+        "permission": {
+          "count": 5,
+          "evidence": [
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectWbsNodeController.java:24 [方法级权限注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectWbsNodeController.java:79 [方法级权限注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectWbsNodeController.java:92 [方法级权限注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectWbsNodeController.java:106 [方法级权限注解]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectWbsNodeController.java:117 [方法级权限注解]"
+          ]
+        },
+        "state": {
+          "count": 3,
+          "evidence": [
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:96 [流转端点(submit/approve/withdraw/reject)]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:105 [流转端点(submit/approve/withdraw/reject)]",
+            "zw-insight-server/zw-project/src/main/java/com/zwinsight/project/controller/ProjectController.java:114 [流转端点(submit/approve/withdraw/reject)]"
+          ]
+        }
+      },
+      "levelAuto": 3,
+      "confidence": "high",
+      "lineCount": 447,
+      "scoreReasons": [
+        "存在流转端点 submit/approve 等 ×3（L3 协同流转）"
+      ],
+      "ruleHits": {
+        "筛选控件(下拉)": 2,
+        "筛选控件(日期)": 1,
+        "查询区输入框": 16,
+        "错误提示分支": 4,
+        "可选查询参数": 7,
+        "操作日志注解": 8,
+        "方法级权限注解": 5,
+        "流转端点(submit/approve/withdraw/reject)": 3
+      }
+    },
+    {
       "featureId": "A-mobile-project-archive",
       "module": "project",
       "group": "A",
@@ -829,7 +1152,7 @@
       "signals": {},
       "levelAuto": 1,
       "confidence": "needs-review",
-      "lineCount": 127,
+      "lineCount": 148,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）",
         "八维信号计数为 0（规则可能不适用于该页面形态）"
@@ -845,6 +1168,24 @@
         "effort": 1,
         "priority": "P1"
       }
+    },
+    {
+      "featureId": "A-mobile-project-cost-control-index",
+      "module": "project",
+      "group": "A",
+      "platform": "mobile",
+      "pagePath": "pages/project/cost-control/index",
+      "pageFile": "zw-insight-app/src/pages/project/cost-control/index.vue",
+      "title": "成本控制看板",
+      "signals": {},
+      "levelAuto": 1,
+      "confidence": "needs-review",
+      "lineCount": 263,
+      "scoreReasons": [
+        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）",
+        "八维信号计数为 0（规则可能不适用于该页面形态）"
+      ],
+      "ruleHits": {}
     },
     {
       "featureId": "A-pc-tender-certificate",
@@ -1339,6 +1680,63 @@
       }
     },
     {
+      "featureId": "B-mobile-labor-work-order-create",
+      "module": "labor",
+      "group": "B",
+      "platform": "mobile",
+      "pagePath": "pages/labor/work-order/create",
+      "pageFile": "zw-insight-app/src/pages/labor/work-order/create.vue",
+      "title": "点工工时签认",
+      "signals": {
+        "error": {
+          "count": 6,
+          "evidence": [
+            "zw-insight-app/src/pages/labor/work-order/create.vue:165 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/labor/work-order/create.vue:178 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/labor/work-order/create.vue:181 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/labor/work-order/create.vue:185 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/labor/work-order/create.vue:189 [移动端反馈提示(uni)]"
+          ]
+        }
+      },
+      "levelAuto": 2,
+      "confidence": "high",
+      "lineCount": 251,
+      "scoreReasons": [
+        "存在表单校验/错误分支（L2 规则完整）"
+      ],
+      "ruleHits": {
+        "移动端反馈提示(uni)": 6
+      }
+    },
+    {
+      "featureId": "B-mobile-labor-work-order-index",
+      "module": "labor",
+      "group": "B",
+      "platform": "mobile",
+      "pagePath": "pages/labor/work-order/index",
+      "pageFile": "zw-insight-app/src/pages/labor/work-order/index.vue",
+      "title": "劳务点工",
+      "signals": {
+        "efficiency": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-app/src/pages/labor/work-order/index.vue:21 [移动端列表加载(loadMore)]",
+            "zw-insight-app/src/pages/labor/work-order/index.vue:149 [移动端列表加载(loadMore)]"
+          ]
+        }
+      },
+      "levelAuto": 1,
+      "confidence": "high",
+      "lineCount": 213,
+      "scoreReasons": [
+        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
+      ],
+      "ruleHits": {
+        "移动端列表加载(loadMore)": 2
+      }
+    },
+    {
       "featureId": "B-pc-machine-contract",
       "module": "machine",
       "group": "B",
@@ -1668,7 +2066,7 @@
       },
       "levelAuto": 4,
       "confidence": "high",
-      "lineCount": 190,
+      "lineCount": 200,
       "scoreReasons": [
         "存在统计/趋势/排行端点或图表组件（L4 数据智能）"
       ],
@@ -1804,6 +2202,62 @@
         "impact": 3,
         "effort": 2,
         "priority": "P1"
+      }
+    },
+    {
+      "featureId": "B-mobile-machine-work-log-create",
+      "module": "machine",
+      "group": "B",
+      "platform": "mobile",
+      "pagePath": "pages/machine/work-log/create",
+      "pageFile": "zw-insight-app/src/pages/machine/work-log/create.vue",
+      "title": "填报机械台班",
+      "signals": {
+        "error": {
+          "count": 4,
+          "evidence": [
+            "zw-insight-app/src/pages/machine/work-log/create.vue:142 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/machine/work-log/create.vue:145 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/machine/work-log/create.vue:149 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/machine/work-log/create.vue:168 [移动端反馈提示(uni)]"
+          ]
+        }
+      },
+      "levelAuto": 2,
+      "confidence": "high",
+      "lineCount": 196,
+      "scoreReasons": [
+        "存在表单校验/错误分支（L2 规则完整）"
+      ],
+      "ruleHits": {
+        "移动端反馈提示(uni)": 4
+      }
+    },
+    {
+      "featureId": "B-mobile-machine-work-log-index",
+      "module": "machine",
+      "group": "B",
+      "platform": "mobile",
+      "pagePath": "pages/machine/work-log/index",
+      "pageFile": "zw-insight-app/src/pages/machine/work-log/index.vue",
+      "title": "机械台班",
+      "signals": {
+        "efficiency": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-app/src/pages/machine/work-log/index.vue:21 [移动端列表加载(loadMore)]",
+            "zw-insight-app/src/pages/machine/work-log/index.vue:154 [移动端列表加载(loadMore)]"
+          ]
+        }
+      },
+      "levelAuto": 1,
+      "confidence": "high",
+      "lineCount": 216,
+      "scoreReasons": [
+        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
+      ],
+      "ruleHits": {
+        "移动端列表加载(loadMore)": 2
       }
     },
     {
@@ -2125,24 +2579,24 @@
       "title": "材料入库",
       "signals": {
         "error": {
-          "count": 8,
+          "count": 10,
           "evidence": [
-            "zw-insight-app/src/pages/material/inbound.vue:135 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/inbound.vue:144 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/inbound.vue:156 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/inbound.vue:170 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/inbound.vue:185 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/material/inbound.vue:237 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/inbound.vue:275 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/inbound.vue:283 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/inbound.vue:298 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/inbound.vue:305 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 238,
+      "lineCount": 434,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端反馈提示(uni)": 8
+        "移动端反馈提示(uni)": 10
       },
       "levelFinal": 2,
       "gapNotes": {
@@ -2167,17 +2621,17 @@
         "error": {
           "count": 7,
           "evidence": [
-            "zw-insight-app/src/pages/material/outbound.vue:132 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/outbound.vue:141 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/outbound.vue:153 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/outbound.vue:161 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/outbound.vue:164 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/material/outbound.vue:133 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/outbound.vue:142 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/outbound.vue:154 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/outbound.vue:162 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/outbound.vue:165 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 215,
+      "lineCount": 222,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -2207,17 +2661,17 @@
         "error": {
           "count": 7,
           "evidence": [
-            "zw-insight-app/src/pages/material/return.vue:105 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/return.vue:108 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/return.vue:112 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/return.vue:116 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/material/return.vue:123 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/material/return.vue:106 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/return.vue:109 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/return.vue:113 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/return.vue:117 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/material/return.vue:124 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 174,
+      "lineCount": 182,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -2325,15 +2779,15 @@
         "error": {
           "count": 3,
           "evidence": [
-            "zw-insight-web/src/views/purchase/inquiry.vue:171 [错误提示分支]",
             "zw-insight-web/src/views/purchase/inquiry.vue:172 [错误提示分支]",
-            "zw-insight-web/src/views/purchase/inquiry.vue:208 [错误提示分支]"
+            "zw-insight-web/src/views/purchase/inquiry.vue:173 [错误提示分支]",
+            "zw-insight-web/src/views/purchase/inquiry.vue:209 [错误提示分支]"
           ]
         }
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 224,
+      "lineCount": 225,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×4（L3 协同流转）"
       ],
@@ -2623,20 +3077,22 @@
           ]
         },
         "state": {
-          "count": 10,
+          "count": 11,
           "evidence": [
             "zw-insight-web/src/views/finance/invoice-apply.vue:50 [状态渲染映射]",
             "zw-insight-web/src/views/finance/invoice-apply.vue:51 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/invoice-apply.vue:164 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/invoice-apply.vue:172 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/invoice-apply.vue:173 [状态渲染映射]"
+            "zw-insight-web/src/views/finance/invoice-apply.vue:139 [状态渲染映射]",
+            "zw-insight-web/src/views/finance/invoice-apply.vue:193 [状态渲染映射]",
+            "zw-insight-web/src/views/finance/invoice-apply.vue:201 [状态渲染映射]"
           ]
         },
         "error": {
-          "count": 2,
+          "count": 4,
           "evidence": [
-            "zw-insight-web/src/views/finance/invoice-apply.vue:229 [错误提示分支]",
-            "zw-insight-web/src/views/finance/invoice-apply.vue:236 [错误提示分支]"
+            "zw-insight-web/src/views/finance/invoice-apply.vue:263 [错误提示分支]",
+            "zw-insight-web/src/views/finance/invoice-apply.vue:268 [错误提示分支]",
+            "zw-insight-web/src/views/finance/invoice-apply.vue:292 [错误提示分支]",
+            "zw-insight-web/src/views/finance/invoice-apply.vue:299 [错误提示分支]"
           ]
         },
         "audit": {
@@ -2658,7 +3114,7 @@
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 261,
+      "lineCount": 331,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
@@ -2666,9 +3122,9 @@
         "筛选控件(下拉)": 4,
         "筛选控件(日期)": 1,
         "查询区输入框": 7,
-        "状态渲染映射": 7,
+        "状态渲染映射": 8,
         "状态门禁(按钮)": 2,
-        "错误提示分支": 2,
+        "错误提示分支": 4,
         "可选查询参数": 3,
         "流转端点(submit/approve/withdraw/reject)": 1,
         "操作日志注解": 2,
@@ -2846,20 +3302,22 @@
           ]
         },
         "state": {
-          "count": 11,
+          "count": 12,
           "evidence": [
             "zw-insight-web/src/views/finance/payment-apply.vue:19 [状态渲染映射]",
             "zw-insight-web/src/views/finance/payment-apply.vue:54 [状态渲染映射]",
             "zw-insight-web/src/views/finance/payment-apply.vue:55 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/payment-apply.vue:226 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/payment-apply.vue:235 [状态渲染映射]"
+            "zw-insight-web/src/views/finance/payment-apply.vue:163 [状态渲染映射]",
+            "zw-insight-web/src/views/finance/payment-apply.vue:250 [状态渲染映射]"
           ]
         },
         "error": {
-          "count": 2,
+          "count": 4,
           "evidence": [
-            "zw-insight-web/src/views/finance/payment-apply.vue:300 [错误提示分支]",
-            "zw-insight-web/src/views/finance/payment-apply.vue:307 [错误提示分支]"
+            "zw-insight-web/src/views/finance/payment-apply.vue:342 [错误提示分支]",
+            "zw-insight-web/src/views/finance/payment-apply.vue:347 [错误提示分支]",
+            "zw-insight-web/src/views/finance/payment-apply.vue:371 [错误提示分支]",
+            "zw-insight-web/src/views/finance/payment-apply.vue:378 [错误提示分支]"
           ]
         },
         "audit": {
@@ -2878,7 +3336,7 @@
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 362,
+      "lineCount": 440,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
@@ -2886,9 +3344,9 @@
         "筛选控件(下拉)": 5,
         "筛选控件(日期)": 1,
         "查询区输入框": 9,
-        "状态渲染映射": 8,
+        "状态渲染映射": 9,
         "状态门禁(按钮)": 2,
-        "错误提示分支": 2,
+        "错误提示分支": 4,
         "可选查询参数": 3,
         "流转端点(submit/approve/withdraw/reject)": 1,
         "操作日志注解": 2,
@@ -2920,16 +3378,16 @@
             "zw-insight-web/src/views/finance/payment-received.vue:6 [筛选控件(下拉)]",
             "zw-insight-web/src/views/finance/payment-received.vue:19 [筛选控件(下拉)]",
             "zw-insight-web/src/views/finance/payment-received.vue:105 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/finance/payment-received.vue:123 [筛选控件(下拉)]",
-            "zw-insight-web/src/views/finance/payment-received.vue:120 [筛选控件(日期)]"
+            "zw-insight-web/src/views/finance/payment-received.vue:126 [筛选控件(下拉)]",
+            "zw-insight-web/src/views/finance/payment-received.vue:123 [筛选控件(日期)]"
           ]
         },
         "error": {
           "count": 3,
           "evidence": [
-            "zw-insight-web/src/views/finance/payment-received.vue:258 [错误提示分支]",
-            "zw-insight-web/src/views/finance/payment-received.vue:265 [错误提示分支]",
-            "zw-insight-web/src/views/finance/payment-received.vue:272 [错误提示分支]"
+            "zw-insight-web/src/views/finance/payment-received.vue:263 [错误提示分支]",
+            "zw-insight-web/src/views/finance/payment-received.vue:270 [错误提示分支]",
+            "zw-insight-web/src/views/finance/payment-received.vue:277 [错误提示分支]"
           ]
         },
         "audit": {
@@ -2949,7 +3407,7 @@
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 328,
+      "lineCount": 333,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
@@ -3057,22 +3515,22 @@
           "count": 8,
           "evidence": [
             "zw-insight-web/src/views/finance/project-reimbursement.vue:47 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/project-reimbursement.vue:140 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/project-reimbursement.vue:146 [状态渲染映射]",
+            "zw-insight-web/src/views/finance/project-reimbursement.vue:141 [状态渲染映射]",
             "zw-insight-web/src/views/finance/project-reimbursement.vue:147 [状态渲染映射]",
-            "zw-insight-web/src/views/finance/project-reimbursement.vue:149 [状态渲染映射]"
+            "zw-insight-web/src/views/finance/project-reimbursement.vue:148 [状态渲染映射]",
+            "zw-insight-web/src/views/finance/project-reimbursement.vue:150 [状态渲染映射]"
           ]
         },
         "error": {
           "count": 1,
           "evidence": [
-            "zw-insight-web/src/views/finance/project-reimbursement.vue:200 [错误提示分支]"
+            "zw-insight-web/src/views/finance/project-reimbursement.vue:206 [错误提示分支]"
           ]
         }
       },
       "levelAuto": 3,
       "confidence": "high",
-      "lineCount": 225,
+      "lineCount": 231,
       "scoreReasons": [
         "存在流转端点 submit/approve 等 ×1（L3 协同流转）"
       ],
@@ -3409,23 +3867,24 @@
       "title": "开票申请",
       "signals": {
         "error": {
-          "count": 4,
+          "count": 5,
           "evidence": [
-            "zw-insight-app/src/pages/finance/invoice-apply.vue:108 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/invoice-apply.vue:111 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/invoice-apply.vue:114 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/invoice-apply.vue:128 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/finance/invoice-apply.vue:153 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/invoice-apply.vue:167 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/invoice-apply.vue:171 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/invoice-apply.vue:174 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/invoice-apply.vue:201 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 157,
+      "lineCount": 232,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端反馈提示(uni)": 4
+        "移动端反馈提示(uni)": 5
       },
       "levelFinal": 2,
       "gapNotes": {},
@@ -3448,16 +3907,16 @@
         "error": {
           "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/finance/invoice-received.vue:74 [移动端反馈提示(uni)]",
             "zw-insight-app/src/pages/finance/invoice-received.vue:77 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/invoice-received.vue:81 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/invoice-received.vue:93 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/finance/invoice-received.vue:80 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/invoice-received.vue:84 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/invoice-received.vue:102 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 114,
+      "lineCount": 124,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -3487,16 +3946,16 @@
         "error": {
           "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/finance/other-payment.vue:74 [移动端反馈提示(uni)]",
             "zw-insight-app/src/pages/finance/other-payment.vue:77 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/other-payment.vue:81 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/other-payment.vue:94 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/finance/other-payment.vue:80 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/other-payment.vue:84 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/other-payment.vue:103 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 115,
+      "lineCount": 125,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -3524,16 +3983,16 @@
         "error": {
           "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/finance/payment-apply.vue:111 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/payment-apply.vue:114 [移动端反馈提示(uni)]",
             "zw-insight-app/src/pages/finance/payment-apply.vue:117 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/payment-apply.vue:132 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/finance/payment-apply.vue:121 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/payment-apply.vue:124 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/payment-apply.vue:148 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 161,
+      "lineCount": 179,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -3559,22 +4018,23 @@
       "title": "回款登记",
       "signals": {
         "error": {
-          "count": 3,
+          "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/finance/payment-received.vue:106 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/payment-received.vue:109 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/payment-received.vue:122 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/finance/payment-received.vue:145 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/payment-received.vue:159 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/payment-received.vue:163 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/payment-received.vue:187 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 151,
+      "lineCount": 218,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端反馈提示(uni)": 3
+        "移动端反馈提示(uni)": 4
       },
       "levelFinal": 2,
       "gapNotes": {},
@@ -3597,15 +4057,15 @@
         "error": {
           "count": 3,
           "evidence": [
-            "zw-insight-app/src/pages/finance/personal-reimbursement.vue:42 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/personal-reimbursement.vue:45 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/personal-reimbursement.vue:56 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/finance/personal-reimbursement.vue:43 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/personal-reimbursement.vue:46 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/personal-reimbursement.vue:59 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 73,
+      "lineCount": 76,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -3633,16 +4093,16 @@
         "error": {
           "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/finance/reimbursement.vue:112 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/reimbursement.vue:115 [移动端反馈提示(uni)]",
             "zw-insight-app/src/pages/finance/reimbursement.vue:118 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/reimbursement.vue:131 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/finance/reimbursement.vue:122 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/reimbursement.vue:125 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/reimbursement.vue:147 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 162,
+      "lineCount": 179,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -3670,16 +4130,16 @@
         "error": {
           "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/finance/reserve-fund-apply.vue:70 [移动端反馈提示(uni)]",
             "zw-insight-app/src/pages/finance/reserve-fund-apply.vue:73 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/reserve-fund-apply.vue:77 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/reserve-fund-apply.vue:90 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/finance/reserve-fund-apply.vue:76 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/reserve-fund-apply.vue:80 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/reserve-fund-apply.vue:95 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 111,
+      "lineCount": 116,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -3707,16 +4167,16 @@
         "error": {
           "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/finance/reserve-fund-return.vue:90 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/reserve-fund-return.vue:94 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/reserve-fund-return.vue:98 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/finance/reserve-fund-return.vue:108 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/finance/reserve-fund-return.vue:91 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/reserve-fund-return.vue:95 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/reserve-fund-return.vue:99 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/finance/reserve-fund-return.vue:115 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 130,
+      "lineCount": 138,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -3914,30 +4374,30 @@
         "error": {
           "count": 1,
           "evidence": [
-            "zw-insight-web/src/views/hr/statistics.vue:119 [错误提示分支]"
+            "zw-insight-web/src/views/hr/statistics.vue:122 [错误提示分支]"
           ]
         },
         "value": {
-          "count": 10,
+          "count": 8,
           "evidence": [
             "zw-insight-web/src/views/hr/statistics.vue:85 [图表组件]",
-            "zw-insight-web/src/views/hr/statistics.vue:98 [图表组件]",
-            "zw-insight-web/src/views/hr/statistics.vue:99 [图表组件]",
-            "zw-insight-web/src/views/hr/statistics.vue:100 [图表组件]",
-            "zw-insight-web/src/views/hr/statistics.vue:101 [图表组件]"
+            "zw-insight-web/src/views/hr/statistics.vue:103 [图表组件]",
+            "zw-insight-web/src/views/hr/statistics.vue:104 [图表组件]",
+            "zw-insight-web/src/views/hr/statistics.vue:105 [图表组件]",
+            "zw-insight-web/src/views/hr/statistics.vue:106 [图表组件]"
           ]
         }
       },
       "levelAuto": 4,
       "confidence": "needs-review",
-      "lineCount": 279,
+      "lineCount": 315,
       "scoreReasons": [
         "存在统计/趋势/排行端点或图表组件（L4 数据智能）",
         "L3+ 却无查询筛选信号（信号冲突，疑似误匹配）"
       ],
       "ruleHits": {
         "错误提示分支": 1,
-        "图表组件": 9,
+        "图表组件": 7,
         "统计/趋势/排行端点": 1
       },
       "levelFinal": 4,
@@ -4284,17 +4744,17 @@
         "error": {
           "count": 5,
           "evidence": [
-            "zw-insight-app/src/pages/site/construction-log.vue:151 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/construction-log.vue:186 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/construction-log.vue:204 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/construction-log.vue:207 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/construction-log.vue:223 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/site/construction-log.vue:152 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/construction-log.vue:187 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/construction-log.vue:205 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/construction-log.vue:208 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/construction-log.vue:234 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 258,
+      "lineCount": 270,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -4324,17 +4784,17 @@
         "error": {
           "count": 8,
           "evidence": [
-            "zw-insight-app/src/pages/site/inspection-detail.vue:237 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/inspection-detail.vue:251 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/inspection-detail.vue:274 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/inspection-detail.vue:309 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/inspection-detail.vue:325 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/site/inspection-detail.vue:247 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/inspection-detail.vue:267 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/inspection-detail.vue:292 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/inspection-detail.vue:327 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/inspection-detail.vue:343 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 666,
+      "lineCount": 704,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -4362,15 +4822,15 @@
         "error": {
           "count": 3,
           "evidence": [
-            "zw-insight-app/src/pages/site/progress-feedback.vue:101 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/progress-feedback.vue:104 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/progress-feedback.vue:118 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/site/progress-feedback.vue:105 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/progress-feedback.vue:108 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/progress-feedback.vue:128 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 146,
+      "lineCount": 158,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -4398,16 +4858,16 @@
         "error": {
           "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/site/quality-check.vue:111 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/quality-check.vue:114 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/quality-check.vue:134 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/quality-check.vue:150 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/site/quality-check.vue:112 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/quality-check.vue:115 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/quality-check.vue:142 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/quality-check.vue:159 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 190,
+      "lineCount": 200,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -4437,16 +4897,16 @@
         "error": {
           "count": 4,
           "evidence": [
-            "zw-insight-app/src/pages/site/safety-check.vue:116 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/safety-check.vue:119 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/safety-check.vue:143 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/site/safety-check.vue:159 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/site/safety-check.vue:117 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/safety-check.vue:120 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/safety-check.vue:150 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/safety-check.vue:167 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 199,
+      "lineCount": 208,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -4465,6 +4925,35 @@
       }
     },
     {
+      "featureId": "C-mobile-site-watermark-camera-index",
+      "module": "site",
+      "group": "C",
+      "platform": "mobile",
+      "pagePath": "pages/site/watermark-camera/index",
+      "pageFile": "zw-insight-app/src/pages/site/watermark-camera/index.vue",
+      "title": "工程水印相机",
+      "signals": {
+        "error": {
+          "count": 4,
+          "evidence": [
+            "zw-insight-app/src/pages/site/watermark-camera/index.vue:135 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/watermark-camera/index.vue:143 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/watermark-camera/index.vue:146 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/site/watermark-camera/index.vue:161 [移动端反馈提示(uni)]"
+          ]
+        }
+      },
+      "levelAuto": 2,
+      "confidence": "high",
+      "lineCount": 224,
+      "scoreReasons": [
+        "存在表单校验/错误分支（L2 规则完整）"
+      ],
+      "ruleHits": {
+        "移动端反馈提示(uni)": 4
+      }
+    },
+    {
       "featureId": "D-pc-error-403",
       "module": "403",
       "group": "D",
@@ -4475,11 +4964,10 @@
       "signals": {},
       "levelAuto": 1,
       "confidence": "needs-review",
-      "lineCount": 62,
+      "lineCount": 83,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）",
-        "八维信号计数为 0（规则可能不适用于该页面形态）",
-        "页面 62 行（< 80），信号稀疏"
+        "八维信号计数为 0（规则可能不适用于该页面形态）"
       ],
       "ruleHits": {},
       "levelFinal": 1,
@@ -5020,22 +5508,36 @@
       "pageFile": "zw-insight-web/src/views/dashboard/index.vue",
       "title": "首页",
       "signals": {
-        "error": {
-          "count": 3,
+        "state": {
+          "count": 2,
           "evidence": [
-            "zw-insight-web/src/views/dashboard/index.vue:105 [错误提示分支]",
-            "zw-insight-web/src/views/dashboard/index.vue:133 [错误提示分支]",
-            "zw-insight-web/src/views/dashboard/index.vue:176 [错误提示分支]"
+            "zw-insight-web/src/views/dashboard/index.vue:194 [状态渲染映射]",
+            "zw-insight-web/src/views/dashboard/index.vue:219 [状态渲染映射]"
+          ]
+        },
+        "permission": {
+          "count": 1,
+          "evidence": [
+            "zw-insight-web/src/views/dashboard/index.vue:112 [按钮级权限指令]"
+          ]
+        },
+        "error": {
+          "count": 4,
+          "evidence": [
+            "zw-insight-web/src/views/dashboard/index.vue:188 [错误提示分支]",
+            "zw-insight-web/src/views/dashboard/index.vue:213 [错误提示分支]",
+            "zw-insight-web/src/views/dashboard/index.vue:265 [错误提示分支]",
+            "zw-insight-web/src/views/dashboard/index.vue:312 [错误提示分支]"
           ]
         },
         "value": {
-          "count": 6,
+          "count": 5,
           "evidence": [
-            "zw-insight-web/src/views/dashboard/index.vue:57 [图表组件]",
-            "zw-insight-web/src/views/dashboard/index.vue:66 [图表组件]",
-            "zw-insight-web/src/views/dashboard/index.vue:67 [图表组件]",
-            "zw-insight-web/src/views/dashboard/index.vue:111 [图表组件]",
-            "zw-insight-web/src/views/dashboard/index.vue:115 [图表组件]"
+            "zw-insight-web/src/views/dashboard/index.vue:96 [图表组件]",
+            "zw-insight-web/src/views/dashboard/index.vue:116 [图表组件]",
+            "zw-insight-web/src/views/dashboard/index.vue:117 [图表组件]",
+            "zw-insight-web/src/views/dashboard/index.vue:256 [图表组件]",
+            "zw-insight-web/src/views/dashboard/index.vue:303 [图表组件]"
           ]
         },
         "query": {
@@ -5051,13 +5553,15 @@
       },
       "levelAuto": 4,
       "confidence": "high",
-      "lineCount": 340,
+      "lineCount": 559,
       "scoreReasons": [
         "存在统计/趋势/排行端点或图表组件（L4 数据智能）"
       ],
       "ruleHits": {
-        "错误提示分支": 3,
-        "图表组件": 6,
+        "状态渲染映射": 2,
+        "按钮级权限指令": 1,
+        "错误提示分支": 4,
+        "图表组件": 5,
         "可选查询参数": 7
       },
       "levelFinal": 4,
@@ -5082,7 +5586,7 @@
       "signals": {},
       "levelAuto": 1,
       "confidence": "needs-review",
-      "lineCount": 283,
+      "lineCount": 295,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）",
         "八维信号计数为 0（规则可能不适用于该页面形态）"
@@ -5107,7 +5611,7 @@
       "signals": {},
       "levelAuto": 1,
       "confidence": "needs-review",
-      "lineCount": 352,
+      "lineCount": 321,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）",
         "八维信号计数为 0（规则可能不适用于该页面形态）",
@@ -5137,17 +5641,17 @@
         "error": {
           "count": 8,
           "evidence": [
-            "zw-insight-app/src/pages/login/forgot-password.vue:122 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/login/forgot-password.vue:125 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/login/forgot-password.vue:130 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/login/forgot-password.vue:143 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/login/forgot-password.vue:146 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/login/forgot-password.vue:124 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/login/forgot-password.vue:127 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/login/forgot-password.vue:132 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/login/forgot-password.vue:145 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/login/forgot-password.vue:148 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 338,
+      "lineCount": 366,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -5172,24 +5676,24 @@
       "title": "登录",
       "signals": {
         "error": {
-          "count": 8,
+          "count": 10,
           "evidence": [
-            "zw-insight-app/src/pages/login/index.vue:111 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/login/index.vue:115 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/login/index.vue:120 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/login/index.vue:130 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/login/index.vue:153 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/login/index.vue:137 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/login/index.vue:141 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/login/index.vue:146 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/login/index.vue:166 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/login/index.vue:170 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 303,
+      "lineCount": 395,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
       "ruleHits": {
-        "移动端反馈提示(uni)": 8
+        "移动端反馈提示(uni)": 10
       },
       "levelFinal": 2,
       "benchmarkNote": "移动端登录 L2 合理",
@@ -5464,13 +5968,13 @@
         "error": {
           "count": 1,
           "evidence": [
-            "zw-insight-app/src/pages/home/index.vue:101 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/home/index.vue:107 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 150,
+      "lineCount": 161,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -5497,14 +6001,14 @@
         "error": {
           "count": 2,
           "evidence": [
-            "zw-insight-app/src/pages/mine/index.vue:52 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/mine/index.vue:60 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/mine/index.vue:58 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/mine/index.vue:66 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 91,
+      "lineCount": 98,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -5578,7 +6082,7 @@
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 301,
+      "lineCount": 302,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -5594,6 +6098,33 @@
       }
     },
     {
+      "featureId": "D-mobile-mine-sign",
+      "module": "nav",
+      "group": "D",
+      "platform": "mobile",
+      "pagePath": "pages/mine/sign",
+      "pageFile": "zw-insight-app/src/pages/mine/sign.vue",
+      "title": "定位签到",
+      "signals": {
+        "error": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-app/src/pages/mine/sign.vue:109 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/mine/sign.vue:129 [移动端反馈提示(uni)]"
+          ]
+        }
+      },
+      "levelAuto": 2,
+      "confidence": "high",
+      "lineCount": 236,
+      "scoreReasons": [
+        "存在表单校验/错误分支（L2 规则完整）"
+      ],
+      "ruleHits": {
+        "移动端反馈提示(uni)": 2
+      }
+    },
+    {
       "featureId": "D-mobile-workbench-index",
       "module": "nav",
       "group": "D",
@@ -5605,14 +6136,14 @@
         "efficiency": {
           "count": 2,
           "evidence": [
-            "zw-insight-app/src/pages/workbench/index.vue:53 [移动端列表加载(loadMore)]",
-            "zw-insight-app/src/pages/workbench/index.vue:148 [移动端列表加载(loadMore)]"
+            "zw-insight-app/src/pages/workbench/index.vue:94 [移动端列表加载(loadMore)]",
+            "zw-insight-app/src/pages/workbench/index.vue:189 [移动端列表加载(loadMore)]"
           ]
         }
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 196,
+      "lineCount": 250,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
@@ -5659,7 +6190,7 @@
         "permission": {
           "count": 43,
           "evidence": [
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:44 [方法级权限注解]",
+            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:38 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/HealthMonitorController.java:32 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:39 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:46 [方法级权限注解]",
@@ -5816,6 +6347,33 @@
       }
     },
     {
+      "featureId": "D-pc-dashboard-project-cost-control",
+      "module": "project-cost-control",
+      "group": "D",
+      "platform": "pc",
+      "pagePath": "/project-cost-control",
+      "pageFile": "zw-insight-web/src/views/dashboard/project-cost-control.vue",
+      "title": "成本主线看板",
+      "signals": {
+        "state": {
+          "count": 2,
+          "evidence": [
+            "zw-insight-web/src/views/dashboard/project-cost-control.vue:172 [状态渲染映射]",
+            "zw-insight-web/src/views/dashboard/project-cost-control.vue:346 [状态渲染映射]"
+          ]
+        }
+      },
+      "levelAuto": 2,
+      "confidence": "high",
+      "lineCount": 565,
+      "scoreReasons": [
+        "存在状态渲染/状态门禁信号 ×2（L2 规则完整）"
+      ],
+      "ruleHits": {
+        "状态渲染映射": 2
+      }
+    },
+    {
       "featureId": "D-pc-dashboard-project-dashboard",
       "module": "project-dashboard",
       "group": "D",
@@ -5827,17 +6385,17 @@
         "value": {
           "count": 9,
           "evidence": [
-            "zw-insight-web/src/views/dashboard/project-dashboard.vue:110 [图表组件]",
-            "zw-insight-web/src/views/dashboard/project-dashboard.vue:204 [图表组件]",
-            "zw-insight-web/src/views/dashboard/project-dashboard.vue:205 [图表组件]",
-            "zw-insight-web/src/views/dashboard/project-dashboard.vue:206 [图表组件]",
-            "zw-insight-web/src/views/dashboard/project-dashboard.vue:207 [图表组件]"
+            "zw-insight-web/src/views/dashboard/project-dashboard.vue:130 [图表组件]",
+            "zw-insight-web/src/views/dashboard/project-dashboard.vue:229 [图表组件]",
+            "zw-insight-web/src/views/dashboard/project-dashboard.vue:230 [图表组件]",
+            "zw-insight-web/src/views/dashboard/project-dashboard.vue:231 [图表组件]",
+            "zw-insight-web/src/views/dashboard/project-dashboard.vue:232 [图表组件]"
           ]
         }
       },
       "levelAuto": 4,
       "confidence": "needs-review",
-      "lineCount": 475,
+      "lineCount": 524,
       "scoreReasons": [
         "存在统计/趋势/排行端点或图表组件（L4 数据智能）",
         "L3+ 却无查询筛选信号（信号冲突，疑似误匹配）"
@@ -5885,7 +6443,7 @@
         "permission": {
           "count": 1,
           "evidence": [
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:44 [方法级权限注解]"
+            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:38 [方法级权限注解]"
           ]
         }
       },
@@ -6048,10 +6606,16 @@
       "pageFile": "zw-insight-web/src/views/system/menu/index.vue",
       "title": "菜单管理",
       "signals": {
+        "query": {
+          "count": 1,
+          "evidence": [
+            "zw-insight-web/src/views/system/menu/index.vue:89 [筛选控件(下拉)]"
+          ]
+        },
         "error": {
           "count": 1,
           "evidence": [
-            "zw-insight-web/src/views/system/menu/index.vue:214 [错误提示分支]"
+            "zw-insight-web/src/views/system/menu/index.vue:239 [错误提示分支]"
           ]
         },
         "permission": {
@@ -6065,11 +6629,12 @@
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 233,
+      "lineCount": 271,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
       "ruleHits": {
+        "筛选控件(下拉)": 1,
         "错误提示分支": 1,
         "方法级权限注解": 3
       },
@@ -6090,47 +6655,28 @@
       "pageFile": "zw-insight-web/src/views/system/monitor/index.vue",
       "title": "系统监控",
       "signals": {
-        "query": {
-          "count": 26,
+        "error": {
+          "count": 1,
           "evidence": [
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/AuditLogController.java:32 [可选查询参数]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/AuditLogController.java:33 [可选查询参数]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:29 [可选查询参数]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysLogController.java:33 [可选查询参数]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysLogController.java:34 [可选查询参数]"
+            "zw-insight-web/src/views/system/monitor/index.vue:228 [错误提示分支]"
           ]
         },
         "permission": {
-          "count": 43,
+          "count": 1,
           "evidence": [
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:44 [方法级权限注解]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/HealthMonitorController.java:32 [方法级权限注解]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:39 [方法级权限注解]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:46 [方法级权限注解]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:54 [方法级权限注解]"
-          ]
-        },
-        "audit": {
-          "count": 9,
-          "evidence": [
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysRoleController.java:43 [操作日志注解]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysRoleController.java:51 [操作日志注解]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysRoleController.java:60 [操作日志注解]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysRoleController.java:73 [操作日志注解]",
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysUserController.java:52 [操作日志注解]"
+            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/HealthMonitorController.java:32 [方法级权限注解]"
           ]
         }
       },
-      "levelAuto": 0,
-      "confidence": "needs-review",
-      "lineCount": 22,
+      "levelAuto": 1,
+      "confidence": "high",
+      "lineCount": 394,
       "scoreReasons": [
-        "页面仅 22 行（< 40），疑似占位页"
+        "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
       "ruleHits": {
-        "可选查询参数": 26,
-        "方法级权限注解": 43,
-        "操作日志注解": 9
+        "错误提示分支": 1,
+        "方法级权限注解": 1
       },
       "levelFinal": 0,
       "gapNotes": {
@@ -6284,7 +6830,7 @@
         "permission": {
           "count": 43,
           "evidence": [
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:44 [方法级权限注解]",
+            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:38 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/HealthMonitorController.java:32 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:39 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:46 [方法级权限注解]",
@@ -6348,7 +6894,7 @@
         "error": {
           "count": 1,
           "evidence": [
-            "zw-insight-web/src/views/system/role/index.vue:283 [错误提示分支]"
+            "zw-insight-web/src/views/system/role/index.vue:285 [错误提示分支]"
           ]
         },
         "audit": {
@@ -6373,7 +6919,7 @@
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 377,
+      "lineCount": 379,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
@@ -6426,7 +6972,7 @@
         "permission": {
           "count": 43,
           "evidence": [
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:44 [方法级权限注解]",
+            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:38 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/HealthMonitorController.java:32 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:39 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:46 [方法级权限注解]",
@@ -6502,7 +7048,7 @@
         "permission": {
           "count": 43,
           "evidence": [
-            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:44 [方法级权限注解]",
+            "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/BackupController.java:38 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/HealthMonitorController.java:32 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:39 [方法级权限注解]",
             "zw-insight-server/zw-system/src/main/java/com/zwinsight/system/controller/SysDictController.java:46 [方法级权限注解]",
@@ -6819,16 +7365,16 @@
         "error": {
           "count": 4,
           "evidence": [
-            "zw-insight-web/src/views/workflow/designer/index.vue:124 [错误提示分支]",
-            "zw-insight-web/src/views/workflow/designer/index.vue:139 [错误提示分支]",
-            "zw-insight-web/src/views/workflow/designer/index.vue:155 [错误提示分支]",
-            "zw-insight-web/src/views/workflow/designer/index.vue:170 [错误提示分支]"
+            "zw-insight-web/src/views/workflow/designer/index.vue:135 [错误提示分支]",
+            "zw-insight-web/src/views/workflow/designer/index.vue:150 [错误提示分支]",
+            "zw-insight-web/src/views/workflow/designer/index.vue:166 [错误提示分支]",
+            "zw-insight-web/src/views/workflow/designer/index.vue:181 [错误提示分支]"
           ]
         }
       },
       "levelAuto": 1,
       "confidence": "high",
-      "lineCount": 195,
+      "lineCount": 212,
       "scoreReasons": [
         "仅基础 CRUD 信号，无状态/流转/统计差异化能力（L1）"
       ],
@@ -6946,15 +7492,15 @@
         "error": {
           "count": 3,
           "evidence": [
-            "zw-insight-app/src/pages/approval/detail.vue:104 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/approval/detail.vue:114 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/approval/detail.vue:120 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/approval/detail.vue:107 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/approval/detail.vue:117 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/approval/detail.vue:125 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 151,
+      "lineCount": 156,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],
@@ -6983,20 +7529,20 @@
           "count": 2,
           "evidence": [
             "zw-insight-app/src/pages/approval/index.vue:17 [移动端列表加载(loadMore)]",
-            "zw-insight-app/src/pages/approval/index.vue:122 [移动端列表加载(loadMore)]"
+            "zw-insight-app/src/pages/approval/index.vue:123 [移动端列表加载(loadMore)]"
           ]
         },
         "error": {
           "count": 2,
           "evidence": [
-            "zw-insight-app/src/pages/approval/index.vue:172 [移动端反馈提示(uni)]",
-            "zw-insight-app/src/pages/approval/index.vue:180 [移动端反馈提示(uni)]"
+            "zw-insight-app/src/pages/approval/index.vue:175 [移动端反馈提示(uni)]",
+            "zw-insight-app/src/pages/approval/index.vue:183 [移动端反馈提示(uni)]"
           ]
         }
       },
       "levelAuto": 2,
       "confidence": "high",
-      "lineCount": 233,
+      "lineCount": 236,
       "scoreReasons": [
         "存在表单校验/错误分支（L2 规则完整）"
       ],

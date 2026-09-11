@@ -58,7 +58,7 @@
         </el-form-item>
         <el-form-item label="结算明细" prop="details">
           <div style="width: 100%">
-            <el-button type="primary" size="small" style="margin-bottom: 8px" @click="handleAddDetail">添加明细行</el-button>
+            <el-button type="primary" size="small" style="margin-bottom: var(--zw-space-sm)" @click="handleAddDetail">添加明细行</el-button>
             <el-table :data="formData.details" border size="small">
               <el-table-column label="工程项名称" min-width="160">
                 <template #default="{ row }"><el-input v-model="row.itemName" placeholder="工程项名称" /></template>
@@ -79,7 +79,7 @@
                 <template #default="{ $index }"><el-button link type="danger" @click="handleRemoveDetail($index)">删除</el-button></template>
               </el-table-column>
             </el-table>
-            <div style="text-align: right; margin-top: 8px; font-weight: 600">合计：{{ totalAmount.toFixed(2) }} 元</div>
+            <div style="text-align: right; margin-top: var(--zw-space-sm); font-weight: 600">合计：{{ totalAmount.toFixed(2) }} 元</div>
           </div>
         </el-form-item>
       </el-form>
@@ -210,7 +210,7 @@ onMounted(() => { loadData() })
 </script>
 
 <style scoped>
-.subcontract-settlement-container { padding: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.subcontract-settlement-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 </style>

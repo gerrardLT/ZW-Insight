@@ -52,6 +52,7 @@ export async function submitOrQueue<T>(
     endpoint: opts.endpoint,
     payload: opts.payload
   })
+  network.setQueueCount(syncEngine.getQueue().length)
   uni.showToast({ title: '已存入离线队列，联网后自动同步', icon: 'none' })
   return { queued: true }
 }

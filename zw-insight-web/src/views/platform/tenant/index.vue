@@ -156,7 +156,7 @@
           v-for="item in moduleOptions"
           :key="item.value"
           :label="item.value"
-          style="width: 45%; margin-bottom: 8px"
+          style="width: 45%; margin-bottom: var(--zw-space-sm)"
         >
           {{ item.label }}
         </el-checkbox>
@@ -413,23 +413,23 @@ onMounted(() => {
 
 <style scoped>
 .tenant-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }
 .form-tip {
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
   color: #909399;
-  margin-top: 4px;
+  margin-top: var(--zw-space-xs);
 }
 .module-desc {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
   color: #606266;
 }
 </style>

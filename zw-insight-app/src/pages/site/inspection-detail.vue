@@ -5,6 +5,12 @@
       <text>加载中...</text>
     </view>
 
+    <!-- 加载失败 -->
+    <view v-else-if="loadFailed" class="failed-state">
+      <text class="failed-tip">检查方案详情加载失败</text>
+      <text class="retry-btn" @click="retryLoad">重试</text>
+    </view>
+
     <!-- 检查方案内容 -->
     <view v-else>
       <!-- 方案基本信息 -->
@@ -171,6 +177,7 @@ function rectStatusText(s?: string) {
 }
 
 const pageLoading = ref(true)
+const loadFailed = ref(false)
 const submitting = ref(false)
 const inspectionId = ref<number>(0)
 const schemeInfo = ref<SchemeInfo>({ schemeId: null, schemeName: '' })
@@ -205,6 +212,7 @@ onMounted(() => {
 })
 
 async function loadInspectionDetail() {
+  loadFailed.value = false
   try {
     const res: any = await getInspectionDetail(inspectionId.value)
     const inspectionData = res.data
@@ -235,10 +243,17 @@ async function loadInspectionDetail() {
       checkItems.value = items
     }
   } catch (e) {
+    loadFailed.value = true
     uni.showToast({ title: '加载检查详情失败', icon: 'none' })
   } finally {
     pageLoading.value = false
   }
+}
+
+function retryLoad() {
+  pageLoading.value = true
+  loadInspectionDetail()
+  loadRectifications()
 }
 
 function markResult(index: number, result: 'PASS' | 'FAIL' | 'UNCHECKED') {
@@ -390,6 +405,24 @@ function handleApprove(rec: any) {
   padding: 100rpx 0;
   color: var(--zw-text-tertiary);
   font-size: 28rpx;
+}
+.failed-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 0;
+}
+.failed-tip {
+  font-size: 28rpx;
+  color: var(--zw-danger);
+  margin-right: 16rpx;
+}
+.retry-btn {
+  padding: 6rpx 20rpx;
+  background: var(--zw-brand);
+  color: var(--zw-on-primary);
+  font-size: 24rpx;
+  border-radius: var(--zw-radius-sm);
 }
 .info-card {
   background: var(--zw-bg-card);

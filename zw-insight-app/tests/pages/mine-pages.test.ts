@@ -65,10 +65,14 @@ describe('mine/index.vue 我的页', () => {
     const wrapper = mount(MineIndex)
 
     const items = wrapper.findAll('.menu-item')
+    // 新增第0项为定位签到
     await items[0].trigger('click')
-    expect((getUni() as any).navigateTo).toHaveBeenCalledWith({ url: '/pages/mine/password' })
+    expect((getUni() as any).navigateTo).toHaveBeenCalledWith({ url: '/pages/mine/sign' })
 
     await items[1].trigger('click')
+    expect((getUni() as any).navigateTo).toHaveBeenCalledWith({ url: '/pages/mine/password' })
+
+    await items[2].trigger('click')
     expect(modalCalls[0]).toMatchObject({ title: '关于中维智营', showCancel: false })
     wrapper.unmount()
   })
@@ -170,7 +174,7 @@ describe('mine/sign.vue 签到页', () => {
 
   it('未定位完成点击签到被拦截', async () => {
     ;(getUni() as any).getLocation = () => {} // 定位不回调
-    const request = vi.fn(async () => ({ data: { code: 200, data: {} } }))
+    const request = vi.fn(async () => ({ statusCode: 200, data: { code: 200, data: {} } }))
     ;(getUni() as any).request = request
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
@@ -182,17 +186,20 @@ describe('mine/sign.vue 签到页', () => {
 
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请等待定位完成' }))
     // 挂载时 loadCalendar 会调 monthly 接口，仅断言签到接口未调
-    expect(request.mock.calls.every((c: any[]) => c[0].url !== '/api/v1/site/sign')).toBe(true)
+    expect(request.mock.calls.every((c: any[]) => c[0].method !== 'POST')).toBe(true)
     wrapper.unmount()
   })
 
   it('签到成功：todaySigned + isInRange 按后端 isInRange===1 判定', async () => {
     installLocation(30.123, 120.456)
     const request = vi.fn(async (options: any) => {
-      if (options.url === '/api/v1/site/sign') {
-        return { data: { code: 200, data: { isInRange: 1 } } }
+      if (options.url.includes('/site/sign/monthly')) {
+        return { statusCode: 200, data: { code: 200, data: { signDays: 1, dailyRecords: [] } } }
       }
-      return { data: { code: 200, data: { signDays: 1, dailyRecords: [] } } }
+      if (options.url.includes('/site/sign')) {
+        return { statusCode: 200, data: { code: 200, data: { isInRange: 1 } } }
+      }
+      return { statusCode: 200, data: { code: 200, data: {} } }
     })
     ;(getUni() as any).request = request
     getUni().setStorageSync('token', 'tk-sign')
@@ -203,7 +210,7 @@ describe('mine/sign.vue 签到页', () => {
     await wrapper.find('.sign-btn').trigger('click')
     await flushPromises()
 
-    const signCall = request.mock.calls.find((c: any[]) => c[0].url === '/api/v1/site/sign')
+    const signCall = request.mock.calls.find((c: any[]) => c[0].method === 'POST')
     expect(signCall).toBeTruthy()
     expect(signCall![0].header.Authorization).toBe('Bearer tk-sign')
     expect(signCall![0].data.latitude).toBe(30.123)
@@ -218,10 +225,10 @@ describe('mine/sign.vue 签到页', () => {
     const now = new Date()
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     ;(getUni() as any).request = vi.fn(async (options: any) => {
-      if (options.url === '/api/v1/site/sign/monthly') {
-        return { data: { code: 200, data: { signDays: 2, dailyRecords: [{ date: todayStr, signed: true }] } } }
+      if (options.url.includes('/site/sign/monthly')) {
+        return { statusCode: 200, data: { code: 200, data: { signDays: 2, dailyRecords: [{ date: todayStr, signed: true }] } } }
       }
-      return { data: { code: 200, data: {} } }
+      return { statusCode: 200, data: { code: 200, data: {} } }
     })
 
     const wrapper = mount(SignPage)

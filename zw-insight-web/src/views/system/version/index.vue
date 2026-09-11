@@ -177,7 +177,7 @@ onMounted(loadData)
 
 <style scoped>
 .version-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
@@ -187,18 +187,18 @@ onMounted(loadData)
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--zw-space-sm-md);
 }
 .title {
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--zw-font-size-md);
 }
 .changelog-summary {
   color: var(--el-text-color-regular);
 }
 .form-hint {
   color: var(--el-text-color-secondary);
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
   line-height: 1.6;
 }
 .changelog-detail pre {

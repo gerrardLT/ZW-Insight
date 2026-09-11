@@ -6,7 +6,7 @@
         type="info"
         show-icon
         :closable="false"
-        style="margin-bottom: 16px"
+        style="margin-bottom: var(--zw-space-md)"
       />
 
       <el-form inline>
@@ -34,7 +34,7 @@
 
       <div v-else v-loading="loading">
         <!-- 项目基本信息 -->
-        <el-descriptions title="项目基本信息" :column="3" border style="margin-bottom: 16px">
+        <el-descriptions title="项目基本信息" :column="3" border style="margin-bottom: var(--zw-space-md)">
           <el-descriptions-item label="项目编号">{{ project.projectCode || '-' }}</el-descriptions-item>
           <el-descriptions-item label="项目名称">{{ project.projectName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="项目状态">{{ project.status || '-' }}</el-descriptions-item>
@@ -212,6 +212,6 @@ onMounted(() => {
 
 <style scoped>
 .archive-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 </style>

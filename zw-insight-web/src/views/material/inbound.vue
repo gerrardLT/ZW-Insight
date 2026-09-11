@@ -76,7 +76,7 @@
         <div class="detail-toolbar">
           <el-button type="primary" size="small" @click="handleAddDetail">添加明细</el-button>
         </div>
-        <el-table :data="formData.details" border style="width: 100%; margin-top: 10px">
+        <el-table :data="formData.details" border style="width: 100%; margin-top: var(--zw-space-sm-md)">
           <el-table-column label="材料名称" min-width="160">
             <template #default="{ row }"><el-input v-model="row.materialName" placeholder="材料名称" /></template>
           </el-table-column>
@@ -216,8 +216,8 @@ onMounted(() => { loadData() })
 </script>
 
 <style scoped>
-.material-inbound-container { padding: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
-.detail-toolbar { display: flex; align-items: center; gap: 12px; }
+.material-inbound-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
+.detail-toolbar { display: flex; align-items: center; gap: var(--zw-space-sm-md); }
 </style>

@@ -5,7 +5,10 @@
       <div class="logo">
         <div class="logo-icon">ZW</div>
         <transition name="fade">
-          <span v-if="!isCollapse" class="logo-text">中维智营</span>
+          <div v-if="!isCollapse" class="logo-text-group">
+            <span class="logo-text">中维智营</span>
+            <span class="logo-sub">INSIGHT OS</span>
+          </div>
         </transition>
       </div>
       <el-scrollbar class="menu-scrollbar">
@@ -276,6 +279,8 @@ function handleLogout() {
   flex-shrink: 0;
   background-color: var(--zw-bg-sidebar);
   transition: width var(--zw-transition-slow);
+  will-change: width;
+  contain: layout paint;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -292,6 +297,7 @@ function handleLogout() {
   gap: 10px;
   padding: 0 18px;
   flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .logo-icon {
@@ -309,11 +315,26 @@ function handleLogout() {
   letter-spacing: 0.5px;
 }
 
+.logo-text-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .logo-text {
   color: #fff;
   font-size: var(--zw-font-size-md);
   font-weight: var(--zw-font-weight-semibold);
   white-space: nowrap;
+  line-height: 1.2;
+}
+
+.logo-sub {
+  color: rgba(255, 255, 255, 0.45);
+  font-family: var(--zw-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
 }
 
 .menu-scrollbar {

@@ -41,7 +41,7 @@
             <el-input v-model="form.code" placeholder="请输入 6 位验证码" prefix-icon="Key" maxlength="6" />
           </el-form-item>
           <el-form-item>
-            <div style="display: flex; gap: 12px; width: 100%">
+            <div style="display: flex; gap: var(--zw-space-sm-md); width: 100%">
               <el-button style="flex: 1" @click="active = 0">上一步</el-button>
               <el-button
                 type="text"
@@ -84,7 +84,7 @@
             <span class="tip-text">密码需 8-20 个字符，且同时包含字母和数字</span>
           </el-form-item>
           <el-form-item>
-            <div style="display: flex; gap: 12px; width: 100%">
+            <div style="display: flex; gap: var(--zw-space-sm-md); width: 100%">
               <el-button style="flex: 1" @click="active = 1">上一步</el-button>
               <el-button type="primary" style="flex: 1" :loading="submitting" @click="handleReset">
                 重置密码
@@ -262,12 +262,12 @@ function goLogin() {
 }
 .forgot-card {
   width: 460px;
-  padding: 20px;
+  padding: var(--zw-space-lg);
 }
 .forgot-title {
   text-align: center;
-  margin-bottom: 4px;
-  font-size: 24px;
+  margin-bottom: var(--zw-space-xs);
+  font-size: var(--zw-font-size-2xl);
   font-weight: var(--zw-font-weight-bold);
   letter-spacing: 0.04em;
   color: var(--zw-text-primary);
@@ -275,20 +275,20 @@ function goLogin() {
 .forgot-subtitle {
   text-align: center;
   color: var(--zw-text-tertiary);
-  margin-bottom: 24px;
+  margin-bottom: var(--zw-space-lg);
 }
 .forgot-steps {
-  margin-bottom: 32px;
+  margin-bottom: var(--zw-space-xl);
 }
 .step-body {
   min-height: 160px;
 }
 .tip-text {
-  font-size: 13px;
+  font-size: var(--zw-font-size-sm);
   color: var(--zw-text-tertiary);
 }
 .back-login {
   text-align: center;
-  margin-top: 8px;
+  margin-top: var(--zw-space-sm);
 }
 </style>

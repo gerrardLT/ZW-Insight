@@ -1,6 +1,31 @@
 <template>
-  <div class="project-detail-container">
-    <el-card shadow="never">
+  <div class="project-detail-container page-container">
+    <!-- 工程铭牌头部 -->
+    <div class="plate-header">
+      <div class="plate-main">
+        <div class="plate-title-wrap">
+          <div class="plate-eyebrow">Project Master Dossier // 01-PROJ</div>
+          <div class="plate-title">
+            <span>{{ projectInfo.projectName || '项目详情' }}</span>
+            <el-tag :type="getStatusType(projectInfo.status)" size="small">
+              {{ getStatusLabel(projectInfo.status) }}
+            </el-tag>
+          </div>
+          <div class="plate-meta">
+            <span>CODE: {{ projectInfo.projectCode || '-' }}</span>
+            <span>CREATED: {{ projectInfo.createdAt || '-' }}</span>
+          </div>
+        </div>
+        <div class="plate-actions">
+          <el-button @click="handleBack">
+            <el-icon><ArrowLeft /></el-icon>返回列表
+          </el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主体内容卡片（蓝图角标） -->
+    <el-card shadow="never" class="card-corner-marked">
       <template #header>
         <div class="card-header">
           <span>项目详情：{{ projectInfo.projectName }}</span>
@@ -8,10 +33,13 @@
         </div>
       </template>
 
-      <el-tabs v-model="activeTab">
+      <el-tabs v-model="activeTab" class="custom-tabs">
         <el-tab-pane label="基本信息" name="info">
+          <div class="section-title">工程基本概况</div>
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="项目编号">{{ projectInfo.projectCode }}</el-descriptions-item>
+            <el-descriptions-item label="项目编号">
+              <span class="stat-number">{{ projectInfo.projectCode }}</span>
+            </el-descriptions-item>
             <el-descriptions-item label="项目名称">{{ projectInfo.projectName }}</el-descriptions-item>
             <el-descriptions-item label="项目性质">{{ projectInfo.projectNature }}</el-descriptions-item>
             <el-descriptions-item label="项目类型">{{ projectInfo.projectType }}</el-descriptions-item>
@@ -20,14 +48,18 @@
             <el-descriptions-item label="项目地址">{{ projectInfo.projectAddress }}</el-descriptions-item>
             <el-descriptions-item label="联系人">{{ projectInfo.contactName }}</el-descriptions-item>
             <el-descriptions-item label="联系电话">{{ projectInfo.contactPhone }}</el-descriptions-item>
-            <el-descriptions-item label="预算金额">{{ projectInfo.budgetAmount }}</el-descriptions-item>
+            <el-descriptions-item label="预算金额">
+              <span class="stat-number text-brand font-semibold">{{ projectInfo.budgetAmount != null ? (projectInfo.budgetAmount === 0 ? '0' : '¥ ' + projectInfo.budgetAmount) : '-' }}</span>
+            </el-descriptions-item>
             <el-descriptions-item label="状态">
               <el-tag :type="getStatusType(projectInfo.status)" size="small">
                 {{ getStatusLabel(projectInfo.status) }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ projectInfo.createdAt }}</el-descriptions-item>
-            <el-descriptions-item label="项目概述" :span="2">{{ projectInfo.projectOverview }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间">
+              <span class="stat-number">{{ projectInfo.createdAt }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="项目概述" :span="2">{{ projectInfo.projectOverview || '暂无描述' }}</el-descriptions-item>
           </el-descriptions>
         </el-tab-pane>
 
@@ -42,6 +74,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { getProjectDetail } from '@/api/project'
 import ProjectMember from './components/ProjectMember.vue'
 
@@ -92,7 +125,7 @@ onMounted(() => {
 
 <style scoped>
 .project-detail-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;

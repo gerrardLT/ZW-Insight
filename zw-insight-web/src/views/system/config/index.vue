@@ -239,7 +239,7 @@ onMounted(() => {
 
 <style scoped>
 .system-config-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 
 .card-header {
@@ -250,13 +250,13 @@ onMounted(() => {
 
 .config-form-wrap {
   min-height: 300px;
-  padding-top: 16px;
+  padding-top: var(--zw-space-md);
 }
 
 .config-item-content {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--zw-space-sm-md);
 }
 
 .reset-btn {
@@ -264,14 +264,14 @@ onMounted(() => {
 }
 
 .config-item-hint {
-  margin-top: 4px;
-  font-size: 12px;
+  margin-top: var(--zw-space-xs);
+  font-size: var(--zw-font-size-xs);
   color: #909399;
   line-height: 1.4;
 }
 
 .hint-range {
-  margin-right: 12px;
+  margin-right: var(--zw-space-sm-md);
   color: #e6a23c;
 }
 

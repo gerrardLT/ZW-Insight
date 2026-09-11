@@ -1,8 +1,23 @@
 <template>
-  <div class="contract-container">
-    <el-card shadow="never">
+  <div class="contract-container page-container">
+    <!-- 统一页面头部与大写眉题 -->
+    <div class="page-header">
+      <div class="page-title-group">
+        <div class="page-eyebrow">Commercial Ledger // 02-CONTRACT</div>
+        <h3>合同管理</h3>
+      </div>
+      <div class="page-actions">
+        <el-button type="primary" @click="handleAdd">
+          <el-icon><Plus /></el-icon>新增合同
+        </el-button>
+        <el-button @click="importVisible = true">批量导入</el-button>
+        <el-button @click="exportVisible = true">导出</el-button>
+      </div>
+    </div>
+
+    <el-card shadow="never" class="card-corner-marked">
       <!-- 搜索区域 -->
-      <el-form :model="queryParams" inline>
+      <el-form :model="queryParams" inline class="search-form">
         <el-form-item label="项目">
           <el-select
             v-model="queryParams.projectId"
@@ -35,24 +50,25 @@
         </el-form-item>
       </el-form>
 
-      <!-- 操作栏 -->
-      <div class="table-toolbar">
-        <el-button type="primary" @click="handleAdd">
-          <el-icon><Plus /></el-icon>新增合同
-        </el-button>
-        <el-button @click="importVisible = true">批量导入</el-button>
-        <el-button @click="exportVisible = true">导出</el-button>
-      </div>
-
       <!-- 表格 -->
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="contractCode" label="合同编号" width="140" />
+        <el-table-column prop="contractCode" label="合同编号" width="150">
+          <template #default="{ row }">
+            <span class="stat-number">{{ row.contractCode }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="projectName" label="所属项目" min-width="180" show-overflow-tooltip />
         <el-table-column prop="partyAName" label="甲方" width="150" show-overflow-tooltip />
-        <el-table-column prop="contractAmount" label="合同金额" width="130" align="right">
-          <template #default="{ row }">{{ formatMoney(row.contractAmount) }}</template>
+        <el-table-column prop="contractAmount" label="合同金额" width="140" align="right">
+          <template #default="{ row }">
+            <span class="stat-number money-num font-semibold text-brand">{{ formatMoney(row.contractAmount) }}</span>
+          </template>
         </el-table-column>
-        <el-table-column prop="signingDate" label="签订日期" width="110" />
+        <el-table-column prop="signingDate" label="签订日期" width="120">
+          <template #default="{ row }">
+            <span class="stat-number text-secondary">{{ row.signingDate }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
@@ -261,16 +277,16 @@ onMounted(() => {
 
 <style scoped>
 .contract-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .stat-panel {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

@@ -215,7 +215,7 @@ onMounted(loadData)
 
 <style scoped>
 .backup-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
@@ -224,13 +224,13 @@ onMounted(loadData)
 }
 .title {
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--zw-font-size-md);
 }
 .tip-alert {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

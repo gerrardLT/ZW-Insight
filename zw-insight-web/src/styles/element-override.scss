@@ -178,23 +178,111 @@
   --el-table-text-color: var(--zw-text-primary);
   --el-table-header-text-color: var(--zw-text-secondary);
 
-  border-radius: var(--zw-radius-sm);
+  border-radius: var(--zw-radius-xs);
+  border: 1px solid var(--zw-border);
 
   .el-table__header th {
     font-weight: var(--zw-font-weight-semibold);
     font-size: var(--zw-font-size-xs);
     color: var(--zw-text-secondary);
+    letter-spacing: 0.3px;
+    background-color: var(--zw-table-header-bg);
+    border-bottom: 1px solid var(--zw-border-strong);
+    padding: 10px 0;
   }
 
   .el-table__row {
     transition: background-color var(--zw-transition-fast);
+
+    td {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--zw-border-light);
+    }
+  }
+
+  /* 表尾合计行（吸底固化，确保长表格滚动时统计数字常驻视窗底端） */
+  .el-table__footer-wrapper {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    border-top: 2px solid var(--zw-border-strong);
+    background-color: var(--zw-bg-card);
+
+    td {
+      background-color: var(--zw-bg-card);
+      font-weight: var(--zw-font-weight-bold);
+      color: var(--zw-text-primary);
+    }
   }
 
   /* 数字列等宽账本 */
   .cell.num-cell,
-  td .stat-number {
+  td.is-right .cell,
+  td .stat-number,
+  td .money-num {
     font-family: var(--zw-font-mono);
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ===== 表格密度控制（Table Density Hierarchy） =====
+ * 紧凑（Compact 32px）：超多列台账首选，高密度展示
+ * 标准（Default 44px）：常规操作
+ * 宽松（Loose 52px）：高分辨率大屏宽裕视野
+ */
+[data-table-density="compact"] .el-table,
+.el-table--density-compact {
+  .el-table__header th {
+    padding: 5px 0 !important;
+    font-size: 11px !important;
+  }
+  .el-table__row td {
+    padding: 5px 0 !important;
+    font-size: 12px !important;
+  }
+  .cell {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    line-height: 20px !important;
+  }
+}
+
+[data-table-density="loose"] .el-table,
+.el-table--density-loose {
+  .el-table__header th {
+    padding: 14px 0 !important;
+    font-size: 13px !important;
+  }
+  .el-table__row td {
+    padding: 14px 0 !important;
+    font-size: 14px !important;
+  }
+  .cell {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* ===== Descriptions（工程铭牌属性表覆写） ===== */
+.el-descriptions--border {
+  border: 1px solid var(--zw-border) !important;
+  border-radius: var(--zw-radius-xs);
+
+  .el-descriptions__label.is-bordered-label {
+    background-color: var(--zw-bg-hover) !important;
+    color: var(--zw-text-secondary);
+    font-weight: var(--zw-font-weight-medium);
+    font-size: var(--zw-font-size-xs);
+    letter-spacing: 0.2px;
+    width: 140px;
+    border-color: var(--zw-border-light) !important;
+  }
+
+  .el-descriptions__content.is-bordered-content {
+    background-color: var(--zw-bg-card) !important;
+    color: var(--zw-text-primary);
+    font-size: var(--zw-font-size-base);
+    border-color: var(--zw-border-light) !important;
   }
 }
 

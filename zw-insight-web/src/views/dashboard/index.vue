@@ -356,11 +356,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 28px;
+  padding: var(--zw-space-lg);
   margin-bottom: var(--zw-space-md);
   border-radius: var(--zw-radius-sm);
   background: var(--zw-bg-sidebar);
-  border-left: 3px solid var(--zw-brand);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
   color: #f2f3f1;
   overflow: hidden;
   position: relative;
@@ -369,18 +370,18 @@ onBeforeUnmount(() => {
 /* 大写英文眉题（Display 层签名） */
 .welcome-eyebrow {
   font-family: var(--zw-font-display);
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--zw-brand);
-  margin-bottom: 6px;
+  margin-bottom: var(--zw-space-sm);
 }
 
 .welcome-text h2 {
   font-size: var(--zw-font-size-2xl);
   font-weight: var(--zw-font-weight-bold);
-  margin-bottom: 6px;
+  margin-bottom: var(--zw-space-sm);
   letter-spacing: 0.02em;
 }
 
@@ -423,7 +424,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--zw-space-md);
-  padding: 20px;
+  padding: var(--zw-space-lg);
   background: var(--zw-bg-card);
   border: 1px solid var(--zw-border);
   border-radius: var(--zw-radius-sm);
@@ -443,13 +444,13 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   border-radius: var(--zw-radius-xs);
-  font-size: 26px;
+  font-size: var(--zw-font-size-2xl);
 }
 
 .stat-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--zw-space-sm);
 }
 
 .stat-label {
@@ -458,7 +459,7 @@ onBeforeUnmount(() => {
 }
 
 .stat-value {
-  font-size: 26px;
+  font-size: var(--zw-font-size-2xl);
   font-weight: var(--zw-font-weight-bold);
   color: var(--zw-text-primary);
   line-height: 1.2;
@@ -483,13 +484,13 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px 0;
+  padding: var(--zw-space-md) var(--zw-space-lg) 0;
 }
 
 .overdue-title-wrap {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--zw-space-sm-md);
 }
 
 .overdue-title {
@@ -505,13 +506,13 @@ onBeforeUnmount(() => {
 .overdue-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  padding: 12px 20px 18px;
+  padding: var(--zw-space-sm-md) var(--zw-space-lg) var(--zw-space-md);
 }
 
 .overdue-stat {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--zw-space-sm);
 }
 
 .overdue-stat-label {
@@ -520,7 +521,7 @@ onBeforeUnmount(() => {
 }
 
 .overdue-stat-value {
-  font-size: 22px;
+  font-size: var(--zw-font-size-2xl);
   font-weight: var(--zw-font-weight-bold);
   color: var(--zw-text-primary);
   line-height: 1.2;
@@ -529,8 +530,8 @@ onBeforeUnmount(() => {
 .overdue-error {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 20px 18px;
+  gap: var(--zw-space-sm-md);
+  padding: var(--zw-space-md) var(--zw-space-lg) var(--zw-space-md);
   color: var(--zw-danger);
   font-size: var(--zw-font-size-sm);
 }

@@ -216,8 +216,8 @@ onMounted(() => { loadContracts(); loadData() })
 </script>
 
 <style scoped>
-.purchase-settlement-container { padding: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
-.empty-tip { color: #e6a23c; font-size: 12px; line-height: 1.5; margin-top: 4px; }
+.purchase-settlement-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
+.empty-tip { color: #e6a23c; font-size: var(--zw-font-size-xs); line-height: 1.5; margin-top: var(--zw-space-xs); }
 </style>

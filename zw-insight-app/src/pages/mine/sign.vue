@@ -1,5 +1,12 @@
 <template>
   <view class="sign-page">
+    <!-- 项目选择 -->
+    <view class="project-selector" @click="showProjectPicker = true">
+      <text class="selector-label">打卡项目：</text>
+      <text class="selector-value">{{ projectName || '请选择项目' }}</text>
+      <text class="arrow">›</text>
+    </view>
+
     <!-- 签到卡片 -->
     <view class="sign-card">
       <view class="sign-time">{{ currentTime }}</view>
@@ -27,11 +34,33 @@
         </view>
       </view>
     </view>
+
+    <!-- 项目选择弹窗 -->
+    <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
+      <view class="picker-content" @click.stop>
+        <view class="picker-header">
+          <text @click="showProjectPicker = false">取消</text>
+          <text class="picker-title">选择打卡项目</text>
+          <text></text>
+        </view>
+        <scroll-view scroll-y class="picker-list">
+          <view class="picker-item" v-for="p in projects" :key="p.id" @click="selectProject(p)">
+            <text>{{ p.projectName }}</text>
+          </view>
+          <view class="empty" v-if="!projects.length"><text>暂无可打卡项目</text></view>
+        </scroll-view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
+import { BASE_URL } from '@/utils/request'
+import { useUserStore } from '@/stores/user'
+import { loadProjectList } from '@/utils/offlineData'
+
+const userStore = useUserStore()
 
 const signing = ref(false)
 const todaySigned = ref(false)
@@ -41,6 +70,11 @@ const currentTime = ref('')
 const currentMonth = ref('')
 const calendarDays = ref<any[]>([])
 const location = ref({ latitude: 0, longitude: 0, address: '' })
+
+const showProjectPicker = ref(false)
+const projects = ref<any[]>([])
+const projectId = ref<number | null>(1)
+const projectName = ref('')
 
 // 更新时间
 function updateTime() {
@@ -62,6 +96,13 @@ function getLocation() {
   })
 }
 
+function selectProject(p: any) {
+  projectId.value = p.id
+  projectName.value = p.projectName
+  showProjectPicker.value = false
+  loadCalendar()
+}
+
 // 签到
 async function handleSign() {
   if (!location.value.latitude) {
@@ -71,14 +112,20 @@ async function handleSign() {
   try {
     const token = uni.getStorageSync('token')
     const res: any = await uni.request({
-      url: '/api/v1/site/sign',
+      url: `${BASE_URL}/v1/site/sign`,
       method: 'POST',
-      header: { Authorization: `Bearer ${token}` },
-      data: { projectId: 1, latitude: location.value.latitude, longitude: location.value.longitude, address: location.value.address }
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      data: {
+        projectId: projectId.value || 1,
+        latitude: location.value.latitude,
+        longitude: location.value.longitude,
+        address: location.value.address
+      }
     })
-    if (res.data?.code === 200) {
+    const body = res?.data || res
+    if (body?.code === 200) {
       todaySigned.value = true
-      isInRange.value = res.data?.data?.isInRange === 1
+      isInRange.value = body?.data?.isInRange === 1
       uni.showToast({ title: '签到成功', icon: 'success' })
       loadCalendar()
     }
@@ -100,16 +147,24 @@ async function loadCalendar() {
     days.push({ day: d, date: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, signed: false, isToday: d === today })
   }
 
+  const pid = projectId.value || 1
+  const uid = userStore.userInfo?.id || 1
+
   try {
     const token = uni.getStorageSync('token')
     const res: any = await uni.request({
-      url: '/api/v1/site/sign/monthly',
+      url: `${BASE_URL}/v1/site/sign/monthly`,
       method: 'GET',
-      header: { Authorization: `Bearer ${token}` },
-      data: { projectId: 1, month: monthStr }
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      data: {
+        projectId: pid,
+        userId: uid,
+        month: monthStr
+      }
     })
-    if (res.data?.code === 200 && res.data?.data) {
-      const monthlyData = res.data.data
+    const body = res?.data || res
+    if (body?.code === 200 && body?.data) {
+      const monthlyData = body.data
       // 用后端返回的 dailyRecords 填充日历签到状态
       if (monthlyData.dailyRecords && Array.isArray(monthlyData.dailyRecords)) {
         for (const record of monthlyData.dailyRecords) {
@@ -125,8 +180,7 @@ async function loadCalendar() {
         todaySigned.value = true
       }
     }
-  } catch (e) {
-    // 接口失败时日历保持空状态，不影响页面渲染
+  } catch {
     signDays.value = 0
   }
 
@@ -138,11 +192,22 @@ onMounted(() => {
   setInterval(updateTime, 1000)
   getLocation()
   loadCalendar()
+  loadProjectList({ page: 1, size: 50 }).then((res) => {
+    projects.value = res?.records || []
+    if (projects.value.length > 0) {
+      projectId.value = projects.value[0].id
+      projectName.value = projects.value[0].projectName
+    }
+  }).catch(() => {})
 })
 </script>
 
 <style scoped>
 .sign-page { padding: 20rpx; }
+.project-selector { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 20rpx 24rpx; border-radius: var(--zw-radius-md); margin-bottom: 20rpx; border: 1rpx solid var(--zw-border-light); }
+.selector-label { font-size: 26rpx; color: var(--zw-text-tertiary); }
+.selector-value { flex: 1; text-align: right; font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
+.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
 /* 签到卡：品牌橙纯色块（去渐变纪律）+ 深字承重规则 */
 .sign-card { background: var(--zw-brand); border-radius: var(--zw-radius-lg); padding: 48rpx 32rpx; text-align: center; color: var(--zw-on-primary); margin-bottom: 24rpx; }
 .sign-time { font-size: 56rpx; font-weight: bold; margin-bottom: 12rpx; font-family: var(--zw-font-mono); }
@@ -160,4 +225,11 @@ onMounted(() => {
 .calendar-day.today { border: 2rpx solid var(--zw-brand); }
 .day-num { font-size: 24rpx; color: var(--zw-text-secondary); font-family: var(--zw-font-mono); }
 .day-dot { color: var(--zw-success); font-size: 16rpx; }
+.picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
+.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-title { font-size: 30rpx; font-weight: bold; }
+.picker-list { max-height: 60vh; }
+.picker-item { padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); }
 </style>

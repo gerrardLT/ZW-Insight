@@ -153,13 +153,13 @@ onMounted(() => {
 
 <style scoped>
 .hr-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

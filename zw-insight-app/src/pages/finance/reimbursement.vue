@@ -1,5 +1,6 @@
 <template>
   <view class="form-page">
+    <OfflineBanner />
     <view class="form-section">
       <view class="form-item" @click="showProjectPicker = true">
         <text class="form-label">所属项目</text>
@@ -76,9 +77,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { saveReimbursement } from '@/api/common'
+import { saveReimbursement, submitReimbursement } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
-import { submitOrQueue } from '@/utils/offlineSubmit'
+import { rejectIfOffline } from '@/utils/offlineSubmit'
+import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
@@ -115,31 +117,34 @@ async function handleSubmit() {
   if (!form.value.projectId) {
     uni.showToast({ title: '请选择项目', icon: 'none' }); return
   }
-  if (!form.value.amount) {
+  const amountNum = Number(form.value.amount)
+  if (!form.value.amount || !Number.isFinite(amountNum) || amountNum <= 0) {
     uni.showToast({ title: '请输入报销金额', icon: 'none' }); return
   }
   if (!form.value.description) {
     uni.showToast({ title: '请填写费用说明', icon: 'none' }); return
   }
+  // 两段式审批无法离线入队（避免遗留永久 DRAFT），离线时明确拒绝（不静默）
+  if (rejectIfOffline('项目报销需联网提交审批，请联网后重试')) return
   submitting.value = true
   try {
     const payload = {
       projectId: form.value.projectId,
-      amount: Number(form.value.amount),
+      amount: amountNum,
+      totalAmount: amountNum,
       expenseType: form.value.expenseType,
       expenseDate: form.value.expenseDate,
+      reimbursementDate: form.value.expenseDate,
       description: form.value.description,
       invoiceCount: Number(form.value.invoiceCount) || 0,
       remark: form.value.remark
     }
-    // 离线时入队（需求 5.1），联网后由 syncEngine 自动提交
-    const { queued } = await submitOrQueue(() => saveReimbursement(payload), {
-      endpoint: '/v1/finance/project-reimbursement',
-      payload
-    })
-    if (!queued) {
-      uni.showToast({ title: '提交成功', icon: 'success' })
+    // 两段式提交：save 写入草稿返回 id → 链式调用 submit 启动审批流置 APPROVED
+    const res: any = await saveReimbursement(payload)
+    if (res?.data) {
+      await submitReimbursement(res.data)
     }
+    uni.showToast({ title: '提交成功', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally {
     submitting.value = false
@@ -149,22 +154,22 @@ async function handleSubmit() {
 
 <style scoped>
 .form-page { padding: 20rpx; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
+.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
 .form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item.vertical { flex-direction: column; align-items: flex-start; }
 .form-item:last-child { border-bottom: none; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
+.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
 .placeholder { color: var(--zw-text-quaternary); }
 .arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
-.textarea { width: 100%; height: 180rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); padding: 16rpx; font-size: 26rpx; margin-top: 12rpx; box-sizing: border-box; }
+.textarea { width: 100%; height: 180rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 16rpx; font-size: 26rpx; margin-top: 12rpx; box-sizing: border-box; }
 .radio-group-wrap { display: flex; gap: 12rpx; flex: 1; flex-wrap: wrap; justify-content: flex-end; }
-.radio-item { padding: 8rpx 20rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); font-size: 24rpx; color: var(--zw-text-secondary); }
-.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; } /* 橙底深字承重规则 */
+.radio-item { padding: 8rpx 20rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); font-size: 24rpx; color: var(--zw-text-secondary); }
+.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); font-weight: 500; }
+.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
-.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
+.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; max-height: 70vh; }
 .picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }

@@ -116,6 +116,7 @@ async function initModeler() {
     canvas.zoom('fit-viewport')
   } catch (err) {
     console.error('加载流程图失败', err)
+    ElMessage.error('加载流程图失败，请刷新页面重试')
   }
 }
 
@@ -192,8 +193,8 @@ async function handleNewProcess() {
 
 .designer-toolbar {
   display: flex;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: var(--zw-space-sm-md);
+  padding: var(--zw-space-sm-md) var(--zw-space-md);
   border-bottom: 1px solid #ebeef5;
   background: #fff;
 }

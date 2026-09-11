@@ -10,6 +10,7 @@
 
       <el-form
         ref="formRef"
+        v-loading="pageLoading"
         :model="formData"
         :rules="formRules"
         label-width="100px"
@@ -170,6 +171,7 @@ const router = useRouter()
 const formRef = ref<FormInstance>()
 const saveLoading = ref(false)
 const submitLoading = ref(false)
+const pageLoading = ref(false) // 页面数据加载状态（详情回填期间串行多个请求，需整体遮罩防误操作）
 const budgetOptions = ref<any[]>([])
 const budgetDetailOptions = ref<any[]>([])
 
@@ -287,34 +289,39 @@ async function handleBudgetChange(budgetId: number | undefined) {
 /** 加载变更单详情（编辑/查看模式） */
 async function loadChangeDetail() {
   if (!changeId.value) return
-  const res: any = await getBudgetChange(changeId.value)
-  const data = res.data
-  formData.value.id = data.id
-  formData.value.projectId = data.projectId
-  formData.value.budgetId = data.budgetId
-  formData.value.changeReason = data.changeReason
+  pageLoading.value = true
+  try {
+    const res: any = await getBudgetChange(changeId.value)
+    const data = res.data
+    formData.value.id = data.id
+    formData.value.projectId = data.projectId
+    formData.value.budgetId = data.budgetId
+    formData.value.changeReason = data.changeReason
 
-  // 加载项目对应的预算选项
-  if (data.projectId) {
-    await handleProjectChange(data.projectId)
-  }
-  // 恢复预算选择（handleProjectChange 会清空 budgetId，需重新回填）
-  formData.value.budgetId = data.budgetId
-  if (data.budgetId) {
-    await handleBudgetChange(data.budgetId)
-  }
+    // 加载项目对应的预算选项
+    if (data.projectId) {
+      await handleProjectChange(data.projectId)
+    }
+    // 恢复预算选择（handleProjectChange 会清空 budgetId，需重新回填）
+    formData.value.budgetId = data.budgetId
+    if (data.budgetId) {
+      await handleBudgetChange(data.budgetId)
+    }
 
-  // 加载明细
-  const detailRes: any = await getBudgetChangeDetails(changeId.value)
-  formData.value.details = (detailRes.data || []).map((item: any) => ({
-    budgetDetailId: item.budgetDetailId,
-    costCategory: item.costCategory || '',
-    costSubcategory: item.costSubcategory || '',
-    itemName: item.itemName || '',
-    originalAmount: item.originalAmount || 0,
-    adjustAmount: item.adjustAmount || 0,
-    adjustedAmount: item.adjustedAmount || 0
-  }))
+    // 加载明细
+    const detailRes: any = await getBudgetChangeDetails(changeId.value)
+    formData.value.details = (detailRes.data || []).map((item: any) => ({
+      budgetDetailId: item.budgetDetailId,
+      costCategory: item.costCategory || '',
+      costSubcategory: item.costSubcategory || '',
+      itemName: item.itemName || '',
+      originalAmount: item.originalAmount || 0,
+      adjustAmount: item.adjustAmount || 0,
+      adjustedAmount: item.adjustedAmount || 0
+    }))
+  } finally {
+    pageLoading.value = false
+  }
 }
 
 /** 表单校验 */
@@ -410,7 +417,7 @@ onMounted(() => {
 
 <style scoped>
 .budget-change-form-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
@@ -421,16 +428,16 @@ onMounted(() => {
   width: 100%;
 }
 .detail-toolbar {
-  margin-bottom: 8px;
+  margin-bottom: var(--zw-space-sm);
 }
 .detail-summary {
-  margin-top: 12px;
+  margin-top: var(--zw-space-sm-md);
   text-align: right;
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
 }
 .form-actions {
-  margin-top: 24px;
-  padding-top: 16px;
+  margin-top: var(--zw-space-lg);
+  padding-top: var(--zw-space-md);
   border-top: 1px solid #ebeef5;
   text-align: center;
 }

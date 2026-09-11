@@ -113,6 +113,9 @@
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="关联合同" prop="contractId">
+          <ContractSelector v-model="formData.contractId" :project-id="formData.projectId" />
+        </el-form-item>
         <el-form-item label="回款金额" prop="receiveAmount">
           <el-input-number v-model="formData.receiveAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
@@ -156,6 +159,7 @@ import { getPaymentReceivedPage, createPaymentReceived, updatePaymentReceived, d
 import { getProjectList } from '@/api/project'
 import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
+import ContractSelector from '@/components/ContractSelector.vue'
 import { toWan, clampPercent } from '@/utils/chart-format'
 
 const formRef = ref<FormInstance>()
@@ -178,6 +182,7 @@ const queryParams = ref({
 const formData = ref({
   id: undefined as number | undefined,
   projectId: undefined as number | undefined,
+  contractId: undefined as number | undefined,
   receiveAmount: 0,
   receiveDate: '',
   receiveType: '银行转账',
@@ -311,16 +316,16 @@ function buildCollectionRateOption(data: any) {
 
 <style scoped>
 .finance-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .stat-panel {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

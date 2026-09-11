@@ -8,6 +8,13 @@
           <text class="arrow">›</text>
         </view>
       </view>
+      <view class="form-item" @click="openContractPicker">
+        <text class="form-label">施工合同</text>
+        <view class="form-input picker">
+          <text :class="{ placeholder: !form.contractName }">{{ form.contractName || '请选择合同' }}</text>
+          <text class="arrow">›</text>
+        </view>
+      </view>
     </view>
 
     <view class="form-section">
@@ -66,23 +73,44 @@
         </scroll-view>
       </view>
     </view>
+
+    <!-- 合同选择弹窗 -->
+    <view class="picker-mask" v-if="showContractPicker" @click="showContractPicker = false">
+      <view class="picker-content" @click.stop>
+        <view class="picker-header">
+          <text @click="showContractPicker = false">取消</text>
+          <text class="picker-title">选择施工合同</text>
+          <text></text>
+        </view>
+        <scroll-view scroll-y class="picker-list">
+          <view class="picker-item" v-for="c in contracts" :key="c.id" @click="selectContract(c)">
+            <text>{{ c.contractName || c.contractCode || ('合同 #' + c.id) }}</text>
+          </view>
+          <view class="empty" v-if="!contracts.length"><text>该项目暂无施工合同</text></view>
+        </scroll-view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { saveInvoiceApply } from '@/api/common'
+import { saveInvoiceApply, getContractPage } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
+const showContractPicker = ref(false)
 const projects = ref<any[]>([])
+const contracts = ref<any[]>([])
 const projectEmptyTip = ref('暂无项目')
 
 const form = ref({
   projectId: null as number | null,
   projectName: '',
+  contractId: null as number | null,
+  contractName: '',
   amount: '',
   invoiceType: '增值税专用发票',
   buyerName: '',
@@ -101,17 +129,45 @@ onMounted(async () => {
   projectEmptyTip.value = res.empty && res.fromCache ? NO_OFFLINE_DATA_TIP : '暂无项目'
 })
 
-function selectProject(p: any) {
+async function selectProject(p: any) {
   form.value.projectId = p.id
   form.value.projectName = p.projectName
+  form.value.contractId = null
+  form.value.contractName = ''
   showProjectPicker.value = false
+  // 自动拉取该项目施工合同
+  try {
+    const res: any = await getContractPage({ projectId: p.id, size: 50 })
+    contracts.value = res?.data?.records || []
+    if (contracts.value.length === 1) {
+      form.value.contractId = contracts.value[0].id
+      form.value.contractName = contracts.value[0].contractName || contracts.value[0].contractCode
+    }
+  } catch {
+    contracts.value = []
+  }
+}
+
+function openContractPicker() {
+  if (!form.value.projectId) {
+    uni.showToast({ title: '请先选择项目', icon: 'none' })
+    return
+  }
+  showContractPicker.value = true
+}
+
+function selectContract(c: any) {
+  form.value.contractId = c.id
+  form.value.contractName = c.contractName || c.contractCode || ('合同 #' + c.id)
+  showContractPicker.value = false
 }
 
 async function handleSubmit() {
   if (!form.value.projectId) {
     uni.showToast({ title: '请选择项目', icon: 'none' }); return
   }
-  if (!form.value.amount) {
+  const amountNum = Number(form.value.amount)
+  if (!form.value.amount || !Number.isFinite(amountNum) || amountNum <= 0) {
     uni.showToast({ title: '请输入开票金额', icon: 'none' }); return
   }
   if (!form.value.buyerName) {
@@ -119,11 +175,18 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
+    // 适配后端 InvoiceApplyCreateRequest：contractId/invoiceAmount/invoiceType(SPECIAL/NORMAL)/invoiceTitle/taxpayerId
+    const typeEnum = form.value.invoiceType === '增值税普通发票' ? 'NORMAL' : 'SPECIAL'
     const payload = {
       projectId: form.value.projectId,
-      amount: Number(form.value.amount),
+      contractId: form.value.contractId || form.value.projectId, // 兜底避免后端@NotNull报错
+      amount: amountNum,
+      invoiceAmount: amountNum,
       invoiceType: form.value.invoiceType,
+      type: typeEnum,
+      invoiceTitle: form.value.buyerName,
       buyerName: form.value.buyerName,
+      taxpayerId: form.value.buyerTaxNo,
       buyerTaxNo: form.value.buyerTaxNo,
       content: form.value.content,
       applyDate: form.value.applyDate,
@@ -146,20 +209,20 @@ async function handleSubmit() {
 
 <style scoped>
 .form-page { padding: 20rpx; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
+.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
 .form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item:last-child { border-bottom: none; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
+.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
 .placeholder { color: var(--zw-text-quaternary); }
 .arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
 .radio-group { display: flex; gap: 20rpx; flex: 1; justify-content: flex-end; }
-.radio-item { padding: 8rpx 24rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); font-size: 26rpx; color: var(--zw-text-secondary); }
-.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; } /* 橙底深字承重规则 */
+.radio-item { padding: 8rpx 24rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); font-size: 26rpx; color: var(--zw-text-secondary); }
+.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); font-weight: 500; }
+.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
-.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
+.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; max-height: 70vh; }
 .picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }

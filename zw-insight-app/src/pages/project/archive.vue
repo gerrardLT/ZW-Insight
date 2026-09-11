@@ -4,7 +4,12 @@
       <text>加载中...</text>
     </view>
 
-    <template v-if="!loading && archive">
+    <view class="failed-state" v-else-if="loadFailed">
+      <text class="failed-tip">项目档案加载失败</text>
+      <text class="retry-btn" @click="retryLoad">重试</text>
+    </view>
+
+    <template v-else-if="archive">
       <!-- 项目基本信息 -->
       <view class="section">
         <view class="section-title">项目信息</view>
@@ -84,6 +89,8 @@ import { getProjectArchive } from '@/api/common'
 
 const archive = ref<any>(null)
 const loading = ref(true)
+const loadFailed = ref(false)
+let currentProjectId = 0
 
 function formatWan(val: number) {
   if (!val) return '0'
@@ -92,6 +99,7 @@ function formatWan(val: number) {
 
 onLoad((options: any) => {
   const projectId = Number(options.projectId)
+  currentProjectId = projectId || 0
   if (projectId) {
     loadArchive(projectId)
   } else {
@@ -101,26 +109,39 @@ onLoad((options: any) => {
 
 async function loadArchive(projectId: number) {
   loading.value = true
+  loadFailed.value = false
   try {
     const res: any = await getProjectArchive(projectId)
     archive.value = res.data
-  } catch {} finally {
+  } catch {
+    loadFailed.value = true
+  } finally {
     loading.value = false
+  }
+}
+
+function retryLoad() {
+  if (currentProjectId) {
+    loadArchive(currentProjectId)
   }
 }
 </script>
 
 <style scoped>
 .archive-page { padding: 20rpx; }
-.loading-mask { display: flex; justify-content: center; align-items: center; height: 400rpx; color: var(--zw-text-tertiary); }
-.section { background: var(--zw-bg-card); border-radius: var(--zw-radius-lg); padding: 24rpx; margin-bottom: 20rpx; }
+.loading-mask, .failed-state { display: flex; justify-content: center; align-items: center; height: 400rpx; font-size: 28rpx; }
+.loading-mask { color: var(--zw-text-tertiary); }
+.failed-state { flex-direction: column; }
+.failed-tip { color: var(--zw-danger); margin-bottom: 20rpx; }
+.retry-btn { padding: 8rpx 28rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 26rpx; border-radius: var(--zw-radius-xs); }
+.section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 24rpx; margin-bottom: 20rpx; }
 .section-title { font-size: 28rpx; font-weight: bold; color: var(--zw-text-primary); margin-bottom: 16rpx; padding-bottom: 12rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .info-row { display: flex; justify-content: space-between; padding: 12rpx 0; }
 .info-label { font-size: 26rpx; color: var(--zw-text-tertiary); }
-.info-value { font-size: 26rpx; color: var(--zw-text-primary); }
+.info-value { font-size: 26rpx; color: var(--zw-text-primary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .progress-bar-wrap { display: flex; align-items: center; gap: 16rpx; }
-.progress-bar { flex: 1; height: 16rpx; background: var(--zw-bg-hover); border-radius: var(--zw-radius-sm); overflow: hidden; }
-.progress-inner { height: 100%; background: var(--zw-brand); border-radius: var(--zw-radius-sm); transition: width 0.3s; }
-.progress-text { font-size: 26rpx; color: var(--zw-brand); font-weight: bold; }
+.progress-bar { flex: 1; height: 16rpx; background: var(--zw-bg-hover); border-radius: 2rpx; overflow: hidden; }
+.progress-inner { height: 100%; width: 100%; background: var(--zw-brand); border-radius: 2rpx; transform-origin: left center; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); will-change: transform; }
+.progress-text { font-size: 26rpx; color: var(--zw-brand); font-weight: bold; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .empty { text-align: center; padding: 80rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
 </style>

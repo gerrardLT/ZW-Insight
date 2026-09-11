@@ -292,15 +292,15 @@ onMounted(() => {
 
 <style scoped>
 .boq-upload-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 
 .contract-info-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 
 .upload-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 
 .upload-header {
@@ -310,15 +310,15 @@ onMounted(() => {
 }
 
 .upload-action {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   text-align: center;
 }
 
 .result-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 
 .tree-table-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 </style>

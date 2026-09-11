@@ -75,7 +75,7 @@
         <el-form-item label="加班费率"><el-input-number v-model="formData.overtimeRate" :min="0" :precision="2" style="width: 100%" /></el-form-item>
         <el-form-item label="合计预览">
           <span style="font-weight: 600">{{ totalPreview.toFixed(2) }} 元</span>
-          <span style="color: #909399; margin-left: 8px; font-size: 12px">（最终以后端计算为准）</span>
+          <span style="color: #909399; margin-left: var(--zw-space-sm); font-size: var(--zw-font-size-xs)">（最终以后端计算为准）</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -127,7 +127,7 @@ onMounted(() => { loadData() })
 </script>
 
 <style scoped>
-.work-order-container { padding: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.work-order-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 </style>

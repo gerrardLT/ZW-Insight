@@ -79,11 +79,11 @@
 
     <!-- 比价定标弹窗（2026-08-15 决策 A 补齐：报价列表+排名+定标，B-P-X1 闭环） -->
     <el-dialog v-model="bidDialogVisible" :title="`比价定标 — ${bidRow?.title || ''}`" width="720px" destroy-on-close>
-      <div style="margin-bottom: 12px">
+      <div style="margin-bottom: var(--zw-space-sm-md)">
         <el-button type="primary" size="small" :loading="rankingLoading" @click="handleCalculateRanking">计算排名</el-button>
-        <span v-if="bidRow?.status === 'AWARDED'" style="margin-left: 8px; color: #67c23a">已定标</span>
+        <span v-if="bidRow?.status === 'AWARDED'" style="margin-left: var(--zw-space-sm); color: #67c23a">已定标</span>
       </div>
-      <el-table :data="quotationList" border size="small" style="margin-bottom: 12px">
+      <el-table :data="quotationList" border size="small" style="margin-bottom: var(--zw-space-sm-md)">
         <el-table-column prop="supplierName" label="报价供应商" min-width="160" />
         <el-table-column prop="totalAmount" label="报价总额(元)" width="130" align="right">
           <template #default="{ row }">{{ row.totalAmount?.toLocaleString() }}</template>
@@ -218,7 +218,7 @@ onMounted(() => { loadData() })
 </script>
 
 <style scoped>
-.inquiry-container { padding: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.inquiry-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 </style>

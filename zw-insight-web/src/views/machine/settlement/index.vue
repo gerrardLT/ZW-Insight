@@ -268,21 +268,21 @@ onMounted(() => {
 
 <style scoped>
 .machine-settlement-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .summary-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .summary-card {
   text-align: center;
 }
 .summary-label {
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
   color: #909399;
-  margin-bottom: 8px;
+  margin-bottom: var(--zw-space-sm);
 }
 .summary-value {
-  font-size: 24px;
+  font-size: var(--zw-font-size-2xl);
   font-weight: bold;
   color: #303133;
 }
@@ -290,10 +290,10 @@ onMounted(() => {
   color: #e6a23c;
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

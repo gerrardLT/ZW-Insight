@@ -49,9 +49,9 @@
       </div>
 
       <!-- 甘特图视图 -->
-      <el-card shadow="never" style="margin-top: 16px">
+      <el-card shadow="never" style="margin-top: var(--zw-space-md)">
         <template #header>
-          <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: var(--zw-space-sm-md);">
             <span>甘特图视图</span>
             <ProjectSelector v-model="ganttProjectId" placeholder="选择项目" width="240px" />
           </div>
@@ -136,7 +136,7 @@ onMounted(() => { loadData() })
 </script>
 
 <style scoped>
-.schedule-container { padding: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.schedule-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 </style>

@@ -34,9 +34,8 @@ public class ProjectReimbursementController {
 
     @PostMapping
     @FinanceLockCheck(dateField = "reimbursementDate", operation = "新增")
-    public R<Void> save(@RequestBody BizProjectReimbursement reimbursement) {
-        reimbursementService.save(reimbursement);
-        return R.ok();
+    public R<Long> save(@RequestBody BizProjectReimbursement reimbursement) {
+        return R.ok(reimbursementService.save(reimbursement));
     }
 
     @PostMapping("/{id}/submit")

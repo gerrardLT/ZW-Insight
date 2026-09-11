@@ -216,9 +216,9 @@ onMounted(() => {
 
 <style scoped>
 .serial-number-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 </style>

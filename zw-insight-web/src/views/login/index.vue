@@ -163,15 +163,15 @@ function goForgotPassword() {
   position: relative;
   z-index: 1;
   max-width: 460px;
-  padding: 0 48px;
+  padding: 0 var(--zw-space-2xl);
   color: #f2f3f1;
 }
 
 .brand-logo {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 40px;
+  gap: var(--zw-space-sm-md);
+  margin-bottom: var(--zw-space-xl);
 }
 
 .brand-logo-icon {
@@ -184,12 +184,12 @@ function goForgotPassword() {
   background: var(--zw-brand);
   color: var(--zw-on-primary);
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--zw-font-size-md);
   letter-spacing: 0.5px;
 }
 
 .brand-logo-text {
-  font-size: 22px;
+  font-size: var(--zw-font-size-2xl);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -197,47 +197,47 @@ function goForgotPassword() {
 /* 大写英文副线（Display 层签名） */
 .brand-eyebrow {
   font-family: var(--zw-font-display);
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
   font-weight: 700;
   letter-spacing: 3px;
   text-transform: uppercase;
   color: var(--zw-brand);
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 
 /* 中文铭牌：重黑 + 宽字距 */
 .brand-slogan {
-  font-size: 40px;
+  font-size: var(--zw-font-size-4xl);
   font-weight: 700;
   line-height: 1.25;
-  margin-bottom: 20px;
+  margin-bottom: var(--zw-space-lg);
   letter-spacing: 0.04em;
 }
 
 .brand-desc {
-  font-size: 15px;
+  font-size: var(--zw-font-size-md);
   line-height: 1.7;
   color: #c6c9cc;
-  margin-bottom: 40px;
+  margin-bottom: var(--zw-space-xl);
 }
 
 .brand-features {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--zw-space-md);
 }
 
 .feature-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 15px;
+  gap: var(--zw-space-sm-md);
+  font-size: var(--zw-font-size-md);
   color: #f2f3f1;
 }
 
 /* 自绘工程图标（方帽直角，品牌橙） */
 .feature-icon {
-  font-size: 20px;
+  font-size: var(--zw-font-size-xl);
   color: var(--zw-brand);
   flex-shrink: 0;
 }
@@ -249,7 +249,7 @@ function goForgotPassword() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: var(--zw-space-xl);
   position: relative;
 }
 
@@ -259,24 +259,24 @@ function goForgotPassword() {
 }
 
 .login-header {
-  margin-bottom: 32px;
+  margin-bottom: var(--zw-space-xl);
 }
 
 .login-title {
-  font-size: 28px;
+  font-size: var(--zw-font-size-3xl);
   font-weight: 700;
   color: var(--zw-text-primary);
-  margin-bottom: 8px;
+  margin-bottom: var(--zw-space-sm);
 }
 
 .login-subtitle {
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
   color: var(--zw-text-tertiary);
 }
 
 .captcha-row {
   display: flex;
-  gap: 12px;
+  gap: var(--zw-space-sm-md);
   width: 100%;
 }
 
@@ -292,7 +292,7 @@ function goForgotPassword() {
 .login-btn {
   width: 100%;
   height: 44px;
-  font-size: 15px;
+  font-size: var(--zw-font-size-md);
   font-weight: 600;
   letter-spacing: 4px;
 }
@@ -301,13 +301,13 @@ function goForgotPassword() {
   width: 100%;
   display: flex;
   justify-content: flex-end;
-  margin-top: -8px;
+  margin-top: calc(var(--zw-space-sm) * -1);
 }
 
 .login-copyright {
   position: absolute;
   bottom: 24px;
-  font-size: 13px;
+  font-size: var(--zw-font-size-sm);
   color: var(--zw-text-quaternary);
 }
 

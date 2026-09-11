@@ -1,15 +1,36 @@
 <template>
-  <div class="inspection-detail-container">
-    <el-card shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>检查详情</span>
-          <el-button @click="handleBack">返回</el-button>
+  <div class="inspection-detail-container page-container">
+    <!-- 工程铭牌头部 -->
+    <div class="plate-header">
+      <div class="plate-main">
+        <div class="plate-title-wrap">
+          <div class="plate-eyebrow">Site Quality & Safety // 07-INSPECT</div>
+          <div class="plate-title">
+            <span>{{ detail.inspectionType === 'QUALITY' ? '质量安全检查明细' : '施工现场巡查明细' }}</span>
+            <el-tag :type="detail.result === 'PASS' ? 'success' : 'danger'" size="small">
+              {{ detail.result === 'PASS' ? '合格' : '需整改' }}
+            </el-tag>
+          </div>
+          <div class="plate-meta">
+            <span>NO: {{ detail.inspectionNo || '-' }}</span>
+            <span>PROJECT: {{ detail.projectName || '-' }}</span>
+            <span>DATE: {{ detail.inspectionDate || '-' }}</span>
+          </div>
         </div>
-      </template>
+        <div class="plate-actions">
+          <el-button @click="handleBack">
+            <el-icon><ArrowLeft /></el-icon>返回列表
+          </el-button>
+        </div>
+      </div>
+    </div>
 
+    <el-card shadow="never" class="card-corner-marked">
+      <div class="section-title">检查指标参数</div>
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="检查编号">{{ detail.inspectionNo }}</el-descriptions-item>
+        <el-descriptions-item label="检查编号">
+          <span class="stat-number">{{ detail.inspectionNo }}</span>
+        </el-descriptions-item>
         <el-descriptions-item label="项目名称">{{ detail.projectName }}</el-descriptions-item>
         <el-descriptions-item label="检查类型">
           {{ detail.inspectionType === 'QUALITY' ? '质量检查' : '安全检查' }}
@@ -19,7 +40,9 @@
           <span v-else class="text-muted">未关联方案</span>
         </el-descriptions-item>
         <el-descriptions-item label="检查人">{{ detail.inspector }}</el-descriptions-item>
-        <el-descriptions-item label="检查日期">{{ detail.inspectionDate }}</el-descriptions-item>
+        <el-descriptions-item label="检查日期">
+          <span class="stat-number">{{ detail.inspectionDate }}</span>
+        </el-descriptions-item>
         <el-descriptions-item label="检查结果">
           <el-tag :type="detail.result === 'PASS' ? 'success' : 'danger'" size="small">
             {{ detail.result === 'PASS' ? '合格' : '不合格' }}
@@ -30,14 +53,20 @@
           <el-tag v-if="detail.rectificationStatus" :type="rectTagType(detail.rectificationStatus)" size="small">{{ rectText(detail.rectificationStatus) }}</el-tag>
           <span v-else class="text-muted">无需整改</span>
         </el-descriptions-item>
-        <el-descriptions-item label="整改期限">{{ detail.rectificationDeadline || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="整改期限">
+          <span class="stat-number">{{ detail.rectificationDeadline || '-' }}</span>
+        </el-descriptions-item>
       </el-descriptions>
 
       <!-- 方案快照中的检查项展示 -->
-      <el-divider content-position="left">检查明细</el-divider>
+      <div class="section-title" style="margin-top: 24px;">分项测绘明细</div>
 
       <el-table :data="detailItems" border>
-        <el-table-column type="index" label="序号" width="60" align="center" />
+        <el-table-column type="index" label="序号" width="60" align="center">
+          <template #default="{ $index }">
+            <span class="stat-number">{{ $index + 1 }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="itemName" label="项目名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="checkStandard" label="检查标准" min-width="200" show-overflow-tooltip />
         <el-table-column prop="checkMethod" label="检查方法" min-width="160" show-overflow-tooltip />
@@ -65,13 +94,10 @@
       <el-empty v-if="detailItems.length === 0" description="暂无检查明细" />
     </el-card>
 
-    <!-- 整改闭环区：仅有问题的检查记录展示 -->
-    <el-card v-if="detail.hasProblem === 1" shadow="never" class="rect-card">
-      <template #header>
-        <div class="card-header">
-          <span>整改闭环</span>
-        </div>
-      </template>
+    <!-- 整改闭环区：仅有问题的检查记录展示（附工程警示条纹） -->
+    <el-card v-if="detail.hasProblem === 1" shadow="never" class="rect-card card-corner-marked" style="margin-top: 16px;">
+      <div class="hazard-divider" style="height: 4px; margin: -20px -20px 16px -20px;"></div>
+      <div class="section-title">现场隐患整改闭环</div>
 
       <!-- 提交整改表单：仅待整改状态可提交 -->
       <template v-if="detail.rectificationStatus === 'PENDING'">
@@ -109,6 +135,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { getInspectionDetail } from '@/api/inspection-scheme'
 import { getRectifications, submitRectification, approveRectification } from '@/api/site'
@@ -236,10 +263,10 @@ onMounted(() => {
 
 <style scoped>
 .inspection-detail-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .rect-card {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
 }
 .card-header {
   display: flex;

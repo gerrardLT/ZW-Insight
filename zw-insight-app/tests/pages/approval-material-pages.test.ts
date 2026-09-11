@@ -33,6 +33,8 @@ vi.mock('@/api/common', () => ({
   getProjectList: vi.fn(),
   getMaterialDict: vi.fn(),
   getMaterialByCode: vi.fn(),
+  getPurchaseContractPage: vi.fn(),
+  getPurchaseContractDetails: vi.fn(),
   saveMaterialInbound: vi.fn(),
   saveMaterialOutbound: vi.fn(),
   batchApproveTasks: vi.fn(),
@@ -46,7 +48,8 @@ import InboundPage from '@/pages/material/inbound.vue'
 import OutboundPage from '@/pages/material/outbound.vue'
 import {
   getTodoTasks, getDoneTasks, getMyInitiatedTasks, completeTask,
-  rejectTask, getProjectList, getMaterialByCode, saveMaterialInbound, saveMaterialOutbound,
+  rejectTask, getProjectList, getMaterialByCode, getPurchaseContractPage,
+  getPurchaseContractDetails, saveMaterialInbound, saveMaterialOutbound,
   batchApproveTasks,
 } from '@/api/common'
 import request from '@/utils/request'
@@ -309,6 +312,58 @@ describe('material/inbound.vue 材料入库页', () => {
     ;(getUni() as any).scanCode = (opts: any) => opts.fail({ errMsg: 'scanCode:fail cancel' })
     wrapper.vm.handleScan()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '扫码已取消或失败，可手动输入编码' }))
+    wrapper.unmount()
+  })
+
+  it('采购合同核验模式：联动拉取合同材料明细，点验实收数后组装包含 contractId 与 details 的载荷提交', async () => {
+    vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [{ id: 1, projectName: '示范工程' }] } } as any)
+    vi.mocked(getPurchaseContractPage).mockResolvedValue({
+      code: 200,
+      data: { records: [{ id: 88, contractName: '钢材采购协议', contractCode: 'PC-2026-01' }] }
+    } as any)
+    vi.mocked(getPurchaseContractDetails).mockResolvedValue({
+      code: 200,
+      data: [
+        { materialName: '螺纹钢', specification: 'Φ20', unit: '吨', quantity: 50, unitPrice: 3800 },
+        { materialName: '盘条', specification: 'Φ8', unit: '吨', quantity: 20, unitPrice: 4000 }
+      ]
+    } as any)
+    vi.mocked(saveMaterialInbound).mockResolvedValue({ code: 200 } as any)
+
+    const wrapper = mount(InboundPage)
+    await flushPromises()
+
+    // 切换为采购合同核验模式
+    wrapper.vm.inboundMode = 'PURCHASE'
+    await wrapper.vm.selectProject({ id: 1, projectName: '示范工程' })
+    await flushPromises()
+
+    expect(wrapper.vm.contracts.length).toBe(1)
+    expect(wrapper.vm.contractDetails.length).toBe(2)
+
+    // 修改第一项实收数量
+    wrapper.vm.contractDetails[0].receiveQty = '30'
+    // 不勾选第二项（部分到货场景）
+    wrapper.vm.contractDetails[1].checked = false
+
+    await wrapper.vm.handleSubmit()
+    await flushPromises()
+
+    expect(vi.mocked(saveMaterialInbound)).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: 1,
+      contractId: 88,
+      totalAmount: 114000, // 30 * 3800
+      details: [
+        {
+          materialName: '螺纹钢',
+          specification: 'Φ20',
+          unit: '吨',
+          unitPrice: 3800,
+          quantity: 30,
+          totalPrice: 114000
+        }
+      ]
+    }))
     wrapper.unmount()
   })
 })

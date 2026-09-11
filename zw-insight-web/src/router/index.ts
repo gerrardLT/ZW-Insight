@@ -872,8 +872,12 @@ const whiteList = ['/login', '/forgot-password', '/403', '/404']
 // 路由守卫
 router.beforeEach((to, _from, next) => {
   NProgress.start()
-  const userStore = useUserStore()
-  const token = userStore.token || localStorage.getItem('token')
+  let token = localStorage.getItem('token')
+  let userStore: any = null
+  try {
+    userStore = useUserStore()
+    if (userStore?.token) token = userStore.token
+  } catch {}
 
   // 未登录：非白名单页面跳转登录页
   if (!token) {
@@ -894,8 +898,8 @@ router.beforeEach((to, _from, next) => {
   // 路由 meta.permission 权限检查
   // 如果路由定义了 meta.permission，校验用户是否拥有该权限
   const requiredPermission = to.meta?.permission as string | string[] | undefined
-  if (requiredPermission) {
-    const userPermissions = userStore.permissions
+  if (requiredPermission && userStore) {
+    const userPermissions = userStore.permissions || []
 
     // 超级管理员拥有全部权限
     if (userPermissions.includes('*:*:*')) {

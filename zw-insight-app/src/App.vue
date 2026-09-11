@@ -9,6 +9,14 @@ onLaunch(() => {
 
   const network = useNetworkStore()
 
+  // 0. 恢复强光现场模式（户外施工高对比模式）
+  try {
+    if (uni.getStorageSync('zw_outdoor_mode') === '1' && typeof document !== 'undefined') {
+      document.documentElement.dataset.theme = 'outdoor'
+      document.body.classList.add('theme-outdoor')
+    }
+  } catch {}
+
   // 1. 初始化当前网络状态（需求 4.7：离线模式提示条依赖该状态）
   uni.getNetworkType({
     success: (res) => {

@@ -89,7 +89,7 @@
 
     <!-- 冲突确认弹窗 -->
     <el-dialog v-model="conflictDialogVisible" title="冲突处理确认" width="500px" destroy-on-close>
-      <el-alert type="warning" show-icon :closable="false" style="margin-bottom: 16px">
+      <el-alert type="warning" show-icon :closable="false" style="margin-bottom: var(--zw-space-md)">
         该回滚操作遇到数据冲突，请选择处理方式并确认。
       </el-alert>
       <el-descriptions :column="1" border size="small">
@@ -97,7 +97,7 @@
         <el-descriptions-item label="业务类型">{{ bizTypeNameMap[conflictRow?.bizType] || conflictRow?.bizType }}</el-descriptions-item>
         <el-descriptions-item label="错误信息">{{ conflictRow?.errorMessage }}</el-descriptions-item>
       </el-descriptions>
-      <el-form :model="conflictForm" label-width="80px" style="margin-top: 16px">
+      <el-form :model="conflictForm" label-width="80px" style="margin-top: var(--zw-space-md)">
         <el-form-item label="处理方式">
           <el-radio-group v-model="conflictForm.resolution">
             <el-radio value="FORCE_ROLLBACK">强制回滚（忽略冲突数据）</el-radio>
@@ -239,10 +239,10 @@ onMounted(() => {
 
 <style scoped>
 .rollback-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

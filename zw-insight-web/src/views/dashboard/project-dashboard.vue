@@ -489,22 +489,22 @@ defineExpose({ budgetChartRef, progressChartRef, contractChartRef, outputChartRe
 
 <style scoped>
 .project-dashboard-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .selector-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .selector-bar {
   display: flex;
   align-items: center;
 }
 .selector-label {
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
   color: var(--zw-text-secondary);
-  margin-right: 8px;
+  margin-right: var(--zw-space-sm);
 }
 .panel-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .panel-card {
   height: 100%;

@@ -273,7 +273,8 @@ function goLogin() {
 .forgot-form {
   width: 100%;
   background: var(--zw-bg-card);
-  border-radius: var(--zw-radius-lg); /* 直角纪律 */
+  border: 1rpx solid var(--zw-border);
+  border-radius: var(--zw-radius-xs); /* 精密直角纪律 */
   padding: 40rpx;
   box-shadow: var(--zw-shadow-card);
 }
@@ -283,7 +284,7 @@ function goLogin() {
 .input {
   height: 88rpx; /* Mobile Shell 章：输入控件 44px */
   border: 1rpx solid var(--zw-border);
-  border-radius: var(--zw-radius-sm);
+  border-radius: var(--zw-radius-xs);
   padding: 0 24rpx;
   font-size: 28rpx;
 }
@@ -310,7 +311,7 @@ function goLogin() {
   color: var(--zw-brand);
   background: var(--zw-brand-light);
   border: 1rpx solid var(--zw-brand-light);
-  border-radius: var(--zw-radius-sm);
+  border-radius: var(--zw-radius-xs);
   padding: 0;
 }
 .code-btn[disabled] {
@@ -334,7 +335,7 @@ function goLogin() {
   color: var(--zw-on-primary); /* 橙底深字承重规则 */
   font-size: 30rpx;
   font-weight: 600;
-  border-radius: var(--zw-radius-sm);
+  border-radius: var(--zw-radius-xs);
   border: none;
   margin-top: 16rpx;
 }
@@ -353,7 +354,7 @@ function goLogin() {
   color: var(--zw-text-secondary);
   font-size: 30rpx;
   border: 1rpx solid var(--zw-border);
-  border-radius: var(--zw-radius-sm);
+  border-radius: var(--zw-radius-xs);
 }
 .back-login {
   margin-top: 40rpx;

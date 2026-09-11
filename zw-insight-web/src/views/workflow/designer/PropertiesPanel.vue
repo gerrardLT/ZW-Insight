@@ -108,30 +108,30 @@ onMounted(() => {
   flex-shrink: 0;
   border-left: 1px solid #ebeef5;
   background: #fff;
-  padding: 16px;
+  padding: var(--zw-space-md);
   overflow-y: auto;
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
   font-weight: 600;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md);
 }
 
 .panel-hint {
-  font-size: 13px;
+  font-size: var(--zw-font-size-sm);
   color: #606266;
   line-height: 1.8;
 }
 
 .panel-hint ul {
-  padding-left: 18px;
-  margin: 8px 0 0;
+  padding-left: var(--zw-space-md);
+  margin: var(--zw-space-sm) 0 0;
 }
 
 .panel-hint code {
   background: #f5f7fa;
-  padding: 1px 4px;
-  border-radius: 3px;
+  padding: var(--zw-space-2xs) var(--zw-space-xs);
+  border-radius: var(--zw-radius-xs);
 }
 </style>

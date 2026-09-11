@@ -68,6 +68,37 @@ page {
   --zw-duration-fast: 150ms;
   --zw-duration-base: 200ms;
   --zw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --zw-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* 安全区与触控底线 (harden & layout) */
+  --zw-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --zw-touch-target-min: 44px;
+}
+
+/* 移动端防御性辅助类 (harden) */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.break-all {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+/* 移动端触摸高亮反馈 (delight) */
+.active-press {
+  opacity: 0.82;
+  transform: scale(0.985);
+  transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ===== 暗色主题：跟随系统（纯 CSS，零 JS；H5 与 mp-weixin 均原生支持） =====
@@ -126,4 +157,49 @@ page {
   uni-tabbar .uni-tabbar-border {
     background-color: #23262c !important;
   }
+}
+
+/* ===== 强光现场高对比度模式（Outdoor High-Contrast Mode） =====
+ * 专为烈日强光直射下的工地施工现场设计：
+ * 纯黑纯白超高对比度（>14:1）、硬直角加粗 1.5px 黑色边界、反白高饱和度铭牌
+ */
+:root[data-theme="outdoor"],
+page.theme-outdoor,
+.theme-outdoor {
+  --zw-bg-page: #ffffff;
+  --zw-bg-card: #ffffff;
+  --zw-bg-elevated: #ffffff;
+  --zw-bg-sidebar: #000000;
+  --zw-bg-hover: #eaeaea;
+  --zw-bg-active: #ffd8a8;
+  --zw-bg-mask: rgba(0, 0, 0, 0.75);
+
+  /* 文字直接拉到最高色阶 */
+  --zw-text-primary: #000000;
+  --zw-text-secondary: #1a1a1a;
+  --zw-text-tertiary: #333333;
+  --zw-text-quaternary: #555555;
+  --zw-text-inverse: #ffffff;
+
+  /* 边框高硬度黑线 */
+  --zw-border: #000000;
+  --zw-border-light: #333333;
+  --zw-border-strong: #000000;
+
+  /* 品牌安全橙提纯 */
+  --zw-brand: #e65100;
+  --zw-brand-hover: #bf360c;
+  --zw-brand-active: #872500;
+  --zw-brand-light: #ffe0b2;
+  --zw-on-primary: #ffffff;
+
+  /* 功能色全高对比 */
+  --zw-success: #00701a;
+  --zw-success-light: #c8e6c9;
+  --zw-warning: #b26a00;
+  --zw-warning-light: #ffe082;
+  --zw-danger: #b71c1c;
+  --zw-danger-light: #ffcdd2;
+  --zw-info: #0d47a1;
+  --zw-info-light: #bbdefb;
 }

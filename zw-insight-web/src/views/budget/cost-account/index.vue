@@ -178,7 +178,7 @@
           v-model:page-size="pagination.size"
           :total="pagination.total"
           :page-sizes="[20, 50, 100]"
-          layout="total, sizes, prev, pager, next"
+          layout="total, sizes, prev, pager, next, jumper"
           @size-change="loadPage"
           @current-change="loadPage"
         />
@@ -295,7 +295,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="!rollupReport?.unmapped?.length && !rollupReport?.failed?.length" style="text-align:center;padding:80px;color:#999;font-size:14px">
+      <div v-if="!rollupReport?.unmapped?.length && !rollupReport?.failed?.length" style="text-align:center;padding:var(--zw-space-2xl);color:#999;font-size:var(--zw-font-size-base)">
         所有源单据均已自动归集或已明确指定归属账户，无待处理事项。
       </div>
       <div v-if="rollupReport?.failed?.length" class="failed-section">
@@ -323,7 +323,7 @@
         type="warning"
         :closable="false"
         show-icon
-        style="margin-bottom: 16px"
+        style="margin-bottom: var(--zw-space-md)"
       />
       <el-form label-width="90px">
         <el-form-item label="金额">
@@ -364,6 +364,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
@@ -376,6 +377,9 @@ import {
 import { getWbsSelectList, type WbsNode } from '@/api/wbs'
 import { getProjectList } from '@/api/project'
 import { toWan, clampPercent } from '@/utils/chart-format'
+
+// 路由实例（承接外部跳转携带的 projectId 查询参数）
+const route = useRoute()
 
 /** 费用类别：与后端 biz_cost_account.cost_category 枚举严格一致 */
 const CATEGORY_LABELS: Record<string, string> = {
@@ -868,6 +872,12 @@ function formatMoney(value: unknown): string {
 
 onMounted(async () => {
   await searchProject('')
+  // 承接外部跳转携带的项目上下文（如成本主线看板"详情"入口：/budget/cost-account?projectId=xx）
+  const projectIdFromQuery = Number(route.query.projectId)
+  if (Number.isFinite(projectIdFromQuery) && projectIdFromQuery > 0) {
+    queryParams.projectId = projectIdFromQuery
+    await Promise.all([loadPage(), loadWbsOptions()])
+  }
 })
 </script>
 
@@ -883,12 +893,13 @@ onMounted(async () => {
   padding: var(--zw-space-sm-md) var(--zw-space-md);
   margin-bottom: var(--zw-space-sm-md);
   background: var(--zw-bg-hover);
-  border-left: 3px solid var(--zw-brand);
+  border: 1px solid var(--zw-border);
+  border-radius: var(--zw-radius-xs);
 
   .sum-item {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--zw-space-2xs);
     min-width: 120px;
 
     .sum-label {
@@ -928,7 +939,7 @@ onMounted(async () => {
   font-size: var(--zw-font-size-xs);
   color: var(--zw-text-tertiary);
   line-height: 1.5;
-  margin-top: 2px;
+  margin-top: var(--zw-space-2xs);
 }
 
 .is-danger { color: var(--zw-danger); font-weight: var(--zw-font-weight-medium); }

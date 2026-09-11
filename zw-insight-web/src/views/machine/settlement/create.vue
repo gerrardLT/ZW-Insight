@@ -172,7 +172,7 @@ onMounted(() => {
 
 <style scoped>
 .settlement-create-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
@@ -180,20 +180,20 @@ onMounted(() => {
   align-items: center;
 }
 .preview-section {
-  margin-top: 24px;
+  margin-top: var(--zw-space-lg);
 }
 .preview-total {
-  margin-top: 12px;
+  margin-top: var(--zw-space-sm-md);
   text-align: right;
-  font-size: 16px;
+  font-size: var(--zw-font-size-md);
 }
 .total-amount {
   font-weight: bold;
   color: #409eff;
-  font-size: 18px;
+  font-size: var(--zw-font-size-lg);
 }
 .form-actions {
-  margin-top: 32px;
+  margin-top: var(--zw-space-xl);
   text-align: center;
 }
 </style>

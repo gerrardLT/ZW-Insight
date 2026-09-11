@@ -65,16 +65,17 @@
   --zw-duration-count: 800ms;
   --zw-duration-shimmer: 1400ms;
   --zw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --zw-ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --zw-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --zw-ease-out-back: cubic-bezier(0.16, 1, 0.3, 1);
   --zw-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --zw-ease-in: cubic-bezier(0.6, 0, 0.8, 0.6);
   --zw-ease-linear: linear;
 
-  /* 兼容旧引用：过渡统一切换到 ease-out（禁用默认 ease 的迟滞感） */
+  /* 兼容旧引用：过渡统一切换到 ease-out（禁用默认 ease 的迟滞感与弹跳反模式） */
   --zw-transition-fast: var(--zw-duration-fast) var(--zw-ease-out);
   --zw-transition-base: var(--zw-duration-base) var(--zw-ease-out);
   --zw-transition-slow: var(--zw-duration-drawer) var(--zw-ease-out);
-  --zw-transition-spring: 0.2s var(--zw-ease-out-back);
+  --zw-transition-spring: var(--zw-duration-base) var(--zw-ease-out);
 
   /* 布局 */
   --zw-sidebar-width: 220px;

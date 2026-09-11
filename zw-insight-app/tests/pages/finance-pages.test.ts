@@ -16,10 +16,12 @@ import { setActivePinia, createPinia } from 'pinia'
 
 vi.mock('@/api/common', () => ({
   getProjectList: vi.fn(),
+  getContractPage: vi.fn(),
   saveInvoiceApply: vi.fn(),
   savePaymentApply: vi.fn(),
   savePaymentReceived: vi.fn(),
   saveReimbursement: vi.fn(),
+  submitReimbursement: vi.fn(),
 }))
 
 import InvoiceApply from '@/pages/finance/invoice-apply.vue'
@@ -27,8 +29,8 @@ import PaymentApply from '@/pages/finance/payment-apply.vue'
 import PaymentReceived from '@/pages/finance/payment-received.vue'
 import Reimbursement from '@/pages/finance/reimbursement.vue'
 import {
-  getProjectList, saveInvoiceApply, savePaymentApply,
-  savePaymentReceived, saveReimbursement,
+  getProjectList, getContractPage, saveInvoiceApply, savePaymentApply,
+  savePaymentReceived, saveReimbursement, submitReimbursement,
 } from '@/api/common'
 import { resetUniStorage, getUni } from '../setup'
 
@@ -36,7 +38,8 @@ beforeEach(() => {
   resetUniStorage()
   setActivePinia(createPinia())
   vi.clearAllMocks()
-  vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [{ id: 1, projectName: 'P1' }] } })
+  vi.mocked(getProjectList).mockResolvedValue({ code: 200, data: { records: [{ id: 1, projectName: 'P1' }] } } as any)
+  vi.mocked(getContractPage).mockResolvedValue({ code: 200, data: { records: [{ id: 101, contractName: '施工合同1' }] } } as any)
   ;(getUni() as any).navigateBack = vi.fn()
 })
 
@@ -57,7 +60,8 @@ describe('finance/invoice-apply.vue 开票申请页', () => {
 
     await wrapper.vm.handleSubmit()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请选择项目' }))
-    wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
+    await wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
+    await flushPromises()
     await wrapper.vm.handleSubmit()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入开票金额' }))
     wrapper.vm.form.amount = '1000'
@@ -67,28 +71,34 @@ describe('finance/invoice-apply.vue 开票申请页', () => {
     wrapper.unmount()
   })
 
-  it('提交载荷金额转 Number', async () => {
-    vi.mocked(saveInvoiceApply).mockResolvedValue({ code: 200 })
+  it('提交载荷金额转 Number 并对齐后端真实契约字段 invoiceAmount/contractId/type', async () => {
+    vi.mocked(saveInvoiceApply).mockResolvedValue({ code: 200 } as any)
     const wrapper = mount(InvoiceApply)
     await flushPromises()
 
-    wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
-    Object.assign(wrapper.vm.form, { amount: '8888.5', buyerName: '甲方公司' })
+    await wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
+    await flushPromises()
+    Object.assign(wrapper.vm.form, { amount: '8888.5', buyerName: '甲方公司', buyerTaxNo: '91110000X' })
     await wrapper.vm.handleSubmit()
     await flushPromises()
 
     expect(vi.mocked(saveInvoiceApply)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 1, amount: 8888.5, invoiceType: '增值税专用发票', buyerName: '甲方公司',
+      projectId: 1,
+      contractId: 101,
+      invoiceAmount: 8888.5,
+      type: 'SPECIAL',
+      invoiceTitle: '甲方公司',
+      taxpayerId: '91110000X'
     }))
     wrapper.unmount()
   })
 })
 
 describe('finance/payment-apply.vue 付款申请页', () => {
-  it('三段校验 + 提交载荷默认银行转账', async () => {
+  it('三段校验 + 提交载荷默认银行转账并对齐 paymentAmount/paymentDate/supplierName', async () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
-    vi.mocked(savePaymentApply).mockResolvedValue({ code: 200 })
+    vi.mocked(savePaymentApply).mockResolvedValue({ code: 200 } as any)
     const wrapper = mount(PaymentApply)
     await flushPromises()
 
@@ -106,17 +116,21 @@ describe('finance/payment-apply.vue 付款申请页', () => {
     await wrapper.vm.handleSubmit()
     await flushPromises()
     expect(vi.mocked(savePaymentApply)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 1, amount: 5000, payee: '供应商A', payMethod: '银行转账',
+      projectId: 1,
+      paymentAmount: 5000,
+      supplierName: '供应商A',
+      paymentDate: expect.any(String),
+      payMethod: '银行转账',
     }))
     wrapper.unmount()
   })
 })
 
 describe('finance/payment-received.vue 收款登记页', () => {
-  it('默认收款日期为今天；两段校验 + 提交载荷', async () => {
+  it('默认收款日期为今天；两段校验 + 提交载荷对齐 receiveAmount/receiveDate', async () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
-    vi.mocked(savePaymentReceived).mockResolvedValue({ code: 200 })
+    vi.mocked(savePaymentReceived).mockResolvedValue({ code: 200 } as any)
     const wrapper = mount(PaymentReceived)
     await flushPromises()
 
@@ -124,7 +138,8 @@ describe('finance/payment-received.vue 收款登记页', () => {
 
     await wrapper.vm.handleSubmit()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请选择项目' }))
-    wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
+    await wrapper.vm.selectProject({ id: 1, projectName: 'P1' })
+    await flushPromises()
     await wrapper.vm.handleSubmit()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入回款金额' }))
 
@@ -133,17 +148,22 @@ describe('finance/payment-received.vue 收款登记页', () => {
     await wrapper.vm.handleSubmit()
     await flushPromises()
     expect(vi.mocked(savePaymentReceived)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 1, amount: 20000, payer: '业主方',
+      projectId: 1,
+      receiveAmount: 20000,
+      contractId: 101,
+      receiveDate: today(),
+      payer: '业主方',
     }))
     wrapper.unmount()
   })
 })
 
 describe('finance/reimbursement.vue 报销申请页', () => {
-  it('默认差旅费 + 今天；三段校验，发票数空值转 0', async () => {
+  it('默认差旅费 + 今天；三段校验，对齐 totalAmount 并触发链式 submitReimbursement', async () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
-    vi.mocked(saveReimbursement).mockResolvedValue({ code: 200 })
+    vi.mocked(saveReimbursement).mockResolvedValue({ code: 200, data: 999 } as any)
+    vi.mocked(submitReimbursement).mockResolvedValue({ code: 200 } as any)
     const wrapper = mount(Reimbursement)
     await flushPromises()
 
@@ -163,8 +183,14 @@ describe('finance/reimbursement.vue 报销申请页', () => {
     await wrapper.vm.handleSubmit()
     await flushPromises()
     expect(vi.mocked(saveReimbursement)).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 1, amount: 300, expenseType: '差旅费', description: '出差打车', invoiceCount: 0,
+      projectId: 1,
+      totalAmount: 300,
+      reimbursementDate: today(),
+      expenseType: '差旅费',
+      description: '出差打车',
+      invoiceCount: 0,
     }))
+    expect(vi.mocked(submitReimbursement)).toHaveBeenCalledWith(999)
     wrapper.unmount()
   })
 })

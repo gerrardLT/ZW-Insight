@@ -50,10 +50,53 @@ body {
   color: var(--zw-on-primary);
 }
 
-/* ===== 全局焦点环（无障碍：永不移除） ===== */
+/* ===== 全局焦点环与输入光标（无障碍与工业统一） ===== */
 :focus-visible {
   outline: 2px solid var(--zw-brand);
   outline-offset: 2px;
+}
+input, textarea {
+  caret-color: var(--zw-brand);
+}
+
+/* ===== 健壮性防溢出与换行兜底 (harden: Text Overflow & Wrapping) ===== */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.break-word {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+/* 单元格与弹性项目防溢出收缩 */
+.min-w-0 {
+  min-width: 0;
+}
+
+/* ===== 优雅空状态 (onboard: Empty States) ===== */
+.el-empty {
+  padding: 48px 0;
+  .el-empty__description p {
+    color: var(--zw-text-tertiary);
+    font-size: var(--zw-font-size-sm);
+  }
+}
+
+/* ===== 降噪与视觉减负 (quieter & distill) ===== */
+.table-quiet {
+  .el-table__row--striped td {
+    background-color: var(--zw-bg-surface-2) !important;
+  }
 }
 
 /* ===== 页面容器 ===== */
@@ -70,17 +113,97 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--zw-space-lg);
+  position: relative;
 
-  h3 {
+  .page-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .page-eyebrow {
+    font-family: var(--zw-font-display);
+    font-size: var(--zw-font-size-xs);
+    font-weight: var(--zw-font-weight-bold);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--zw-text-tertiary);
+  }
+
+  h2, h3 {
     font-size: var(--zw-font-size-xl);
     font-weight: var(--zw-font-weight-semibold);
     color: var(--zw-text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--zw-space-sm);
   }
 
   .page-actions {
     display: flex;
     align-items: center;
     gap: var(--zw-space-sm);
+  }
+}
+
+/* ===== 工程铭牌容器（用于详情页顶栏/重点指标区） ===== */
+.plate-header {
+  background: var(--zw-bg-card);
+  border: 1px solid var(--zw-border);
+  border-radius: var(--zw-radius-xs);
+  padding: 16px 20px;
+  margin-bottom: var(--zw-space-md);
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--zw-brand);
+  }
+
+  .plate-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .plate-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .plate-eyebrow {
+    font-family: var(--zw-font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--zw-text-tertiary);
+  }
+
+  .plate-title {
+    font-size: var(--zw-font-size-lg);
+    font-weight: var(--zw-font-weight-bold);
+    color: var(--zw-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .plate-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: var(--zw-font-size-xs);
+    color: var(--zw-text-secondary);
+    font-family: var(--zw-font-mono);
   }
 }
 

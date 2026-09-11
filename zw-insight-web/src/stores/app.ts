@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 
 export type ThemeMode = 'light' | 'dark'
+export type TableDensity = 'compact' | 'default' | 'loose'
 
 /** 获取系统偏好主题 */
 function getSystemTheme(): ThemeMode {
@@ -42,6 +43,9 @@ export const useAppStore = defineStore('app', () => {
   /** 当前主题模式 */
   const theme = ref<ThemeMode>(getSystemTheme())
 
+  /** 表格密度：紧凑 / 默认 / 宽松 */
+  const tableDensity = ref<TableDensity>('default')
+
   /** 是否有全局项目上下文 */
   const hasProjectContext = computed(() => currentProjectId.value !== null)
 
@@ -51,6 +55,13 @@ export const useAppStore = defineStore('app', () => {
   /** 应用主题到 DOM */
   function applyTheme(mode: ThemeMode) {
     document.documentElement.dataset.theme = mode
+  }
+
+  /** 应用表格密度到 DOM */
+  function applyTableDensity(density: TableDensity) {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.tableDensity = density
+    }
   }
 
   /** 切换主题 */
@@ -63,9 +74,19 @@ export const useAppStore = defineStore('app', () => {
     theme.value = mode
   }
 
+  /** 设置表格密度 */
+  function setTableDensity(density: TableDensity) {
+    tableDensity.value = density
+  }
+
   // 监听主题变化，自动应用到 DOM
   watch(theme, (val) => {
     applyTheme(val)
+  }, { immediate: true })
+
+  // 监听表格密度变化，自动应用到 DOM
+  watch(tableDensity, (val) => {
+    applyTableDensity(val)
   }, { immediate: true })
 
   /** 切换侧边栏折叠 */
@@ -114,11 +135,14 @@ export const useAppStore = defineStore('app', () => {
     showBreadcrumb,
     showTagsView,
     theme,
+    tableDensity,
     hasProjectContext,
     isDark,
     applyTheme,
+    applyTableDensity,
     toggleTheme,
     setTheme,
+    setTableDensity,
     toggleSidebar,
     setDevice,
     startLoading,
@@ -128,6 +152,6 @@ export const useAppStore = defineStore('app', () => {
   }
 }, {
   persist: {
-    paths: ['sidebarCollapsed', 'showBreadcrumb', 'showTagsView', 'currentProjectId', 'currentProjectName', 'theme']
+    paths: ['sidebarCollapsed', 'showBreadcrumb', 'showTagsView', 'currentProjectId', 'currentProjectName', 'theme', 'tableDensity']
   }
 })

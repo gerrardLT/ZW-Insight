@@ -56,6 +56,11 @@ export function getProjectList(params?: any) {
   return request({ url: '/v1/project/list', data: params })
 }
 
+// 施工合同列表（分页查询，ContractController#page）
+export function getContractPage(params?: { page?: number; size?: number; projectId?: number; status?: string }) {
+  return request({ url: '/v1/contract/page', data: params })
+}
+
 // 材料字典（基础数据）
 // 后端真实接口：GET /api/v1/basedata/material（MaterialController#page）
 export function getMaterialDict(params?: { page?: number; size?: number; materialName?: string; categoryId?: number }) {
@@ -93,6 +98,12 @@ export function getNotices(params: any) {
 }
 
 // 材料
+export function getPurchaseContractPage(params?: { page?: number; size?: number; projectId?: number; contractName?: string }) {
+  return request({ url: '/v1/purchase/contract/page', data: params })
+}
+export function getPurchaseContractDetails(contractId: number) {
+  return request({ url: `/v1/purchase/contract/${contractId}/details` })
+}
 export function saveMaterialInbound(data: any) {
   return request({ url: '/v1/material/inbound', method: 'POST', data })
 }
@@ -104,7 +115,35 @@ export function getMaterialRefundList(params?: any) {
   return request({ url: '/v1/material/refund', data: params })
 }
 
+// 机械设备
+export function getMachineLedgerPage(params?: { page?: number; size?: number; machineName?: string; machineType?: string }) {
+  return request({ url: '/v1/machine/ledger/page', data: params })
+}
+export function getMachineWorkLogPage(params?: { page?: number; size?: number; projectId?: number; machineId?: number; machineName?: string; workDate?: string }) {
+  return request({ url: '/v1/machine/work-log/page', data: params })
+}
+export function saveMachineWorkLog(data: { projectId: number; machineId: number; workDate: string; shiftCount: number; workQuantity?: number; oilConsumption?: number; remark?: string }) {
+  return request({ url: '/v1/machine/work-log', method: 'POST', data })
+}
+
+// 劳务分包与点工
+export function getLaborTeamPage(params?: { page?: number; size?: number; projectId?: number; teamName?: string; workType?: string }) {
+  return request({ url: '/v1/labor/team/page', data: params })
+}
+export function getWorkOrderPage(params?: { page?: number; size?: number; projectId?: number; teamId?: number; status?: string }) {
+  return request({ url: '/v1/labor/work-order/page', data: params })
+}
+export function saveWorkOrder(data: { projectId: number; teamId?: number; workerName: string; workDate: string; hours: number; hourlyRate: number; overtime?: number; overtimeRate?: number; totalAmount: number; orderType?: string; status?: string }) {
+  return request({ url: '/v1/labor/work-order', method: 'POST', data })
+}
+
 // 现场
+export function siteSign(data: { projectId: number; latitude: number; longitude: number; address?: string }) {
+  return request({ url: '/v1/site/sign', method: 'POST', data })
+}
+export function getMonthlySign(params: { projectId: number; userId: number; month: string }) {
+  return request({ url: '/v1/site/sign/monthly', data: params })
+}
 export function saveConstructionLog(data: any) {
   return request({ url: '/v1/site/construction-log', method: 'POST', data })
 }
@@ -185,6 +224,10 @@ export function savePaymentApply(data: any) {
 }
 export function saveReimbursement(data: any) {
   return request({ url: '/v1/finance/project-reimbursement', method: 'POST', data })
+}
+// 项目报销提交审批（两段式：save 落 DRAFT 后链式 submit，ProjectReimbursementController）
+export function submitReimbursement(id: number) {
+  return request({ url: `/v1/finance/project-reimbursement/${id}/submit`, method: 'POST' })
 }
 // 其他费用付款（OtherPaymentController）
 export function saveOtherPayment(data: any) {

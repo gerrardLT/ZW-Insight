@@ -106,7 +106,7 @@
         </el-table-column>
       </el-table>
       <div class="pagination-wrap">
-        <el-pagination v-model:current-page="configPage.page" v-model:page-size="configPage.size" :page-sizes="[10, 20, 50]" :total="configTotal" layout="total, prev, pager, next" @size-change="loadConfigs" @current-change="loadConfigs" />
+        <el-pagination v-model:current-page="configPage.page" v-model:page-size="configPage.size" :page-sizes="[10, 20, 50]" :total="configTotal" layout="total, sizes, prev, pager, next, jumper" @size-change="loadConfigs" @current-change="loadConfigs" />
       </div>
     </el-dialog>
   </div>
@@ -226,6 +226,6 @@ async function handleConfigDelete(row: any) {
 </script>
 
 <style scoped>
-.material-stock-container { padding: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.material-stock-container { padding: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 </style>

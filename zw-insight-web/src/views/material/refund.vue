@@ -20,7 +20,7 @@
         type="info"
         show-icon
         :closable="false"
-        style="margin-bottom: 16px"
+        style="margin-bottom: var(--zw-space-md)"
       />
 
       <el-table :data="tableData" v-loading="loading" border>
@@ -63,7 +63,7 @@
         <el-descriptions-item label="关联出库单ID">{{ detail.outboundId }}</el-descriptions-item>
         <el-descriptions-item label="退款原因" :span="2">{{ detail.refundReason }}</el-descriptions-item>
       </el-descriptions>
-      <el-table :data="detail.details || []" border style="margin-top: 16px">
+      <el-table :data="detail.details || []" border style="margin-top: var(--zw-space-md)">
         <el-table-column prop="materialName" label="材料名称" min-width="140" />
         <el-table-column prop="quantity" label="退货数量" width="120" align="right" />
         <el-table-column prop="unitPrice" label="单价" width="120" align="right">
@@ -144,10 +144,10 @@ onMounted(() => {
 
 <style scoped>
 .material-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

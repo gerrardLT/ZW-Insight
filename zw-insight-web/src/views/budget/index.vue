@@ -97,9 +97,9 @@
         <!-- 2026-08-17 缺陷#8：预算管控按科目检查额度，补齐明细录入入口 -->
         <el-form-item label="预算明细">
           <div style="width: 100%">
-            <div style="margin-bottom: 8px">
+            <div style="margin-bottom: var(--zw-space-sm)">
               <el-button size="small" @click="addDetail">添加明细行</el-button>
-              <span v-if="detailsTotal > 0" style="margin-left: 12px; color: #909399; font-size: 12px">
+              <span v-if="detailsTotal > 0" style="margin-left: var(--zw-space-sm-md); color: #909399; font-size: var(--zw-font-size-xs)">
                 明细合计：{{ detailsTotal.toLocaleString() }} 元（提交后总额以明细合计为准）
               </span>
             </div>
@@ -362,8 +362,8 @@ function buildExecutionOption(data: any) {
 </script>
 
 <style scoped>
-.budget-container { padding: 16px; }
-.stat-panel { margin-bottom: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.budget-container { padding: var(--zw-space-md); }
+.stat-panel { margin-bottom: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 </style>

@@ -115,25 +115,25 @@ onMounted(() => {
 
 <style scoped>
 .user-center-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .tab-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .toolbar-tip {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--zw-space-sm);
   color: var(--el-text-color-secondary);
-  font-size: 13px;
+  font-size: var(--zw-font-size-sm);
 }
 .device-name {
   font-weight: 500;
 }
 .current-tag {
-  margin-left: 8px;
+  margin-left: var(--zw-space-sm);
 }
 </style>

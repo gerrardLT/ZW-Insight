@@ -265,10 +265,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .hr-statistics-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .stat-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .stat-card {
   cursor: default;
@@ -283,17 +283,17 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 .stat-label {
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
   color: var(--zw-text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: var(--zw-space-sm);
 }
 .stat-value {
-  font-size: 28px;
+  font-size: var(--zw-font-size-3xl);
   font-weight: bold;
   color: var(--zw-text-primary);
 }
 .stat-icon {
-  font-size: 48px;
+  font-size: var(--zw-font-size-4xl);
   opacity: 0.8;
 }
 .stat-icon--info {
@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
   color: var(--zw-danger);
 }
 .chart-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .chart-box {
   height: 320px;

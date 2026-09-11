@@ -12,6 +12,8 @@ import { ref } from 'vue'
 export const useNetworkStore = defineStore('network', () => {
   const isOffline = ref(false)
   const networkType = ref<string>('unknown')
+  const queueCount = ref<number>(0)
+  const isSyncing = ref<boolean>(false)
 
   /** 更新离线标记 */
   function setOffline(val: boolean) {
@@ -24,5 +26,24 @@ export const useNetworkStore = defineStore('network', () => {
     isOffline.value = !type || type === 'none'
   }
 
-  return { isOffline, networkType, setOffline, setNetworkType }
+  /** 更新待同步队列数量 */
+  function setQueueCount(count: number) {
+    queueCount.value = count
+  }
+
+  /** 更新同步运行状态 */
+  function setSyncing(syncing: boolean) {
+    isSyncing.value = syncing
+  }
+
+  return {
+    isOffline,
+    networkType,
+    queueCount,
+    isSyncing,
+    setOffline,
+    setNetworkType,
+    setQueueCount,
+    setSyncing
+  }
 })

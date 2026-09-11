@@ -169,13 +169,13 @@ onMounted(() => {
 
 <style scoped>
 .tax-rate-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .rate-unit {
-  margin-left: 8px;
+  margin-left: var(--zw-space-sm);
   color: #909399;
 }
 </style>

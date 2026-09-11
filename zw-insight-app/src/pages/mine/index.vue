@@ -30,6 +30,13 @@
         <text class="menu-text">当前版本</text>
         <text class="menu-value">v1.0.0</text>
       </view>
+      <view class="menu-item">
+        <view class="menu-label-group">
+          <text class="menu-text">现场强光高对比模式</text>
+          <text class="menu-sub-tip">烈日直射作业高反差增强</text>
+        </view>
+        <switch :checked="isOutdoorMode" color="#ff6b00" style="transform: scale(0.8);" @change="toggleOutdoorMode" />
+      </view>
     </view>
 
     <!-- 退出登录 -->
@@ -38,12 +45,43 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { logout as logoutApi } from '@/api/auth'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const userStore = useUserStore()
+
+const isOutdoorMode = ref(false)
+
+function applyOutdoorTheme(enable: boolean) {
+  if (typeof document !== 'undefined') {
+    if (enable) {
+      document.documentElement.dataset.theme = 'outdoor'
+      document.body.classList.add('theme-outdoor')
+    } else {
+      delete document.documentElement.dataset.theme
+      document.body.classList.remove('theme-outdoor')
+    }
+  }
+}
+
+function toggleOutdoorMode(e: any) {
+  isOutdoorMode.value = e.detail.value
+  uni.setStorageSync('zw_outdoor_mode', isOutdoorMode.value ? '1' : '0')
+  applyOutdoorTheme(isOutdoorMode.value)
+  uni.showToast({
+    title: isOutdoorMode.value ? '已开启现场强光高对比' : '已恢复常规视觉',
+    icon: 'none'
+  })
+}
+
+onMounted(() => {
+  isOutdoorMode.value = uni.getStorageSync('zw_outdoor_mode') === '1'
+  if (isOutdoorMode.value) {
+    applyOutdoorTheme(true)
+  }
+})
 
 const avatarText = computed(() => {
   const name = userStore.userInfo?.realName || userStore.userInfo?.username || ''
@@ -90,7 +128,9 @@ function handleLogout() {
 .menu-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); margin-bottom: 24rpx; }
 .menu-item { display: flex; justify-content: space-between; align-items: center; padding: 28rpx 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .menu-item:last-child { border-bottom: none; }
+.menu-label-group { display: flex; flex-direction: column; gap: 4rpx; }
 .menu-text { font-size: 28rpx; color: var(--zw-text-primary); }
+.menu-sub-tip { font-size: 20rpx; color: var(--zw-text-quaternary); }
 .menu-arrow { font-size: 32rpx; color: var(--zw-text-quaternary); }
 .menu-value { font-size: 26rpx; color: var(--zw-text-tertiary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .logout-btn { margin: 40rpx 0; height: 88rpx; line-height: 88rpx; background: var(--zw-bg-card); color: var(--zw-danger); font-size: 30rpx; border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-danger-light); }

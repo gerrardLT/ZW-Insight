@@ -249,19 +249,19 @@ onMounted(() => {
 
 <style scoped>
 .menu-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 /* 图标选项预览 */
 .icon-option {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--zw-space-sm);
 }
 .icon-option :deep(.el-icon) {
-  font-size: 16px;
+  font-size: var(--zw-font-size-md);
 }
 /* 解析失败显式标记（警告三角形，避免静默丢失） */
 .icon-fallback-marked {

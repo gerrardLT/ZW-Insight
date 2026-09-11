@@ -50,6 +50,8 @@ function reLogin() {
 }
 
 .error-code {
+  /* 错误页装饰性巨字号：超出 token 字号体系（最大 4xl=36px），显式豁免 */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
   font-size: 120px;
   font-weight: 800;
   line-height: 1;

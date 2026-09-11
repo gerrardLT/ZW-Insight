@@ -29,14 +29,13 @@
 }
 
 .error-code {
-  font-size: 120px;
+  /* 错误页工业数标巨字：稳固实色，符合工建精密排版规范，杜绝渐变字残次 */
+  font-family: var(--zw-font-mono);
+  font-size: 108px;
   font-weight: 800;
   line-height: 1;
-  background: var(--zw-brand-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 4px;
+  color: var(--zw-primary);
+  letter-spacing: 2px;
 }
 
 .error-title {

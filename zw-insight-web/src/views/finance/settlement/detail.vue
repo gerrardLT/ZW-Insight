@@ -5,7 +5,7 @@
       <el-page-header @back="handleBack">
         <template #content>
           <span class="page-title">结算单详情 - {{ settlement.settlementCode }}</span>
-          <el-tag :type="getStatusType(settlement.status)" size="small" style="margin-left: 12px">
+          <el-tag :type="getStatusType(settlement.status)" size="small" style="margin-left: var(--zw-space-sm-md)">
             {{ getStatusLabel(settlement.status) }}
           </el-tag>
         </template>
@@ -348,20 +348,20 @@ onMounted(() => {
 
 <style scoped>
 .settlement-detail-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 
 .page-header {
-  margin-bottom: 20px;
+  margin-bottom: var(--zw-space-lg);
 }
 
 .page-title {
-  font-size: 16px;
+  font-size: var(--zw-font-size-md);
   font-weight: 600;
 }
 
 .summary-section {
-  margin-bottom: 20px;
+  margin-bottom: var(--zw-space-lg);
 }
 
 .summary-card {
@@ -376,7 +376,7 @@ onMounted(() => {
 }
 
 .amount-highlight {
-  font-size: 15px;
+  font-size: var(--zw-font-size-md);
   font-weight: 600;
 }
 
@@ -389,7 +389,7 @@ onMounted(() => {
 }
 
 .contract-detail-section {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
 }
 
 .text-danger {
@@ -402,14 +402,14 @@ onMounted(() => {
 }
 
 .form-tip {
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
   color: #909399;
   line-height: 1.5;
-  margin-top: 4px;
+  margin-top: var(--zw-space-xs);
 }
 
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

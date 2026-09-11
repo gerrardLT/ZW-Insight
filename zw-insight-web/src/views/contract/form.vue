@@ -8,7 +8,7 @@
         </div>
       </template>
 
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px" style="max-width: 900px" :disabled="isView">
+      <el-form ref="formRef" v-loading="pageLoading" :model="formData" :rules="formRules" label-width="120px" style="max-width: 900px" :disabled="isView">
         <el-divider content-position="left">合同基本信息</el-divider>
 
         <el-row :gutter="16">
@@ -134,7 +134,7 @@
           </el-table-column>
         </el-table>
 
-        <el-form-item v-if="!isView" style="margin-top: 24px">
+        <el-form-item v-if="!isView" style="margin-top: var(--zw-space-lg)">
           <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
           <el-button @click="handleBack">取消</el-button>
         </el-form-item>
@@ -155,6 +155,7 @@ const route = useRoute()
 const router = useRouter()
 const formRef = ref<FormInstance>()
 const submitLoading = ref(false)
+const pageLoading = ref(false) // 编辑模式详情回填期间整体遮罩防误操作
 const projectList = ref<any[]>([])
 const detailList = ref<any[]>([])
 
@@ -209,17 +210,22 @@ function removeDetailRow(index: number) {
 
 async function loadDetail() {
   if (!route.params.id) return
-  // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
-  const contractId = route.params.id as string
-  const res: any = await getContractDetail(contractId)
-  formData.value = res.data || {}
-  // 确保项目出现在选项中
-  if (formData.value.projectId) {
-    projectList.value = [{ id: formData.value.projectId, projectName: formData.value.projectName }]
+  pageLoading.value = true
+  try {
+    // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
+    const contractId = route.params.id as string
+    const res: any = await getContractDetail(contractId)
+    formData.value = res.data || {}
+    // 确保项目出现在选项中
+    if (formData.value.projectId) {
+      projectList.value = [{ id: formData.value.projectId, projectName: formData.value.projectName }]
+    }
+    // 加载明细
+    const detailRes: any = await getContractDetails(contractId)
+    detailList.value = detailRes.data || []
+  } finally {
+    pageLoading.value = false
   }
-  // 加载明细
-  const detailRes: any = await getContractDetails(contractId)
-  detailList.value = detailRes.data || []
 }
 
 async function handleSubmit() {
@@ -259,7 +265,7 @@ onMounted(() => {
 
 <style scoped>
 .contract-form-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
@@ -267,6 +273,6 @@ onMounted(() => {
   justify-content: space-between;
 }
 .detail-toolbar {
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md);
 }
 </style>

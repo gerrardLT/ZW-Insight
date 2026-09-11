@@ -331,30 +331,30 @@ onMounted(() => {
 
 <style scoped>
 .print-template-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }
 .editor-tips {
   width: 100%;
-  margin-bottom: 8px;
+  margin-bottom: var(--zw-space-sm);
 }
 .editor-tips code {
   background: #f5f5f5;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: var(--zw-space-2xs) var(--zw-space-xs);
+  border-radius: var(--zw-radius-xs);
   font-family: 'Consolas', 'Monaco', monospace;
 }
 /* 等宽字体 HTML 编辑区（无现成 CodeMirror/Monaco 依赖时的替代方案） */
 .code-editor :deep(.el-textarea__inner) {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
+  font-size: var(--zw-font-size-sm);
   line-height: 1.6;
   white-space: pre;
   overflow-wrap: normal;

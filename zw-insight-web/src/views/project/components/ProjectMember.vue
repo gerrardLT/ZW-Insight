@@ -21,7 +21,7 @@
             :key="role"
             :type="(getRoleTagType(role) as any)"
             size="small"
-            style="margin-right: 4px; margin-bottom: 2px"
+            style="margin-right: var(--zw-space-xs); margin-bottom: var(--zw-space-2xs)"
           >
             {{ getRoleLabel(role) }}
           </el-tag>
@@ -43,7 +43,7 @@
         v-model:page-size="queryParams.pageSize"
         :page-sizes="[10, 20, 50]"
         :total="total"
-        layout="total, sizes, prev, pager, next"
+        layout="total, sizes, prev, pager, next, jumper"
         @size-change="loadData"
         @current-change="loadData"
       />
@@ -313,10 +313,10 @@ onMounted(() => {
 .member-toolbar {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

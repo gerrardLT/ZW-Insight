@@ -8,7 +8,7 @@
         </div>
       </template>
 
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="110px">
+      <el-form ref="formRef" v-loading="pageLoading" :model="formData" :rules="formRules" label-width="110px">
         <el-row :gutter="24">
           <el-col :span="12">
             <el-form-item label="项目" prop="projectId">
@@ -74,7 +74,7 @@
           <span class="detail-tip">已关联方案，可编辑检查标准或删除不适用项，不可新增方案外检查项</span>
         </div>
 
-        <el-table :data="detailList" border style="width: 100%; margin-top: 12px">
+        <el-table :data="detailList" border style="width: 100%; margin-top: var(--zw-space-sm-md)">
           <el-table-column prop="itemName" label="项目名称" min-width="160">
             <template #default="{ row, $index }">
               <el-input
@@ -160,6 +160,7 @@ const route = useRoute()
 const router = useRouter()
 const formRef = ref<FormInstance>()
 const submitLoading = ref(false)
+const pageLoading = ref(false) // 编辑模式详情回填期间整体遮罩防误操作
 const schemeLoading = ref(false)
 const schemeList = ref<any[]>([])
 const detailList = ref<InspectionDetail[]>([])
@@ -342,7 +343,12 @@ function handleBack() {
 onMounted(async () => {
   const id = route.params.id as string
   if (id) {
-    await loadInspectionDetail(Number(id))
+    pageLoading.value = true
+    try {
+      await loadInspectionDetail(Number(id))
+    } finally {
+      pageLoading.value = false
+    }
   }
   // 如果来自列表页带有检查类型参数
   const type = route.query.type as string
@@ -355,7 +361,7 @@ onMounted(async () => {
 
 <style scoped>
 .inspection-form-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
@@ -365,16 +371,16 @@ onMounted(async () => {
 .detail-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--zw-space-sm-md);
 }
 .detail-tip {
   color: #909399;
-  font-size: 13px;
+  font-size: var(--zw-font-size-sm);
 }
 .form-footer {
-  margin-top: 24px;
+  margin-top: var(--zw-space-lg);
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: var(--zw-space-sm-md);
 }
 </style>

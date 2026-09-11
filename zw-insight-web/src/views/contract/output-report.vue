@@ -90,7 +90,7 @@
             <el-radio-button value="boq" :disabled="boqItems.length === 0">按清单行</el-radio-button>
             <el-radio-button value="amount">纯金额</el-radio-button>
           </el-radio-group>
-          <span v-if="boqItems.length === 0 && createForm.contractId" class="form-tip" style="margin-left: 12px">该合同暂无工程量清单，仅可按纯金额填报</span>
+          <span v-if="boqItems.length === 0 && createForm.contractId" class="form-tip" style="margin-left: var(--zw-space-sm-md)">该合同暂无工程量清单，仅可按纯金额填报</span>
         </el-form-item>
 
         <!-- 清单行填报 -->
@@ -403,27 +403,27 @@ loadData()
 
 <style scoped>
 .output-report-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .filter-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }
 .form-tip {
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
   color: #909399;
 }
 .total-line {
-  margin-top: 12px;
+  margin-top: var(--zw-space-sm-md);
   text-align: right;
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
 }
 .total-line .amount {
-  font-size: 16px;
+  font-size: var(--zw-font-size-md);
   font-weight: 600;
   color: #67c23a;
 }

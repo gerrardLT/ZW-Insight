@@ -96,7 +96,8 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
+        <el-button :loading="submitLoading" @click="handleFormSubmit(false)">保存草稿</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit(true)">保存并提交审批</el-button>
       </template>
     </el-dialog>
   </div>
@@ -183,12 +184,17 @@ function handleAdd() {
   dialogVisible.value = true
 }
 
-async function handleFormSubmit() {
+async function handleFormSubmit(autoSubmit = false) {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
-    await createProjectReimbursement(formData.value)
-    ElMessage.success('新增成功')
+    const res: any = await createProjectReimbursement(formData.value)
+    if (autoSubmit && res?.data) {
+      await submitProjectReimbursement(res.data)
+      ElMessage.success('保存并提交审批成功')
+    } else {
+      ElMessage.success('保存草稿成功')
+    }
     dialogVisible.value = false
     loadData()
   } finally {
@@ -211,13 +217,13 @@ onMounted(() => {
 
 <style scoped>
 .finance-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
 }

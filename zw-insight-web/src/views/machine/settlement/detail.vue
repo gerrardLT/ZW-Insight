@@ -128,7 +128,7 @@ onMounted(() => {
 
 <style scoped>
 .settlement-detail-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
@@ -138,6 +138,6 @@ onMounted(() => {
 .amount-text {
   font-weight: bold;
   color: #409eff;
-  font-size: 16px;
+  font-size: var(--zw-font-size-md);
 }
 </style>

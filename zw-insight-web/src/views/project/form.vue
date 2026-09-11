@@ -10,7 +10,7 @@
         </div>
       </template>
 
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px" class="project-form">
+      <el-form ref="formRef" v-loading="pageLoading" :model="formData" :rules="formRules" label-width="120px" class="project-form">
         <!-- 基本信息 -->
         <div class="form-section">
           <div class="section-title"><span class="section-bar"></span>基本信息</div>
@@ -150,6 +150,7 @@ const route = useRoute()
 const router = useRouter()
 const formRef = ref<FormInstance>()
 const submitLoading = ref(false)
+const pageLoading = ref(false) // 页面数据加载状态（编辑模式进入时展示骨架屏/遮罩）
 const ownerLoading = ref(false)
 const ownerList = ref<any[]>([])
 const companyList = ref<any[]>([])
@@ -209,12 +210,17 @@ async function loadCompanyList() {
 
 async function loadDetail() {
   if (!route.params.id) return
-  // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
-  const res: any = await getProjectDetail(route.params.id as string)
-  formData.value = res.data || {}
-  // 确保业主单位出现在选项中
-  if (formData.value.ownerCompanyId) {
-    ownerList.value = [{ id: formData.value.ownerCompanyId, ownerName: formData.value.ownerCompanyName }]
+  pageLoading.value = true
+  try {
+    // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
+    const res: any = await getProjectDetail(route.params.id as string)
+    formData.value = res.data || {}
+    // 确保业主单位出现在选项中
+    if (formData.value.ownerCompanyId) {
+      ownerList.value = [{ id: formData.value.ownerCompanyId, ownerName: formData.value.ownerCompanyName }]
+    }
+  } finally {
+    pageLoading.value = false
   }
 }
 
@@ -279,7 +285,7 @@ onMounted(() => {
 .section-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--zw-space-sm);
   margin-bottom: var(--zw-space-md);
   font-size: var(--zw-font-size-md);
   font-weight: var(--zw-font-weight-semibold);
@@ -290,7 +296,7 @@ onMounted(() => {
   display: inline-block;
   width: 3px;
   height: 14px;
-  border-radius: 2px;
+  border-radius: var(--zw-radius-xs);
   background: var(--zw-brand-gradient);
 }
 

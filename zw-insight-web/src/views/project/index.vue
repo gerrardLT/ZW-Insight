@@ -244,7 +244,7 @@ function buildPortfolioOption(data: any) {
 .filter-card :deep(.el-form--inline) {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 8px;
+  gap: var(--zw-space-xs) var(--zw-space-sm);
 }
 
 .filter-card :deep(.el-form-item) {

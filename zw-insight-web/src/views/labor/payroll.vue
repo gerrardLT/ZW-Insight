@@ -73,7 +73,7 @@
     <batch-import-dialog v-model:visible="importVisible" module-code="PAYROLL" @success="loadData" />
 
     <el-dialog v-model="dialogVisible" title="生成工资单" width="550px" destroy-on-close>
-      <el-alert type="info" :closable="false" show-icon style="margin-bottom: 16px"
+      <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-md)"
         title="结算金额由周期内已审批的用工单自动汇总，无需手工录入。" />
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="班组" prop="teamId">
@@ -217,8 +217,8 @@ function buildPayrollTrendOption(list: any[]) {
 </script>
 
 <style scoped>
-.payroll-container { padding: 16px; }
-.stat-panel { margin-bottom: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.payroll-container { padding: var(--zw-space-md); }
+.stat-panel { margin-bottom: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 </style>

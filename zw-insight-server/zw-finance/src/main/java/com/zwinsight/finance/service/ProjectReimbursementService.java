@@ -43,9 +43,10 @@ public class ProjectReimbursementService {
     /**
      * 新增项目报销
      */
-    public void save(BizProjectReimbursement reimbursement) {
+    public Long save(BizProjectReimbursement reimbursement) {
         reimbursement.setStatus("DRAFT");
         reimbursementMapper.insert(reimbursement);
+        return reimbursement.getId();
     }
 
     /**

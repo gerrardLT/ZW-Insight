@@ -121,17 +121,17 @@ async function handleSubmit() {
 
 <style scoped>
 .form-page { padding: 20rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
+.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
 .section-title { font-size: 30rpx; font-weight: bold; padding: 24rpx 0 12rpx; }
-.fund-item { padding: 20rpx 16rpx; border: 2rpx solid var(--zw-border-light); border-radius: var(--zw-radius-sm); margin-bottom: 16rpx; }
+.fund-item { padding: 20rpx 16rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); margin-bottom: 16rpx; }
 .fund-item.selected { border-color: var(--zw-brand); background: var(--zw-brand-light); }
 .fund-line { display: flex; justify-content: space-between; font-size: 28rpx; color: var(--zw-text-primary); }
 .fund-line.sub { margin-top: 8rpx; font-size: 24rpx; color: var(--zw-text-tertiary); }
-.fund-amount { color: var(--zw-brand); font-family: var(--zw-font-mono); }
+.fund-amount { color: var(--zw-brand); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
 .form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item:last-child { border-bottom: none; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; } /* 橙底深字承重规则 */
+.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
+.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
 </style>

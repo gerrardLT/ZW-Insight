@@ -26,7 +26,7 @@
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column type="expand">
           <template #default="{ row }">
-            <el-table :data="row.details || []" size="small" border style="margin: 8px 24px">
+            <el-table :data="row.details || []" size="small" border style="margin: var(--zw-space-sm) var(--zw-space-lg)">
               <el-table-column prop="materialName" label="材料名称" min-width="140" />
               <el-table-column prop="specification" label="规格型号" width="120" />
               <el-table-column prop="unit" label="单位" width="70" align="center" />
@@ -87,7 +87,7 @@
         </el-row>
 
         <el-divider content-position="left">出库明细</el-divider>
-        <el-button type="primary" plain size="small" @click="handleAddDetail" style="margin-bottom: 8px">添加明细</el-button>
+        <el-button type="primary" plain size="small" @click="handleAddDetail" style="margin-bottom: var(--zw-space-sm)">添加明细</el-button>
         <el-table :data="formData.details" size="small" border>
           <el-table-column label="材料名称" min-width="150">
             <template #default="{ row }"><el-input v-model="row.materialName" placeholder="材料名称" /></template>
@@ -205,7 +205,7 @@ onMounted(() => { loadData(); loadProjectOptions() })
 </script>
 
 <style scoped>
-.material-outbound-container { padding: 16px; }
-.table-toolbar { margin-bottom: 16px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
+.material-outbound-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 </style>

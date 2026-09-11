@@ -279,7 +279,8 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
 .login-form {
   width: 100%;
   background: var(--zw-bg-card);
-  border-radius: var(--zw-radius-lg); /* 直角纪律 */
+  border: 1rpx solid var(--zw-border);
+  border-radius: var(--zw-radius-xs); /* 精密直角纪律 */
   padding: 40rpx;
   box-shadow: var(--zw-shadow-card);
 }
@@ -316,7 +317,7 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
 .input {
   height: 88rpx; /* Mobile Shell 章：输入控件 44px */
   border: 1rpx solid var(--zw-border);
-  border-radius: var(--zw-radius-sm);
+  border-radius: var(--zw-radius-xs);
   padding: 0 24rpx;
   font-size: 28rpx;
 }
@@ -337,7 +338,7 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   width: 220rpx;
   height: 88rpx;
   border: 1rpx solid var(--zw-border);
-  border-radius: var(--zw-radius-sm);
+  border-radius: var(--zw-radius-xs);
   background: var(--zw-bg-hover);
 }
 .captcha-placeholder {
@@ -358,7 +359,7 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   color: var(--zw-brand);
   background: var(--zw-brand-light);
   border: 1rpx solid var(--zw-brand-light);
-  border-radius: var(--zw-radius-sm);
+  border-radius: var(--zw-radius-xs);
   padding: 0;
   white-space: nowrap;
 }
@@ -375,7 +376,7 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   color: var(--zw-on-primary); /* 橙底深字承重规则 */
   font-size: 32rpx;
   font-weight: 600;
-  border-radius: var(--zw-radius-sm);
+  border-radius: var(--zw-radius-xs);
   margin-top: 40rpx;
   border: none;
 }

@@ -124,7 +124,7 @@
                   v-model:current-page="row._detailPage"
                   :page-size="10"
                   :total="row._detailTotal"
-                  layout="total, prev, pager, next"
+                  layout="total, prev, pager, next, jumper"
                   small
                   @current-change="(page: number) => loadTeamDetail(row as TeamSalaryVO, page)"
                 />
@@ -370,30 +370,30 @@ async function handleExport() {
 
 <style scoped>
 .salary-stats-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 
 .filter-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 
 .compare-cards {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 
 .stat-card {
   text-align: center;
-  padding: 8px 0;
+  padding: var(--zw-space-sm) 0;
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: var(--zw-font-size-sm);
   color: #909399;
-  margin-bottom: 8px;
+  margin-bottom: var(--zw-space-sm);
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: var(--zw-font-size-2xl);
   font-weight: 600;
   color: #303133;
 }
@@ -407,28 +407,28 @@ async function handleExport() {
 }
 
 .stat-value .no-data-text {
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
   color: #c0c4cc;
   font-weight: normal;
 }
 
 .stat-sub {
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
   color: #909399;
-  margin-top: 4px;
+  margin-top: var(--zw-space-xs);
 }
 
 .main-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--zw-space-md);
 }
 
 .summary-bar {
   display: flex;
-  gap: 24px;
-  padding: 12px 0;
-  margin-bottom: 12px;
+  gap: var(--zw-space-lg);
+  padding: var(--zw-space-sm-md) 0;
+  margin-bottom: var(--zw-space-sm-md);
   border-bottom: 1px solid #ebeef5;
-  font-size: 14px;
+  font-size: var(--zw-font-size-base);
   color: #606266;
 }
 
@@ -437,11 +437,11 @@ async function handleExport() {
 }
 
 .detail-table-wrap {
-  padding: 12px 24px;
+  padding: var(--zw-space-sm-md) var(--zw-space-lg);
 }
 
 .detail-pagination {
-  margin-top: 8px;
+  margin-top: var(--zw-space-sm);
   display: flex;
   justify-content: flex-end;
 }

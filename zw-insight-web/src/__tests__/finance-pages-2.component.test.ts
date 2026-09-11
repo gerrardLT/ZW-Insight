@@ -58,9 +58,25 @@ vi.mock('@/api/tax-rate', () => ({
 vi.mock('@/api/project', () => ({
   getProjectList: mockProjectList,
 }))
-vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+vi.mock('@/api/contract', () => ({
+  getContractPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  getContractList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
 }))
+vi.mock('vue-router', async (importOriginal) => {
+  const actual: any = await importOriginal().catch(() => ({}))
+  return {
+    ...actual,
+    createRouter: () => ({
+      beforeEach: vi.fn(),
+      afterEach: vi.fn(),
+      push: vi.fn(),
+      replace: vi.fn(),
+      currentRoute: { value: { path: '/', meta: {} } }
+    }),
+    createWebHistory: () => ({}),
+    useRouter: () => ({ push: vi.fn() }),
+  }
+})
 vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {

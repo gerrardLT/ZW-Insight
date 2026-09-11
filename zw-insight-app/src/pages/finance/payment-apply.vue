@@ -98,6 +98,8 @@ const form = ref({
 })
 
 onMounted(async () => {
+  const now = new Date()
+  form.value.expectedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   // 在线优先 + 离线回退缓存（需求 4.2、4.8）
   const res = await loadProjectList({ page: 1, size: 100 })
   projects.value = res.records
@@ -114,7 +116,8 @@ async function handleSubmit() {
   if (!form.value.projectId) {
     uni.showToast({ title: '请选择项目', icon: 'none' }); return
   }
-  if (!form.value.amount) {
+  const amountNum = Number(form.value.amount)
+  if (!form.value.amount || !Number.isFinite(amountNum) || amountNum <= 0) {
     uni.showToast({ title: '请输入付款金额', icon: 'none' }); return
   }
   if (!form.value.payee) {
@@ -124,13 +127,16 @@ async function handleSubmit() {
   try {
     const payload = {
       projectId: form.value.projectId,
-      amount: Number(form.value.amount),
+      amount: amountNum,
+      paymentAmount: amountNum,
+      supplierName: form.value.payee,
       payee: form.value.payee,
       payeeAccount: form.value.payeeAccount,
       payeeBank: form.value.payeeBank,
       reason: form.value.reason,
       payMethod: form.value.payMethod,
       expectedDate: form.value.expectedDate,
+      paymentDate: form.value.expectedDate,
       remark: form.value.remark
     }
     // 离线时入队（需求 5.1），联网后由 syncEngine 自动提交
@@ -150,20 +156,20 @@ async function handleSubmit() {
 
 <style scoped>
 .form-page { padding: 20rpx; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
+.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
 .form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item:last-child { border-bottom: none; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
+.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
 .placeholder { color: var(--zw-text-quaternary); }
 .arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
 .radio-group { display: flex; gap: 20rpx; flex: 1; justify-content: flex-end; }
-.radio-item { padding: 8rpx 24rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); font-size: 26rpx; color: var(--zw-text-secondary); }
-.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; } /* 橙底深字承重规则 */
+.radio-item { padding: 8rpx 24rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); font-size: 26rpx; color: var(--zw-text-secondary); }
+.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); font-weight: 500; }
+.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
-.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
+.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; max-height: 70vh; }
 .picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }

@@ -133,12 +133,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.message-center-container { padding: 16px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.message-center-container { padding: var(--zw-space-md); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--zw-space-md); }
 .card-header .el-tabs { flex: 1; }
-.tab-badge { margin-left: 6px; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
-.alert-tag { margin-right: 6px; }
+.tab-badge { margin-left: var(--zw-space-sm); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
+.alert-tag { margin-right: var(--zw-space-sm); }
 .alert-title { color: var(--el-color-danger); font-weight: 600; }
 :deep(.alert-row) { background-color: var(--el-color-danger-light-9); }
 </style>

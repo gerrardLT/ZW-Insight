@@ -12,7 +12,7 @@
               </el-button>
             </div>
           </template>
-          <el-input v-model="searchText" placeholder="搜索字典名称/编码" clearable style="margin-bottom: 12px" />
+          <el-input v-model="searchText" placeholder="搜索字典名称/编码" clearable style="margin-bottom: var(--zw-space-sm-md)" />
           <el-table
             :data="filteredDictList"
             highlight-current-row
@@ -283,7 +283,7 @@ onMounted(() => {
 
 <style scoped>
 .dict-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;
