@@ -112,3 +112,81 @@
   border-radius: var(--zw-radius-sm);
   box-shadow: var(--zw-shadow-card);
 }
+
+/* ===== 工业名牌头部（带 3px 安全橙垂直标识线） ===== */
+.plate-header {
+  position: relative;
+  background: var(--zw-bg-card);
+  border: 1px solid var(--zw-border);
+  border-radius: var(--zw-radius-xs);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.plate-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--zw-brand);
+}
+
+/* ===== 大写窄体眉题 ===== */
+.page-eyebrow {
+  font-family: var(--zw-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--zw-brand);
+  margin-bottom: 2px;
+}
+
+/* ===== 表单输入与直角控件规范 ===== */
+.zw-form-group {
+  margin-bottom: 12px;
+}
+.zw-form-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--zw-text-secondary);
+  margin-bottom: 6px;
+}
+.zw-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--zw-bg-card);
+  border: 1px solid var(--zw-border);
+  border-radius: var(--zw-radius-xs);
+  font-size: 14px;
+  color: var(--zw-text-primary);
+  box-sizing: border-box;
+  transition: border-color var(--zw-duration-fast) var(--zw-ease-out);
+}
+.zw-input:focus {
+  border-color: var(--zw-brand);
+}
+
+/* ===== 等宽数字（Tabular Figures） ===== */
+.tabular-num,
+.mono-num {
+  font-family: var(--zw-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== 移动端通用列表卡片 ===== */
+.zw-list-card {
+  background: var(--zw-bg-card);
+  border: 1px solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  position: relative;
+  transition: background-color var(--zw-duration-fast) var(--zw-ease-out);
+}
+.zw-list-card:active {
+  background: var(--zw-bg-hover);
+}
+
