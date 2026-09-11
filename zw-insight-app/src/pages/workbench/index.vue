@@ -2,7 +2,13 @@
   <view class="workbench-page">
     <!-- 项目概览 -->
     <view class="section zw-card">
-      <view class="section-title">项目看板</view>
+      <view class="section-header-flex">
+        <view class="section-title">项目看板</view>
+        <view class="quick-link" @click="navigateTo('/pages/project/cost-control/index')">
+          <text class="link-text">成本监控 📊</text>
+          <text class="more-arrow">›</text>
+        </view>
+      </view>
       <view v-if="overviewFailed" class="failed-state">
         <text class="failed-tip">项目看板加载失败</text>
         <text class="retry-btn" @click="loadOverview">重试</text>
@@ -23,6 +29,41 @@
         <view class="kanban-card red">
           <text class="kanban-value">{{ todoCount }}</text>
           <text class="kanban-label">待审批</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 常用功能入口（含变更事件等核心现场业务） -->
+    <view class="section zw-card">
+      <view class="section-title">常用现场业务</view>
+      <view class="biz-grid">
+        <view class="biz-item" @click="navigateTo('/pages/contract/change-event/index')">
+          <text class="biz-icon">📑</text>
+          <text class="biz-name">变更事件</text>
+        </view>
+        <view class="biz-item" @click="navigateTo('/pages/machine/work-log/index')">
+          <text class="biz-icon">🚜</text>
+          <text class="biz-name">机械台班</text>
+        </view>
+        <view class="biz-item" @click="navigateTo('/pages/labor/work-order/index')">
+          <text class="biz-icon">👷</text>
+          <text class="biz-name">劳务点工</text>
+        </view>
+        <view class="biz-item" @click="navigateTo('/pages/site/watermark-camera/index')">
+          <text class="biz-icon">📷</text>
+          <text class="biz-name">水印相机</text>
+        </view>
+        <view class="biz-item" @click="navigateTo('/pages/site/construction-log')">
+          <text class="biz-icon">📝</text>
+          <text class="biz-name">施工日志</text>
+        </view>
+        <view class="biz-item" @click="navigateTo('/pages/material/inbound')">
+          <text class="biz-icon">📦</text>
+          <text class="biz-name">材料入库</text>
+        </view>
+        <view class="biz-item" @click="navigateTo('/pages/site/quality-check')">
+          <text class="biz-icon">🔍</text>
+          <text class="biz-name">质量检查</text>
         </view>
       </view>
     </view>
@@ -155,6 +196,10 @@ function goArchive(projectId: number) {
   uni.navigateTo({ url: `/pages/project/archive?projectId=${projectId}` })
 }
 
+function navigateTo(url: string) {
+  uni.navigateTo({ url })
+}
+
 function goApprovalDetail(item: any) {
   const taskId = item.id || item.taskId || ''
   uni.navigateTo({ url: `/pages/approval/detail?taskId=${taskId}&processInstanceId=${item.processInstanceId}` })
@@ -169,20 +214,29 @@ onUnmounted(() => { stopTodoPolling() })
 .workbench-page { padding: 20rpx; }
 .section { padding: 24rpx; margin-bottom: 24rpx; } /* 底色/描边/直角由全局 .zw-card 提供 */
 .section-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); margin-bottom: 20rpx; }
+.section-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.section-header-flex .section-title { margin-bottom: 0; }
+.quick-link { display: flex; align-items: center; font-size: 24rpx; color: var(--zw-brand); font-weight: 500; }
+.link-text { margin-right: 4rpx; }
+.more-arrow { font-size: 28rpx; color: var(--zw-brand); }
+.biz-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16rpx; text-align: center; }
+.biz-item { display: flex; flex-direction: column; align-items: center; padding: 16rpx 8rpx; border-radius: var(--zw-radius-sm); background: var(--zw-bg-hover); }
+.biz-icon { font-size: 40rpx; margin-bottom: 8rpx; }
+.biz-name { font-size: 24rpx; color: var(--zw-text-primary); }
 .kanban-cards { display: flex; gap: 12rpx; }
-.kanban-card { flex: 1; padding: 20rpx 12rpx; border-radius: var(--zw-radius-sm); text-align: center; }
-.kanban-card.blue { background: var(--zw-info-light); }
-.kanban-card.green { background: var(--zw-success-light); }
-.kanban-card.orange { background: var(--zw-warning-light); }
-.kanban-card.red { background: var(--zw-danger-light); }
-.kanban-value { font-size: 36rpx; font-weight: bold; display: block; color: var(--zw-text-primary); font-family: var(--zw-font-mono); }
+.kanban-card { flex: 1; padding: 20rpx 12rpx; border-radius: var(--zw-radius-xs); text-align: center; border: 1rpx solid transparent; }
+.kanban-card.blue { background: var(--zw-info-light); border-color: rgba(43, 108, 176, 0.15); }
+.kanban-card.green { background: var(--zw-success-light); border-color: rgba(31, 157, 85, 0.15); }
+.kanban-card.orange { background: var(--zw-warning-light); border-color: rgba(247, 181, 0, 0.2); }
+.kanban-card.red { background: var(--zw-danger-light); border-color: rgba(217, 45, 32, 0.15); }
+.kanban-value { font-size: 36rpx; font-weight: bold; display: block; color: var(--zw-text-primary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .kanban-label { font-size: 22rpx; color: var(--zw-text-tertiary); margin-top: 4rpx; display: block; }
 .project-list { max-height: 600rpx; }
 .project-item { padding: 20rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .project-name { font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
 .project-info { display: flex; justify-content: space-between; align-items: center; margin-top: 8rpx; }
 .project-status { font-size: 24rpx; } /* 徽章底色由全局 .status-badge-info 提供 */
-.project-amount { font-size: 24rpx; color: var(--zw-text-tertiary); font-family: var(--zw-font-mono); }
+.project-amount { font-size: 24rpx; color: var(--zw-text-tertiary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
 .loading-more { text-align: center; padding: 20rpx; color: var(--zw-text-tertiary); font-size: 24rpx; }
 .failed-state { display: flex; align-items: center; justify-content: center; padding: 40rpx 0; }

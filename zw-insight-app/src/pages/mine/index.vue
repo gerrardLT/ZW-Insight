@@ -14,6 +14,10 @@
 
     <!-- 菜单列表 -->
     <view class="menu-section">
+      <view class="menu-item" @click="navigateTo('/pages/mine/sign')">
+        <text class="menu-text">定位签到</text>
+        <text class="menu-arrow">›</text>
+      </view>
       <view class="menu-item" @click="navigateTo('/pages/mine/password')">
         <text class="menu-text">修改密码</text>
         <text class="menu-arrow">›</text>
@@ -77,17 +81,17 @@ function handleLogout() {
 <style scoped>
 .mine-page { padding: 20rpx; }
 /* 头部：石墨黑控制室纯色块（去渐变纪律）+ 橙色头像强调 */
-.user-header { display: flex; align-items: center; background: var(--zw-bg-sidebar); border-radius: var(--zw-radius-lg); padding: 40rpx 30rpx; margin-bottom: 24rpx; }
+.user-header { display: flex; align-items: center; background: var(--zw-bg-sidebar); border-radius: var(--zw-radius-sm); padding: 40rpx 30rpx; margin-bottom: 24rpx; border: 1rpx solid var(--zw-border); }
 .avatar { width: 100rpx; height: 100rpx; border-radius: var(--zw-radius-xs); background: var(--zw-brand); display: flex; align-items: center; justify-content: center; }
 .avatar-text { color: var(--zw-on-primary); font-size: 32rpx; font-weight: bold; } /* 橙底深字承重规则 */
 .user-info { margin-left: 24rpx; }
 .user-name { font-size: 32rpx; color: #fff; font-weight: bold; display: block; }
 .user-role { font-size: 24rpx; color: rgba(255,255,255,0.6); margin-top: 8rpx; display: block; }
-.menu-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); margin-bottom: 24rpx; }
+.menu-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); margin-bottom: 24rpx; }
 .menu-item { display: flex; justify-content: space-between; align-items: center; padding: 28rpx 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .menu-item:last-child { border-bottom: none; }
 .menu-text { font-size: 28rpx; color: var(--zw-text-primary); }
 .menu-arrow { font-size: 32rpx; color: var(--zw-text-quaternary); }
-.menu-value { font-size: 26rpx; color: var(--zw-text-tertiary); }
-.logout-btn { margin: 40rpx 0; height: 88rpx; line-height: 88rpx; background: var(--zw-bg-card); color: var(--zw-danger); font-size: 30rpx; border-radius: var(--zw-radius-lg); border: 1rpx solid var(--zw-danger-light); }
+.menu-value { font-size: 26rpx; color: var(--zw-text-tertiary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
+.logout-btn { margin: 40rpx 0; height: 88rpx; line-height: 88rpx; background: var(--zw-bg-card); color: var(--zw-danger); font-size: 30rpx; border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-danger-light); }
 </style>

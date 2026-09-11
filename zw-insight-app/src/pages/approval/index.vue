@@ -210,26 +210,26 @@ onShow(() => {
 .tab-item.active { color: var(--zw-brand); font-weight: bold; }
 .tab-item.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 60rpx; height: 4rpx; background: var(--zw-brand); border-radius: 2rpx; }
 .task-list { flex: 1; padding: 20rpx; }
-.task-item { background: var(--zw-bg-card); border-radius: var(--zw-radius-lg); padding: 24rpx; margin-bottom: 16rpx; }
+.task-item { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 24rpx; margin-bottom: 16rpx; box-shadow: var(--zw-shadow-card); }
 .task-header { display: flex; justify-content: space-between; align-items: center; }
 .task-title { font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
-.task-status { font-size: 24rpx; padding: 4rpx 12rpx; border-radius: 4rpx; background: var(--zw-brand-light); color: var(--zw-brand); }
+.task-status { font-size: 24rpx; padding: 4rpx 12rpx; border-radius: var(--zw-radius-pill); background: var(--zw-brand-light); color: var(--zw-brand); }
 .task-info { display: flex; justify-content: space-between; margin-top: 12rpx; }
 .task-applicant { font-size: 24rpx; color: var(--zw-text-secondary); }
-.task-time { font-size: 22rpx; color: var(--zw-text-quaternary); }
+.task-time { font-size: 22rpx; color: var(--zw-text-quaternary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .task-desc { margin-top: 12rpx; font-size: 24rpx; color: var(--zw-text-tertiary); }
 .empty { text-align: center; padding: 80rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
 .loading-more { text-align: center; padding: 20rpx; color: var(--zw-text-tertiary); font-size: 24rpx; }
 .no-more { text-align: center; padding: 20rpx; color: var(--zw-text-quaternary); font-size: 22rpx; }
 .failed-state { display: flex; align-items: center; justify-content: center; padding: 60rpx 0; }
 .failed-tip { font-size: 26rpx; color: var(--zw-danger); }
-.retry-btn { margin-left: 20rpx; padding: 6rpx 24rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-sm); }
+.retry-btn { margin-left: 20rpx; padding: 6rpx 24rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); }
 .task-check { margin-right: 16rpx; display: flex; align-items: center; }
-.checkbox { display: inline-flex; align-items: center; justify-content: center; width: 36rpx; height: 36rpx; border: 2rpx solid var(--zw-text-quaternary); border-radius: var(--zw-radius-sm); font-size: 24rpx; color: transparent; background: var(--zw-bg-card); } /* 未选态对勾透明隐藏（白字藏底在暗色下会显形） */
+.checkbox { display: inline-flex; align-items: center; justify-content: center; width: 36rpx; height: 36rpx; border: 2rpx solid var(--zw-text-quaternary); border-radius: var(--zw-radius-xs); font-size: 24rpx; color: transparent; background: var(--zw-bg-card); } /* 未选态对勾透明隐藏（白字藏底在暗色下会显形） */
 .checkbox.checked { background: var(--zw-brand); border-color: var(--zw-brand); color: var(--zw-on-primary); } /* 橙底深字承重规则 */
-.batch-bar { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid var(--zw-border-light); }
+.batch-bar { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid var(--zw-border); }
 .batch-check { display: flex; align-items: center; }
 .batch-check-label { margin-left: 12rpx; font-size: 26rpx; color: var(--zw-text-secondary); }
-.batch-btn { margin: 0; padding: 0 40rpx; height: 72rpx; line-height: 72rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 28rpx; border-radius: var(--zw-radius-sm); }
+.batch-btn { margin: 0; padding: 0 40rpx; height: 72rpx; line-height: 72rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 28rpx; border-radius: var(--zw-radius-xs); }
 .batch-btn[disabled] { opacity: 0.5; } /* 禁用态降透明，避免橙底白字违承重规则 */
 </style>
