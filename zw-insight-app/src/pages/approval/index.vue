@@ -206,7 +206,7 @@ onShow(() => {
 <style scoped>
 .approval-page { display: flex; flex-direction: column; height: 100vh; background: var(--zw-bg-page); }
 .tabs { display: flex; background: var(--zw-bg-card); border-bottom: 1rpx solid var(--zw-border-light); }
-.tab-item { flex: 1; text-align: center; padding: 24rpx 0; font-size: 28rpx; color: var(--zw-text-secondary); position: relative; }
+.tab-item { flex: 1; text-align: center; padding: 24rpx 0; font-size: 28rpx; color: var(--zw-text-secondary); position: relative; display: flex; align-items: center; justify-content: center; min-height: 44px; box-sizing: border-box; } /* P0 触控达标：min-height 44px 兜底（88rpx 在 360dp Android 上仅 42px） */
 .tab-item.active { color: var(--zw-brand); font-weight: bold; }
 .tab-item.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 60rpx; height: 4rpx; background: var(--zw-brand); border-radius: 2rpx; }
 .task-list { flex: 1; padding: 20rpx; }
@@ -223,13 +223,13 @@ onShow(() => {
 .no-more { text-align: center; padding: 20rpx; color: var(--zw-text-quaternary); font-size: 22rpx; }
 .failed-state { display: flex; align-items: center; justify-content: center; padding: 60rpx 0; }
 .failed-tip { font-size: 26rpx; color: var(--zw-danger); }
-.retry-btn { margin-left: 20rpx; padding: 6rpx 24rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); }
-.task-check { margin-right: 16rpx; display: flex; align-items: center; }
+.retry-btn { margin-left: 20rpx; padding: 0 24rpx; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); } /* P0 触控达标：44px 最小热区 */
+.task-check { margin-right: 16rpx; display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; } /* P0 触控达标：视觉 36rpx 不变，热区扩到 44px（WCAG 2.5.5 目标尺寸可由透明热区满足） */
 .checkbox { display: inline-flex; align-items: center; justify-content: center; width: 36rpx; height: 36rpx; border: 2rpx solid var(--zw-text-quaternary); border-radius: var(--zw-radius-xs); font-size: 24rpx; color: transparent; background: var(--zw-bg-card); } /* 未选态对勾透明隐藏（白字藏底在暗色下会显形） */
 .checkbox.checked { background: var(--zw-brand); border-color: var(--zw-brand); color: var(--zw-on-primary); } /* 橙底深字承重规则 */
 .batch-bar { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid var(--zw-border); }
-.batch-check { display: flex; align-items: center; }
+.batch-check { display: flex; align-items: center; min-height: 44px; padding: 0 8rpx; margin-left: -8rpx; box-sizing: border-box; } /* P0 触控达标：全选热区 ≥44px */
 .batch-check-label { margin-left: 12rpx; font-size: 26rpx; color: var(--zw-text-secondary); }
-.batch-btn { margin: 0; padding: 0 40rpx; height: 72rpx; line-height: 72rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 28rpx; border-radius: var(--zw-radius-xs); }
+.batch-btn { margin: 0; padding: 0 40rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 28rpx; border-radius: var(--zw-radius-xs); } /* P0 触控达标：72rpx→min-height 44px */
 .batch-btn[disabled] { opacity: 0.5; } /* 禁用态降透明，避免橙底白字违承重规则 */
 </style>

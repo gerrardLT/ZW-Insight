@@ -241,9 +241,9 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; padding-bottom: 120rpx; }
+.form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
 .form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
+.form-item { display: flex; align-items: center; padding: 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item.vertical { flex-direction: column; align-items: flex-start; }
 .form-item:last-child { border-bottom: none; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
@@ -251,19 +251,19 @@ async function handleSubmit() {
 .form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
 .placeholder { color: var(--zw-text-quaternary); }
 .arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
-.textarea { width: 100%; height: 200rpx; border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-sm); padding: 16rpx; font-size: 26rpx; margin-top: 12rpx; box-sizing: border-box; }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; border-radius: var(--zw-radius-sm); border: none; }
+.textarea { width: 100%; height: 200rpx; border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-sm); padding: 16rpx; min-height: 44px; font-size: 26rpx; margin-top: 12rpx; box-sizing: border-box; }
+.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; border-radius: var(--zw-radius-sm); border: none; }
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
-.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
-.picker-item { padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
-.section-title { font-size: 28rpx; font-weight: bold; color: var(--zw-text-primary); padding: 24rpx 0 16rpx; }
+.picker-item { padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.section-title { font-size: 28rpx; font-weight: bold; color: var(--zw-text-primary); padding: 24rpx; min-height: 44px;  }
 .upload-btn { width: 100%; height: 80rpx; line-height: 80rpx; background: var(--zw-brand-light); color: var(--zw-brand); font-size: 28rpx; border-radius: var(--zw-radius-sm); border: 1rpx dashed var(--zw-brand); margin-bottom: 16rpx; }
 .image-list { display: flex; flex-wrap: wrap; gap: 16rpx; padding-bottom: 16rpx; }
 .image-item { position: relative; width: 160rpx; height: 160rpx; }
 .thumb { width: 160rpx; height: 160rpx; border-radius: var(--zw-radius-sm); }
 .remove { position: absolute; top: -12rpx; right: -12rpx; width: 36rpx; height: 36rpx; line-height: 32rpx; text-align: center; background: var(--zw-danger); color: var(--zw-text-inverse); border-radius: 50%; font-size: 28rpx; } /* 红底配 inverse 字：暗色 danger 提亮后自动翻深 */
-.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); }
+.empty { text-align: center; padding: 40rpx; min-height: 44px; color: var(--zw-text-quaternary); }
 </style>

@@ -1,7 +1,12 @@
 <template>
   <div class="layout-container">
     <!-- 侧边栏 -->
-    <aside class="layout-aside" :class="{ collapsed: isCollapse }">
+    <aside 
+      class="layout-aside" 
+      :class="{ collapsed: isCollapse, expanded: !isCollapse }"
+      ref="asideRef"
+      @transitionend="handleTransitionEnd"
+    >
       <div class="logo">
         <div class="logo-icon">ZW</div>
         <transition name="fade">
@@ -108,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/user'
@@ -123,6 +128,9 @@ const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
 
+/** 侧边栏 DOM 引用，用于监听动画结束 */
+const asideRef = ref<HTMLElement | null>(null)
+
 /** 窄屏响应式：≤992px 自动折叠侧栏（独立于用户持久化偏好，不污染 store） */
 const narrowMql = window.matchMedia('(max-width: 992px)')
 const isNarrow = ref(narrowMql.matches)
@@ -136,6 +144,20 @@ const isCollapse = computed(() => appStore.sidebarCollapsed || isNarrow.value)
 
 function toggleCollapse() {
   appStore.toggleSidebar()
+  // 使用类切换而非样式变化，配合 CSS transform 优化性能
+  nextTick(() => {
+    if (asideRef.value) {
+      // 移除旧的 transition-end 标记，准备新一轮动画
+      asideRef.value.classList.remove('transition-end')
+    }
+  })
+}
+
+// 监听过渡结束，清理 will-change 避免持续占用 GPU
+function handleTransitionEnd() {
+  if (asideRef.value) {
+    asideRef.value.classList.add('transition-end')
+  }
 }
 
 const userName = computed(
@@ -275,19 +297,39 @@ function handleLogout() {
 
 /* ===== 侧边栏 ===== */
 .layout-aside {
-  width: var(--zw-sidebar-width);
+  /* 使用 transform 代替 width 过渡避免重排（reflow）导致 jank */
   flex-shrink: 0;
   background-color: var(--zw-bg-sidebar);
-  transition: width var(--zw-transition-slow);
-  will-change: width;
   contain: layout paint;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* 初始宽度通过 class 切换 */
 }
 
+/* 展开状态：translateX(0)，保持 GPU 合成 */
+.layout-aside.expanded {
+  width: var(--zw-sidebar-width);
+  transform: translateX(0);
+}
+
+/* 折叠状态：translateX(-n px)，直接移动图层避免重排 */
 .layout-aside.collapsed {
   width: var(--zw-sidebar-collapsed-width);
+  transform: translateX(calc(var(--zw-sidebar-collapsed-width) - var(--zw-sidebar-width)));
+}
+
+/* 平滑动画：transform + opacity，完全 GPU 加速 */
+.layout-aside {
+  transition: 
+    transform var(--zw-transition-slow) cubic-bezier(0.4, 0, 0.2, 1),
+    width var(--zw-transition-slow) ease-out;
+  will-change: transform, width;
+}
+
+/* 动画结束时移除 will-change，避免持续占用 GPU 资源 */
+.layout-aside.transition-end {
+  will-change: auto;
 }
 
 .logo {

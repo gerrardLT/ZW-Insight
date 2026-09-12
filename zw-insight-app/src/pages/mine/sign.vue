@@ -203,19 +203,19 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.sign-page { padding: 20rpx; }
-.project-selector { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 20rpx 24rpx; border-radius: var(--zw-radius-md); margin-bottom: 20rpx; border: 1rpx solid var(--zw-border-light); }
+.sign-page { padding: 20rpx; min-height: 44px; }
+.project-selector { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 20rpx; min-height: 44px; 24rpx; border-radius: var(--zw-radius-md); margin-bottom: 20rpx; border: 1rpx solid var(--zw-border-light); }
 .selector-label { font-size: 26rpx; color: var(--zw-text-tertiary); }
 .selector-value { flex: 1; text-align: right; font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
 .arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
 /* 签到卡：品牌橙纯色块（去渐变纪律）+ 深字承重规则 */
-.sign-card { background: var(--zw-brand); border-radius: var(--zw-radius-lg); padding: 48rpx 32rpx; text-align: center; color: var(--zw-on-primary); margin-bottom: 24rpx; }
+.sign-card { background: var(--zw-brand); border-radius: var(--zw-radius-lg); padding: 48rpx; min-height: 44px; text-align: center; color: var(--zw-on-primary); margin-bottom: 24rpx; }
 .sign-time { font-size: 56rpx; font-weight: bold; margin-bottom: 12rpx; font-family: var(--zw-font-mono); }
 .sign-location { font-size: 24rpx; opacity: 0.85; margin-bottom: 32rpx; }
 .sign-btn { width: 200rpx; height: 200rpx; border-radius: var(--zw-radius-lg); background: rgba(20,22,26,0.15); border: 4rpx solid var(--zw-on-primary); color: var(--zw-on-primary); font-size: 30rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
 .sign-btn.signed { background: var(--zw-success-light); border-color: var(--zw-success); color: var(--zw-success); }
 .sign-range-tip { margin-top: 16rpx; font-size: 24rpx; font-weight: 600; color: var(--zw-on-primary); }
-.calendar-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 24rpx; }
+.calendar-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 24rpx; min-height: 44px; }
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
 .calendar-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); }
 .calendar-stat { font-size: 24rpx; color: var(--zw-brand); }
@@ -227,9 +227,9 @@ onMounted(() => {
 .day-dot { color: var(--zw-success); font-size: 16rpx; }
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
-.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
-.picker-item { padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
-.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); }
+.picker-item { padding: 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.empty { text-align: center; padding: 40rpx; min-height: 44px; color: var(--zw-text-quaternary); }
 </style>

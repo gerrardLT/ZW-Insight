@@ -133,5 +133,5 @@ async function handleSubmit() {
 .form-item:last-child { border-bottom: none; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
 .form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
+.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
 </style>

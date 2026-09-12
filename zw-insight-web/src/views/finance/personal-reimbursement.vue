@@ -38,21 +38,24 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" title="新增个人报销" width="600px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" title="新增个人报销" width="600px" destroy-on-close @keydown.enter.prevent>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="110px">
         <el-form-item label="报销总金额" prop="totalAmount">
-          <el-input-number v-model="formData.totalAmount" :min="0" :precision="2" style="width: 100%" />
+          <el-input-number v-model="formData.totalAmount" :min="0" :precision="2" style="width: 100%" data-keyboard-field />
         </el-form-item>
         <el-form-item label="报销日期" prop="reimbursementDate">
-          <el-date-picker v-model="formData.reimbursementDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          <el-date-picker v-model="formData.reimbursementDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" data-keyboard-field />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="选填" />
+          <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="选填" data-keyboard-field />
         </el-form-item>
+        <div class="keyboard-hint" data-keyboard-field style="margin-top: var(--zw-space-sm); color: var(--el-text-color-secondary); font-size: 12px;">
+          💡 提示：按 Ctrl+Enter 快速提交表单 | 按 Tab 切换字段
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定 (Ctrl+Enter)</el-button>
       </template>
     </el-dialog>
   </div>
@@ -156,5 +159,11 @@ onMounted(() => {
   margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
+}
+
+/* P1 Keyboard Navigation Styles */
+.keyboard-hint {
+  border-left: 3px solid var(--el-color-warning);
+  padding-left: var(--zw-space-sm);
 }
 </style>

@@ -216,7 +216,7 @@ onUnmounted(() => { stopTodoPolling() })
 .section-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); margin-bottom: 20rpx; }
 .section-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
 .section-header-flex .section-title { margin-bottom: 0; }
-.quick-link { display: flex; align-items: center; font-size: 24rpx; color: var(--zw-brand); font-weight: 500; }
+.quick-link { display: flex; align-items: center; font-size: 24rpx; color: var(--zw-brand); font-weight: 500; min-height: 44px; padding: 0 8rpx; margin-right: -8rpx; box-sizing: border-box; } /* P0 触控达标：34rpx→min-height 44px */
 .link-text { margin-right: 4rpx; }
 .more-arrow { font-size: 28rpx; color: var(--zw-brand); }
 .biz-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16rpx; text-align: center; }
@@ -241,7 +241,7 @@ onUnmounted(() => { stopTodoPolling() })
 .loading-more { text-align: center; padding: 20rpx; color: var(--zw-text-tertiary); font-size: 24rpx; }
 .failed-state { display: flex; align-items: center; justify-content: center; padding: 40rpx 0; }
 .failed-tip { font-size: 26rpx; color: var(--zw-danger); }
-.retry-btn { margin-left: 20rpx; padding: 6rpx 24rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-sm); } /* 橙底深字承重规则 */
+.retry-btn { margin-left: 20rpx; padding: 0 24rpx; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-sm); } /* 橙底深字承重规则；P0 触控达标 44px */
 .todo-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
 .todo-item:last-child { border-bottom: none; }
 .todo-title { font-size: 28rpx; color: var(--zw-text-primary); flex: 1; }

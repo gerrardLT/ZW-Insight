@@ -180,17 +180,17 @@ onShow(() => {
 </script>
 
 <style scoped>
-.work-log-page { display: flex; flex-direction: column; height: 100vh; background: var(--zw-bg-page); padding: 20rpx; position: relative; box-sizing: border-box; }
+.work-log-page { display: flex; flex-direction: column; height: 100vh; background: var(--zw-bg-page); padding: 20rpx; min-height: 44px; position: relative; box-sizing: border-box; }
 .project-header { margin-bottom: 20rpx; }
-.project-selector { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 20rpx 24rpx; border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-border); }
+.project-selector { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 20rpx; ;  border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-border); }
 .selector-label { font-size: 26rpx; color: var(--zw-text-tertiary); }
 .selector-value { flex: 1; text-align: right; font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
 .arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
 .log-list { flex: 1; overflow-y: auto; padding-bottom: 120rpx; }
-.log-card { background: var(--zw-bg-card); border-radius: var(--zw-radius-sm); border: 1rpx solid var(--zw-border); padding: 24rpx; margin-bottom: 20rpx; box-shadow: var(--zw-shadow-card); }
+.log-card { background: var(--zw-bg-card); border-radius: var(--zw-radius-sm); border: 1rpx solid var(--zw-border); padding: 24rpx; min-height: 44px; margin-bottom: 20rpx; box-shadow: var(--zw-shadow-card); }
 .card-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .machine-name { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); }
-.settle-badge { font-size: 22rpx; padding: 4rpx 14rpx; border-radius: var(--zw-radius-pill); }
+.settle-badge { font-size: 22rpx; padding: 4rpx; ;  border-radius: var(--zw-radius-pill); }
 .settle-badge.unsettled { background: var(--zw-warning-light); color: var(--zw-warning); }
 .settle-badge.settled { background: var(--zw-success-light); color: var(--zw-success); }
 .card-body { padding-top: 16rpx; }
@@ -200,16 +200,16 @@ onShow(() => {
 .metric-val { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .meta-row { display: flex; justify-content: space-between; font-size: 24rpx; color: var(--zw-text-secondary); }
 .work-remark { color: var(--zw-text-tertiary); max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.empty-state { text-align: center; padding: 80rpx 0; color: var(--zw-text-quaternary); font-size: 28rpx; }
-.failed-state { display: flex; align-items: center; justify-content: center; padding: 40rpx 0; }
+.empty-state { text-align: center; padding: 80rpx; ;  color: var(--zw-text-quaternary); font-size: 28rpx; }
+.failed-state { display: flex; align-items: center; justify-content: center; padding: 40rpx; ;  }
 .failed-tip { font-size: 26rpx; color: var(--zw-danger); }
-.retry-btn { margin-left: 20rpx; padding: 6rpx 24rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); }
-.loading-more, .no-more { text-align: center; padding: 20rpx; color: var(--zw-text-tertiary); font-size: 24rpx; }
-.fab-btn { position: fixed; right: 32rpx; bottom: 48rpx; height: 80rpx; line-height: 80rpx; padding: 0 36rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 28rpx; font-weight: 600; border-radius: var(--zw-radius-xs); box-shadow: 0 4rpx 14rpx rgba(20,22,26,0.15); border: none; z-index: 10; }
+.retry-btn { margin-left: 20rpx; padding: 6rpx; ;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); }
+.loading-more, .no-more { text-align: center; padding: 20rpx; min-height: 44px; color: var(--zw-text-tertiary); font-size: 24rpx; }
+.fab-btn { position: fixed; right: 32rpx; bottom: calc(48rpx + env(safe-area-inset-bottom));  height: 80rpx; line-height: 80rpx; padding: 0 36rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 28rpx; font-weight: 600; border-radius: var(--zw-radius-xs); box-shadow: 0 4rpx 14rpx rgba(20,22,26,0.15); border: none; z-index: 10; }
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-xs) var(--zw-radius-xs) 0 0; max-height: 70vh; }
-.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; ;  border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
-.picker-item { padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.picker-item { padding: 24rpx; ;  border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
 </style>

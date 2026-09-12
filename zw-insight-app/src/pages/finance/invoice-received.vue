@@ -107,17 +107,17 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; }
+.form-page { padding: 20rpx; min-height: 44px; }
 .form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
+.form-item { display: flex; align-items: center; padding: 24rpx; min-height: 44px;  border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item:last-child { border-bottom: none; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 180rpx; }
 .form-value { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
 .form-value.placeholder { color: var(--zw-text-quaternary); }
 .form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
+.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
 .picker-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); display: flex; align-items: flex-end; z-index: 99; }
-.picker-panel { width: 100%; max-height: 60vh; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; padding: 20rpx; overflow-y: auto; }
-.picker-title { text-align: center; font-size: 30rpx; font-weight: bold; padding: 16rpx 0; }
-.picker-item { padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.picker-panel { width: 100%; max-height: 60vh; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; padding: 20rpx; min-height: 44px; overflow-y: auto; }
+.picker-title { text-align: center; font-size: 30rpx; font-weight: bold; padding: 16rpx; min-height: 44px;  }
+.picker-item { padding: 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
 </style>

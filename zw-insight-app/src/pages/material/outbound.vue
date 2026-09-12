@@ -198,24 +198,24 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; padding-bottom: 120rpx; }
+.form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
 .form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
+.form-item { display: flex; align-items: center; padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item:last-child { border-bottom: none; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
 .form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
 .code-wrap { display: flex; align-items: center; justify-content: flex-end; }
 .code-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.scan-btn { margin-left: 16rpx; padding: 6rpx 20rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); flex-shrink: 0; } /* 橙底深字承重规则 */
+.scan-btn { margin-left: 16rpx; padding: 6rpx;   background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); flex-shrink: 0; } /* 橙底深字承重规则 */
 .placeholder { color: var(--zw-text-quaternary); }
 .arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
-.submit-btn { margin: 40rpx 20rpx; height: 88rpx; line-height: 88rpx; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
+.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; max-height: 70vh; }
-.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
-.picker-item { padding: 24rpx 32rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
-.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); }
+.picker-item { padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.empty { text-align: center; padding: 40rpx; min-height: 44px; color: var(--zw-text-quaternary); }
 </style>

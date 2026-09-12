@@ -126,7 +126,7 @@ function handleLogout() {
 .user-name { font-size: 32rpx; color: #fff; font-weight: bold; display: block; }
 .user-role { font-size: 24rpx; color: rgba(255,255,255,0.6); margin-top: 8rpx; display: block; }
 .menu-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); margin-bottom: 24rpx; }
-.menu-item { display: flex; justify-content: space-between; align-items: center; padding: 28rpx 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+.menu-item { display: flex; justify-content: space-between; align-items: center; padding: 28rpx 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); } /* P0 触控达标：menu-item 热区 ≥44px */
 .menu-item:last-child { border-bottom: none; }
 .menu-label-group { display: flex; flex-direction: column; gap: 4rpx; }
 .menu-text { font-size: 28rpx; color: var(--zw-text-primary); }

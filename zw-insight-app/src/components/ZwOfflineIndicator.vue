@@ -17,6 +17,7 @@
         </view>
 
         <view class="modal-body">
+          <!-- 统计摘要 -->
           <view class="telemetry-info">
             <view class="info-row">
               <text class="info-label">网络状态：</text>
@@ -25,8 +26,20 @@
               </text>
             </view>
             <view class="info-row">
-              <text class="info-label">积压单据：</text>
+              <text class="info-label">待同步数：</text>
               <text class="info-val mono-num">{{ queueList.length }} 笔</text>
+            </view>
+            <view class="info-row" v-if="stats.pending > 0">
+              <text class="info-label">待处理：</text>
+              <text class="info-val status-warning">{{ stats.pending }} 笔</text>
+            </view>
+            <view class="info-row" v-if="stats.failed > 0">
+              <text class="info-label">失败冲突：</text>
+              <text class="info-val status-danger">{{ stats.failed + stats.conflict }} 笔</text>
+            </view>
+            <view class="info-row" v-if="lastSyncTime">
+              <text class="info-label">上次同步：</text>
+              <text class="info-val mono-num">{{ formatFullDate(lastSyncTime) }}</text>
             </view>
           </view>
 
@@ -63,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useNetworkStore } from '@/stores/network'
 import { syncEngine, type OfflineOperation } from '@/utils/syncEngine'
 
@@ -71,11 +84,23 @@ const network = useNetworkStore()
 const showModal = ref(false)
 const queueList = ref<OfflineOperation[]>([])
 const isSyncing = ref(false)
+const lastSyncTime = ref<number | null>(null)
+
+// P1: 监听网络队列变化，实时刷新
+watch(() => network.queueCount, () => {
+  refreshQueue()
+})
 
 function refreshQueue() {
   try {
     queueList.value = syncEngine.getQueue()
     network.setQueueCount(queueList.value.length)
+    
+    // 记录上次同步时间（从 localStorage 读取）
+    const saved = localStorage.getItem('zw_last_sync_time')
+    if (saved) {
+      lastSyncTime.value = parseInt(saved, 10)
+    }
   } catch {
     queueList.value = []
   }
@@ -111,6 +136,14 @@ function formatTime(ts: number): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
+function formatFullDate(ts: number): string {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const pad = (n: number) => (n < 10 ? '0' + n : '' + n)
+
 function getStatusClass(status: string) {
   if (status === 'SYNCED') return 'status-success'
   if (status === 'CONFLICT' || status === 'FAILED') return 'status-danger'
@@ -124,6 +157,8 @@ async function triggerManualSync() {
   try {
     await syncEngine.syncAll()
     await syncEngine.compareVersions()
+    lastSyncTime.value = Date.now()
+    localStorage.setItem('zw_last_sync_time', String(lastSyncTime.value))
     uni.showToast({ title: '队列同步完成', icon: 'success' })
   } catch (e: any) {
     uni.showToast({ title: e?.message || '同步失败', icon: 'none' })
@@ -133,6 +168,17 @@ async function triggerManualSync() {
     refreshQueue()
   }
 }
+
+// P1: 统计各状态数量
+const stats = computed(() => {
+  const list = queueList.value
+  return {
+    pending: list.filter(op => op.status === 'PENDING').length,
+    syncing: list.filter(op => op.status === 'PENDING' && op.timestamp > Date.now() - 60000).length, // <1min recent
+    failed: list.filter(op => op.status === 'FAILED').length,
+    conflict: list.filter(op => op.status === 'CONFLICT').length
+  }
+})
 
 onMounted(() => {
   refreshQueue()

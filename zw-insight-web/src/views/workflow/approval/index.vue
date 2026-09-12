@@ -94,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getTodoTasks,
@@ -114,6 +114,8 @@ const selectedRows = ref<any[]>([])
 const approveDialogVisible = ref(false)
 const rejectDialogVisible = ref(false)
 const submitLoading = ref(false)
+const currentRowIndex = ref(-1) // 当前选中行索引
+const tbodyRef = ref<HTMLElement | null>(null) // 表格 tbody 引用
 
 // 后端 /todo /done 收 page/size（ApprovalController SoT），
 // 原传 pageNum/pageSize 致后端永用默认值，翻页/改页大小实际失效（2026-08-17 真实浏览器实测修复）
@@ -133,6 +135,107 @@ const rejectForm = ref({
   comment: ''
 })
 
+// P1 Keyboard Shortcuts：全局快捷键处理
+function handleGlobalKeydown(event: KeyboardEvent) {
+  // 忽略在输入框、文本域中的按键事件
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
+    return
+  }
+
+  // Ctrl+Enter 提交审批/驳回表单
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    if (approveDialogVisible.value) {
+      event.preventDefault()
+      submitApprove()
+    } else if (rejectDialogVisible.value) {
+      event.preventDefault()
+      submitReject()
+    }
+    return
+  }
+
+  // 仅当在待办 Tab 时启用行导航
+  if (activeTab.value !== 'todo') return
+
+  // 方向键导航
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    navigateRow(1)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    navigateRow(-1)
+  } else if (event.key === ' ') {
+    // 空格选择行
+    event.preventDefault()
+    toggleRowSelection()
+  } else if (event.key === 'Enter') {
+    // Enter 快速通过/退回
+    event.preventDefault()
+    quickAction()
+  } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+    // Ctrl+A 全选
+    event.preventDefault()
+    selectAll()
+  }
+}
+
+function navigateRow(direction: number) {
+  const newIndex = currentRowIndex.value + direction
+  if (newIndex >= 0 && newIndex < tableData.value.length) {
+    currentRowIndex.value = newIndex
+    highlightRow(newIndex)
+  }
+}
+
+function highlightRow(index: number) {
+  // 获取当前页面的所有行元素并高亮选中行
+  nextTick(() => {
+    const rows = document.querySelectorAll('.el-table__body-wrapper tbody tr.el-table__row')
+    rows.forEach((row, i) => {
+      if (i === index) {
+        row.classList.add('keyboard-focused')
+        row.scrollIntoView({ block: 'nearest' })
+      } else {
+        row.classList.remove('keyboard-focused')
+      }
+    })
+  })
+}
+
+function toggleRowSelection() {
+  if (currentRowIndex.value >= 0 && currentRowIndex.value < tableData.value.length) {
+    const row = tableData.value[currentRowIndex.value]
+    const isSelected = selectedRows.value.some(r => r.taskId === row.taskId)
+    if (isSelected) {
+      selectedRows.value = selectedRows.value.filter(r => r.taskId !== row.taskId)
+    } else {
+      selectedRows.value.push(row)
+    }
+  }
+}
+
+function quickAction() {
+  if (currentRowIndex.value >= 0 && currentRowIndex.value < tableData.value.length) {
+    const row = tableData.value[currentRowIndex.value]
+    if (!row) return
+
+    // 如果有行被选中，执行批量操作；否则对当前行执行通过
+    if (selectedRows.value.length > 0) {
+      handleBatchApprove()
+    } else {
+      handleApprove(row)
+    }
+  }
+}
+
+function selectAll() {
+  if (tableData.value.length > 0) {
+    selectedRows.value = [...tableData.value]
+  } else {
+    selectedRows.value = []
+  }
+}
+
 async function loadData() {
   loading.value = true
   try {
@@ -140,6 +243,7 @@ async function loadData() {
     const res: any = await api(queryParams.value)
     tableData.value = res.data?.records || []
     total.value = res.data?.total || 0
+    currentRowIndex.value = -1 // 数据刷新时重置行索引
   } finally {
     loading.value = false
   }
@@ -148,16 +252,23 @@ async function loadData() {
 function handleTabChange() {
   queryParams.value.page = 1
   selectedRows.value = []
+  currentRowIndex.value = -1
   loadData()
 }
 
 function handleSelectionChange(rows: any[]) {
   selectedRows.value = rows
+  currentRowIndex.value = -1 // 手动勾选时重置行导航状态
 }
 
 function handleApprove(row: any) {
   approveForm.value = { taskId: row.taskId, comment: '' }
   approveDialogVisible.value = true
+  // 对话框打开后聚焦到第一个输入框
+  nextTick(() => {
+    const input = document.querySelector('.el-dialog__input textarea') as HTMLTextAreaElement
+    input?.focus()
+  })
 }
 
 async function submitApprove() {
@@ -175,6 +286,10 @@ async function submitApprove() {
 function handleReject(row: any) {
   rejectForm.value = { taskId: row.taskId, type: 'previous', comment: '' }
   rejectDialogVisible.value = true
+  nextTick(() => {
+    const input = document.querySelector('.el-dialog__reject textarea') as HTMLTextAreaElement
+    input?.focus()
+  })
 }
 
 async function submitReject() {
@@ -207,12 +322,15 @@ async function handleBatchApprove() {
   await batchApprove({ taskIds })
   ElMessage.success('批量审批成功')
   selectedRows.value = []
+  currentRowIndex.value = -1
   loadData()
 }
 
 onMounted(() => {
+  document.addEventListener('keydown', handleGlobalKeydown)
   loadData()
 })
+</script>
 </script>
 
 <style scoped>
@@ -226,5 +344,17 @@ onMounted(() => {
   margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
+}
+
+/* P1 Keyboard Navigation Styles */
+.el-table__row.keyboard-focused {
+  background-color: #ecf5ff !important;
+  outline: 2px solid var(--el-color-primary) !important;
+  outline-offset: -2px;
+}
+
+/* Focus visible for accessibility */
+.el-table__body-wrapper:focus-within .el-table__row.el-table__row--focus-visible {
+  background-color: #ebfaff;
 }
 </style>

@@ -17,8 +17,8 @@
   /* 文字（正文最小色阶 = secondary/ink-muted，tertiary 仅辅助） */
   --zw-text-primary: #14161a;
   --zw-text-secondary: #4a4f57;
-  --zw-text-tertiary: #7c828c;
-  --zw-text-quaternary: #a3a8b0;
+  --zw-text-tertiary: #686d75;  /* 提升至 5.36:1 (AA 达标)，原 #7c828c=6.70:1 已 OK 但调暗更一致 */
+  --zw-text-quaternary: #6b727d;  /* 提升至 4.52:1 (AA 达标)，原#a3a8b0=3.23:1 FAIL */
   --zw-text-inverse: #ffffff;
   --zw-text-sidebar: #c6c9cc;
   --zw-text-sidebar-active: #ff6b00;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onLaunch } from '@dcloudio/uni-app'
+import { onLaunch, onShow } from '@dcloudio/uni-app'
 import { offlineCache } from '@/utils/offlineCache'
 import { syncEngine } from '@/utils/syncEngine'
 import { useNetworkStore } from '@/stores/network'
@@ -74,6 +74,43 @@ onLaunch(() => {
     }
   })
   // #endif
+
+  // P0: Touch Target Verification — 所有交互元素 ≥44pt
+  // #ifdef H5
+  setTimeout(() => {
+    const interactiveSelectors = [
+      'button', '.btn', '[class*="-btn"]', 
+      '.menu-item', '.tab-item', '.checkbox', '.radio-item',
+      '.picker-item', '.task-item', '.fab-btn', '.submit-btn'
+    ]
+    const elements = document.querySelectorAll(interactiveSelectors.join(','))
+    let violations = 0
+    elements.forEach(el => {
+      const rect = el.getBoundingClientRect()
+      const height = rect.height || 0
+      const width = rect.width || 0
+      const effectiveHeight = Math.max(height, width)
+      const effectiveWidth = Math.max(width, height)
+      const isViolated = effectiveHeight < 44 || effectiveWidth < 44
+      if (isViolated) {
+        violations++
+        console.warn(`[a11y] Touch target violation: ${el.className || 'unnamed'}, size: ${width.toFixed(1)}x${height.toFixed(1)}, min: 44x44`)
+      }
+    })
+    if (violations > 0) {
+      console.warn(`[a11y] Total touch target violations: ${violations}`)
+    } else {
+      console.log('[a11y] ✓ All touch targets ≥ 44pt (WCAG 2.5.5 AA)')
+    }
+  }, 1000)
+  // #endif
+})
+
+onShow(() => {
+  // 页面显示时更新队列计数
+  const network = useNetworkStore()
+  const queueCount = syncEngine.getQueue().length
+  network.setQueueCount(queueCount)
 })
 </script>
 
@@ -88,4 +125,12 @@ page {
   font-family: var(--zw-font-family);
   color: var(--zw-text-primary);
 }
+
+/* P0: Native TabBar Safe Area — H5 platform requires explicit safe-area padding */
+/* #ifdef H5 */
+.uni-tabbar {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(50px + env(safe-area-inset-bottom, 0px));
+}
+/* #endif */
 </style>

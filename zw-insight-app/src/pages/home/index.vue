@@ -141,7 +141,7 @@ onMounted(() => { loadData() })
 .section-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); margin-bottom: 20rpx; position: relative; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
 .section-header .section-title { margin-bottom: 0; }
-.edit-entry { display: flex; align-items: center; color: var(--zw-brand); font-size: 24rpx; padding: 6rpx 10rpx; border-radius: var(--zw-radius-xs); transition: opacity 80ms; }
+.edit-entry { display: flex; align-items: center; color: var(--zw-brand); font-size: 24rpx; padding: 6rpx 10rpx; min-height: 44px; box-sizing: border-box; border-radius: var(--zw-radius-xs); transition: opacity 80ms; } /* P0 触控达标：46rpx→min-height 44px */
 .edit-entry:active { opacity: 0.7; }
 .edit-icon { font-size: 26rpx; margin-right: 6rpx; }
 .edit-text { font-size: 24rpx; }

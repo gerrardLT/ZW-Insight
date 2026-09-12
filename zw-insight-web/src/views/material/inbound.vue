@@ -12,10 +12,20 @@
       </el-form>
 
       <div class="table-toolbar">
+        <el-button v-if="selectedRows.length > 0" type="danger" @click="handleBatchDelete" :disabled="selectedRows.length === 0">
+          <el-icon><Delete /></el-icon>批量删除 (已选 {{ selectedRows.length }})
+        </el-button>
         <el-button type="primary" @click="handleAdd">新增入库单</el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
+      <el-table 
+        :data="tableData" 
+        v-loading="loading" 
+        border 
+        @selection-change="handleSelectionChange"
+        @cell-contextmenu="showContextMenu"
+      >
+        <el-table-column type="selection" width="55" align="center" />
         <el-table-column prop="inboundCode" label="入库单号" width="170" />
         <el-table-column prop="inboundDate" label="入库日期" width="120" />
         <el-table-column prop="totalAmount" label="入库总金额(元)" width="150" align="right">
@@ -39,6 +49,24 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- P1 Context Menu -->
+      <el-dropdown 
+        v-if="contextMenuTarget && showContextMenu"
+        :show-timeout="100"
+        trigger="manual"
+        :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }"
+        @command="handleRowAction"
+        @visible-change="hideContextMenu"
+      >
+        <span style="display: none"></span>
+        <el-dropdown-menu>
+          <el-dropdown-item command="edit">📝 编辑</el-dropdown-item>
+          <el-dropdown-item command="submit" v-if="contextMenuTarget.status === 'DRAFT'">✅ 提交</el-dropdown-item>
+          <el-dropdown-item command="duplicate">📄 复制</el-dropdown-item>
+          <el-dropdown-item command="delete" divided type="danger">🗑️ 删除</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
 
       <div class="pagination-wrap">
         <el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.size" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
@@ -109,8 +137,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, onMounted, nextTick } from 'vue'
+import { ElMessage, ElMessageBox, ElPopover } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getMaterialInboundPage, getMaterialInboundDetail, createMaterialInbound, updateMaterialInbound, deleteMaterialInbound, submitMaterialInbound } from '@/api/material'
 import ProjectSelector from '@/components/ProjectSelector.vue'
@@ -131,6 +159,10 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
+const selectedRows = ref<any[]>([]) // P1: 选中行
+const showContextMenu = ref(false) // P1: 显示上下文菜单
+const contextMenuTarget = ref<any>(null) // P1: 目标行
+const contextMenuPosition = ref({ x: 0, y: 0 }) // P1: 菜单位置
 
 const queryParams = ref({ page: 1, size: 10, projectId: undefined as number | undefined })
 const formData = ref({
@@ -144,6 +176,19 @@ const formData = ref({
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   inboundDate: [{ required: true, message: '请选择入库日期', trigger: 'change' }]
+}
+
+// P1 Keyboard Shortcuts for Table Navigation
+function handleGlobalKeydown(event: KeyboardEvent) {
+  if (dialogVisible.value) return
+  
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    event.preventDefault()
+    handleAdd()
+  } else if (event.key === 'Escape') {
+    dialogVisible.value = false
+    selectedRows.value = []
+  }
 }
 
 async function loadData() {
@@ -212,12 +257,90 @@ async function handleDelete(row: any) {
   ElMessage.success('删除成功')
   loadData()
 }
-onMounted(() => { loadData() })
+
+// P1 Batch Operations Functions
+function handleSelectionChange(selection: any[]) {
+  selectedRows.value = selection
+}
+
+async function handleBatchDelete() {
+  if (selectedRows.value.length === 0) return
+  
+  await ElMessageBox.confirm(`确定要批量删除选中的 ${selectedRows.value.length} 条记录吗？`, '提示', { type: 'warning' })
+  
+  const taskIds = selectedRows.value.map(row => row.id)
+  for (const id of taskIds) {
+    try {
+      await deleteMaterialInbound(id)
+    } catch (e) {
+      ElMessage.error(`删除 ${id} 失败`)
+    }
+  }
+  
+  ElMessage.success('批量删除成功')
+  selectedRows.value = []
+  loadData()
+}
+
+// P1 Context Menu Functions
+function showContextMenu(event: MouseEvent, row: any) {
+  event.preventDefault()
+  contextMenuTarget.value = row
+  contextMenuPosition.value = { x: event.clientX, y: event.clientY }
+  showContextMenu.value = true
+}
+
+function hideContextMenu() {
+  showContextMenu.value = false
+}
+
+async function handleRowAction(action: string) {
+  if (!contextMenuTarget.value) return
+  
+  switch (action) {
+    case 'edit':
+      hideContextMenu()
+      await handleEdit(contextMenuTarget.value)
+      break
+    case 'delete':
+      hideContextMenu()
+      await handleDelete(contextMenuTarget.value)
+      break
+    case 'submit':
+      hideContextMenu()
+      await handleSubmit(contextMenuTarget.value)
+      break
+    case 'duplicate':
+      hideContextMenu()
+      // 复制逻辑略，需要调用复制 API
+      ElMessage.info('复制功能开发中')
+      break
+  }
+}
+
+onMounted(() => { 
+  loadData()
+  document.addEventListener('keydown', handleGlobalKeydown)
+})
+
+// onUnmounted(() => {
+//   document.removeEventListener('keydown', handleGlobalKeydown)
+// })
 </script>
 
 <style scoped>
 .material-inbound-container { padding: var(--zw-space-md); }
-.table-toolbar { margin-bottom: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-md); display: flex; gap: var(--zw-space-sm-md); }
 .pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 .detail-toolbar { display: flex; align-items: center; gap: var(--zw-space-sm-md); }
+
+/* P1 Context Menu Styles */
+.el-dropdown { cursor: pointer; }
+
+/* P1 Keyboard Navigation Styles */
+.el-table__row.keyboard-focused {
+  background-color: #ecf5ff !important;
+  outline: 2px solid var(--el-color-primary) !important;
+  outline-offset: -2px;
+}
 </style>

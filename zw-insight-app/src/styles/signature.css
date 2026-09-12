@@ -190,3 +190,87 @@
   background: var(--zw-bg-hover);
 }
 
+/* ===== 触控目标最小化增强 (P0 WCAG 1.4.11) =====
+ * 确保所有可点击元素 ≥ 44px × 44px（@media screen (min-width: 375px) 时 rpx=1pt，
+ * rpx 计算：44px / 375pt * 750 = 88rpx。在小于 375pt 宽度的设备上，44px ≈ 85-88rpx。
+ * 策略：用 px 绝对单位 + min-height/min-width 双重保障 */
+/* 交互式容器基类 */
+.zw-touch-target-min {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* TabBar 项目强化（导航图标区域） */
+.zw-tab-item-minimal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px; /* 图标 + 文字区域保底高度 */
+  padding: 4px 0;
+}
+
+/* 复选框/单选框强化 */
+.zw-checkbox-lg {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+/* Action 按钮强化 */
+.zw-action-btn-lg {
+  height: 44px !important;
+  min-height: 44px !important;
+  line-height: 44px !important;
+  padding: 0 16px !important;
+}
+
+/* 菜单项区域强化 */
+.zw-menu-item-lg {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  min-height: 44px !important;
+}
+
+/* 列表行强化（整行可点） */
+.zw-list-row-clickable {
+  min-height: 44px !important;
+  display: flex;
+  align-items: center;
+}
+
+/* 图标按钮区域强化 */
+.zw-icon-btn-lg {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  padding: 10px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 安全区底部填充 */
+.zw-safe-area-footer {
+  padding-bottom: var(--zw-safe-bottom);
+  height: calc(100% + var(--zw-safe-bottom));
+}
+
+/* 表格交互行强化（table/list rows） */
+.zw-table-row-tactile {
+  --row-padding-y: 12px;
+  --row-padding-x: 14px;
+  min-height: calc(44px + var(--row-padding-y) * 2);
+  padding: var(--row-padding-y) var(--row-padding-x);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.zw-table-row-tactile:active {
+  background: var(--zw-bg-hover);
+}
+

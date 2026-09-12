@@ -88,7 +88,7 @@
     />
 
     <!-- 新增弹窗 -->
-    <el-dialog v-model="dialogVisible" title="新增付款申请" width="600px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" title="新增付款申请" width="600px" destroy-on-close @keydown.enter.prevent>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="项目" prop="projectId">
           <el-select
@@ -99,12 +99,13 @@
             :remote-method="searchProject"
             style="width: 100%"
             @change="loadContracts"
+            data-keyboard-field
           >
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="合同类型" prop="contractCategory">
-          <el-select v-model="formData.contractCategory" placeholder="请选择合同类型" style="width: 100%" @change="loadContracts">
+          <el-select v-model="formData.contractCategory" placeholder="请选择合同类型" style="width: 100%" @change="loadContracts" data-keyboard-field>
             <el-option label="其他支出合同" value="OTHER_EXPENSE" />
             <el-option label="采购合同" value="PURCHASE" />
             <el-option label="劳务合同" value="LABOR" />
@@ -118,6 +119,7 @@
             filterable
             placeholder="请先选择项目与合同类型"
             style="width: 100%"
+            data-keyboard-field
           >
             <el-option
               v-for="c in contractOptions"
@@ -131,15 +133,18 @@
           <SupplierSelector v-model="formData.supplierId" @change="handleSupplierChange" />
         </el-form-item>
         <el-form-item label="付款金额" prop="paymentAmount">
-          <el-input-number v-model="formData.paymentAmount" :min="0" :precision="2" style="width: 100%" />
+          <el-input-number v-model="formData.paymentAmount" :min="0" :precision="2" style="width: 100%" data-keyboard-field />
         </el-form-item>
         <el-form-item label="付款日期" prop="paymentDate">
-          <el-date-picker v-model="formData.paymentDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          <el-date-picker v-model="formData.paymentDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" data-keyboard-field />
         </el-form-item>
+        <div class="keyboard-hint" data-keyboard-field style="margin-top: var(--zw-space-sm); color: var(--el-text-color-secondary); font-size: 12px;">
+          💡 提示：按 Ctrl+Enter 快速提交表单 | 按 Tab 切换字段
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定 (Ctrl+Enter)</el-button>
       </template>
     </el-dialog>
 
@@ -170,7 +175,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, getFundPlan } from '@/api/finance'
@@ -193,6 +198,10 @@ const projectList = ref<any[]>([])
 const contractOptions = ref<any[]>([])
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
+const currentRowIndex = ref(-1) // P1: 当前选中行索引
+
+// P1: Keyboard Shortcuts State
+const isKeyboardMode = ref(true)
 
 const queryParams = ref({
   pageNum: 1,
@@ -386,6 +395,85 @@ onMounted(() => {
   searchProject('')
 })
 
+// P1 Keyboard Shortcuts Implementation
+function handleGlobalKeydown(event: KeyboardEvent) {
+  // 忽略在输入框、文本域中的按键事件
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
+    return
+  }
+
+  // Ctrl+Enter 提交表单
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    if (dialogVisible.value) {
+      event.preventDefault()
+      handleFormSubmit()
+    }
+    return
+  }
+
+  // 仅当不在表单弹窗中时启用行导航
+  if (dialogVisible.value) return
+
+  // 方向键导航表格
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    navigateTableRow(1)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    navigateTableRow(-1)
+  } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+    // Ctrl+A 全选（可选功能）
+    event.preventDefault()
+    ElMessage.warning('批量操作功能暂未启用')
+  }
+}
+
+function navigateTableRow(direction: number) {
+  const newIndex = currentRowIndex.value + direction
+  if (newIndex >= 0 && newIndex < tableData.value.length) {
+    currentRowIndex.value = newIndex
+    highlightTableRow(newIndex)
+  }
+}
+
+function highlightTableRow(index: number) {
+  nextTick(() => {
+    const rows = document.querySelectorAll('.el-table__body-wrapper tbody tr.el-table__row')
+    rows.forEach((row, i) => {
+      if (i === index) {
+        row.classList.add('keyboard-focused')
+        row.scrollIntoView({ block: 'nearest' })
+      } else {
+        row.classList.remove('keyboard-focused')
+      }
+    })
+  })
+}
+
+// 表单 Tab 切换导航
+function handleTabNavigate(direction: number) {
+  if (!dialogVisible.value) return
+  
+  nextTick(() => {
+    const inputs = dialogVisible.value ? Array.from(document.querySelectorAll('[data-keyboard-field]')) : []
+    if (inputs.length === 0) return
+    
+    let currentIndex = -1
+    inputs.forEach((input, i) => {
+      if (input === document.activeElement) {
+        currentIndex = i
+      }
+    })
+    
+    const newIndex = (currentIndex + direction + inputs.length) % inputs.length
+    (inputs[newIndex] as HTMLElement)?.focus()
+  })
+}
+
+// onUnmounted(() => {
+//   document.removeEventListener('keydown', handleGlobalKeydown) // TODO: 添加全局监听时需清理
+// })
+
 // ================= 资金计划面板 =================
 const planPanelRef = ref<InstanceType<typeof StatChartPanel>>()
 
@@ -435,5 +523,17 @@ function buildFundPlanOption(list: any[]) {
   gap: var(--zw-space-sm-md);
   color: var(--el-color-danger);
   padding: var(--zw-space-sm) 0;
+}
+
+/* P1 Keyboard Navigation Styles */
+.el-table__row.keyboard-focused {
+  background-color: #ecf5ff !important;
+  outline: 2px solid var(--el-color-primary) !important;
+  outline-offset: -2px;
+}
+
+.keyboard-hint {
+  border-left: 3px solid var(--el-color-warning);
+  padding-left: var(--zw-space-sm);
 }
 </style>
