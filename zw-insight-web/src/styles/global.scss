@@ -440,7 +440,11 @@ input, textarea {
   box-shadow: none !important;
 }
 
-/* ===== 旋转方块 loading（签名加载符：三面灰 + 一面橙，800ms/圈） ===== */
+/* ===== 安全帽环形 loading（2026-09-16 升级：AI 生成品牌插画，呼吸脉冲动效） =====
+ * 素材: assets/loading-helmet.png（浅色底）/ loading-helmet-dark.png（深色底）
+ * 256px 源图 → CSS 显示 64px（4x 冗余）；双主题按 data-theme 切换背景图。
+ * 动效选呼吸脉冲（非旋转）：安全帽旋转视觉不适，环形呼吸柔和不抢注意力。
+ * prefers-reduced-motion 降级由下方全局 media 块覆盖。 */
 .el-loading-spinner .circular {
   display: none;
 }
@@ -448,18 +452,20 @@ input, textarea {
 .el-loading-spinner::before {
   content: '';
   display: block;
-  width: 24px;
-  height: 24px;
+  width: 64px;
+  height: 64px;
   margin: 0 auto;
-  border: 2px solid var(--zw-border-strong);
-  border-top-color: var(--zw-brand);
-  border-radius: var(--zw-radius-xs);
-  animation: zw-cube-spin 800ms var(--zw-ease-linear) infinite;
+  background: url('../assets/loading-helmet.png') center / contain no-repeat;
+  animation: zw-loading-breathe 1.6s var(--zw-ease-in-out) infinite;
 }
 
-@keyframes zw-cube-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+:root[data-theme='dark'] .el-loading-spinner::before {
+  background-image: url('../assets/loading-helmet-dark.png');
+}
+
+@keyframes zw-loading-breathe {
+  0%, 100% { transform: scale(0.94); opacity: 0.85; }
+  50% { transform: scale(1.04); opacity: 1; }
 }
 
 /* ===== 无障碍：动效降级 ===== */
