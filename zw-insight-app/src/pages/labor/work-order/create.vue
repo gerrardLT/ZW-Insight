@@ -2,13 +2,24 @@
   <view class="form-page">
     <OfflineBanner />
     <view class="form-section">
-      <view class="form-item" @click="showProjectPicker = true">
-        <text class="form-label">所属项目</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
+      <!-- 项目选择（S4.2）：ZwBottomSheetPicker 工业抽屉 -->
+      <ZwBottomSheetPicker
+        :options="projectOptions"
+        :model-value="form.projectId"
+        title="选择项目"
+        placeholder="请选择项目"
+        @change="onProjectPicked"
+      >
+        <template #trigger>
+          <view class="form-item">
+            <text class="form-label">所属项目</text>
+            <view class="form-input picker">
+              <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
+              <text class="arrow">›</text>
+            </view>
+          </view>
+        </template>
+      </ZwBottomSheetPicker>
       <view class="form-item" @click="openTeamPicker">
         <text class="form-label">劳务班组</text>
         <view class="form-input picker">
@@ -62,23 +73,6 @@
 
     <button class="submit-btn" :loading="submitting" @click="handleSubmit">确认签认提交</button>
 
-    <!-- 项目选择弹窗 -->
-    <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
-      <view class="picker-content" @click.stop>
-        <view class="picker-header">
-          <text @click="showProjectPicker = false">取消</text>
-          <text class="picker-title">选择项目</text>
-          <text></text>
-        </view>
-        <scroll-view scroll-y class="picker-list">
-          <view class="picker-item" v-for="p in projects" :key="p.id" @click="selectProject(p)">
-            <text>{{ p.projectName }}</text>
-          </view>
-          <view class="empty" v-if="!projects.length"><text>{{ projectEmptyTip }}</text></view>
-        </scroll-view>
-      </view>
-    </view>
-
     <!-- 班组选择弹窗 -->
     <view class="picker-mask" v-if="showTeamPicker" @click="showTeamPicker = false">
       <view class="picker-content" @click.stop>
@@ -105,6 +99,7 @@ import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 import { useFormSession } from '@/composables/useFormSession'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwBottomSheetPicker from '@/components/ZwBottomSheetPicker.vue'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
@@ -155,7 +150,6 @@ async function selectProject(p: any) {
   form.value.projectName = p.projectName
   form.value.teamId = null
   form.value.teamName = ''
-  showProjectPicker.value = false
 
   try {
     const tRes: any = await getLaborTeamPage({ projectId: p.id, size: 50 })
@@ -166,6 +160,17 @@ async function selectProject(p: any) {
   } catch {
     teams.value = []
   }
+}
+
+// 项目下拉选项（S4.2 BottomSheet）
+const projectOptions = computed(() =>
+  projects.value.map((p: any) => ({ label: p.projectName, value: p.id }))
+)
+
+// BottomSheet 确认回调 → 复用既有 selectProject 业务逻辑
+function onProjectPicked(value: any, item: any) {
+  if (!item) return
+  selectProject({ id: value, projectName: item.label })
 }
 
 function openTeamPicker() {

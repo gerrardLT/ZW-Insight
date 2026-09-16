@@ -3,13 +3,24 @@
     <OfflineBanner />
     <!-- 项目与合同选择 -->
     <view class="form-section">
-      <view class="form-item" @click="showProjectPicker = true">
-        <text class="form-label">所属项目</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
+      <!-- 项目选择（S4.2）：ZwBottomSheetPicker 工业抽屉（48px 触控热区 + 触觉反馈） -->
+      <ZwBottomSheetPicker
+        :options="projectOptions"
+        :model-value="form.projectId"
+        title="选择项目"
+        placeholder="请选择项目"
+        @change="onProjectPicked"
+      >
+        <template #trigger>
+          <view class="form-item">
+            <text class="form-label">所属项目</text>
+            <view class="form-input picker">
+              <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
+              <text class="arrow">›</text>
+            </view>
+          </view>
+        </template>
+      </ZwBottomSheetPicker>
       <!-- 入库类型切换 -->
       <view class="form-item">
         <text class="form-label">入库模式</text>
@@ -123,23 +134,6 @@
 
     <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交入库</button>
 
-    <!-- 项目选择弹窗 -->
-    <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
-      <view class="picker-content" @click.stop>
-        <view class="picker-header">
-          <text @click="showProjectPicker = false">取消</text>
-          <text class="picker-title">选择项目</text>
-          <text></text>
-        </view>
-        <scroll-view scroll-y class="picker-list">
-          <view class="picker-item" v-for="p in projects" :key="p.id" @click="selectProject(p)">
-            <text>{{ p.projectName }}</text>
-          </view>
-          <view class="empty" v-if="!projects.length"><text>{{ projectEmptyTip }}</text></view>
-        </scroll-view>
-      </view>
-    </view>
-
     <!-- 采购合同选择弹窗 -->
     <view class="picker-mask" v-if="showContractPicker" @click="showContractPicker = false">
       <view class="picker-content" @click.stop>
@@ -168,13 +162,13 @@ import {
   getPurchaseContractDetails
 } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwBottomSheetPicker from '@/components/ZwBottomSheetPicker.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 import { useFormSession } from '@/composables/useFormSession'
 
 const submitting = ref(false)
 const inboundMode = ref<'PURCHASE' | 'DIRECT'>('DIRECT')
-const showProjectPicker = ref(false)
 const showContractPicker = ref(false)
 const projects = ref<any[]>([])
 const contracts = ref<any[]>([])
@@ -208,6 +202,17 @@ const isAllSelected = computed(() => {
   return contractDetails.value.length > 0 && contractDetails.value.every((d) => d.checked)
 })
 
+// 项目下拉选项（S4.2 BottomSheet）
+const projectOptions = computed(() =>
+  projects.value.map((p: any) => ({ label: p.projectName, value: p.id }))
+)
+
+// BottomSheet 确认回调 → 复用既有 selectProject 业务逻辑
+function onProjectPicked(value: any, item: any) {
+  if (!item) return
+  selectProject({ id: value, projectName: item.label })
+}
+
 function toggleSelectAll() {
   const target = !isAllSelected.value
   contractDetails.value.forEach((d) => { d.checked = target })
@@ -227,7 +232,6 @@ async function selectProject(p: any) {
   form.value.contractId = null
   form.value.contractName = ''
   contractDetails.value = []
-  showProjectPicker.value = false
 
   try {
     const cRes: any = await getPurchaseContractPage({ projectId: p.id, size: 50 })
