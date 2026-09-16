@@ -79,60 +79,9 @@ jobs:
         working-directory: zw-insight-server
         run: mvn -B -T 1C clean verify
 
-      # 覆盖率不回退守护：逐模块比对 tests/coverage-baseline.json（千分比，容忍 ±1‰ 波动），
-      # 任一模块下降即构建失败。基线只许升不许降，更新需提交新 JSON。
-      # 见 .kiro/specs/test-maturity-upgrade/design.md D1
-      #
-      # 2026-08-22 修复（run 32584843669 审计发现）：原实现用 python3 解析基线 JSON 且
-      # `2>/dev/null || true` 吞掉一切错误，python3 不可用时 base 恒为空 → 全部 continue，
-      # 门禁自引入起长期零输出空转（历史成功 run 日志均无 ✅/❌ 行可证）。
-      # 现改用纯 grep 解析（无 python3 依赖），并加「零比对即失败」防空转守卫；
-      # 基线未登记模块改为显式 warning（不再静默跳过），awk 无覆盖数据行显式标注。
-      - name: Coverage baseline check (no regression)
-        working-directory: zw-insight-server
-        run: |
-          BASELINE="../tests/coverage-baseline.json"
-          if [ ! -f "$BASELINE" ]; then
-            echo "::error::tests/coverage-baseline.json 不存在，无法比对覆盖率基线"
-            exit 1
-          fi
-          FAIL=0
-          COMPARED=0
-          for csv in zw-*/target/site/jacoco/jacoco.csv; do
-            [ -f "$csv" ] || continue
-            module=$(echo "$csv" | cut -d/ -f1)
-            base=$(grep -oE "\"$module\"[[:space:]]*:[[:space:]]*[0-9]+" "$BASELINE" | head -1 | grep -oE '[0-9]+$' || true)
-            if [ -z "$base" ]; then
-              echo "::warning::$module 未在基线 JSON 中登记，跳过（新模块需实测后登记基线）"
-              continue
-            fi
-            COMPARED=$((COMPARED+1))
-            awk -F, -v base="$base" -v m="$module" '
-              NR>1 { cov += $9; miss += $8 }
-              END {
-                total = cov + miss
-                if (total == 0) {
-                  printf "\xe2\x9a\xa0\xef\xb8\x8f %s 覆盖率报告无数据行（csv 仅表头），无法比对\n", m
-                  exit 0
-                }
-                cur = int(cov * 1000 / total)
-                if (cur < base - 1) {
-                  printf "\xe2\x9d\x8c %s 覆盖率回退: 当前 %d\xe2\x80\xb0 < 基线 %d\xe2\x80\xb0\n", m, cur, base
-                  exit 1
-                } else {
-                  printf "\xe2\x9c\x85 %s 覆盖率: 当前 %d\xe2\x80\xb0 >= 基线 %d\xe2\x80\xb0\n", m, cur, base
-                }
-              }' "$csv" || FAIL=1
-          done
-          if [ "$COMPARED" -eq 0 ]; then
-            echo "::error::基线比对空转：未比对任何模块（jacoco.csv 或基线 JSON 缺失），门禁未实际执行"
-            exit 1
-          fi
-          echo "基线比对完成：共 $COMPARED 个模块参与比对"
-          if [ "$FAIL" -ne 0 ]; then
-            echo "::error::存在模块覆盖率低于基线，请补测或说明后更新基线 JSON（只许升不许降）"
-            exit 1
-          fi
+      # 2026-09-16 用户决策：移除后端覆盖率基线比对门禁（原逐模块比对 tests/coverage-baseline.json 步骤）。
+      # 保留：①pom 内置 jacoco 分档 check（mvn verify 阶段仍真实生效）②基线 JSON 留仓供本地自查。
+      # 如需恢复门禁：重新加回基线比对 step（git 历史可考）。
 
       - name: Upload test reports on failure
         if: failure()
@@ -174,10 +123,10 @@ jobs:
         run: mvn -B verify -pl zw-app -am -Pintegration-test -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -Djacoco.skip=true
 
   # ────────────────────────────────────────────────────
-  # 1b. 前端单元测试（三端 matrix，2026-08-14 M2/M3 修复：app/门户接入 + 覆盖率门禁）
+  # 1b. 前端单元测试（三端 matrix，2026-08-14 M2/M3 修复：app/门户接入）
   #     与 backend 并行执行，不增加总耗时；每项目独立 npm cache。
-  #     覆盖率守护：复刻后端基线「只升不降」机制（tests/frontend-coverage-baseline.json，
-  #     千分比行覆盖率，回落超 ±1‰ 即失败）；基线取 2026-08-14 实测值（web 36‰/app 45‰/portal 82‰）。
+  #     2026-09-16 用户决策：覆盖率基线门禁（只升不降比对）已移除，仅保留单测+覆盖率报告上传；
+  #     基线 JSON 与 check 脚本留仓供本地自查。
   #     注：app 的 @dcloudio 依赖曾误写为不存在版本 3.0.0-4010120240507001（笔误，
   #     registry 实际为 40105 系列），2026-08-14 修正后才能 npm ci。
   # ────────────────────────────────────────────────────
@@ -213,9 +162,8 @@ jobs:
         working-directory: ${{ matrix.project }}
         run: npm run test:coverage
 
-      # 覆盖率不回退守护：比对 tests/frontend-coverage-baseline.json，任一项目回落即失败
-      - name: Coverage baseline check (no regression)
-        run: node tests/check-frontend-coverage.mjs ${{ matrix.project }}
+      # 2026-09-16 用户决策：移除前端覆盖率基线门禁（原 check-frontend-coverage.mjs 步骤）。
+      # 基线 JSON 与检查脚本保留在仓库，本地自查命令：node tests/check-frontend-coverage.mjs <project>
 
       # 移动端 H5 构建门禁（2026-08-29 移动端评估修复新增）：单测不保证可构建，
       # build:h5 失败即红灯；仅 zw-insight-app 有该脚本，其余项目跳过。
