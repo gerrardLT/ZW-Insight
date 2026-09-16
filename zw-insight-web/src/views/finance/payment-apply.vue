@@ -55,19 +55,25 @@
           :loading="batchLoading"
           @click="handleBatchSubmit"
         >批量提交（{{ selectedRows.length }}）</el-button>
+        <ColumnSettingPopover
+          :columns="paymentColumns"
+          :visible="columnVisible"
+          @update:visible="setVisible"
+          @reset="resetColumns"
+        />
       </div>
 
             <!-- 首屏骨架（感知性能 S1.4）：无数据且加载中显示骨架；翻页保留 v-loading 遮罩 -->
             <el-skeleton v-if="loading && !tableData.length" :rows="5" animated />
             <el-table v-else :data="tableData" v-loading="loading" border @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="44" />
-        <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="supplierName" label="收款单位" width="150" show-overflow-tooltip />
-        <el-table-column prop="paymentAmount" label="付款金额" width="130" align="right">
+        <el-table-column v-if="columnVisible[0]" prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
+        <el-table-column v-if="columnVisible[1]" prop="supplierName" label="收款单位" width="150" show-overflow-tooltip />
+        <el-table-column v-if="columnVisible[2]" prop="paymentAmount" label="付款金额" width="130" align="right">
           <template #default="{ row }">{{ formatMoney(row.paymentAmount) }}</template>
         </el-table-column>
-        <el-table-column prop="paymentDate" label="付款日期" width="110" />
-        <el-table-column label="状态" width="90" align="center">
+        <el-table-column v-if="columnVisible[3]" prop="paymentDate" label="付款日期" width="110" />
+        <el-table-column v-if="columnVisible[4]" label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusLabel(row.status) }}
@@ -219,7 +225,19 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
+import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
+import { useColumnSetting } from '@/composables/useColumnSetting'
 import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, batchPaymentApply, getFundPlan } from '@/api/finance'
+
+// 列显隐配置（S2.1）：按 payment-apply-table 持久化 localStorage
+const paymentColumns = [
+  { key: 'projectName', label: '项目名称' },
+  { key: 'supplierName', label: '收款单位' },
+  { key: 'paymentAmount', label: '付款金额' },
+  { key: 'paymentDate', label: '付款日期' },
+  { key: 'status', label: '状态' },
+]
+const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('payment-apply-table', paymentColumns)
 import { getProjectList } from '@/api/project'
 import { getOtherContractPage } from '@/api/contract'
 import { getPurchaseContractPage } from '@/api/purchase'

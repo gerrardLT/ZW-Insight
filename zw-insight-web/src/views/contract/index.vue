@@ -12,6 +12,12 @@
         </el-button>
         <el-button @click="importVisible = true">批量导入</el-button>
         <el-button @click="exportVisible = true">导出</el-button>
+        <ColumnSettingPopover
+          :columns="contractColumns"
+          :visible="columnVisible"
+          @update:visible="setVisible"
+          @reset="resetColumns"
+        />
       </div>
     </div>
 
@@ -53,24 +59,24 @@
       <!-- 首屏骨架屏：loading 期间显示骨架，完成后渲染表格（感知性能优化 S1.4） -->
       <el-skeleton :loading="loading" :rows="5" animated>
         <el-table :data="tableData" border>
-            <el-table-column prop="contractCode" label="合同编号" width="150">
+            <el-table-column v-if="columnVisible[0]" prop="contractCode" label="合同编号" width="150">
               <template #default="{ row }">
                 <span class="stat-number">{{ row.contractCode }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="projectName" label="所属项目" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="partyAName" label="甲方" width="150" show-overflow-tooltip />
-            <el-table-column prop="contractAmount" label="合同金额" width="140" align="right">
+            <el-table-column v-if="columnVisible[1]" prop="projectName" label="所属项目" min-width="180" show-overflow-tooltip />
+            <el-table-column v-if="columnVisible[2]" prop="partyAName" label="甲方" width="150" show-overflow-tooltip />
+            <el-table-column v-if="columnVisible[3]" prop="contractAmount" label="合同金额" width="140" align="right">
               <template #default="{ row }">
                 <span class="stat-number money-num font-semibold text-brand">{{ formatMoney(row.contractAmount) }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="signingDate" label="签订日期" width="120">
+            <el-table-column v-if="columnVisible[4]" prop="signingDate" label="签订日期" width="120">
               <template #default="{ row }">
                 <span class="stat-number text-secondary">{{ row.signingDate }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="状态" width="90" align="center">
+            <el-table-column v-if="columnVisible[5]" label="状态" width="90" align="center">
               <template #default="{ row }">
                 <el-tag :type="getStatusType(row.status)" size="small">
                   {{ getStatusLabel(row.status) }}
@@ -147,6 +153,19 @@ import PrintButton from '@/components/PrintButton.vue'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
+import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
+import { useColumnSetting } from '@/composables/useColumnSetting'
+
+// 列显隐配置（S2.1）：按 contract-table 持久化 localStorage
+const contractColumns = [
+  { key: 'contractCode', label: '合同编号' },
+  { key: 'projectName', label: '所属项目' },
+  { key: 'partyAName', label: '甲方' },
+  { key: 'contractAmount', label: '合同金额' },
+  { key: 'signingDate', label: '签订日期' },
+  { key: 'status', label: '状态' },
+]
+const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('contract-table', contractColumns)
 
 const router = useRouter()
 const loading = ref(false)

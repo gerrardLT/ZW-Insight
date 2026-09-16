@@ -16,6 +16,12 @@
           <el-icon><Delete /></el-icon>批量删除 (已选 {{ selectedRows.length }})
         </el-button>
         <el-button type="primary" @click="handleAdd">新增入库单</el-button>
+        <ColumnSettingPopover
+          :columns="inboundColumns"
+          :visible="columnVisible"
+          @update:visible="setVisible"
+          @reset="resetColumns"
+        />
       </div>
 
       <!-- 首屏骨架（感知性能 S1.4）：无数据且加载中显示骨架；翻页保留 v-loading 遮罩 -->
@@ -29,17 +35,17 @@
         @cell-contextmenu="showContextMenu"
       >
         <el-table-column type="selection" width="55" align="center" />
-        <el-table-column prop="inboundCode" label="入库单号" width="170" />
-        <el-table-column prop="inboundDate" label="入库日期" width="120" />
-        <el-table-column prop="totalAmount" label="入库总金额(元)" width="150" align="right">
+        <el-table-column v-if="columnVisible[0]" prop="inboundCode" label="入库单号" width="170" />
+        <el-table-column v-if="columnVisible[1]" prop="inboundDate" label="入库日期" width="120" />
+        <el-table-column v-if="columnVisible[2]" prop="totalAmount" label="入库总金额(元)" width="150" align="right">
           <template #default="{ row }">{{ Number(row.totalAmount || 0).toLocaleString() }}</template>
         </el-table-column>
-        <el-table-column prop="directOutbound" label="直接出库" width="100" align="center">
+        <el-table-column v-if="columnVisible[3]" prop="directOutbound" label="直接出库" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.directOutbound === 1 ? 'warning' : 'info'" size="small">{{ row.directOutbound === 1 ? '是' : '否' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column v-if="columnVisible[4]" prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 'APPROVED' ? 'success' : 'info'" size="small">{{ row.status === 'APPROVED' ? '已审批' : '草稿' }}</el-tag>
           </template>
@@ -146,6 +152,18 @@ import type { FormInstance } from 'element-plus'
 import { getMaterialInboundPage, getMaterialInboundDetail, createMaterialInbound, updateMaterialInbound, deleteMaterialInbound, submitMaterialInbound } from '@/api/material'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import PurchaseContractSelector from '@/components/PurchaseContractSelector.vue'
+import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
+import { useColumnSetting } from '@/composables/useColumnSetting'
+
+// 列显隐配置（S2.1）：按 material-inbound-table 持久化 localStorage
+const inboundColumns = [
+  { key: 'inboundCode', label: '入库单号' },
+  { key: 'inboundDate', label: '入库日期' },
+  { key: 'totalAmount', label: '入库总金额' },
+  { key: 'directOutbound', label: '直接出库' },
+  { key: 'status', label: '状态' },
+]
+const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('material-inbound-table', inboundColumns)
 
 interface InboundDetail {
   materialName: string

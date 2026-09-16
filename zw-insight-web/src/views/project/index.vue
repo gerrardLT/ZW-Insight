@@ -51,26 +51,32 @@
         <el-button type="danger" plain :disabled="!selectedRows.length" @click="handleBatchDelete">
           <el-icon><Delete /></el-icon>批量删除（{{ selectedRows.length }}）
         </el-button>
+        <ColumnSettingPopover
+          :columns="projectColumns"
+          :visible="columnVisible"
+          @update:visible="setVisible"
+          @reset="resetColumns"
+        />
       </div>
     
       <!-- 首屏骨架屏：loading 期间显示骨架，完成后渲染表格（感知性能优化 S1.4） -->
       <el-skeleton :loading="loading" :rows="5" animated>
         <el-table :data="tableData" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="44" :selectable="isDraftRow" />
-            <el-table-column prop="projectCode" label="项目编号" width="140" />
-            <el-table-column prop="projectName" label="项目名称" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="projectNature" label="项目性质" width="100" />
-            <el-table-column prop="projectType" label="项目类型" width="100" />
-            <el-table-column prop="ownerCompanyName" label="业主单位" width="150" show-overflow-tooltip />
-            <el-table-column prop="signingCompanyName" label="签约公司" width="150" show-overflow-tooltip />
-            <el-table-column label="状态" width="90" align="center">
+            <el-table-column v-if="columnVisible[0]" prop="projectCode" label="项目编号" width="140" />
+            <el-table-column v-if="columnVisible[1]" prop="projectName" label="项目名称" min-width="200" show-overflow-tooltip />
+            <el-table-column v-if="columnVisible[2]" prop="projectNature" label="项目性质" width="100" />
+            <el-table-column v-if="columnVisible[3]" prop="projectType" label="项目类型" width="100" />
+            <el-table-column v-if="columnVisible[4]" prop="ownerCompanyName" label="业主单位" width="150" show-overflow-tooltip />
+            <el-table-column v-if="columnVisible[5]" prop="signingCompanyName" label="签约公司" width="150" show-overflow-tooltip />
+            <el-table-column v-if="columnVisible[6]" label="状态" width="90" align="center">
               <template #default="{ row }">
                 <el-tag :type="getStatusType(row.status)" size="small">
                   {{ getStatusLabel(row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="createdAt" label="创建时间" width="170" />
+            <el-table-column v-if="columnVisible[7]" prop="createdAt" label="创建时间" width="170" />
             <el-table-column label="操作" width="220" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" @click="handleView(row)">查看</el-button>
@@ -108,7 +114,22 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getProjectPage, deleteProject, batchDeleteProjects, submitProject, closeProject, getProjectCloseCheck, getProjectPortfolio } from '@/api/project'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
+import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
+import { useColumnSetting } from '@/composables/useColumnSetting'
 import { toWan } from '@/utils/chart-format'
+
+// 列显隐配置（S2.1）：按 project-table 持久化 localStorage
+const projectColumns = [
+  { key: 'projectCode', label: '项目编号' },
+  { key: 'projectName', label: '项目名称' },
+  { key: 'projectNature', label: '项目性质' },
+  { key: 'projectType', label: '项目类型' },
+  { key: 'ownerCompanyName', label: '业主单位' },
+  { key: 'signingCompanyName', label: '签约公司' },
+  { key: 'status', label: '状态' },
+  { key: 'createdAt', label: '创建时间' },
+]
+const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('project-table', projectColumns)
 
 const router = useRouter()
 const loading = ref(false)
