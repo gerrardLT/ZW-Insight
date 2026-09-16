@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
@@ -347,6 +347,11 @@ async function handleBatchApprove() {
 onMounted(() => {
   document.addEventListener('keydown', handleGlobalKeydown)
   loadData()
+})
+
+// 卸载时移除全局键盘监听（防内存泄漏与跨页残留操作，S2.2 修复）
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 

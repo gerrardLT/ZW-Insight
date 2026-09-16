@@ -221,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
@@ -345,9 +345,56 @@ async function loadData() {
     const res: any = await getPaymentApplyPage(queryParams.value)
     tableData.value = res.data?.records || []
     total.value = res.data?.total || 0
+    currentRowIndex.value = -1 // 数据刷新时重置行导航状态（S2.2）
   } finally {
     loading.value = false
   }
+}
+
+// ================= 表格行级键盘导航（S2.2） =================
+const currentRowIndex = ref(-1)
+
+function handleRowNavigationKeydown(event: KeyboardEvent) {
+  // 输入控件聚焦时不拦截
+  const target = event.target as HTMLElement
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+    return
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    navigateRow(1)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    navigateRow(-1)
+  } else if (event.key === 'Enter') {
+    // Enter 查看当前行详情
+    if (currentRowIndex.value >= 0 && currentRowIndex.value < tableData.value.length) {
+      event.preventDefault()
+      handleView(tableData.value[currentRowIndex.value])
+    }
+  }
+}
+
+function navigateRow(direction: number) {
+  const newIndex = currentRowIndex.value + direction
+  if (newIndex >= 0 && newIndex < tableData.value.length) {
+    currentRowIndex.value = newIndex
+    highlightRow(newIndex)
+  }
+}
+
+function highlightRow(index: number) {
+  nextTick(() => {
+    const rows = document.querySelectorAll('.el-table__body-wrapper tbody tr.el-table__row')
+    rows.forEach((row, i) => {
+      if (i === index) {
+        row.classList.add('keyboard-focused')
+        row.scrollIntoView({ block: 'nearest' })
+      } else {
+        row.classList.remove('keyboard-focused')
+      }
+    })
+  })
 }
 
 function handleSearch() {
@@ -499,10 +546,12 @@ onMounted(() => {
   loadData()
   searchProject('')
   window.addEventListener(ZW_SHORTCUT_EVENTS.save, handleSaveShortcut)
+  document.addEventListener('keydown', handleRowNavigationKeydown)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener(ZW_SHORTCUT_EVENTS.save, handleSaveShortcut)
+  document.removeEventListener('keydown', handleRowNavigationKeydown)
 })
 
 // ================= 资金计划面板 =================

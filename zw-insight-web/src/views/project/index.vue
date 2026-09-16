@@ -108,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getProjectPage, deleteProject, batchDeleteProjects, submitProject, closeProject, getProjectCloseCheck, getProjectPortfolio } from '@/api/project'
@@ -171,9 +171,56 @@ async function loadData() {
     const res: any = await getProjectPage(queryParams.value)
     tableData.value = res.data?.records || []
     total.value = res.data?.total || 0
+    currentRowIndex.value = -1 // 数据刷新时重置行导航状态（S2.2）
   } finally {
     loading.value = false
   }
+}
+
+// ================= 表格行级键盘导航（S2.2） =================
+const currentRowIndex = ref(-1)
+
+function handleGlobalKeydown(event: KeyboardEvent) {
+  // 输入控件聚焦时不拦截
+  const target = event.target as HTMLElement
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+    return
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    navigateRow(1)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    navigateRow(-1)
+  } else if (event.key === 'Enter') {
+    // Enter 查看当前行详情
+    if (currentRowIndex.value >= 0 && currentRowIndex.value < tableData.value.length) {
+      event.preventDefault()
+      handleView(tableData.value[currentRowIndex.value])
+    }
+  }
+}
+
+function navigateRow(direction: number) {
+  const newIndex = currentRowIndex.value + direction
+  if (newIndex >= 0 && newIndex < tableData.value.length) {
+    currentRowIndex.value = newIndex
+    highlightRow(newIndex)
+  }
+}
+
+function highlightRow(index: number) {
+  nextTick(() => {
+    const rows = document.querySelectorAll('.el-table__body-wrapper tbody tr.el-table__row')
+    rows.forEach((row, i) => {
+      if (i === index) {
+        row.classList.add('keyboard-focused')
+        row.scrollIntoView({ block: 'nearest' })
+      } else {
+        row.classList.remove('keyboard-focused')
+      }
+    })
+  })
 }
 
 function handleSearch() {
@@ -248,7 +295,13 @@ async function handleClose(row: any) {
 }
 
 onMounted(() => {
+  document.addEventListener('keydown', handleGlobalKeydown)
   loadData()
+})
+
+// 卸载时移除全局键盘监听（防内存泄漏，S2.2）
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleGlobalKeydown)
 })
 
 // ================= 项目组合看板 =================
