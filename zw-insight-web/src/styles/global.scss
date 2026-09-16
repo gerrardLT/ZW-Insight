@@ -448,11 +448,12 @@ input, textarea {
   box-shadow: none !important;
 }
 
-/* ===== 安全帽环形 loading（2026-09-16 升级：AI 生成品牌插画，呼吸脉冲动效） =====
- * 素材: assets/loading-helmet.png（浅色底）/ loading-helmet-dark.png（深色底）
- * 256px 源图 → CSS 显示 64px（4x 冗余）；双主题按 data-theme 切换背景图。
- * 动效选呼吸脉冲（非旋转）：安全帽旋转视觉不适，环形呼吸柔和不抢注意力。
- * prefers-reduced-motion 降级由下方全局 media 块覆盖。 */
+/* ===== 扳手螺母 loading（2026-09-16：内联 SVG 动画，替代位图方案） =====
+ * 动画：扳手绕螺母中心往复摆动（±14°），螺母仅在扳手下压行程内步进 60°
+ * （六角对称便步进无跳变）；回弹行程螺母锁住不转——真实拧螺母力学。
+ * 浅色版线条 #14161a / 暗色版线条 #f2f3f1（暗色模式下深色线条不可见）。
+ * 位图版（安全帽 PNG）缺陷：透明抠图版在浅色遮罩上对比度不足几乎不可见，
+ * 且 ::before 伪元素无法嵌 Vue 组件——改用 data URI 内联 SVG 彻底自包含。 */
 .el-loading-spinner .circular {
   display: none;
 }
@@ -463,17 +464,11 @@ input, textarea {
   width: 64px;
   height: 64px;
   margin: 0 auto;
-  background: url('../assets/loading-helmet.png') center / contain no-repeat;
-  animation: zw-loading-breathe 1.6s var(--zw-ease-in-out) infinite;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><style>.w{animation:zwlw 1.15s ease-in-out infinite;transform-origin:60px 60px}.n{animation:zwln 1.15s ease-in-out infinite;transform-origin:60px 60px}@keyframes zwlw{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(14deg)}}@keyframes zwln{0%,25%{transform:rotate(0deg)}50%,100%{transform:rotate(60deg)}}</style><g class='n'><path d='M82 60 L71 79.1 L49 79.1 L38 60 L49 40.9 L71 40.9 Z' fill='%23ff6b00' stroke='%2314161a' stroke-width='3'/><circle cx='60' cy='60' r='9.5' fill='none' stroke='%2314161a' stroke-width='3'/><line x1='50.5' y1='60' x2='69.5' y2='60' stroke='%2314161a' stroke-width='2.5'/></g><g class='w'><g transform='rotate(-32 60 60)'><path d='M78 46 L90 46 L90 55 L84.5 55 L84.5 65 L90 65 L90 74 L78 74 Z' fill='none' stroke='%2314161a' stroke-width='4' stroke-linejoin='miter'/><rect x='90' y='54' width='22' height='12' rx='2' fill='none' stroke='%2314161a' stroke-width='4'/></g></g></svg>") center / contain no-repeat;
 }
 
 :root[data-theme='dark'] .el-loading-spinner::before {
-  background-image: url('../assets/loading-helmet-dark.png');
-}
-
-@keyframes zw-loading-breathe {
-  0%, 100% { transform: scale(0.94); opacity: 0.85; }
-  50% { transform: scale(1.04); opacity: 1; }
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><style>.w{animation:zwlw 1.15s ease-in-out infinite;transform-origin:60px 60px}.n{animation:zwln 1.15s ease-in-out infinite;transform-origin:60px 60px}@keyframes zwlw{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(14deg)}}@keyframes zwln{0%,25%{transform:rotate(0deg)}50%,100%{transform:rotate(60deg)}}</style><g class='n'><path d='M82 60 L71 79.1 L49 79.1 L38 60 L49 40.9 L71 40.9 Z' fill='%23ff6b00' stroke='%23f2f3f1' stroke-width='3'/><circle cx='60' cy='60' r='9.5' fill='none' stroke='%23f2f3f1' stroke-width='3'/><line x1='50.5' y1='60' x2='69.5' y2='60' stroke='%23f2f3f1' stroke-width='2.5'/></g><g class='w'><g transform='rotate(-32 60 60)'><path d='M78 46 L90 46 L90 55 L84.5 55 L84.5 65 L90 65 L90 74 L78 74 Z' fill='none' stroke='%23f2f3f1' stroke-width='4' stroke-linejoin='miter'/><rect x='90' y='54' width='22' height='12' rx='2' fill='none' stroke='%23f2f3f1' stroke-width='4'/></g></g></svg>");
 }
 
 /* ===== 无障碍：动效降级 ===== */

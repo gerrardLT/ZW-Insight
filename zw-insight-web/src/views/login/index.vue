@@ -290,7 +290,7 @@ function goForgotPassword() {
   flex-shrink: 0;
   overflow: hidden;
   background:
-    linear-gradient(90deg, rgba(16, 18, 20, 0.78) 0%, rgba(16, 18, 20, 0.52) 55%, rgba(16, 18, 20, 0.35) 100%),
+    linear-gradient(90deg, color-mix(in srgb, var(--zw-bg-sidebar) 78%, transparent) 0%, color-mix(in srgb, var(--zw-bg-sidebar) 52%, transparent) 55%, color-mix(in srgb, var(--zw-bg-sidebar) 35%, transparent) 100%),
     url('@/assets/login-bg-site.png') center / cover no-repeat,
     var(--zw-bg-sidebar);
   display: flex;
