@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
-import ElementPlus from 'element-plus'
+import ElementPlus, { ElMessage } from 'element-plus'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { EP_ICON_MAP } from './components/icons/registry'
@@ -43,5 +43,16 @@ for (const [key, component] of Object.entries(EP_ICON_MAP)) {
 
 // 注册全局权限指令
 app.directive('permission', permissionDirective)
+
+// Global error boundary: render errors + uncaught promise rejection handling
+app.config.errorHandler = (err, instance, info) => {
+  console.error('[GlobalError]', info, err)
+  ElMessage.error('页面渲染异常，请刷新重试')
+}
+window.addEventListener('unhandledrejection', event => {
+  const reason = event.reason?.message || String(event.reason)
+  console.error('[PromiseRejection]', reason, event)
+  ElMessage.error('系统异常，请刷新页面')
+})
 
 app.mount('#app')

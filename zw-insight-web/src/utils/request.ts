@@ -58,13 +58,17 @@ service.interceptors.response.use(
       }
       return Promise.reject(new Error(res.message || '请求失败'))
     }
+    // 重置失败计数（成功请求后清空状态）
+    localStorage.removeItem('request-failure-count')
+    localStorage.removeItem('last-failure-timestamp')
+    
     return res
   },
-  async (error) => {
+  async (error: any) => {
     const response = error.response
     const responseData = response?.data
     const config = error.config || {}
-
+  
     // 二次确认（449）：弹出密码输入框，携带 X-Confirm-Password 重发原请求
     if (response?.status === HTTP_SECONDARY_CONFIRM && !config._secondaryConfirmRetried) {
       const tip = responseData?.message || '此操作需要二次确认，请输入登录密码'
@@ -79,9 +83,42 @@ service.interceptors.response.use(
       return Promise.reject(new Error('已取消二次确认'))
     }
 
-    // 引用校验异常（ReferenceExistsException）：不显示全局错误提示，交由业务层处理
+    // 引用校验异常：不显示全局提示，交由业务层处理
     if (response?.status === 400 && responseData?.data?.references) {
       return Promise.reject(error)
+    }
+
+    // 幂等性重试纪律：仅 GET 请求且无 response（纯网络错误）+ 未重试过
+    if (!response && config.method === 'GET' && !config._networkRetried) {
+      console.warn('[Retry] Network error, retrying GET request')
+      config._networkRetried = true
+      return service.request(config)
+    }
+
+    // 保存失败记录到队列（仅 GET），上限 3 条
+    if (config.method === 'GET' && response) {
+      const queueKey = 'failed-get-requests'
+      const now = Date.now()
+      const lastFailure = Number(localStorage.getItem('last-failure-timestamp') || '0')
+      const queue = JSON.parse(localStorage.getItem(queueKey) || '[]')
+      
+      // 防抖：同一条错误 3 秒内不去重
+      if (now - lastFailure > 3000) {
+        queue.unshift({ url: config.url, method: config.method, timestamp: now })
+        localStorage.setItem(queueKey, JSON.stringify(queue.slice(0, 3)))
+        localStorage.setItem('last-failure-timestamp', String(now))
+        
+        // 更新失败计数（只统计新增的）
+        let count = Number(localStorage.getItem('request-failure-count') || '0')
+        count++
+        localStorage.setItem('request-failure-count', String(count))
+        
+        // ≥3 次触发顶部 Hazard 告警条
+        if (count >= 3) {
+          // 使用 ElMessage 替代简易版本，后续可升级为专用 topbar 组件
+          ElMessage.warning('连续失败多次，请检查网络连接后重试')
+        }
+      }
     }
 
     const message = responseData?.message || error.message || '网络异常'
@@ -90,8 +127,29 @@ service.interceptors.response.use(
       localStorage.removeItem('token')
       router.push('/login')
     }
+    // 成功后的在线监听注册：网络恢复时自动重试最近失败的 GET 请求
+    window.addEventListener('online', handleNetworkRecovery)
     return Promise.reject(error)
   }
 )
 
-export default service
+/** 网络恢复后自动重试最近失败的 GET 请求 */
+const handleNetworkRecovery = () => {
+  const queueKey = 'failed-get-requests'
+  const queue = JSON.parse(localStorage.getItem(queueKey) || '[]')
+  if (queue.length === 0) return
+  
+  console.log('[NetworkRecovery] Attempting to retry failed requests:', queue.length)
+  Promise.allSettled(
+    queue.map((item: any) => 
+      item.method === 'GET' ? service({ ...item, method: 'GET', baseURL: '/api' }) : Promise.resolve()
+    )
+  ).then(results => {
+    const successCount = results.filter(r => r.status === 'fulfilled').length
+    if (successCount > 0) {
+      localStorage.removeItem(queueKey)
+      localStorage.removeItem('request-failure-count')
+      ElMessage.success(`同步成功 ${successCount}/${queue.length}`)
+    }
+  }).catch(() => {})
+}
