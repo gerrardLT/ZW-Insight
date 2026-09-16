@@ -673,7 +673,8 @@ class PaymentApplyServiceTest {
         @Test
         @DisplayName("未知 action：拒绝")
         void batch_unknownAction_throws() {
-            when(paymentApplyMapper.selectById(1L)).thenReturn(draft(1L, null));
+            // 不打任何 stub：action 校验先于数据库查询（CI 实证 2026-09-16 run 35060597717，
+            // 原 selectById stub 未被消费触发 Mockito 严格模式 UnnecessaryStubbingException）
             assertThatThrownBy(() -> paymentApplyService.batch(req("audit", List.of(1L))))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("不支持的批量操作类型");
