@@ -185,6 +185,10 @@ export class SyncEngine {
       } else {
         // 整批处理完成（无中断）→ 重置重试计数
         this.resetRetry()
+        // 队列全部清空（含无 CONFLICT 残留）→ 触觉反馈同步完成（S3.4，三端容错）
+        if (this.readQueue().length === 0 && pending.length > 0) {
+          uni.vibrateShort?.({ fail: () => {} })
+        }
       }
     } finally {
       this.syncing = false

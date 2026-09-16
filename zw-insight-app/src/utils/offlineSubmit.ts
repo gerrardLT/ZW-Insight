@@ -53,6 +53,8 @@ export async function submitOrQueue<T>(
     payload: opts.payload
   })
   network.setQueueCount(syncEngine.getQueue().length)
+  // 触觉反馈（S3.4）：入队成功短震，三端安全容错（H5 不支持时静默跳过）
+  uni.vibrateShort?.({ fail: () => {} })
   uni.showToast({ title: '已存入离线队列，联网后自动同步', icon: 'none' })
   return { queued: true }
 }

@@ -168,6 +168,8 @@ async function handleCapture() {
   }
 
   capturing.value = true
+  // 触觉反馈（S3.4）：快门时刻短震（三端容错，H5 静默跳过）
+  uni.vibrateShort?.({ fail: () => {} })
   uni.chooseImage({
     count: 1,
     sourceType: ['camera'],
