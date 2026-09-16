@@ -70,7 +70,9 @@
         <el-button type="primary" @click="handleCreate">新建结算单</el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
+            <!-- 首屏骨架（感知性能 S1.4）：无数据且加载中显示骨架；翻页保留 v-loading 遮罩 -->
+            <el-skeleton v-if="loading && !tableData.length" :rows="5" animated />
+            <el-table v-else :data="tableData" v-loading="loading" border>
         <el-table-column prop="settlementCode" label="结算编号" width="160" />
         <el-table-column label="结算周期" width="200">
           <template #default="{ row }">

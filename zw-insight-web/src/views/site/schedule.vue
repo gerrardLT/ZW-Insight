@@ -18,7 +18,9 @@
         <el-button type="primary" @click="handleAdd">新增进度计划</el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
+            <!-- 首屏骨架（感知性能 S1.4）：无数据且加载中显示骨架；翻页保留 v-loading 遮罩 -->
+            <el-skeleton v-if="loading && !tableData.length" :rows="5" animated />
+            <el-table v-else :data="tableData" v-loading="loading" border>
         <el-table-column prop="taskName" label="任务名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="projectName" label="所属项目" min-width="160" show-overflow-tooltip />
         <el-table-column prop="planStartDate" label="计划开始" width="110" />

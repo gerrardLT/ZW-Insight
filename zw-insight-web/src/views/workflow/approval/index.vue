@@ -14,26 +14,27 @@
         </el-button>
       </div>
 
-      <!-- 表格 -->
-      <el-table
-        :data="tableData"
-        v-loading="loading"
-        border
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column v-if="activeTab === 'todo'" type="selection" width="50" align="center" />
-        <el-table-column prop="taskName" label="任务名称" min-width="150" />
-        <el-table-column prop="businessType" label="业务类型" width="120" />
-        <el-table-column prop="initiator" label="发起人" width="100" />
-        <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="220" fixed="right" v-if="activeTab === 'todo'">
-          <template #default="{ row }">
-            <el-button link type="success" @click="handleApprove(row)">通过</el-button>
-            <el-button link type="warning" @click="handleReject(row)">退回</el-button>
-            <el-button link type="danger" @click="handleTerminate(row)">终止</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <!-- 首屏骨架屏：loading 期间显示骨架，完成后渲染表格（感知性能优化 S1.4） -->
+      <el-skeleton :loading="loading" :rows="5" animated>
+        <el-table
+          :data="tableData"
+          border
+          @selection-change="handleSelectionChange"
+        >
+            <el-table-column v-if="activeTab === 'todo'" type="selection" width="50" align="center" />
+            <el-table-column prop="taskName" label="任务名称" min-width="150" />
+            <el-table-column prop="businessType" label="业务类型" width="120" />
+            <el-table-column prop="initiator" label="发起人" width="100" />
+            <el-table-column prop="createTime" label="创建时间" width="170" />
+            <el-table-column label="操作" width="220" fixed="right" v-if="activeTab === 'todo'">
+              <template #default="{ row }">
+                <el-button link type="success" @click="handleApprove(row)">通过</el-button>
+                <el-button link type="warning" @click="handleReject(row)">退回</el-button>
+                <el-button link type="danger" @click="handleTerminate(row)">终止</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+      </el-skeleton>
 
       <!-- 分页 -->
       <div class="pagination-wrap">

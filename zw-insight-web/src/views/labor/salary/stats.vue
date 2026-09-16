@@ -86,8 +86,10 @@
         <span>实发合计: <strong>¥{{ formatAmount(statsData.totalActual) }}</strong></span>
       </div>
 
-      <!-- 班组汇总表格 -->
+      <!-- 班组汇总表格（首屏骨架 S1.4：无数据且加载中显示骨架；翻页保留 v-loading 遮罩） -->
+      <el-skeleton v-if="loading && !filteredTeamList.length" :rows="5" animated />
       <el-table
+        v-else
         v-loading="loading"
         :data="filteredTeamList"
         border

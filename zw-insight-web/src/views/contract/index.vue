@@ -50,48 +50,50 @@
         </el-form-item>
       </el-form>
 
-      <!-- 表格 -->
-      <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="contractCode" label="合同编号" width="150">
-          <template #default="{ row }">
-            <span class="stat-number">{{ row.contractCode }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="projectName" label="所属项目" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="partyAName" label="甲方" width="150" show-overflow-tooltip />
-        <el-table-column prop="contractAmount" label="合同金额" width="140" align="right">
-          <template #default="{ row }">
-            <span class="stat-number money-num font-semibold text-brand">{{ formatMoney(row.contractAmount) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="signingDate" label="签订日期" width="120">
-          <template #default="{ row }">
-            <span class="stat-number text-secondary">{{ row.signingDate }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="90" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="handleView(row)">查看</el-button>
-            <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitContract(row)">提交</el-button>
-            <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
-            <PrintButton
-              link
-              :show-icon="false"
-              business-type="CONTRACT"
-              :business-data-id="row.id"
-              :variables="row"
-            />
-          </template>
-        </el-table-column>
-      </el-table>
+      <!-- 首屏骨架屏：loading 期间显示骨架，完成后渲染表格（感知性能优化 S1.4） -->
+      <el-skeleton :loading="loading" :rows="5" animated>
+        <el-table :data="tableData" border>
+            <el-table-column prop="contractCode" label="合同编号" width="150">
+              <template #default="{ row }">
+                <span class="stat-number">{{ row.contractCode }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="projectName" label="所属项目" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="partyAName" label="甲方" width="150" show-overflow-tooltip />
+            <el-table-column prop="contractAmount" label="合同金额" width="140" align="right">
+              <template #default="{ row }">
+                <span class="stat-number money-num font-semibold text-brand">{{ formatMoney(row.contractAmount) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="signingDate" label="签订日期" width="120">
+              <template #default="{ row }">
+                <span class="stat-number text-secondary">{{ row.signingDate }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="90" align="center">
+              <template #default="{ row }">
+                <el-tag :type="getStatusType(row.status)" size="small">
+                  {{ getStatusLabel(row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="260" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="handleView(row)">查看</el-button>
+                <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
+                <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitContract(row)">提交</el-button>
+                <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
+                <PrintButton
+                  link
+                  :show-icon="false"
+                  business-type="CONTRACT"
+                  :business-data-id="row.id"
+                  :variables="row"
+                />
+              </template>
+            </el-table-column>
+          </el-table>
+      </el-skeleton>
 
       <!-- 分页 -->
       <div class="pagination-wrap">

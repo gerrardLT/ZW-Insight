@@ -23,7 +23,9 @@
         <el-button type="primary" @click="handleAdd">新增询价</el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
+            <!-- 首屏骨架（感知性能 S1.4）：无数据且加载中显示骨架；翻页保留 v-loading 遮罩 -->
+            <el-skeleton v-if="loading && !tableData.length" :rows="5" animated />
+            <el-table v-else :data="tableData" v-loading="loading" border>
         <el-table-column prop="title" label="询价标题" min-width="200" show-overflow-tooltip />
         <el-table-column prop="materialSummary" label="材料摘要" min-width="150" show-overflow-tooltip />
         <el-table-column prop="deadline" label="截止日期" width="110" />

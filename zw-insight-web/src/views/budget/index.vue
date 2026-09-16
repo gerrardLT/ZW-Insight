@@ -25,7 +25,9 @@
         <el-button type="primary" @click="handleAdd">新增预算编制</el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
+            <!-- 首屏骨架（感知性能 S1.4）：无数据且加载中显示骨架；翻页保留 v-loading 遮罩 -->
+            <el-skeleton v-if="loading && !tableData.length" :rows="5" animated />
+            <el-table v-else :data="tableData" v-loading="loading" border>
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="totalAmount" label="预算总额(元)" width="160" align="right">
           <template #default="{ row }">{{ row.totalAmount?.toLocaleString() }}</template>
