@@ -1,8 +1,9 @@
 <template>
   <view class="home-page">
     <OfflineBanner />
-    <!-- 顶部卡片（蓝图角标：品牌签名组件） -->
-    <view class="stat-cards">
+    <!-- 顶部卡片（蓝图角标：品牌签名组件）；首屏骨架（S3.1）加载中显示概览卡骨架 -->
+    <ZwSkeleton v-if="overviewLoading" type="card" />
+    <view class="stat-cards" v-else>
       <view class="stat-card card-corner-marked">
         <text class="stat-value">{{ overview.projectTotal || 0 }}</text>
         <text class="stat-label">项目总数</text>
@@ -74,8 +75,10 @@ import { onShow } from '@dcloudio/uni-app'
 import { getCompanyOverview, getUnreadCount, getUnreadMessages } from '@/api/common'
 import { getUserShortcuts, type UserShortcutConfig } from '@/api/shortcut'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwSkeleton from '@/components/ZwSkeleton.vue'
 
 const overview = ref<any>({})
+const overviewLoading = ref(true)
 const unreadCount = ref(0)
 const messages = ref<any[]>([])
 const shortcuts = ref<UserShortcutConfig[]>([])
@@ -112,7 +115,9 @@ async function loadData() {
   try {
     const res1: any = await getCompanyOverview()
     overview.value = res1.data || {}
-  } catch {}
+  } catch {} finally {
+    overviewLoading.value = false
+  }
   try {
     const res2: any = await getUnreadCount()
     unreadCount.value = res2.data || 0

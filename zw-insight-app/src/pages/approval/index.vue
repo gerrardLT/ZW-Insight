@@ -32,6 +32,8 @@
           <text>{{ item.businessTitle }}</text>
         </view>
       </view>
+      <!-- 首屏骨架（S3.1）：无数据且加载中显示骨架，替代文字 loading -->
+      <ZwSkeleton v-if="loading && !tasks.length" type="list" :rows="4" />
       <view class="empty" v-if="!tasks.length && !loading && !loadFailed">
         <text>暂无{{ tabLabel }}任务</text>
       </view>
@@ -39,7 +41,7 @@
         <text class="failed-tip">任务列表加载失败</text>
         <text class="retry-btn" @click="loadData">重试</text>
       </view>
-      <view class="loading-more" v-if="loading"><text>加载中...</text></view>
+      <view class="loading-more" v-if="loading && tasks.length"><text>加载中...</text></view>
       <view class="no-more" v-if="!hasMore && tasks.length"><text>没有更多了</text></view>
     </scroll-view>
 
@@ -59,6 +61,7 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getTodoTasks, getDoneTasks, getMyInitiatedTasks, batchApproveTasks } from '@/api/common'
 import { rejectIfOffline } from '@/utils/offlineSubmit'
+import ZwSkeleton from '@/components/ZwSkeleton.vue'
 
 const activeTab = ref('todo')
 const tasks = ref<any[]>([])
