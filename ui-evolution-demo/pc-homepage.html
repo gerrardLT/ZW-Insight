@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ZW Insight 工程项目管理系统 - 工作台首页（高保真原型）">
+  <title>ZW Insight · 工作台首页 | 编辑式网格方案 A</title>
+  <style>
+    :root {
+      /* 基础颜色 */
+      --surface: #ffffff;
+      --surface-soft: #f7f8fa;
+      --ink: #1d1d1f;
+      --ink-muted: #6b7280;
+      --brand: #3b82f6;
+      --brand-light: #eff6ff;
+      --success: #10b981;
+      --success-light: #ecfdf5;
+      --warning: #f59e0b;
+      --warning-light: #fffbeb;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --outline: #e5e7eb;
+      --focus: #2563eb;
+      
+      /* 字体与间距 */
+      --font-sans: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+      --font-mono: "JetBrains Mono", "Courier New", monospace;
+      --space-xs: .5rem;
+      --space-sm: .75rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2.5rem;
+      --gutter: clamp(1rem, 4vw, 3rem);
+      
+      /* 卡片规则 */
+      --radius: 8px;
+      --shadow-subtle: 0 1px 3px rgba(0,0,0,.06);
+      --shadow-hover: 0 4px 12px rgba(0,0,0,.08);
+      
+      /* 边框与分割线 */
+      --divider: 1px solid var(--outline);
+      --section-gap: 1.5rem;
+    }
+    
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      background: var(--surface);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    a { color: inherit; text-decoration: none; }
+    
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--outline);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: var(--space-sm) var(--space-md);
+      min-height: 40px;
+    }
+    
+    button:hover { background: var(--surface-soft); }
+    
+    button.primary {
+      background: var(--brand);
+      color: white;
+      border-color: var(--brand);
+    }
+    
+    button.primary:hover { opacity: .9; }
+    
+    :focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding-inline: var(--gutter);
+    }
+    
+    header.site-header {
+      padding-block: var(--space-lg);
+      border-bottom: var(--divider);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+    }
+    
+    .brand {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+    
+    nav.main-nav {
+      display: flex;
+      gap: var(--space-lg);
+      font-size: .875rem;
+    }
+    
+    nav.main-nav a {
+      color: var(--ink-muted);
+    }
+    
+    nav.main-nav a:hover { color: var(--ink); }
+    
+    main {
+      padding-block: var(--section-gap);
+    }
+    
+    section.hero-welcome {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-xl);
+      margin-bottom: var(--section-gap);
+    }
+    
+    .welcome-text h1 {
+      margin: 0 0 var(--space-sm);
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+    
+    .welcome-text p {
+      margin: 0;
+      color: var(--ink-muted);
+    }
+    
+    .welcome-actions {
+      display: flex;
+      gap: var(--space-md);
+    }
+    
+    section.edited-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-lg);
+      margin-bottom: var(--section-gap);
+    }
+    
+    .card {
+      border: var(--divider);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: var(--space-lg);
+      transition: box-shadow .15s ease;
+    }
+    
+    .card:hover { box-shadow: var(--shadow-hover); }
+    
+    .stat-card .stat-label {
+      display: block;
+      font-size: .875rem;
+      color: var(--ink-muted);
+      margin-bottom: var(--space-xs);
+    }
+    
+    .stat-card .stat-value {
+      display: block;
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: -.02em;
+    }
+    
+    .card-overdue {
+      grid-column: span 2;
+      background: var(--danger-light);
+      border-left: 4px solid var(--danger);
+    }
+    
+    .overdue-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-md);
+    }
+    
+    .overdue-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--danger);
+    }
+    
+    .badge-overdue {
+      display: inline-block;
+      background: var(--danger);
+      color: white;
+      font-size: .75rem;
+      font-weight: 600;
+      padding: var(--space-xs) var(--space-sm);
+      border-radius: 4px;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .7; }
+    }
+    
+    section.chart-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-lg);
+    }
+    
+    .chart-card .chart-title {
+      font-size: .875rem;
+      font-weight: 600;
+      margin-bottom: var(--space-sm);
+    }
+    
+    footer.site-footer {
+      margin-top: var(--section-gap);
+      padding-block: var(--space-lg);
+      border-top: var(--divider);
+      text-align: center;
+      font-size: .75rem;
+      color: var(--ink-muted);
+    }
+    
+    .demo-banner {
+      background: var(--brand-light);
+      color: var(--brand);
+      padding: var(--space-sm);
+      text-align: center;
+      font-size: .75rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--outline);
+    }
+    
+    @media (max-width: 768px) {
+      .section-hero-welcome { flex-direction: column; align-items: flex-start; }
+      .section-edited-grid { grid-template-columns: repeat(2, 1fr); }
+      .section-chart-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body data-version="pc-homepage">
+  <div class="demo-banner">高保真原型 · 编辑式网格方案 A · 虚构数据演示</div>
+  
+  <header class="site-header">
+    <a href="#" class="brand">ZW Insight · 工程项目管理</a>
+    <nav class="main-nav">
+      <a href="#">项目报备</a>
+      <a href="#">投标管理</a>
+      <a href="#">合同管理</a>
+      <a href="#">采购管理</a>
+      <a href="#">三方比价</a>
+      <a href="#">待办审批</a>
+    </nav>
+  </header>
+  
+  <main class="container">
+    <section class="hero-welcome">
+      <div class="welcome-text">
+        <h1 id="greeting">上午好，管理员</h1>
+        <p id="today-text">2026 年 9 月 11 日 星期四</p>
+      </div>
+      <div class="welcome-actions">
+        <button class="primary">新建项目</button>
+        <button>项目看板</button>
+      </div>
+    </section>
+    
+    <section class="edited-grid">
+      <div class="card stat-card">
+        <span class="stat-label">项目总数</span>
+        <span class="stat-value">128</span>
+      </div>
+      <div class="card stat-card">
+        <span class="stat-label">合同总额（万）</span>
+        <span class="stat-value">3,456</span>
+      </div>
+      <div class="card stat-card">
+        <span class="stat-label">已收款（万）</span>
+        <span class="stat-value">2,890</span>
+      </div>
+      <div class="card stat-card">
+        <span class="stat-label">垫资（万）</span>
+        <span class="stat-value">566</span>
+      </div>
+      
+      <div class="card card-overdue">
+        <div class="overdue-header">
+          <span class="overdue-title">质保金逾期风险告警</span>
+          <span class="badge-overdue">3 笔逾期</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md);">
+          <div>
+            <div style="font-size: .75rem; color: var(--ink-muted);">逾期笔数</div>
+            <div style="font-size: 1.5rem; font-weight: 700;">3</div>
+          </div>
+          <div>
+            <div style="font-size: .75rem; color: var(--ink-muted);">逾期未返还金额（万）</div>
+            <div style="font-size: 1.5rem; font-weight: 700;">12.8</div>
+          </div>
+          <div>
+            <div style="font-size: .75rem; color: var(--ink-muted);">最长逾期</div>
+            <div style="font-size: 1.5rem; font-weight: 700;">47 天</div>
+          </div>
+        </div>
+        <button style="margin-top: var(--space-md);" onclick="alert('跳转到质保金逾期列表')">查看逾期列表</button>
+      </div>
+    </section>
+    
+    <section class="chart-row">
+      <div class="card chart-card">
+        <div class="chart-title">项目状态分布</div>
+        <div id="pieChart" style="height: 280px;"></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-title">累计收支对比（万元）</div>
+        <div id="barChart" style="height: 280px;"></div>
+      </div>
+    </section>
+    
+    <footer class="site-footer">
+      ZW Insight · 本地隔离演示 · 高保真原型 v1.0 · 虚构数据
+    </footer>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

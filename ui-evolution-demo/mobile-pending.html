@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ZW Insight 工程项目管理系统 - 待办审批列表（高保真原型）">
+  <title>ZW Insight · 待办审批 | 编辑式网格方案 A</title>
+  <style>
+    :root {
+      --surface: #ffffff;
+      --surface-soft: #f7f8fa;
+      --ink: #1d1d1f;
+      --ink-muted: #6b7280;
+      --brand: #3b82f6;
+      --brand-light: #eff6ff;
+      --success: #10b981;
+      --success-light: #ecfdf5;
+      --warning: #f59e0b;
+      --warning-light: #fffbeb;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --outline: #e5e7eb;
+      --focus: #2563eb;
+      
+      --font-sans: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+      --font-mono: "JetBrains Mono", "Courier New", monospace;
+      
+      --space-xs: .5rem;
+      --space-sm: .75rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      
+      --radius: 8px;
+      --shadow-subtle: 0 1px 3px rgba(0,0,0,.06);
+    }
+    
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      background: var(--surface);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+    }
+    
+    a { color: inherit; text-decoration: none; }
+    
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--outline);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: var(--space-sm) var(--space-md);
+      min-height: 40px;
+    }
+    
+    button:hover { background: var(--surface-soft); }
+    
+    button.primary {
+      background: var(--brand);
+      color: white;
+      border-color: var(--brand);
+    }
+    
+    :focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    
+    .demo-banner {
+      background: var(--brand-light);
+      color: var(--brand);
+      padding: var(--space-sm);
+      text-align: center;
+      font-size: .75rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--outline);
+    }
+    
+    header.mobile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-block: var(--space-md);
+      border-bottom: var(--divider);
+    }
+    
+    .brand {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    
+    .header-actions {
+      display: flex;
+      gap: var(--space-sm);
+    }
+    
+    main {
+      padding-block: var(--space-lg);
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    
+    section.fab-actions {
+      position: fixed;
+      bottom: var(--space-lg);
+      left: var(--space-lg);
+      right: var(--space-lg);
+      display: flex;
+      gap: var(--space-md);
+      z-index: 10;
+    }
+    
+    .fab-primary {
+      flex: 1;
+      background: var(--brand);
+      color: white;
+      border: none;
+      font-weight: 600;
+    }
+    
+    section.task-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+    
+    .task-card {
+      border: var(--divider);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: var(--space-lg);
+      position: relative;
+    }
+    
+    .task-card.priority-high {
+      border-left: 4px solid var(--danger);
+      background: var(--danger-light);
+    }
+    
+    .task-card.status-reviewing {
+      border-left: 4px solid var(--warning);
+      background: var(--warning-light);
+    }
+    
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-sm);
+    }
+    
+    .task-title {
+      font-size: .875rem;
+      font-weight: 600;
+      margin: 0 0 var(--space-xs);
+    }
+    
+    .task-meta {
+      font-size: .75rem;
+      color: var(--ink-muted);
+    }
+    
+    .status-badge {
+      display: inline-block;
+      font-size: .6875rem;
+      font-weight: 600;
+      padding: var(--space-xs) var(--space-sm);
+      border-radius: 4px;
+    }
+    
+    .status-badge.review {
+      background: var(--warning-light);
+      color: var(--warning);
+    }
+    
+    .status-badge.approval {
+      background: var(--brand-light);
+      color: var(--brand);
+    }
+    
+    .task-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: var(--space-md);
+      padding-top: var(--space-sm);
+      border-top: var(--divider);
+    }
+    
+    footer.footer-info {
+      margin-top: var(--space-xl);
+      text-align: center;
+      font-size: .75rem;
+      color: var(--ink-muted);
+      padding-block: var(--space-md);
+    }
+    
+    #empty-state {
+      display: none;
+      text-align: center;
+      padding: var(--space-xl);
+    }
+    
+    #empty-state.visible { display: block; }
+    
+    @media (prefers-reduced-motion: reduce) {
+      .badge-overdue { animation: none; }
+    }
+  </style>
+</head>
+<body data-version="mobile-pending">
+  <div class="demo-banner">高保真原型 · 编辑式网格方案 A · 虚构数据演示</div>
+  
+  <header class="mobile-header">
+    <a href="#" class="brand">ZW Insight</a>
+    <div class="header-actions">
+      <button onclick="alert('消息中心')">消息</button>
+      <button onclick="alert('更多')">更多</button>
+    </div>
+  </header>
+  
+  <main>
+    <section class="task-list" id="taskList"></section>
+    <div id="empty-state">
+      <p>暂无待办任务</p>
+    </div>
+    
+    <nav class="fab-actions">
+      <button class="fab-primary" onclick="alert('新建待办')">+ 新建任务</button>
+    </nav>
+    
+    <footer class="footer-info">
+      ZW Insight · 本地隔离演示 · 高保真原型 v1.0 · 虚构数据
+    </footer>
+  </main>
+  
+  <script src="app.js"></script>
+</body>
+</html>
