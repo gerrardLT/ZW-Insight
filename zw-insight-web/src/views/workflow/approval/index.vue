@@ -12,6 +12,12 @@
         <el-button type="success" :disabled="selectedRows.length === 0" @click="handleBatchApprove">
           <el-icon><Check /></el-icon>批量通过
         </el-button>
+        <ColumnSettingPopover
+          :columns="approvalColumns"
+          :visible="columnVisible"
+          @update:visible="setVisible"
+          @reset="resetColumns"
+        />
       </div>
 
       <!-- 首屏骨架屏：loading 期间显示骨架，完成后渲染表格（感知性能优化 S1.4） -->
@@ -22,10 +28,10 @@
           @selection-change="handleSelectionChange"
         >
             <el-table-column v-if="activeTab === 'todo'" type="selection" width="50" align="center" />
-            <el-table-column prop="taskName" label="任务名称" min-width="150" />
-            <el-table-column prop="businessType" label="业务类型" width="120" />
-            <el-table-column prop="initiator" label="发起人" width="100" />
-            <el-table-column prop="createTime" label="创建时间" width="170" />
+            <el-table-column v-if="columnVisible[0]" prop="taskName" label="任务名称" min-width="150" />
+            <el-table-column v-if="columnVisible[1]" prop="businessType" label="业务类型" width="120" />
+            <el-table-column v-if="columnVisible[2]" prop="initiator" label="发起人" width="100" />
+            <el-table-column v-if="columnVisible[3]" prop="createTime" label="创建时间" width="170" />
             <el-table-column label="操作" width="220" fixed="right" v-if="activeTab === 'todo'">
               <template #default="{ row }">
                 <el-button link type="success" @click="handleApprove(row)">通过</el-button>
@@ -97,6 +103,8 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
+import { useColumnSetting } from '@/composables/useColumnSetting'
 import {
   getTodoTasks,
   getDoneTasks,
@@ -106,6 +114,15 @@ import {
   terminateProcess,
   batchApprove
 } from '@/api/workflow'
+
+// 列显隐配置（S2.1）：按 approval-table 持久化 localStorage
+const approvalColumns = [
+  { key: 'taskName', label: '任务名称' },
+  { key: 'businessType', label: '业务类型' },
+  { key: 'initiator', label: '发起人' },
+  { key: 'createTime', label: '创建时间' },
+]
+const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('approval-table', approvalColumns)
 
 const loading = ref(false)
 const tableData = ref<any[]>([])
