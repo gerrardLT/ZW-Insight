@@ -51,10 +51,30 @@
     "backgroundColor": "#ffffff",
     "borderStyle": "black",
     "list": [
-      { "pagePath": "pages/home/index", "text": "首页" },
-      { "pagePath": "pages/workbench/index", "text": "工作台" },
-      { "pagePath": "pages/approval/index", "text": "审批" },
-      { "pagePath": "pages/mine/index", "text": "我的" }
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/workbench/index",
+        "text": "工作台",
+        "iconPath": "static/tabbar/workbench.png",
+        "selectedIconPath": "static/tabbar/workbench-active.png"
+      },
+      {
+        "pagePath": "pages/approval/index",
+        "text": "审批",
+        "iconPath": "static/tabbar/approval.png",
+        "selectedIconPath": "static/tabbar/approval-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "static/tabbar/mine.png",
+        "selectedIconPath": "static/tabbar/mine-active.png"
+      }
     ]
   }
 }

@@ -1,8 +1,8 @@
 <template>
   <div class="error-page">
     <div class="error-content">
-      <!-- 404 插画（2026-09-16 AI 生成：断裂钢缆+空吊钩——「要找的东西没找到」的工程隐喻） -->
-      <img src="@/assets/err-404.png" class="error-illustration" alt="" />
+      <!-- 404 插画（2026-09-16 AI 生成：断裂钢缆+空吊钩；暗色主题切换深底版） -->
+      <img :src="err404Img" class="error-illustration" alt="" />
       <div class="error-code">404</div>
       <h2 class="error-title">页面走丢了</h2>
       <p class="error-desc">抱歉，您访问的页面不存在或已被移除。</p>
@@ -15,6 +15,16 @@
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import err404Light from '@/assets/err-404.png'
+import err404Dark from '@/assets/err-404-dark.png'
+import { useAppStore } from '@/stores/app'
+
+const appStore = useAppStore()
+const err404Img = computed(() => (appStore.isDark ? err404Dark : err404Light))
+</script>
 
 <style scoped>
 .error-page {

@@ -15,7 +15,7 @@
     <!-- 未选择项目时的引导提示（2026-09-16 插画：空白图纸+圆规——「等待绘制」隐喻） -->
     <el-empty v-if="!selectedProjectId" description="请先选择一个项目以查看看板数据">
       <template #image>
-        <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
+        <img :src="emptyImg" class="zw-empty-img" alt="" />
       </template>
     </el-empty>
 
@@ -38,7 +38,7 @@
               />
               <el-empty v-else-if="!budget.loading && isEmpty(budget.data)" description="暂无数据">
                 <template #image>
-                  <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
+                  <img :src="emptyImg" class="zw-empty-img" alt="" />
                 </template>
               </el-empty>
               <!-- 图表占位容器（task 8.3 渲染 ECharts） -->
@@ -63,7 +63,7 @@
               />
               <el-empty v-else-if="!progress.loading && isEmpty(progress.data)" description="暂无数据">
                 <template #image>
-                  <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
+                  <img :src="emptyImg" class="zw-empty-img" alt="" />
                 </template>
               </el-empty>
               <div v-show="!progress.error && !isEmpty(progress.data)" ref="progressChartRef" class="chart-box"></div>
@@ -89,7 +89,7 @@
               />
               <el-empty v-else-if="!contract.loading && isEmpty(contract.data)" description="暂无数据">
                 <template #image>
-                  <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
+                  <img :src="emptyImg" class="zw-empty-img" alt="" />
                 </template>
               </el-empty>
               <div v-show="!contract.error && !isEmpty(contract.data)" ref="contractChartRef" class="chart-box"></div>
@@ -113,7 +113,7 @@
               />
               <el-empty v-else-if="!output.loading && isEmpty(output.data)" description="暂无数据">
                 <template #image>
-                  <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
+                  <img :src="emptyImg" class="zw-empty-img" alt="" />
                 </template>
               </el-empty>
               <div v-show="!output.error && !isEmpty(output.data)" ref="outputChartRef" class="chart-box"></div>
@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import {
@@ -141,9 +141,12 @@ import {
 } from '@/api/dashboard'
 import { toAmount2, toWan, clampPercent, nonNegativeRemaining } from '@/utils/chart-format'
 import { useAppStore } from '@/stores/app'
+import emptyLight from '@/assets/empty-blueprint.png'
+import emptyDark from '@/assets/empty-blueprint-dark.png'
 import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
 
 const appStore = useAppStore()
+const emptyImg = computed(() => (appStore.isDark ? emptyDark : emptyLight))
 
 // 当前选中的项目 ID
 const selectedProjectId = ref<number>()

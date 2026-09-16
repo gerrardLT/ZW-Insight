@@ -20,7 +20,9 @@
     "setting": {
       "urlCheck": true
     },
-    "requiredPrivateInfos": ["getLocation"],
+    "requiredPrivateInfos": [
+      "getLocation"
+    ],
     "permission": {
       "scope.userLocation": {
         "desc": "用于现场拍照水印标注 GPS 位置"
@@ -45,6 +47,9 @@
       "NSCameraUsageDescription": "用于拍摄现场施工照片",
       "NSPhotoLibraryUsageDescription": "用于从相册选取整改照片",
       "NSLocationWhenInUseUsageDescription": "用于照片水印标注 GPS 位置"
+    },
+    "icons": {
+      "192x192": "static/brand/app-icon.png"
     }
   }
 }

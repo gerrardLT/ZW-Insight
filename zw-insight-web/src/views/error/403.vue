@@ -1,8 +1,8 @@
 <template>
   <div class="error-page">
     <div class="error-content">
-      <!-- 403 插画（2026-09-16 AI 生成：警示条纹围挡+挂锁——「工地禁入」的权限隐喻） -->
-      <img src="@/assets/err-403.png" class="error-illustration" alt="" />
+      <!-- 403 插画（2026-09-16 AI 生成：警示条纹围挡+挂锁；暗色主题切换深底版） -->
+      <img :src="err403Img" class="error-illustration" alt="" />
       <div class="error-code danger">403</div>
       <h2 class="error-title">无访问权限</h2>
       <p class="error-desc">抱歉，您没有权限访问该页面，请联系管理员。</p>
@@ -20,11 +20,17 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useAppStore } from '@/stores/app'
+import err403Light from '@/assets/err-403.png'
+import err403Dark from '@/assets/err-403-dark.png'
 
 const router = useRouter()
 const userStore = useUserStore()
+const appStore = useAppStore()
+const err403Img = computed(() => (appStore.isDark ? err403Dark : err403Light))
 
 /**
  * 重新登录（403 自愈入口，2026-08-24）：

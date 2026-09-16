@@ -2,6 +2,8 @@
   <view class="login-page">
     <!-- 品牌铭牌（设计文档：登录页 = 表单 + 品牌铭牌，不渲染 hero-band） -->
     <view class="login-header">
+		<!-- 品牌背景（2026-09-16 AI 生成：夜景工地线稿，弱透明置于铭牌后） -->
+		<image class="brand-bg" src="/static/brand/login-bg.png" mode="aspectFill" />
       <view class="brand-mark"><text>ZW</text></view>
       <text class="app-title">中维智营</text>
       <text class="app-subtitle eyebrow-cap">Engineering Project Management</text>
@@ -242,6 +244,21 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   justify-content: center;
   background: var(--zw-bg-sidebar); /* 石墨黑画布（去渐变纪律） */
   padding: 40rpx;
+}
+.login-header {
+  position: relative;
+  overflow: hidden;
+}
+.brand-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.32;
+}
+.login-header > .brand-mark, .login-header > .app-title, .login-header > .app-subtitle {
+  position: relative;
+  z-index: 1;
 }
 .login-header {
   text-align: center;

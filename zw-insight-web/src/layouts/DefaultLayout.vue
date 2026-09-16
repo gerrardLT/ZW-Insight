@@ -92,7 +92,10 @@
           <!-- 用户 -->
           <el-dropdown>
             <div class="user-info" role="button" aria-label="用户菜单">
-              <div class="user-avatar">{{ avatarText }}</div>
+              <div class="user-avatar">
+                <img :src="userAvatarImg" alt="" class="user-avatar-img" />
+                <span class="user-avatar-fallback">{{ avatarText }}</span>
+              </div>
               <span class="user-name">{{ userName }}</span>
               <el-icon class="user-arrow"><ArrowDown /></el-icon>
             </div>
@@ -210,6 +213,10 @@ const userName = computed(
 )
 
 const avatarText = computed(() => userName.value.charAt(0).toUpperCase())
+
+// 头像：用户设置的真实头像 → 默认品牌插画（2026-09-16 安全帽工人剪影，AI 生成）
+import defaultAvatar from '@/assets/default-avatar.png'
+const userAvatarImg = computed(() => userStore.userInfo?.avatar || defaultAvatar)
 
 /** 规范化拼接父子路径 */
 function joinPath(parent: string, child: string): string {
@@ -651,19 +658,32 @@ onBeforeUnmount(() => {
   background-color: var(--zw-bg-hover);
 }
 
-/* 方形首字母头像（直角纪律，不用渐变圆） */
+/* 头像：默认品牌插画（安全帽工人剪影），备用首字叠加在图片下方防加载失败 */
 .user-avatar {
+  position: relative;
   width: 30px;
   height: 30px;
   border-radius: var(--zw-radius-xs);
+  overflow: hidden;
+  background: var(--zw-bg-surface-3);
+}
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.user-avatar-fallback {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--zw-bg-surface-3);
   color: var(--zw-text-primary);
   font-size: var(--zw-font-size-sm);
   font-weight: var(--zw-font-weight-semibold);
-}
+}/* 图片加载成功后隐藏备用首字 */
+.user-avatar img[src]:not([src='']) ~ .user-avatar-fallback { display: none; }
 
 .user-name {
   font-size: var(--zw-font-size-sm);

@@ -4,8 +4,9 @@
     <!-- 用户信息头部 -->
     <view class="user-header">
       <view class="avatar">
-        <text class="avatar-text">{{ avatarText }}</text>
-      </view>
+      <image class="avatar-img" :src="userStore.userInfo?.avatar || '/static/brand/default-avatar.png'" mode="aspectFill" />
+      <text class="avatar-text">{{ avatarText }}</text>
+    </view>
       <view class="user-info">
         <text class="user-name">{{ userStore.userInfo?.realName || userStore.userInfo?.username || '未登录' }}</text>
         <text class="user-role">{{ userStore.userInfo?.roleName || '-' }}</text>
@@ -120,6 +121,11 @@ function handleLogout() {
 .mine-page { padding: 20rpx; }
 /* 头部：石墨黑控制室纯色块（去渐变纪律）+ 橙色头像强调 */
 .user-header { display: flex; align-items: center; background: var(--zw-bg-sidebar); border-radius: var(--zw-radius-sm); padding: 40rpx 30rpx; margin-bottom: 24rpx; border: 1rpx solid var(--zw-border); }
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
 .avatar { width: 100rpx; height: 100rpx; border-radius: var(--zw-radius-xs); background: var(--zw-brand); display: flex; align-items: center; justify-content: center; }
 .avatar-text { color: var(--zw-on-primary); font-size: 32rpx; font-weight: bold; } /* 橙底深字承重规则 */
 .user-info { margin-left: 24rpx; }

@@ -31,7 +31,7 @@
       <div v-else-if="isEmpty" class="panel-state" data-testid="stat-panel-empty">
         <el-empty :description="emptyText">
           <template #image>
-            <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
+            <img :src="emptyImg" class="zw-empty-img" alt="" />
           </template>
         </el-empty>
       </div>
@@ -81,14 +81,17 @@
  * - buildOption 返回 null → 空态 el-empty
  * - 成功 → echarts setOption（notMerge=true 防残留序列）
  */
-import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
 import { Refresh } from '@/components/icons/registry'
 import { HelmetIcon } from '@/components/icons/zw'
 import { useAppStore } from '@/stores/app'
+import emptyLight from '@/assets/empty-blueprint.png'
+import emptyDark from '@/assets/empty-blueprint-dark.png'
 import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
 
 const appStore = useAppStore()
+const emptyImg = computed(() => (appStore.isDark ? emptyDark : emptyLight))
 
 const props = withDefaults(defineProps<{
   /** 面板标题 */

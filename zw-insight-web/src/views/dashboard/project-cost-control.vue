@@ -15,7 +15,7 @@
     <!-- 未选择项目时的引导提示（2026-09-16 插画：空白图纸+圆规——「等待绘制」隐喻） -->
     <el-empty v-if="!selectedProjectId" description="请先选择一个项目以查看成本控制看板数据">
       <template #image>
-        <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
+        <img :src="emptyImg" class="zw-empty-img" alt="" />
       </template>
     </el-empty>
 
@@ -184,7 +184,7 @@
               </el-table>
               <el-empty v-else description="暂无成本账户数据">
                 <template #image>
-                  <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
+                  <img :src="emptyImg" class="zw-empty-img" alt="" />
                 </template>
               </el-empty>
             </div>
