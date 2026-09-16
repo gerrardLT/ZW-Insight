@@ -203,3 +203,21 @@ page.theme-outdoor,
   --zw-info: #0d47a1;
   --zw-info-light: #bbdefb;
 }
+
+/* ============ 动效无障碍（S4.4，2026-09-15） ============
+ * 前庭功能障碍用户的动效降级：全局声明 prefers-reduced-motion，
+ * 动画/过渡时长压到 0.01ms（状态变化仍可感知——颜色/文字即时切换，
+ * 只去掉位移/缩放/闪烁类动效），与 PC 端 global.scss 同源策略。
+ */
+@media (prefers-reduced-motion: reduce) {
+  page,
+  view,
+  text,
+  image,
+  button,
+  scroll-view {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

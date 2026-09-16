@@ -8,23 +8,23 @@
       </view>
       <view class="form-item">
         <text class="form-label">材料名称</text>
-        <input v-model="form.materialName" placeholder="请输入材料名称" class="form-input" />
+        <input cursor-spacing="24" v-model="form.materialName" placeholder="请输入材料名称" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">规格</text>
-        <input v-model="form.specification" placeholder="请输入规格" class="form-input" />
+        <input cursor-spacing="24" v-model="form.specification" placeholder="请输入规格" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">单位</text>
-        <input v-model="form.unit" placeholder="如：吨/根/车" class="form-input" />
+        <input cursor-spacing="24" v-model="form.unit" placeholder="如：吨/根/车" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">退货数量</text>
-        <input v-model="form.quantity" type="number" placeholder="不能超过库存数量" class="form-input" />
+        <input cursor-spacing="24" v-model="form.quantity" type="number" placeholder="不能超过库存数量" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">入库单价</text>
-        <input v-model="form.unitPrice" type="number" placeholder="退货退款时用于计算退款金额" class="form-input" />
+        <input cursor-spacing="24" v-model="form.unitPrice" type="number" placeholder="退货退款时用于计算退款金额" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">退货类型</text>
@@ -35,11 +35,11 @@
       </view>
       <view class="form-item" v-if="form.returnType === 'RETURN_REFUND'">
         <text class="form-label">采购合同ID</text>
-        <input v-model="form.contractId" type="number" placeholder="退款关联的采购合同ID" class="form-input" />
+        <input cursor-spacing="24" v-model="form.contractId" type="number" placeholder="退款关联的采购合同ID" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">出库日期</text>
-        <input v-model="form.outboundDate" placeholder="YYYY-MM-DD" class="form-input" />
+        <input cursor-spacing="24" v-model="form.outboundDate" placeholder="YYYY-MM-DD" class="form-input" />
       </view>
     </view>
 

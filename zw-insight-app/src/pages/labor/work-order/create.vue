@@ -21,7 +21,7 @@
     <view class="form-section">
       <view class="form-item">
         <text class="form-label">工人姓名</text>
-        <input v-model="form.workerName" placeholder="请输入工人姓名" class="form-input" />
+        <input cursor-spacing="24" v-model="form.workerName" placeholder="请输入工人姓名" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">用工类型</text>
@@ -36,23 +36,23 @@
       </view>
       <view class="form-item">
         <text class="form-label">工作日期</text>
-        <input v-model="form.workDate" placeholder="YYYY-MM-DD" class="form-input" />
+        <input cursor-spacing="24" v-model="form.workDate" placeholder="YYYY-MM-DD" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">正常工时(h)</text>
-        <input v-model="form.hours" type="digit" placeholder="如 8 或 8.5" class="form-input" />
+        <input cursor-spacing="24" v-model="form.hours" type="digit" placeholder="如 8 或 8.5" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">时薪单价(元)</text>
-        <input v-model="form.hourlyRate" type="digit" placeholder="每小时单价" class="form-input" />
+        <input cursor-spacing="24" v-model="form.hourlyRate" type="digit" placeholder="每小时单价" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">加班工时(h)</text>
-        <input v-model="form.overtime" type="digit" placeholder="选填，如 2" class="form-input" />
+        <input cursor-spacing="24" v-model="form.overtime" type="digit" placeholder="选填，如 2" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">加班费率(元)</text>
-        <input v-model="form.overtimeRate" type="digit" placeholder="不填则按正常时薪" class="form-input" />
+        <input cursor-spacing="24" v-model="form.overtimeRate" type="digit" placeholder="不填则按正常时薪" class="form-input" />
       </view>
       <view class="form-item highlight">
         <text class="form-label font-bold">合计金额(元)</text>

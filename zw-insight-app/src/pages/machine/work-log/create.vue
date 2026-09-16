@@ -21,23 +21,23 @@
     <view class="form-section">
       <view class="form-item">
         <text class="form-label">工作日期</text>
-        <input v-model="form.workDate" placeholder="YYYY-MM-DD" class="form-input" />
+        <input cursor-spacing="24" v-model="form.workDate" placeholder="YYYY-MM-DD" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">台班数</text>
-        <input v-model="form.shiftCount" type="digit" placeholder="如 1 或 1.5" class="form-input" />
+        <input cursor-spacing="24" v-model="form.shiftCount" type="digit" placeholder="如 1 或 1.5" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">工程量</text>
-        <input v-model="form.workQuantity" type="digit" placeholder="完成方量/米数(选填)" class="form-input" />
+        <input cursor-spacing="24" v-model="form.workQuantity" type="digit" placeholder="完成方量/米数(选填)" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">耗油量(升)</text>
-        <input v-model="form.oilConsumption" type="digit" placeholder="油耗升数(选填)" class="form-input" />
+        <input cursor-spacing="24" v-model="form.oilConsumption" type="digit" placeholder="油耗升数(选填)" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">工作备注</text>
-        <input v-model="form.remark" placeholder="作业部位或工作内容说明" class="form-input" />
+        <input cursor-spacing="24" v-model="form.remark" placeholder="作业部位或工作内容说明" class="form-input" />
       </view>
     </view>
 

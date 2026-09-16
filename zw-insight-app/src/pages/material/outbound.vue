@@ -17,7 +17,7 @@
       <view class="form-item">
         <text class="form-label">材料编码</text>
         <view class="form-input code-wrap">
-          <input v-model="materialCode" placeholder="扫码或输入编码" class="code-input" />
+          <input cursor-spacing="24" v-model="materialCode" placeholder="扫码或输入编码" class="code-input" />
           <!-- #ifndef H5 -->
           <text class="scan-btn" @click="handleScan">扫码</text>
           <!-- #endif -->
@@ -28,35 +28,35 @@
       </view>
       <view class="form-item">
         <text class="form-label">材料名称</text>
-        <input v-model="form.materialName" placeholder="请输入材料名称" class="form-input" />
+        <input cursor-spacing="24" v-model="form.materialName" placeholder="请输入材料名称" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">规格型号</text>
-        <input v-model="form.specification" placeholder="请输入规格型号" class="form-input" />
+        <input cursor-spacing="24" v-model="form.specification" placeholder="请输入规格型号" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">出库数量</text>
-        <input v-model="form.quantity" type="digit" placeholder="请输入数量" class="form-input" />
+        <input cursor-spacing="24" v-model="form.quantity" type="digit" placeholder="请输入数量" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">单位</text>
-        <input v-model="form.unit" placeholder="如：吨、米、个" class="form-input" />
+        <input cursor-spacing="24" v-model="form.unit" placeholder="如：吨、米、个" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">领用人</text>
-        <input v-model="form.receiver" placeholder="请输入领用人" class="form-input" />
+        <input cursor-spacing="24" v-model="form.receiver" placeholder="请输入领用人" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">用途说明</text>
-        <input v-model="form.purpose" placeholder="请输入用途" class="form-input" />
+        <input cursor-spacing="24" v-model="form.purpose" placeholder="请输入用途" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">出库日期</text>
-        <input v-model="form.outboundDate" placeholder="YYYY-MM-DD" class="form-input" />
+        <input cursor-spacing="24" v-model="form.outboundDate" placeholder="YYYY-MM-DD" class="form-input" />
       </view>
       <view class="form-item">
         <text class="form-label">备注</text>
-        <input v-model="form.remark" placeholder="请输入备注" class="form-input" />
+        <input cursor-spacing="24" v-model="form.remark" placeholder="请输入备注" class="form-input" />
       </view>
     </view>
 

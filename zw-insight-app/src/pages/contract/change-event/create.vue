@@ -27,7 +27,7 @@
 
       <view class="form-item vertical">
         <text class="form-label">标题<text class="required">*</text></text>
-        <input
+        <input cursor-spacing="24"
           v-model="form.title"
           placeholder="一句话说明变更，如：3#楼地下室顶板加厚 100mm"
           class="form-input left"
@@ -57,7 +57,7 @@
       <!-- 来源引用：与既有单据绑定，防止同一业务事实重复登记 -->
       <view class="form-item" v-if="form.sourceType === 'FIELD_EVENT'">
         <text class="form-label">关联签证号</text>
-        <input
+        <input cursor-spacing="24"
           v-model="form.sourceRef"
           placeholder="可空；填写后同号签证不可重复登记"
           class="form-input"
