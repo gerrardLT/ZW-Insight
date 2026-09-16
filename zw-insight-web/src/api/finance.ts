@@ -112,6 +112,14 @@ export function submitPaymentApply(id: number) {
   return request.put<R<void>>(`/v1/finance/payment-apply/${id}/submit`)
 }
 
+/**
+ * 批量操作付款申请（后端 PaymentApplyController POST /batch，@SecondaryConfirm 449 二次确认由拦截器处理）。
+ * @param action delete=批量删除草稿 / submit=批量提交审批；整体单事务，任一失败全部回滚
+ */
+export function batchPaymentApply(action: 'delete' | 'submit', ids: number[]) {
+  return request.post<R<number>>('/v1/finance/payment-apply/batch', { action, ids })
+}
+
 // ======================== 其他费用付款 ========================
 // 后端：OtherPaymentController @RequestMapping("/api/v1/finance/other-payment")
 export function getOtherPaymentPage(params: { page?: number; size?: number; projectId?: number }) {

@@ -162,13 +162,13 @@ onMounted(loadTaxRates)
   width: 110px;
 }
 .tax-rate-selector__suffix {
-  color: #909399;
+  color: var(--zw-text-tertiary);
   font-size: 13px;
 }
 .tax-rate-selector__hint {
   flex-basis: 100%;
   margin-top: 4px;
-  color: #e6a23c;
+  color: var(--zw-warning);
   font-size: 12px;
   line-height: 1.4;
 }

@@ -137,7 +137,7 @@ onMounted(() => {
 }
 .amount-text {
   font-weight: bold;
-  color: #409eff;
+  color: var(--zw-info);
   font-size: var(--zw-font-size-md);
 }
 </style>

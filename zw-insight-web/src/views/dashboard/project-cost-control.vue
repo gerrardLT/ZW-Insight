@@ -554,8 +554,8 @@ watch(selectedProjectId, (newVal) => {
   .risk-title { font-size: var(--zw-font-size-sm); font-weight: var(--zw-font-weight-semibold); color: var(--zw-text-secondary); margin-bottom: var(--zw-space-sm); border-bottom: 1px dashed var(--zw-border-light); padding-bottom: 4px; }
   .risk-item {
     display: inline-flex; align-items: center; gap: 8px; margin: 0 8px 8px 0; padding: 6px 12px; background: var(--zw-bg-hover); border-radius: 6px; font-size: var(--zw-font-size-sm); cursor: default;
-    &.high { border: 1px solid var(--zw-danger-light); background-color: rgba(217, 45, 32, .06); }
-    &.low { border: 1px solid var(--zw-warning-light); background-color: rgba(247, 181, 0, .06); }
+    &.high { border: 1px solid var(--zw-danger-light); background-color: color-mix(in srgb, var(--zw-danger) 6%, transparent); }
+    &.low { border: 1px solid var(--zw-warning-light); background-color: color-mix(in srgb, var(--zw-warning) 6%, transparent); }
     .risk-account { font-weight: var(--zw-font-weight-medium); color: var(--zw-text-primary); }
     .risk-detail { font-size: var(--zw-font-size-xs); color: var(--zw-text-quaternary); }
   }

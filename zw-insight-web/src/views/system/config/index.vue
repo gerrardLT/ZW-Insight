@@ -266,16 +266,16 @@ onMounted(() => {
 .config-item-hint {
   margin-top: var(--zw-space-xs);
   font-size: var(--zw-font-size-xs);
-  color: #909399;
+  color: var(--zw-text-tertiary);
   line-height: 1.4;
 }
 
 .hint-range {
   margin-right: var(--zw-space-sm-md);
-  color: #e6a23c;
+  color: var(--zw-warning);
 }
 
 .hint-remark {
-  color: #909399;
+  color: var(--zw-text-tertiary);
 }
 </style>

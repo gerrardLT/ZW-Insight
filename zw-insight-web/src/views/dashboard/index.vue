@@ -360,9 +360,9 @@ onBeforeUnmount(() => {
   margin-bottom: var(--zw-space-md);
   border-radius: var(--zw-radius-sm);
   background: var(--zw-bg-sidebar);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
-  color: #f2f3f1;
+  border: 1px solid var(--zw-steel-line);
+  box-shadow: inset 0 1px 0 0 var(--zw-steel-glint);
+  color: var(--zw-steel-text);
   overflow: hidden;
   position: relative;
 }
@@ -387,7 +387,7 @@ onBeforeUnmount(() => {
 
 .welcome-text p {
   font-size: var(--zw-font-size-base);
-  color: #c6c9cc;
+  color: var(--zw-steel-text-muted);
 }
 
 .welcome-actions {
@@ -402,14 +402,14 @@ onBeforeUnmount(() => {
 }
 
 .welcome-actions :deep(.el-button:not(.el-button--primary)) {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--zw-steel-fill);
   border-color: transparent;
-  color: #f2f3f1;
+  color: var(--zw-steel-text);
 }
 
 .welcome-actions :deep(.el-button:not(.el-button--primary)):hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: var(--zw-steel-fill-strong);
+  color: var(--zw-steel-text);
 }
 
 /* 统计卡片 */

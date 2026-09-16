@@ -189,9 +189,9 @@ onMounted(() => {
   justify-content: flex-end;
 }
 .text-danger {
-  color: #f56c6c;
+  color: var(--zw-danger);
 }
 .text-success {
-  color: #67c23a;
+  color: var(--zw-success);
 }
 </style>

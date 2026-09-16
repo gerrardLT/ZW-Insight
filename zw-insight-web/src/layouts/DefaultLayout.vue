@@ -20,7 +20,6 @@
         <el-menu
           :default-active="$route.path"
           :collapse="isCollapse"
-          router
           class="side-menu"
         >
           <template v-for="route in menuRoutes" :key="route.path">
@@ -28,6 +27,7 @@
             <el-menu-item
               v-if="route.singleChild"
               :index="route.singleChild.fullPath"
+              @click="handleMenuClick(route.singleChild.fullPath)"
             >
               <el-icon class="menu-item-icon"><component :is="resolveMenuIcon(route.singleChild.icon)" /></el-icon>
               <template #title>{{ route.singleChild.title }}</template>
@@ -43,6 +43,7 @@
                 v-for="child in route.children"
                 :key="child.fullPath"
                 :index="child.fullPath"
+                @click="handleMenuClick(child.fullPath)"
               >
                 <el-icon class="child-menu-icon"><component :is="resolveMenuIcon(child.icon)" /></el-icon>
                 <template #title>{{ child.title }}</template>
@@ -64,6 +65,18 @@
           <AppBreadcrumb />
         </div>
         <div class="header-right">
+          <!-- 命令面板触发（⌘K / Ctrl+K） -->
+          <el-tooltip content="命令面板 (Ctrl+K)" placement="bottom">
+            <div ref="paletteBtnRef" class="header-action" role="button" aria-label="打开命令面板" @click="togglePalette">
+              <el-icon><Search /></el-icon>
+            </div>
+          </el-tooltip>
+          <!-- 帮助中心（Phase 1.3） -->
+          <el-tooltip content="帮助中心" placement="bottom">
+            <div ref="helpBtnRef" class="header-action" role="button" aria-label="打开帮助中心" @click="goHelp">
+              <el-icon><IconHelp /></el-icon>
+            </div>
+          </el-tooltip>
           <!-- 主题切换 -->
           <el-tooltip :content="appStore.isDark ? '切换到浅色' : '切换到深色'" placement="bottom">
             <div class="header-action" role="button" aria-label="切换主题" @click="appStore.toggleTheme()">
@@ -109,6 +122,29 @@
         </router-view>
       </main>
     </div>
+
+    <!-- 全局命令面板（Phase 1.1，模块级单例控制开合） -->
+    <CommandPalette :commands="paletteCommands" />
+
+    <!-- 首登三步引导（Phase 1.3：localStorage zw-tour-done 标记，仅首次进入展示；
+         中途关闭或完成均写标记，下次不再打扰） -->
+    <el-tour v-model="tourVisible" data-testid="first-login-tour" @finish="markTourDone" @close="markTourDone">
+      <el-tour-step
+        :target="() => asideRef"
+        title="模块导航"
+        description="左侧菜单按你的授权展示全部业务模块，顶部面包屑显示当前位置。菜单可折叠，窄屏下自动收起。"
+      />
+      <el-tour-step
+        :target="() => paletteBtnRef"
+        title="命令面板"
+        description="按 Ctrl+K（或非输入态按 /）随时唤起命令面板，输入名称即可快速跳转任意页面、执行常用操作。"
+      />
+      <el-tour-step
+        :target="() => helpBtnRef"
+        title="帮助中心"
+        description="业务术语、键盘快捷键与错误码速查都在这里。点击此按钮，或按 Ctrl+K 搜索「帮助」。"
+      />
+    </el-tour>
   </div>
 </template>
 
@@ -121,12 +157,19 @@ import { useAppStore } from '@/stores/app'
 import { getUserMenus } from '@/api/system'
 import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
-import { Expand, Fold, Moon, Sunny, ArrowDown, Bell } from '@/components/icons/registry'
+import CommandPalette from '@/components/CommandPalette.vue'
+import { useShortcuts, ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
+import { useCommandPalette, type PaletteCommand } from '@/composables/useCommandPalette'
+import { Expand, Fold, Moon, Sunny, ArrowDown, Bell, Search, SwitchButton } from '@/components/icons/registry'
 import { resolveMenuIcon } from '@/components/icons/registry'
+import { IconHelp } from '@tabler/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
+
+// 全局键盘快捷键（⌘K / `/` / Ctrl+S / Ctrl+Enter / Esc），注册在布局根组件，全局生效
+useShortcuts()
 
 /** 侧边栏 DOM 引用，用于监听动画结束 */
 const asideRef = ref<HTMLElement | null>(null)
@@ -282,10 +325,126 @@ function goDevices() {
   router.push('/user/devices')
 }
 
+function goHelp() {
+  router.push('/help')
+}
+
+/* ================= 首登引导（Phase 1.3） ================= */
+
+/** 引导完成标记的存储键；写入后不再自动弹出 */
+const TOUR_STORAGE_KEY = 'zw-tour-done'
+
+const tourVisible = ref(false)
+const paletteBtnRef = ref<HTMLElement | null>(null)
+const helpBtnRef = ref<HTMLElement | null>(null)
+
+function markTourDone() {
+  localStorage.setItem(TOUR_STORAGE_KEY, '1')
+}
+
+onMounted(() => {
+  // 首次进入（无完成标记）延迟一帧开启三步引导，避开首屏渲染与菜单加载争抢
+  if (!localStorage.getItem(TOUR_STORAGE_KEY)) {
+    nextTick(() => {
+      tourVisible.value = true
+    })
+  }
+})
+
 function handleLogout() {
   userStore.logout()
   router.push('/login')
 }
+
+/**
+ * 手动菜单点击路由跳转（移除 el-menu 的 router 属性后必须显式调用）
+ * 修复首次点击菜单无法跳转的问题：通过 @click 显式触发路由切换
+ */
+function handleMenuClick(path: string) {
+  router.push(path)
+}
+
+/* ================= 命令面板（Phase 1.1） ================= */
+const { toggle: togglePalette, close: closePalette } = useCommandPalette()
+
+/**
+ * 命令表：导航项直接复用 menuRoutes（已按 getUserMenus 真实授权过滤）
+ * → 天然权限安全；操作项（主题/消息/退出）注册为命令。
+ */
+const paletteCommands = computed<PaletteCommand[]>(() => {
+  const cmds: PaletteCommand[] = []
+  for (const group of menuRoutes.value) {
+    if (group.singleChild) {
+      const c = group.singleChild
+      cmds.push({
+        id: 'nav-' + c.fullPath,
+        title: c.title,
+        group: '导航',
+        keywords: c.fullPath,
+        hint: c.fullPath,
+        icon: c.icon ? resolveMenuIcon(c.icon) : undefined,
+        run: () => router.push(c.fullPath),
+      })
+    } else {
+      for (const child of group.children || []) {
+        cmds.push({
+          id: 'nav-' + child.fullPath,
+          title: child.title,
+          group: '导航',
+          keywords: `${group.title} ${child.title} ${child.fullPath}`,
+          hint: child.fullPath,
+          icon: child.icon ? resolveMenuIcon(child.icon) : (group.icon ? resolveMenuIcon(group.icon) : undefined),
+          run: () => router.push(child.fullPath),
+        })
+      }
+    }
+  }
+  cmds.push({
+    id: 'act-theme',
+    title: appStore.isDark ? '切换到浅色主题' : '切换到深色主题',
+    group: '操作',
+    keywords: 'theme dark light 主题 深色 浅色 切换',
+    icon: appStore.isDark ? Sunny : Moon,
+    run: () => appStore.toggleTheme(),
+  })
+  cmds.push({
+    id: 'act-message',
+    title: '前往消息中心',
+    group: '操作',
+    keywords: 'message 消息 通知 催办',
+    icon: Bell,
+    run: () => goMessage(),
+  })
+  cmds.push({
+    id: 'act-help',
+    title: '打开帮助中心',
+    group: '操作',
+    keywords: 'help 帮助 术语 快捷键 错误码 指引',
+    icon: IconHelp,
+    run: () => goHelp(),
+  })
+  cmds.push({
+    id: 'act-logout',
+    title: '退出登录',
+    group: '操作',
+    keywords: 'logout 退出 登出',
+    icon: SwitchButton,
+    run: () => handleLogout(),
+  })
+  return cmds
+})
+
+// 命令面板开合接入快捷键事件总线（与 useShortcuts 共用 `/` 与 ⌘K）
+function onPaletteToggleEvent() { togglePalette() }
+function onPaletteEscapeEvent() { closePalette() }
+onMounted(() => {
+  window.addEventListener(ZW_SHORTCUT_EVENTS.togglePalette, onPaletteToggleEvent)
+  window.addEventListener(ZW_SHORTCUT_EVENTS.escape, onPaletteEscapeEvent)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener(ZW_SHORTCUT_EVENTS.togglePalette, onPaletteToggleEvent)
+  window.removeEventListener(ZW_SHORTCUT_EVENTS.escape, onPaletteEscapeEvent)
+})
 </script>
 
 <style scoped>
@@ -339,7 +498,7 @@ function handleLogout() {
   gap: 10px;
   padding: 0 18px;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--zw-steel-line);
 }
 
 .logo-icon {
@@ -364,7 +523,7 @@ function handleLogout() {
 }
 
 .logo-text {
-  color: #fff;
+  color: var(--zw-steel-text);
   font-size: var(--zw-font-size-md);
   font-weight: var(--zw-font-weight-semibold);
   white-space: nowrap;
@@ -372,7 +531,7 @@ function handleLogout() {
 }
 
 .logo-sub {
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--zw-steel-text-faint);
   font-family: var(--zw-font-display);
   font-size: 10px;
   font-weight: 700;
@@ -399,7 +558,7 @@ function handleLogout() {
 
 .side-menu :deep(.el-menu-item:hover),
 .side-menu :deep(.el-sub-menu__title:hover) {
-  color: #fff;
+  color: var(--zw-steel-text);
   background-color: var(--zw-bg-sidebar-hover);
 }
 

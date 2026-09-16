@@ -278,16 +278,16 @@ onMounted(() => {
 }
 .summary-label {
   font-size: var(--zw-font-size-base);
-  color: #909399;
+  color: var(--zw-text-tertiary);
   margin-bottom: var(--zw-space-sm);
 }
 .summary-value {
   font-size: var(--zw-font-size-2xl);
   font-weight: bold;
-  color: #303133;
+  color: var(--zw-text-primary);
 }
 .summary-value.warning {
-  color: #e6a23c;
+  color: var(--zw-warning);
 }
 .table-toolbar {
   margin-bottom: var(--zw-space-md);

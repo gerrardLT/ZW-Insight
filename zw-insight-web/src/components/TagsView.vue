@@ -151,7 +151,8 @@ onBeforeUnmount(() => {
 }
 
 .tag-item.active {
-  color: #fff;
+  /* 品牌橙渐变底配 on-primary 深字（体系纪律，白字对比度不足） */
+  color: var(--zw-on-primary);
   background: var(--zw-brand-gradient);
   border-color: transparent;
 }
@@ -160,7 +161,7 @@ onBeforeUnmount(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #fff;
+  background-color: var(--zw-on-primary);
 }
 
 .tag-close {
@@ -170,7 +171,7 @@ onBeforeUnmount(() => {
 }
 
 .tag-close:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: color-mix(in srgb, var(--zw-on-primary) 25%, transparent);
 }
 
 .tag-item:not(.active) .tag-close:hover {

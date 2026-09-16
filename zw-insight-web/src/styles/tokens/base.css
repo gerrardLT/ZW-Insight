@@ -18,6 +18,32 @@
   --zw-shadow-overlay: 0 4px 16px rgba(20, 22, 26, 0.12);
   --zw-shadow-overlay-dark: 0 4px 16px rgba(0, 0, 0, 0.5);
 
+  /* 石墨钢面（固定深底表面：sidebar / dashboard hero / login 品牌区 / visual 叙事组件）
+     两主题同值、不随主题切换；深底上的文字线条填充一律用本组，
+     勿用随主题变的 --zw-text 与 --zw-border 系列（light 下深色字落在深底上不可读） */
+  --zw-steel-bg: #14161a;
+  --zw-steel-text: #f2f3f1;
+  --zw-steel-text-muted: #c6c9cc;
+  --zw-steel-text-faint: #a1a1aa;
+  --zw-steel-line: rgba(255, 255, 255, 0.08);
+  --zw-steel-line-strong: #27272a;
+  --zw-steel-line-dashed: #71717a;
+  --zw-steel-glint: rgba(255, 255, 255, 0.06);
+  --zw-steel-fill: rgba(255, 255, 255, 0.12);
+  --zw-steel-fill-strong: rgba(255, 255, 255, 0.2);
+  --zw-steel-fill-faint: rgba(255, 255, 255, 0.02);
+  --zw-steel-fill-soft: rgba(255, 255, 255, 0.04);
+
+  /* 业务域视觉编码（与 src/constants/business-visual.ts 同源，改动须双向同步；固定色不随主题变）
+     域色是识别编码不是状态语义，勿用 --zw-success/--zw-danger 替换 */
+  --zw-domain-project: #ff6b00;
+  --zw-domain-contract: #0ea5e9;
+  --zw-domain-cost: #10b981;
+  --zw-domain-workflow: #8b5cf6;
+  --zw-domain-site: #f59e0b;
+  --zw-domain-finance: #ec4899;
+  --zw-domain-evidence: #06b6d4;
+
   /* 间距 */
   --zw-space-2xs: 2px;
   --zw-space-xs: 4px;

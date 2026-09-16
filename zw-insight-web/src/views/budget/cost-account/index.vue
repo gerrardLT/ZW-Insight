@@ -295,7 +295,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="!rollupReport?.unmapped?.length && !rollupReport?.failed?.length" style="text-align:center;padding:var(--zw-space-2xl);color:#999;font-size:var(--zw-font-size-base)">
+      <div v-if="!rollupReport?.unmapped?.length && !rollupReport?.failed?.length" style="text-align:center;padding:var(--zw-space-2xl);color:var(--zw-text-tertiary);font-size:var(--zw-font-size-base)">
         所有源单据均已自动归集或已明确指定归属账户，无待处理事项。
       </div>
       <div v-if="rollupReport?.failed?.length" class="failed-section">

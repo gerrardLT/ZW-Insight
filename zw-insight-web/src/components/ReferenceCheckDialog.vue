@@ -147,7 +147,7 @@ function handleClose() {
   justify-content: center;
   gap: 8px;
   padding: 24px 0;
-  color: #909399;
+  color: var(--zw-text-tertiary);
   font-size: 14px;
 }
 </style>

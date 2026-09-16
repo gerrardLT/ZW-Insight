@@ -381,11 +381,11 @@ onMounted(() => {
 }
 
 .income-amount {
-  color: #67c23a;
+  color: var(--zw-success);
 }
 
 .expense-amount {
-  color: #f56c6c;
+  color: var(--zw-danger);
 }
 
 .contract-detail-section {
@@ -393,17 +393,17 @@ onMounted(() => {
 }
 
 .text-danger {
-  color: #f56c6c;
+  color: var(--zw-danger);
   font-weight: 600;
 }
 
 :deep(.unsettled-row) {
-  background-color: #fef0f0 !important;
+  background-color: var(--zw-danger-light) !important;
 }
 
 .form-tip {
   font-size: var(--zw-font-size-xs);
-  color: #909399;
+  color: var(--zw-text-tertiary);
   line-height: 1.5;
   margin-top: var(--zw-space-xs);
 }

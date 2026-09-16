@@ -67,14 +67,26 @@
           <ProjectSelector v-model="formData.projectId" @change="handleProjectChange" />
           <div class="form-tip">留空表示全局默认配置</div>
         </el-form-item>
-        <el-form-item label="控制模式" prop="controlMode">
+        <el-form-item prop="controlMode">
+          <template #label>
+            <FieldHelpLabel
+              label="控制模式"
+              tooltip="BLOCK（禁止提交）：超预算或科目无预算额度时直接拒绝保存；WARN_ONLY（仅提醒）：超预算仅预警不拦截；EXEMPT（免控）：不做校验。详见帮助中心业务术语。"
+            />
+          </template>
           <el-select v-model="formData.controlMode" placeholder="请选择控制模式" style="width: 100%">
             <el-option label="仅提醒" value="WARN_ONLY" />
             <el-option label="禁止提交" value="BLOCK" />
             <el-option label="免控" value="EXEMPT" />
           </el-select>
         </el-form-item>
-        <el-form-item label="预警阈值" prop="warningThreshold">
+        <el-form-item prop="warningThreshold">
+          <template #label>
+            <FieldHelpLabel
+              label="预警阈值"
+              tooltip="预算执行率（已签合同+已审批付款+本次新增）÷预算额度 达到该阈值时发送站内信预警，取值 50-99%。"
+            />
+          </template>
           <el-slider
             v-model="formData.warningThreshold"
             :min="50"
@@ -105,6 +117,7 @@ import {
   deleteBudgetControlConfig
 } from '@/api/budget-control-config'
 import ProjectSelector from '@/components/ProjectSelector.vue'
+import FieldHelpLabel from '@/components/FieldHelpLabel.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -228,5 +241,5 @@ onMounted(() => {
 .control-config-container { padding: var(--zw-space-md); }
 .table-toolbar { margin-bottom: var(--zw-space-md); }
 .pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
-.form-tip { font-size: var(--zw-font-size-xs); color: #909399; margin-top: var(--zw-space-xs); }
+.form-tip { font-size: var(--zw-font-size-xs); color: var(--zw-text-tertiary); margin-top: var(--zw-space-xs); }
 </style>

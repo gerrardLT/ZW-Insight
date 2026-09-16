@@ -52,7 +52,7 @@
 
       <!-- P1 Context Menu -->
       <el-dropdown 
-        v-if="contextMenuTarget && showContextMenu"
+        v-if="contextMenuTarget && contextMenuVisible"
         :show-timeout="100"
         trigger="manual"
         :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }"
@@ -160,7 +160,7 @@ const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
 const selectedRows = ref<any[]>([]) // P1: 选中行
-const showContextMenu = ref(false) // P1: 显示上下文菜单
+const contextMenuVisible = ref(false) // P1: 显示上下文菜单
 const contextMenuTarget = ref<any>(null) // P1: 目标行
 const contextMenuPosition = ref({ x: 0, y: 0 }) // P1: 菜单位置
 
@@ -287,11 +287,11 @@ function showContextMenu(event: MouseEvent, row: any) {
   event.preventDefault()
   contextMenuTarget.value = row
   contextMenuPosition.value = { x: event.clientX, y: event.clientY }
-  showContextMenu.value = true
+  contextMenuVisible.value = true
 }
 
 function hideContextMenu() {
-  showContextMenu.value = false
+  contextMenuVisible.value = false
 }
 
 async function handleRowAction(action: string) {
@@ -339,7 +339,7 @@ onMounted(() => {
 
 /* P1 Keyboard Navigation Styles */
 .el-table__row.keyboard-focused {
-  background-color: #ecf5ff !important;
+  background-color: var(--zw-info-light) !important;
   outline: 2px solid var(--el-color-primary) !important;
   outline-offset: -2px;
 }

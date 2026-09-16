@@ -244,9 +244,9 @@ describe('purchase/settlement.vue 采购结算（B23）', () => {
     expect(mocks.mockSuccess).toHaveBeenCalledWith('新增成功')
   }, 15000)
 
-  it('@matrix B-23-9 草稿行三按钮 vs 已审批行文本（源码钉住）', () => {
+  it('@matrix B-23-9 草稿行三按钮 vs 已审批行文本（源码钉住，色值 token 化 2026-09-15）', () => {
     expect(settlementSrc).toContain('<template v-if="row.status === \'DRAFT\'">')
-    expect(settlementSrc).toContain('<span v-else style="color: #909399">已审批</span>')
+    expect(settlementSrc).toContain('<span v-else style="color: var(--zw-text-tertiary)">已审批</span>')
   })
 
   it('@matrix B-23-11 合同筛选 change 即搜索（源码钉住 @change=handleSearch）', () => {

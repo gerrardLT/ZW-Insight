@@ -238,7 +238,7 @@ defineExpose({ reload: load })
 
 .panel-title {
   font-weight: var(--zw-font-weight-semibold, 600);
-  color: var(--zw-text-primary, #1d2129);
+  color: var(--zw-text-primary);
 }
 
 .panel-state {
@@ -268,8 +268,8 @@ defineExpose({ reload: load })
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(to right, rgba(255, 107, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 107, 0, 0.05) 1px, transparent 1px);
+    linear-gradient(to right, color-mix(in srgb, var(--zw-brand) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--zw-brand) 5%, transparent) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
@@ -294,7 +294,7 @@ defineExpose({ reload: load })
   top: 0;
   bottom: 0;
   width: 40px;
-  background: linear-gradient(90deg, transparent, rgba(255, 107, 0, 0.15), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--zw-brand) 15%, transparent), transparent);
   animation: laser-sweep 2s infinite linear;
 }
 

@@ -415,7 +415,7 @@ loadData()
 }
 .form-tip {
   font-size: var(--zw-font-size-xs);
-  color: #909399;
+  color: var(--zw-text-tertiary);
 }
 .total-line {
   margin-top: var(--zw-space-sm-md);
@@ -425,6 +425,6 @@ loadData()
 .total-line .amount {
   font-size: var(--zw-font-size-md);
   font-weight: 600;
-  color: #67c23a;
+  color: var(--zw-success);
 }
 </style>

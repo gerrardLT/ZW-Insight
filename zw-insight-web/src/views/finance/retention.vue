@@ -103,7 +103,13 @@
         <el-form-item label="质保开始日期">
           <el-date-picker v-model="formData.startDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="质保到期日期">
+        <el-form-item>
+          <template #label>
+            <FieldHelpLabel
+              label="质保到期日期"
+              tooltip="到期日早于今天且未返还即视为逾期，系统定期发送催办提醒；逾期超期后标记长期逾期并停止催办，需人工处理返还。"
+            />
+          </template>
           <el-date-picker v-model="formData.expireDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
       </el-form>
@@ -142,6 +148,7 @@ import {
   createRetentionReturn
 } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import FieldHelpLabel from '@/components/FieldHelpLabel.vue'
 
 const formRef = ref<FormInstance>()
 const returnRef = ref<FormInstance>()

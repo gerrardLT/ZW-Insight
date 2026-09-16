@@ -842,6 +842,20 @@ const constantRoutes: RouteRecordRaw[] = [
       }
     ]
   },
+  // 帮助中心（Phase 1.3：登录即可访问，不进侧边菜单，由顶栏 ? 图标与命令面板进入）
+  {
+    path: '/help',
+    component: () => import('@/layouts/DefaultLayout.vue'),
+    meta: { title: '帮助中心', hidden: true },
+    children: [
+      {
+        path: '',
+        name: 'HelpCenter',
+        component: () => import('@/views/help/index.vue'),
+        meta: { title: '帮助中心', hidden: true }
+      }
+    ]
+  },
   {
     path: '/403',
     name: 'Forbidden',

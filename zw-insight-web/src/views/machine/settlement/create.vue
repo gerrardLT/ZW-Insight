@@ -189,7 +189,7 @@ onMounted(() => {
 }
 .total-amount {
   font-weight: bold;
-  color: #409eff;
+  color: var(--zw-info);
   font-size: var(--zw-font-size-lg);
 }
 .form-actions {

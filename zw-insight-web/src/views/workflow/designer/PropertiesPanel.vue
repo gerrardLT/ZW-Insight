@@ -106,8 +106,8 @@ onMounted(() => {
 .properties-panel {
   width: 320px;
   flex-shrink: 0;
-  border-left: 1px solid #ebeef5;
-  background: #fff;
+  border-left: 1px solid var(--zw-border-light);
+  background: var(--zw-bg-card);
   padding: var(--zw-space-md);
   overflow-y: auto;
 }
@@ -120,7 +120,7 @@ onMounted(() => {
 
 .panel-hint {
   font-size: var(--zw-font-size-sm);
-  color: #606266;
+  color: var(--zw-text-secondary);
   line-height: 1.8;
 }
 
@@ -130,7 +130,7 @@ onMounted(() => {
 }
 
 .panel-hint code {
-  background: #f5f7fa;
+  background: var(--zw-bg-page);
   padding: var(--zw-space-2xs) var(--zw-space-xs);
   border-radius: var(--zw-radius-xs);
 }

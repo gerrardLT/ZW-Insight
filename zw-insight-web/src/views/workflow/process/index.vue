@@ -152,7 +152,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #909399;
+  color: var(--zw-text-tertiary);
   gap: var(--zw-space-sm);
 }
 </style>

@@ -425,11 +425,11 @@ onMounted(() => {
 }
 .form-tip {
   font-size: var(--zw-font-size-xs);
-  color: #909399;
+  color: var(--zw-text-tertiary);
   margin-top: var(--zw-space-xs);
 }
 .module-desc {
   margin-bottom: var(--zw-space-md);
-  color: #606266;
+  color: var(--zw-text-secondary);
 }
 </style>

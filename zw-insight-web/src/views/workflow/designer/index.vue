@@ -195,8 +195,8 @@ async function handleNewProcess() {
   display: flex;
   gap: var(--zw-space-sm-md);
   padding: var(--zw-space-sm-md) var(--zw-space-md);
-  border-bottom: 1px solid #ebeef5;
-  background: #fff;
+  border-bottom: 1px solid var(--zw-border-light);
+  background: var(--zw-bg-card);
 }
 
 .designer-body {

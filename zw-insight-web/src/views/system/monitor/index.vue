@@ -16,6 +16,6 @@ defineOptions({ name: 'SystemMonitor' })
 
 <style scoped>
 .monitor-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 </style>

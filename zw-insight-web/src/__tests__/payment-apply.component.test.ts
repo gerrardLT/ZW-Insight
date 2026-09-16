@@ -12,7 +12,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import ElementPlus from 'element-plus'
+import ElementPlus, { ElMessageBox } from 'element-plus'
 
 const {
   mockGetPaymentApplyPage,
@@ -20,6 +20,7 @@ const {
   mockCreatePaymentApply,
   mockDeletePaymentApply,
   mockSubmitPaymentApply,
+  mockBatchPaymentApply,
   mockGetProjectList,
   mockGetOtherContractPage,
   mockGetPurchaseContractPage,
@@ -32,6 +33,7 @@ const {
   mockCreatePaymentApply: vi.fn(async (_p?: any): Promise<any> => ({ code: 200 })),
   mockDeletePaymentApply: vi.fn(async (_p?: any): Promise<any> => ({ code: 200 })),
   mockSubmitPaymentApply: vi.fn(async (_p?: any): Promise<any> => ({ code: 200 })),
+  mockBatchPaymentApply: vi.fn(async (_a?: any, _ids?: any): Promise<any> => ({ code: 200, data: 2 })),
   mockGetProjectList: vi.fn(async (_p?: any): Promise<any> => ({ code: 200, data: [] })),
   mockGetOtherContractPage: vi.fn(async (_p?: any): Promise<any> => ({ code: 200, data: { records: [] } })),
   mockGetPurchaseContractPage: vi.fn(async (_p?: any): Promise<any> => ({ code: 200, data: { records: [] } })),
@@ -46,6 +48,8 @@ vi.mock('@/api/finance', () => ({
   createPaymentApply: mockCreatePaymentApply,
   deletePaymentApply: mockDeletePaymentApply,
   submitPaymentApply: mockSubmitPaymentApply,
+  batchPaymentApply: mockBatchPaymentApply,
+  getFundPlan: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
 }))
 vi.mock('@/api/project', () => ({
   getProjectList: mockGetProjectList,
@@ -310,6 +314,70 @@ describe('payment-apply.vue 详情抽屉（真实接口，2026-08-28 补全）',
     expect(mockGetPaymentApplyDetail).toHaveBeenCalledTimes(2)
     expect(st.detailData.paymentAmount).toBe(100000)
     expect(st.detailError).toBe('')
+    wrapper.unmount()
+  })
+})
+
+describe('payment-apply.vue 批量操作（Phase 1.2）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetPaymentApplyPage.mockResolvedValue({ code: 200, data: { records: [], total: 0 } })
+  })
+
+  it('勾选回调更新 selectedRows', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.handleSelectionChange([{ id: 1, status: 'DRAFT' }, { id: 2, status: 'DRAFT' }])
+    expect(st.selectedRows.length).toBe(2)
+    wrapper.unmount()
+  })
+
+  it('批量删除正常路径：调 batchPaymentApply("delete", ids) 并刷新列表', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.handleSelectionChange([{ id: 1, status: 'DRAFT' }, { id: 2, status: 'DRAFT' }])
+    const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue({} as any)
+    await st.handleBatchDelete()
+    await flushPromises()
+    expect(mockBatchPaymentApply).toHaveBeenCalledWith('delete', [1, 2])
+    expect(mockGetPaymentApplyPage).toHaveBeenCalledTimes(2) // 挂载 + 批量后刷新
+    confirmSpy.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('批量删除含非草稿项：预检拦截，不发起批量请求', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.handleSelectionChange([{ id: 1, status: 'DRAFT' }, { id: 2, status: 'APPROVED' }])
+    const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue({} as any)
+    await st.handleBatchDelete()
+    await flushPromises()
+    expect(mockBatchPaymentApply).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('批量提交：REJECTED 也可提交，调 batchPaymentApply("submit", ids)', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.handleSelectionChange([{ id: 1, status: 'DRAFT' }, { id: 3, status: 'REJECTED' }])
+    const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue({} as any)
+    await st.handleBatchSubmit()
+    await flushPromises()
+    expect(mockBatchPaymentApply).toHaveBeenCalledWith('submit', [1, 3])
+    confirmSpy.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('批量提交含 SUBMITTED 项：预检拦截，不发起批量请求', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.handleSelectionChange([{ id: 4, status: 'SUBMITTED' }])
+    const confirmSpy = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue({} as any)
+    await st.handleBatchSubmit()
+    await flushPromises()
+    expect(mockBatchPaymentApply).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
     wrapper.unmount()
   })
 })

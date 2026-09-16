@@ -6,3 +6,7 @@
 export { default as TowerCraneIcon } from './TowerCraneIcon.vue'
 export { default as BlueprintCornerIcon } from './BlueprintCornerIcon.vue'
 export { default as HelmetIcon } from './HelmetIcon.vue'
+export { default as CostFiveStateIcon } from './CostFiveStateIcon.vue'
+export { default as EvidenceIcon } from './EvidenceIcon.vue'
+export { default as WbsIcon } from './WbsIcon.vue'
+

@@ -31,7 +31,7 @@
 .error-code {
   /* 错误页工业数标巨字：稳固实色，符合工建精密排版规范，杜绝渐变字残次 */
   font-family: var(--zw-font-mono);
-  font-size: 108px;
+  font-size: calc(var(--zw-font-size-4xl) * 3);
   font-weight: 800;
   line-height: 1;
   color: var(--zw-primary);

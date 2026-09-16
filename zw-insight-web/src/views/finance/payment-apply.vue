@@ -40,9 +40,25 @@
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增付款申请
         </el-button>
+        <!-- 批量操作（Phase 1.2）：勾选态驱动；后端整体单事务，任一失败全部回滚 -->
+        <el-button
+          type="danger"
+          plain
+          :disabled="!selectedRows.length"
+          :loading="batchLoading"
+          @click="handleBatchDelete"
+        >批量删除（{{ selectedRows.length }}）</el-button>
+        <el-button
+          type="success"
+          plain
+          :disabled="!selectedRows.length"
+          :loading="batchLoading"
+          @click="handleBatchSubmit"
+        >批量提交（{{ selectedRows.length }}）</el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
+      <el-table :data="tableData" v-loading="loading" border @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="44" />
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="supplierName" label="收款单位" width="150" show-overflow-tooltip />
         <el-table-column prop="paymentAmount" label="付款金额" width="130" align="right">
@@ -132,13 +148,19 @@
         <el-form-item label="收款单位" prop="supplierId">
           <SupplierSelector v-model="formData.supplierId" @change="handleSupplierChange" />
         </el-form-item>
-        <el-form-item label="付款金额" prop="paymentAmount">
+        <el-form-item prop="paymentAmount">
+          <template #label>
+            <FieldHelpLabel
+              label="付款金额"
+              tooltip="可付上限 = 累计结算 + 净奖惩 − 累计已付，提交时校验，超出将被拒绝并提示最大可付金额。详见帮助中心业务术语。"
+            />
+          </template>
           <el-input-number v-model="formData.paymentAmount" :min="0" :precision="2" style="width: 100%" data-keyboard-field />
         </el-form-item>
         <el-form-item label="付款日期" prop="paymentDate">
           <el-date-picker v-model="formData.paymentDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" data-keyboard-field />
         </el-form-item>
-        <div class="keyboard-hint" data-keyboard-field style="margin-top: var(--zw-space-sm); color: var(--el-text-color-secondary); font-size: 12px;">
+        <div class="keyboard-hint" data-keyboard-field style="margin-top: var(--zw-space-sm); color: var(--el-text-color-secondary); font-size: var(--zw-font-size-xs);">
           💡 提示：按 Ctrl+Enter 快速提交表单 | 按 Tab 切换字段
         </div>
       </el-form>
@@ -162,8 +184,24 @@
           <el-descriptions-item label="收款单位">{{ detailData.supplierName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="付款金额">{{ formatMoney(detailData.paymentAmount) }}</el-descriptions-item>
           <el-descriptions-item label="付款日期">{{ detailData.paymentDate || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="累计结算快照">{{ formatMoney(detailData.cumulativeSettlementSnapshot) }}</el-descriptions-item>
-          <el-descriptions-item label="未付金额快照">{{ formatMoney(detailData.unpaidAmountSnapshot) }}</el-descriptions-item>
+          <el-descriptions-item>
+            <template #label>
+              <FieldHelpLabel
+                label="累计结算快照"
+                tooltip="提交付款申请时点的合同累计结算金额，保存供后续追溯，不随后续结算变化。"
+              />
+            </template>
+            {{ formatMoney(detailData.cumulativeSettlementSnapshot) }}
+          </el-descriptions-item>
+          <el-descriptions-item>
+            <template #label>
+              <FieldHelpLabel
+                label="未付金额快照"
+                tooltip="提交时点的可付余额（累计结算 + 净奖惩 − 累计已付，与可付上限校验同口径），提交后不再变化。"
+              />
+            </template>
+            {{ formatMoney(detailData.unpaidAmountSnapshot) }}
+          </el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="getStatusType(detailData.status)" size="small">{{ getStatusLabel(detailData.status) }}</el-tag>
           </el-descriptions-item>
@@ -175,10 +213,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, getFundPlan } from '@/api/finance'
+import { ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
+import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, batchPaymentApply, getFundPlan } from '@/api/finance'
 import { getProjectList } from '@/api/project'
 import { getOtherContractPage } from '@/api/contract'
 import { getPurchaseContractPage } from '@/api/purchase'
@@ -187,6 +226,7 @@ import { getMachineContractPage } from '@/api/machine'
 import { getSubcontractPage } from '@/api/subcontract'
 import SupplierSelector from '@/components/SupplierSelector.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
+import FieldHelpLabel from '@/components/FieldHelpLabel.vue'
 import { positiveAmount } from '@/utils/form-rules'
 import { toWan } from '@/utils/chart-format'
 
@@ -198,10 +238,6 @@ const projectList = ref<any[]>([])
 const contractOptions = ref<any[]>([])
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
-const currentRowIndex = ref(-1) // P1: 当前选中行索引
-
-// P1: Keyboard Shortcuts State
-const isKeyboardMode = ref(true)
 
 const queryParams = ref({
   pageNum: 1,
@@ -390,89 +426,64 @@ async function handleDelete(row: any) {
   loadData()
 }
 
+// ================= 批量操作（Phase 1.2） =================
+const selectedRows = ref<any[]>([])
+const batchLoading = ref(false)
+
+function handleSelectionChange(rows: any[]) {
+  selectedRows.value = rows
+}
+
+/** 批量提交：仅 DRAFT/REJECTED 可提交；含非法状态项时后端整体回滚，前端预检并定位首个问题项 */
+async function handleBatchSubmit() {
+  const invalid = selectedRows.value.find((r) => r.status !== 'DRAFT' && r.status !== 'REJECTED')
+  if (invalid) {
+    ElMessage.warning(`勾选项含不可提交状态（${getStatusLabel(invalid.status)}），仅草稿/已驳回可提交`)
+    return
+  }
+  await ElMessageBox.confirm(`确定批量提交选中的 ${selectedRows.value.length} 条付款申请吗？`, '提示', { type: 'warning' })
+  await runBatch('submit')
+}
+
+/** 批量删除：仅 DRAFT 可删；后端 @SecondaryConfirm 449 时拦截器自动弹密码框重发 */
+async function handleBatchDelete() {
+  const invalid = selectedRows.value.find((r) => r.status !== 'DRAFT')
+  if (invalid) {
+    ElMessage.warning(`勾选项含不可删除状态（${getStatusLabel(invalid.status)}），仅草稿可删除`)
+    return
+  }
+  await ElMessageBox.confirm(`确定批量删除选中的 ${selectedRows.value.length} 条付款申请吗？删除后不可恢复。`, '提示', { type: 'warning' })
+  await runBatch('delete')
+}
+
+async function runBatch(action: 'delete' | 'submit') {
+  batchLoading.value = true
+  try {
+    const res: any = await batchPaymentApply(action, selectedRows.value.map((r) => r.id))
+    ElMessage.success(`批量${action === 'delete' ? '删除' : '提交'}成功 ${res?.data ?? selectedRows.value.length} 条`)
+    loadData()
+  } catch {
+    // 失败（含二次确认取消）已由拦截器/弹框提示；整体事务回滚，无需局部刷新
+  } finally {
+    batchLoading.value = false
+  }
+}
+
+// 全局快捷键 Ctrl+S / Ctrl+Enter 由 useShortcuts 经事件总线派发；
+// 本组件仅在新增/编辑弹窗打开时消费，触发表单提交（替代原从未注册的半成品 handleGlobalKeydown）。
+function handleSaveShortcut() {
+  if (dialogVisible.value) handleFormSubmit()
+}
+
 onMounted(() => {
   loadData()
   searchProject('')
+  window.addEventListener(ZW_SHORTCUT_EVENTS.save, handleSaveShortcut)
 })
 
-// P1 Keyboard Shortcuts Implementation
-function handleGlobalKeydown(event: KeyboardEvent) {
-  // 忽略在输入框、文本域中的按键事件
-  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
-    return
-  }
-
-  // Ctrl+Enter 提交表单
-  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-    if (dialogVisible.value) {
-      event.preventDefault()
-      handleFormSubmit()
-    }
-    return
-  }
-
-  // 仅当不在表单弹窗中时启用行导航
-  if (dialogVisible.value) return
-
-  // 方向键导航表格
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    navigateTableRow(1)
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    navigateTableRow(-1)
-  } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
-    // Ctrl+A 全选（可选功能）
-    event.preventDefault()
-    ElMessage.warning('批量操作功能暂未启用')
-  }
-}
-
-function navigateTableRow(direction: number) {
-  const newIndex = currentRowIndex.value + direction
-  if (newIndex >= 0 && newIndex < tableData.value.length) {
-    currentRowIndex.value = newIndex
-    highlightTableRow(newIndex)
-  }
-}
-
-function highlightTableRow(index: number) {
-  nextTick(() => {
-    const rows = document.querySelectorAll('.el-table__body-wrapper tbody tr.el-table__row')
-    rows.forEach((row, i) => {
-      if (i === index) {
-        row.classList.add('keyboard-focused')
-        row.scrollIntoView({ block: 'nearest' })
-      } else {
-        row.classList.remove('keyboard-focused')
-      }
-    })
-  })
-}
-
-// 表单 Tab 切换导航
-function handleTabNavigate(direction: number) {
-  if (!dialogVisible.value) return
-  
-  nextTick(() => {
-    const inputs = dialogVisible.value ? Array.from(document.querySelectorAll('[data-keyboard-field]')) : []
-    if (inputs.length === 0) return
-    
-    let currentIndex = -1
-    inputs.forEach((input, i) => {
-      if (input === document.activeElement) {
-        currentIndex = i
-      }
-    })
-    
-    const newIndex = (currentIndex + direction + inputs.length) % inputs.length
-    (inputs[newIndex] as HTMLElement)?.focus()
-  })
-}
-
-// onUnmounted(() => {
-//   document.removeEventListener('keydown', handleGlobalKeydown) // TODO: 添加全局监听时需清理
-// })
+onBeforeUnmount(() => {
+  window.removeEventListener(ZW_SHORTCUT_EVENTS.save, handleSaveShortcut)
+})
 
 // ================= 资金计划面板 =================
 const planPanelRef = ref<InstanceType<typeof StatChartPanel>>()
@@ -527,7 +538,7 @@ function buildFundPlanOption(list: any[]) {
 
 /* P1 Keyboard Navigation Styles */
 .el-table__row.keyboard-focused {
-  background-color: #ecf5ff !important;
+  background-color: var(--zw-info-light) !important;
   outline: 2px solid var(--el-color-primary) !important;
   outline-offset: -2px;
 }

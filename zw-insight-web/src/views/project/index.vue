@@ -48,9 +48,13 @@
           <el-icon><Plus /></el-icon>新增项目
         </el-button>
         <el-button @click="importVisible = true">批量导入</el-button>
+        <el-button type="danger" plain :disabled="!selectedRows.length" @click="handleBatchDelete">
+          <el-icon><Delete /></el-icon>批量删除（{{ selectedRows.length }}）
+        </el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading">
+      <el-table :data="tableData" v-loading="loading" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="44" :selectable="isDraftRow" />
         <el-table-column prop="projectCode" label="项目编号" width="140" />
         <el-table-column prop="projectName" label="项目名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="projectNature" label="项目性质" width="100" />
@@ -98,7 +102,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getProjectPage, deleteProject, submitProject, closeProject, getProjectCloseCheck, getProjectPortfolio } from '@/api/project'
+import { getProjectPage, deleteProject, batchDeleteProjects, submitProject, closeProject, getProjectCloseCheck, getProjectPortfolio } from '@/api/project'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import { toWan } from '@/utils/chart-format'
@@ -108,6 +112,7 @@ const loading = ref(false)
 const tableData = ref<any[]>([])
 const total = ref(0)
 const importVisible = ref(false)
+const selectedRows = ref<any[]>([])
 
 const queryParams = ref({
   page: 1,
@@ -180,6 +185,26 @@ async function handleDelete(row: any) {
   await ElMessageBox.confirm('确定要删除该项目吗？', '提示', { type: 'warning' })
   await deleteProject(row.id)
   ElMessage.success('删除成功')
+  loadData()
+}
+
+function handleSelectionChange(rows: any[]) {
+  selectedRows.value = rows
+}
+
+/** 仅草稿状态的行可勾选（与后端“仅 DRAFT 可删”校验对齐） */
+function isDraftRow(row: any) {
+  return row.status === 'DRAFT'
+}
+
+/** 批量删除草稿项目（后端整体单事务，任一失败全部回滚） */
+async function handleBatchDelete() {
+  const rows = selectedRows.value
+  if (!rows.length) return
+  await ElMessageBox.confirm(`确定批量删除选中的 ${rows.length} 个草稿项目吗？删除后不可恢复。`, '提示', { type: 'warning' })
+  await batchDeleteProjects(rows.map((r) => r.id))
+  ElMessage.success('批量删除成功')
+  selectedRows.value = []
   loadData()
 }
 

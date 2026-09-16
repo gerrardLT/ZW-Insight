@@ -269,5 +269,5 @@ onMounted(() => { loadData() })
 .template-container { padding: var(--zw-space-md); }
 .table-toolbar { margin-bottom: var(--zw-space-md); }
 .template-editor-tips { margin-bottom: var(--zw-space-md); }
-.template-editor-tips code { background: #f5f5f5; padding: var(--zw-space-xs) var(--zw-space-sm); border-radius: var(--zw-radius-xs); font-family: monospace; }
+.template-editor-tips code { background: var(--zw-bg-page); padding: var(--zw-space-xs) var(--zw-space-sm); border-radius: var(--zw-radius-xs); font-family: monospace; }
 </style>

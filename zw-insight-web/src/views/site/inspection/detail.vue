@@ -59,7 +59,7 @@
       </el-descriptions>
 
       <!-- 方案快照中的检查项展示 -->
-      <div class="section-title" style="margin-top: 24px;">分项测绘明细</div>
+      <div class="section-title" style="margin-top: var(--zw-space-lg);">分项测绘明细</div>
 
       <el-table :data="detailItems" border>
         <el-table-column type="index" label="序号" width="60" align="center">
@@ -95,8 +95,8 @@
     </el-card>
 
     <!-- 整改闭环区：仅有问题的检查记录展示（附工程警示条纹） -->
-    <el-card v-if="detail.hasProblem === 1" shadow="never" class="rect-card card-corner-marked" style="margin-top: 16px;">
-      <div class="hazard-divider" style="height: 4px; margin: -20px -20px 16px -20px;"></div>
+    <el-card v-if="detail.hasProblem === 1" shadow="never" class="rect-card card-corner-marked" style="margin-top: var(--zw-space-md);">
+      <div class="hazard-divider" style="height: 4px; margin: calc(var(--el-card-padding) * -1) calc(var(--el-card-padding) * -1) var(--zw-space-md) calc(var(--el-card-padding) * -1);"></div>
       <div class="section-title">现场隐患整改闭环</div>
 
       <!-- 提交整改表单：仅待整改状态可提交 -->
@@ -274,6 +274,6 @@ onMounted(() => {
   align-items: center;
 }
 .text-muted {
-  color: #909399;
+  color: var(--zw-text-tertiary);
 }
 </style>

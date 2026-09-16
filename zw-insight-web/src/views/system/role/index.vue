@@ -340,11 +340,11 @@ onMounted(() => {
   transition: all 0.2s;
 }
 .role-item:hover {
-  background-color: #f5f7fa;
+  background-color: var(--zw-bg-hover);
 }
 .role-item.active {
-  background-color: #ecf5ff;
-  border-color: #409eff;
+  background-color: var(--zw-bg-active);
+  border-color: var(--zw-brand);
 }
 .role-info {
   display: flex;
@@ -362,7 +362,7 @@ onMounted(() => {
 }
 .role-code {
   font-size: var(--zw-font-size-xs);
-  color: #909399;
+  color: var(--zw-text-tertiary);
 }
 .data-scope-tag {
   font-size: var(--zw-font-size-xs);
@@ -373,6 +373,6 @@ onMounted(() => {
   justify-content: space-between;
   margin-bottom: var(--zw-space-md);
   padding-bottom: var(--zw-space-sm-md);
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--zw-border-light);
 }
 </style>

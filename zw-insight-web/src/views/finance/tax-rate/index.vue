@@ -176,6 +176,6 @@ onMounted(() => {
 }
 .rate-unit {
   margin-left: var(--zw-space-sm);
-  color: #909399;
+  color: var(--zw-text-tertiary);
 }
 </style>

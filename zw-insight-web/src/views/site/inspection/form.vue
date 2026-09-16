@@ -374,7 +374,7 @@ onMounted(async () => {
   gap: var(--zw-space-sm-md);
 }
 .detail-tip {
-  color: #909399;
+  color: var(--zw-text-tertiary);
   font-size: var(--zw-font-size-sm);
 }
 .form-footer {

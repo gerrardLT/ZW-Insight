@@ -247,6 +247,6 @@ onMounted(() => {
   justify-content: flex-end;
 }
 .no-action {
-  color: #c0c4cc;
+  color: var(--zw-text-quaternary);
 }
 </style>

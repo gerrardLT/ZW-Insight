@@ -49,7 +49,7 @@
         <el-form-item label="备注">
           <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="选填" data-keyboard-field />
         </el-form-item>
-        <div class="keyboard-hint" data-keyboard-field style="margin-top: var(--zw-space-sm); color: var(--el-text-color-secondary); font-size: 12px;">
+        <div class="keyboard-hint" data-keyboard-field style="margin-top: var(--zw-space-sm); color: var(--el-text-color-secondary); font-size: var(--zw-font-size-xs);">
           💡 提示：按 Ctrl+Enter 快速提交表单 | 按 Tab 切换字段
         </div>
       </el-form>

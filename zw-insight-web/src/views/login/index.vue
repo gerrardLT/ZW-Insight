@@ -23,10 +23,32 @@
     <div class="login-form-area">
       <div class="login-box">
         <div class="login-header">
-          <h2 class="login-title">欢迎回来</h2>
-          <p class="login-subtitle">请登录您的账户以继续</p>
+          <h2 class="login-title">{{ loginMode === 'password' ? '欢迎回来' : '快捷登录' }}</h2>
+          <p class="login-subtitle">{{ loginMode === 'password' ? '请登录您的账户以继续' : '使用手机短信验证码快速登录' }}</p>
         </div>
-        <el-form :model="loginForm" :rules="rules" ref="formRef" size="large">
+
+        <!-- 登录方式切换：密码 / 短信验证码（对齐移动端双 Tab 范式，沿用工业精密设计语言） -->
+        <div class="login-tabs" role="tablist" aria-label="登录方式">
+          <button
+            type="button"
+            class="login-tab"
+            :class="{ active: loginMode === 'password' }"
+            role="tab"
+            :aria-selected="loginMode === 'password'"
+            @click="switchMode('password')"
+          >密码登录</button>
+          <button
+            type="button"
+            class="login-tab"
+            :class="{ active: loginMode === 'sms' }"
+            role="tab"
+            :aria-selected="loginMode === 'sms'"
+            @click="switchMode('sms')"
+          >短信验证码登录</button>
+        </div>
+
+        <!-- 密码登录表单 -->
+        <el-form v-show="loginMode === 'password'" :model="loginForm" :rules="rules" ref="formRef" size="large">
           <el-form-item prop="username">
             <el-input v-model="loginForm.username" placeholder="请输入用户名" prefix-icon="User" />
           </el-form-item>
@@ -48,6 +70,29 @@
             <el-link type="primary" :underline="false" @click="goForgotPassword">忘记密码？</el-link>
           </div>
         </el-form>
+
+        <!-- 短信验证码登录表单（后端 AuthService#loginBySms 已就绪，按手机号定位用户与租户） -->
+        <el-form v-show="loginMode === 'sms'" :model="smsForm" :rules="smsRules" ref="smsFormRef" size="large">
+          <el-form-item prop="phone">
+            <el-input v-model="smsForm.phone" placeholder="请输入手机号" prefix-icon="Iphone" maxlength="11" clearable @keyup.enter="handleSmsLogin" />
+          </el-form-item>
+          <el-form-item prop="smsCode">
+            <div class="captcha-row">
+              <el-input v-model="smsForm.smsCode" placeholder="验证码" prefix-icon="Key" maxlength="6" @keyup.enter="handleSmsLogin" />
+              <button
+                type="button"
+                class="sms-code-btn"
+                :disabled="smsCooldown > 0 || smsSending"
+                @click="handleSendSms"
+              >{{ smsCooldown > 0 ? `${smsCooldown}s 后重发` : '获取验证码' }}</button>
+            </div>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="loading" class="login-btn" @click="handleSmsLogin">
+              登 录
+            </el-button>
+          </el-form-item>
+        </el-form>
       </div>
       <p class="login-copyright">© 2026 中维智营 · 工程项目管理平台</p>
     </div>
@@ -55,20 +100,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { getImageCaptcha } from '@/api/captcha'
+import { getImageCaptcha, sendSmsCaptcha } from '@/api/captcha'
 import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
 import { BlueprintCornerIcon, TowerCraneIcon, HelmetIcon } from '@/components/icons/zw'
-import type { FormInstance } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 
 const router = useRouter()
 const userStore = useUserStore()
 const formRef = ref<FormInstance>()
+const smsFormRef = ref<FormInstance>()
 const loading = ref(false)
 const captchaImage = ref('')
 const captchaUuid = ref('')
+
+// 登录方式：密码 / 短信验证码
+const loginMode = ref<'password' | 'sms'>('password')
 
 const loginForm = ref({
   username: '',
@@ -80,6 +130,39 @@ const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+}
+
+// 短信验证码登录表单（手机号校验正则与移动端同源）
+const smsForm = ref({
+  phone: '',
+  smsCode: ''
+})
+
+const smsRules: FormRules = {
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
+  ],
+  smsCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { pattern: /^\d{6}$/, message: '验证码为 6 位数字', trigger: 'blur' }
+  ]
+}
+
+// 短信发送倒计时（60s 防重发）
+const smsCooldown = ref(0)
+const smsSending = ref(false)
+let smsTimer: ReturnType<typeof setInterval> | null = null
+
+function startSmsCooldown() {
+  smsCooldown.value = 60
+  smsTimer = setInterval(() => {
+    smsCooldown.value--
+    if (smsCooldown.value <= 0 && smsTimer) {
+      clearInterval(smsTimer)
+      smsTimer = null
+    }
+  }, 1000)
 }
 
 async function refreshCaptcha() {
@@ -125,6 +208,65 @@ onMounted(() => {
   refreshCaptcha()
 })
 
+onUnmounted(() => {
+  if (smsTimer) clearInterval(smsTimer)
+})
+
+// 切换登录方式：清除两侧表单校验态，避免残留错误提示
+function switchMode(mode: 'password' | 'sms') {
+  if (loginMode.value === mode) return
+  loginMode.value = mode
+  formRef.value?.clearValidate()
+  smsFormRef.value?.clearValidate()
+}
+
+// 发送短信验证码（先校验手机号；错误由 request 拦截器统一提示）
+async function handleSendSms() {
+  try {
+    await smsFormRef.value?.validateField('phone')
+  } catch {
+    return
+  }
+  smsSending.value = true
+  try {
+    await sendSmsCaptcha(smsForm.value.phone.trim())
+    ElMessage.success('验证码已发送')
+    startSmsCooldown()
+  } catch {
+    // 错误已由请求拦截器统一提示
+  } finally {
+    smsSending.value = false
+  }
+}
+
+// 短信验证码登录（loginType=SMS，后端按手机号定位用户与租户）
+async function handleSmsLogin() {
+  await smsFormRef.value?.validate()
+  loading.value = true
+  try {
+    const res: any = await request.post('/v1/auth/login', {
+      loginType: 'SMS',
+      phone: smsForm.value.phone.trim(),
+      smsCode: smsForm.value.smsCode.trim()
+    })
+    userStore.setToken(res.data.token)
+    userStore.setUserInfo({
+      userId: res.data.userId,
+      username: res.data.username,
+      realName: res.data.realName,
+      tenantId: res.data.tenantId,
+      tenantName: res.data.tenantName,
+      roles: res.data.roles
+    })
+    userStore.setPermissions(res.data.permissions || [])
+    router.push('/')
+  } catch {
+    // 登录失败（验证码错误/手机号未注册等）已由拦截器提示，用户重新获取验证码
+  } finally {
+    loading.value = false
+  }
+}
+
 function goForgotPassword() {
   router.push('/forgot-password')
 }
@@ -164,7 +306,7 @@ function goForgotPassword() {
   z-index: 1;
   max-width: 460px;
   padding: 0 var(--zw-space-2xl);
-  color: #f2f3f1;
+  color: var(--zw-steel-text);
 }
 
 .brand-logo {
@@ -217,7 +359,7 @@ function goForgotPassword() {
 .brand-desc {
   font-size: var(--zw-font-size-md);
   line-height: 1.7;
-  color: #c6c9cc;
+  color: var(--zw-steel-text-muted);
   margin-bottom: var(--zw-space-xl);
 }
 
@@ -232,7 +374,7 @@ function goForgotPassword() {
   align-items: center;
   gap: var(--zw-space-sm-md);
   font-size: var(--zw-font-size-md);
-  color: #f2f3f1;
+  color: var(--zw-steel-text);
 }
 
 /* 自绘工程图标（方帽直角，品牌橙） */
@@ -272,6 +414,80 @@ function goForgotPassword() {
 .login-subtitle {
   font-size: var(--zw-font-size-base);
   color: var(--zw-text-tertiary);
+}
+
+/* ===== 登录方式切换 Tab（工业精密：2px 下划线强调，零阴影零渐变） ===== */
+.login-tabs {
+  display: flex;
+  gap: var(--zw-space-xl);
+  margin-bottom: var(--zw-space-xl);
+  border-bottom: 1px solid var(--zw-border);
+}
+
+.login-tab {
+  position: relative;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 0 var(--zw-space-md);
+  font-size: var(--zw-font-size-md);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--zw-text-tertiary);
+  cursor: pointer;
+  transition: color var(--zw-duration-fast) var(--zw-ease-out);
+}
+
+.login-tab:hover {
+  color: var(--zw-text-secondary);
+}
+
+.login-tab.active {
+  color: var(--zw-brand);
+}
+
+.login-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--zw-brand);
+}
+
+.login-tab:focus-visible {
+  outline: 2px solid var(--zw-brand);
+  outline-offset: 2px;
+}
+
+/* 获取验证码按钮（与验证码图片同宽，复用精密直角语言） */
+.sms-code-btn {
+  appearance: none;
+  width: 120px;
+  height: 40px;
+  flex-shrink: 0;
+  font-size: var(--zw-font-size-base);
+  font-weight: 600;
+  color: var(--zw-brand);
+  background: var(--zw-brand-light);
+  border: 1px solid var(--zw-brand-light);
+  border-radius: var(--zw-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--zw-duration-fast) var(--zw-ease-out);
+}
+
+.sms-code-btn:hover:not(:disabled) {
+  background: var(--zw-brand);
+  color: var(--zw-on-primary);
+}
+
+.sms-code-btn:disabled {
+  color: var(--zw-text-quaternary);
+  background: var(--zw-bg-hover);
+  border-color: var(--zw-border-light);
+  cursor: not-allowed;
 }
 
 .captcha-row {

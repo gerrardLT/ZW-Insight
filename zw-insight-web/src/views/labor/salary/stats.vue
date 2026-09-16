@@ -388,33 +388,33 @@ async function handleExport() {
 
 .stat-label {
   font-size: var(--zw-font-size-sm);
-  color: #909399;
+  color: var(--zw-text-tertiary);
   margin-bottom: var(--zw-space-sm);
 }
 
 .stat-value {
   font-size: var(--zw-font-size-2xl);
   font-weight: 600;
-  color: #303133;
+  color: var(--zw-text-primary);
 }
 
 .stat-value.rate-up {
-  color: #e6a23c;
+  color: var(--zw-warning);
 }
 
 .stat-value.rate-down {
-  color: #67c23a;
+  color: var(--zw-success);
 }
 
 .stat-value .no-data-text {
   font-size: var(--zw-font-size-base);
-  color: #c0c4cc;
+  color: var(--zw-text-quaternary);
   font-weight: normal;
 }
 
 .stat-sub {
   font-size: var(--zw-font-size-xs);
-  color: #909399;
+  color: var(--zw-text-tertiary);
   margin-top: var(--zw-space-xs);
 }
 
@@ -427,13 +427,13 @@ async function handleExport() {
   gap: var(--zw-space-lg);
   padding: var(--zw-space-sm-md) 0;
   margin-bottom: var(--zw-space-sm-md);
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--zw-border-light);
   font-size: var(--zw-font-size-base);
-  color: #606266;
+  color: var(--zw-text-secondary);
 }
 
 .summary-bar strong {
-  color: #303133;
+  color: var(--zw-text-primary);
 }
 
 .detail-table-wrap {

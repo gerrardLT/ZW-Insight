@@ -77,5 +77,5 @@ onBeforeUnmount(() => stopPolling())
 
 <style scoped>
 .export-status { text-align: center; padding: 24px 0; }
-.export-status p { margin-top: 12px; color: #606266; }
+.export-status p { margin-top: 12px; color: var(--zw-text-secondary); }
 </style>

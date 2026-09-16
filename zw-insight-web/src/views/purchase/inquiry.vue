@@ -81,7 +81,7 @@
     <el-dialog v-model="bidDialogVisible" :title="`比价定标 — ${bidRow?.title || ''}`" width="720px" destroy-on-close>
       <div style="margin-bottom: var(--zw-space-sm-md)">
         <el-button type="primary" size="small" :loading="rankingLoading" @click="handleCalculateRanking">计算排名</el-button>
-        <span v-if="bidRow?.status === 'AWARDED'" style="margin-left: var(--zw-space-sm); color: #67c23a">已定标</span>
+        <span v-if="bidRow?.status === 'AWARDED'" style="margin-left: var(--zw-space-sm); color: var(--zw-success)">已定标</span>
       </div>
       <el-table :data="quotationList" border size="small" style="margin-bottom: var(--zw-space-sm-md)">
         <el-table-column prop="supplierName" label="报价供应商" min-width="160" />

@@ -202,6 +202,13 @@ jobs:
         working-directory: ${{ matrix.project }}
         run: npm ci --no-audit --no-fund
 
+      # Design Tokens 门禁（2026-09-15 Phase 1.4）：禁新增裸 Hex 与 rgb()/rgba()，
+      # 透明度变体统一 color-mix 派生；规则见 zw-insight-web/.stylelintrc.mjs
+      - name: Stylelint design-token gate (zw-insight-web only)
+        if: matrix.project == 'zw-insight-web'
+        working-directory: ${{ matrix.project }}
+        run: npm run lint:style
+
       - name: Run frontend unit tests with coverage (vitest)
         working-directory: ${{ matrix.project }}
         run: npm run test:coverage

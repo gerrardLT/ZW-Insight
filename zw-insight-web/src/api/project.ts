@@ -34,6 +34,14 @@ export function deleteProject(id: number) {
   return request.delete<R<void>>(`/v1/project/${id}`)
 }
 
+/**
+ * 批量删除项目（仅 DRAFT 草稿可删；空列表拒绝，整体单事务，任一失败回滚）
+ * 后端：DELETE /api/v1/project/batch（ProjectController#batchDelete）
+ */
+export function batchDeleteProjects(ids: number[]) {
+  return request.delete<R<void>>('/v1/project/batch', { data: ids })
+}
+
 export function submitProject(id: number) {
   return request.post<R<void>>(`/v1/project/${id}/submit`)
 }

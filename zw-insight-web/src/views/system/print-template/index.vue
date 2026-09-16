@@ -346,7 +346,7 @@ onMounted(() => {
   margin-bottom: var(--zw-space-sm);
 }
 .editor-tips code {
-  background: #f5f5f5;
+  background: var(--zw-bg-page);
   padding: var(--zw-space-2xs) var(--zw-space-xs);
   border-radius: var(--zw-radius-xs);
   font-family: 'Consolas', 'Monaco', monospace;

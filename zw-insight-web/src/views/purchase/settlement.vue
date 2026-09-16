@@ -49,7 +49,7 @@
               <el-button link type="success" @click="handleSubmit(row)">提交</el-button>
               <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
             </template>
-            <span v-else style="color: #909399">已审批</span>
+            <span v-else style="color: var(--zw-text-tertiary)">已审批</span>
           </template>
         </el-table-column>
       </el-table>
@@ -219,5 +219,5 @@ onMounted(() => { loadContracts(); loadData() })
 .purchase-settlement-container { padding: var(--zw-space-md); }
 .table-toolbar { margin-bottom: var(--zw-space-md); }
 .pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
-.empty-tip { color: #e6a23c; font-size: var(--zw-font-size-xs); line-height: 1.5; margin-top: var(--zw-space-xs); }
+.empty-tip { color: var(--zw-warning); font-size: var(--zw-font-size-xs); line-height: 1.5; margin-top: var(--zw-space-xs); }
 </style>

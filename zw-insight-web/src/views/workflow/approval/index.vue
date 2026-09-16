@@ -331,7 +331,6 @@ onMounted(() => {
   loadData()
 })
 </script>
-</script>
 
 <style scoped>
 .approval-container {
@@ -348,13 +347,13 @@ onMounted(() => {
 
 /* P1 Keyboard Navigation Styles */
 .el-table__row.keyboard-focused {
-  background-color: #ecf5ff !important;
+  background-color: var(--zw-info-light) !important;
   outline: 2px solid var(--el-color-primary) !important;
   outline-offset: -2px;
 }
 
 /* Focus visible for accessibility */
 .el-table__body-wrapper:focus-within .el-table__row.el-table__row--focus-visible {
-  background-color: #ebfaff;
+  background-color: var(--zw-info-light);
 }
 </style>

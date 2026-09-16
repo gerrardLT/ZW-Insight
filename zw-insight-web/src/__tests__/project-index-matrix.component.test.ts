@@ -4,7 +4,8 @@
  * @matrix A1-02 名称搜索重置页码 / A1-03 状态筛选 8 枚举 / A1-04 重置清空条件 /
  *   A1-05 分页 sizes / A1-06 DRAFT 行三按钮 / A1-07 COMPLETED 行结项按钮 /
  *   A1-08 非草稿行无编辑提交删除 / A1-09 提交二次确认取消不发请求 /
- *   A1-14 状态标签 8 态映射 / A-X4 删除引用拦截前端透传 Toast
+ *   A1-14 状态标签 8 态映射 / A-X4 删除引用拦截前端透传 Toast /
+ *   P1.2 批量删除（selection 仅 DRAFT 可勾、空选拦截、确认取消、调 DELETE /batch）
  *
  * 分层纪律：本页断言均为纯前端行为（不发真实请求，api 层 mock）；
  * 提交/删除的后端状态流转由 e2e-real a1-project.spec.ts 覆盖。
@@ -16,6 +17,7 @@ import ElementPlus from 'element-plus'
 
 const {
   mockProjectPage, mockProjectDelete, mockProjectSubmit, mockProjectClose, mockCloseCheck,
+  mockProjectBatchDelete,
   mockConfirm, mockMessageSuccess, mockMessageError,
 } = vi.hoisted(() => ({
   mockProjectPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
@@ -23,6 +25,7 @@ const {
   mockProjectSubmit: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockProjectClose: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockCloseCheck: vi.fn(async (): Promise<any> => ({ code: 200, data: { allPassed: true, failedReasons: [] } })),
+  mockProjectBatchDelete: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockConfirm: vi.fn(async (): Promise<any> => 'confirm'),
   mockMessageSuccess: vi.fn(),
   mockMessageError: vi.fn(),
@@ -31,6 +34,7 @@ const {
 vi.mock('@/api/project', () => ({
   getProjectPage: mockProjectPage, deleteProject: mockProjectDelete, submitProject: mockProjectSubmit,
   closeProject: mockProjectClose, getProjectCloseCheck: mockCloseCheck,
+  batchDeleteProjects: mockProjectBatchDelete,
   // T7 组合看板面板使用，mock 防真实请求（空 statusList → 面板空态）
   getProjectPortfolio: vi.fn(async (): Promise<any> => ({ code: 200, data: { statusList: [] } })),
 }))
@@ -192,5 +196,47 @@ describe('project/index.vue 账本补测（@matrix A1）', () => {
     // handleSubmit/handleDelete 未 try-catch：异常经全局请求拦截器 Toast 后向外抛，
     // 此处钉住「无静默吞错」——调用方可见 reject（拦截器 Toast 由 request.test.ts 覆盖）
     await expect(wrapper.vm.$.setupState.handleDelete({ id: 9 })).rejects.toThrow()
+  })
+
+  it('@matrix P1.2-1 批量删除正常路径：调 batchDeleteProjects(ids) 并刷新列表', async () => {
+    await mountPage([
+      { id: 11, projectName: 'PB1', status: 'DRAFT' },
+      { id: 12, projectName: 'PB2', status: 'DRAFT' },
+    ])
+    const st = wrapper.vm.$.setupState
+    mockProjectPage.mockClear()
+    st.handleSelectionChange([{ id: 11, status: 'DRAFT' }, { id: 12, status: 'DRAFT' }])
+    await st.handleBatchDelete()
+    await flushPromises()
+    expect(mockProjectBatchDelete).toHaveBeenCalledTimes(1)
+    expect((mockProjectBatchDelete.mock.calls[0] as any[])[0]).toEqual([11, 12])
+    expect(mockProjectPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('@matrix P1.2-2 批量删除空选择：不发批量请求', async () => {
+    await mountPage([])
+    const st = wrapper.vm.$.setupState
+    st.handleSelectionChange([])
+    mockProjectBatchDelete.mockClear()
+    await st.handleBatchDelete()
+    expect(mockProjectBatchDelete).not.toHaveBeenCalled()
+  })
+
+  it('@matrix P1.2-3 批量删除确认取消：不发批量请求', async () => {
+    await mountPage([{ id: 13, projectName: 'PB3', status: 'DRAFT' }])
+    const st = wrapper.vm.$.setupState
+    st.handleSelectionChange([{ id: 13, status: 'DRAFT' }])
+    mockConfirm.mockRejectedValueOnce(new Error('cancel'))
+    mockProjectBatchDelete.mockClear()
+    await st.handleBatchDelete().catch(() => { /* confirm reject 向外抛 */ })
+    await flushPromises()
+    expect(mockProjectBatchDelete).not.toHaveBeenCalled()
+  })
+
+  it('@matrix P1.2-4 selection 列仅 DRAFT 行可勾选（源码钉住）', () => {
+    // happy-dom 下 el-table selection 交互不可靠，从模板源码钉住与后端「仅 DRAFT 可删」对齐
+    const tpl = readFileSync(resolve(__testDir, '../views/project/index.vue'), 'utf-8')
+    expect(tpl).toContain('type="selection"')
+    expect(tpl).toContain(':selectable="isDraftRow"')
   })
 })

@@ -291,11 +291,11 @@ watch(() => props.projectId, () => {
 /* 状态颜色 - 全局样式（dhtmlx-gantt 内部结构无法用 scoped） */
 .gantt-task-not-started .gantt_task_progress,
 .gantt-task-not-started .gantt_task_content {
-  background-color: #909399 !important;
+  background-color: var(--zw-text-tertiary) !important;
 }
 .gantt-task-not-started .gantt_task_line {
-  background-color: #909399 !important;
-  border-color: #7d8087 !important;
+  background-color: var(--zw-text-tertiary) !important;
+  border-color: color-mix(in srgb, var(--zw-text-tertiary) 85%, black) !important;
 }
 
 .gantt-task-in-progress .gantt_task_progress,

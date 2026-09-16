@@ -99,7 +99,7 @@
           <div style="width: 100%">
             <div style="margin-bottom: var(--zw-space-sm)">
               <el-button size="small" @click="addDetail">添加明细行</el-button>
-              <span v-if="detailsTotal > 0" style="margin-left: var(--zw-space-sm-md); color: #909399; font-size: var(--zw-font-size-xs)">
+              <span v-if="detailsTotal > 0" style="margin-left: var(--zw-space-sm-md); color: var(--zw-text-tertiary); font-size: var(--zw-font-size-xs)">
                 明细合计：{{ detailsTotal.toLocaleString() }} 元（提交后总额以明细合计为准）
               </span>
             </div>
