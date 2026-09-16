@@ -26,6 +26,15 @@ vi.mock('@/api/common', () => ({
   uploadRectificationPhoto: vi.fn(),
 }))
 
+// S3.3 后页面接线 useFormSession(onHide/onShow)；真实 uni-app cjs 与测试环境
+// vue 版本不兼容（injectHook 缺失），统一 mock 生命周期钩子为 no-op
+vi.mock('@dcloudio/uni-app', () => ({
+  onShow: () => {},
+  onLoad: () => {},
+  onHide: () => {},
+  onPullDownRefresh: () => {},
+}))
+
 import ProgressFeedback from '@/pages/site/progress-feedback.vue'
 import QualityCheck from '@/pages/site/quality-check.vue'
 import SafetyCheck from '@/pages/site/safety-check.vue'

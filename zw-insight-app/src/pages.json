@@ -2,7 +2,7 @@
   "pages": [
     { "path": "pages/login/index", "style": { "navigationBarTitleText": "登录", "navigationStyle": "custom" } },
     { "path": "pages/login/forgot-password", "style": { "navigationBarTitleText": "找回密码", "navigationStyle": "custom" } },
-    { "path": "pages/home/index", "style": { "navigationBarTitleText": "首页" } },
+    { "path": "pages/home/index", "style": { "navigationBarTitleText": "首页", "enablePullDownRefresh": true } },
     { "path": "pages/workbench/index", "style": { "navigationBarTitleText": "工作台" } },
     { "path": "pages/approval/index", "style": { "navigationBarTitleText": "我的审批" } },
     { "path": "pages/approval/detail", "style": { "navigationBarTitleText": "审批详情" } },

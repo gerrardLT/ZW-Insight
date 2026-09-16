@@ -71,7 +71,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getCompanyOverview, getUnreadCount, getUnreadMessages } from '@/api/common'
 import { getUserShortcuts, type UserShortcutConfig } from '@/api/shortcut'
 import OfflineBanner from '@/components/OfflineBanner.vue'
@@ -132,6 +132,15 @@ async function loadData() {
 
 onShow(() => { loadData() })
 onMounted(() => { loadData() })
+
+// 下拉刷新（S3.2）：首页概览/消息/快捷入口强制重拉，完成后停止刷新动画
+onPullDownRefresh(async () => {
+  try {
+    await loadData()
+  } finally {
+    uni.stopPullDownRefresh()
+  }
+})
 </script>
 
 <style scoped>

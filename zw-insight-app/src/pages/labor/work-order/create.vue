@@ -103,6 +103,7 @@ import { ref, onMounted, computed } from 'vue'
 import { saveWorkOrder, getLaborTeamPage } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
+import { useFormSession } from '@/composables/useFormSession'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const submitting = ref(false)
@@ -124,6 +125,13 @@ const form = ref({
   hourlyRate: '35',
   overtime: '',
   overtimeRate: ''
+})
+
+// 表单会话持久化（S3.3）：onHide 快照/onShow 还原（仅空表单），提交成功 clear；24h 过期
+const formSession = useFormSession('labor-work-order-create', {
+  getSnapshot: () => form.value,
+  restoreTo: (data) => { Object.assign(form.value, data) },
+  isEmpty: (d) => !d.projectId && !d.workerName,
 })
 
 const calcTotal = computed(() => {
@@ -216,6 +224,7 @@ async function handleSubmit() {
     if (!queued) {
       uni.showToast({ title: '签认提交成功', icon: 'success' })
     }
+    formSession.clear() // 提交成功清除会话快照（S3.3）
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally {
     submitting.value = false

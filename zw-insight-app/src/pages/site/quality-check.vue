@@ -74,6 +74,7 @@ import { ref, onMounted } from 'vue'
 import { saveInspection } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
+import { useFormSession } from '@/composables/useFormSession'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
@@ -90,6 +91,13 @@ const form = ref({
   description: '',
   rectification: '',
   inspector: ''
+})
+
+// 表单会话持久化（S3.3）：onHide 快照/onShow 还原（仅空表单），提交成功 clear；24h 过期
+const formSession = useFormSession('site-quality-check', {
+  getSnapshot: () => form.value,
+  restoreTo: (data) => { Object.assign(form.value, data) },
+  isEmpty: (d) => !d.projectId && !d.checkPart,
 })
 
 onMounted(async () => {
@@ -141,6 +149,7 @@ async function handleSubmit() {
     if (!queued) {
       uni.showToast({ title: '提交成功', icon: 'success' })
     }
+    formSession.clear() // 提交成功清除会话快照（S3.3）
     if (!queued && hasProblem === 1 && newId) {
       offerRectificationEntry(newId)
     } else {

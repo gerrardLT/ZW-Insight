@@ -21,6 +21,7 @@ const hooks = vi.hoisted(() => ({
 vi.mock('@dcloudio/uni-app', () => ({
   onShow: (cb: any) => { hooks.onShowCb = cb },
   onLoad: (cb: any) => { hooks.onLoadCb = cb },
+  onHide: () => {}, // S3.3 useFormSession 生命周期钩子
   onPullDownRefresh: () => {},
 }))
 
