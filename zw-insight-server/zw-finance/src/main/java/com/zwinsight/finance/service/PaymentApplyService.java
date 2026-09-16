@@ -11,6 +11,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.dto.BatchOperationRequest;
 import com.zwinsight.finance.dto.ContractPayableInfo;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
 import com.zwinsight.finance.mapper.ContractPayableMapper;
@@ -140,6 +141,20 @@ public class PaymentApplyService {
         }
         validatePaymentLimit(payable, paymentApply.getContractId(), paymentApply.getPaymentAmount());
 
+        // 提交时点回填可付快照（详情抽屉「累计结算快照/未付金额快照」数据源，提交后不再变化）：
+        // 累计结算快照取合同原值；未付金额快照 = 可付余额，与 validatePaymentLimit 同口径（含净奖惩）。
+        // 驳回重提时刷新为最新时点值。字段在 save/update（草稿态）不回填。
+        BigDecimal cumulativeSettlement = payable.getCumulativeSettlement() == null
+                ? BigDecimal.ZERO : payable.getCumulativeSettlement();
+        BigDecimal cumulativePaid = payable.getCumulativePaid() == null
+                ? BigDecimal.ZERO : payable.getCumulativePaid();
+        BigDecimal rewardPunishNet = settlementDataMapper.sumRewardPunishNetByContract(paymentApply.getContractId());
+        if (rewardPunishNet == null) {
+            rewardPunishNet = BigDecimal.ZERO;
+        }
+        paymentApply.setCumulativeSettlementSnapshot(cumulativeSettlement);
+        paymentApply.setUnpaidAmountSnapshot(cumulativeSettlement.add(rewardPunishNet).subtract(cumulativePaid));
+
         // 发起审批流程
         Map<String, Object> variables = new HashMap<>();
         variables.put("paymentAmount", paymentApply.getPaymentAmount());
@@ -150,6 +165,38 @@ public class PaymentApplyService {
         paymentApply.setWorkflowInstanceId(processInstanceId);
         paymentApply.setStatus("SUBMITTED");
         paymentApplyMapper.updateById(paymentApply);
+    }
+
+    /**
+     * 批量操作（统一入口，整体单事务，任一失败回滚全部）。
+     * <p>语义与单条同源：逐条走单条校验（仅 DRAFT 可删；仅 DRAFT/REJECTED 可提交），
+     * 失败时抛出带单据上下文的 BusinessException，由事务回滚保证不产生半途状态。</p>
+     *
+     * @param request ids 非空；action：delete / submit
+     * @return 成功处理的条数
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int batch(BatchOperationRequest request) {
+        if (request == null || request.getIds() == null || request.getIds().isEmpty()) {
+            throw new BusinessException("ID 列表不能为空");
+        }
+        String action = request.getAction() == null ? "" : request.getAction().trim();
+        int count = 0;
+        for (Long id : request.getIds()) {
+            try {
+                switch (action) {
+                    case "delete" -> delete(id);
+                    case "submit" -> submit(id);
+                    default -> throw new BusinessException("不支持的批量操作类型：" + action);
+                }
+            } catch (BusinessException e) {
+                throw new BusinessException("批量" + ("delete".equals(action) ? "删除" : "提交")
+                        + "中断（单据 ID=" + id + "）：" + e.getMessage());
+            }
+            count++;
+        }
+        log.info("付款申请批量{}成功，count={}", "delete".equals(action) ? "删除" : "提交", count);
+        return count;
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.config.SecurityContextHolder;
+import com.zwinsight.finance.dto.BatchOperationRequest;
 import com.zwinsight.finance.service.PaymentApplyService;
 import com.zwinsight.test.TestSecurityConfig;
 import org.junit.jupiter.api.AfterEach;
@@ -62,5 +63,22 @@ class PaymentApplyControllerTest {
                 .andExpect(jsonPath("$.code").value(200));
 
         verify(paymentApplyService).submit(1L);
+    }
+
+    @Test
+    @DisplayName("POST /batch - 批量操作被路由且载荷解包（Phase 1.2）")
+    void should_route_batch() throws Exception {
+        when(paymentApplyService.batch(any())).thenReturn(3);
+
+        mockMvc.perform(post("/api/v1/finance/payment-apply/batch")
+                        .contentType("application/json")
+                        .content("{\"ids\":[1,2,3],\"action\":\"delete\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").value(3));
+
+        verify(paymentApplyService).batch(argThat(req ->
+                req != null && "delete".equals(req.getAction())
+                        && req.getIds() != null && req.getIds().size() == 3));
     }
 }

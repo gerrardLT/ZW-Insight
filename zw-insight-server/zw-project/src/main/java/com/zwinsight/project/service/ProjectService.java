@@ -173,10 +173,13 @@ public class ProjectService {
     }
 
     /**
-     * 批量删除（仅DRAFT状态可删）
+     * 批量删除（仅DRAFT状态可删；空列表拒绝，整体单事务，任一失败回滚）
      */
     @Transactional(rollbackFor = Exception.class)
     public void batchDelete(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("ID 列表不能为空");
+        }
         for (Long id : ids) {
             delete(id);
         }

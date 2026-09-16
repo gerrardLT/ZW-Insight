@@ -145,7 +145,57 @@ export class ConsistencyComparator implements IComparator {
   }
 
   /**
+   * 路径匹配评分：返回「通配失配段数」（恰一方为路径参数的段数量）。
+   *
+   * - 0 = 完美匹配（所有段静态相等，或双方同为参数段）
+   * - >0 = 靠参数通配吞掉静态段的弱匹配
+   * - null = 路径不匹配
+   *
+   * 分数越低越具体。用于多候选时优先精确匹配，修复贪婪匹配缺陷：
+   * 旧实现取首个匹配即 break，当通配端点（如 DELETE /{id}）先于静态兄弟端点
+   * （如 DELETE /batch、GET /portfolio）声明时，前端对静态路径的真实调用被
+   * 通配符抢先认领，静态端点被误报 BACKEND_ORPHAN_API（2026-09-15 排查定位）。
+   */
+  private pathMatchScore(path1: string, path2: string): number | null {
+    const segments1 = this.normalizePath(path1).split('/').filter(Boolean);
+    const segments2 = this.normalizePath(path2).split('/').filter(Boolean);
+
+    if (segments1.length !== segments2.length) {
+      return null;
+    }
+
+    let wildcardMismatches = 0;
+    for (let i = 0; i < segments1.length; i++) {
+      const seg1 = segments1[i];
+      const seg2 = segments2[i];
+      const isParam1 = /^\{[^}]+\}$/.test(seg1);
+      const isParam2 = /^\{[^}]+\}$/.test(seg2);
+
+      if (isParam1 || isParam2) {
+        // 恰一方为参数段 → 计一次通配失配；双方同为参数 → 同构匹配不计
+        if (isParam1 !== isParam2) {
+          wildcardMismatches++;
+        }
+        continue;
+      }
+
+      if (seg1.toLowerCase() !== seg2.toLowerCase()) {
+        return null;
+      }
+    }
+
+    return wildcardMismatches;
+  }
+
+  /**
    * 比对前端 API 列表与后端 API 列表
+   *
+   * 匹配策略（2026-09-15 修复贪婪匹配缺陷）：
+   * 1. 在全部路径匹配候选中，优先取「方法匹配且通配失配段数最少」者；
+   * 2. 若无任何方法匹配候选，取最具体路径候选报 HTTP_METHOD_MISMATCH。
+   * 方法匹配优先于 specificity（同一路径常同时存在 GET 列表与 POST 创建端点），
+   * specificity 仅在同有多候选时决定谁被认领，避免通配端点 /{id} 抢先吃掉
+   * 静态兄弟路径（/batch、/portfolio）的调用而误报 BACKEND_ORPHAN_API。
    */
   private compareFrontendToBackend(
     frontendEntries: FrontendApiEntry[],
@@ -158,30 +208,37 @@ export class ConsistencyComparator implements IComparator {
       : '';
 
     for (const feEntry of frontendEntries) {
-      // 查找路径匹配的后端条目
-      let pathMatched = false;
-      let methodMatched = false;
-      let matchedBackendEntry: BackendApiEntry | undefined;
+      // 双轮追踪：方法匹配的最具体候选 + 任意路径匹配的最具体候选（mismatch 兜底）
+      let bestMethodIndex = -1;
+      let bestMethodScore = Number.POSITIVE_INFINITY;
+      let bestPathIndex = -1;
+      let bestPathScore = Number.POSITIVE_INFINITY;
 
       for (let i = 0; i < backendEntries.length; i++) {
-        const beEntry = backendEntries[i];
-
-        if (this.pathsMatch(feEntry.requestPath, beEntry.fullPath)) {
-          pathMatched = true;
-          matchedBackendEntry = beEntry;
-
-          if (
-            feEntry.httpMethod === beEntry.httpMethod ||
-            (beEntry.additionalMethods ?? []).includes(feEntry.httpMethod)
-          ) {
-            methodMatched = true;
-            matchedBackendIndices.add(i);
-            break;
-          }
+        const score = this.pathMatchScore(feEntry.requestPath, backendEntries[i].fullPath);
+        if (score === null) {
+          continue;
+        }
+        if (score < bestPathScore) {
+          bestPathScore = score;
+          bestPathIndex = i;
+        }
+        const methodOk =
+          feEntry.httpMethod === backendEntries[i].httpMethod ||
+          (backendEntries[i].additionalMethods ?? []).includes(feEntry.httpMethod);
+        if (methodOk && score < bestMethodScore) {
+          bestMethodScore = score;
+          bestMethodIndex = i;
         }
       }
 
-      if (!pathMatched) {
+      if (bestMethodIndex !== -1) {
+        // 路径 + 方法均匹配（取最具体者）→ 后端端点被认领
+        matchedBackendIndices.add(bestMethodIndex);
+        continue;
+      }
+
+      if (bestPathIndex === -1) {
         // 前端路径在后端不存在 → FRONTEND_EXTRA_API
         items.push({
           type: 'FRONTEND_EXTRA_API',
@@ -191,25 +248,24 @@ export class ConsistencyComparator implements IComparator {
           description: `${sourceLabel}接口 ${feEntry.httpMethod} ${feEntry.requestPath}（${feEntry.functionName}）在后端无对应 Controller 方法`,
           suggestion: `检查后端是否缺少该接口实现，或前端路径是否拼写错误`,
         });
-      } else if (!methodMatched && matchedBackendEntry) {
-        // 路径匹配但 HTTP 方法不一致 → HTTP_METHOD_MISMATCH
-        // 后端声明多方法时（method = {POST, PUT}）展示全部声明方法
-        const backendMethods = [matchedBackendEntry.httpMethod, ...(matchedBackendEntry.additionalMethods ?? [])].join('/');
-        items.push({
-          type: 'HTTP_METHOD_MISMATCH',
-          severity: 'Major',
-          module: feEntry.module,
-          frontendFilePath: feEntry.filePath,
-          backendFilePath: matchedBackendEntry.filePath,
-          description: `${sourceLabel}使用 ${feEntry.httpMethod} 请求 ${feEntry.requestPath}，但后端声明为 ${backendMethods}`,
-          suggestion: `统一 HTTP 方法：前端改为 ${backendMethods} 之一或后端添加 ${feEntry.httpMethod} 映射`,
-        });
-        // HTTP 方法不匹配时，也标记后端为已匹配（路径存在，只是方法不同）
-        const backendIndex = backendEntries.indexOf(matchedBackendEntry);
-        if (backendIndex !== -1) {
-          matchedBackendIndices.add(backendIndex);
-        }
+        continue;
       }
+
+      // 路径匹配但 HTTP 方法不一致 → HTTP_METHOD_MISMATCH（报最具体候选）
+      // 后端声明多方法时（method = {POST, PUT}）展示全部声明方法
+      const beEntry = backendEntries[bestPathIndex];
+      const backendMethods = [beEntry.httpMethod, ...(beEntry.additionalMethods ?? [])].join('/');
+      items.push({
+        type: 'HTTP_METHOD_MISMATCH',
+        severity: 'Major',
+        module: feEntry.module,
+        frontendFilePath: feEntry.filePath,
+        backendFilePath: beEntry.filePath,
+        description: `${sourceLabel}使用 ${feEntry.httpMethod} 请求 ${feEntry.requestPath}，但后端声明为 ${backendMethods}`,
+        suggestion: `统一 HTTP 方法：前端改为 ${backendMethods} 之一或后端添加 ${feEntry.httpMethod} 映射`,
+      });
+      // HTTP 方法不匹配时，也标记后端为已匹配（路径存在，只是方法不同）
+      matchedBackendIndices.add(bestPathIndex);
     }
   }
 }

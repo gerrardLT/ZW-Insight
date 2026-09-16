@@ -111,6 +111,8 @@ npm test             # 运行属性测试（fast-check）
 > npx tsx src/cli.ts --root ../../ --output ../../audit-reports
 > ```
 >
+> 注：`--root` 相对当前工作目录解析；`--output` 相对路径同样以当前工作目录为基准（2026-09-15 修正：旧版以 rootPath 为基准 join，tools 子目录内运行时会把报告误写到磁盘根 `D:\audit-reports`）。
+>
 > 验证报告有效性：确认摘要中「后端 API: 740 / 已审核模块: 20/20」非零后再采信结论。
 
 ### 审计输出

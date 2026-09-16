@@ -7,6 +7,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.dto.BatchOperationRequest;
 import com.zwinsight.finance.dto.ContractPayableInfo;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
 import com.zwinsight.finance.mapper.ContractPayableMapper;
@@ -79,8 +80,70 @@ class PaymentApplyServiceTest {
 
             assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
             assertThat(apply.getWorkflowInstanceId()).isEqualTo("proc-1");
+            // 提交时点回填可付快照（详情抽屉数据源，2026-09-15 Phase 1.3 补齐）：净奖惩 0 → 未付 = 100000 - 50000
+            assertThat(apply.getCumulativeSettlementSnapshot()).isEqualByComparingTo("100000.00");
+            assertThat(apply.getUnpaidAmountSnapshot()).isEqualByComparingTo("50000.00");
             verify(otherContractMapper, never()).addCumulativePaid(anyLong(), any());
             verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("正常路径（含净奖惩） — 快照按可付上限同口径回填")
+        void submit_normalPath_snapshotIncludesRewardPunishNet() {
+            Long id = 4L;
+            Long contractId = 400L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setProjectId(10L);
+            apply.setPaymentAmount(new BigDecimal("30000.00"));
+            apply.setStatus("DRAFT");
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(contractId);
+            contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+            contract.setCumulativePaid(new BigDecimal("50000.00"));
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+            // 奖励 2000（净奖惩 +2000）→ 未付快照 = 100000 + 2000 - 50000 = 52000（与 validatePaymentLimit 同口径）
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(new BigDecimal("2000.00"));
+            when(approvalService.startProcess(eq("PAYMENT_APPLY"), eq(id), eq("payment_apply_approval"), anyMap()))
+                    .thenReturn("proc-4");
+
+            paymentApplyService.submit(id);
+
+            assertThat(apply.getCumulativeSettlementSnapshot()).isEqualByComparingTo("100000.00");
+            assertThat(apply.getUnpaidAmountSnapshot()).isEqualByComparingTo("52000.00");
+        }
+
+        @Test
+        @DisplayName("付款超限 — 快照不回填且不落库")
+        void submit_exceedsLimit_snapshotNotFilled() {
+            Long id = 5L;
+            Long contractId = 500L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setPaymentAmount(new BigDecimal("60000.00"));
+            apply.setStatus("DRAFT");
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(contractId);
+            contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+            contract.setCumulativePaid(new BigDecimal("50000.00"));
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+
+            assertThatThrownBy(() -> paymentApplyService.submit(id))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("付款金额不能超过");
+
+            assertThat(apply.getCumulativeSettlementSnapshot()).isNull();
+            assertThat(apply.getUnpaidAmountSnapshot()).isNull();
+            verify(paymentApplyMapper, never()).updateById(any());
         }
 
         @Test
@@ -521,6 +584,99 @@ class PaymentApplyServiceTest {
 
             assertThat(result.getRecords()).hasSize(1);
             assertThat(result.getTotal()).isEqualTo(1);
+        }
+    }
+
+    // ============ 批量操作（Phase 1.2：空列表拒绝 / 逐条状态校验 / 整体事务语义） ============
+
+    @Nested
+    @DisplayName("batch() 批量操作")
+    class BatchTests {
+
+        private BizPaymentApply draft(Long id, Long contractId) {
+            BizPaymentApply a = new BizPaymentApply();
+            a.setId(id);
+            a.setProjectId(10L);
+            a.setContractId(contractId);
+            a.setStatus("DRAFT");
+            a.setPaymentAmount(new BigDecimal("1000"));
+            return a;
+        }
+
+        private BatchOperationRequest req(String action, List<Long> ids) {
+            BatchOperationRequest r = new BatchOperationRequest();
+            r.setAction(action);
+            r.setIds(ids);
+            return r;
+        }
+
+        @Test
+        @DisplayName("批量删除正常路径：全部 DRAFT，逐条删除并返回条数")
+        void batchDelete_normal_deletesAll() {
+            when(paymentApplyMapper.selectById(1L)).thenReturn(draft(1L, null));
+            when(paymentApplyMapper.selectById(2L)).thenReturn(draft(2L, null));
+
+            int count = paymentApplyService.batch(req("delete", List.of(1L, 2L)));
+
+            assertThat(count).isEqualTo(2);
+            verify(paymentApplyMapper).deleteById(1L);
+            verify(paymentApplyMapper).deleteById(2L);
+        }
+
+        @Test
+        @DisplayName("批量删除空列表：拒绝且不执行任何单删")
+        void batchDelete_emptyList_throws() {
+            assertThatThrownBy(() -> paymentApplyService.batch(req("delete", List.of())))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("ID 列表不能为空");
+            verify(paymentApplyMapper, never()).deleteById(anyLong());
+        }
+
+        @Test
+        @DisplayName("批量删除含非 DRAFT：中断并带单据上下文（事务回滚由 @Transactional 保证）")
+        void batchDelete_invalidStatus_interruptsWithContext() {
+            when(paymentApplyMapper.selectById(1L)).thenReturn(draft(1L, null));
+            BizPaymentApply approved = draft(2L, null);
+            approved.setStatus("APPROVED");
+            when(paymentApplyMapper.selectById(2L)).thenReturn(approved);
+
+            assertThatThrownBy(() -> paymentApplyService.batch(req("delete", List.of(1L, 2L))))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("批量删除中断")
+                    .hasMessageContaining("ID=2")
+                    .hasMessageContaining("仅草稿状态可删除");
+        }
+
+        @Test
+        @DisplayName("批量提交正常路径：逐条走 submit 校验并启动流程")
+        void batchSubmit_normal_submitsAll() {
+            BizPaymentApply a = draft(1L, 100L);
+            BizPaymentApply b = draft(2L, 100L);
+            when(paymentApplyMapper.selectById(1L)).thenReturn(a);
+            when(paymentApplyMapper.selectById(2L)).thenReturn(b);
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(100L);
+            contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+            contract.setCumulativePaid(BigDecimal.ZERO);
+            when(otherContractMapper.selectById(100L)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(100L)).thenReturn(BigDecimal.ZERO);
+            when(approvalService.startProcess(eq("PAYMENT_APPLY"), anyLong(), eq("payment_apply_approval"), anyMap()))
+                    .thenReturn("proc-batch");
+
+            int count = paymentApplyService.batch(req("submit", List.of(1L, 2L)));
+
+            assertThat(count).isEqualTo(2);
+            assertThat(a.getStatus()).isEqualTo("SUBMITTED");
+            assertThat(b.getStatus()).isEqualTo("SUBMITTED");
+        }
+
+        @Test
+        @DisplayName("未知 action：拒绝")
+        void batch_unknownAction_throws() {
+            when(paymentApplyMapper.selectById(1L)).thenReturn(draft(1L, null));
+            assertThatThrownBy(() -> paymentApplyService.batch(req("audit", List.of(1L))))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("不支持的批量操作类型");
         }
     }
 }

@@ -258,5 +258,124 @@ describe('ConsistencyComparator', () => {
       const result = comparator.compare(backend, pcWeb, []);
       expect(result).toHaveLength(0);
     });
+
+    // ===================== 贪婪匹配缺陷回归（2026-09-15 修复） =====================
+
+    it('通配端点 /{id} 先声明时不应遮蔽静态兄弟端点（防 BACKEND_ORPHAN_API 误报）', () => {
+      // 复现 ProjectController 真实声明顺序：DELETE /{id} 在前，DELETE /batch 在后
+      const backend = [
+        makeBackend({
+          methodName: 'deleteById',
+          httpMethod: 'DELETE',
+          fullPath: '/api/v1/project/{id}',
+        }),
+        makeBackend({
+          methodName: 'batchDelete',
+          httpMethod: 'DELETE',
+          fullPath: '/api/v1/project/batch',
+        }),
+      ];
+      const pcWeb = [
+        makeFrontend({
+          functionName: 'deleteProject',
+          httpMethod: 'DELETE',
+          requestPath: '/v1/project/{id}',
+        }),
+        makeFrontend({
+          functionName: 'batchDeleteProjects',
+          httpMethod: 'DELETE',
+          requestPath: '/v1/project/batch',
+        }),
+      ];
+      const result = comparator.compare(backend, pcWeb, []);
+      // 旧实现：/batch 调用被 /{id} 抢先认领 → 误报 BACKEND_ORPHAN_API
+      expect(result).toHaveLength(0);
+    });
+
+    it('静态端点先声明、通配端点后声明时也不误报（顺序无关）', () => {
+      const backend = [
+        makeBackend({
+          methodName: 'getById',
+          httpMethod: 'GET',
+          fullPath: '/api/v1/project/{id}',
+        }),
+        makeBackend({
+          methodName: 'portfolio',
+          httpMethod: 'GET',
+          fullPath: '/api/v1/project/portfolio',
+        }),
+      ];
+      const pcWeb = [
+        makeFrontend({
+          functionName: 'getProjectDetail',
+          httpMethod: 'GET',
+          requestPath: '/v1/project/{id}',
+        }),
+        makeFrontend({
+          functionName: 'getProjectPortfolio',
+          httpMethod: 'GET',
+          requestPath: '/v1/project/portfolio',
+        }),
+      ];
+      const result = comparator.compare(backend, pcWeb, []);
+      expect(result).toHaveLength(0);
+    });
+
+    it('同一路径同时存在 GET 列表与 POST 创建端点：前端各自调用不误报 mismatch', () => {
+      // 复现 basedata 真实形态：GET /material（列表）+ POST /material（创建）共存
+      const backend = [
+        makeBackend({
+          methodName: 'list',
+          httpMethod: 'GET',
+          fullPath: '/api/v1/basedata/material',
+        }),
+        makeBackend({
+          methodName: 'create',
+          httpMethod: 'POST',
+          fullPath: '/api/v1/basedata/material',
+        }),
+      ];
+      const pcWeb = [
+        makeFrontend({
+          functionName: 'getMaterialList',
+          httpMethod: 'GET',
+          requestPath: '/v1/basedata/material',
+        }),
+        makeFrontend({
+          functionName: 'createMaterial',
+          httpMethod: 'POST',
+          requestPath: '/v1/basedata/material',
+        }),
+      ];
+      const result = comparator.compare(backend, pcWeb, []);
+      expect(result).toHaveLength(0);
+    });
+
+    it('静态路径与同方法通配端点共存时，前端静态调用优先匹配静态端点', () => {
+      // 只调 /batch：应标记 batch 端点已匹配，/{id} 仍为真实孤儿
+      const backend = [
+        makeBackend({
+          methodName: 'deleteById',
+          httpMethod: 'DELETE',
+          fullPath: '/api/v1/project/{id}',
+        }),
+        makeBackend({
+          methodName: 'batchDelete',
+          httpMethod: 'DELETE',
+          fullPath: '/api/v1/project/batch',
+        }),
+      ];
+      const pcWeb = [
+        makeFrontend({
+          functionName: 'batchDeleteProjects',
+          httpMethod: 'DELETE',
+          requestPath: '/v1/project/batch',
+        }),
+      ];
+      const result = comparator.compare(backend, pcWeb, []);
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('BACKEND_ORPHAN_API');
+      expect(result[0].description).toContain('/api/v1/project/{id}');
+    });
   });
 });

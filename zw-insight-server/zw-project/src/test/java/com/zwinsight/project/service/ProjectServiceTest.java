@@ -251,6 +251,49 @@ class ProjectServiceTest {
     }
 
     // =====================================================================
+    // batchDelete
+    // =====================================================================
+
+    @Test
+    @DisplayName("批量删除：全部 DRAFT 且无关联报名时逐条删除")
+    void testBatchDelete_allDraft_deletesAll() {
+        BizProject p2 = new BizProject();
+        p2.setId(2L);
+        p2.setStatus("DRAFT");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.selectById(2L)).thenReturn(p2);
+
+        projectService.batchDelete(java.util.List.of(1L, 2L));
+
+        verify(projectMapper).deleteById(1L);
+        verify(projectMapper).deleteById(2L);
+    }
+
+    @Test
+    @DisplayName("批量删除：空列表拒绝，不执行任何删除")
+    void testBatchDelete_emptyList_rejected() {
+        assertThatThrownBy(() -> projectService.batchDelete(java.util.List.of()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("ID 列表不能为空");
+
+        verifyNoInteractions(projectMapper);
+    }
+
+    @Test
+    @DisplayName("批量删除：含非 DRAFT 项抛异常（整体事务回滚）")
+    void testBatchDelete_nonDraftItem_throws() {
+        BizProject filed = new BizProject();
+        filed.setId(2L);
+        filed.setStatus("FILED");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.selectById(2L)).thenReturn(filed);
+
+        assertThatThrownBy(() -> projectService.batchDelete(java.util.List.of(1L, 2L)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可删除");
+    }
+
+    // =====================================================================
     // submit
     // =====================================================================
 

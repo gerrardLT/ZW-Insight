@@ -4,8 +4,10 @@ import com.zwinsight.common.annotation.OperLog;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
+import com.zwinsight.security.annotation.SecondaryConfirm;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
 import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.dto.BatchOperationRequest;
 import com.zwinsight.finance.service.PaymentApplyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -64,5 +66,18 @@ public class PaymentApplyController {
     public R<Void> submit(@PathVariable Long id) {
         paymentApplyService.submit(id);
         return R.ok();
+    }
+
+    /**
+     * 批量操作（删除草稿 / 提交审批）。
+     * <p>危险批量操作走 {@code SecondaryConfirm} 二次确认（449 → 前端弹密码框携带
+     * X-Confirm-Password 重发）；整体单事务，任一单据状态非法则全部回滚。</p>
+     */
+    @PostMapping("/batch")
+    @RequiresPermission("finance:payment:submit")
+    @SecondaryConfirm(message = "批量操作付款申请为高风险操作，请输入登录密码确认")
+    @OperLog(module = "付款管理", operType = "BATCH", description = "批量操作付款申请")
+    public R<Integer> batch(@RequestBody BatchOperationRequest request) {
+        return R.ok(paymentApplyService.batch(request));
     }
 }

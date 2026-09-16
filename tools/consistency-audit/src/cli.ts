@@ -127,8 +127,13 @@ async function main(): Promise<void> {
       process.exit(2);
     }
 
-    // 解析输出目录
-    outputDir = opts.output;
+    // 解析输出目录（相对路径以当前工作目录为基准，而非 rootPath。
+    // 旧实现把相对 output 传给 engine 后 join(rootPath, outputDir)，
+    // 在 tools 子目录内运行 `--root ../../ --output ../../audit-reports` 时
+    // 会被解析到磁盘根 D:\audit-reports，2026-09-15 连续两次踩坑后修正）
+    outputDir = path.isAbsolute(opts.output)
+      ? opts.output
+      : path.resolve(process.cwd(), opts.output);
 
     // 解析输出格式
     const formats = opts.format.split(',').map(f => f.trim()).filter(Boolean);
