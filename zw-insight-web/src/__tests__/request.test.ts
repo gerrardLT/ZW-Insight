@@ -43,9 +43,20 @@ vi.mock('element-plus', () => ({
   ElMessage: { error: vi.fn() },
 }))
 
-vi.mock('@/router', () => ({ default: { push: mockPush } }))
+vi.mock('@/router', () => ({
+  default: {
+    push: mockPush,
+    currentRoute: { value: { path: '/dashboard' } },
+  },
+}))
 vi.mock('@/utils/secondaryConfirm', () => ({
   requestSecondaryConfirm: vi.fn(),
+}))
+const { mockLogout } = vi.hoisted(() => ({
+  mockLogout: vi.fn(),
+}))
+vi.mock('@/stores/user', () => ({
+  useUserStore: () => ({ logout: mockLogout }),
 }))
 
 // ---- import SUT ----
@@ -322,6 +333,79 @@ describe('网络重试纪律', () => {
     await expect(retryErrorInterceptor(error)).rejects.toBeDefined()
     expect(mockAxiosInstance.request).not.toHaveBeenCalled() // POST 不重试
     expect(postConfig._networkRetried).toBeUndefined() // 未标记重试
+  })
+})
+
+// ===========================================================================
+// 401 统一处理（2026-09-16 修复 token 过期蒙层 bug：必须清内存登录态，否则
+// 路由守卫用 userStore.token 覆盖判定已登录，push('/login') 被弹回首页）
+// ===========================================================================
+describe('401 统一处理（token 过期弹回死循环修复）', () => {
+  async function loadFreshModule() {
+    mockAxiosInstance.interceptors.response.use.mockClear()
+    mockAxiosInstance.interceptors.response.use.mockImplementation((_s: any, e: any) => {
+      ;(globalThis as any).__errFn = e
+    })
+    vi.resetModules()
+    await import('@/utils/request')
+    return (globalThis as any).__errFn
+  }
+
+  it('HTTP 401：调 userStore.logout（清内存登录态）+ push 登录页', async () => {
+    mockLogout.mockClear()
+    mockPush.mockClear()
+    const errFn = await loadFreshModule()
+    expect(errFn).toBeTypeOf('function')
+
+    const error: any = {
+      config: { method: 'get', url: '/api/x' },
+      response: { status: 401, data: { message: 'token 已过期' } },
+    }
+    await expect(errFn(error)).rejects.toBeDefined()
+    expect(mockLogout).toHaveBeenCalledTimes(1) // 核心：内存登录态被清
+    expect(mockPush).toHaveBeenCalledWith('/login')
+  })
+
+  it('已在登录页时不重复 push（防导航警告堆积）', async () => {
+    mockLogout.mockClear()
+    mockPush.mockClear()
+    const errFn = await loadFreshModule()
+
+    // 场景：dashboard 页并发两个 401——第一个触发跳转，第二个到达时已在登录页
+    const error: any = {
+      config: { method: 'get', url: '/api/x' },
+      response: { status: 401, data: {} },
+    }
+    await expect(errFn(error)).rejects.toBeDefined()
+    expect(mockPush).toHaveBeenCalledTimes(1) // 第一个 401：在 dashboard → push
+
+    // 模拟跳转完成：当前路由已是登录页
+    ;(router as any).currentRoute.value.path = '/login'
+    mockPush.mockClear()
+    await expect(errFn(error)).rejects.toBeDefined()
+    expect(mockPush).not.toHaveBeenCalled() // 第二个 401：已在登录页 → 不重复 push
+
+    ;(router as any).currentRoute.value.path = '/dashboard' // 还原供后续用例
+  })
+
+  it('store 未就绪时兜底清 localStorage token（不静默丢认证态）', async () => {
+    mockLogout.mockClear()
+    mockPush.mockClear()
+    // 覆盖 mock 让 useUserStore 抛错，验证 catch 兜底
+    vi.doMock('@/stores/user', () => ({
+      useUserStore: () => { throw new Error('pinia not ready') },
+    }))
+    const errFn = await loadFreshModule()
+    localStorage.setItem('token', 'stale-token')
+
+    const error: any = {
+      config: { method: 'get', url: '/api/x' },
+      response: { status: 401, data: {} },
+    }
+    await expect(errFn(error)).rejects.toBeDefined()
+    expect(localStorage.getItem('token')).toBeNull() // 兑底已清
+    expect(mockPush).toHaveBeenCalledWith('/login')
+    vi.doUnmock('@/stores/user')
   })
 })
 

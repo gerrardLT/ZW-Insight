@@ -1,10 +1,30 @@
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { useUserStore } from '@/stores/user'
 import { requestSecondaryConfirm } from '@/utils/secondaryConfirm'
 
 /** HTTP 449：后端 @SecondaryConfirm 拦截器要求二次确认 */
 const HTTP_SECONDARY_CONFIRM = 449
+
+/**
+ * 401 统一处理（2026-09-16 修复 token 过期蒙层 bug）：
+ * 必须请 userStore.logout() 同步清内存登录态——路由守卫用 userStore.token（内存）
+ * 覆盖 localStorage 判定「已登录」，只清 localStorage 会导致 push('/login')
+ * 被守卫「已登录访问登录页」弹回首页，页面停在 dashboard 且首登引导
+ * el-tour 全屏遮罩拦截点击（实证复现：蒙层无法点击 + 数据全 0 + 无法到达登录页）。
+ */
+function handleUnauthorized() {
+  try {
+    useUserStore().logout()
+  } catch {
+    // store 未就绪时兑底只清持久化 token
+    localStorage.removeItem('token')
+  }
+  if (router.currentRoute.value.path !== '/login') {
+    router.push('/login')
+  }
+}
 
 const service: AxiosInstance = axios.create({
   baseURL: '/api',
@@ -53,8 +73,7 @@ service.interceptors.response.use(
     if (res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
-        localStorage.removeItem('token')
-        router.push('/login')
+        handleUnauthorized()
       }
       return Promise.reject(new Error(res.message || '请求失败'))
     }
@@ -126,8 +145,8 @@ service.interceptors.response.use(
     const message = responseData?.message || error.message || '网络异常'
     ElMessage.error(message)
     if (response?.status === 401) {
-      localStorage.removeItem('token')
-      router.push('/login')
+      handleUnauthorized()
+      return Promise.reject(error)
     }
     // 成功后的在线监听注册：网络恢复时自动重试最近失败的 GET 请求（全局一次）
     if (!(window as any).__zwNetworkRecoveryBound) {
