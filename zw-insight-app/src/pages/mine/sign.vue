@@ -204,7 +204,7 @@ onMounted(() => {
 
 <style scoped>
 .sign-page { padding: 20rpx; min-height: 44px; }
-.project-selector { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 20rpx; min-height: 44px; 24rpx; border-radius: var(--zw-radius-md); margin-bottom: 20rpx; border: 1rpx solid var(--zw-border-light); }
+.project-selector { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 20rpx 24rpx; min-height: 44px; border-radius: var(--zw-radius-md); margin-bottom: 20rpx; border: 1rpx solid var(--zw-border-light); }
 .selector-label { font-size: 26rpx; color: var(--zw-text-tertiary); }
 .selector-value { flex: 1; text-align: right; font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
 .arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }

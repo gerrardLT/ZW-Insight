@@ -12,20 +12,15 @@
 import { getProjectList, getMaterialDict } from '@/api/common'
 import { offlineCache, STORAGE_KEYS } from './offlineCache'
 import { useNetworkStore } from '@/stores/network'
+import type { OfflineListResult, OfflineReadMeta, FallbackReason, Freshness } from '@/types/offline'
+
+export type { OfflineListResult }
 
 /** 无可用离线数据时的统一提示（需求 4.8） */
 export const NO_OFFLINE_DATA_TIP = '无可用离线数据，请联网后同步'
 
-export interface OfflineListResult<T = any> {
-  /** 列表数据 */
-  records: T[]
-  /** 数据是否来自本地缓存 */
-  fromCache: boolean
-  /** 是否为空（离线且无缓存 / 接口无数据） */
-  empty: boolean
-  /** 空状态提示文案（仅 empty 为 true 时有意义） */
-  message?: string
-}
+/** 7 天毫秒数 */
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 /** 从任意响应/缓存数据结构中提取 records 数组 */
 function extractRecords<T = any>(data: any): T[] {
@@ -38,13 +33,48 @@ function extractRecords<T = any>(data: any): T[] {
 }
 
 /** 读取缓存条目并组装为列表结果 */
-function readFromCache<T = any>(key: string): OfflineListResult<T> {
+function readFromCache<T = any>(
+  key: string,
+  onlineAttempted: boolean,
+  fallbackReason?: FallbackReason
+): OfflineListResult<T> {
   const entry = offlineCache.get(key)
   const records = extractRecords<T>(entry?.data)
-  if (records.length === 0) {
-    return { records: [], fromCache: true, empty: true, message: NO_OFFLINE_DATA_TIP }
+  const now = Date.now()
+
+  let freshness: Freshness = 'UNKNOWN'
+  let ageMs: number | undefined
+  if (entry?.cachedAt) {
+    ageMs = Math.max(0, now - entry.cachedAt)
+    freshness = ageMs > SEVEN_DAYS_MS ? 'STALE' : 'FRESH'
   }
-  return { records, fromCache: true, empty: false }
+
+  const meta: OfflineReadMeta = {
+    source: 'CACHE',
+    freshness,
+    cachedAt: entry?.cachedAt,
+    ageMs,
+    onlineAttempted,
+    fallbackReason
+  }
+
+  if (records.length === 0) {
+    return {
+      records: [],
+      fromCache: true,
+      empty: true,
+      message: NO_OFFLINE_DATA_TIP,
+      meta
+    }
+  }
+
+  return {
+    records,
+    fromCache: true,
+    empty: false,
+    message: fallbackReason === 'NETWORK_ERROR' ? '在线请求失败，当前展示本地缓存' : undefined,
+    meta
+  }
 }
 
 /**
@@ -56,7 +86,7 @@ export async function loadProjectList<T = any>(params?: any): Promise<OfflineLis
 
   // 离线：直接读取缓存
   if (network.isOffline) {
-    return readFromCache<T>(STORAGE_KEYS.PROJECT_LIST)
+    return readFromCache<T>(STORAGE_KEYS.PROJECT_LIST, false, 'CACHE_ONLY')
   }
 
   // 在线：调用真实接口并刷新缓存
@@ -66,10 +96,19 @@ export async function loadProjectList<T = any>(params?: any): Promise<OfflineLis
     const records = extractRecords<T>(data)
     // 刷新本地缓存（版本号用当前时间戳，与 offlineCache.sync 语义一致）
     offlineCache.set(STORAGE_KEYS.PROJECT_LIST, data, Date.now())
-    return { records, fromCache: false, empty: records.length === 0 }
+    return {
+      records,
+      fromCache: false,
+      empty: records.length === 0,
+      meta: {
+        source: 'NETWORK',
+        freshness: 'FRESH',
+        onlineAttempted: true
+      }
+    }
   } catch (e) {
-    // 接口失败回退缓存，保证现场可用
-    return readFromCache<T>(STORAGE_KEYS.PROJECT_LIST)
+    // 接口失败回退缓存，保证现场可用，但明确标注网络失败回退
+    return readFromCache<T>(STORAGE_KEYS.PROJECT_LIST, true, 'NETWORK_ERROR')
   }
 }
 
@@ -81,7 +120,7 @@ export async function loadMaterialDict<T = any>(params?: any): Promise<OfflineLi
   const network = useNetworkStore()
 
   if (network.isOffline) {
-    return readFromCache<T>(STORAGE_KEYS.MATERIAL_DICT)
+    return readFromCache<T>(STORAGE_KEYS.MATERIAL_DICT, false, 'CACHE_ONLY')
   }
 
   try {
@@ -89,8 +128,17 @@ export async function loadMaterialDict<T = any>(params?: any): Promise<OfflineLi
     const data = res?.data ?? res
     const records = extractRecords<T>(data)
     offlineCache.set(STORAGE_KEYS.MATERIAL_DICT, data, Date.now())
-    return { records, fromCache: false, empty: records.length === 0 }
+    return {
+      records,
+      fromCache: false,
+      empty: records.length === 0,
+      meta: {
+        source: 'NETWORK',
+        freshness: 'FRESH',
+        onlineAttempted: true
+      }
+    }
   } catch (e) {
-    return readFromCache<T>(STORAGE_KEYS.MATERIAL_DICT)
+    return readFromCache<T>(STORAGE_KEYS.MATERIAL_DICT, true, 'NETWORK_ERROR')
   }
 }

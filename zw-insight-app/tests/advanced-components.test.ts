@@ -1,19 +1,27 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ZwOfflineIndicator from '../src/components/ZwOfflineIndicator.vue'
 import ZwBottomSheetPicker from '../src/components/ZwBottomSheetPicker.vue'
 import ZwWatermarkCamera from '../src/components/ZwWatermarkCamera.vue'
 import { useNetworkStore } from '../src/stores/network'
+import { syncEngine } from '../src/utils/syncEngine'
 
 describe('Mobile Advanced Components', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    vi.restoreAllMocks()
   })
 
   it('ZwOfflineIndicator 响应网络状态切换与队列计数', async () => {
     const network = useNetworkStore()
+    vi.spyOn(syncEngine, 'getQueue').mockReturnValue([
+      { id: '1', type: 'INBOUND', endpoint: '/test', payload: {}, timestamp: Date.now(), retryCount: 0, status: 'PENDING' },
+      { id: '2', type: 'OUTBOUND', endpoint: '/test', payload: {}, timestamp: Date.now(), retryCount: 0, status: 'PENDING' },
+      { id: '3', type: 'LOG', endpoint: '/test', payload: {}, timestamp: Date.now(), retryCount: 0, status: 'PENDING' }
+    ])
+
     const wrapper = mount(ZwOfflineIndicator)
 
     expect(wrapper.find('.indicator-label').text()).toBe('ONLINE')

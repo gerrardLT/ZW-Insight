@@ -176,7 +176,7 @@ function offerRectificationEntry(newId: number) {
 <style scoped>
 .form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
 .form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx; min-height: 44px; 0; border-bottom: 1rpx solid var(--zw-border-light); }
+.form-item { display: flex; align-items: center; padding: 24rpx 0; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-item.vertical { flex-direction: column; align-items: flex-start; }
 .form-item:last-child { border-bottom: none; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }

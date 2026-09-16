@@ -42,7 +42,12 @@ describe('loadProjectList 项目列表读取', () => {
     const result = await loadProjectList({ page: 1, size: 10 })
 
     expect(mockGetProjectList).toHaveBeenCalledWith({ page: 1, size: 10 })
-    expect(result).toEqual({ records: [{ id: 1, projectName: 'P1' }], fromCache: false, empty: false })
+    expect(result.records).toEqual([{ id: 1, projectName: 'P1' }])
+    expect(result.fromCache).toBe(false)
+    expect(result.empty).toBe(false)
+    expect(result.meta.source).toBe('NETWORK')
+    expect(result.meta.freshness).toBe('FRESH')
+    expect(result.meta.onlineAttempted).toBe(true)
     // 缓存已刷新（后续离线可读）
     expect(offlineCache.get(STORAGE_KEYS.PROJECT_LIST)?.data).toBeTruthy()
   })
@@ -56,6 +61,9 @@ describe('loadProjectList 项目列表读取', () => {
     expect(mockGetProjectList).not.toHaveBeenCalled()
     expect(result.records).toEqual([{ id: 2 }])
     expect(result.fromCache).toBe(true)
+    expect(result.meta.source).toBe('CACHE')
+    expect(result.meta.fallbackReason).toBe('CACHE_ONLY')
+    expect(result.meta.onlineAttempted).toBe(false)
   })
 
   it('离线且无缓存：空态 + 统一提示文案', async () => {
@@ -63,7 +71,12 @@ describe('loadProjectList 项目列表读取', () => {
 
     const result = await loadProjectList()
 
-    expect(result).toEqual({ records: [], fromCache: true, empty: true, message: NO_OFFLINE_DATA_TIP })
+    expect(result.records).toEqual([])
+    expect(result.fromCache).toBe(true)
+    expect(result.empty).toBe(true)
+    expect(result.message).toBe(NO_OFFLINE_DATA_TIP)
+    expect(result.meta.source).toBe('CACHE')
+    expect(result.meta.fallbackReason).toBe('CACHE_ONLY')
   })
 
   it('在线但接口失败：回退缓存（现场可用）', async () => {
@@ -74,6 +87,10 @@ describe('loadProjectList 项目列表读取', () => {
 
     expect(result.fromCache).toBe(true)
     expect(result.records).toEqual([{ id: 3 }])
+    expect(result.meta.source).toBe('CACHE')
+    expect(result.meta.onlineAttempted).toBe(true)
+    expect(result.meta.fallbackReason).toBe('NETWORK_ERROR')
+    expect(result.message).toBe('在线请求失败，当前展示本地缓存')
   })
 
   it('在线接口返回裸数组亦能提取 records', async () => {
@@ -98,13 +115,17 @@ describe('loadMaterialDict 材料字典读取', () => {
 
   it('离线读缓存；无缓存空态提示', async () => {
     setOffline(true)
-    expect(await loadMaterialDict()).toEqual({
-      records: [], fromCache: true, empty: true, message: NO_OFFLINE_DATA_TIP,
-    })
+    const emptyRes = await loadMaterialDict()
+    expect(emptyRes.records).toEqual([])
+    expect(emptyRes.fromCache).toBe(true)
+    expect(emptyRes.empty).toBe(true)
+    expect(emptyRes.message).toBe(NO_OFFLINE_DATA_TIP)
+    expect(emptyRes.meta.source).toBe('CACHE')
 
     offlineCache.set(STORAGE_KEYS.MATERIAL_DICT, { data: { records: [{ id: 9 }] } }, 1) // data 嵌套形态
     const cached = await loadMaterialDict()
     expect(cached.records).toEqual([{ id: 9 }])
+    expect(cached.meta.source).toBe('CACHE')
   })
 
   it('接口失败回退缓存', async () => {
@@ -115,6 +136,8 @@ describe('loadMaterialDict 材料字典读取', () => {
 
     expect(result.fromCache).toBe(true)
     expect(result.records).toEqual([{ id: 5 }])
+    expect(result.meta.source).toBe('CACHE')
+    expect(result.meta.fallbackReason).toBe('NETWORK_ERROR')
   })
 
   it('缓存结构无法提取 records 时返回空态（兜底分支）', async () => {
@@ -123,9 +146,11 @@ describe('loadMaterialDict 材料字典读取', () => {
 
     const result = await loadMaterialDict()
 
-    expect(result).toEqual({
-      records: [], fromCache: true, empty: true, message: NO_OFFLINE_DATA_TIP,
-    })
+    expect(result.records).toEqual([])
+    expect(result.fromCache).toBe(true)
+    expect(result.empty).toBe(true)
+    expect(result.message).toBe(NO_OFFLINE_DATA_TIP)
+    expect(result.meta.source).toBe('CACHE')
   })
 })
 
