@@ -280,16 +280,29 @@ function goForgotPassword() {
   background-color: var(--zw-bg-card);
 }
 
-/* ===== 左侧品牌区（石墨黑全幅画布，无渐变无光斑） ===== */
+/* ===== 左侧品牌区（石墨黑全幅画布，无渐变无光斑） =====
+ * 2026-09-16 品牌背景插画：AI 生成夜景鸟瞰工地线稿（等轴测塔吊群+铜架轮廓，
+ * 橙色点锥：塔吊警示灯/安全帽）；横向渐变遮罩：左深（0.78）保文案可读，
+ * 右浅（0.35）让线稿隐约浮现——低对比背景不抢视觉主体 */
 .login-brand {
   position: relative;
   width: 55%;
   flex-shrink: 0;
   overflow: hidden;
-  background: var(--zw-bg-sidebar);
+  background:
+    linear-gradient(90deg, rgba(16, 18, 20, 0.78) 0%, rgba(16, 18, 20, 0.52) 55%, rgba(16, 18, 20, 0.35) 100%),
+    url('@/assets/login-bg-site.png') center / cover no-repeat,
+    var(--zw-bg-sidebar);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 窄屏降级：插画隐藏退回纯色（避免小屏拥挤） */
+@media (max-width: 992px) {
+  .login-brand {
+    background: var(--zw-bg-sidebar);
+  }
 }
 
 /* 顶部 4px 警示条纹：品牌识别线 */

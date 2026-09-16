@@ -1,6 +1,8 @@
 <template>
   <div class="error-page">
     <div class="error-content">
+      <!-- 403 插画（2026-09-16 AI 生成：警示条纹围挡+挂锁——「工地禁入」的权限隐喻） -->
+      <img src="@/assets/err-403.png" class="error-illustration" alt="" />
       <div class="error-code danger">403</div>
       <h2 class="error-title">无访问权限</h2>
       <p class="error-desc">抱歉，您没有权限访问该页面，请联系管理员。</p>
@@ -47,6 +49,17 @@ function reLogin() {
 .error-content {
   text-align: center;
   padding: var(--zw-space-xl);
+}
+
+/* 403 插画：与 404 同规格 */
+.error-illustration {
+  width: 320px;
+  max-width: 70vw;
+  height: auto;
+  display: block;
+  margin: 0 auto var(--zw-space-md);
+  border: 1px solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
 }
 
 .error-code {

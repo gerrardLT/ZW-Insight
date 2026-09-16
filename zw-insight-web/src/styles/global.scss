@@ -424,6 +424,14 @@ input, textarea {
   color: var(--zw-text-quaternary);
 }
 
+/* 空态插画图（2026-09-16 AI 生成「空白图纸+圆规」）：180px 融入式展示 */
+.zw-empty-img {
+  width: 180px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
 /* ===== Element Plus 菜单折叠修复 ===== */
 .el-menu--collapse .el-sub-menu__title span,
 .el-menu--collapse .el-sub-menu__title .el-sub-menu__icon-arrow {

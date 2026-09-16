@@ -12,10 +12,10 @@
       </div>
     </el-card>
 
-    <!-- 未选择项目时的引导提示 -->
+    <!-- 未选择项目时的引导提示（2026-09-16 插画：空白图纸+圆规——「等待绘制」隐喻） -->
     <el-empty v-if="!selectedProjectId" description="请先选择一个项目以查看成本控制看板数据">
       <template #image>
-        <TowerCraneIcon class="zw-empty-icon" />
+        <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
       </template>
     </el-empty>
 
@@ -184,7 +184,7 @@
               </el-table>
               <el-empty v-else description="暂无成本账户数据">
                 <template #image>
-                  <BlueprintCornerIcon class="zw-empty-icon" />
+                  <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
                 </template>
               </el-empty>
             </div>
@@ -201,7 +201,6 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
-import { TowerCraneIcon, BlueprintCornerIcon } from '@/components/icons/zw'
 import { getProjectCostControl, type ProjectCostControlDTO, type CostAccountSummary } from '@/api/dashboard'
 import { getChangeEventOpenCount, getApprovedCostDelta } from '@/api/change-event'
 

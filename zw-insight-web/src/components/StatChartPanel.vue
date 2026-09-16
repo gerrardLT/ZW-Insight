@@ -27,11 +27,11 @@
           <el-button type="primary" size="small" @click="load">重试</el-button>
         </el-empty>
       </div>
-      <!-- 空态：接口成功但无可绘制数据 -->
+      <!-- 空态：接口成功但无可绘制数据（2026-09-16 插画：空白图纸+圆规——「等待绘制」隐喻） -->
       <div v-else-if="isEmpty" class="panel-state" data-testid="stat-panel-empty">
         <el-empty :description="emptyText">
           <template #image>
-            <BlueprintCornerIcon class="zw-empty-icon" />
+            <img src="@/assets/empty-blueprint.png" class="zw-empty-img" alt="" />
           </template>
         </el-empty>
       </div>
@@ -84,7 +84,7 @@
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
 import { Refresh } from '@/components/icons/registry'
-import { BlueprintCornerIcon, HelmetIcon } from '@/components/icons/zw'
+import { HelmetIcon } from '@/components/icons/zw'
 import { useAppStore } from '@/stores/app'
 import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
 

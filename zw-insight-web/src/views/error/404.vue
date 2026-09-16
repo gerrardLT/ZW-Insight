@@ -1,6 +1,8 @@
 <template>
   <div class="error-page">
     <div class="error-content">
+      <!-- 404 插画（2026-09-16 AI 生成：断裂钢缆+空吊钩——「要找的东西没找到」的工程隐喻） -->
+      <img src="@/assets/err-404.png" class="error-illustration" alt="" />
       <div class="error-code">404</div>
       <h2 class="error-title">页面走丢了</h2>
       <p class="error-desc">抱歉，您访问的页面不存在或已被移除。</p>
@@ -26,6 +28,17 @@
 .error-content {
   text-align: center;
   padding: var(--zw-space-xl);
+}
+
+/* 404 插画：白底图直接展示，宽 320px 居中 */
+.error-illustration {
+  width: 320px;
+  max-width: 70vw;
+  height: auto;
+  display: block;
+  margin: 0 auto var(--zw-space-md);
+  border: 1px solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
 }
 
 .error-code {
