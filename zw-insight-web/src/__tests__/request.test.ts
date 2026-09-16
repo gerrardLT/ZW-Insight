@@ -52,6 +52,7 @@ vi.mock('@/utils/secondaryConfirm', () => ({
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+
 import { requestSecondaryConfirm } from '@/utils/secondaryConfirm'
 
 describe('request.ts 拦截器', () => {
@@ -276,3 +277,51 @@ describe('request.ts 拦截器', () => {
     })
   })
 })
+
+describe('网络重试纪律', () => {
+  // 外层 describe 的 beforeEach 会 clearAllMocks 清空模块加载时的拦截器注册记录，
+  // 故此处用 resetModules + dynamic import 重新触发 request.ts 注册流程
+  // （vi.mock('axios') factory 固定返回同一 hoisted mockAxiosInstance，安全可靠）
+  let retryErrorInterceptor: any
+
+  beforeEach(async () => {
+    Object.keys(store).forEach(k => delete store[k])
+    mockAxiosInstance.request.mockClear()
+    mockAxiosInstance.interceptors.response.use.mockClear()
+
+    // 拦截最新一次注册的 error 回调
+    mockAxiosInstance.interceptors.response.use.mockImplementation((_s: any, e: any) => {
+      retryErrorInterceptor = e
+    })
+
+    // 重置模块图并动态重载：request.ts 重新执行 → 拦截器重新注册 → 上面的捕获生效
+    vi.resetModules()
+    await import('@/utils/request')
+  })
+
+  it('GET 请求无 response（纯网络错误）时单次重试且标记 _networkRetried', async () => {
+    expect(retryErrorInterceptor).toBeTypeOf('function')
+    mockAxiosInstance.request.mockRejectedValueOnce({} as any)
+
+    const config: any = { method: 'get', url: '/api/test' }
+    const error: any = { config, response: undefined }
+
+    // 走 retry 分支 → service.request(config) 被 mock 拒绝
+    await expect(retryErrorInterceptor(error)).rejects.toBeDefined()
+    expect(mockAxiosInstance.request).toHaveBeenCalledTimes(1)
+    // 重试标记已写入（防重复重试）
+    expect(config._networkRetried).toBe(true)
+  })
+
+  it('非 GET 请求不触发自动重试', async () => {
+    expect(retryErrorInterceptor).toBeTypeOf('function')
+
+    const postConfig: any = { method: 'post', url: '/api/data' }
+    const error: any = { config: postConfig, response: undefined }
+
+    await expect(retryErrorInterceptor(error)).rejects.toBeDefined()
+    expect(mockAxiosInstance.request).not.toHaveBeenCalled() // POST 不重试
+    expect(postConfig._networkRetried).toBeUndefined() // 未标记重试
+  })
+})
+
