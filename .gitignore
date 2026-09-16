@@ -76,7 +76,7 @@ pnpm-debug.log*
 # Docker Data Volumes
 # ========================
 data/
-# 功能深度账本数据需入库（含人工复核判断）
+# 鍔熻兘娣卞害璐︽湰鏁版嵁闇€鍏ュ簱锛堝惈浜哄伐澶嶆牳鍒ゆ柇锛?
 !tools/feature-ledger/data/
 
 # ========================
@@ -106,24 +106,24 @@ coverage/
 *.pid
 *.seed
 
-# jqwik 属性测试运行缓存
+# jqwik 灞炴€ф祴璇曡繍琛岀紦瀛?
 .jqwik-database
 **/.jqwik-database
 
-# SSH 私钥 / 凭证（严禁提交）
+# SSH 绉侀挜 / 鍑瘉锛堜弗绂佹彁浜わ級
 keys/*.pem
 keys/*.key
 *.pem
 
-# 测试结果（本地生成，不入库）
+# 娴嬭瘯缁撴灉锛堟湰鍦扮敓鎴愶紝涓嶅叆搴擄級
 test-results/
 tests/reports/
 
-# 部署用的大体积可启动 jar（本地构建产物，不入库）
+# 閮ㄧ讲鐢ㄧ殑澶т綋绉彲鍚姩 jar锛堟湰鍦版瀯寤轰骇鐗╋紝涓嶅叆搴擄級
 deploy/zw-insight-app.jar
 
 # ========================
-# API 测试套件本地产物（源码入库，运行态产物不入库）
+# API 娴嬭瘯濂椾欢鏈湴浜х墿锛堟簮鐮佸叆搴擄紝杩愯鎬佷骇鐗╀笉鍏ュ簱锛?
 # ========================
 zw-insight-web/e2e/api-tests/node_modules/
 zw-insight-web/e2e/api-tests/.auth/
@@ -133,28 +133,33 @@ zw-insight-web/_*.cjs
 zw-insight-web/_*.json
 zw-insight-web/_ciart/
 zw-insight-web/_ciart2/
-# OCR 训练二进制（体积大，不入库；本地/CI 自行提供）
+# OCR 璁粌浜岃繘鍒讹紙浣撶Н澶э紝涓嶅叆搴擄紱鏈湴/CI 鑷鎻愪緵锛?
 **/eng.traineddata
 
 # ========================
-# 本机诊断脚本 / 临时工具（不入库）
+# 鏈満璇婃柇鑴氭湰 / 涓存椂宸ュ叿锛堜笉鍏ュ簱锛?
 # ========================
-keys/_*
+keys/_
+# 生图 API 凭证与脚本（含密钥，2026-09-16）
+keys/image-api.md
+keys/gen-image.mjs
+# loading 图候选物料库（临时产物，选定后清理）
+_loading_candidates/*
 keys/coldig.*
 tools/login-helper.js
 
 # ========================
-# 本地工具缓存（不入库，可随时重建）
+# 鏈湴宸ュ叿缂撳瓨锛堜笉鍏ュ簱锛屽彲闅忔椂閲嶅缓锛?
 # ========================
 .qoder/
-# mimosa hook 状态缓存（实测 15MB / 1790 文件，本地工具生成，可重建）
+# mimosa hook 鐘舵€佺紦瀛橈紙瀹炴祴 15MB / 1790 鏂囦欢锛屾湰鍦板伐鍏风敓鎴愶紝鍙噸寤猴級
 .mimosa/
 
-# unplugin-vue-components 自动生成（不入库，构建时生成）
+# unplugin-vue-components 鑷姩鐢熸垚锛堜笉鍏ュ簱锛屾瀯寤烘椂鐢熸垚锛?
 zw-insight-web/src/components.d.ts
 
 # ========================
-# E2E 测试登录凭证 / token（严禁提交）
+# E2E 娴嬭瘯鐧诲綍鍑瘉 / token锛堜弗绂佹彁浜わ級
 # ========================
 zw-insight-web/e2e/.auth/
 zw-insight-web/.tk.txt
