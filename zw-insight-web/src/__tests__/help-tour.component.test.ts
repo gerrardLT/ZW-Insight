@@ -124,4 +124,18 @@ describe('DefaultLayout 首登引导（el-tour）', () => {
     const titles = (palette.props('commands') as any[]).map((c) => c.title)
     expect(titles).toContain('打开帮助中心')
   })
+
+  it('tour target 传真实 DOM（.value）而非 Ref 对象（源码钉住，2026-09-16 蒙层 bug 防回归）', async () => {
+    // 回归背景：:target="() => asideRef" 返回 Ref 对象，EP 拿不到 HTMLElement →
+    // 气泡不渲染只剩全屏遮罩拦截点击 → 遮住「跳过/完成」→ 标记永写不上 →
+    // 每次登录都弹（已真实浏览器复现并修复，见 git 历史 2026-09-16）
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync('src/layouts/DefaultLayout.vue', 'utf-8')
+    // 三个步骤 target 均需返回 .value
+    expect(src).toContain(':target="() => asideRef.value')
+    expect(src).toContain(':target="() => paletteBtnRef.value')
+    expect(src).toContain(':target="() => helpBtnRef.value')
+    // 防御：不得退回裸 Ref 传参
+    expect(src).not.toMatch(/:target="\(\) => (asideRef|paletteBtnRef|helpBtnRef)"/)
+  })
 })

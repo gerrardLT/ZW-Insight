@@ -127,20 +127,22 @@
     <CommandPalette :commands="paletteCommands" />
 
     <!-- 首登三步引导（Phase 1.3：localStorage zw-tour-done 标记，仅首次进入展示；
-         中途关闭或完成均写标记，下次不再打扰） -->
+         中途关闭或完成均写标记，下次不再打扰）；
+         2026-09-16 修复：target 必须返回真实 DOM（.value）——原传 Ref 对象导致 EP 定位
+         失败，气泡不渲染只剩全屏遮罩拦截点击，且遮住「跳过/完成」→ 标记永写不上 → 每次登录都弹 -->
     <el-tour v-model="tourVisible" data-testid="first-login-tour" @finish="markTourDone" @close="markTourDone">
       <el-tour-step
-        :target="() => asideRef"
+        :target="() => asideRef.value ?? undefined"
         title="模块导航"
         description="左侧菜单按你的授权展示全部业务模块，顶部面包屑显示当前位置。菜单可折叠，窄屏下自动收起。"
       />
       <el-tour-step
-        :target="() => paletteBtnRef"
+        :target="() => paletteBtnRef.value ?? undefined"
         title="命令面板"
         description="按 Ctrl+K（或非输入态按 /）随时唤起命令面板，输入名称即可快速跳转任意页面、执行常用操作。"
       />
       <el-tour-step
-        :target="() => helpBtnRef"
+        :target="() => helpBtnRef.value ?? undefined"
         title="帮助中心"
         description="业务术语、键盘快捷键与错误码速查都在这里。点击此按钮，或按 Ctrl+K 搜索「帮助」。"
       />

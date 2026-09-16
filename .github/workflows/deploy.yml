@@ -20,6 +20,10 @@ on:
         options:
           - 'false'
           - 'true'
+      fast_deploy:
+        description: '快速部署（日常最小路径，2026-09-16）：跳过后端单测+jacoco+三端前端测试，仅编译打包+部署+冒烟，约 3-5 分钟。仅限本地已完成测试验证的日常推送'
+        type: boolean
+        default: false
 
 # 测试套件触发策略（2026-08-13 用户决策：全量套件约 40 分钟，每次部署都跑等待过长）：
 #   - push 默认只跑：Backend Build（L1 单测 + 覆盖率基线对比）→ Deploy → 部署冒烟
@@ -75,9 +79,12 @@ jobs:
       # -T 1C 并行构建（2026-08-14 提速优化）：22 个独立模块按 CPU 核数并行编译/测试，
       # 实测串行 503s → 并行约 3min；jacoco 逐模块 agent 互不干扰，覆盖率与串行一致
       # （本地对照验证通过）。
+      #
+      # 2026-09-16 用户决策：fast_deploy 快速路径——跳过单测与 jacoco 门槛，仅 packge
+      # 产出 jar（约 2min）；仅限本地已完成测试验证的日常推送；push 事件不受影响仍走 verify。
       - name: Build & Unit Test (with JaCoCo)
         working-directory: zw-insight-server
-        run: mvn -B -T 1C clean verify
+        run: ${{ inputs.fast_deploy && 'mvn -B -DskipTests clean package' || 'mvn -B -T 1C clean verify' }}
 
       # 2026-09-16 用户决策：移除后端覆盖率基线比对门禁（原逐模块比对 tests/coverage-baseline.json 步骤）。
       # 保留：①pom 内置 jacoco 分档 check（mvn verify 阶段仍真实生效）②基线 JSON 留仓供本地自查。
@@ -132,6 +139,8 @@ jobs:
   # ────────────────────────────────────────────────────
   frontend-test:
     name: Frontend Unit Test (${{ matrix.project }})
+    # fast_deploy 快速路径跳过三端前端测试（2026-09-16）；push 事件 inputs 为空 → 恒跑
+    if: ${{ !inputs.fast_deploy }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -187,6 +196,10 @@ jobs:
     name: Deploy to Server
     runs-on: ubuntu-latest
     needs: [backend, frontend-test]
+    # backend 成功 且（frontend 成功或 fast_deploy 跳过）才部署；frontend 失败仍不部署（保留质量门禁）
+    if: |
+      always() && needs.backend.result == 'success' &&
+      (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped')
     environment: production
     steps:
       - uses: actions/checkout@v4
