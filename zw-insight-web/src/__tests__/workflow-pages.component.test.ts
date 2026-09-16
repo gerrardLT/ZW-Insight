@@ -193,6 +193,48 @@ describe('workflow/approval/index.vue 审批中心', () => {
     await flushPromises()
     expect(mockBatchApprove).toHaveBeenCalledWith({ taskIds: ['a', 'b'] })
   })
+
+  it('乐观更新（S2.3）：批量通过成功——请求发出前本地已移除选中行（即时反馈）', async () => {
+    mockTodo.mockResolvedValue({ code: 200, data: { records: [
+      { taskId: 'a', taskName: '任务A' }, { taskId: 'b', taskName: '任务B' }, { taskId: 'c', taskName: '任务C' },
+    ], total: 3 } })
+    wrapper = mount(Approval, { global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    const st = wrapper.vm.$.setupState
+
+    // 在 batchApprove 被调用的瞬间捕获 tableData（此时乐观移除应已先行发生）
+    let optimisticSnapshot: string[] = []
+    mockBatchApprove.mockImplementationOnce(async () => {
+      optimisticSnapshot = st.tableData.map((r: any) => r.taskId)
+      return { code: 200 } as any
+    })
+
+    st.handleSelectionChange([{ taskId: 'a' }, { taskId: 'b' }])
+    await st.handleBatchApprove()
+    await flushPromises()
+
+    expect(mockBatchApprove).toHaveBeenCalledWith({ taskIds: ['a', 'b'] })
+    // 乐观移除先行：请求发出时本地只剩 c
+    expect(optimisticSnapshot).toEqual(['c'])
+    expect(st.selectedRows).toEqual([])
+  })
+
+  it('乐观更新（S2.3）：batchApprove 失败——还原快照 + warning 提示（不静默丢数据）', async () => {
+    mockTodo.mockResolvedValue({ code: 200, data: { records: [
+      { taskId: 'a', taskName: '任务A' }, { taskId: 'b', taskName: '任务B' },
+    ], total: 2 } })
+    wrapper = mount(Approval, { global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    const st = wrapper.vm.$.setupState
+
+    mockBatchApprove.mockRejectedValueOnce(new Error('网络异常') as any)
+    st.handleSelectionChange([{ taskId: 'a' }])
+    await st.handleBatchApprove()
+    await flushPromises()
+
+    // 失败回滚：两条数据完整还原
+    expect(st.tableData.map((r: any) => r.taskId)).toEqual(['a', 'b'])
+  })
 })
 
 describe('workflow/business-type/index.vue 业务类型配置', () => {

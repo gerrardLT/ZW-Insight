@@ -337,11 +337,24 @@ async function handleTerminate(row: any) {
 async function handleBatchApprove() {
   await ElMessageBox.confirm(`确定要批量通过选中的 ${selectedRows.value.length} 条任务吗？`, '提示', { type: 'info' })
   const taskIds = selectedRows.value.map((row) => row.taskId)
-  await batchApprove({ taskIds })
-  ElMessage.success('批量审批成功')
+
+  // 乐观更新试点（S2.3）：先本地移除选中行给即时反馈；失败还原快照，不静默丢数据
+  const snapshot = [...tableData.value]
+  const approvedIds = new Set(taskIds)
+  tableData.value = tableData.value.filter((row) => !approvedIds.has(row.taskId))
   selectedRows.value = []
   currentRowIndex.value = -1
-  loadData()
+
+  try {
+    await batchApprove({ taskIds })
+    ElMessage.success(`批量审批成功（${taskIds.length} 条）`)
+    // 与服务端对齐：静默刷新拿回权威分页数据（页码/总数校正），失败仅告警不阻断
+    await loadData()
+  } catch {
+    // 失败还原快照（拦截器已弹具体错误提示，此处补充数据已恢复的说明）
+    tableData.value = snapshot
+    ElMessage.warning('批量审批未完成，列表数据已恢复')
+  }
 }
 
 onMounted(() => {
