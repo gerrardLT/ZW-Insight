@@ -89,14 +89,16 @@ service.interceptors.response.use(
     }
 
     // 幂等性重试纪律：仅 GET 请求且无 response（纯网络错误）+ 未重试过
-    if (!response && config.method === 'GET' && !config._networkRetried) {
+    // 注：axios config.method 实际为小写 'get'，必须大小写不敏感判断（2026-09-15 实证）
+    const method = (config.method || 'get').toUpperCase()
+    if (!response && method === 'GET' && !config._networkRetried) {
       console.warn('[Retry] Network error, retrying GET request')
       config._networkRetried = true
       return service.request(config)
     }
 
     // 保存失败记录到队列（仅 GET），上限 3 条
-    if (config.method === 'GET' && response) {
+    if (method === 'GET' && response) {
       const queueKey = 'failed-get-requests'
       const now = Date.now()
       const lastFailure = Number(localStorage.getItem('last-failure-timestamp') || '0')
@@ -104,7 +106,7 @@ service.interceptors.response.use(
       
       // 防抖：同一条错误 3 秒内不去重
       if (now - lastFailure > 3000) {
-        queue.unshift({ url: config.url, method: config.method, timestamp: now })
+        queue.unshift({ url: config.url, method, params: config.params, timestamp: now })
         localStorage.setItem(queueKey, JSON.stringify(queue.slice(0, 3)))
         localStorage.setItem('last-failure-timestamp', String(now))
         
@@ -127,8 +129,11 @@ service.interceptors.response.use(
       localStorage.removeItem('token')
       router.push('/login')
     }
-    // 成功后的在线监听注册：网络恢复时自动重试最近失败的 GET 请求
-    window.addEventListener('online', handleNetworkRecovery)
+    // 成功后的在线监听注册：网络恢复时自动重试最近失败的 GET 请求（全局一次）
+    if (!(window as any).__zwNetworkRecoveryBound) {
+      ;(window as any).__zwNetworkRecoveryBound = true
+      window.addEventListener('online', handleNetworkRecovery)
+    }
     return Promise.reject(error)
   }
 )
@@ -153,3 +158,5 @@ const handleNetworkRecovery = () => {
     }
   }).catch(() => {})
 }
+
+export default service
