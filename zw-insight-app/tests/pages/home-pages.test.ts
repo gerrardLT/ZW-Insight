@@ -318,15 +318,18 @@ describe('message-center/index.vue 信息中心', () => {
 })
 
 describe('project/archive.vue 项目档案页', () => {
-  it('onLoad 带 projectId 加载档案数据', async () => {
-    vi.mocked(getProjectArchive).mockResolvedValue({ code: 200, data: { projectName: '滨江一期', contractAmount: 2_000_000 } })
+  it('onLoad 带 projectId 加载档案数据（后端嵌套契约：data.project）', async () => {
+    vi.mocked(getProjectArchive).mockResolvedValue({
+      code: 200,
+      data: { project: { id: 55, projectName: '滨江一期', contractAmount: 2_000_000 }, fundSummary: {} },
+    })
 
     const wrapper = mount(ArchivePage)
     hooks.onLoadCb?.({ projectId: '55' })
     await flushPromises()
 
     expect(vi.mocked(getProjectArchive)).toHaveBeenCalledWith(55)
-    expect(wrapper.vm.archive.projectName).toBe('滨江一期')
+    expect(wrapper.vm.project.projectName).toBe('滨江一期')
     expect(wrapper.vm.loading).toBe(false)
     wrapper.unmount()
   })
@@ -341,15 +344,20 @@ describe('project/archive.vue 项目档案页', () => {
     wrapper.unmount()
   })
 
-  it('S3.1 ZwiSectionCard + ZwiCell kv 化：三分区卡 + 11 条键值行', async () => {
+  it('S3.1 ZwiSectionCard + ZwiCell kv 化：字段对齐后端嵌套契约（project/fundSummary）', async () => {
     vi.mocked(getProjectArchive).mockResolvedValue({
       code: 200,
       data: {
-        projectName: '滨江花园一期',
-        projectCode: 'PRJ-001',
-        contractAmount: 2_000_000,
-        finance: { totalIncome: 1_000_000, totalExpense: 500_000, profit: 500_000 },
-        progress: 42,
+        project: {
+          id: 55,
+          projectName: '滨江花园一期',
+          projectCode: 'PRJ-001',
+          status: 'CONSTRUCTION',
+          ownerCompanyName: '某业主',
+          projectNature: '住宅',
+          projectType: '总包',
+        },
+        fundSummary: { totalIncome: 1_000_000, totalExpense: 500_000, contractAmount: 2_000_000 },
       },
     })
 
@@ -357,16 +365,14 @@ describe('project/archive.vue 项目档案页', () => {
     hooks.onLoadCb?.({ projectId: '55' })
     await flushPromises()
 
-    // 三分区均走 ZwiSectionCard（契约 .section/.section-title 保留）
-    expect(wrapper.findAll('.section')).toHaveLength(3)
-    expect(wrapper.findAll('.section-title').map((t) => t.text())).toEqual([
-      '项目信息', '财务概况', '进度概况',
-    ])
-    // 8 条项目信息 + 3 条财务 = 11 条 kv 行
-    expect(wrapper.findAll('.cell-kv')).toHaveLength(11)
+    // 两分区均走 ZwiSectionCard（进度卡已移除：后端 getProjectArchive 无 progress 数据源）
+    expect(wrapper.findAll('.section-title').map((t) => t.text())).toEqual(['项目信息', '财务概况'])
+    // 7 条项目信息 + 3 条财务 = 10 条 kv 行
+    expect(wrapper.findAll('.cell-kv')).toHaveLength(10)
     expect(wrapper.text()).toContain('滨江花园一期')
-    expect(wrapper.text()).toContain('200.00万')
-    expect(wrapper.text()).toContain('42%')
+    expect(wrapper.text()).toContain('施工中') // 状态枚举→中文映射
+    expect(wrapper.text()).toContain('200.00万') // 合同金额走 fundSummary
+    expect(wrapper.text()).toContain('50.00万') // 利润 = 100万 - 50万
     wrapper.unmount()
   })
 

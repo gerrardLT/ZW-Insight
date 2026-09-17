@@ -11,43 +11,32 @@
       </template>
     </ZwiEmptyState>
 
-    <template v-else-if="archive">
-      <!-- 项目基本信息：.info-row → ZwiCell kv 变体（字段名走弱/字段值走强） -->
+    <!-- 后端 ArchiveService#getProjectArchive 返回嵌套结构 { project, fundSummary, members, ... }，
+         字段名以 BizProject 实体为准（ownerCompanyName 等；无 manager/startDate/endDate/progress 数据源，不编造） -->
+    <template v-else-if="project.id">
       <ZwiSectionCard eyebrow="Project" title="项目信息">
-        <ZwiCell variant="kv" title="项目名称" :value="archive.projectName || '-'" :ellipsis="false" />
-        <ZwiCell variant="kv" title="项目编号" :value="archive.projectCode || '-'" />
-        <ZwiCell variant="kv" title="项目状态" :value="archive.statusText || '-'" />
-        <ZwiCell variant="kv" title="业主单位" :value="archive.ownerName || '-'" :ellipsis="false" />
-        <ZwiCell variant="kv" title="合同金额" :value="archive.contractAmount ? (archive.contractAmount / 10000).toFixed(2) + '万' : '-'" />
-        <ZwiCell variant="kv" title="项目经理" :value="archive.managerName || '-'" />
-        <ZwiCell variant="kv" title="开工日期" :value="archive.startDate || '-'" />
-        <ZwiCell variant="kv" title="计划竣工" :value="archive.endDate || '-'" last />
+        <ZwiCell variant="kv" title="项目名称" :value="project.projectName || '-'" :ellipsis="false" />
+        <ZwiCell variant="kv" title="项目编号" :value="project.projectCode || '-'" />
+        <ZwiCell variant="kv" title="项目状态" :value="statusLabel(project.status)" />
+        <ZwiCell variant="kv" title="业主单位" :value="project.ownerCompanyName || '-'" :ellipsis="false" />
+        <ZwiCell variant="kv" title="合同金额" :value="fund.contractAmount ? formatWan(fund.contractAmount) + '万' : '-'" />
+        <ZwiCell variant="kv" title="项目性质" :value="project.projectNature || '-'" />
+        <ZwiCell variant="kv" title="项目类型" :value="project.projectType || '-'" last />
       </ZwiSectionCard>
 
-      <!-- 财务概况 -->
-      <ZwiSectionCard eyebrow="Finance" title="财务概况" v-if="archive.finance">
-        <ZwiCell variant="kv" title="已收款" :value="formatWan(archive.finance.totalIncome) + '万'" />
-        <ZwiCell variant="kv" title="已付款" :value="formatWan(archive.finance.totalExpense) + '万'" />
-        <ZwiCell variant="kv" title="利润" :value="formatWan(archive.finance.profit) + '万'" last />
-      </ZwiSectionCard>
-
-      <!-- 进度概况 -->
-      <ZwiSectionCard eyebrow="Progress" title="进度概况" v-if="archive.progress !== undefined">
-        <view class="progress-bar-wrap">
-          <view class="progress-bar">
-            <view class="progress-inner" :style="{ width: (archive.progress || 0) + '%' }"></view>
-          </view>
-          <text class="progress-text">{{ archive.progress || 0 }}%</text>
-        </view>
+      <ZwiSectionCard eyebrow="Finance" title="财务概况">
+        <ZwiCell variant="kv" title="已收款" :value="formatWan(fund.totalIncome) + '万'" />
+        <ZwiCell variant="kv" title="已付款" :value="formatWan(fund.totalExpense) + '万'" />
+        <ZwiCell variant="kv" title="利润" :value="formatWan(profit) + '万'" last />
       </ZwiSectionCard>
     </template>
 
-    <ZwiEmptyState v-if="!loading && !loadFailed && !archive" description="暂无项目档案信息" />
+    <ZwiEmptyState v-if="!loading && !loadFailed && !project.id" description="暂无项目档案信息" />
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getProjectArchive } from '@/api/common'
 import ZwiSectionCard from '@/components/zwi/ZwiSectionCard.vue'
@@ -58,6 +47,20 @@ const archive = ref<any>(null)
 const loading = ref(true)
 const loadFailed = ref(false)
 let currentProjectId = 0
+
+// 后端嵌套契约解构：project / fundSummary
+const project = computed<any>(() => archive.value?.project || {})
+const fund = computed<any>(() => archive.value?.fundSummary || {})
+const profit = computed(() => Number(fund.value.totalIncome || 0) - Number(fund.value.totalExpense || 0))
+
+// 项目状态 8 态中文映射（与 PC views/project/index.vue statusMap 同口径）
+const STATUS_LABEL: Record<string, string> = {
+  DRAFT: '草稿', FILED: '已报备', TENDERING: '招标中', WON: '已中标',
+  CONSTRUCTION: '施工中', COMPLETED: '已竣工', CLOSING: '结项审批中', CLOSED: '已关闭',
+}
+function statusLabel(s?: string) {
+  return (s && STATUS_LABEL[s]) || s || '-'
+}
 
 function formatWan(val: number) {
   if (!val) return '0'
@@ -99,8 +102,4 @@ function retryLoad() {
 .loading-mask { display: flex; justify-content: center; align-items: center; height: 400rpx; font-size: 28rpx; color: var(--zw-text-tertiary); }
 /* 失败态重试 CTA（ZwiEmptyState #action 插槽，仍属本页作用域） */
 .retry-btn { padding: 8rpx 28rpx; min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 26rpx; border-radius: var(--zw-radius-xs); }
-.progress-bar-wrap { display: flex; align-items: center; gap: 16rpx; }
-.progress-bar { flex: 1; height: 16rpx; background: var(--zw-bg-hover); border-radius: 2rpx; overflow: hidden; }
-.progress-inner { height: 100%; width: 100%; background: var(--zw-brand); border-radius: 2rpx; }
-.progress-text { font-size: 26rpx; color: var(--zw-brand); font-weight: bold; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 </style>
