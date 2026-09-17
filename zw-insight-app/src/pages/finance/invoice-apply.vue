@@ -1,28 +1,23 @@
 <template>
-  <view class="form-page">
-    <view class="form-section">
-      <view class="form-item" @click="showProjectPicker = true">
-        <text class="form-label">所属项目</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
-      <view class="form-item" @click="openContractPicker">
-        <text class="form-label">施工合同</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.contractName }">{{ form.contractName || '请选择合同' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
+  <ZwiFormPage submitText="提交申请" :loading="submitting" @submit="handleSubmit">
+    <view class="form-card">
+      <ZwiPickerField
+        label="所属项目"
+        :displayValue="form.projectName"
+        placeholder="请选择项目"
+        @open="showProjectPicker = true"
+      />
+      <ZwiPickerField
+        label="施工合同"
+        :displayValue="form.contractName"
+        placeholder="请选择合同"
+        @open="openContractPicker"
+      />
     </view>
 
-    <view class="form-section">
-      <view class="form-item">
-        <text class="form-label">开票金额(元)</text>
-        <input v-model="form.amount" type="digit" placeholder="请输入开票金额" class="form-input" />
-      </view>
-      <view class="form-item">
+    <view class="form-card">
+      <ZwiField label="开票金额(元)" v-model="form.amount" inputType="digit" placeholder="请输入开票金额" />
+      <view class="form-item radio-item-row">
         <text class="form-label">发票类型</text>
         <view class="radio-group">
           <view class="radio-item" :class="{ active: form.invoiceType === '增值税专用发票' }" @click="form.invoiceType = '增值税专用发票'">
@@ -33,29 +28,13 @@
           </view>
         </view>
       </view>
-      <view class="form-item">
-        <text class="form-label">购方名称</text>
-        <input v-model="form.buyerName" placeholder="请输入购方名称" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">购方税号</text>
-        <input v-model="form.buyerTaxNo" placeholder="请输入税号" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">开票内容</text>
-        <input v-model="form.content" placeholder="如：工程款" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">申请日期</text>
-        <input v-model="form.applyDate" placeholder="YYYY-MM-DD" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">备注</text>
-        <input v-model="form.remark" placeholder="请输入备注" class="form-input" />
-      </view>
+      <ZwiField label="购方名称" v-model="form.buyerName" placeholder="请输入购方名称" />
+      <ZwiField label="购方税号" v-model="form.buyerTaxNo" placeholder="请输入税号" />
+      <ZwiField label="开票内容" v-model="form.content" placeholder="如：工程款" />
+      <ZwiField label="申请日期" v-model="form.applyDate" placeholder="YYYY-MM-DD" />
+      <ZwiField label="备注" v-model="form.remark" placeholder="请输入备注" />
     </view>
 
-    <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交申请</button>
 
     <!-- 项目选择弹窗 -->
     <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
@@ -90,7 +69,7 @@
         </scroll-view>
       </view>
     </view>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
@@ -208,24 +187,39 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx; min-height: 44px;  border-bottom: 1rpx solid var(--zw-border-light); }
-.form-item:last-child { border-bottom: none; }
+/* 表单卡壳：收敛后的通用容器（替代原 form-section 21 页重复样式） */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+/* radio-group 行保留原结构 */
+.radio-item-row { display: flex; align-items: center; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+/* textarea 行（vertical）保留原结构 */
+.form-item.vertical { flex-direction: column; align-items: flex-start; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
-.placeholder { color: var(--zw-text-quaternary); }
-.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
+.textarea { width: 100%; height: 180rpx; border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-sm); padding: 16rpx; min-height: 44px; font-size: 26rpx; margin-top: 12rpx; box-sizing: border-box; }
 .radio-group { display: flex; gap: 20rpx; flex: 1; justify-content: flex-end; }
-.radio-item { padding: 0 24rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); font-size: 26rpx; color: var(--zw-text-secondary); }
-.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); font-weight: 500; }
-.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则；P0 触控达标：88rpx→min-height 44px */
+.radio-item { padding: 0 24rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); font-size: 26rpx; color: var(--zw-text-secondary); }
+.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); }
+.total-display { flex: 1; text-align: right; font-size: 36rpx; font-weight: bold; color: var(--zw-brand); font-family: var(--zw-font-mono); }
+
+/* 选择弹窗（原样式保留） */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
-.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; max-height: 70vh; }
-.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; ;  border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
-.picker-item { padding: 24rpx; ;  border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.picker-item { padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
 .empty { text-align: center; padding: 40rpx; min-height: 44px; color: var(--zw-text-quaternary); }
 </style>

@@ -1,8 +1,8 @@
 <template>
-  <view class="form-page">
+  <ZwiFormPage submitText="确认归还" :loading="submitting" @submit="handleSubmit">
     <OfflineBanner />
     <!-- 未还清备用金列表（status=APPROVED） -->
-    <view class="form-section">
+    <view class="form-card">
       <view class="section-title"><text>选择备用金记录</text></view>
       <view
         class="fund-item"
@@ -23,19 +23,12 @@
       <view v-if="!pendingList.length" class="empty"><text>暂无未还清的备用金记录</text></view>
     </view>
 
-    <view class="form-section">
-      <view class="form-item">
-        <text class="form-label">归还金额</text>
-        <input v-model="form.returnAmount" type="number" placeholder="请输入归还金额" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">归还日期</text>
-        <input v-model="form.returnDate" placeholder="YYYY-MM-DD" class="form-input" />
-      </view>
+    <view class="form-card">
+      <ZwiField label="归还金额" v-model="form.returnAmount" inputType="digit" placeholder="请输入归还金额" />
+      <ZwiField label="归还日期" v-model="form.returnDate" placeholder="YYYY-MM-DD" />
     </view>
 
-    <button class="submit-btn" :loading="submitting" @click="handleSubmit">确认归还</button>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
@@ -120,18 +113,39 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
-.section-title { font-size: 30rpx; font-weight: bold; padding: 24rpx 0 12rpx; }
-.fund-item { padding: 20rpx 16rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); margin-bottom: 16rpx; }
-.fund-item.selected { border-color: var(--zw-brand); background: var(--zw-brand-light); }
-.fund-line { display: flex; justify-content: space-between; font-size: 28rpx; color: var(--zw-text-primary); }
-.fund-line.sub { margin-top: 8rpx; font-size: 24rpx; color: var(--zw-text-tertiary); }
-.fund-amount { color: var(--zw-brand); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
-.form-item:last-child { border-bottom: none; }
+/* 表单卡壳：收敛后的通用容器（替代原 form-section 21 页重复样式） */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+/* radio-group 行保留原结构 */
+.radio-item-row { display: flex; align-items: center; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+/* textarea 行（vertical）保留原结构 */
+.form-item.vertical { flex-direction: column; align-items: flex-start; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
+.textarea { width: 100%; height: 180rpx; border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-sm); padding: 16rpx; min-height: 44px; font-size: 26rpx; margin-top: 12rpx; box-sizing: border-box; }
+.radio-group { display: flex; gap: 20rpx; flex: 1; justify-content: flex-end; }
+.radio-item { padding: 0 24rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); font-size: 26rpx; color: var(--zw-text-secondary); }
+.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); }
+.total-display { flex: 1; text-align: right; font-size: 36rpx; font-weight: bold; color: var(--zw-brand); font-family: var(--zw-font-mono); }
+
+/* 选择弹窗（原样式保留） */
+.picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
+.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-title { font-size: 30rpx; font-weight: bold; }
+.picker-list { max-height: 60vh; }
+.picker-item { padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.empty { text-align: center; padding: 40rpx; min-height: 44px; color: var(--zw-text-quaternary); }
 </style>

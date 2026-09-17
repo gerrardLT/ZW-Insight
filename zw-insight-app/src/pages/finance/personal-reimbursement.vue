@@ -1,26 +1,16 @@
 <template>
-  <view class="form-page">
-    <view class="form-section">
-      <view class="form-item">
-        <text class="form-label">报销金额</text>
-        <input v-model="form.totalAmount" type="number" placeholder="请输入报销金额" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">报销日期</text>
-        <input v-model="form.reimbursementDate" placeholder="YYYY-MM-DD" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">备注</text>
-        <input v-model="form.remark" placeholder="请输入备注（费用事由等）" class="form-input" />
-      </view>
+  <ZwiFormPage submitText="提交报销" :loading="submitting" @submit="handleSubmit">
+    <view class="form-card">
+      <ZwiField label="报销金额" v-model="form.totalAmount" inputType="digit" placeholder="请输入报销金额" />
+      <ZwiField label="报销日期" v-model="form.reimbursementDate" placeholder="YYYY-MM-DD" />
+      <ZwiField label="备注" v-model="form.remark" placeholder="请输入备注（费用事由等）" />
     </view>
 
     <view class="tips">
       <text class="tip-text">提交后自动进入审批流程，审批通过后生效。</text>
     </view>
 
-    <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交报销</button>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
@@ -63,13 +53,39 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }
-.form-item:last-child { border-bottom: none; }
+/* 表单卡壳：收敛后的通用容器（替代原 form-section 21 页重复样式） */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+/* radio-group 行保留原结构 */
+.radio-item-row { display: flex; align-items: center; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+/* textarea 行（vertical）保留原结构 */
+.form-item.vertical { flex-direction: column; align-items: flex-start; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.tips { padding: 12rpx 24rpx; }
-.tip-text { font-size: 24rpx; color: var(--zw-text-tertiary); }
-.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
+.textarea { width: 100%; height: 180rpx; border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-sm); padding: 16rpx; min-height: 44px; font-size: 26rpx; margin-top: 12rpx; box-sizing: border-box; }
+.radio-group { display: flex; gap: 20rpx; flex: 1; justify-content: flex-end; }
+.radio-item { padding: 0 24rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); font-size: 26rpx; color: var(--zw-text-secondary); }
+.radio-item.active { border-color: var(--zw-brand); color: var(--zw-brand); background: var(--zw-brand-light); }
+.total-display { flex: 1; text-align: right; font-size: 36rpx; font-weight: bold; color: var(--zw-brand); font-family: var(--zw-font-mono); }
+
+/* 选择弹窗（原样式保留） */
+.picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
+.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-title { font-size: 30rpx; font-weight: bold; }
+.picker-list { max-height: 60vh; }
+.picker-item { padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.empty { text-align: center; padding: 40rpx; min-height: 44px; color: var(--zw-text-quaternary); }
 </style>
