@@ -1,8 +1,9 @@
 <template>
-  <view class="form-page">
+  <!-- ZwiFormPage 壳：sticky 底部提交条（critique P0 拇指区）；双模式业务流原样保留 -->
+  <ZwiFormPage submitText="提交入库" :loading="submitting" @submit="handleSubmit">
     <OfflineBanner />
     <!-- 项目与合同选择 -->
-    <view class="form-section">
+    <view class="form-card">
       <!-- 项目选择（S4.2）：ZwBottomSheetPicker 工业抽屉（48px 触控热区 + 触觉反馈） -->
       <ZwBottomSheetPicker
         :options="projectOptions"
@@ -12,17 +13,15 @@
         @change="onProjectPicked"
       >
         <template #trigger>
-          <view class="form-item">
-            <text class="form-label">所属项目</text>
-            <view class="form-input picker">
-              <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-              <text class="arrow">›</text>
-            </view>
-          </view>
+          <ZwiPickerField
+            label="所属项目"
+            :displayValue="form.projectName"
+            placeholder="请选择项目"
+          />
         </template>
       </ZwBottomSheetPicker>
-      <!-- 入库类型切换 -->
-      <view class="form-item">
+      <!-- 入库类型切换（chips 行保留——ZwiField 无 chips 形态） -->
+      <view class="form-item mode-item">
         <text class="form-label">入库模式</text>
         <view class="mode-chips">
           <text class="chip" :class="{ on: inboundMode === 'PURCHASE' }" @click="inboundMode = 'PURCHASE'">采购合同核验</text>
@@ -30,17 +29,17 @@
         </view>
       </view>
       <!-- 采购合同选择（仅采购核验模式） -->
-      <view class="form-item" v-if="inboundMode === 'PURCHASE'" @click="openContractPicker">
-        <text class="form-label">采购合同</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.contractName }">{{ form.contractName || '请选择采购合同' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
+      <ZwiPickerField
+        v-if="inboundMode === 'PURCHASE'"
+        label="采购合同"
+        :displayValue="form.contractName"
+        placeholder="请选择采购合同"
+        @open="openContractPicker"
+      />
     </view>
 
     <!-- 采购合同核验材料明细清单 -->
-    <view class="form-section" v-if="inboundMode === 'PURCHASE' && form.contractId">
+    <view class="form-card" v-if="inboundMode === 'PURCHASE' && form.contractId">
       <view class="section-title-sub">
         <text>采购材料到货核验清单</text>
         <text class="batch-select" @click="toggleSelectAll">
@@ -80,61 +79,30 @@
     </view>
 
     <!-- 零星/单项入库信息 -->
-    <view class="form-section" v-if="inboundMode === 'DIRECT'">
-      <view class="form-item">
-        <text class="form-label">材料编码</text>
-        <view class="form-input code-wrap">
-          <input cursor-spacing="24" v-model="materialCode" placeholder="扫码或输入编码" class="code-input" />
+    <view class="form-card" v-if="inboundMode === 'DIRECT'">
+      <ZwiField label="材料编码" v-model="materialCode" placeholder="扫码或输入编码">
+        <template #suffix>
           <!-- #ifndef H5 -->
           <text class="scan-btn" @click="handleScan">扫码</text>
           <!-- #endif -->
           <!-- #ifdef H5 -->
-          <text class="scan-btn" @click="handleCodeConfirm">手动输入编码·查询</text>
+          <text class="scan-btn" @click="handleCodeConfirm">查询</text>
           <!-- #endif -->
-        </view>
-      </view>
-      <view class="form-item">
-        <text class="form-label">材料名称</text>
-        <input cursor-spacing="24" v-model="form.materialName" placeholder="请输入材料名称" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">规格型号</text>
-        <input cursor-spacing="24" v-model="form.specification" placeholder="请输入规格型号" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">数量</text>
-        <input cursor-spacing="24" v-model="form.quantity" type="digit" placeholder="请输入数量" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">单位</text>
-        <input cursor-spacing="24" v-model="form.unit" placeholder="如：吨、米、个" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">单价(元)</text>
-        <input cursor-spacing="24" v-model="form.unitPrice" type="digit" placeholder="请输入单价" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">供应商</text>
-        <input cursor-spacing="24" v-model="form.supplierName" placeholder="请输入供应商" class="form-input" />
-      </view>
+        </template>
+      </ZwiField>
+      <ZwiField label="材料名称" v-model="form.materialName" placeholder="请输入材料名称" />
+      <ZwiField label="规格型号" v-model="form.specification" placeholder="请输入规格型号" />
+      <ZwiField label="数量" v-model="form.quantity" inputType="digit" placeholder="请输入数量" />
+      <ZwiField label="单位" v-model="form.unit" placeholder="如：吨、米、个" />
+      <ZwiField label="单价(元)" v-model="form.unitPrice" inputType="digit" placeholder="请输入单价" />
+      <ZwiField label="供应商" v-model="form.supplierName" placeholder="请输入供应商" />
       <picker mode="date" :value="form.inboundDate" @change="onDateChange">
-        <view class="form-item">
-          <text class="form-label">入库日期</text>
-          <view class="form-input picker">
-            <text :class="{ placeholder: !form.inboundDate }">{{ form.inboundDate || '请选择日期' }}</text>
-            <text class="arrow">›</text>
-          </view>
-        </view>
+        <ZwiPickerField label="入库日期" :displayValue="form.inboundDate" placeholder="请选择日期" />
       </picker>
-      <view class="form-item">
-        <text class="form-label">备注</text>
-        <input cursor-spacing="24" v-model="form.remark" placeholder="请输入备注" class="form-input" />
-      </view>
+      <ZwiField label="备注" v-model="form.remark" placeholder="请输入备注" />
     </view>
 
-    <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交入库</button>
-
-    <!-- 采购合同选择弹窗 -->
+    <!-- 采购合同选择弹窗（原有自绘弹层保留） -->
     <view class="picker-mask" v-if="showContractPicker" @click="showContractPicker = false">
       <view class="picker-content" @click.stop>
         <view class="picker-header">
@@ -150,7 +118,7 @@
         </scroll-view>
       </view>
     </view>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
@@ -163,6 +131,9 @@ import {
 } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 import ZwBottomSheetPicker from '@/components/ZwBottomSheetPicker.vue'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiField from '@/components/zwi/ZwiField.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 import { useFormSession } from '@/composables/useFormSession'
@@ -405,24 +376,52 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; box-shadow: var(--zw-shadow-card); }
-.form-item { display: flex; align-items: center; padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); }
-.form-item:last-child { border-bottom: none; }
+/* 表单卡壳：收敛后的通用容器（替代原 form-section 21 页重复样式） */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+
+/* 入库模式 chips 行（ZwiField 无 chips 形态，保留原结构收敛边距） */
+.mode-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  min-height: 44px;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); }
-.form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
-.placeholder { color: var(--zw-text-quaternary); }
-.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
-.code-wrap { display: flex; align-items: center; justify-content: flex-end; }
-.code-input { text-align: right; font-size: 28rpx; flex: 1; font-family: var(--zw-font-mono); }
-.scan-btn { margin-left: 16rpx; padding: 6rpx;   background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); white-space: nowrap; }
 .mode-chips { display: flex; gap: 16rpx; justify-content: flex-end; flex: 1; }
-.chip { padding: 8rpx;   border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); font-size: 24rpx; color: var(--zw-text-secondary); }
+.chip { padding: 8rpx 12rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); font-size: 24rpx; color: var(--zw-text-secondary); min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; } /* P0 触控热区 */
 .chip.on { border-color: var(--zw-brand); background: var(--zw-brand-light); color: var(--zw-brand); font-weight: 500; }
-.section-title-sub { display: flex; justify-content: space-between; align-items: center; padding: 20rpx;   font-size: 28rpx; font-weight: bold; border-bottom: 1rpx solid var(--zw-border-light); }
+
+.scan-btn {
+  margin-left: 16rpx;
+  padding: 6rpx 12rpx;
+  background: var(--zw-brand);
+  color: var(--zw-on-primary);
+  font-size: 24rpx;
+  border-radius: var(--zw-radius-xs);
+  white-space: nowrap;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+/* 采购核验清单（原结构保留） */
+.section-title-sub { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 24rpx; font-size: 28rpx; font-weight: bold; border-bottom: 1rpx solid var(--zw-border-light); }
 .batch-select { font-size: 24rpx; color: var(--zw-brand); font-weight: normal; }
-.detail-cards { padding: 16rpx;   }
+.detail-cards { padding: 16rpx 24rpx; }
 .detail-card { border: 2rpx solid var(--zw-border-light); border-radius: var(--zw-radius-md); padding: 20rpx; min-height: 44px; margin-bottom: 16rpx; background: var(--zw-bg-page); }
 .detail-card.selected { border-color: var(--zw-brand); background: var(--zw-bg-card); }
 .card-top { display: flex; align-items: center; }
@@ -433,15 +432,16 @@ async function handleSubmit() {
 .card-mid { display: flex; justify-content: space-between; font-size: 24rpx; color: var(--zw-text-secondary); margin: 12rpx 0; }
 .card-bot { display: flex; align-items: center; padding-top: 12rpx; border-top: 1rpx dashed var(--zw-border-light); }
 .input-label { font-size: 24rpx; color: var(--zw-brand); font-weight: 500; }
-.receive-input { flex: 1; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 6rpx;   font-size: 26rpx; text-align: right; margin: 0 12rpx; background: #fff; }
+.receive-input { flex: 1; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 6rpx; font-size: 26rpx; text-align: right; margin: 0 12rpx; background: var(--zw-bg-card); }
 .unit-text { font-size: 24rpx; color: var(--zw-text-tertiary); }
-.empty-inline { text-align: center; padding: 40rpx;   font-size: 24rpx; color: var(--zw-text-quaternary); }
-.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; }
+.empty-inline { text-align: center; padding: 40rpx; font-size: 24rpx; color: var(--zw-text-quaternary); }
+
+/* 采购合同选择弹窗（原样式保留） */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
-.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
-.picker-item { padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.picker-item { padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
 .empty { text-align: center; padding: 40rpx; min-height: 44px; color: var(--zw-text-quaternary); }
 </style>

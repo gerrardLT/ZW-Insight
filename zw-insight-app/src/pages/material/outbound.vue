@@ -1,68 +1,40 @@
 <template>
-  <view class="form-page">
+  <!-- ZwiFormPage 壳：sticky 底部提交条（critique P0 拇指区）；业务逻辑原样保留 -->
+  <ZwiFormPage submitText="提交出库" :loading="submitting" @submit="handleSubmit">
     <OfflineBanner />
     <!-- 项目选择 -->
-    <view class="form-section">
-      <view class="form-item" @click="showProjectPicker = true">
-        <text class="form-label">所属项目</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
+    <view class="form-card">
+      <ZwiPickerField
+        label="所属项目"
+        :displayValue="form.projectName"
+        placeholder="请选择项目"
+        @open="showProjectPicker = true"
+      />
     </view>
 
     <!-- 出库信息 -->
-    <view class="form-section">
-      <view class="form-item">
-        <text class="form-label">材料编码</text>
-        <view class="form-input code-wrap">
-          <input cursor-spacing="24" v-model="materialCode" placeholder="扫码或输入编码" class="code-input" />
+    <view class="form-card">
+      <ZwiField label="材料编码" v-model="materialCode" placeholder="扫码或输入编码">
+        <template #suffix>
           <!-- #ifndef H5 -->
           <text class="scan-btn" @click="handleScan">扫码</text>
           <!-- #endif -->
           <!-- #ifdef H5 -->
-          <text class="scan-btn" @click="handleCodeConfirm">手动输入编码·查询</text>
+          <text class="scan-btn" @click="handleCodeConfirm">查询</text>
           <!-- #endif -->
-        </view>
-      </view>
-      <view class="form-item">
-        <text class="form-label">材料名称</text>
-        <input cursor-spacing="24" v-model="form.materialName" placeholder="请输入材料名称" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">规格型号</text>
-        <input cursor-spacing="24" v-model="form.specification" placeholder="请输入规格型号" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">出库数量</text>
-        <input cursor-spacing="24" v-model="form.quantity" type="digit" placeholder="请输入数量" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">单位</text>
-        <input cursor-spacing="24" v-model="form.unit" placeholder="如：吨、米、个" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">领用人</text>
-        <input cursor-spacing="24" v-model="form.receiver" placeholder="请输入领用人" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">用途说明</text>
-        <input cursor-spacing="24" v-model="form.purpose" placeholder="请输入用途" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">出库日期</text>
-        <input cursor-spacing="24" v-model="form.outboundDate" placeholder="YYYY-MM-DD" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">备注</text>
-        <input cursor-spacing="24" v-model="form.remark" placeholder="请输入备注" class="form-input" />
-      </view>
+        </template>
+      </ZwiField>
+      <ZwiField label="材料名称" v-model="form.materialName" placeholder="请输入材料名称" />
+      <ZwiField label="规格型号" v-model="form.specification" placeholder="请输入规格型号" />
+      <ZwiField label="出库数量" v-model="form.quantity" inputType="digit" placeholder="请输入数量" />
+      <ZwiField label="单位" v-model="form.unit" placeholder="如：吨、米、个" />
+      <ZwiField label="领用人" v-model="form.receiver" placeholder="请输入领用人" />
+      <ZwiField label="用途说明" v-model="form.purpose" placeholder="请输入用途" />
+      <ZwiField label="出库日期" v-model="form.outboundDate" placeholder="YYYY-MM-DD" />
+      <ZwiField label="备注" v-model="form.remark" placeholder="请输入备注" />
     </view>
 
-    <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交出库</button>
-
-    <!-- 项目选择弹窗 -->
+    <!-- 项目选择弹窗（原有自绘弹层保留——契约 selectProject 业务流不变） -->
     <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
       <view class="picker-content" @click.stop>
         <view class="picker-header">
@@ -78,13 +50,16 @@
         </scroll-view>
       </view>
     </view>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { saveMaterialOutbound, getMaterialByCode } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiField from '@/components/zwi/ZwiField.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 
@@ -198,24 +173,46 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); }
-.form-item:last-child { border-bottom: none; }
-.form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
-.code-wrap { display: flex; align-items: center; justify-content: flex-end; }
-.code-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.scan-btn { margin-left: 16rpx; padding: 6rpx;   background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); flex-shrink: 0; } /* 橙底深字承重规则 */
-.placeholder { color: var(--zw-text-quaternary); }
-.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
-.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
+/* 表单卡壳：收敛后的通用容器（原 form-section 21 页重复的样式） */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card > .form-item:last-child,
+.form-card > .form-item:nth-last-child(1) {
+  margin-bottom: 0;
+}
+/* 壳组件行边距收缩（ZwiField 自带 margin-bottom 24rpx，卡内末行归零） */
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+
+.scan-btn {
+  margin-left: 16rpx;
+  padding: 6rpx 12rpx;
+  background: var(--zw-brand);
+  color: var(--zw-on-primary);
+  font-size: 24rpx;
+  border-radius: var(--zw-radius-xs);
+  white-space: nowrap;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+/* 项目选择弹窗（原样式保留） */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; max-height: 70vh; }
-.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
-.picker-item { padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.picker-item { padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
 .empty { text-align: center; padding: 40rpx; min-height: 44px; color: var(--zw-text-quaternary); }
 </style>

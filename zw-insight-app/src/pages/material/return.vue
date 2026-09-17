@@ -1,53 +1,40 @@
 <template>
-  <view class="form-page">
+  <!-- ZwiFormPage 壳：sticky 底部提交条（critique P0 拇指区）；业务逻辑原样保留 -->
+  <ZwiFormPage submitText="提交退货" :loading="submitting" @submit="handleSubmit">
     <OfflineBanner />
-    <view class="form-section">
-      <view class="form-item" @click="showProjectPicker = true">
-        <text class="form-label">项目</text>
-        <text class="form-value" :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-      </view>
-      <view class="form-item">
-        <text class="form-label">材料名称</text>
-        <input cursor-spacing="24" v-model="form.materialName" placeholder="请输入材料名称" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">规格</text>
-        <input cursor-spacing="24" v-model="form.specification" placeholder="请输入规格" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">单位</text>
-        <input cursor-spacing="24" v-model="form.unit" placeholder="如：吨/根/车" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">退货数量</text>
-        <input cursor-spacing="24" v-model="form.quantity" type="number" placeholder="不能超过库存数量" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">入库单价</text>
-        <input cursor-spacing="24" v-model="form.unitPrice" type="number" placeholder="退货退款时用于计算退款金额" class="form-input" />
-      </view>
-      <view class="form-item">
+    <view class="form-card">
+      <ZwiPickerField
+        label="项目"
+        :displayValue="form.projectName"
+        placeholder="请选择项目"
+        @open="showProjectPicker = true"
+      />
+      <ZwiField label="材料名称" v-model="form.materialName" placeholder="请输入材料名称" />
+      <ZwiField label="规格" v-model="form.specification" placeholder="请输入规格" />
+      <ZwiField label="单位" v-model="form.unit" placeholder="如：吨/根/车" />
+      <ZwiField label="退货数量" v-model="form.quantity" inputType="digit" placeholder="不能超过库存数量" />
+      <ZwiField label="入库单价" v-model="form.unitPrice" inputType="digit" placeholder="退货退款时用于计算退款金额" />
+      <!-- 退货类型（radio 行保留原结构——ZwiField 无 radio 形态） -->
+      <view class="form-item radio-item">
         <text class="form-label">退货类型</text>
-        <view class="form-value radio-row">
+        <view class="radio-row">
           <text class="radio" :class="{ on: form.returnType === 'RETURN_ONLY' }" @click="form.returnType = 'RETURN_ONLY'">仅退货</text>
           <text class="radio" :class="{ on: form.returnType === 'RETURN_REFUND' }" @click="form.returnType = 'RETURN_REFUND'">退货退款</text>
         </view>
       </view>
-      <view class="form-item" v-if="form.returnType === 'RETURN_REFUND'">
-        <text class="form-label">采购合同ID</text>
-        <input cursor-spacing="24" v-model="form.contractId" type="number" placeholder="退款关联的采购合同ID" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">出库日期</text>
-        <input cursor-spacing="24" v-model="form.outboundDate" placeholder="YYYY-MM-DD" class="form-input" />
-      </view>
+      <ZwiField
+        v-if="form.returnType === 'RETURN_REFUND'"
+        label="采购合同ID"
+        v-model="form.contractId"
+        inputType="digit"
+        placeholder="退款关联的采购合同ID"
+      />
+      <ZwiField label="出库日期" v-model="form.outboundDate" placeholder="YYYY-MM-DD" />
     </view>
 
     <view class="tips">
       <text class="tip-text">退货提交后自动扣减库存；「退货退款」关联采购合同时将自动生成退款申请并进入审批。</text>
     </view>
-
-    <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交退货</button>
 
     <view v-if="showProjectPicker" class="picker-mask" @click="showProjectPicker = false">
       <view class="picker-panel" @click.stop>
@@ -58,13 +45,16 @@
         <view v-if="!projects.length" class="picker-item"><text>{{ projectEmptyTip }}</text></view>
       </view>
     </view>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { saveMaterialOutbound } from '@/api/common'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiField from '@/components/zwi/ZwiField.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 
@@ -160,22 +150,42 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx; min-height: 44px;  border-bottom: 1rpx solid var(--zw-border-light); }
-.form-item:last-child { border-bottom: none; }
-.form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 180rpx; }
-.form-value { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
-.form-value.placeholder { color: var(--zw-text-quaternary); }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.radio-row { display: flex; justify-content: flex-end; gap: 32rpx; }
-.radio { font-size: 26rpx; color: var(--zw-text-tertiary); }
+/* 表单卡壳：收敛后的通用容器 */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+
+/* radio 行（ZwiField 无 radio 形态，保留原行结构但收敛边距） */
+.radio-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  min-height: 44px;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
+.radio-row { display: flex; justify-content: flex-end; gap: 32rpx; flex: 1; }
+.radio { font-size: 26rpx; color: var(--zw-text-tertiary); padding: 8rpx 12rpx; min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; } /* P0 触控热区 */
 .radio.on { color: var(--zw-brand); font-weight: bold; }
+
 .tips { padding: 12rpx 24rpx; }
 .tip-text { font-size: 24rpx; color: var(--zw-text-tertiary); }
-.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-xs); border: none; } /* 橙底深字承重规则 */
+
+/* 项目选择弹窗（原样式保留） */
 .picker-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); display: flex; align-items: flex-end; z-index: 99; }
-.picker-panel { width: 100%; max-height: 60vh; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; padding: 20rpx; padding-bottom: calc(20rpx + env(safe-area-inset-bottom)); overflow-y: auto; } /* P0 safe-area：底部弹层安全区 */
+.picker-panel { width: 100%; max-height: 60vh; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; padding: 20rpx; padding-bottom: calc(20rpx + env(safe-area-inset-bottom)); overflow-y: auto; }
 .picker-title { text-align: center; font-size: 30rpx; font-weight: bold; padding: 16rpx; }
-.picker-item { padding: 24rpx; min-height: 44px; box-sizing: border-box; display: flex; align-items: center; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; } /* P0 触控达标 */
+.picker-item { padding: 24rpx; min-height: 44px; box-sizing: border-box; display: flex; align-items: center; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
 </style>
