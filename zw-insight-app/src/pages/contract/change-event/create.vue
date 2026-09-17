@@ -1,20 +1,20 @@
 <template>
-  <view class="form-page">
+  <!-- ZwiFormPage 壳：双按钮 submit-bar 放 #footer 插槽（sticky 底部，critique P0 拇指区） -->
+  <ZwiFormPage>
     <OfflineBanner />
 
     <!-- 项目（从列表页带入，允许改） -->
-    <view class="form-section">
-      <view class="form-item" @click="showProjectPicker = true">
-        <text class="form-label">所属项目</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
+    <view class="form-card">
+      <ZwiPickerField
+        label="所属项目"
+        :displayValue="form.projectName"
+        placeholder="请选择项目"
+        @open="showProjectPicker = true"
+      />
     </view>
 
     <!-- 变更基本信息 -->
-    <view class="form-section">
+    <view class="form-card">
       <view class="section-title">变更信息</view>
 
       <view class="form-item">
@@ -67,7 +67,7 @@
     </view>
 
     <!-- 现场照片：变更最有说服力的证据，必须能就地拍 -->
-    <view class="form-section">
+    <view class="form-card photo-card">
       <view class="section-title">现场照片</view>
       <button class="upload-btn" :loading="composing" @click="takePhoto">📷 拍照（自动水印）</button>
       <view class="image-list" v-if="photos.length">
@@ -85,10 +85,13 @@
       :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px', position: 'fixed', left: '-9999px', top: '0' }"
     ></canvas>
 
-    <view class="submit-bar">
-      <button class="submit-btn" :loading="submitting" @click="handleSubmit(false)">存草稿</button>
-      <button class="submit-btn primary" :loading="submitting" @click="handleSubmit(true)">提交评估</button>
-    </view>
+    <!-- 双按钮提交条（sticky 底部，ZwiFormPage #footer 插槽） -->
+    <template #footer>
+      <view class="submit-bar">
+        <button class="submit-btn" :loading="submitting" @click="handleSubmit(false)">存草稿</button>
+        <button class="submit-btn primary" :loading="submitting" @click="handleSubmit(true)">提交评估</button>
+      </view>
+    </template>
 
     <!-- 项目选择弹窗 -->
     <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
@@ -148,13 +151,15 @@
         </scroll-view>
       </view>
     </view>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 import { saveChangeEvent, startChangeEventAssessment } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue, rejectIfOffline } from '@/utils/offlineSubmit'
@@ -351,6 +356,23 @@ async function handleSubmit(toAssess: boolean) {
 
 <style scoped>
 .form-page { padding: 20rpx; min-height: 44px; padding-bottom: 180rpx; }
+/* 表单卡壳：收敛后的通用容器 */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+.photo-card { padding: 0 24rpx 24rpx; }
 .form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
 .section-title { font-size: 28rpx; font-weight: bold; color: var(--zw-text-primary); padding: 24rpx; min-height: 44px;  }
 .form-item { display: flex; align-items: center; padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); }
