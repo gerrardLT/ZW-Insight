@@ -5,7 +5,8 @@
       <div class="brand-hazard hazard-divider"></div>
       <div class="brand-content">
         <div class="brand-logo">
-          <div class="brand-logo-icon">ZW</div>
+          <!-- 品牌区恒为石墨黑底，用反白版 logo 保对比度 -->
+          <img class="brand-logo-icon" src="@/assets/logo-light.png" alt="中维智营" />
           <span class="brand-logo-text">中维智营</span>
         </div>
         <div class="brand-eyebrow">Project Management Platform</div>
@@ -332,15 +333,7 @@ function goForgotPassword() {
 .brand-logo-icon {
   width: 44px;
   height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--zw-radius-xs);
-  background: var(--zw-brand);
-  color: var(--zw-on-primary);
-  font-weight: 700;
-  font-size: var(--zw-font-size-md);
-  letter-spacing: 0.5px;
+  object-fit: contain;
 }
 
 .brand-logo-text {

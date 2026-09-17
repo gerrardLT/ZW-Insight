@@ -8,7 +8,7 @@
       @transitionend="handleTransitionEnd"
     >
       <div class="logo">
-        <div class="logo-icon">ZW</div>
+        <img class="logo-icon" :src="appStore.isDark ? logoLight : logoDark" alt="中维智营" />
         <transition name="fade">
           <div v-if="!isCollapse" class="logo-text-group">
             <span class="logo-text">中维智营</span>
@@ -168,6 +168,9 @@ import { useCommandPalette, type PaletteCommand } from '@/composables/useCommand
 import { Expand, Fold, Moon, Sunny, ArrowDown, Bell, Search, SwitchButton } from '@/components/icons/registry'
 import { resolveMenuIcon } from '@/components/icons/registry'
 import { IconHelp } from '@tabler/icons-vue'
+// 品牌 logo 双态：亮底黑字 / 暗底反白（随主题切换，与暗色插画同一模式）
+import logoDark from '@/assets/logo.png'
+import logoLight from '@/assets/logo-light.png'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -514,15 +517,7 @@ onBeforeUnmount(() => {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--zw-radius-xs);
-  background: var(--zw-brand);
-  color: var(--zw-on-primary);
-  font-weight: var(--zw-font-weight-bold);
-  font-size: 13px;
-  letter-spacing: 0.5px;
+  object-fit: contain;
 }
 
 .logo-text-group {

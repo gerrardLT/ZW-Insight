@@ -4,7 +4,7 @@
     <view class="login-header">
 		<!-- 品牌背景（2026-09-16 AI 生成：夜景工地线稿，弱透明置于铭牌后） -->
 		<image class="brand-bg" src="/static/brand/login-bg.png" mode="aspectFill" />
-      <view class="brand-mark"><text>ZW</text></view>
+      <view class="brand-mark"><image class="brand-mark-img" src="/static/brand/logo.png" mode="aspectFit" /></view>
       <text class="app-title">中维智营</text>
       <text class="app-subtitle eyebrow-cap">Engineering Project Management</text>
     </view>
@@ -265,21 +265,18 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   margin-bottom: 64rpx;
 }
 .brand-mark {
-  width: 96rpx;
+  width: 168rpx;
   height: 96rpx;
   margin: 0 auto 24rpx;
-  background: var(--zw-brand);
-  color: var(--zw-on-primary); /* 橙底深字承重规则 */
+  background: #fff; /* 暗底登录头：白 chip 承载透明 logo（预览验证过的承载方式） */
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--zw-radius-xs);
 }
-.brand-mark text {
-  font-family: var(--zw-font-display);
-  font-size: 40rpx;
-  font-weight: 700;
-  letter-spacing: 2rpx;
+.brand-mark-img {
+  width: 140rpx;
+  height: 76rpx;
 }
 .app-title {
   font-size: 48rpx;
