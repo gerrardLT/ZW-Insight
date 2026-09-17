@@ -1,19 +1,42 @@
 import request, { BASE_URL } from '@/utils/request'
+import type {
+  PageParams,
+  TaskCompletePayload,
+  TaskRejectPayload,
+  MessageQueryParams,
+  MaterialInboundPayload,
+  MaterialOutboundPayload,
+  ConstructionLogPayload,
+  ProgressFeedbackPayload,
+  InspectionPayload,
+  InspectionResultsPayload,
+  RectificationPayload,
+  InvoiceApplyPayload,
+  PaymentReceivedPayload,
+  PaymentApplyPayload,
+  ProjectReimbursementPayload,
+  OtherPaymentPayload,
+  ReserveFundApplyPayload,
+  ReserveFundReturnPayload,
+  PersonalReimbursementPayload,
+  InvoiceReceivedPayload,
+  ChangeEventPayload
+} from './types'
 
 // 审批
-export function getTodoTasks(params: any) {
+export function getTodoTasks(params: PageParams) {
   return request({ url: '/v1/workflow/approval/todo', data: params })
 }
-export function getDoneTasks(params: any) {
+export function getDoneTasks(params: PageParams) {
   return request({ url: '/v1/workflow/approval/done', data: params })
 }
-export function getMyInitiatedTasks(params: any) {
+export function getMyInitiatedTasks(params: PageParams) {
   return request({ url: '/v1/workflow/approval/my-initiated', data: params })
 }
-export function completeTask(data: any) {
+export function completeTask(data: TaskCompletePayload) {
   return request({ url: '/v1/workflow/approval/complete', method: 'POST', data })
 }
-export function rejectTask(data: any) {
+export function rejectTask(data: TaskRejectPayload) {
   return request({ url: '/v1/workflow/approval/reject-previous', method: 'POST', data })
 }
 // 批量通过（P0 Req8）：后端 ApprovalController#batchApprove，事务内逐条 complete，
@@ -50,7 +73,7 @@ export function getInventoryAnalysis() {
 export function getProjectDashboard(projectId: number) {
   return request({ url: `/v1/dashboard/project/${projectId}` })
 }
-export function getProjectList(params?: any) {
+export function getProjectList(params?: PageParams) {
   // 后端真实接口：GET /api/v1/project/list（ProjectController#list，下拉选择用）
   // 裸路径 /v1/project 仅接受 POST（创建），列表查询需走 /list
   return request({ url: '/v1/project/list', data: params })
@@ -77,10 +100,10 @@ export function getMaterialByCode(code: string) {
 export function getUnreadCount() {
   return request({ url: '/v1/message/msg/unread-count' })
 }
-export function getUnreadMessages(params: any) {
+export function getUnreadMessages(params: MessageQueryParams) {
   return request({ url: '/v1/message/msg/unread', data: params })
 }
-export function getAllMessages(params: any) {
+export function getAllMessages(params: MessageQueryParams) {
   return request({ url: '/v1/message/msg/all', data: params })
 }
 export function markMessageRead(id: number) {
@@ -90,10 +113,10 @@ export function markAllMessagesRead() {
   return request({ url: '/v1/message/msg/read-all', method: 'PUT' })
 }
 // 公告 / 通知
-export function getAnnouncements(params: any) {
+export function getAnnouncements(params: MessageQueryParams) {
   return request({ url: '/v1/message/announcement', data: params })
 }
-export function getNotices(params: any) {
+export function getNotices(params: MessageQueryParams) {
   return request({ url: '/v1/message/notice', data: params })
 }
 
@@ -104,14 +127,14 @@ export function getPurchaseContractPage(params?: { page?: number; size?: number;
 export function getPurchaseContractDetails(contractId: number) {
   return request({ url: `/v1/purchase/contract/${contractId}/details` })
 }
-export function saveMaterialInbound(data: any) {
+export function saveMaterialInbound(data: MaterialInboundPayload) {
   return request({ url: '/v1/material/inbound', method: 'POST', data })
 }
-export function saveMaterialOutbound(data: any) {
+export function saveMaterialOutbound(data: MaterialOutboundPayload) {
   return request({ url: '/v1/material/outbound', method: 'POST', data })
 }
 // 材料退货退款记录查询（MaterialRefundController，只读）
-export function getMaterialRefundList(params?: any) {
+export function getMaterialRefundList(params?: PageParams) {
   return request({ url: '/v1/material/refund', data: params })
 }
 
@@ -144,13 +167,13 @@ export function siteSign(data: { projectId: number; latitude: number; longitude:
 export function getMonthlySign(params: { projectId: number; userId: number; month: string }) {
   return request({ url: '/v1/site/sign/monthly', data: params })
 }
-export function saveConstructionLog(data: any) {
+export function saveConstructionLog(data: ConstructionLogPayload) {
   return request({ url: '/v1/site/construction-log', method: 'POST', data })
 }
-export function saveProgressFeedback(data: any) {
+export function saveProgressFeedback(data: ProgressFeedbackPayload) {
   return request({ url: '/v1/site/schedule/feedback', method: 'POST', data })
 }
-export function saveInspection(data: any) {
+export function saveInspection(data: InspectionPayload) {
   return request({ url: '/v1/site/inspection', method: 'POST', data })
 }
 
@@ -158,7 +181,7 @@ export function getInspectionDetail(id: number) {
   return request({ url: `/v1/site/inspection/${id}` })
 }
 
-export function submitInspectionResults(id: number, data: any) {
+export function submitInspectionResults(id: number, data: InspectionResultsPayload) {
   return request({ url: `/v1/site/inspection/${id}/results`, method: 'POST', data })
 }
 
@@ -166,7 +189,7 @@ export function submitInspectionResults(id: number, data: any) {
 export function getRectifications(inspectionId: number) {
   return request({ url: `/v1/site/rectification/by-inspection/${inspectionId}` })
 }
-export function submitRectification(inspectionId: number, data: any) {
+export function submitRectification(inspectionId: number, data: RectificationPayload) {
   return request({ url: `/v1/site/rectification/${inspectionId}/submit`, method: 'POST', data })
 }
 export function approveRectification(id: number) {
@@ -213,16 +236,16 @@ export function uploadRectificationPhoto(filePath: string, inspectionId: number)
 }
 
 // 财务
-export function saveInvoiceApply(data: any) {
+export function saveInvoiceApply(data: InvoiceApplyPayload) {
   return request({ url: '/v1/finance/invoice-apply', method: 'POST', data })
 }
-export function savePaymentReceived(data: any) {
+export function savePaymentReceived(data: PaymentReceivedPayload) {
   return request({ url: '/v1/finance/payment-received', method: 'POST', data })
 }
-export function savePaymentApply(data: any) {
+export function savePaymentApply(data: PaymentApplyPayload) {
   return request({ url: '/v1/finance/payment-apply', method: 'POST', data })
 }
-export function saveReimbursement(data: any) {
+export function saveReimbursement(data: ProjectReimbursementPayload) {
   return request({ url: '/v1/finance/project-reimbursement', method: 'POST', data })
 }
 // 项目报销提交审批（两段式：save 落 DRAFT 后链式 submit，ProjectReimbursementController）
@@ -230,15 +253,15 @@ export function submitReimbursement(id: number) {
   return request({ url: `/v1/finance/project-reimbursement/${id}/submit`, method: 'POST' })
 }
 // 其他费用付款（OtherPaymentController）
-export function saveOtherPayment(data: any) {
+export function saveOtherPayment(data: OtherPaymentPayload) {
   return request({ url: '/v1/finance/other-payment', method: 'POST', data })
 }
 // 备用金申请分页查询（ReserveFundController，移动端归还页按 status=APPROVED 拉未还清申请）
-export function getReserveFundApplyPage(params?: any) {
+export function getReserveFundApplyPage(params?: MessageQueryParams) {
   return request({ url: '/v1/finance/reserve-fund/apply', data: params })
 }
 // 备用金申请（ReserveFundController）
-export function saveReserveFundApply(data: any) {
+export function saveReserveFundApply(data: ReserveFundApplyPayload) {
   return request({ url: '/v1/finance/reserve-fund/apply', method: 'POST', data })
 }
 // 备用金申请提交审批（两段式：save 落 DRAFT 后链式 submit，ReserveFundController）
@@ -246,11 +269,11 @@ export function submitReserveFundApply(id: number) {
   return request({ url: `/v1/finance/reserve-fund/apply/${id}/submit`, method: 'POST' })
 }
 // 备用金归还（ReserveFundController）
-export function saveReserveFundReturn(data: any) {
+export function saveReserveFundReturn(data: ReserveFundReturnPayload) {
   return request({ url: '/v1/finance/reserve-fund/return', method: 'POST', data })
 }
 // 个人报销（PersonalReimbursementController）
-export function savePersonalReimbursement(data: any) {
+export function savePersonalReimbursement(data: PersonalReimbursementPayload) {
   return request({ url: '/v1/finance/personal-reimbursement', method: 'POST', data })
 }
 // 个人报销提交审批（两段式：save 落 DRAFT 后链式 submit）
@@ -258,7 +281,7 @@ export function submitPersonalReimbursement(id: number) {
   return request({ url: `/v1/finance/personal-reimbursement/${id}/submit`, method: 'POST' })
 }
 // 收票登记（后端 POST /v1/finance/invoice-received）
-export function saveInvoiceReceived(data: any) {
+export function saveInvoiceReceived(data: InvoiceReceivedPayload) {
   return request({ url: '/v1/finance/invoice-received', method: 'POST', data })
 }
 
@@ -291,12 +314,12 @@ export function getChangeEventDetail(id: number) {
 }
 
 /** 登记变更事件（草稿）—— 现场最低成本记录「发生了什么」 */
-export function saveChangeEvent(data: any) {
+export function saveChangeEvent(data: ChangeEventPayload) {
   return request({ url: '/v1/contract/change-event', method: 'POST', data })
 }
 
 /** 更新变更事件（仅草稿/评估中可改） */
-export function updateChangeEvent(id: number, data: any) {
+export function updateChangeEvent(id: number, data: ChangeEventPayload) {
   return request({ url: `/v1/contract/change-event/${id}`, method: 'PUT', data })
 }
 

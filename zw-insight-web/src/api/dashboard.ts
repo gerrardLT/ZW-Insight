@@ -128,33 +128,33 @@ export interface ProjectDashboardDTO {
   output: OutputTrendDTO
 }
 
-/** 查询指定项目的预算执行数据（res.data 为 BudgetExecutionDTO） */
-export function getProjectBudget(projectId: number) {
+/** 查询指定项目的预算执行数据（res.data 为 BudgetExecutionDTO；id 为后端雪花 ID，真实序列化为 string） */
+export function getProjectBudget(projectId: number | string) {
   return request.get(`/v1/dashboard/project/${projectId}/budget`)
 }
 
 /** 查询指定项目的进度完成率（res.data 为 ProgressDTO） */
-export function getProjectProgress(projectId: number) {
+export function getProjectProgress(projectId: number | string) {
   return request.get(`/v1/dashboard/project/${projectId}/progress`)
 }
 
 /** 查询指定项目的合同回款数据（res.data 为 ContractReceiptDTO） */
-export function getProjectContract(projectId: number) {
+export function getProjectContract(projectId: number | string) {
   return request.get(`/v1/dashboard/project/${projectId}/contract`)
 }
 
 /** 查询指定项目的产值上报趋势（res.data 为 OutputTrendDTO） */
-export function getProjectOutput(projectId: number) {
+export function getProjectOutput(projectId: number | string) {
   return request.get(`/v1/dashboard/project/${projectId}/output`)
 }
 
 /** 查询指定项目的看板聚合数据（一次调用四维度，res.data 为 ProjectDashboardDTO） */
-export function getProjectOverview(projectId: number) {
+export function getProjectOverview(projectId: number | string) {
   return request.get(`/v1/dashboard/project/${projectId}/overview`)
 }
 
 /** 查询指定项目的成本控制数据（Project Cost 360） */
-export function getProjectCostControl(projectId: number) {
+export function getProjectCostControl(projectId: number | string) {
   return request.get(`/v1/dashboard/project/${projectId}/cost-control`)
 }
 

@@ -18,16 +18,18 @@
 import { ref, onMounted, watch } from 'vue'
 import { getProjectList } from '@/api/project'
 
+// id 类型说明：后端雪花 ID 超出 JS Number.MAX_SAFE_INTEGER，Jackson 序列化为 string，
+// 故 modelValue/emit 均为 number | string（2026-09-16 实证：项目看板卡片回传 string id 触发类型告警）
 const props = withDefaults(defineProps<{
-  modelValue?: number
+  modelValue?: number | string
   width?: string
 }>(), {
   width: '100%'
 })
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: number | undefined): void
-  (e: 'change', value: number | undefined, item: any): void
+  (e: 'update:modelValue', value: number | string | undefined): void
+  (e: 'change', value: number | string | undefined, item: any): void
 }>()
 
 const modelValue = ref(props.modelValue)
@@ -48,7 +50,7 @@ async function handleSearch(query: string) {
   }
 }
 
-function handleChange(val: number | undefined) {
+function handleChange(val: number | string | undefined) {
   emit('update:modelValue', val)
   const item = options.value.find(o => o.id === val)
   emit('change', val, item)

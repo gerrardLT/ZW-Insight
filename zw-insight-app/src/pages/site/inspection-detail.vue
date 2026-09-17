@@ -318,7 +318,7 @@ function takeRectPhoto() {
     count: 9 - rectPhotos.value.length,
     sourceType: ['camera', 'album'],
     success: (res) => {
-      const paths = res.tempFilePaths || []
+      const paths = (res.tempFilePaths || []) as string[]
       paths.forEach((p) => rectPhotos.value.push({ localPath: p }))
     },
     fail: (err) => {

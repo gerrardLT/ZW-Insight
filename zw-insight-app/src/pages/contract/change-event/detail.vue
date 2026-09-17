@@ -138,6 +138,7 @@ import {
   cancelChangeEvent
 } from '@/api/common'
 import { rejectIfOffline } from '@/utils/offlineSubmit'
+import type { ChangeEventDoc } from '@/api/types'
 
 const eventId = ref<number | null>(null)
 const projectId = ref<number | null>(null)
@@ -217,7 +218,10 @@ const actions = computed(() => {
 })
 
 const affectedAccounts = computed(() => event.value?.affectedAccounts || [])
-const docs = computed(() => (event.value?.supportingDocs || []).filter((d: any) => d && d.url))
+// 显式声明元素类型：否则 v-for 索引退化为 string|number，previewDoc(idx: number) 报错
+const docs = computed<ChangeEventDoc[]>(() =>
+  ((event.value?.supportingDocs || []) as ChangeEventDoc[]).filter((d) => d && d.url)
+)
 
 async function runAction(key: string) {
   if (!eventId.value) return

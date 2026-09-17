@@ -168,7 +168,7 @@ describe('approval/index.vue 审批列表页', () => {
 })
 
 describe('approval/detail.vue 审批详情页', () => {
-  it('onLoad 加载详情；通过提交 completeTask 三参并延迟返回', async () => {
+  it('onLoad 加载详情；通过提交 completeTask 对齐后端 DTO（taskId/comment）并延迟返回', async () => {
     vi.useFakeTimers()
     vi.mocked(request).mockResolvedValue({ code: 200, data: { title: '付款审批', applicant: '张三' } })
     vi.mocked(completeTask).mockResolvedValue({ code: 200 })
@@ -183,7 +183,8 @@ describe('approval/detail.vue 审批详情页', () => {
     wrapper.vm.comment = '同意'
     await wrapper.vm.handleApprove()
     await flushPromises()
-    expect(vi.mocked(completeTask)).toHaveBeenCalledWith({ taskId: 'T1', comment: '同意', processInstanceId: 'PI-9' })
+    // 后端 TaskCompleteRequest 无 processInstanceId 字段，页面不再透传无效参数
+    expect(vi.mocked(completeTask)).toHaveBeenCalledWith({ taskId: 'T1', comment: '同意' })
     expect((getUni() as any).navigateBack).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1500)
     expect((getUni() as any).navigateBack).toHaveBeenCalled()
@@ -208,7 +209,7 @@ describe('approval/detail.vue 审批详情页', () => {
     wrapper.vm.comment = '金额有误'
     await wrapper.vm.handleReject()
     await flushPromises()
-    expect(vi.mocked(rejectTask)).toHaveBeenCalledWith({ taskId: 'T2', comment: '金额有误', processInstanceId: 'PI-2' })
+    expect(vi.mocked(rejectTask)).toHaveBeenCalledWith({ taskId: 'T2', comment: '金额有误' })
     wrapper.unmount()
   })
 })

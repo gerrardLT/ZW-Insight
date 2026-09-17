@@ -19,6 +19,8 @@ const {
   mockGetProjectProgress,
   mockGetProjectContract,
   mockGetProjectOutput,
+  mockGetProjectPage,
+  mockGetProjectDetail,
   chartInstances,
   chartInit,
 } = vi.hoisted(() => {
@@ -39,6 +41,9 @@ const {
     mockGetProjectProgress: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
     mockGetProjectContract: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
     mockGetProjectOutput: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
+    // 项目墙（2026-09-16 方案 A）：onMounted 拉项目分页 + 缓存外下拉切换补拉详情
+    mockGetProjectPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+    mockGetProjectDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: null })),
     chartInstances: instances,
     chartInit: init,
   }
@@ -49,6 +54,10 @@ vi.mock('@/api/dashboard', () => ({
   getProjectProgress: mockGetProjectProgress,
   getProjectContract: mockGetProjectContract,
   getProjectOutput: mockGetProjectOutput,
+}))
+vi.mock('@/api/project', () => ({
+  getProjectPage: mockGetProjectPage,
+  getProjectDetail: mockGetProjectDetail,
 }))
 vi.mock('@/components/ProjectSelector.vue', () => ({
   default: { name: 'ProjectSelector', render: () => null },
@@ -82,6 +91,17 @@ function lastOption(chart: any): any {
 }
 
 describe('project-dashboard.vue 项目看板（@matrix C-30）', () => {
+  // 项目墙种子数据（卡片点击路径用）
+  const seedProject: any = {
+    id: 1001,
+    projectCode: 'P-2026-001',
+    projectName: '滨江花园一期',
+    ownerCompanyName: '城建集团',
+    status: 'CONSTRUCTION',
+    contractAmount: 50000000,
+    cumulativeOutput: 20000000,
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     chartInstances.length = 0
@@ -89,6 +109,8 @@ describe('project-dashboard.vue 项目看板（@matrix C-30）', () => {
     mockGetProjectProgress.mockResolvedValue({ code: 200, data: { completionRate: 0.85 } })
     mockGetProjectContract.mockResolvedValue({ code: 200, data: { contractTotal: 5000000, receivedAmount: 1234567 } })
     mockGetProjectOutput.mockResolvedValue({ code: 200, data: { trend: [{ month: '2026-01', amount: 100000 }] } })
+    mockGetProjectPage.mockResolvedValue({ code: 200, data: { records: [seedProject], total: 1 } })
+    mockGetProjectDetail.mockResolvedValue({ code: 200, data: seedProject })
   })
 
   afterEach(() => {
@@ -215,5 +237,48 @@ describe('project-dashboard.vue 项目看板（@matrix C-30）', () => {
     currentWrapper = null
     // 至少预算饼图被 dispose（其余维度视渲染而定）
     expect(chartInstances.some((c) => c.dispose.mock.calls.length > 0)).toBe(true)
+  })
+
+  // @matrix C-30-11（2026-09-16 方案 A 项目墙）
+  it('挂载即加载项目墙；点击卡片选中项目并触发四维加载（零额外详情请求）', async () => {
+    const wrapper = await mountPage()
+    expect(mockGetProjectPage).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }))
+    const card = wrapper.find('.project-card')
+    expect(card.exists(), '项目墙应渲染种子卡片').toBe(true)
+
+    await card.trigger('click')
+    await flushPromises()
+    expect(mockGetProjectBudget).toHaveBeenCalledWith(1001)
+    expect(mockGetProjectProgress).toHaveBeenCalledWith(1001)
+    expect(mockGetProjectContract).toHaveBeenCalledWith(1001)
+    expect(mockGetProjectOutput).toHaveBeenCalledWith(1001)
+    // 卡片路径命中缓存：不补拉详情
+    expect(mockGetProjectDetail).not.toHaveBeenCalled()
+
+    const st = setupState(wrapper)
+    expect(st.selectedProjectId).toBe(1001)
+    expect(st.selectedProject?.projectName).toBe('滨江花园一期')
+    // 横幅/KPI 带渲染（KPI 值由四维数据派生）
+    expect(wrapper.find('.banner-card').exists()).toBe(true)
+    expect(wrapper.find('.kpi-band').exists()).toBe(true)
+    expect(wrapper.find('.kpi-band').text()).toContain('合同总额')
+  })
+
+  // @matrix C-30-12（2026-09-16 方案 A 项目墙）
+  it('缓存外项目（下拉切换）补拉详情回填横幅；返回项目墙清空选择', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    // 模拟下拉切到墙列表外的项目 2002（缓存未命中 → getProjectDetail）
+    st.handleProjectChange(2002)
+    await flushPromises()
+    expect(mockGetProjectDetail).toHaveBeenCalledWith(2002)
+    expect(st.selectedProject?.projectName).toBe('滨江花园一期') // mock 详情返回种子
+
+    st.backToWall()
+    await flushPromises()
+    expect(st.selectedProjectId).toBeUndefined()
+    expect(st.selectedProject).toBeNull()
+    expect(st.budget.data).toBeNull()
+    expect(wrapper.find('.project-card').exists(), '应回到项目墙视图').toBe(true)
   })
 })

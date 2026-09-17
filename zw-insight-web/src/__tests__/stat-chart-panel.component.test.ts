@@ -99,8 +99,9 @@ describe('StatChartPanel 三态契约（T7）', () => {
     const emptyBox = wrapper.find('[data-testid="stat-panel-empty"]')
     expect(emptyBox.exists()).toBe(true)
     expect(emptyBox.text()).toContain('暂无已审批的付款申请')
-    // 空态插图为自绘蓝图角标（SVG + zw-empty-icon），替代 el-empty 默认插画
-    expect(emptyBox.find('svg.zw-empty-icon').exists()).toBe(true)
+    // 空态插画：AI 生成「空白图纸+圆规」PNG（zw-empty-img，isDark 双态切换）——
+    // 2026-09-16 c9c6463 替换自绘 BlueprintCornerIcon SVG，断言随源码演进同步（本次补同步）
+    expect(emptyBox.find('img.zw-empty-img').exists()).toBe(true)
     expect(wrapper.find('[data-testid="stat-panel-error"]').exists()).toBe(false)
     expect(chartInit).not.toHaveBeenCalled()
   })

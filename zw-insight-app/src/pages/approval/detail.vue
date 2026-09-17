@@ -77,11 +77,9 @@ const comment = ref('')
 const loading = ref(true)
 const submitting = ref(false)
 let taskId = ''
-let processInstanceId = ''
 
 onLoad((options: any) => {
   taskId = options.taskId || ''
-  processInstanceId = options.processInstanceId || ''
   loadDetail()
 })
 
@@ -103,7 +101,8 @@ async function handleApprove() {
   if (rejectIfOffline('审批操作需联网进行，请联网后重试')) return
   submitting.value = true
   try {
-    await completeTask({ taskId, comment: comment.value, processInstanceId })
+    // 后端 TaskCompleteRequest 仅 taskId/comment/variables，多余字段会被 Jackson 忽略，不传
+    await completeTask({ taskId, comment: comment.value })
     uni.showToast({ title: '审批通过', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally {
@@ -121,7 +120,7 @@ async function handleReject() {
   if (rejectIfOffline('审批操作需联网进行，请联网后重试')) return
   submitting.value = true
   try {
-    await rejectTask({ taskId, comment: comment.value, processInstanceId })
+    await rejectTask({ taskId, comment: comment.value })
     uni.showToast({ title: '已退回', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally {

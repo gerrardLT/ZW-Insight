@@ -37,6 +37,9 @@ const mocks = vi.hoisted(() => {
     chartInstances: instances,
     chartInit,
     mockProjectList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+    // 项目墙（2026-09-16 方案 A）：ProjectDashboard 挂载即拉项目分页，缓存外切换补拉详情
+    mockProjectPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+    mockProjectDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: null })),
     mockProjectArchive: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
     mockSupplyArchive: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
     mockExpenseArchive: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
@@ -50,7 +53,11 @@ const mocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/api/project', () => ({ getProjectList: mocks.mockProjectList }))
+vi.mock('@/api/project', () => ({
+  getProjectList: mocks.mockProjectList,
+  getProjectPage: mocks.mockProjectPage,
+  getProjectDetail: mocks.mockProjectDetail,
+}))
 vi.mock('@/api/archive', () => ({
   getProjectArchive: mocks.mockProjectArchive,
   getOfficeSupplyArchive: mocks.mockSupplyArchive,
