@@ -274,3 +274,15 @@
   background: var(--zw-bg-hover);
 }
 
+
+
+/* ===== wot 组件直角纪律覆盖（Stage 0.2，2026-09-17） =====
+ * wot 按钮 round 默认 true（胶囊形），与工业精密 2px 直角主声部冲突；
+ * page 前缀提升特异性（0,3,0 > wot 的 0,2,0）不依赖样式注入顺序，
+ * page 为小程序/H5 双端根元素选择器，跨端安全。 */
+/* 双重复类 .wd-button.wd-button 提升特异性至 0,3,1（> wot scoped [data-v] 的 0,3,0），
+   不依赖样式注入顺序；wot 1.14 修饰类为 is-* 前缀（is-round，实测 DOM class） */
+page .wd-button.wd-button.is-round,
+uni-page-body .wd-button.wd-button.is-round {
+  border-radius: var(--zw-radius-sm);
+}

@@ -2,8 +2,8 @@
   <view class="login-page">
     <!-- 品牌铭牌（设计文档：登录页 = 表单 + 品牌铭牌，不渲染 hero-band） -->
     <view class="login-header">
-		<!-- 品牌背景（2026-09-16 AI 生成：夜景工地线稿，弱透明置于铭牌后） -->
-		<image class="brand-bg" src="/static/brand/login-bg.png" mode="aspectFill" />
+		<!-- 品牌背景（2026-09-16 AI 生成：夜景工地线稿，弱透明置于铭牌后；09-17 JPEG q72 压缩 178KB→48KB） -->
+		<image class="brand-bg" src="/static/brand/login-bg.jpg" mode="aspectFill" />
       <view class="brand-mark"><image class="brand-mark-img" src="/static/brand/logo.png" mode="aspectFit" /></view>
       <text class="app-title">中维智营</text>
       <text class="app-subtitle eyebrow-cap">Engineering Project Management</text>

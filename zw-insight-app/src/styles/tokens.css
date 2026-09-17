@@ -73,6 +73,46 @@ page {
   /* 安全区与触控底线 (harden & layout) */
   --zw-safe-bottom: env(safe-area-inset-bottom, 0px);
   --zw-touch-target-min: 44px;
+
+  /* ===== wot-design-uni 组件主题桥接（Stage 0.2，2026-09-17） =====
+   * wot 样式消费 --wot-* CSS 变量（SCSS 默认值仅 fallback）；在此用 var() 级联引用 zw token，
+   * CSS 自定义属性惰性求值 → 暗色/户外块重定义 zw 值后 wot 组件自动跟随，
+   * 三端（H5/小程序/App）零 JS 零包裹，优于 ConfigProvider JS 切换方案。
+   * 注：wot info 色为中性灰语义（非蓝色），映射 zw tertiary；
+   *     按钮圆角 wot 默认即 2px，与直角纪律一致，无需覆盖。 */
+  --wot-color-theme: var(--zw-brand);
+  --wot-color-white: #ffffff; /* wot 用 white 做 mix 基准，保持真白（mix 语义正确） */
+  --wot-color-black: var(--zw-text-primary);
+  --wot-color-success: var(--zw-success);
+  --wot-color-warning: var(--zw-warning);
+  --wot-color-danger: var(--zw-danger);
+  --wot-color-info: var(--zw-text-tertiary);
+  --wot-color-title: var(--zw-text-primary);
+  --wot-color-content: var(--zw-text-secondary);
+  --wot-color-secondary: var(--zw-text-secondary);
+  --wot-color-aid: var(--zw-text-tertiary);
+  --wot-color-tip: var(--zw-text-quaternary);
+  --wot-color-border: var(--zw-border);
+  --wot-color-border-light: var(--zw-border-light);
+  --wot-color-bg: var(--zw-bg-page);
+  --wot-color-icon: var(--zw-text-quaternary);
+  --wot-color-icon-active: var(--zw-brand);
+  /* 品牌纪律透传：主按钮文字用 on-primary（橙底永远深字，实测纠正亮色白字/暗色错色）
+   * 与按钮圆角全档统一 2px（直角纪律；wot large 默认 8px、round 默认胶囊，均被覆盖） */
+  --wot-button-primary-color: var(--zw-on-primary);
+  --wot-button-small-radius: 2px;
+  --wot-button-medium-radius: 2px;
+  --wot-button-large-radius: 2px;
+  /* wot 暗色专属变量兜底（仅 .wot-theme-dark 祖先类下生效；本方案不依赖该类，
+   * 但保留映射防未来局部启用，与 zw 暗色阶梯同源） */
+  --wot-dark-background: var(--zw-bg-page);
+  --wot-dark-background2: var(--zw-bg-card);
+  --wot-dark-background3: var(--zw-bg-elevated);
+  --wot-dark-background4: var(--zw-bg-hover);
+  --wot-dark-background5: var(--zw-border-strong);
+  --wot-dark-color: var(--zw-text-primary);
+  --wot-dark-color3: var(--zw-text-secondary);
+  --wot-dark-border-color: var(--zw-border);
 }
 
 /* 移动端防御性辅助类 (harden) */
