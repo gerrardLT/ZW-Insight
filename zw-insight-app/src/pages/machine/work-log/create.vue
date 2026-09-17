@@ -1,47 +1,29 @@
 <template>
-  <view class="form-page">
+  <!-- ZwiFormPage 壳：sticky 底部提交条（critique P0 拇指区） -->
+  <ZwiFormPage submitText="提交台班记录" :loading="submitting" @submit="handleSubmit">
     <OfflineBanner />
-    <view class="form-section">
-      <view class="form-item" @click="showProjectPicker = true">
-        <text class="form-label">所属项目</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
-      <view class="form-item" @click="openMachinePicker">
-        <text class="form-label">机械设备</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.machineName }">{{ form.machineName || '请选择设备' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
+    <view class="form-card">
+      <ZwiPickerField
+        label="所属项目"
+        :displayValue="form.projectName"
+        placeholder="请选择项目"
+        @open="showProjectPicker = true"
+      />
+      <ZwiPickerField
+        label="机械设备"
+        :displayValue="form.machineName"
+        placeholder="请选择设备"
+        @open="openMachinePicker"
+      />
     </view>
 
-    <view class="form-section">
-      <view class="form-item">
-        <text class="form-label">工作日期</text>
-        <input cursor-spacing="24" v-model="form.workDate" placeholder="YYYY-MM-DD" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">台班数</text>
-        <input cursor-spacing="24" v-model="form.shiftCount" type="digit" placeholder="如 1 或 1.5" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">工程量</text>
-        <input cursor-spacing="24" v-model="form.workQuantity" type="digit" placeholder="完成方量/米数(选填)" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">耗油量(升)</text>
-        <input cursor-spacing="24" v-model="form.oilConsumption" type="digit" placeholder="油耗升数(选填)" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">工作备注</text>
-        <input cursor-spacing="24" v-model="form.remark" placeholder="作业部位或工作内容说明" class="form-input" />
-      </view>
+    <view class="form-card">
+      <ZwiField label="工作日期" v-model="form.workDate" placeholder="YYYY-MM-DD" />
+      <ZwiField label="台班数" v-model="form.shiftCount" inputType="digit" placeholder="如 1 或 1.5" />
+      <ZwiField label="工程量" v-model="form.workQuantity" inputType="digit" placeholder="完成方量/米数(选填)" />
+      <ZwiField label="耗油量(升)" v-model="form.oilConsumption" inputType="digit" placeholder="油耗升数(选填)" />
+      <ZwiField label="工作备注" v-model="form.remark" placeholder="作业部位或工作内容说明" />
     </view>
-
-    <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交台班记录</button>
 
     <!-- 项目选择弹窗 -->
     <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
@@ -76,7 +58,7 @@
         </scroll-view>
       </view>
     </view>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
@@ -85,6 +67,9 @@ import { saveMachineWorkLog, getMachineLedgerPage } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiField from '@/components/zwi/ZwiField.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
@@ -175,16 +160,24 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }
-.form-item:last-child { border-bottom: none; }
-.form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
-.form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
-.placeholder { color: var(--zw-text-quaternary); }
-.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
-.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; }
+/* 表单卡壳：收敛后的通用容器（替代原 form-section 21 页重复样式） */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+
+/* 项目/设备选择弹窗（原样式保留） */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
 .picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }

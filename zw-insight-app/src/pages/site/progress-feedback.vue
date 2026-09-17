@@ -1,32 +1,21 @@
 <template>
-  <view class="form-page">
-    <view class="form-section">
-      <view class="form-item" @click="showProjectPicker = true">
-        <text class="form-label">所属项目</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
+  <!-- ZwiFormPage 壳：sticky 底部提交条（critique P0 拇指区） -->
+  <ZwiFormPage submitText="提交反馈" :loading="submitting" @submit="handleSubmit">
+    <view class="form-card">
+      <ZwiPickerField
+        label="所属项目"
+        :displayValue="form.projectName"
+        placeholder="请选择项目"
+        @open="showProjectPicker = true"
+      />
     </view>
 
-    <view class="form-section">
-      <view class="form-item">
-        <text class="form-label">反馈日期</text>
-        <input v-model="form.feedbackDate" placeholder="YYYY-MM-DD" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">施工部位</text>
-        <input v-model="form.constructionPart" placeholder="请输入施工部位" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">计划进度(%)</text>
-        <input v-model="form.plannedProgress" type="digit" placeholder="如：85" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">实际进度(%)</text>
-        <input v-model="form.actualProgress" type="digit" placeholder="如：80" class="form-input" />
-      </view>
+    <view class="form-card">
+      <ZwiField label="反馈日期" v-model="form.feedbackDate" placeholder="YYYY-MM-DD" />
+      <ZwiField label="施工部位" v-model="form.constructionPart" placeholder="请输入施工部位" />
+      <ZwiField label="计划进度(%)" v-model="form.plannedProgress" inputType="digit" placeholder="如：85" />
+      <ZwiField label="实际进度(%)" v-model="form.actualProgress" inputType="digit" placeholder="如：80" />
+      <!-- textarea 行保留原结构（ZwiField 无 textarea 形态） -->
       <view class="form-item vertical">
         <text class="form-label">进度说明</text>
         <textarea v-model="form.progressDescription" placeholder="请描述进度情况" class="textarea" :maxlength="500" />
@@ -35,13 +24,8 @@
         <text class="form-label">存在问题</text>
         <textarea v-model="form.issues" placeholder="请描述存在的问题（如无可不填）" class="textarea" :maxlength="500" />
       </view>
-      <view class="form-item">
-        <text class="form-label">备注</text>
-        <input v-model="form.remark" placeholder="请输入备注" class="form-input" />
-      </view>
+      <ZwiField label="备注" v-model="form.remark" placeholder="请输入备注" />
     </view>
-
-    <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交反馈</button>
 
     <!-- 项目选择弹窗 -->
     <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
@@ -59,12 +43,15 @@
         </scroll-view>
       </view>
     </view>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { saveProgressFeedback } from '@/api/common'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiField from '@/components/zwi/ZwiField.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 
@@ -135,18 +122,28 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx;   border-bottom: 1rpx solid var(--zw-border-light); }
-.form-item.vertical { flex-direction: column; align-items: flex-start; }
-.form-item:last-child { border-bottom: none; }
+/* 表单卡壳：收敛后的通用容器（替代原 form-section 21 页重复样式） */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+/* textarea 行（vertical）保留原结构 */
+.form-item.vertical { flex-direction: column; align-items: flex-start; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 160rpx; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
-.form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
-.placeholder { color: var(--zw-text-quaternary); }
-.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
 .textarea { width: 100%; height: 180rpx; border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-sm); padding: 16rpx; min-height: 44px; font-size: 26rpx; margin-top: 12rpx; box-sizing: border-box; }
-.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; border-radius: var(--zw-radius-sm); border: none; }
+
+/* 项目选择弹窗（原样式保留） */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
 .picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }

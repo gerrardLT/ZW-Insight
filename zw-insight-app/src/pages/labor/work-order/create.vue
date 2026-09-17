@@ -1,7 +1,8 @@
 <template>
-  <view class="form-page">
+  <!-- ZwiFormPage 壳：sticky 底部提交条（critique P0 拇指区） -->
+  <ZwiFormPage submitText="确认签认提交" :loading="submitting" @submit="handleSubmit">
     <OfflineBanner />
-    <view class="form-section">
+    <view class="form-card">
       <!-- 项目选择（S4.2）：ZwBottomSheetPicker 工业抽屉 -->
       <ZwBottomSheetPicker
         :options="projectOptions"
@@ -11,30 +12,25 @@
         @change="onProjectPicked"
       >
         <template #trigger>
-          <view class="form-item">
-            <text class="form-label">所属项目</text>
-            <view class="form-input picker">
-              <text :class="{ placeholder: !form.projectName }">{{ form.projectName || '请选择项目' }}</text>
-              <text class="arrow">›</text>
-            </view>
-          </view>
+          <ZwiPickerField
+            label="所属项目"
+            :displayValue="form.projectName"
+            placeholder="请选择项目"
+          />
         </template>
       </ZwBottomSheetPicker>
-      <view class="form-item" @click="openTeamPicker">
-        <text class="form-label">劳务班组</text>
-        <view class="form-input picker">
-          <text :class="{ placeholder: !form.teamName }">{{ form.teamName || '请选择班组(选填)' }}</text>
-          <text class="arrow">›</text>
-        </view>
-      </view>
+      <ZwiPickerField
+        label="劳务班组"
+        :displayValue="form.teamName"
+        placeholder="请选择班组(选填)"
+        @open="openTeamPicker"
+      />
     </view>
 
-    <view class="form-section">
-      <view class="form-item">
-        <text class="form-label">工人姓名</text>
-        <input cursor-spacing="24" v-model="form.workerName" placeholder="请输入工人姓名" class="form-input" />
-      </view>
-      <view class="form-item">
+    <view class="form-card">
+      <ZwiField label="工人姓名" v-model="form.workerName" placeholder="请输入工人姓名" />
+      <!-- 用工类型 radio-group 保留原结构 -->
+      <view class="form-item radio-item-row">
         <text class="form-label">用工类型</text>
         <view class="radio-group">
           <view class="radio-item" :class="{ active: form.orderType === 'TEMPORARY' }" @click="form.orderType = 'TEMPORARY'">
@@ -45,33 +41,17 @@
           </view>
         </view>
       </view>
-      <view class="form-item">
-        <text class="form-label">工作日期</text>
-        <input cursor-spacing="24" v-model="form.workDate" placeholder="YYYY-MM-DD" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">正常工时(h)</text>
-        <input cursor-spacing="24" v-model="form.hours" type="digit" placeholder="如 8 或 8.5" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">时薪单价(元)</text>
-        <input cursor-spacing="24" v-model="form.hourlyRate" type="digit" placeholder="每小时单价" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">加班工时(h)</text>
-        <input cursor-spacing="24" v-model="form.overtime" type="digit" placeholder="选填，如 2" class="form-input" />
-      </view>
-      <view class="form-item">
-        <text class="form-label">加班费率(元)</text>
-        <input cursor-spacing="24" v-model="form.overtimeRate" type="digit" placeholder="不填则按正常时薪" class="form-input" />
-      </view>
+      <ZwiField label="工作日期" v-model="form.workDate" placeholder="YYYY-MM-DD" />
+      <ZwiField label="正常工时(h)" v-model="form.hours" inputType="digit" placeholder="如 8 或 8.5" />
+      <ZwiField label="时薪单价(元)" v-model="form.hourlyRate" inputType="digit" placeholder="每小时单价" />
+      <ZwiField label="加班工时(h)" v-model="form.overtime" inputType="digit" placeholder="选填，如 2" />
+      <ZwiField label="加班费率(元)" v-model="form.overtimeRate" inputType="digit" placeholder="不填则按正常时薪" />
+      <!-- 合计金额高亮行保留原结构 -->
       <view class="form-item highlight">
         <text class="form-label font-bold">合计金额(元)</text>
         <text class="total-display">¥{{ calcTotal }}</text>
       </view>
     </view>
-
-    <button class="submit-btn" :loading="submitting" @click="handleSubmit">确认签认提交</button>
 
     <!-- 班组选择弹窗 -->
     <view class="picker-mask" v-if="showTeamPicker" @click="showTeamPicker = false">
@@ -89,7 +69,7 @@
         </scroll-view>
       </view>
     </view>
-  </view>
+  </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
@@ -100,6 +80,9 @@ import { submitOrQueue } from '@/utils/offlineSubmit'
 import { useFormSession } from '@/composables/useFormSession'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 import ZwBottomSheetPicker from '@/components/ZwBottomSheetPicker.vue'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiField from '@/components/zwi/ZwiField.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)
@@ -238,22 +221,34 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.form-page { padding: 20rpx; min-height: 44px; padding-bottom: 120rpx; }
-.form-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 0 24rpx; margin-bottom: 20rpx; }
-.form-item { display: flex; align-items: center; padding: 24rpx 0; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }
-.form-item:last-child { border-bottom: none; }
-.form-item.highlight { background: var(--zw-brand-light); margin: 0 -24rpx; padding: 24rpx; min-height: 44px; }
+/* 表单卡壳：收敛后的通用容器（替代原 form-section 21 页重复样式） */
+.form-card {
+  background: var(--zw-bg-card);
+  border: 1rpx solid var(--zw-border-light);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.form-card :deep(.form-item) {
+  padding: 0 24rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--zw-border-light);
+}
+.form-card :deep(.form-item:last-child) {
+  border-bottom: none;
+}
+/* radio-group 行保留原结构 */
+.radio-item-row { display: flex; align-items: center; padding: 24rpx; border-bottom: 1rpx solid var(--zw-border-light); }
+/* 合计金额高亮行保留原结构 */
+.form-item.highlight { background: var(--zw-brand-light); padding: 24rpx; }
 .form-label { font-size: 28rpx; color: var(--zw-text-primary); min-width: 180rpx; }
 .form-label.font-bold { font-weight: bold; }
-.form-input { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); text-align: right; }
-.form-input.picker { display: flex; align-items: center; justify-content: flex-end; }
 .total-display { flex: 1; text-align: right; font-size: 36rpx; font-weight: bold; color: var(--zw-brand); font-family: var(--zw-font-mono); }
-.placeholder { color: var(--zw-text-quaternary); }
-.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
 .radio-group { display: flex; gap: 16rpx; justify-content: flex-end; flex: 1; }
 .radio-item { padding: 0 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); font-size: 24rpx; color: var(--zw-text-secondary); }
 .radio-item.active { border-color: var(--zw-brand); background: var(--zw-brand-light); color: var(--zw-brand); font-weight: 500; }
-.submit-btn { margin: 40rpx 20rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1;  background: var(--zw-brand); color: var(--zw-on-primary); font-size: 32rpx; font-weight: 600; border-radius: var(--zw-radius-sm); border: none; }
+
+/* 班组选择弹窗（原样式保留） */
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
 .picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }
