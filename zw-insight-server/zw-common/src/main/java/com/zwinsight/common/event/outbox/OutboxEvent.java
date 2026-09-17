@@ -1,5 +1,6 @@
 package com.zwinsight.common.event.outbox;
 
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -36,8 +37,13 @@ import java.time.LocalDateTime;
  *
  * @implNote sys_outbox_event 不继承 BaseEntity（无 deleted/version），由应用层控制
  *           生命周期；{@code tenant_id nullable} 因为跨租户任务需全局扫描。
+ *           <b>必须显式 {@code @TableName("sys_outbox_event")}</b>：类名 OutboxEvent 的默认
+ *           下划线映射是 {@code outbox_event}（不存在），且不带 sys_ 前缀会落入租户拦截器
+ *           拦截范围，与 Mapper 手写 SQL 及 DDL 的 sys_outbox_event 不一致（2026-09-17 实证：
+ *           OutboxDispatcher.poll 每 30s 报 Table 'outbox_event' doesn't exist）。
  */
 @Data
+@TableName("sys_outbox_event")
 public class OutboxEvent {
 
     /** ID（雪花算法） */
