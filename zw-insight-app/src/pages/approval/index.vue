@@ -15,23 +15,40 @@
 
     <!-- 列表 -->
     <scroll-view scroll-y class="task-list" @scrolltolower="loadMore" refresher-enabled @refresherrefresh="onRefresh" :refresher-triggered="refreshing">
-      <view class="task-item" :class="{ 'task-selected': isSelected(item) }" v-for="item in tasks" :key="item.id || item.processInstanceId" @click="goDetail(item)">
-        <view class="task-header">
-          <view class="task-check" v-if="activeTab === 'todo'" @click.stop="toggleSelect(item)">
-            <text class="checkbox" :class="{ checked: isSelected(item) }">{{ isSelected(item) ? '✓' : '' }}</text>
+      <!-- S3.2 左滑删除试点：wd-swipe-action 包裹任务卡，右滑区暴露「终止」破坏性动作。
+           后端无「删除审批」接口，此处映射到真实的 terminate（删流程实例 + WITHDRAW 回滚业务单据）；
+           服务端 assertTaskAssignee 限定办理人，故仅「待办」tab 可滑（其余 tab disabled + 不渲染右区）。 -->
+      <wd-swipe-action
+        v-for="item in tasks"
+        :key="item.id || item.processInstanceId"
+        custom-class="task-swipe"
+        :disabled="activeTab !== 'todo'"
+        @click="onSwipeClick($event, item)"
+      >
+        <view class="task-item" :class="{ 'task-selected': isSelected(item) }" @click="goDetail(item)">
+          <view class="task-header">
+            <view class="task-check" v-if="activeTab === 'todo'" @click.stop="toggleSelect(item)">
+              <text class="checkbox" :class="{ checked: isSelected(item) }">{{ isSelected(item) ? '✓' : '' }}</text>
+            </view>
+            <text class="task-title">{{ item.processName || item.taskName }}</text>
+            <text class="task-status" :class="item.status">{{ statusText(item) }}</text>
           </view>
-          <text class="task-title">{{ item.processName || item.taskName }}</text>
-          <text class="task-status" :class="item.status">{{ statusText(item) }}</text>
+          <view class="task-info">
+            <text class="task-applicant" v-if="activeTab !== 'initiated'">申请人：{{ item.startUserName }}</text>
+            <text class="task-applicant" v-else>发起时间</text>
+            <text class="task-time">{{ item.createTime || item.startTime }}</text>
+          </view>
+          <view class="task-desc" v-if="item.businessTitle">
+            <text>{{ item.businessTitle }}</text>
+          </view>
         </view>
-        <view class="task-info">
-          <text class="task-applicant" v-if="activeTab !== 'initiated'">申请人：{{ item.startUserName }}</text>
-          <text class="task-applicant" v-else>发起时间</text>
-          <text class="task-time">{{ item.createTime || item.startTime }}</text>
-        </view>
-        <view class="task-desc" v-if="item.businessTitle">
-          <text>{{ item.businessTitle }}</text>
-        </view>
-      </view>
+        <template #right>
+          <view class="swipe-terminate" v-if="activeTab === 'todo'">
+            <text class="swipe-terminate-label">终止流程</text>
+            <text class="swipe-terminate-hint">不可恢复</text>
+          </view>
+        </template>
+      </wd-swipe-action>
       <!-- 首屏骨架（S3.1）：无数据且加载中显示骨架，替代文字 loading -->
       <ZwSkeleton v-if="loading && !tasks.length" type="list" :rows="4" />
       <ZwiEmptyState v-if="!tasks.length && !loading && !loadFailed" :description="`暂无${tabLabel}任务`" />
@@ -57,7 +74,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { getTodoTasks, getDoneTasks, getMyInitiatedTasks, batchApproveTasks } from '@/api/common'
+import { getTodoTasks, getDoneTasks, getMyInitiatedTasks, batchApproveTasks, terminateTask } from '@/api/common'
 import { rejectIfOffline } from '@/utils/offlineSubmit'
 import ZwSkeleton from '@/components/ZwSkeleton.vue'
 import ZwiEmptyState from '@/components/zwi/ZwiEmptyState.vue'
@@ -72,6 +89,8 @@ const hasMore = ref(true)
 // P0 Req8：待办多选与批量同意
 const selectedIds = ref<string[]>([])
 const batchApproving = ref(false)
+// S3.2：左滑终止进行中（防重入）
+const terminating = ref(false)
 
 const isAllSelected = computed(() => tasks.value.length > 0 && selectedIds.value.length === tasks.value.length)
 
@@ -203,6 +222,44 @@ onShow(() => {
   selectedIds.value = []
   loadData()
 })
+
+// ── S3.2：左滑终止流程（破坏性动作三重防护：手势 → 二次确认+原因 → 服务端办理人校验）──
+/** wd-swipe-action 的 click 事件载荷为 { value: 'left' | 'right' | 'inside' }；组件已自行收回面板 */
+function onSwipeClick(e: any, item: any) {
+  if (e?.value !== 'right') return
+  handleTerminate(item)
+}
+
+function handleTerminate(item: any) {
+  const taskId = taskIdOf(item)
+  if (!taskId || terminating.value) return
+  // 审批为强一致操作，离线不入队，明确拒绝（不静默）
+  if (rejectIfOffline('终止流程需联网进行，请联网后重试')) return
+  uni.showModal({
+    title: '终止流程',
+    content: '终止后流程实例将被删除、业务单据状态回滚，且不可恢复。确定终止？',
+    editable: true,
+    placeholderText: '请填写终止原因（记入审批记录）',
+    success: async (res: any) => {
+      if (!res.confirm) return
+      // editable 不支持的端上 res.content 为空，此时落真实默认描述（不编造原因）
+      const reason = String(res.content || '').trim() || '移动端左滑终止（未填写原因）'
+      terminating.value = true
+      try {
+        await terminateTask({ taskId, comment: reason })
+        uni.showToast({ title: '流程已终止', icon: 'success' })
+        selectedIds.value = selectedIds.value.filter((id) => id !== taskId)
+      } catch {
+        // 失败时请求层已 toast 后端原因（含非办理人无权终止），随后刷新以服务端状态为准
+      } finally {
+        terminating.value = false
+        page.value = 1
+        hasMore.value = true
+        loadData()
+      }
+    }
+  })
+}
 </script>
 
 <style scoped>
@@ -212,7 +269,7 @@ onShow(() => {
 .tab-item.active { color: var(--zw-brand); font-weight: bold; }
 .tab-item.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 60rpx; height: 4rpx; background: var(--zw-brand); border-radius: 2rpx; }
 .task-list { flex: 1; padding: 20rpx; }
-.task-item { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 24rpx; margin-bottom: 16rpx; box-shadow: var(--zw-shadow-card); transition: border-color var(--zw-duration-fast) var(--zw-ease-out); }
+.task-item { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 24rpx; box-shadow: var(--zw-shadow-card); transition: border-color var(--zw-duration-fast) var(--zw-ease-out); box-sizing: border-box; } /* S3.2：卡片间距上提到 .task-swipe 包裹层（swipe 根 overflow:hidden 会把子元素下边距括进去，红底会多出一截） */
 .task-selected { border-color: var(--zw-brand); } /* S1 批量选中态：品牌描边即时反馈 */
 .task-header { display: flex; justify-content: space-between; align-items: center; }
 .task-title { font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
@@ -235,4 +292,35 @@ onShow(() => {
 .batch-check-label { margin-left: 12rpx; font-size: 26rpx; color: var(--zw-text-secondary); }
 .batch-btn { margin: 0; padding: 0 40rpx; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 28rpx; border-radius: var(--zw-radius-xs); } /* P0 触控达标：72rpx→min-height 44px */
 .batch-btn[disabled] { opacity: 0.5; } /* 禁用态降透明，避免橙底白字违承重规则 */
+</style>
+
+<style>
+/* S3.2 左滑区皮肤：wd-swipe-action 为 easycom 组件（小程序端 virtualHost: true），
+   scoped 选择器打不到其节点，故走全局块——与 signature.css 的 wot 覆盖同手法；
+   组件已声明 styleIsolation: 'shared' + addGlobalClass，页面全局样式可穿透。
+   卡片间距也放这里：custom-class 落在组件根节点，小程序端外部 class 不可靠 */
+.task-swipe {
+  margin-bottom: 16rpx;
+}
+.swipe-terminate {
+  width: 192rpx;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  background: var(--zw-danger);
+  color: var(--zw-text-inverse); /* 红底配 inverse 字：暗色 danger 提亮后自动翻深 */
+}
+.swipe-terminate-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.swipe-terminate-hint {
+  font-size: 20rpx;
+  opacity: 0.85;
+  white-space: nowrap; /* 实测 9 字提示在 176rpx 宽内折行溢出，收敛为 4 字 + 不换行 */
+}
 </style>

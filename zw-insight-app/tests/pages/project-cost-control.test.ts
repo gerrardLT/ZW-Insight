@@ -94,4 +94,57 @@ describe('project/cost-control/index.vue 移动端成本控制看板', () => {
     expect(wrapper.text()).toContain('节约 20.00万')
     wrapper.unmount()
   })
+
+  it('S3.1 项目选择器走 ZwiPickerField（label 上置常驻）', async () => {
+    const wrapper = mount(CostControlDashboard)
+    await flushPromises()
+
+    expect(wrapper.find('.picker-trigger').exists()).toBe(true)
+    expect(wrapper.find('.form-label').text()).toContain('监控项目')
+    // 已选值落在触发器内（不靠 placeholder 承载语义）
+    expect(wrapper.find('.picker-value').text()).toBe('测试示范工程')
+    expect(wrapper.find('.picker-placeholder').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('S3.1 CBS 科目卡三列横排改竖向 ZwiCell kv 行（2 科目 × 3 行）', async () => {
+    const wrapper = mount(CostControlDashboard)
+    await flushPromises()
+
+    expect(wrapper.findAll('.cell-kv')).toHaveLength(6)
+    expect(wrapper.text()).toContain('当前预算')
+    expect(wrapper.text()).toContain('实际发生')
+    expect(wrapper.text()).toContain('签约承诺')
+    // 实际发生保留加重强调（走 #value 插槽，非 .cell-value）
+    expect(wrapper.findAll('.cat-actual')).toHaveLength(2)
+    expect(wrapper.find('.cat-actual').text()).toBe('150.00万元')
+    wrapper.unmount()
+  })
+
+  it('S3.1 无 CBS 数据走 ZwiEmptyState（契约 .empty 保留）', async () => {
+    vi.mocked(getProjectCostControl).mockResolvedValue({
+      code: 200,
+      data: { summary: { currentBudget: 0, actualCost: 0, variance: 0 }, categorySummaries: [] },
+    } as any)
+
+    const wrapper = mount(CostControlDashboard)
+    await flushPromises()
+
+    expect(wrapper.find('.empty').exists()).toBe(true)
+    expect(wrapper.text()).toContain('当前项目暂无 CBS 科目数据')
+    wrapper.unmount()
+  })
+
+  it('S3.1 加载失败走 ZwiEmptyState error 变体 + 重试 CTA', async () => {
+    vi.mocked(getProjectCostControl).mockRejectedValue(new Error('服务异常'))
+
+    const wrapper = mount(CostControlDashboard)
+    await flushPromises()
+
+    expect(wrapper.vm.loadFailed).toBe(true)
+    expect(wrapper.find('.empty-error').exists()).toBe(true)
+    expect(wrapper.text()).toContain('成本数据加载失败')
+    expect(wrapper.find('.retry-btn').exists()).toBe(true)
+    wrapper.unmount()
+  })
 })

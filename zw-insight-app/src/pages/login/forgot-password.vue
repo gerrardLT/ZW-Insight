@@ -18,44 +18,63 @@
     </view>
 
     <view class="forgot-form">
-      <!-- 第一步：手机号 -->
+      <!-- 第一步：手机号（S3.1：.form-item+.input → ZwiField，label 上置常驻替代 placeholder 唯一指引） -->
       <view v-if="active === 0">
-        <view class="form-item">
-          <input v-model="form.phone" type="number" placeholder="请输入手机号" class="input" maxlength="11" />
-        </view>
+        <ZwiField
+          label="手机号"
+          v-model="form.phone"
+          inputType="number"
+          :maxlength="11"
+          placeholder="请输入 11 位手机号"
+          required
+        />
         <button class="primary-btn" :disabled="countdown > 0" :loading="sending" @click="handleSendCode">
           {{ countdown > 0 ? `${countdown}s 后可重发` : '发送验证码' }}
         </button>
       </view>
 
-      <!-- 第二步：验证码 -->
+      <!-- 第二步：验证码（重发按钮走 ZwiField #suffix 插槽，与输入框同一行热区） -->
       <view v-if="active === 1">
         <view class="form-tip">
           <text>验证码已发送至 {{ maskedPhone }}</text>
         </view>
-        <view class="form-item code-item">
-          <input v-model="form.code" type="number" placeholder="请输入 6 位验证码" class="input code-input" maxlength="6" />
-          <button class="code-btn" :disabled="countdown > 0" @click="handleSendCode">
-            {{ countdown > 0 ? `${countdown}s` : '重发' }}
-          </button>
-        </view>
+        <ZwiField
+          label="短信验证码"
+          v-model="form.code"
+          inputType="number"
+          :maxlength="6"
+          placeholder="6 位数字"
+          required
+        >
+          <template #suffix>
+            <button class="code-btn" :disabled="countdown > 0" @click="handleSendCode">
+              {{ countdown > 0 ? `${countdown}s` : '重发' }}
+            </button>
+          </template>
+        </ZwiField>
         <view class="btn-row">
           <button class="ghost-btn" @click="active = 0">上一步</button>
           <button class="primary-btn flex1" :loading="verifying" @click="handleVerifyCode">下一步</button>
         </view>
       </view>
 
-      <!-- 第三步：新密码 -->
+      <!-- 第三步：新密码（原页内 .form-tip 规则文案改为常驻 hint，与输入框同行可见） -->
       <view v-if="active === 2">
-        <view class="form-item">
-          <input v-model="form.newPassword" type="password" placeholder="请输入新密码" class="input" />
-        </view>
-        <view class="form-item">
-          <input v-model="form.confirmPassword" type="password" placeholder="请再次输入新密码" class="input" />
-        </view>
-        <view class="form-tip">
-          <text>密码需 8-20 个字符，且同时包含字母和数字</text>
-        </view>
+        <ZwiField
+          label="新密码"
+          v-model="form.newPassword"
+          inputType="password"
+          placeholder="请输入新密码"
+          required
+          hint="需 8-20 个字符，且同时包含字母和数字"
+        />
+        <ZwiField
+          label="确认新密码"
+          v-model="form.confirmPassword"
+          inputType="password"
+          placeholder="请再次输入新密码"
+          required
+        />
         <view class="btn-row">
           <button class="ghost-btn" @click="active = 1">上一步</button>
           <button class="primary-btn flex1" :loading="submitting" @click="handleReset">重置密码</button>
@@ -72,6 +91,7 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
 import { sendResetCode, verifyResetCode, resetPassword } from '@/api/auth'
+import ZwiField from '@/components/zwi/ZwiField.vue'
 
 const stepLabels = ['验证手机号', '校验验证码', '设置新密码']
 
@@ -277,16 +297,12 @@ function goLogin() {
   border-radius: var(--zw-radius-xs); /* 精密直角纪律 */
   padding: 40rpx;
   box-shadow: var(--zw-shadow-card);
+  box-sizing: border-box;
 }
-.form-item {
+/* S3.1：输入行收敛到 ZwiField（.form-item/.form-label/.form-input 契约在壳内），
+   本页仅保留字段间距与重发按钮皮肤 */
+.forgot-form :deep(.form-item) {
   margin-bottom: 32rpx;
-}
-.input {
-  height: 88rpx; /* Mobile Shell 章：输入控件 44px */
-  border: 1rpx solid var(--zw-border);
-  border-radius: var(--zw-radius-xs);
-  padding: 0 24rpx;
-  font-size: 28rpx;
 }
 .form-tip {
   margin-bottom: 24rpx;
@@ -295,24 +311,20 @@ function goLogin() {
   font-size: 24rpx;
   color: var(--zw-text-tertiary);
 }
-.code-item {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-.code-input {
-  flex: 1;
-}
 .code-btn {
   width: 160rpx;
-  height: 88rpx;
-  line-height: 88rpx;
+  min-height: 44px; /* P0 触控达标 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   font-size: 24rpx;
   color: var(--zw-brand);
   background: var(--zw-brand-light);
   border: 1rpx solid var(--zw-brand-light);
   border-radius: var(--zw-radius-xs);
   padding: 0;
+  flex-shrink: 0;
 }
 .code-btn[disabled] {
   color: var(--zw-text-quaternary);

@@ -250,7 +250,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.shortcut-edit-page { padding: 20rpx; padding-bottom: 160rpx; }
+.shortcut-edit-page { padding: 20rpx; padding-bottom: calc(160rpx + var(--zw-safe-bottom)); }
 .section { background: var(--zw-bg-card); border-radius: var(--zw-radius-lg); padding: 24rpx; margin-bottom: 24rpx; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
 .section-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); }
@@ -270,8 +270,15 @@ onMounted(() => {
 .item-icon { font-size: 40rpx; margin-right: 16rpx; }
 .item-name { flex: 1; font-size: 28rpx; color: var(--zw-text-primary); }
 .remove-btn {
+  position: relative;
   width: 48rpx; height: 48rpx; border-radius: 50%; background: var(--zw-danger-light);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+/* P0 触控热区：视觉 48rpx 不变，透明热区扩到 44px（同 approval/index .task-check 手法）；
+   仅拦 click（已 .stop），longpress 仍冒泡到行上，不影响拖拽排序 */
+.remove-btn::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 44px; height: 44px; transform: translate(-50%, -50%);
 }
 .remove-icon { font-size: 24rpx; color: var(--zw-danger); }
 
@@ -290,12 +297,13 @@ onMounted(() => {
 
 .empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
 
-/* 底部保存栏 */
+/* 底部保存栏（S3.1 critique P0：底部固定元素必须覆盖 safe-area，原缺失） */
 .footer {
-  position: fixed; left: 0; right: 0; bottom: 0; padding: 20rpx 32rpx;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  padding: 16rpx 24rpx calc(16rpx + var(--zw-safe-bottom));
   background: var(--zw-bg-card); border-top: 1rpx solid var(--zw-border-light);
 }
-.save-btn { background: var(--zw-brand); color: var(--zw-on-primary); border-radius: var(--zw-radius-sm); font-size: 30rpx; }
+.save-btn { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1; background: var(--zw-brand); color: var(--zw-on-primary); border-radius: var(--zw-radius-sm); font-size: 30rpx; font-weight: 600; border: none; } /* P0 触控达标 + 橙底深字承重规则 */
 .save-btn:active { transform: translateY(1px); } /* 压合反馈，替代悬浮上浮 */
 .save-btn[disabled] { background: var(--zw-brand); opacity: 0.4; }
 </style>

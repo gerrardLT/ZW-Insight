@@ -39,6 +39,13 @@ export function completeTask(data: TaskCompletePayload) {
 export function rejectTask(data: TaskRejectPayload) {
   return request({ url: '/v1/workflow/approval/reject-previous', method: 'POST', data })
 }
+// 终止流程（S3.2 左滑删除试点）：后端 ApprovalController#terminate → ApprovalService#terminate，
+// 事务内 deleteProcessInstance + 发布 WITHDRAW 事件回滚业务单据 + 落 TERMINATE 审批记录；
+// 复用 TaskRejectRequest（taskId/comment），comment 即终止原因。
+// 服务端 assertTaskAssignee 限定仅当前办理人可终止，故只在「待办」tab 暴露入口。
+export function terminateTask(data: TaskRejectPayload) {
+  return request({ url: '/v1/workflow/approval/terminate', method: 'POST', data })
+}
 // 批量通过（P0 Req8）：后端 ApprovalController#batchApprove，事务内逐条 complete，
 // 任一失败整体回滚并返回业务错误
 export function batchApproveTasks(data: { taskIds: string[]; comment?: string }) {

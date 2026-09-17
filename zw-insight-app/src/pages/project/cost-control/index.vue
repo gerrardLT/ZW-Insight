@@ -2,22 +2,25 @@
   <view class="cost-control-page">
     <OfflineBanner />
 
-    <!-- 项目选择器 -->
-    <view class="project-header" @click="showProjectPicker = true">
-      <view class="project-selector">
-        <text class="selector-label">监控项目：</text>
-        <text class="selector-value">{{ projectName || '请选择项目' }}</text>
-        <text class="arrow">›</text>
-      </view>
+    <!-- 项目选择器：.project-selector → ZwiPickerField（与 Stage 2 表单页同构：label 上置常驻） -->
+    <view class="project-header">
+      <ZwiPickerField
+        label="监控项目"
+        :displayValue="projectName"
+        placeholder="请选择项目"
+        @open="showProjectPicker = true"
+      />
     </view>
 
     <!-- 加载中/失败/数据展示 -->
     <view v-if="loading" class="loading-state"><text>加载成本数据中...</text></view>
 
-    <view v-else-if="loadFailed" class="failed-state">
-      <text class="failed-tip">成本数据加载失败</text>
-      <text class="retry-btn" @click="loadData">重试</text>
-    </view>
+    <!-- S3.1：失败态走 ZwiEmptyState error 变体（critique P3：空态要可诊断） -->
+    <ZwiEmptyState v-else-if="loadFailed" type="error" description="成本数据加载失败">
+      <template #action>
+        <text class="retry-btn" @click="loadData">重试</text>
+      </template>
+    </ZwiEmptyState>
 
     <scroll-view
       v-else
@@ -86,23 +89,20 @@
               {{ Number(cat.variance) < 0 ? '超支 ' + formatWan(Math.abs(cat.variance)) + '万' : '节约 ' + formatWan(cat.variance) + '万' }}
             </text>
           </view>
+          <!-- S3.1：.cat-row → ZwiCell kv 变体。原三列横排在 24rpx 字号下拥挤不可读，
+               改为竖向键值行（字段名走弱/金额走强），实际发生保留加重强调 -->
           <view class="cat-body">
-            <view class="cat-row">
-              <text class="cat-col-label">当前预算：</text>
-              <text class="cat-col-val">{{ formatWan(cat.currentBudget) }}万元</text>
-            </view>
-            <view class="cat-row">
-              <text class="cat-col-label">实际发生：</text>
-              <text class="cat-col-val font-bold">{{ formatWan(cat.actualCost) }}万元</text>
-            </view>
-            <view class="cat-row">
-              <text class="cat-col-label">签约承诺：</text>
-              <text class="cat-col-val">{{ formatWan(cat.commitmentCost) }}万元</text>
-            </view>
+            <ZwiCell variant="kv" title="当前预算" :value="formatWan(cat.currentBudget) + '万元'" />
+            <ZwiCell variant="kv" title="实际发生">
+              <template #value>
+                <text class="cat-actual">{{ formatWan(cat.actualCost) }}万元</text>
+              </template>
+            </ZwiCell>
+            <ZwiCell variant="kv" title="签约承诺" :value="formatWan(cat.commitmentCost) + '万元'" last />
           </view>
         </view>
       </view>
-      <view class="empty-state" v-else><text>当前项目暂无 CBS 科目数据</text></view>
+      <ZwiEmptyState v-else description="当前项目暂无 CBS 科目数据" />
     </scroll-view>
 
     <!-- 项目选择弹窗 -->
@@ -129,6 +129,9 @@ import { ref, onMounted, computed } from 'vue'
 import { getProjectCostControl } from '@/api/common'
 import { loadProjectList } from '@/utils/offlineData'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
+import ZwiCell from '@/components/zwi/ZwiCell.vue'
+import ZwiEmptyState from '@/components/zwi/ZwiEmptyState.vue'
 
 const showProjectPicker = ref(false)
 const projects = ref<any[]>([])
@@ -211,14 +214,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.cost-control-page { display: flex; flex-direction: column; height: 100vh; background: var(--zw-bg-page); padding: 20rpx; min-height: 44px; box-sizing: border-box; }
-.project-header { margin-bottom: 20rpx; }
-.project-selector { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 20rpx 24rpx; min-height: 44px; box-sizing: border-box; border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-border); }
-.selector-label { font-size: 26rpx; color: var(--zw-text-tertiary); }
-.selector-value { flex: 1; text-align: right; font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
-.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
+.cost-control-page { display: flex; flex-direction: column; height: 100vh; background: var(--zw-bg-page); padding: 20rpx; box-sizing: border-box; }
+/* 选择器固定高度，不被 flex 列布局压缩；ZwiPickerField 自带下边距在此归零（由本容器接管） */
+.project-header { margin-bottom: 20rpx; flex-shrink: 0; }
+.project-header :deep(.form-item) { margin-bottom: 0; }
 .scroll-area { flex: 1; overflow-y: auto; }
-.summary-card { background: var(--zw-bg-card); padding: 24rpx; min-height: 44px; border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-border); margin-bottom: 24rpx; }
+.summary-card { background: var(--zw-bg-card); padding: 24rpx; border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-border); margin-bottom: 24rpx; }
 .summary-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; padding-bottom: 16rpx; border-bottom: 1rpx solid var(--zw-border-light); }
 .summary-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); }
 .health-badge { font-size: 22rpx; padding: 4rpx 14rpx; border-radius: var(--zw-radius-xs); }
@@ -240,19 +241,18 @@ onMounted(async () => {
 .progress-fill { height: 100%; width: 100%; background: var(--zw-brand); border-radius: 2rpx; transform-origin: left center; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); will-change: transform; }
 .progress-fill.over { background: var(--zw-danger); }
 .section-title { font-size: 28rpx; font-weight: bold; color: var(--zw-text-primary); margin-bottom: 16rpx; }
-.cat-card { background: var(--zw-bg-card); padding: 20rpx 24rpx; min-height: 44px; box-sizing: border-box; border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-border); margin-bottom: 16rpx; }
+.cat-card { background: var(--zw-bg-card); padding: 20rpx 24rpx; box-sizing: border-box; border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-border); margin-bottom: 16rpx; }
 .cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
 .cat-name { font-size: 28rpx; font-weight: bold; color: var(--zw-text-primary); }
 .cat-status { font-size: 22rpx; font-weight: 500; }
 .cat-status.good { color: var(--zw-success); }
 .cat-status.bad { color: var(--zw-danger); }
-.cat-body { display: flex; justify-content: space-between; font-size: 24rpx; color: var(--zw-text-secondary); }
-.cat-col-label { color: var(--zw-text-tertiary); }
-.cat-col-val { font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
-.empty-state { text-align: center; padding: 60rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
-.loading-state, .failed-state { text-align: center; padding: 100rpx; color: var(--zw-text-tertiary); font-size: 28rpx; }
-.failed-tip { color: var(--zw-danger); margin-right: 16rpx; }
-.retry-btn { padding: 6rpx 20rpx; min-height: 44px; display: inline-flex; align-items: center; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 24rpx; border-radius: var(--zw-radius-xs); }
+/* S3.1：.cat-body 由三列横排改为竖向键值行容器（ZwiCell kv 自带 hairline 分隔） */
+.cat-body { border-top: 1rpx solid var(--zw-border-light); }
+.cat-body :deep(.cell-row:first-child) { padding-top: 16rpx; }
+.cat-actual { font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; font-size: 28rpx; font-weight: bold; color: var(--zw-text-primary); text-align: right; }
+.loading-state { text-align: center; padding: 100rpx; color: var(--zw-text-tertiary); font-size: 28rpx; }
+.retry-btn { padding: 8rpx 28rpx; min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; background: var(--zw-brand); color: var(--zw-on-primary); font-size: 26rpx; border-radius: var(--zw-radius-xs); }
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
 .picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-md) var(--zw-radius-md) 0 0; max-height: 70vh; }
 .picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }

@@ -2,7 +2,7 @@
 /**
  * approval + material 域页面级组件测试（2026-08-16 P3 方向2 批 5）
  *
- * 覆盖 approval/index.vue（三 tab 分流+分页）、approval/detail.vue
+ * 覆盖 approval/index.vue（三 tab 分流+分页+左滑终止）、approval/detail.vue
  *（详情加载/通过/退回意见守卫）、material/inbound.vue 与 outbound.vue
  *（三段校验+离线项目加载+提交载荷）。
  * 豁免：material/return.vue——pages.json 未注册路由（孤儿页），且 api/common
@@ -39,6 +39,7 @@ vi.mock('@/api/common', () => ({
   saveMaterialInbound: vi.fn(),
   saveMaterialOutbound: vi.fn(),
   batchApproveTasks: vi.fn(),
+  terminateTask: vi.fn(),
 }))
 
 vi.mock('@/utils/request', () => ({ default: vi.fn() }))
@@ -51,7 +52,7 @@ import {
   getTodoTasks, getDoneTasks, getMyInitiatedTasks, completeTask,
   rejectTask, getProjectList, getMaterialByCode, getPurchaseContractPage,
   getPurchaseContractDetails, saveMaterialInbound, saveMaterialOutbound,
-  batchApproveTasks,
+  batchApproveTasks, terminateTask,
 } from '@/api/common'
 import request from '@/utils/request'
 import { resetUniStorage, getUni } from '../setup'
@@ -164,6 +165,121 @@ describe('approval/index.vue 审批列表页', () => {
     expect(wrapper.text()).toContain('任务列表加载失败')
     expect(wrapper.text()).toContain('重试')
     wrapper.unmount()
+  })
+
+  // ── S3.2：wd-swipe-action 左滑终止流程（后端无「删除审批」接口，映射到真实 terminate）──
+  describe('S3.2 左滑终止流程', () => {
+    async function mountWithTasks() {
+      vi.mocked(getTodoTasks).mockResolvedValue({ code: 200, data: { records: [{ id: 'T1' }, { id: 'T2' }] } })
+      const wrapper = mount(ApprovalIndex)
+      hooks.onShowCb?.()
+      await flushPromises()
+      return wrapper
+    }
+
+    it('swipe click 事件仅 value=right 触发终止；left/inside 忽略', async () => {
+      const modal = vi.fn()
+      ;(getUni() as any).showModal = modal
+      const wrapper = await mountWithTasks()
+
+      wrapper.vm.onSwipeClick({ value: 'left' }, { id: 'T1' })
+      wrapper.vm.onSwipeClick({ value: 'inside' }, { id: 'T1' })
+      wrapper.vm.onSwipeClick(undefined, { id: 'T1' })
+      expect(modal).not.toHaveBeenCalled()
+      expect(vi.mocked(terminateTask)).not.toHaveBeenCalled()
+      wrapper.unmount()
+    })
+
+    it('确认后 terminateTask 带 taskId + 用户填写的终止原因，成功后刷新列表并清选中', async () => {
+      vi.mocked(terminateTask).mockResolvedValue({ code: 200 })
+      ;(getUni() as any).showModal = vi.fn((opts: any) => opts.success?.({ confirm: true, content: '单据录错，重新发起' }))
+      const toast = vi.fn()
+      ;(getUni() as any).showToast = toast
+
+      const wrapper = await mountWithTasks()
+      wrapper.vm.toggleSelect({ id: 'T1' })
+      const callsBefore = vi.mocked(getTodoTasks).mock.calls.length
+
+      wrapper.vm.onSwipeClick({ value: 'right' }, { id: 'T1' })
+      await flushPromises()
+
+      expect(vi.mocked(terminateTask)).toHaveBeenCalledWith({ taskId: 'T1', comment: '单据录错，重新发起' })
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '流程已终止' }))
+      expect(wrapper.vm.selectedIds).not.toContain('T1')
+      // 终止后以服务端状态为准刷新
+      expect(vi.mocked(getTodoTasks).mock.calls.length).toBeGreaterThan(callsBefore)
+      expect(wrapper.vm.terminating).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('未填写原因时落真实默认描述（不编造原因）', async () => {
+      vi.mocked(terminateTask).mockResolvedValue({ code: 200 })
+      ;(getUni() as any).showModal = vi.fn((opts: any) => opts.success?.({ confirm: true, content: '   ' }))
+
+      const wrapper = await mountWithTasks()
+      wrapper.vm.onSwipeClick({ value: 'right' }, { id: 'T2' })
+      await flushPromises()
+
+      expect(vi.mocked(terminateTask)).toHaveBeenCalledWith({
+        taskId: 'T2',
+        comment: '移动端左滑终止（未填写原因）',
+      })
+      wrapper.unmount()
+    })
+
+    it('二次确认取消不调接口（破坏性动作需显式意图）', async () => {
+      const modalCalls: any[] = []
+      ;(getUni() as any).showModal = vi.fn((opts: any) => modalCalls.push(opts))
+
+      const wrapper = await mountWithTasks()
+      wrapper.vm.onSwipeClick({ value: 'right' }, { id: 'T1' })
+      await flushPromises()
+
+      // 弹框必须告知不可恢复（错误预防）
+      expect(modalCalls).toHaveLength(1)
+      expect(modalCalls[0].content).toContain('不可恢复')
+      modalCalls[0].success({ confirm: false })
+      await flushPromises()
+      expect(vi.mocked(terminateTask)).not.toHaveBeenCalled()
+      wrapper.unmount()
+    })
+
+    it('终止失败不静默：仍刷新列表且 terminating 复位（允许重试）', async () => {
+      vi.mocked(terminateTask).mockRejectedValue(new Error('非当前办理人，无权终止'))
+      ;(getUni() as any).showModal = vi.fn((opts: any) => opts.success?.({ confirm: true, content: '作废' }))
+
+      const wrapper = await mountWithTasks()
+      const callsBefore = vi.mocked(getTodoTasks).mock.calls.length
+
+      wrapper.vm.onSwipeClick({ value: 'right' }, { id: 'T1' })
+      await flushPromises()
+
+      expect(vi.mocked(getTodoTasks).mock.calls.length).toBeGreaterThan(callsBefore)
+      expect(wrapper.vm.terminating).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('非待办 tab 禁用左滑：服务端 assertTaskAssignee 限定办理人，已办/我发起不可终止', async () => {
+      vi.mocked(getTodoTasks).mockResolvedValue({ code: 200, data: { records: [{ id: 'T1' }] } })
+      vi.mocked(getDoneTasks).mockResolvedValue({ code: 200, data: { records: [{ id: 'D1' }] } })
+
+      const wrapper = mount(ApprovalIndex)
+      hooks.onShowCb?.()
+      await flushPromises()
+
+      // wd-swipe-action 在 vitest 下无 easycom，渲染为未知元素（props 降为 attrs，仅 default 插槽生效），
+      // 故此处钉 disabled 守卫；#right 插槽内容靠 v-if 双重保险，走 H5 截图验。
+      const swipes = () => wrapper.findAll('wd-swipe-action')
+      expect(swipes()).toHaveLength(1)
+      expect(swipes()[0].attributes('disabled')).toBe('false')
+      expect(wrapper.findAll('.task-item')).toHaveLength(1)
+
+      wrapper.vm.switchTab('done')
+      await flushPromises()
+      expect(swipes()).toHaveLength(1)
+      expect(swipes()[0].attributes('disabled')).toBe('true')
+      wrapper.unmount()
+    })
   })
 })
 

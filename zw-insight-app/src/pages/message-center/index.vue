@@ -18,28 +18,28 @@
       <text class="read-all" @click="handleReadAll">全部已读</text>
     </view>
 
-    <!-- 列表 -->
+    <!-- 列表：S3.1 卡片流 → 单一分组卡 + ZwiCell 行（hairline 分隔降噪）
+         未读点与时间走 #value 插槽；内容摘要仍限两行（:deep 覆盖 .cell-desc） -->
     <scroll-view scroll-y class="list" @scrolltolower="loadMore">
-      <view
-        class="item"
-        v-for="item in list"
-        :key="item.id"
-        @click="onItemClick(item)"
-      >
-        <view class="item-header">
-          <text class="item-title">{{ item.title }}</text>
-          <view
-            class="dot"
-            v-if="activeTab === 'message' && item.isRead === 0"
-          ></view>
-        </view>
-        <text class="item-content" v-if="item.content">{{ item.content }}</text>
-        <text class="item-time">{{ formatTime(item) }}</text>
+      <view class="list-card zw-card" v-if="list.length">
+        <ZwiCell
+          v-for="(item, idx) in list"
+          :key="item.id"
+          :title="item.title"
+          :desc="item.content"
+          clickable
+          :last="idx === list.length - 1"
+          @click="onItemClick(item)"
+        >
+          <template #value>
+            <text class="msg-dot" v-if="isUnread(item)"></text>
+            <text class="msg-time">{{ shortTime(formatTime(item)) }}</text>
+          </template>
+        </ZwiCell>
       </view>
 
-      <view class="empty" v-if="!list.length && !loading">
-        <text>暂无{{ currentLabel }}</text>
-      </view>
+      <!-- S3.1：.empty → ZwiEmptyState（critique P3：插画 + 与失败态可区分） -->
+      <ZwiEmptyState v-if="!list.length && !loading" :description="`暂无${currentLabel}`" />
       <view class="loading-more" v-if="loading"><text>加载中...</text></view>
       <view class="no-more" v-if="!hasMore && list.length"><text>没有更多了</text></view>
     </scroll-view>
@@ -56,6 +56,9 @@ import {
   markMessageRead,
   markAllMessagesRead
 } from '@/api/common'
+import { shortTime } from '@/utils/format'
+import ZwiCell from '@/components/zwi/ZwiCell.vue'
+import ZwiEmptyState from '@/components/zwi/ZwiEmptyState.vue'
 
 const PAGE_SIZE = 15
 
@@ -141,6 +144,11 @@ function formatTime(item: any) {
   return item.publishTime || item.createTime || item.createdAt || ''
 }
 
+/** 未读判定：仅消息预警 tab 后端返回 isRead，公告/通知无此语义 */
+function isUnread(item: any) {
+  return activeTab.value === 'message' && item.isRead === 0
+}
+
 onShow(() => {
   page.value = 1
   hasMore.value = true
@@ -157,19 +165,24 @@ onPullDownRefresh(() => {
 <style scoped>
 .mc-page { display: flex; flex-direction: column; height: 100vh; background: var(--zw-bg-page); }
 .tabs { display: flex; background: var(--zw-bg-card); border-bottom: 1rpx solid var(--zw-border-light); }
-.tab-item { flex: 1; text-align: center; padding: 24rpx 0; font-size: 28rpx; color: var(--zw-text-secondary); position: relative; }
+.tab-item { flex: 1; text-align: center; padding: 24rpx 0; font-size: 28rpx; color: var(--zw-text-secondary); position: relative; display: flex; align-items: center; justify-content: center; min-height: 44px; box-sizing: border-box; } /* P0 触控达标 */
 .tab-item.active { color: var(--zw-brand); font-weight: bold; }
 .tab-item.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 60rpx; height: 4rpx; background: var(--zw-brand); border-radius: 2rpx; }
-.toolbar { display: flex; justify-content: flex-end; padding: 12rpx 24rpx; background: var(--zw-bg-card); }
-.read-all { font-size: 24rpx; color: var(--zw-brand); }
-.list { flex: 1; padding: 20rpx; }
-.item { background: var(--zw-bg-card); border-radius: var(--zw-radius-lg); padding: 24rpx; margin-bottom: 16rpx; }
-.item-header { display: flex; justify-content: space-between; align-items: center; }
-.item-title { font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; flex: 1; }
-.dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: var(--zw-danger); margin-left: 12rpx; }
-.item-content { display: block; margin-top: 12rpx; font-size: 24rpx; color: var(--zw-text-tertiary); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.item-time { display: block; margin-top: 12rpx; font-size: 22rpx; color: var(--zw-text-quaternary); }
-.empty { text-align: center; padding: 80rpx; color: var(--zw-text-quaternary); font-size: 26rpx; }
+.toolbar { display: flex; justify-content: flex-end; padding: 0 24rpx; background: var(--zw-bg-card); }
+.read-all { font-size: 24rpx; color: var(--zw-brand); min-height: 44px; display: inline-flex; align-items: center; padding: 0 8rpx; margin-right: -8rpx; box-sizing: border-box; } /* P0 触控热区 */
+.list { flex: 1; padding: 20rpx; padding-bottom: calc(20rpx + var(--zw-safe-bottom)); box-sizing: border-box; }
+.list-card { overflow: hidden; }
+/* ZwiCell 行内边距跟卡内呼吸（卡已有 1px hairline 边框，行左右补齐 24rpx） */
+.list-card :deep(.cell-row) { padding-left: 24rpx; padding-right: 24rpx; }
+/* 内容摘要限两行（原 .item-content 语义保留） */
+.list-card :deep(.cell-desc) {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.msg-dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: var(--zw-danger); flex-shrink: 0; }
+.msg-time { font-size: 24rpx; color: var(--zw-text-quaternary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .loading-more { text-align: center; padding: 20rpx; color: var(--zw-text-tertiary); font-size: 24rpx; }
 .no-more { text-align: center; padding: 20rpx; color: var(--zw-text-quaternary); font-size: 22rpx; }
 </style>

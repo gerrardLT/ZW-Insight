@@ -78,6 +78,8 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getCompanyOverview, getUnreadCount, getUnreadMessages } from '@/api/common'
 import { getUserShortcuts, type UserShortcutConfig } from '@/api/shortcut'
+// 时间短格式（今日 HH:mm / 非今日 MM-DD）已收敛为共享纯函数（S3.1 去双实现）
+import { shortTime as formatTime } from '@/utils/format'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 import ZwSkeleton from '@/components/ZwSkeleton.vue'
 import ZwiSectionCard from '@/components/zwi/ZwiSectionCard.vue'
@@ -94,16 +96,6 @@ const shortcuts = ref<UserShortcutConfig[]>([])
 function formatWan(val: number) {
   if (!val) return '0'
   return (val / 10000).toFixed(1)
-}
-
-/** 时间短格式：今日 HH:mm / 其他 MM-DD（列表降噪） */
-function formatTime(t?: string) {
-  if (!t) return ''
-  const s = String(t)
-  const today = new Date()
-  const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  if (s.startsWith(ymd)) return s.slice(11, 16)
-  return s.slice(5, 10)
 }
 
 // ================= 问候行（Calm Design 上下文锚点） =================

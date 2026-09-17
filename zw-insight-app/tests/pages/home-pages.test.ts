@@ -267,6 +267,54 @@ describe('message-center/index.vue 信息中心', () => {
     expect(vi.mocked(markAllMessagesRead)).toHaveBeenCalled()
     wrapper.unmount()
   })
+
+  it('S3.1 ZwiCell 化：未读红点仅消息 tab 渲染，时间走短格式，内容进 desc 行', async () => {
+    vi.mocked(getAllMessages).mockResolvedValue({
+      code: 200,
+      data: {
+        records: [
+          { id: 1, title: '预警A', content: '内容A', isRead: 0, createTime: '2026-01-02 03:04:05' },
+          { id: 2, title: '预警B', isRead: 1, createTime: '2026-01-03 03:04:05' },
+        ],
+      },
+    })
+
+    const wrapper = mount(MessageCenter)
+    wrapper.vm.switchTab('message')
+    await flushPromises()
+
+    expect(wrapper.findAll('.cell-row')).toHaveLength(2)
+    // 未读点仅 isRead=0 那一条
+    expect(wrapper.findAll('.msg-dot')).toHaveLength(1)
+    // 时间降噪：完整时间戳不上屏
+    expect(wrapper.findAll('.msg-time')).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('2026-01-02 03:04:05')
+    // 内容摘要落在 .cell-desc（页面 :deep 限两行）
+    expect(wrapper.find('.cell-desc').text()).toBe('内容A')
+
+    // 公告 tab：后端无 isRead 语义，即使数据带 isRead=0 也不渲染未读点
+    vi.mocked(getAnnouncements).mockResolvedValue({
+      code: 200,
+      data: { records: [{ id: 3, title: '公告C', isRead: 0, publishTime: '2026-01-04 03:04:05' }] },
+    })
+    wrapper.vm.switchTab('announcement')
+    await flushPromises()
+    expect(wrapper.findAll('.cell-row')).toHaveLength(1)
+    expect(wrapper.findAll('.msg-dot')).toHaveLength(0)
+    wrapper.unmount()
+  })
+
+  it('S3.1 空态走 ZwiEmptyState（契约 .empty + 双主题插画）', async () => {
+    vi.mocked(getAnnouncements).mockResolvedValue({ code: 200, data: { records: [] } })
+    const wrapper = mount(MessageCenter)
+    hooks.onShowCb?.()
+    await flushPromises()
+
+    expect(wrapper.find('.empty').exists()).toBe(true)
+    expect(wrapper.find('.empty-illustration').exists()).toBe(true)
+    expect(wrapper.text()).toContain('暂无公告')
+    wrapper.unmount()
+  })
 })
 
 describe('project/archive.vue 项目档案页', () => {
@@ -290,6 +338,48 @@ describe('project/archive.vue 项目档案页', () => {
 
     expect(vi.mocked(getProjectArchive)).not.toHaveBeenCalled()
     expect(wrapper.vm.loading).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('S3.1 ZwiSectionCard + ZwiCell kv 化：三分区卡 + 11 条键值行', async () => {
+    vi.mocked(getProjectArchive).mockResolvedValue({
+      code: 200,
+      data: {
+        projectName: '滨江花园一期',
+        projectCode: 'PRJ-001',
+        contractAmount: 2_000_000,
+        finance: { totalIncome: 1_000_000, totalExpense: 500_000, profit: 500_000 },
+        progress: 42,
+      },
+    })
+
+    const wrapper = mount(ArchivePage)
+    hooks.onLoadCb?.({ projectId: '55' })
+    await flushPromises()
+
+    // 三分区均走 ZwiSectionCard（契约 .section/.section-title 保留）
+    expect(wrapper.findAll('.section')).toHaveLength(3)
+    expect(wrapper.findAll('.section-title').map((t) => t.text())).toEqual([
+      '项目信息', '财务概况', '进度概况',
+    ])
+    // 8 条项目信息 + 3 条财务 = 11 条 kv 行
+    expect(wrapper.findAll('.cell-kv')).toHaveLength(11)
+    expect(wrapper.text()).toContain('滨江花园一期')
+    expect(wrapper.text()).toContain('200.00万')
+    expect(wrapper.text()).toContain('42%')
+    wrapper.unmount()
+  })
+
+  it('S3.1 加载失败走 ZwiEmptyState error 变体 + 重试 CTA（critique P3）', async () => {
+    vi.mocked(getProjectArchive).mockRejectedValue(new Error('服务异常'))
+
+    const wrapper = mount(ArchivePage)
+    hooks.onLoadCb?.({ projectId: '55' })
+    await flushPromises()
+
+    expect(wrapper.find('.empty-error').exists()).toBe(true)
+    expect(wrapper.text()).toContain('项目档案加载失败')
+    expect(wrapper.find('.retry-btn').exists()).toBe(true)
     wrapper.unmount()
   })
 })

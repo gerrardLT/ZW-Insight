@@ -36,6 +36,8 @@ import { ref, onMounted } from 'vue'
 import { getReserveFundApplyPage, saveReserveFundReturn } from '@/api/common'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiField from '@/components/zwi/ZwiField.vue'
 
 const submitting = ref(false)
 const pendingList = ref<any[]>([])

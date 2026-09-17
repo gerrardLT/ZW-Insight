@@ -155,6 +155,30 @@ describe('mine/password.vue 修改密码页', () => {
     wrapper.unmount()
     vi.useRealTimers()
   })
+
+  it('S3.1 ZwiField 化：三个密码框仍为 password 类型（防明文回归）+ label 常驻 + sticky 底条', async () => {
+    const wrapper = mount(PasswordPage)
+
+    // 上轮脚本化转换曾静默丢掉 type="password"，此处钉住不得回归
+    const inputs = wrapper.findAll('.form-input')
+    expect(inputs).toHaveLength(3)
+    inputs.forEach((i) => expect(i.attributes('type')).toBe('password'))
+
+    // critique P2：字段语义由常驻 label 承载，不再只靠 placeholder
+    const labels = wrapper.findAll('.form-label').map((l) => l.text())
+    expect(labels[0]).toContain('原密码')
+    expect(labels[1]).toContain('新密码')
+    expect(labels[2]).toContain('确认密码')
+    // 必填标记
+    expect(wrapper.findAll('.form-required')).toHaveLength(3)
+    // 原页底游离 .tips 改为新密码行常驻 hint
+    expect(wrapper.find('.form-hint').text()).toContain('至少 6 位')
+
+    // critique P0：主操作进 sticky 底部条（ZwiFormPage .form-footer + .submit-btn 契约）
+    expect(wrapper.find('.form-footer').exists()).toBe(true)
+    expect(wrapper.find('.submit-btn').text()).toContain('确认修改')
+    wrapper.unmount()
+  })
 })
 
 describe('mine/sign.vue 签到页', () => {
@@ -238,6 +262,25 @@ describe('mine/sign.vue 签到页', () => {
     expect(wrapper.vm.signDays).toBe(2)
     expect(wrapper.vm.todaySigned).toBe(true)
     expect(wrapper.find('.sign-btn').attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  it('S3.1 项目选择器走 ZwiPickerField：label 常驻 + 点击触发器开弹层', async () => {
+    installLocation(30.123, 120.456)
+    ;(getUni() as any).request = vi.fn(async () => ({ statusCode: 200, data: { code: 200, data: {} } }))
+
+    const wrapper = mount(SignPage)
+    await flushPromises()
+
+    expect(wrapper.find('.picker-trigger').exists()).toBe(true)
+    expect(wrapper.find('.form-label').text()).toContain('打卡项目')
+    expect(wrapper.find('.form-required').exists()).toBe(true)
+    // 未拉到项目列表时为占位态（不靠 placeholder 承载语义）
+    expect(wrapper.find('.picker-placeholder').exists()).toBe(true)
+
+    expect(wrapper.vm.showProjectPicker).toBe(false)
+    await wrapper.find('.picker-trigger').trigger('click')
+    expect(wrapper.vm.showProjectPicker).toBe(true)
     wrapper.unmount()
   })
 })

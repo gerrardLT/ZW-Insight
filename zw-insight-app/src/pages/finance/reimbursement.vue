@@ -67,6 +67,9 @@ import { saveReimbursement, submitReimbursement } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { rejectIfOffline } from '@/utils/offlineSubmit'
 import OfflineBanner from '@/components/OfflineBanner.vue'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiField from '@/components/zwi/ZwiField.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)

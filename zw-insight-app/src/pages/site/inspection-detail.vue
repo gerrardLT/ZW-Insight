@@ -394,7 +394,8 @@ function handleApprove(rec: any) {
 <style scoped>
 .inspection-detail-page {
   padding: 20rpx;
-  padding-bottom: 200rpx;
+  /* S3.1：预留 sticky 提交条（summary + 按钮）+ 安全区，防整改闭环卡末条被遮挡 */
+  padding-bottom: calc(220rpx + var(--zw-safe-bottom));
   min-height: 100vh;
   background: var(--zw-bg-page);
 }
@@ -519,7 +520,13 @@ function handleApprove(rec: any) {
   flex: 1;
 }
 .result-option {
-  padding: 10rpx 24rpx;
+  flex: 1;
+  min-height: 44px; /* S3.1 P0 触控达标：现场戴手套标记合格/不合格的主交互热区 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 10rpx 12rpx;
   border: 1rpx solid var(--zw-border);
   border-radius: var(--zw-radius-sm);
   font-size: 24rpx;
@@ -541,15 +548,18 @@ function handleApprove(rec: any) {
   color: var(--zw-warning);
   background: var(--zw-warning-light);
 }
+/* S3.1 sticky 提交条：与 ZwiFormPage .form-footer 同构——fixed + z-index + hairline 上边
+   + safe-area token，去硬编码 box-shadow（静态组件禁阴影纪律） */
 .submit-area {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
+  z-index: 50;
   background: var(--zw-bg-card);
+  border-top: 1rpx solid var(--zw-border-light);
   padding: 20rpx 32rpx;
-  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.06);
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(20rpx + var(--zw-safe-bottom));
 }
 .summary {
   text-align: center;
@@ -601,8 +611,11 @@ function handleApprove(rec: any) {
 }
 .photo-btn {
   width: 100%;
-  height: 80rpx;
-  line-height: 80rpx;
+  min-height: 44px; /* S3.1 P0 触控达标：80rpx→44px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   background: var(--zw-brand-light);
   color: var(--zw-brand);
   font-size: 28rpx;
@@ -692,8 +705,11 @@ function handleApprove(rec: any) {
 }
 .rect-approve-btn {
   width: 100%;
-  height: 72rpx;
-  line-height: 72rpx;
+  min-height: 44px; /* S3.1 P0 触控达标：72rpx→44px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   background: var(--zw-success);
   color: var(--zw-text-inverse); /* 绿底配 inverse 字：暗色 success 提亮后自动翻深 */
   font-size: 28rpx;

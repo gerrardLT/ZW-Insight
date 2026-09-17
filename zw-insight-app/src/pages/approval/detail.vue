@@ -130,7 +130,7 @@ async function handleReject() {
 </script>
 
 <style scoped>
-.detail-page { padding: 20rpx; padding-bottom: 160rpx; }
+.detail-page { padding: 20rpx; padding-bottom: calc(200rpx + var(--zw-safe-bottom)); } /* S3.1：预留 sticky 操作条 + 安全区，防末条审批记录被遮挡 */
 .loading-mask { display: flex; justify-content: center; align-items: center; height: 400rpx; color: var(--zw-text-tertiary); }
 .section { background: var(--zw-bg-card); border-radius: var(--zw-radius-lg); padding: 24rpx; margin-bottom: 20rpx; }
 .section-title { font-size: 28rpx; font-weight: bold; color: var(--zw-text-primary); margin-bottom: 16rpx; padding-bottom: 12rpx; border-bottom: 1rpx solid var(--zw-border-light); }
@@ -139,7 +139,9 @@ async function handleReject() {
 .info-value { font-size: 26rpx; color: var(--zw-text-primary); flex: 1; text-align: right; }
 .textarea-wrap { margin-top: 12rpx; }
 .textarea { width: 100%; height: 200rpx; border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); padding: 16rpx; font-size: 26rpx; box-sizing: border-box; }
-.action-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; gap: 20rpx; padding: 20rpx 30rpx calc(20rpx + env(safe-area-inset-bottom)); background: var(--zw-bg-card); box-shadow: 0 -2rpx 8rpx rgba(0,0,0,0.05); } /* P0 safe-area：底部安全区适配 */
+/* S3.1 sticky 操作条（critique P0 拇指区）：与 ZwiFormPage .form-footer 同构——
+   fixed + hairline 上边 + safe-area，去硬编码 box-shadow（静态组件禁阴影纪律） */
+.action-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; display: flex; gap: 20rpx; padding: 20rpx 30rpx calc(20rpx + var(--zw-safe-bottom)); background: var(--zw-bg-card); border-top: 1rpx solid var(--zw-border-light); }
 .btn-reject { flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1; background: var(--zw-bg-card); color: var(--zw-danger); border: 1rpx solid var(--zw-danger); border-radius: var(--zw-radius-sm); font-size: 28rpx; } /* P0 触控达标：80rpx→min-height 44px */
 .btn-approve { flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; line-height: 1; background: var(--zw-brand); color: var(--zw-on-primary); border: none; border-radius: var(--zw-radius-sm); font-size: 28rpx; } /* P0 触控达标：80rpx→min-height 44px */
 .record-item { padding: 16rpx 0; border-bottom: 1rpx solid var(--zw-border-light); }

@@ -64,6 +64,32 @@ describe('ZwiCell 列表行', () => {
     await wrapper.find('.cell-row').trigger('click')
     expect(wrapper.emitted('click')).toHaveLength(1)
   })
+
+  it('S3.1 kv 变体：详情页键值行挂 .cell-kv（语义轻重反转），默认 row 不挂', () => {
+    const kv = mount(ZwiCell, { props: { title: '项目名称', value: '滨江花园一期', variant: 'kv' } })
+    expect(kv.find('.cell-kv').exists()).toBe(true)
+    expect(kv.find('.cell-title').text()).toBe('项目名称')
+    expect(kv.find('.cell-value').text()).toBe('滨江花园一期')
+
+    const row = mount(ZwiCell, { props: { title: '付款审批', value: '09-17' } })
+    expect(row.find('.cell-kv').exists()).toBe(false)
+  })
+
+  it('kv 变体不自动变成可点击（详情页只读行不应有按压反馈）', async () => {
+    const wrapper = mount(ZwiCell, { props: { title: '合同金额', value: '200.00万', variant: 'kv' } })
+    expect(wrapper.find('.cell-clickable').exists()).toBe(false)
+    await wrapper.find('.cell-row').trigger('click')
+    expect(wrapper.emitted('click')).toBeUndefined()
+  })
+
+  it('#value 插槽可承载复杂值区（未读点/加重金额），与 value prop 共存时两者均渲染', () => {
+    const wrapper = mount(ZwiCell, {
+      props: { title: '实际发生', variant: 'kv', value: 'prop 值' },
+      slots: { value: '<text class="slot-x">插槽值</text>' },
+    })
+    expect(wrapper.find('.slot-x').text()).toBe('插槽值')
+    expect(wrapper.find('.cell-value').text()).toBe('prop 值')
+  })
 })
 
 describe('ZwiStatCard 数值卡', () => {

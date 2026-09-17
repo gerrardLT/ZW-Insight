@@ -170,4 +170,35 @@ describe('login/forgot-password.vue 找回密码三步流程', () => {
     wrapper.unmount()
     vi.useRealTimers()
   })
+
+  it('S3.1 ZwiField 化：三步字段 label 常驻、类型正确、验证码行走 #suffix 插槽', async () => {
+    mockSendCode.mockResolvedValue({ code: 200 })
+    mockVerifyCode.mockResolvedValue({ code: 200 })
+    const wrapper = mountPage()
+
+    // 第一步：手机号——critique P2（label 承载语义，placeholder 仅作格式示例）
+    expect(wrapper.find('.form-label').text()).toContain('手机号')
+    expect(wrapper.find('.form-input').attributes('type')).toBe('number')
+    expect(wrapper.find('.form-input').attributes('maxlength')).toBe('11')
+
+    wrapper.vm.form.phone = '13800138000'
+    await wrapper.find('.primary-btn').trigger('click')
+    await flushPromises()
+
+    // 第二步：重发按钮落在 ZwiField 的 suffix 插槽（与输入框同一行热区）
+    expect(wrapper.find('.form-label').text()).toContain('短信验证码')
+    expect(wrapper.find('.form-input').attributes('maxlength')).toBe('6')
+    expect(wrapper.find('.form-control .code-btn').exists()).toBe(true)
+
+    wrapper.vm.form.code = '654321'
+    await wrapper.findAll('button').find((b) => b.text().includes('下一步'))!.trigger('click')
+    await flushPromises()
+
+    // 第三步：两个密码框均为 password（防明文），复杂度规则改为常驻 hint
+    const pwdInputs = wrapper.findAll('.form-input')
+    expect(pwdInputs).toHaveLength(2)
+    pwdInputs.forEach((i) => expect(i.attributes('type')).toBe('password'))
+    expect(wrapper.find('.form-hint').text()).toContain('8-20')
+    wrapper.unmount()
+  })
 })

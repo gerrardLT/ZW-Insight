@@ -79,6 +79,13 @@ describe('common.ts 契约（易错路径钉住）', () => {
     })
   })
 
+  it('S3.2 终止流程 POST /v1/workflow/approval/terminate（comment 即终止原因）', async () => {
+    await commonApi.terminateTask({ taskId: 't1', comment: '单据录错' })
+    expect(mockRequest).toHaveBeenLastCalledWith({
+      url: '/v1/workflow/approval/terminate', method: 'POST', data: { taskId: 't1', comment: '单据录错' },
+    })
+  })
+
   it('消息已读 PUT 路径拼 id；全部已读 PUT read-all', async () => {
     await commonApi.markMessageRead(77)
     expect(mockRequest).toHaveBeenLastCalledWith({ url: '/v1/message/msg/77/read', method: 'PUT' })

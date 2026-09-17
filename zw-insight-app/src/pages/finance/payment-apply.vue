@@ -55,6 +55,9 @@ import { ref, onMounted } from 'vue'
 import { savePaymentApply } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
+import ZwiFormPage from '@/components/zwi/ZwiFormPage.vue'
+import ZwiField from '@/components/zwi/ZwiField.vue'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 
 const submitting = ref(false)
 const showProjectPicker = ref(false)

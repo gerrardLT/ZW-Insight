@@ -296,7 +296,7 @@ function formatDate(s?: string) {
 </script>
 
 <style scoped>
-.detail-page { padding: 20rpx; padding-bottom: 180rpx; }
+.detail-page { padding: 20rpx; padding-bottom: calc(180rpx + var(--zw-safe-bottom)); }
 
 .loading-mask { padding: 120rpx 0; text-align: center; font-size: 26rpx; color: var(--zw-text-quaternary); }
 .failed-state { padding: 120rpx 0; text-align: center; }
@@ -352,7 +352,8 @@ function formatDate(s?: string) {
 
 .empty-inline { padding: 24rpx 0; font-size: 25rpx; color: var(--zw-text-quaternary); }
 
-.action-bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 16rpx; padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); background: var(--zw-bg-card); border-top: 1rpx solid var(--zw-border-light); }
+/* S3.1 sticky 操作条：补 z-index（与 ZwiFormPage .form-footer 同构）+ safe-area 走 token */
+.action-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; gap: 16rpx; padding: 16rpx 24rpx calc(16rpx + var(--zw-safe-bottom)); background: var(--zw-bg-card); border-top: 1rpx solid var(--zw-border-light); }
 .action-btn { flex: 1; height: 88rpx; line-height: 88rpx; font-size: 30rpx; border-radius: var(--zw-radius-sm); border: none; }
 .action-btn.primary { background: var(--zw-brand); color: var(--zw-on-primary); }
 .action-btn.plain { background: var(--zw-bg-hover); color: var(--zw-text-primary); }

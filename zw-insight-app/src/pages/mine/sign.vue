@@ -1,11 +1,13 @@
 <template>
   <view class="sign-page">
-    <!-- 项目选择 -->
-    <view class="project-selector" @click="showProjectPicker = true">
-      <text class="selector-label">打卡项目：</text>
-      <text class="selector-value">{{ projectName || '请选择项目' }}</text>
-      <text class="arrow">›</text>
-    </view>
+    <!-- 项目选择：.project-selector → ZwiPickerField（label 上置常驻，与 Stage 2 表单页同构） -->
+    <ZwiPickerField
+      label="打卡项目"
+      :displayValue="projectName"
+      placeholder="请选择项目"
+      required
+      @open="showProjectPicker = true"
+    />
 
     <!-- 签到卡片 -->
     <view class="sign-card">
@@ -39,9 +41,9 @@
     <view class="picker-mask" v-if="showProjectPicker" @click="showProjectPicker = false">
       <view class="picker-content" @click.stop>
         <view class="picker-header">
-          <text @click="showProjectPicker = false">取消</text>
+          <text class="picker-cancel" @click="showProjectPicker = false">取消</text>
           <text class="picker-title">选择打卡项目</text>
-          <text></text>
+          <text class="picker-cancel"></text>
         </view>
         <scroll-view scroll-y class="picker-list">
           <view class="picker-item" v-for="p in projects" :key="p.id" @click="selectProject(p)">
@@ -59,6 +61,7 @@ import { ref, onMounted } from 'vue'
 import { BASE_URL } from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 import { loadProjectList } from '@/utils/offlineData'
+import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 
 const userStore = useUserStore()
 
@@ -203,19 +206,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.sign-page { padding: 20rpx; min-height: 44px; }
-.project-selector { display: flex; align-items: center; justify-content: space-between; background: var(--zw-bg-card); padding: 20rpx 24rpx; min-height: 44px; border-radius: var(--zw-radius-md); margin-bottom: 20rpx; border: 1rpx solid var(--zw-border-light); }
-.selector-label { font-size: 26rpx; color: var(--zw-text-tertiary); }
-.selector-value { flex: 1; text-align: right; font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
-.arrow { margin-left: 8rpx; color: var(--zw-text-quaternary); font-size: 32rpx; }
+.sign-page { padding: 20rpx; padding-bottom: calc(20rpx + var(--zw-safe-bottom)); }
 /* 签到卡：品牌橙纯色块（去渐变纪律）+ 深字承重规则 */
-.sign-card { background: var(--zw-brand); border-radius: var(--zw-radius-lg); padding: 48rpx; min-height: 44px; text-align: center; color: var(--zw-on-primary); margin-bottom: 24rpx; }
+.sign-card { background: var(--zw-brand); border-radius: var(--zw-radius-lg); padding: 48rpx; text-align: center; color: var(--zw-on-primary); margin-bottom: 24rpx; }
 .sign-time { font-size: 56rpx; font-weight: bold; margin-bottom: 12rpx; font-family: var(--zw-font-mono); }
 .sign-location { font-size: 24rpx; opacity: 0.85; margin-bottom: 32rpx; }
 .sign-btn { width: 200rpx; height: 200rpx; border-radius: var(--zw-radius-lg); background: rgba(20,22,26,0.15); border: 4rpx solid var(--zw-on-primary); color: var(--zw-on-primary); font-size: 30rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
 .sign-btn.signed { background: var(--zw-success-light); border-color: var(--zw-success); color: var(--zw-success); }
 .sign-range-tip { margin-top: 16rpx; font-size: 24rpx; font-weight: 600; color: var(--zw-on-primary); }
-.calendar-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 24rpx; min-height: 44px; }
+.calendar-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border-light); border-radius: var(--zw-radius-lg); padding: 24rpx; }
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
 .calendar-title { font-size: 30rpx; font-weight: bold; color: var(--zw-text-primary); }
 .calendar-stat { font-size: 24rpx; color: var(--zw-brand); }
@@ -226,10 +225,11 @@ onMounted(() => {
 .day-num { font-size: 24rpx; color: var(--zw-text-secondary); font-family: var(--zw-font-mono); }
 .day-dot { color: var(--zw-success); font-size: 16rpx; }
 .picker-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--zw-bg-mask); z-index: 999; display: flex; align-items: flex-end; }
-.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; }
-.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); }
+.picker-content { width: 100%; background: var(--zw-bg-card); border-radius: var(--zw-radius-lg) var(--zw-radius-lg) 0 0; max-height: 70vh; padding-bottom: var(--zw-safe-bottom); box-sizing: border-box; } /* S3.1：底部弹层补安全区 */
+.picker-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; min-height: 44px; box-sizing: border-box; border-bottom: 1rpx solid var(--zw-border-light); }
 .picker-title { font-size: 30rpx; font-weight: bold; }
 .picker-list { max-height: 60vh; }
-.picker-item { padding: 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
-.empty { text-align: center; padding: 40rpx; min-height: 44px; color: var(--zw-text-quaternary); }
+.picker-item { padding: 24rpx; min-height: 44px; box-sizing: border-box; display: flex; align-items: center; border-bottom: 1rpx solid var(--zw-border-light); font-size: 28rpx; }
+.picker-cancel { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; font-size: 28rpx; color: var(--zw-text-secondary); } /* P0 触控热区 */
+.empty { text-align: center; padding: 40rpx; color: var(--zw-text-quaternary); }
 </style>
