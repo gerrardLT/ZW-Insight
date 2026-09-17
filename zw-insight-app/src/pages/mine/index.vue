@@ -1,20 +1,24 @@
 <template>
   <view class="mine-page">
     <OfflineBanner />
-    <!-- 用户信息头部 -->
+    <!-- 用户信息头部：石墨黑控制室 + hazard 顶线（品牌签名） -->
     <view class="user-header">
-      <view class="avatar">
-      <image class="avatar-img" :src="userStore.userInfo?.avatar || '/static/brand/default-avatar.png'" mode="aspectFill" />
-      <text class="avatar-text">{{ avatarText }}</text>
-    </view>
-      <view class="user-info">
-        <text class="user-name">{{ userStore.userInfo?.realName || userStore.userInfo?.username || '未登录' }}</text>
-        <text class="user-role">{{ userStore.userInfo?.roleName || '-' }}</text>
+      <view class="hazard-divider header-hazard"></view>
+      <view class="user-header-inner">
+        <view class="avatar">
+          <image class="avatar-img" :src="userStore.userInfo?.avatar || '/static/brand/default-avatar.png'" mode="aspectFill" />
+          <text class="avatar-text">{{ avatarText }}</text>
+        </view>
+        <view class="user-info">
+          <text class="user-name">{{ userStore.userInfo?.realName || userStore.userInfo?.username || '未登录' }}</text>
+          <text class="user-role">{{ userStore.userInfo?.roleName || '-' }}</text>
+        </view>
+        <text class="user-eyebrow eyebrow-cap">Account</text>
       </view>
     </view>
 
-    <!-- 菜单列表 -->
-    <view class="menu-section">
+    <!-- 菜单列表（契约钉住 .menu-item 结构与顺序：items[0]签到/1密码/2关于；视觉已达标保留原结构） -->
+    <view class="menu-section zw-card">
       <view class="menu-item" @click="navigateTo('/pages/mine/sign')">
         <text class="menu-text">定位签到</text>
         <text class="menu-arrow">›</text>
@@ -40,7 +44,7 @@
       </view>
     </view>
 
-    <!-- 退出登录 -->
+    <!-- 退出登录（契约 class .logout-btn） -->
     <button class="logout-btn" @click="handleLogout">退出登录</button>
   </view>
 </template>
@@ -118,26 +122,52 @@ function handleLogout() {
 </script>
 
 <style scoped>
-.mine-page { padding: 20rpx; }
-/* 头部：石墨黑控制室纯色块（去渐变纪律）+ 橙色头像强调 */
-.user-header { display: flex; align-items: center; background: var(--zw-bg-sidebar); border-radius: var(--zw-radius-sm); padding: 40rpx 30rpx; margin-bottom: 24rpx; border: 1rpx solid var(--zw-border); }
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
+.mine-page { padding: 24rpx; }
+
+/* 头部：石墨黑控制室 + hazard 顶线（离线语义之外的唯一合法——账户安全警示区） */
+.user-header {
+  position: relative;
+  background: var(--zw-bg-sidebar);
+  border-radius: var(--zw-radius-sm);
+  margin-bottom: 24rpx;
+  overflow: hidden;
 }
-.avatar { width: 100rpx; height: 100rpx; border-radius: var(--zw-radius-xs); background: var(--zw-brand); display: flex; align-items: center; justify-content: center; }
-.avatar-text { color: var(--zw-on-primary); font-size: 32rpx; font-weight: bold; } /* 橙底深字承重规则 */
-.user-info { margin-left: 24rpx; }
-.user-name { font-size: 32rpx; color: #fff; font-weight: bold; display: block; }
-.user-role { font-size: 24rpx; color: rgba(255,255,255,0.6); margin-top: 8rpx; display: block; }
-.menu-section { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-sm); margin-bottom: 24rpx; }
-.menu-item { display: flex; justify-content: space-between; align-items: center; padding: 28rpx 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); } /* P0 触控达标：menu-item 热区 ≥44px */
-.menu-item:last-child { border-bottom: none; }
+.header-hazard { height: 6rpx; }
+.user-header-inner {
+  display: flex;
+  align-items: center;
+  padding: 40rpx 30rpx;
+}
+.avatar {
+  position: relative;
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: var(--zw-radius-xs);
+  background: var(--zw-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3rpx solid var(--zw-brand);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.avatar-img { width: 100%; height: 100%; }
+/* 头像后备末两字（契约 .avatar-text；真实头像加载后覆盖在下层） */
+.avatar-text { position: absolute; color: var(--zw-on-primary); font-size: 32rpx; font-weight: bold; }
+.user-info { margin-left: 24rpx; flex: 1; min-width: 0; }
+.user-name { font-size: 34rpx; color: #fff; font-weight: bold; display: block; }
+.user-role { font-size: 24rpx; color: rgba(255, 255, 255, 0.6); margin-top: 8rpx; display: block; }
+.user-eyebrow { color: var(--zw-brand); }
+
+/* 菜单区：契约结构 menu-item（原达标行样式） */
+.menu-section { border-radius: var(--zw-radius-sm); margin-bottom: 24rpx; overflow: hidden; }
+.menu-item { display: flex; justify-content: space-between; align-items: center; padding: 12rpx 24rpx; min-height: 44px; border-bottom: 1rpx solid var(--zw-border-light); box-sizing: border-box; }
+.menu-section .menu-item:last-child, .menu-section .menu-item:nth-child(4) { border-bottom: none; }
+.menu-arrow { font-size: 32rpx; color: var(--zw-text-quaternary); }
+.menu-value { font-size: 26rpx; color: var(--zw-text-tertiary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
 .menu-label-group { display: flex; flex-direction: column; gap: 4rpx; }
 .menu-text { font-size: 28rpx; color: var(--zw-text-primary); }
 .menu-sub-tip { font-size: 20rpx; color: var(--zw-text-quaternary); }
-.menu-arrow { font-size: 32rpx; color: var(--zw-text-quaternary); }
-.menu-value { font-size: 26rpx; color: var(--zw-text-tertiary); font-family: var(--zw-font-mono); font-variant-numeric: tabular-nums; }
+
 .logout-btn { margin: 40rpx 0; height: 88rpx; line-height: 88rpx; background: var(--zw-bg-card); color: var(--zw-danger); font-size: 30rpx; border-radius: var(--zw-radius-xs); border: 1rpx solid var(--zw-danger-light); }
 </style>

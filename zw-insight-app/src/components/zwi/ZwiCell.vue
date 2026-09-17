@@ -29,8 +29,8 @@ defineOptions({ name: 'ZwiCell' })
 
 withDefaults(
   defineProps<{
-    /** 主标题 */
-    title: string
+    /** 主标题（容错：后端/测试数据可能缺字段，空串安全渲染） */
+    title?: string
     /** 副行描述（发起人/摘要等） */
     desc?: string
     /** 右侧值文本（金额/时间）；复杂内容用 #value 插槽 */
@@ -44,7 +44,7 @@ withDefaults(
     /** 标题超长省略（默认两行截断，false 则完整换行） */
     ellipsis?: boolean
   }>(),
-  { desc: '', value: '', clickable: false, arrow: false, last: false, ellipsis: true }
+  { desc: '', value: '', clickable: false, arrow: false, last: false, ellipsis: true, title: '' }
 )
 
 defineEmits<{ (e: 'click'): void }>()

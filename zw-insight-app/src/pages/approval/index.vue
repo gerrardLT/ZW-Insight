@@ -15,7 +15,7 @@
 
     <!-- 列表 -->
     <scroll-view scroll-y class="task-list" @scrolltolower="loadMore" refresher-enabled @refresherrefresh="onRefresh" :refresher-triggered="refreshing">
-      <view class="task-item" v-for="item in tasks" :key="item.id || item.processInstanceId" @click="goDetail(item)">
+      <view class="task-item" :class="{ 'task-selected': isSelected(item) }" v-for="item in tasks" :key="item.id || item.processInstanceId" @click="goDetail(item)">
         <view class="task-header">
           <view class="task-check" v-if="activeTab === 'todo'" @click.stop="toggleSelect(item)">
             <text class="checkbox" :class="{ checked: isSelected(item) }">{{ isSelected(item) ? '✓' : '' }}</text>
@@ -34,9 +34,7 @@
       </view>
       <!-- 首屏骨架（S3.1）：无数据且加载中显示骨架，替代文字 loading -->
       <ZwSkeleton v-if="loading && !tasks.length" type="list" :rows="4" />
-      <view class="empty" v-if="!tasks.length && !loading && !loadFailed">
-        <text>暂无{{ tabLabel }}任务</text>
-      </view>
+      <ZwiEmptyState v-if="!tasks.length && !loading && !loadFailed" :description="`暂无${tabLabel}任务`" />
       <view class="failed-state" v-if="loadFailed">
         <text class="failed-tip">任务列表加载失败</text>
         <text class="retry-btn" @click="loadData">重试</text>
@@ -62,6 +60,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { getTodoTasks, getDoneTasks, getMyInitiatedTasks, batchApproveTasks } from '@/api/common'
 import { rejectIfOffline } from '@/utils/offlineSubmit'
 import ZwSkeleton from '@/components/ZwSkeleton.vue'
+import ZwiEmptyState from '@/components/zwi/ZwiEmptyState.vue'
 
 const activeTab = ref('todo')
 const tasks = ref<any[]>([])
@@ -213,7 +212,8 @@ onShow(() => {
 .tab-item.active { color: var(--zw-brand); font-weight: bold; }
 .tab-item.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 60rpx; height: 4rpx; background: var(--zw-brand); border-radius: 2rpx; }
 .task-list { flex: 1; padding: 20rpx; }
-.task-item { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 24rpx; margin-bottom: 16rpx; box-shadow: var(--zw-shadow-card); }
+.task-item { background: var(--zw-bg-card); border: 1rpx solid var(--zw-border); border-radius: var(--zw-radius-xs); padding: 24rpx; margin-bottom: 16rpx; box-shadow: var(--zw-shadow-card); transition: border-color var(--zw-duration-fast) var(--zw-ease-out); }
+.task-selected { border-color: var(--zw-brand); } /* S1 批量选中态：品牌描边即时反馈 */
 .task-header { display: flex; justify-content: space-between; align-items: center; }
 .task-title { font-size: 28rpx; color: var(--zw-text-primary); font-weight: 500; }
 .task-status { font-size: 24rpx; padding: 4rpx 12rpx; border-radius: var(--zw-radius-pill); background: var(--zw-brand-light); color: var(--zw-brand); }

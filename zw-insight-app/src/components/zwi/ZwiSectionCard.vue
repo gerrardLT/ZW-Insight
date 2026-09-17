@@ -5,10 +5,13 @@
     - hairline 边框 + 直角 + 零阴影（工业纪律）+ 卡内 28rpx 呼吸留白
   -->
   <view class="section zw-card zwi-section-card">
-    <view v-if="title || $slots.action" class="section-header">
+    <view v-if="title || $slots.action || $slots.title" class="section-header">
       <view class="section-heading">
         <text v-if="eyebrow" class="eyebrow-cap">{{ eyebrow }}</text>
-        <text class="section-title">{{ title }}</text>
+        <!-- 富标题插槽（角标等内联元素；未用时退回纯文本 title prop） -->
+        <slot name="title">
+          <text class="section-title">{{ title }}</text>
+        </slot>
       </view>
       <slot name="action" />
     </view>
