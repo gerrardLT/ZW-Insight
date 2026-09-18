@@ -165,3 +165,19 @@ http://${{ env.SERVER_HOST }}:18080/api/v1/system/menu/user   # 期望 200/401/4
 - [ ] `https://zy.cn-zwny.com/api/v1/captcha/image` → 200（API 经反代可达）
 - [ ] 同机其他站点（`ch-zkzd.com`、`workfusion.*`）访问不受影响
 - [ ] 若做 3B：新会话密钥登录可用，密码登录已被拒绝
+
+## 十、执行记录（2026-09-18 实际执行）
+
+| 阶段 | 结果 | 说明 |
+|---|---|---|
+| 1 域名反代 | ✅ **成功** | 新增 `/www/server/panel/vhost/nginx/zy.cn-zwny.com.conf`（反代 127.0.0.1:18081），`nginx -t` 通过后 reload。`http://zy.cn-zwny.com/`、`/api/v1/captcha/image`、`/project-cost-control` 均 200；原 IP:18081 与同机其他站点不受影响 |
+| 2 HTTPS | ⚠️ **受阻（CA 速率限制）** | acme.sh webroot 申请，Let's Encrypt 与 ZeroSSL 均返回 `retryafter=86400`（CA 端 24h 限制，秒回 Retry-After，属下单拒绝而非 webroot 验证失败）。**未改动 nginx 443 配置**，站点保持 HTTP 可用 |
+| 3A SSH 域名连接 | ✅ **成功** | `ssh root@zy.cn-zwny.com` 可直接登录（域名已解析） |
+| 3B SSH 加固 | ⏸️ **未执行** | 有自锁风险（单会话执行无法保命），建议人工双会话操作或提供宝塔面板通道后再做 |
+| 4 CI 适配 | ⏸️ **未执行** | 按规划建议 `SERVER_HOST` 保持 IP（部署通道与访问入口解耦） |
+
+**注意（HTTPS 未配置时的现象）**：`https://zy.cn-zwny.com` 当前会被宝塔 default server 接住，返回**其他站点内容 + 证书不匹配警告**（既有行为，非本次引入）。证书配上后即恢复正常。
+
+**HTTPS 重试方式**：24h 后重跑 `keys/_domain_step2b.sh`（ZeroSSL）或改用 `--server letsencrypt`；或在宝塔面板「站点 → SSL」手动申请（面板有独立申请通道）；或上传已有证书到 `/www/server/panel/vhost/nginx/ssl/zy.cn-zwny.com/{fullchain,privkey}.pem` 后启用 443 配置段。
+
+**执行期间的一次时序冲突（已自愈）**：阶段 1 验证时恰逢 CI deploy（推送触发）处于 down→rebuild 中间态，frontend/backend 容器暂不存在导致 502；CI 完成后容器恢复，域名反代正常。非配置问题。
