@@ -13,7 +13,7 @@
     <path d="M7 18V10" stroke="currentColor" stroke-width="2" stroke-linecap="square" />
     <path d="M11 18V8" stroke="currentColor" stroke-width="2" stroke-linecap="square" />
     <path d="M15 18V12" stroke="currentColor" stroke-width="2" stroke-linecap="square" />
-    <path d="M19 18V5" stroke="#ff6b00" stroke-width="2" stroke-linecap="square" />
+    <path d="M19 18V5" class="zw-icon-accent" stroke-width="2" stroke-linecap="square" />
     <line x1="2" y1="20" x2="22" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" />
   </svg>
 </template>

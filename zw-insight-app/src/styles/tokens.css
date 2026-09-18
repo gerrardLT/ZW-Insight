@@ -13,11 +13,11 @@ page {
   --zw-bg-active: #fff0e3;
   --zw-bg-mask: rgba(0, 0, 0, 0.5); /* 弹层遮罩 */
 
-  /* 文字（正文最小色阶 = tertiary） */
+  /* 文字（正文最小色阶 = tertiary；亮面色阶镜像 PC light.css，Batch 3.4 对齐 AA） */
   --zw-text-primary: #14161a;
   --zw-text-secondary: #4a4f57;
-  --zw-text-tertiary: #7c828c;
-  --zw-text-quaternary: #a3a8b0;
+  --zw-text-tertiary: #686d75;   /* 5.36:1 AA（原 #7c828c 偏浅，与 PC 不一致） */
+  --zw-text-quaternary: #6b727d;  /* 4.52:1 AA（原 #a3a8b0=3.23:1 FAIL；placeholder 对比度修复） */
   --zw-text-inverse: #ffffff;
 
   /* 边框（hairline 双级） */
@@ -64,11 +64,14 @@ page {
   /* Display 层：铭牌/眉题用窄体回退链，不打包字体文件 */
   --zw-font-display: 'Arial Narrow', 'Barlow Condensed', sans-serif;
 
-  /* 动效（移动端预算更紧：仅 150ms 状态过渡，禁账本滚动与角标描画） */
+  /* 动效（移动端预算更紧：仅 150ms 状态过渡，禁账本滚动与角标描画；克制无 overshoot） */
+  --zw-duration-instant: 75ms;    /* 压合/色变（Batch 0.3 press-fit 原语） */
   --zw-duration-fast: 150ms;
   --zw-duration-base: 200ms;
+  --zw-duration-exit-fast: 105ms; /* 退场 = 入场 × 70%（列表项退场，与 PC 同源） */
   --zw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --zw-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --zw-ease-in: cubic-bezier(0.6, 0, 0.8, 0.6); /* 仅退场（元素加速离开） */
 
   /* 安全区与触控底线 (harden & layout) */
   --zw-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -243,6 +246,18 @@ page.theme-outdoor,
   --zw-info: #0d47a1;
   --zw-info-light: #bbdefb;
 }
+
+/* ============ 焦点环（Batch 3.6，2026-09-17） ============
+ * critique：移动端 scoped 样式无 :focus-visible，键盘/读屏导航缺可见焦点环。
+ * 与 PC global.scss 同源（2px 品牌橙 + 2px gap）；仅 H5 生效（mp-weixin 以触摸为主、
+ * wxss 对 :focus-visible 支持有限，条件编译不注入，避免无效规则）。
+ */
+/* #ifdef H5 */
+:focus-visible {
+  outline: 2px solid var(--zw-brand);
+  outline-offset: 2px;
+}
+/* #endif */
 
 /* ============ 动效无障碍（S4.4，2026-09-15） ============
  * 前庭功能障碍用户的动效降级：全局声明 prefers-reduced-motion，

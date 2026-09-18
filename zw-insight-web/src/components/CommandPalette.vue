@@ -294,14 +294,18 @@ watch(results, (list) => {
   color: var(--zw-text-secondary);
 }
 
-/* 进出场动效 */
-.zw-palette-enter-active,
-.zw-palette-leave-active {
+/* 进出场动效（DESIGN 语义组合：入场 ease-out，退场 = 入场×70% + ease-in 加速离开） */
+.zw-palette-enter-active {
   transition: opacity var(--zw-duration-fast) var(--zw-ease-out);
 }
-.zw-palette-enter-active .palette-panel,
-.zw-palette-leave-active .palette-panel {
+.zw-palette-leave-active {
+  transition: opacity var(--zw-duration-exit-fast) var(--zw-ease-in);
+}
+.zw-palette-enter-active .palette-panel {
   transition: transform var(--zw-duration-base) var(--zw-ease-out);
+}
+.zw-palette-leave-active .palette-panel {
+  transition: transform var(--zw-duration-exit-dropdown) var(--zw-ease-in);
 }
 .zw-palette-enter-from,
 .zw-palette-leave-to {

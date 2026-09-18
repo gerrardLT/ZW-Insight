@@ -82,7 +82,7 @@
   --zw-line-height-normal: 1.5;
   --zw-line-height-relaxed: 1.75;
 
-  /* 动效（对齐设计文档 motion tokens：ease-out 主导，交互 ≤150ms，产品内 ≤300ms） */
+  /* 动效（对齐设计文档 Motion 章：ease-out 主导，交互 ≤150ms，产品内 ≤300ms） */
   --zw-duration-instant: 75ms;
   --zw-duration-fast: 150ms;
   --zw-duration-base: 200ms;
@@ -90,6 +90,16 @@
   --zw-duration-drawer: 300ms;
   --zw-duration-count: 800ms;
   --zw-duration-shimmer: 1400ms;
+  /* 退场时长 = 入场 × 70%（DESIGN「出场快于入场」承重墙：关闭的东西不阻断下一步操作） */
+  --zw-duration-exit-fast: 105ms;      /* 路由/表格行 fade-slide 退场（150×0.7） */
+  --zw-duration-exit-dropdown: 140ms;  /* dropdown/popover 退场（200×0.7） */
+  --zw-duration-exit-modal: 175ms;     /* modal 退场（250×0.7） */
+  --zw-duration-exit-drawer: 210ms;    /* drawer/侧栏 退场（300×0.7） */
+
+  /* 缓动曲线（克制纪律：ease-out 主导，本项目刻意不引入 overshoot 弹跳）
+     注：DESIGN L618 将 ease-out-back 定义为 cubic-bezier(0.34,1.56,0.64,1)（仅 toast 微回弹），
+     但 base.css 下方「禁用弹跳反模式」决策统一收敛为 ease-out；变量名保留防引用报错，
+     值均为无 overshoot 的克制曲线——勿据名误用为弹跳。 */
   --zw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --zw-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --zw-ease-out-back: cubic-bezier(0.16, 1, 0.3, 1);

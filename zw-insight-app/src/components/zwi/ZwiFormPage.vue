@@ -20,7 +20,7 @@
           :loading="loading"
           :disabled="disabled"
           custom-class="zwi-submit"
-          @click="$emit('submit')"
+          @click="onSubmit"
         >
           {{ submitText }}
         </wd-button>
@@ -30,6 +30,8 @@
 </template>
 
 <script setup lang="ts">
+import { hapticTap } from '@/utils/haptic'
+
 defineOptions({ name: 'ZwiFormPage' })
 
 withDefaults(
@@ -44,7 +46,13 @@ withDefaults(
   { submitText: '', loading: false, disabled: false }
 )
 
-defineEmits<{ (e: 'submit'): void }>()
+const emit = defineEmits<{ (e: 'submit'): void }>()
+
+/** 提交：先一次轻触觉确认「已触发」（现场手套/强光下视觉反馈易被忽略），再派发 submit */
+function onSubmit() {
+  hapticTap('light')
+  emit('submit')
+}
 </script>
 
 <style scoped>

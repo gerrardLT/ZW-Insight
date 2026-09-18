@@ -19,25 +19,25 @@
         <line x1="120" y1="10" x2="120" y2="15" stroke="currentColor" stroke-width="1" />
         <line x1="140" y1="10" x2="140" y2="15" stroke="currentColor" stroke-width="1" />
 
-        <!-- 针对不同场景的符号插画 -->
+        <!-- 针对不同场景的符号插画（品牌橙经 CSS 类注入，去 presentation-attr 硬编码 hex） -->
         <g v-if="type === 'trend'" class="symbol-trend">
-          <path d="M30 85 L60 65 L95 75 L130 45" stroke="#ff6b00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 3" />
-          <circle cx="30" cy="85" r="3" fill="#ff6b00" />
-          <circle cx="60" cy="65" r="3" fill="#ff6b00" />
-          <circle cx="95" cy="75" r="3" fill="#ff6b00" />
-          <circle cx="130" cy="45" r="3" fill="#ff6b00" />
+          <path class="bp-accent-s" d="M30 85 L60 65 L95 75 L130 45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 3" />
+          <circle class="bp-accent-f" cx="30" cy="85" r="3" />
+          <circle class="bp-accent-f" cx="60" cy="65" r="3" />
+          <circle class="bp-accent-f" cx="95" cy="75" r="3" />
+          <circle class="bp-accent-f" cx="130" cy="45" r="3" />
           <line x1="25" y1="95" x2="135" y2="95" stroke="currentColor" stroke-width="1.5" />
         </g>
         <g v-else-if="type === 'cost'" class="symbol-cost">
           <rect x="35" y="45" width="20" height="45" fill="currentColor" opacity="0.15" />
-          <rect x="70" y="35" width="20" height="55" fill="#ff6b00" opacity="0.25" />
+          <rect class="bp-accent-f" x="70" y="35" width="20" height="55" opacity="0.25" />
           <rect x="105" y="55" width="20" height="35" fill="currentColor" opacity="0.15" />
           <line x1="25" y1="90" x2="135" y2="90" stroke="currentColor" stroke-width="1.5" />
         </g>
         <g v-else class="symbol-general">
           <polygon points="80,35 115,95 45,95" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2" />
-          <line x1="80" y1="52" x2="80" y2="76" stroke="#ff6b00" stroke-width="2.5" stroke-linecap="round" />
-          <circle cx="80" cy="85" r="1.5" fill="#ff6b00" />
+          <line class="bp-accent-s" x1="80" y1="52" x2="80" y2="76" stroke-width="2.5" stroke-linecap="round" />
+          <circle class="bp-accent-f" cx="80" cy="85" r="1.5" />
         </g>
 
         <!-- 右下角工程测绘十字丝 -->
@@ -168,5 +168,13 @@ const defaultDesc = computed(() => {
 
 .empty-actions {
   margin-top: 16px;
+}
+
+/* 品牌橙经 CSS 类注入（presentation attribute 不支持 var()）；随主题恒定，steel 深底同样可见 */
+.bp-accent-s {
+  stroke: var(--zw-brand);
+}
+.bp-accent-f {
+  fill: var(--zw-brand);
 }
 </style>

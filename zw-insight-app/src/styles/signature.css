@@ -286,3 +286,54 @@ page .wd-button.wd-button.is-round,
 uni-page-body .wd-button.wd-button.is-round {
   border-radius: var(--zw-radius-sm);
 }
+
+/* ===== 微动效原语层（Batch 0.3，2026-09-17）=====
+ * 与 PC global.scss 同源原语 + DESIGN Motion 语义组合；仅 transform/opacity（GPU 合成）；
+ * 由 tokens.css 末尾 prefers-reduced-motion 块降级（覆盖 view/text/image/button/scroll-view，
+ * 本层动效均施于 view/text，已入降级白名单）。
+ * 纪律：仅提供 utility，不自动挂载；由消费方（Batch 2）按需加类。 */
+
+/* 列表项进场：150ms ease-out，opacity + translateY(16rpx→0) */
+@keyframes zw-list-enter {
+  from { opacity: 0; transform: translateY(16rpx); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.zw-anim-list-enter {
+  animation: zw-list-enter var(--zw-duration-fast) var(--zw-ease-out) both;
+}
+
+/* 状态切换：150ms ease-out opacity 快切 */
+@keyframes zw-state-swap {
+  from { opacity: 0.35; }
+  to   { opacity: 1; }
+}
+.zw-anim-state-swap {
+  animation: zw-state-swap var(--zw-duration-fast) var(--zw-ease-out) both;
+}
+
+/* 压合反馈：75ms translateY(1px)（.zw-btn-primary:active 已有，此为通用非按钮元素版） */
+.zw-anim-press-fit {
+  transition: transform var(--zw-duration-instant) var(--zw-ease-out);
+}
+.zw-anim-press-fit:active {
+  transform: translateY(1px);
+}
+
+/* 乐观提交闪光：一次性 200ms opacity 脉冲（单焦点、非常驻） */
+@keyframes zw-optimistic-flash {
+  0%   { opacity: 1; }
+  40%  { opacity: 0.45; }
+  100% { opacity: 1; }
+}
+.zw-anim-optimistic {
+  animation: zw-optimistic-flash var(--zw-duration-base) var(--zw-ease-out) 1;
+}
+
+/* 下拉刷新指示器旋转：linear 匀速（不确定进度专用曲线，同 spinner 800ms/圈），仅刷新时挂载 */
+@keyframes zw-pull-refresh-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.zw-anim-pull-refresh {
+  animation: zw-pull-refresh-spin 800ms linear infinite;
+}

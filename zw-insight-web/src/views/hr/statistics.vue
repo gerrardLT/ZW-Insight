@@ -85,7 +85,7 @@ import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getHrStatisticsOverview } from '@/api/hr'
 import { useAppStore } from '@/stores/app'
-import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
+import { pickChartTheme, applyChartTheme, chartSeriesLineStyle } from '@/constants/chart-theme'
 
 const appStore = useAppStore()
 
@@ -228,6 +228,8 @@ function renderTrendChart(monthlyTrend: Array<{ month: string; entryCount: numbe
         data: entryData,
         smooth: true,
         itemStyle: { color: theme.semantic.success },
+        // 色盲安全第二通道（DESIGN L849）：入职实线、离职虚线，不单独依赖红/绿色相
+        lineStyle: { type: chartSeriesLineStyle(0, theme) },
         areaStyle: { opacity: 0.1 }
       },
       {
@@ -236,6 +238,7 @@ function renderTrendChart(monthlyTrend: Array<{ month: string; entryCount: numbe
         data: resignData,
         smooth: true,
         itemStyle: { color: theme.semantic.danger },
+        lineStyle: { type: chartSeriesLineStyle(1, theme) },
         areaStyle: { opacity: 0.1 }
       }
     ]

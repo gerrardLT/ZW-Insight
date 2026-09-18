@@ -17,7 +17,7 @@
     />
     <path
       d="M9 11.5L11 13.5L15 9.5"
-      stroke="#ff6b00"
+      class="zw-icon-accent"
       stroke-width="2"
       stroke-linecap="square"
       stroke-linejoin="miter"

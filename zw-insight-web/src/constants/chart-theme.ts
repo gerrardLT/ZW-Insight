@@ -13,6 +13,10 @@ export interface ChartTheme {
   seriesGray: string[]
   /** 关键序列高亮橙 */
   highlight: string
+  /** 多序列辅助线型（色盲安全第二通道；DESIGN L849「图表序列除颜色外可用线型区分」）。
+   *  echarts lineStyle.type 取值，按序列索引循环；仅折线类系列适用。
+   *  承重墙「多序列=中性灰阶、禁止第三品牌色做序列区分」下，线型是区分灰阶序列的合规手段。 */
+  lineStyles: Array<string | number[]>
   semantic: {
     success: string
     warning: string
@@ -44,6 +48,7 @@ export const chartThemeLight: ChartTheme = {
   palette: ['#ff6b00', '#8a8f98', '#b9bdb6', '#d9dcd6', '#1f9d55', '#f7b500', '#d92d20', '#2b6cb0'],
   seriesGray: ['#8a8f98', '#b9bdb6', '#d9dcd6'],
   highlight: '#ff6b00',
+  lineStyles: ['solid', 'dashed', 'dotted', [8, 4, 2, 4]],
   semantic: {
     success: '#1f9d55',
     warning: '#f7b500',
@@ -73,6 +78,7 @@ export const chartThemeDark: ChartTheme = {
   palette: ['#ff6b00', '#8a8f98', '#b9bdb6', '#4a4f57', '#34c476', '#ffc53d', '#f97066', '#5a94d1'],
   seriesGray: ['#8a8f98', '#b9bdb6', '#4a4f57'],
   highlight: '#ff6b00',
+  lineStyles: ['solid', 'dashed', 'dotted', [8, 4, 2, 4]],
   semantic: {
     success: '#34c476',
     warning: '#ffc53d',
@@ -120,6 +126,17 @@ export function chartTooltipStyle(theme: ChartTheme) {
     borderColor: theme.tooltip.border,
     textStyle: { color: theme.tooltip.text }
   }
+}
+
+/**
+ * 多序列辅助线型（色盲安全第二通道）：按序列索引循环取线型，仅折线类系列适用。
+ * DESIGN 承重墙「多序列 = 中性灰阶，序列不够用就拆图或用线型（实线/2px 虚线）区分」——
+ * 线型是在不引入第三品牌色的前提下区分灰阶序列的合规手段。调用方在 buildOption 里
+ * 对第 i 条折线显式设 `lineStyle: { type: chartSeriesLineStyle(i, theme) }`（Batch 3 接入）。
+ */
+export function chartSeriesLineStyle(index: number, theme: ChartTheme): string | number[] {
+  const styles = theme.lineStyles
+  return styles[index % styles.length]
 }
 
 /** 坐标轴单个实例的主题默认值填充（保留调用方已有的 formatter 等配置） */

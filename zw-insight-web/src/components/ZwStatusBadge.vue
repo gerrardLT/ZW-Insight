@@ -40,6 +40,10 @@ withDefaults(defineProps<{
   font-weight: var(--zw-font-weight-medium);
   line-height: 1.5;
   white-space: nowrap;
+  /* state-swap（DESIGN L627「badge 切换 150ms ease-out background-color」）：
+     同元素 type 变更时底色/文字色平滑过渡，非重挂载；焦点环例外为瞬时（不在此列） */
+  transition: background-color var(--zw-duration-fast) var(--zw-ease-out),
+    color var(--zw-duration-fast) var(--zw-ease-out);
 }
 
 .zw-status-badge--info {

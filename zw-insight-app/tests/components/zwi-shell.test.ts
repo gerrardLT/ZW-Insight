@@ -136,6 +136,15 @@ describe('ZwiEmptyState 四变体空态', () => {
     expect(wrapper.find('.empty-action').exists()).toBe(true)
     expect(wrapper.find('.cta-x').text()).toBe('重试')
   })
+
+  it('4 态各生成专属 data-URI SVG 插图（形状区分，H5/测试分支互不相同）', () => {
+    const srcs = (['data', 'error', 'offline', 'permission'] as const).map((t) =>
+      mount(ZwiEmptyState, { props: { type: t } }).find('.empty-light').attributes('src')
+    )
+    for (const s of srcs) expect(s).toMatch(/^data:image\/svg\+xml,/)
+    // 4 态专属插图：两两不同（非共用一张）
+    expect(new Set(srcs).size).toBe(4)
+  })
 })
 
 describe('ZwiFormPage 表单页骨架', () => {

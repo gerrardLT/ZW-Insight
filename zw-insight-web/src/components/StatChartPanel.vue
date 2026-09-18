@@ -20,20 +20,19 @@
     <div class="panel-body">
       <!-- 失败态：显示后端错误消息（空数据的业务提示同样由此透传），提供重试 -->
       <div v-if="errorMsg" class="panel-state" data-testid="stat-panel-error">
-        <el-empty :description="errorMsg">
-          <template #image>
-            <HelmetIcon class="zw-empty-icon" />
+        <ZwEmptyState type="error" :description="errorMsg">
+          <template #action>
+            <el-button type="primary" size="small" @click="load">重试</el-button>
           </template>
-          <el-button type="primary" size="small" @click="load">重试</el-button>
-        </el-empty>
+        </ZwEmptyState>
       </div>
-      <!-- 空态：接口成功但无可绘制数据（2026-09-16 插画：空白图纸+圆规——「等待绘制」隐喻） -->
+      <!-- 空态：接口成功但无可绘制数据（bespoke 插画：空白图纸+圆规——「等待绘制」隐喻，经 #image slot 注入） -->
       <div v-else-if="isEmpty" class="panel-state" data-testid="stat-panel-empty">
-        <el-empty :description="emptyText">
+        <ZwEmptyState type="data" :description="emptyText">
           <template #image>
-            <img :src="emptyImg" class="zw-empty-img" alt="" />
+            <img :src="emptyImg" class="zw-empty-img" alt="空白图纸与圆规插图" />
           </template>
-        </el-empty>
+        </ZwEmptyState>
       </div>
       <!-- 图表容器常驻 DOM（v-show），避免 echarts 重复 init -->
       <div
@@ -84,7 +83,7 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
 import { Refresh } from '@/components/icons/registry'
-import { HelmetIcon } from '@/components/icons/zw'
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { useAppStore } from '@/stores/app'
 import emptyLight from '@/assets/empty-blueprint.png'
 import emptyDark from '@/assets/empty-blueprint-dark.png'

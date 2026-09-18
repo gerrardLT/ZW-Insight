@@ -418,6 +418,16 @@ input, textarea {
   font-weight: var(--zw-font-weight-semibold);
 }
 
+/* ===== 工程自绘图标的品牌橙点缀（Batch 3.2：去 SVG presentation-attr 硬编码 hex）=====
+ * icons/zw/* 图标的单一橙色强调元素挂此类，颜色经 CSS 注入（presentation attribute 不支持 var()）；
+ * 随 --zw-brand 走，与令牌单一事实源对齐（PC 恒 #ff6b00，零视觉变化，仅去硬编码）。 */
+.zw-icon-accent {
+  stroke: var(--zw-brand);
+}
+.zw-icon-accent-fill {
+  fill: var(--zw-brand);
+}
+
 /* ===== 空态自绘图标（el-empty #image 插槽，1em 尺寸由 font-size 缩放） ===== */
 .zw-empty-icon {
   font-size: 64px;
@@ -472,6 +482,55 @@ input, textarea {
 
 :root[data-theme='dark'] .el-loading-mask .el-loading-spinner::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><style>.w{animation:zwlw 1.15s ease-in-out infinite;transform-origin:60px 60px}.n{animation:zwln 1.15s ease-in-out infinite;transform-origin:60px 60px}@keyframes zwlw{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(14deg)}}@keyframes zwln{0%,25%{transform:rotate(0deg)}50%,100%{transform:rotate(60deg)}}</style><g class='n'><path d='M82 60 L71 79.1 L49 79.1 L38 60 L49 40.9 L71 40.9 Z' fill='%23ff6b00' stroke='%23f2f3f1' stroke-width='3'/><circle cx='60' cy='60' r='9.5' fill='none' stroke='%23f2f3f1' stroke-width='3'/><line x1='50.5' y1='60' x2='69.5' y2='60' stroke='%23f2f3f1' stroke-width='2.5'/></g><g class='w'><g transform='rotate(-32 60 60)'><path d='M78 46 L90 46 L90 55 L84.5 55 L84.5 65 L90 65 L90 74 L78 74 Z' fill='none' stroke='%23f2f3f1' stroke-width='4' stroke-linejoin='miter'/><rect x='90' y='54' width='22' height='12' rx='2' fill='none' stroke='%23f2f3f1' stroke-width='4'/></g></g></svg>");
+}
+
+/* ===== 微动效原语层（Batch 0.3，2026-09-17）=====
+ * 对齐 DESIGN「Motion 语义组合」表；全部仅用 transform/opacity（GPU 合成，零 reflow）；
+ * 由文件末尾 prefers-reduced-motion 块统一降级（* 选择器已覆盖）。
+ * 纪律：此层仅提供 utility 类，不自动挂载——遵 DESIGN「只在用户触发事件上做动效、
+ * 禁止页面挂载入场动画、禁止网格全量 stagger」，由消费方（Batch 2）按需加类。 */
+
+/* 列表项/行进场：150ms ease-out，opacity + translateY(8px→0)（与路由 .fade-slide 同源） */
+@keyframes zw-list-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.zw-anim-list-enter {
+  animation: zw-list-enter var(--zw-duration-fast) var(--zw-ease-out) both;
+}
+
+/* 状态切换（badge/值翻转）：150ms ease-out opacity 快切（单通道、无位移防抖） */
+@keyframes zw-state-swap {
+  from { opacity: 0.35; }
+  to   { opacity: 1; }
+}
+.zw-anim-state-swap {
+  animation: zw-state-swap var(--zw-duration-fast) var(--zw-ease-out) both;
+}
+
+/* 压合反馈（Press-Fit，DESIGN 签名动效）：75ms translateY(1px) 机械压入感，不用 scale 弹跳 */
+.zw-anim-press-fit {
+  transition: transform var(--zw-duration-instant) var(--zw-ease-out);
+}
+.zw-anim-press-fit:active {
+  transform: translateY(1px);
+}
+
+/* 乐观提交闪光：确认后一次性 200ms opacity 脉冲（单焦点、非常驻，iteration=1） */
+@keyframes zw-optimistic-flash {
+  0%   { opacity: 1; }
+  40%  { opacity: 0.45; }
+  100% { opacity: 1; }
+}
+.zw-anim-optimistic {
+  animation: zw-optimistic-flash var(--zw-duration-base) var(--zw-ease-out) 1;
+}
+
+/* 账本滚动（Ledger Count-Up）样式契约：mono + tabular-nums 防数字滚动抖动；
+ * 数值 0→target 插值由 JS rAF 驱动（Batch 2 接入），时长引用 --zw-duration-count(800ms) */
+.zw-count-up {
+  font-family: var(--zw-font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ===== 无障碍：动效降级 ===== */
