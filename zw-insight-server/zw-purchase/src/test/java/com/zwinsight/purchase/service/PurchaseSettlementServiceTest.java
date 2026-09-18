@@ -266,6 +266,31 @@ class PurchaseSettlementServiceTest {
         verify(settlementMapper).deleteById(4L);
     }
 
+    @Test
+    @DisplayName("delete 对称回滚：APPROVED 冲销合同累计结算")
+    void delete_approved_reversesCumulativeSettlement() {
+        BizPurchaseSettlement approved = settlement("APPROVED", "100");
+        approved.setRemark("E2E_TEST_1723900000000");  // E2E 标记放行非 DRAFT
+        when(settlementMapper.selectById(5L)).thenReturn(approved);
+
+        service.delete(5L);
+
+        verify(settlementMapper).deleteById(5L);
+        verify(contractMapper).addSettlement(20L, new BigDecimal("-100"));
+    }
+
+    @Test
+    @DisplayName("delete 不冲销非 APPROVED")
+    void delete_nonApproved_doesNotReverse() {
+        BizPurchaseSettlement draft = settlement("DRAFT", "100");
+        when(settlementMapper.selectById(6L)).thenReturn(draft);
+
+        service.delete(6L);
+
+        verify(settlementMapper).deleteById(6L);
+        verify(contractMapper, never()).addSettlement(anyLong(), any());
+    }
+
     // ── submit ──────────────────────────────────
 
     @Test

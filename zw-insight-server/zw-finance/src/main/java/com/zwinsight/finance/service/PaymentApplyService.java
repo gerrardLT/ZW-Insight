@@ -108,7 +108,13 @@ public class PaymentApplyService {
 
     /**
      * 删除付款申请
+     * <p>对称回滚（参照 {@code PaymentReceivedService.delete}）：APPROVED 单据曾由
+     * {@link #onApproved(Long)} 回写合同累计已付与项目总支出，删除必须同时冲销，
+     * 否则单据没了而账还在（线上取证：91801 的 +250 即此类残留）。</p>
+     * <p><b>仅 APPROVED 才冲销</b>：DRAFT/SUBMITTED/REJECTED 从未回写过
+     * （submit 只置状态，onRejected 不回写），冲销它们会把账做负。</p>
      */
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         BizPaymentApply existing = paymentApplyMapper.selectById(id);
         if (existing == null) {
@@ -117,13 +123,14 @@ public class PaymentApplyService {
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) {
             throw new BusinessException("仅草稿状态可删除");
         }
-        // P0 对称回滚：APPROVED 单据曾回写 cumulative_paid 与 total_expense，删除须反向冲销
+        BigDecimal amount = existing.getPaymentAmount() == null
+                ? BigDecimal.ZERO : existing.getPaymentAmount();
+        paymentApplyMapper.deleteById(id);
+
         if ("APPROVED".equals(existing.getStatus())) {
-            addCumulativePaid(existing, existing.getPaymentAmount().negate());
-            projectMapper.addTotalExpense(existing.getProjectId(), existing.getPaymentAmount().negate());
-            log.info("付款申请删除并冲销累计值, id={}, amount={}", id, existing.getPaymentAmount());
-        } else {
-            paymentApplyMapper.deleteById(id);
+            addCumulativePaid(existing, amount.negate());
+            projectMapper.addTotalExpense(existing.getProjectId(), amount.negate());
+            log.info("付款申请删除并冲销累计值, id={}, amount={}", id, amount);
         }
     }
 

@@ -77,7 +77,10 @@ public class LaborSettlementService {
 
     /**
      * 删除结算
+     * <p>对称回滚：APPROVED 单据曾由 {@link #submit(Long)} 回写合同累计结算，
+     * 删除必须同时冲销；DRAFT 从未回写，不得冲销（否则把账做负）。</p>
      */
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         BizLaborSettlement existing = settlementMapper.selectById(id);
         if (existing == null) {
@@ -86,12 +89,13 @@ public class LaborSettlementService {
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) {
             throw new BusinessException("仅草稿状态可删除");
         }
-        // P0 对称回滚：APPROVED 单据曾回写 contract.cumulativeSettlement，删除须反向冲销
+        BigDecimal amount = existing.getSettlementAmount() == null
+                ? BigDecimal.ZERO : existing.getSettlementAmount();
+        settlementMapper.deleteById(id);
+
         if ("APPROVED".equals(existing.getStatus())) {
-            laborContractMapper.addSettlement(existing.getContractId(), existing.getSettlementAmount().negate());
-            log.info("劳务结算删除并冲销累计值, id={}, amount={}", id, existing.getSettlementAmount());
-        } else {
-            settlementMapper.deleteById(id);
+            laborContractMapper.addSettlement(existing.getContractId(), amount.negate());
+            log.info("劳务结算删除并冲销累计值, id={}, amount={}", id, amount);
         }
     }
 

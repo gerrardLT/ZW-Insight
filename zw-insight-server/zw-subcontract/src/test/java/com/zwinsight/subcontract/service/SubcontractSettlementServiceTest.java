@@ -191,6 +191,43 @@ class SubcontractSettlementServiceTest {
     }
 
     @Test
+    @DisplayName("delete 对称回滚：APPROVED 冲销合同累计结算")
+    void testDelete_approved_reversesCumulativeSettlement() {
+        BizSubcontractSettlement settlement = new BizSubcontractSettlement();
+        settlement.setId(3L);
+        settlement.setContractId(50L);
+        settlement.setStatus("APPROVED");
+        settlement.setSettlementAmount(new BigDecimal("20000"));
+        settlement.setRemark("E2E_TEST_1723900000000");  // E2E 标记放行非 DRAFT
+        when(settlementMapper.selectById(anyLong())).thenReturn(settlement);
+        when(detailMapper.selectList(any())).thenReturn(java.util.List.of());
+
+        subSettlementService.delete(3L);
+
+        verify(detailMapper).delete(any());
+        verify(settlementMapper).deleteById(3L);
+        verify(subcontractMapper).addSettlement(50L, new BigDecimal("-20000"));
+    }
+
+    @Test
+    @DisplayName("delete 不冲销非 APPROVED")
+    void testDelete_nonApproved_doesNotReverse() {
+        BizSubcontractSettlement draft = new BizSubcontractSettlement();
+        draft.setId(4L);
+        draft.setContractId(60L);
+        draft.setSettlementAmount(new BigDecimal("30000"));
+        draft.setStatus("DRAFT");
+        when(settlementMapper.selectById(anyLong())).thenReturn(draft);
+        when(detailMapper.selectList(any())).thenReturn(java.util.List.of());
+
+        subSettlementService.delete(4L);
+
+        verify(detailMapper).delete(any());
+        verify(settlementMapper).deleteById(4L);
+        verify(subcontractMapper, never()).addSettlement(anyLong(), any());
+    }
+
+    @Test
     @DisplayName("查询：不存在抛异常")
     void testGetById_notFound() {
         when(settlementMapper.selectById(anyLong())).thenReturn(null);

@@ -176,6 +176,14 @@ public class SubcontractSettlementService {
         settlementMapper.updateById(settlement);
     }
 
+    /**
+     * 删除结算（含明细）
+     * <p>对称回滚：APPROVED 单据曾由 {@link #submit(Long)} 回写合同累计结算，
+     * 删除必须同时冲销；DRAFT 从未回写，不得冲销（否则把账做负）。
+     * 线上取证：91801.cumulative_settlement 被 25 条已逻辑删除的 10 元结算单
+     * 抬高 250 元且永不回落，即本缺陷的直接产物。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         BizSubcontractSettlement existing = settlementMapper.selectById(id);
         if (existing == null) throw new BusinessException("结算记录不存在");
@@ -185,20 +193,18 @@ public class SubcontractSettlementService {
         List<BizSubcontractSettlementDetail> existingDetails = detailMapper.selectList(markerWrapper);
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing, existingDetails)) throw new BusinessException("仅草稿状态可删除");
 
-        // P0 对称回滚：APPROVED 单据曾回写 contract.cumulativeSettlement，删除须反向冲销
+        BigDecimal amount = existing.getSettlementAmount() == null
+                ? BigDecimal.ZERO : existing.getSettlementAmount();
+
+        // 删除明细行 + 主单
+        LambdaQueryWrapper<BizSubcontractSettlementDetail> deleteWrapper = new LambdaQueryWrapper<>();
+        deleteWrapper.eq(BizSubcontractSettlementDetail::getSettlementId, id);
+        detailMapper.delete(deleteWrapper);
+        settlementMapper.deleteById(id);
+
         if ("APPROVED".equals(existing.getStatus())) {
-            subcontractMapper.addSettlement(existing.getContractId(), existing.getSettlementAmount().negate());
-            log.info("分包结算删除并冲销累计值，id={}, amount={}", id, existing.getSettlementAmount());
-            // 再删明细行（顺序不影响冲销结果）
-            LambdaQueryWrapper<BizSubcontractSettlementDetail> deleteWrapper = new LambdaQueryWrapper<>();
-            deleteWrapper.eq(BizSubcontractSettlementDetail::getSettlementId, id);
-            detailMapper.delete(deleteWrapper);
-        } else {
-            // DRAFT 先删明细再删主单
-            LambdaQueryWrapper<BizSubcontractSettlementDetail> deleteWrapper = new LambdaQueryWrapper<>();
-            deleteWrapper.eq(BizSubcontractSettlementDetail::getSettlementId, id);
-            detailMapper.delete(deleteWrapper);
-            settlementMapper.deleteById(id);
+            subcontractMapper.addSettlement(existing.getContractId(), amount.negate());
+            log.info("分包结算删除并冲销累计值, id={}, amount={}", id, amount);
         }
     }
 

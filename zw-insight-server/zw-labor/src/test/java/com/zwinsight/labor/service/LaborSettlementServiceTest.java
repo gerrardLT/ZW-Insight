@@ -104,6 +104,23 @@ class LaborSettlementServiceTest {
     }
 
     @Test
+    @DisplayName("delete 不冲销非 APPROVED")
+    void testDelete_nonApproved_doesNotReverse() {
+        BizLaborSettlement draft = new BizLaborSettlement();
+        draft.setId(2L);
+        draft.setContractId(10L);
+        draft.setProjectId(100L);
+        draft.setSettlementAmount(new BigDecimal("60000"));
+        draft.setStatus("DRAFT");
+        when(settlementMapper.selectById(2L)).thenReturn(draft);
+
+        laborSettlementService.delete(2L);
+
+        verify(settlementMapper).deleteById(2L);
+        verify(laborContractMapper, never()).addSettlement(anyLong(), any());
+    }
+
+    @Test
     @DisplayName("提交：状态变更 + 回写合同累计结算金额")
     void testSubmit_statusAndCumulativeUpdate() {
         BizLaborContract contract = new BizLaborContract();

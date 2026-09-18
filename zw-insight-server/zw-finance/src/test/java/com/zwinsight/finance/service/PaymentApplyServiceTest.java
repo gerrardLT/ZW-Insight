@@ -554,6 +554,83 @@ class PaymentApplyServiceTest {
         }
 
         @Test
+        @DisplayName("delete 对称回滚：APPROVED 冲销合同累计已付与项目总支出（金额取负）")
+        void delete_approved_reversesCumulativePaidAndTotalExpense() {
+            BizPaymentApply approved = apply(4L, "APPROVED");
+            approved.setContractId(100L);
+            approved.setContractCategory("PURCHASE");
+            approved.setSupplierName("E2E_TEST_1723900000000_供应商");  // E2E 标记放行非 DRAFT
+            when(paymentApplyMapper.selectById(4L)).thenReturn(approved);
+
+            paymentApplyService.delete(4L);
+
+            // 单据必须真的被删（R7 P0 修正核心：曾 if/else 互斥漏删行）
+            verify(paymentApplyMapper).deleteById(4L);
+            // 冲销金额为原额负数：1000 → -1000
+            verify(contractPayableMapper).addPurchasePaid(100L, new BigDecimal("-1000"));
+            verify(projectMapper).addTotalExpense(10L, new BigDecimal("-1000"));
+        }
+
+        @Test
+        @DisplayName("delete 对称回滚：非模块类别（OTHER_EXPENSE/null）路由到 biz_other_contract")
+        void delete_approved_otherCategory_routesToOtherContract() {
+            BizPaymentApply approved = apply(5L, "APPROVED");
+            approved.setContractId(200L);
+            approved.setContractCategory("OTHER_EXPENSE");
+            approved.setSupplierName("E2E_TEST_1723900000000_供应商");
+            when(paymentApplyMapper.selectById(5L)).thenReturn(approved);
+
+            paymentApplyService.delete(5L);
+
+            verify(otherContractMapper).addCumulativePaid(200L, new BigDecimal("-1000"));
+            verify(contractPayableMapper, never()).addPurchasePaid(anyLong(), any());
+            verify(projectMapper).addTotalExpense(10L, new BigDecimal("-1000"));
+        }
+
+        @Test
+        @DisplayName("delete 不冲销非 APPROVED：DRAFT/SUBMITTED/REJECTED 从未回写，冲销会把账做负")
+        void delete_nonApproved_doesNotReverse() {
+            // DRAFT：正常路径可删
+            when(paymentApplyMapper.selectById(6L)).thenReturn(apply(6L, "DRAFT"));
+            paymentApplyService.delete(6L);
+
+            // SUBMITTED / REJECTED：需 E2E 标记才能过状态守卫
+            BizPaymentApply submitted = apply(7L, "SUBMITTED");
+            submitted.setSupplierName("E2E_TEST_1723900000000_供应商");
+            when(paymentApplyMapper.selectById(7L)).thenReturn(submitted);
+            paymentApplyService.delete(7L);
+
+            BizPaymentApply rejected = apply(8L, "REJECTED");
+            rejected.setSupplierName("E2E_TEST_1723900000000_供应商");
+            when(paymentApplyMapper.selectById(8L)).thenReturn(rejected);
+            paymentApplyService.delete(8L);
+
+            verify(paymentApplyMapper).deleteById(6L);
+            verify(paymentApplyMapper).deleteById(7L);
+            verify(paymentApplyMapper).deleteById(8L);
+            verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+            verify(otherContractMapper, never()).addCumulativePaid(anyLong(), any());
+            verifyNoInteractions(contractPayableMapper);
+        }
+
+        @Test
+        @DisplayName("delete 金额为 null 时不抛 NPE，按 0 冲销")
+        void delete_approved_nullAmount_noNpe() {
+            BizPaymentApply approved = apply(9L, "APPROVED");
+            approved.setPaymentAmount(null);
+            approved.setContractId(300L);
+            approved.setContractCategory("LABOR");
+            approved.setSupplierName("E2E_TEST_1723900000000_供应商");
+            when(paymentApplyMapper.selectById(9L)).thenReturn(approved);
+
+            paymentApplyService.delete(9L);
+
+            // 冲销 0 且无 NPE
+            verify(contractPayableMapper).addLaborPaid(300L, BigDecimal.ZERO);
+            verify(projectMapper).addTotalExpense(10L, BigDecimal.ZERO);
+        }
+
+        @Test
         @DisplayName("onRejected 幂等：非 SUBMITTED 静默返回（FIN-PAY-20）")
         void onRejected_idempotent() {
             when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "REJECTED"));
