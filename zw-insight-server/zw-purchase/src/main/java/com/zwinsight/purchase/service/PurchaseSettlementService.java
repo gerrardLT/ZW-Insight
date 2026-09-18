@@ -14,6 +14,7 @@ import com.zwinsight.purchase.readmodel.MaterialInboundReadMapper;
 import com.zwinsight.purchase.readmodel.MaterialInboundView;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ import java.util.Map;
  * 即回写合同累计结算金额。
  * </p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PurchaseSettlementService {
@@ -175,7 +177,13 @@ public class PurchaseSettlementService {
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) {
             throw new BusinessException("仅草稿状态可删除");
         }
-        settlementMapper.deleteById(id);
+        // P0 对称回滚：APPROVED 单据曾回写 contract.cumulativeSettlement，删除须反向冲销
+        if ("APPROVED".equals(existing.getStatus())) {
+            contractMapper.addSettlement(existing.getContractId(), existing.getSettlementAmount().negate());
+            log.info("采购结算删除并冲销累计值, id={}, amount={}", id, existing.getSettlementAmount());
+        } else {
+            settlementMapper.deleteById(id);
+        }
     }
 
     /**

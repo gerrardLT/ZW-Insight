@@ -185,12 +185,21 @@ public class SubcontractSettlementService {
         List<BizSubcontractSettlementDetail> existingDetails = detailMapper.selectList(markerWrapper);
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing, existingDetails)) throw new BusinessException("仅草稿状态可删除");
 
-        // 删除明细行
-        LambdaQueryWrapper<BizSubcontractSettlementDetail> deleteWrapper = new LambdaQueryWrapper<>();
-        deleteWrapper.eq(BizSubcontractSettlementDetail::getSettlementId, id);
-        detailMapper.delete(deleteWrapper);
-
-        settlementMapper.deleteById(id);
+        // P0 对称回滚：APPROVED 单据曾回写 contract.cumulativeSettlement，删除须反向冲销
+        if ("APPROVED".equals(existing.getStatus())) {
+            subcontractMapper.addSettlement(existing.getContractId(), existing.getSettlementAmount().negate());
+            log.info("分包结算删除并冲销累计值，id={}, amount={}", id, existing.getSettlementAmount());
+            // 再删明细行（顺序不影响冲销结果）
+            LambdaQueryWrapper<BizSubcontractSettlementDetail> deleteWrapper = new LambdaQueryWrapper<>();
+            deleteWrapper.eq(BizSubcontractSettlementDetail::getSettlementId, id);
+            detailMapper.delete(deleteWrapper);
+        } else {
+            // DRAFT 先删明细再删主单
+            LambdaQueryWrapper<BizSubcontractSettlementDetail> deleteWrapper = new LambdaQueryWrapper<>();
+            deleteWrapper.eq(BizSubcontractSettlementDetail::getSettlementId, id);
+            detailMapper.delete(deleteWrapper);
+            settlementMapper.deleteById(id);
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)

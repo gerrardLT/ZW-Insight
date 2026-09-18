@@ -117,7 +117,14 @@ public class PaymentApplyService {
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) {
             throw new BusinessException("仅草稿状态可删除");
         }
-        paymentApplyMapper.deleteById(id);
+        // P0 对称回滚：APPROVED 单据曾回写 cumulative_paid 与 total_expense，删除须反向冲销
+        if ("APPROVED".equals(existing.getStatus())) {
+            addCumulativePaid(existing, existing.getPaymentAmount().negate());
+            projectMapper.addTotalExpense(existing.getProjectId(), existing.getPaymentAmount().negate());
+            log.info("付款申请删除并冲销累计值, id={}, amount={}", id, existing.getPaymentAmount());
+        } else {
+            paymentApplyMapper.deleteById(id);
+        }
     }
 
     /**

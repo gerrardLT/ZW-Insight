@@ -10,6 +10,7 @@ import com.zwinsight.labor.domain.BizLaborSettlement;
 import com.zwinsight.labor.mapper.BizLaborContractMapper;
 import com.zwinsight.labor.mapper.BizLaborSettlementMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.math.BigDecimal;
 /**
  * 劳务结算服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LaborSettlementService {
@@ -84,7 +86,13 @@ public class LaborSettlementService {
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) {
             throw new BusinessException("仅草稿状态可删除");
         }
-        settlementMapper.deleteById(id);
+        // P0 对称回滚：APPROVED 单据曾回写 contract.cumulativeSettlement，删除须反向冲销
+        if ("APPROVED".equals(existing.getStatus())) {
+            laborContractMapper.addSettlement(existing.getContractId(), existing.getSettlementAmount().negate());
+            log.info("劳务结算删除并冲销累计值, id={}, amount={}", id, existing.getSettlementAmount());
+        } else {
+            settlementMapper.deleteById(id);
+        }
     }
 
     /**
