@@ -168,6 +168,7 @@ import { useCommandPalette, type PaletteCommand } from '@/composables/useCommand
 import { Expand, Fold, Moon, Sunny, ArrowDown, Bell, Search, SwitchButton } from '@/components/icons/registry'
 import { resolveMenuIcon } from '@/components/icons/registry'
 import { IconHelp } from '@tabler/icons-vue'
+import { USER_GUIDE } from '@/constants/user-guide'
 // 品牌 logo 双态：亮底黑字 / 暗底反白（随主题切换，与暗色插画同一模式）
 import logoDark from '@/assets/logo.png'
 import logoLight from '@/assets/logo-light.png'
@@ -435,6 +436,18 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     icon: IconHelp,
     run: () => goHelp(),
   })
+  // 使用文档：每章一条命令，keywords 供命令面板检索，run 跳转锚点章节
+  for (const ch of USER_GUIDE) {
+    cmds.push({
+      id: 'doc-' + ch.id,
+      title: ch.title,
+      group: '使用文档',
+      keywords: ch.keywords,
+      hint: '/help/guide#' + ch.id,
+      icon: IconHelp,
+      run: () => router.push('/help/guide#' + ch.id),
+    })
+  }
   cmds.push({
     id: 'act-logout',
     title: '退出登录',

@@ -1,5 +1,18 @@
 <template>
   <div class="help-container">
+    <!-- 使用文档入口（详尽操作指南，独立页 + 命令面板可检索） -->
+    <el-card shadow="never" class="help-card" data-testid="help-guide-entry">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">系统使用文档</span>
+          <span class="card-sub">按业务模块组织的操作指南：步骤 / 校验规则 / 常见问题；也可用命令面板（Ctrl+K）直达章节</span>
+        </div>
+      </template>
+      <el-link type="primary" :underline="false" class="guide-link" data-testid="help-guide-link" @click="goGuide">
+        打开系统使用文档 →
+      </el-link>
+    </el-card>
+
     <!-- 业务术语词典 -->
     <el-card shadow="never" class="help-card" data-testid="help-terms">
       <template #header>
@@ -76,6 +89,12 @@
  * - 快捷键 ← src/composables/useShortcuts.ts
  * - 错误码 ← zw-common/GlobalExceptionHandler + src/utils/request.ts 响应拦截器
  */
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+function goGuide() {
+  router.push('/help/guide')
+}
 
 interface HelpTerm {
   id: string
@@ -262,6 +281,17 @@ const ERROR_CODES: HelpErrorCode[] = [
 .card-sub {
   font-size: var(--zw-font-size-xs);
   color: var(--zw-text-tertiary);
+}
+
+.guide-link {
+  font-size: var(--zw-font-size-sm);
+  font-weight: var(--zw-font-weight-semibold);
+  color: var(--zw-brand);
+  text-decoration: none;
+}
+
+.guide-link:hover {
+  text-decoration: underline;
 }
 
 /* ===== 业务术语 ===== */

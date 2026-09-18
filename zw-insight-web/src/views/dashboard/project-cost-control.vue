@@ -203,8 +203,15 @@ import { Refresh } from '@element-plus/icons-vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import { getProjectCostControl, type ProjectCostControlDTO, type CostAccountSummary } from '@/api/dashboard'
 import { getChangeEventOpenCount, getApprovedCostDelta } from '@/api/change-event'
+import { useAppStore } from '@/stores/app'
+import emptyLight from '@/assets/empty-blueprint.png'
+import emptyDark from '@/assets/empty-blueprint-dark.png'
 
 const router = useRouter()
+const appStore = useAppStore()
+// 空状态插画随明暗主题切换（与 project-dashboard / StatChartPanel 同口径；
+// 此前本页只引用未定义 emptyImg，导致 <img :src> 绑定 undefined 而显示破损图标）
+const emptyImg = computed(() => (appStore.isDark ? emptyDark : emptyLight))
 
 // 变更与待办：成本数字会变，这里告诉用户「为什么即将变」与「谁在等处理」
 const changeLoading = ref(false)

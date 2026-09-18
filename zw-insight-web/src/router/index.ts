@@ -853,6 +853,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'HelpCenter',
         component: () => import('@/views/help/index.vue'),
         meta: { title: '帮助中心', hidden: true }
+      },
+      {
+        path: 'guide',
+        name: 'HelpGuide',
+        component: () => import('@/views/help/guide.vue'),
+        meta: { title: '系统使用文档', hidden: true }
       }
     ]
   },
