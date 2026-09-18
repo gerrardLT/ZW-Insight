@@ -65,7 +65,10 @@ bash keys/verify-l4-clean.sh
 ### 脚本位置
 
 ```
-deploy/db-init/31_V2026_26__seed_demo_data.sql
+deploy/db-init/31_V2026_26__seed_demo_data.sql                   # 种子主文件（Layer 0-14）
+deploy/db-init/44_V2026_42__seed_negative_profit_settlement.sql  # 负利润结算单 99361（项目 90002）
+deploy/db-init/45_V2026_43__seed_closeable_project.sql           # 可结项项目 90004 + 结算单 93302
+deploy/db-init/52_V2026_50__seed_reconcile_documents.sql         # 勾稽补齐：使累计值 = 单据汇总
 ```
 
 ### 设计要点
@@ -74,7 +77,10 @@ deploy/db-init/31_V2026_26__seed_demo_data.sql
 - **ID 段***：固定使用 `90001-99999`，避免与业务雪花 ID 及已有种子（`900001-900005` 编号规则）冲突
 - **幂等**：全部 `INSERT IGNORE`，可重复执行不报错（重复错 1062 被忽略）
 - **依赖顺序**：按 Layer 0-14 从底层到顶层插入（基础数据→项目→投标→合同→预算→产值→材料→机械→劳务→分包→现场→财务→询价→消息→评价），覆盖 55+ 张业务表
-- **数据闭环**：3 个不同生命周期项目――`90001 滨江花园一期`（施工中，全模块）、`90002 城南市政道路改造`（已竣工，结算/质保金）、`90003 高新区产业园二期`（已报备，投标）；金额按「合同→产值→开票→收款→预算→各支出合同→结算→付款」逻辑自洽
+- **数据闭环**：4 个不同生命周期项目――`90001 滨江花园一期`（施工中，全模块）、`90002 城南市政道路改造`（已竣工，结算/质保金）、`90003 高新区产业园二期`（已报备，投标）、`90004 城北河道综合整治`（可结项，E2E 结项链路夹具）；金额按「合同→产值→开票→收款→预算→各支出合同→结算→付款」逻辑自洽
+- **累计值必须有单据支撑（2026-09-18 R7-03 修复后强制）**：合同的 `cumulative_*` 与项目的 `total_income`/`total_expense`/`cumulative_output` 不得凭空写数，必须与对应 APPROVED 单据的汇总相等（容差 0.01）。`52_V2026_50` 已把三个项目的缺口全部补齐；**新增种子数据时必须同步补单据**，否则 `keys/audit-data.ps1` 的 Section 3 会报 MISMATCH
+- **`total_expense` 口径**：统一为「付款口径」（实际现金流出），**仅**由付款申请审批通过（`PaymentApplyService.onApproved`）与资金调拨回写，**不含** `biz_other_payment`（后者单列于 `total_other_payment`）。权威说明见 `SubcontractSettlementService` 的类内注释
+- **新增种子的 ID 分配**：`99500-99999` 段为 `52_V2026_50` 占用（付款/结算/合同/开票/收款/产值）；再往后新增请先探针确认目标表该段空闲，`INSERT IGNORE` 撞主键会**静默跳过**而非报错
 
 ### 导入与验证
 
@@ -89,6 +95,43 @@ bash keys/verify-seed.sh
 ```
 
 验证脚本 `keys/verify-seed.sh` 复用 `verify-base.sh` 的真实登录能力，抽检 `project/page`、`contract/page`、`finance/payment-apply/page` 等分页接口，并直连 MySQL 校验固定 ID 段行数。
+
+## 数据库一致性审计与垃圾数据清理
+
+与下文的「一致性审计工具」（评三端接口对齐）正交：本节工具直接查**生产库数据**，评金额勾稽、孤儿引用、测试残留。
+
+### 数据审计 Round 7
+
+```powershell
+./keys/audit-data.ps1              # 完整审计（Section 0-7，约 1 分钟）
+./keys/audit-data.ps1 -Section 3   # 只跑金额勾稽
+./keys/audit-data.ps1 -Regression  # 只跑已知问题回归
+```
+
+经 SSH 上传 `keys/audit-data-round7.sh` 到服务器执行，报告回落 `audit-reports/data-audit-round7-<ts>.md`。**全程只读**，脚本内置写操作关键字拦截。
+
+当前基线（2026-09-18 R7 修复后）：**PASS=65 FAIL=0 WARN=0 INFO=40**。
+
+> ⚠️ **改审计脚本时必须验证「FAIL 是否真的能触发」**。2026-09-18 发现 3.2 节用 `biz_machine_work_settlement.contract_id` 做 JOIN，而该表**根本没有 `contract_id` 列**——SQL 报错返回空被误判为「0/8 MISMATCH PASS」。这类**把报错当成零违规**的静默失败比漏检更危险。同类修正还有：5.4 节漏检 `biz_other_contract`（OTHER 类别付款是合法路径，会产生假 FAIL）、4.5 节「种子项目数」期望值 3 已过期（实为 4）。
+
+### 垃圾数据清理
+
+```bash
+bash keys/cleanup-garbage-data.sh              # dry-run（默认）：只统计，零写入
+bash keys/cleanup-garbage-data.sh --execute    # 真实执行：先 mysqldump 备份并校验，再删
+```
+
+清理范围：演示项目下的雪花 ID 垃圾单据、引用已删/不存在项目的孤儿子表、测试标记项目及其子表、询价家族的 E2E 残留。
+
+**必须遵守的操作纪律**：
+
+- **先 dry-run 再 execute**，且不能只看总行数——必须逐段核对命中明细。2026-09-18 曾出现判定式中文字面量被误插空格（`'API测试项目%'` 写成 `'API 测试项目%'`）导致漏删 11 个项目，而**总行数因增删相抵恰好未变**，只有比对命中清单才发现
+- 脚本内置 3 道不变量断言，任一触发立即中止且不写库：① 测试项目判定式命中演示种子（90001-90004）→ `exit 3`；② 逐分支命中数明细（防某分支静默失效）；③ 询价判定式命中种子询价 99101 → `exit 4`
+- **删单据必须同步回滚累计值**：污染往往是「自洽」的（垃圾单据与 `cumulative_*` 同步增加，修复前反而显示 MATCH），只删一边会制造反向 MISMATCH。脚本的条件 UPDATE 带「当前值 = 已知污染值」+「垃圾单据确已清除」双重守卫
+- **ACT_RU_TASK 不在脚本内删除**：Flowable 的 39 张 `ACT_` 表有外键与引擎状态机耦合，直接 DELETE 会让引擎缓存与库状态不一致。正确做法是经应用层 `runtimeService.deleteProcessInstance` 逐实例终止
+- 备份落 `/root/zwi-deploy/backups/`，校验门槛「体积 > 1MB 且 CREATE TABLE ≥ 200」
+
+详细执行记录见 `audit-reports/R7-fix-validation-report.md`。
 
 ## 一致性审计工具
 
@@ -277,6 +320,23 @@ AI 代理在开发、调试、评审过程中产生的临时产物必须遵循�
 ✅ zw-insight-web/ 无 test-results/ 或 eng.traineddata
 ✅ 无新增未纳入 .gitignore 的临时文件
 ```
+
+### 10. 跨模块级联与反向依赖
+
+`zw-insight-project` 被 14 个业务模块依赖（budget / material / contract / tender / purchase / subcontract / machine / site / labor / finance / archive / dashboard / app），因此它**不能反向注入这些模块的 Service/Mapper**，否则形成 Maven 循环依赖、编译失败。
+
+需要「一个模块的动作触发其他模块跟着做」时，用 **Spring 事件解耦**，契约类放 `zw-common`（Published Language 模式）：
+
+- 既有先例：`LoginLogListener`（security → system 反向依赖）、`ChangeEventApprovedEvent`（契约置于 zw-common 而非 zw-contract）
+- 项目删除级联（R7-02）：`ProjectDeletedEvent` 定义在 `zw-common/event/project/`，`ProjectService.delete` 发布，11 个模块各有一个 `*ProjectCascadeCleanupListener` 消费，共覆盖 **69 张含 `project_id` 列的表**（由 `information_schema` 全量枚举，非人工列举）
+
+**三个必须遵守的实现约束**：
+
+1. **同类 Listener 的类名必须带模块前缀**。`ZwInsightApplication` 用 `scanBasePackages="com.zwinsight"` + 默认 `AnnotationBeanNameGenerator`（按短类名生成 bean 名），而 `@MapperScan` 里的 `FullyQualifiedAnnotationBeanNameGenerator` **只管 Mapper、管不到组件扫描**。11 个同名 `@Component` 会在启动时直接抛 `ConflictingBeanDefinitionException`
+2. **级联清理不得吞异常**。与「日志失败不影响主流程」的 `LoginLogListener` 相反，级联清理失败必须传播，让发起方的整体事务回滚，杜绝「主表删了、子表还在」的半成品状态
+3. **新增含 `project_id` 的表时，必须同步登记到所属模块的 Listener**，否则该表会成为新的孤儿源。表归属以 `information_schema` 实际列为准
+
+> 例外：仓库中确有「直接跨表 SQL 避免循环依赖」的惯例（见 `BizProjectMapper.countTenderRegisters` 注释）。该做法适用于**只读查询**；级联删除是**写命令**且各模块需处理自己的副作用，故用事件而非跨表 SQL。
 
 ---
 

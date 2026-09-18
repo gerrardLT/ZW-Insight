@@ -9,6 +9,7 @@ import com.zwinsight.project.domain.SysUserProject;
 import com.zwinsight.project.domain.dto.ProjectMemberAddRequest;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.mapper.BizProjectMemberMapper;
+import com.zwinsight.project.mapper.BizProjectWbsNodeMapper;
 import com.zwinsight.project.mapper.SysUserProjectMapper;
 import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.workflow.service.ApprovalService;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -62,6 +64,11 @@ class ProjectMutationTest {
     private BizProjectMemberMapper memberMapper;
     @Mock
     private SysUserProjectMapper userProjectMapper;
+    // R7-02 级联删除给 ProjectService 新增的两个依赖
+    @Mock
+    private BizProjectWbsNodeMapper wbsNodeMapper;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private static final Long TENANT_ID = 9999L;
 
@@ -77,7 +84,9 @@ class ProjectMutationTest {
     }
 
     private ProjectService projectService() {
-        return new ProjectService(projectMapper, serialNumberService, memberService, approvalService);
+        // 参数顺序必须与 ProjectService 的 @RequiredArgsConstructor 字段声明顺序一致
+        return new ProjectService(projectMapper, serialNumberService, memberService, approvalService,
+                memberMapper, wbsNodeMapper, userProjectMapper, eventPublisher);
     }
 
     private BizProject project(String status, String totalIncome, String output) {

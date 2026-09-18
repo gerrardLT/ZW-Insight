@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.config.SecurityContextHolder;
+import com.zwinsight.common.event.project.ProjectDeletedEvent;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
@@ -12,9 +13,14 @@ import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.domain.dto.ProjectCreateRequest;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.mapper.BizProjectMemberMapper;
+import com.zwinsight.project.mapper.BizProjectWbsNodeMapper;
+import com.zwinsight.project.mapper.SysUserProjectMapper;
 import com.zwinsight.project.vo.ProjectPortfolioVO;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +35,7 @@ import java.util.function.Function;
 /**
  * 项目服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProjectService {
@@ -37,6 +44,12 @@ public class ProjectService {
     private final SerialNumberService serialNumberService;
     private final ProjectMemberService memberService;
     private final ApprovalService approvalService;
+    /** 项目删除级联：自有子表直接清理（R7-02） */
+    private final BizProjectMemberMapper projectMemberMapper;
+    private final BizProjectWbsNodeMapper wbsNodeMapper;
+    private final SysUserProjectMapper userProjectMapper;
+    /** 项目删除级联：跳模块子表由各自模块监听清理（避免 Maven 循环依赖） */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 分页查询
@@ -155,7 +168,25 @@ public class ProjectService {
 
     /**
      * 删除项目（仅DRAFT状态可删；存在关联投标报名时一律拦截，防引用悬空）
+     * <p>
+     * <b>级联清理（2026-09-18 R7-02 修复）</b>：原实现仅删 biz_project 单表，
+     * 导致子表数据全部变成孤儿（线上取证：372 个已删项目遗留 ~2000 条孤儿，
+     * 其中施工合同 49 条、项目成员 336 条、用户-项目映射 1000 条）。
+     * </p>
+     * <p>级联分两层：
+     * <ol>
+     *   <li><b>本模块自有表</b>（biz_project_member / biz_project_wbs_node / sys_user_project）
+     *       直接调 Mapper 清理</li>
+     *   <li><b>其他 9 个模块的表</b>（合同/材料/财务/劳务/机械/分包/采购/预算/现场）
+     *       发布 {@link ProjectDeletedEvent}，由各模块自己的 Listener 清理。
+     *       不能直接注入这些模块的 Service：它们全部已依赖 zw-insight-project，
+     *       反向注入会形成 Maven 循环依赖（惯例参照 BizProjectMapper.countTenderRegisters
+     *       的「直接查表避免循环依赖」注释）</li>
+     * </ol>
+     * 整体单事务：任一 Listener 抛异常则全部回滚，不允许「项目删了但子表留着」的半成品状态。
+     * </p>
      */
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         BizProject existing = projectMapper.selectById(id);
         if (existing == null) {
@@ -169,7 +200,20 @@ public class ProjectService {
         if (projectMapper.countTenderRegisters(id) > 0) {
             throw new BusinessException("项目存在关联投标报名，不可删除");
         }
+
+        // 级联第 1 层：本模块自有子表（与主表同为逻辑删除；sys_user_project 无 deleted 列故物理删）
+        int members = projectMemberMapper.logicDeleteByProjectId(id);
+        int wbsNodes = wbsNodeMapper.logicDeleteByProjectId(id);
+        int userProjects = userProjectMapper.deleteByProjectId(id);
+
         projectMapper.deleteById(id);
+
+        // 级联第 2 层：发布事件，其他模块同步清理自己的表（同事务，异常传播则整体回滚）
+        eventPublisher.publishEvent(new ProjectDeletedEvent(
+                this, id, existing.getTenantId(), existing.getProjectCode(), existing.getProjectName()));
+
+        log.info("项目删除完成（含级联）, projectId={}, code={}, 自有子表清理: member={} wbs={} userProject={}",
+                id, existing.getProjectCode(), members, wbsNodes, userProjects);
     }
 
     /**

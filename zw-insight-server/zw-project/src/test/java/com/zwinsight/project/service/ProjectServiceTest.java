@@ -1,18 +1,25 @@
 package com.zwinsight.project.service;
 
 import com.zwinsight.common.config.SecurityContextHolder;
+import com.zwinsight.common.event.project.ProjectDeletedEvent;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.mapper.BizProjectMemberMapper;
+import com.zwinsight.project.mapper.BizProjectWbsNodeMapper;
+import com.zwinsight.project.mapper.SysUserProjectMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 
@@ -30,6 +37,11 @@ class ProjectServiceTest {
     @Mock private SerialNumberService serialNumberService;
     @Mock private ProjectMemberService memberService;
     @Mock private ApprovalService approvalService;
+    // R7-02 级联删除新增依赖：不声明则 @InjectMocks 会给它们传 null，delete 用例直接 NPE
+    @Mock private BizProjectMemberMapper projectMemberMapper;
+    @Mock private BizProjectWbsNodeMapper wbsNodeMapper;
+    @Mock private SysUserProjectMapper userProjectMapper;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private ProjectService projectService;
@@ -192,6 +204,39 @@ class ProjectServiceTest {
     }
 
     @Test
+    @DisplayName("删除：R7-02 级联——自有子表清理 + 发布 ProjectDeletedEvent，且事件在删主表之后")
+    void testDelete_cascadesOwnTablesAndPublishesEvent() {
+        sampleProject.setTenantId(9999L);
+        sampleProject.setProjectCode("PRJ-T9-0001");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMemberMapper.logicDeleteByProjectId(1L)).thenReturn(3);
+        when(wbsNodeMapper.logicDeleteByProjectId(1L)).thenReturn(7);
+        when(userProjectMapper.deleteByProjectId(1L)).thenReturn(2);
+
+        projectService.delete(1L);
+
+        // 第 1 层：本模块自有子表必须逐一清理
+        verify(projectMemberMapper).logicDeleteByProjectId(1L);
+        verify(wbsNodeMapper).logicDeleteByProjectId(1L);
+        verify(userProjectMapper).deleteByProjectId(1L);
+
+        // 第 2 层：事件载荷必须带齐 projectId/tenantId/code/name，否则各模块无法定位与记日志
+        ArgumentCaptor<ProjectDeletedEvent> captor = ArgumentCaptor.forClass(ProjectDeletedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        ProjectDeletedEvent event = captor.getValue();
+        assertThat(event.getProjectId()).isEqualTo(1L);
+        assertThat(event.getTenantId()).isEqualTo(9999L);
+        assertThat(event.getProjectCode()).isEqualTo("PRJ-T9-0001");
+        assertThat(event.getProjectName()).isEqualTo("测试项目");
+
+        // 顺序：先删主表再发事件，避免监听方回查项目时读到「仍存在」的中间态
+        InOrder inOrder = inOrder(projectMemberMapper, projectMapper, eventPublisher);
+        inOrder.verify(projectMemberMapper).logicDeleteByProjectId(1L);
+        inOrder.verify(projectMapper).deleteById(1L);
+        inOrder.verify(eventPublisher).publishEvent(any(ProjectDeletedEvent.class));
+    }
+
+    @Test
     @DisplayName("删除：非 DRAFT 拒绝")
     void testDelete_nonDraftRejected() {
         sampleProject.setStatus("FILED");
@@ -248,6 +293,22 @@ class ProjectServiceTest {
         assertThatThrownBy(() -> projectService.delete(999L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("项目不存在");
+    }
+
+    @Test
+    @DisplayName("删除：任一前置校验失败时不得触发级联与事件（R7-02 防半成品状态）")
+    void testDelete_rejected_noCascadeNoEvent() {
+        sampleProject.setStatus("FILED");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+
+        assertThatThrownBy(() -> projectService.delete(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("仅草稿状态可删除");
+
+        verify(projectMemberMapper, never()).logicDeleteByProjectId(anyLong());
+        verify(wbsNodeMapper, never()).logicDeleteByProjectId(anyLong());
+        verify(userProjectMapper, never()).deleteByProjectId(anyLong());
+        verify(eventPublisher, never()).publishEvent(any(ProjectDeletedEvent.class));
     }
 
     // =====================================================================
