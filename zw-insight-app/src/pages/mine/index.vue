@@ -17,6 +17,12 @@
       </view>
     </view>
 
+    <!-- Batch 4.5：离线队列透明化——待同步提示条（仅 queueCount>0 时显示；
+         独立于 menu-section，不插入 menu-item 序列以免破坏 :nth-child(4) 去底边框样式） -->
+    <view v-if="network.queueCount > 0" class="sync-banner">
+      <text class="sync-banner-text">{{ network.queueCount }} 笔操作待同步，联网后自动提交</text>
+    </view>
+
     <!-- 菜单列表（契约钉住 .menu-item 结构与顺序：items[0]签到/1密码/2关于；视觉已达标保留原结构） -->
     <view class="menu-section zw-card">
       <view class="menu-item" @click="navigateTo('/pages/mine/sign')">
@@ -52,10 +58,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { useNetworkStore } from '@/stores/network'
 import { logout as logoutApi } from '@/api/auth'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const userStore = useUserStore()
+const network = useNetworkStore()
 
 const isOutdoorMode = ref(false)
 
@@ -123,6 +131,20 @@ function handleLogout() {
 
 <style scoped>
 .mine-page { padding: 24rpx; }
+
+/* Batch 4.5：待同步提示条（离线队列透明化）——警示黄软底 + 深字，与 hazard 语义同源但更轻 */
+.sync-banner {
+  background: var(--zw-warning-light);
+  border: 1rpx solid var(--zw-warning);
+  border-radius: var(--zw-radius-sm);
+  padding: 16rpx 24rpx;
+  margin-bottom: 24rpx;
+}
+.sync-banner-text {
+  font-size: 24rpx;
+  color: var(--zw-text-primary);
+  line-height: 1.5;
+}
 
 /* 头部：石墨黑控制室 + hazard 顶线（离线语义之外的唯一合法——账户安全警示区） */
 .user-header {

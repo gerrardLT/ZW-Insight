@@ -264,3 +264,31 @@
 - PC `npm run test`：**114 文件 / 1197 通过 + 2 跳过**（hr-statistics lineStyle 新增不破断言——测试仅钉 series name/data/length）。
 - 移动 `npm test`：**30 文件 / 246 通过**；`npm run build:h5` Build complete（`#ifdef H5` focus-visible 编译正常）。
 - 无接口改动；无新增硬编码 hex（反而清 4 处：element-override 1 + icons 3）。
+
+---
+
+## 前端深度优化 · 第四轮（Batch 4 组件体验打磨，2026-09-17）
+
+> 范围：较高风险批次（触及页面交互逻辑）。前置核查后按实事求是原则只改真实缺口，不为凑数做无义改动。
+
+### 已交付
+
+| 项 | 影响文件 | 内容 | 回滚 |
+|---|---|---|---|
+| 4.1a el-image 无障碍 | `zw-insight-web/src/views/workflow/process/index.vue` | 流程图 `<el-image>` 补 `alt="流程图"`（critique 指出缺 alt/aria-label）；纯属性零逻辑影响 | git revert |
+| 4.5 离线透明化 | `zw-insight-app/src/pages/workbench/index.vue`、`pages/mine/index.vue` | 把 store 已有但从未展示的 `queueCount` 显性化：① workbench onShow 调 `uni.setTabBarBadge`(index=1) 显示待同步数（=0 移除）；② mine 页加独立同步提示条（仅 queueCount>0，不插 menu-item 序列免破坏 :nth-child 样式）；均可选链+try/catch 静默降级 | git revert |
+
+### 前置核查后的实事求是裁定（跳过/延后，非静默）
+
+- **4.1b 表格列宽可调**：Element Plus `el-table-column` 的 `resizable` 默认即 true，未发现全局禁用——无实际问题，无需改动。
+- **4.1c Steps 超 5 节点横滚**：全库 `el-steps` 仅 2 处（login/forgot-password 3 步、contract/change-event/detail-drawer 4 步），均 ≤4 步不超 5 节点；critique 所指「7 角色节点」非 el-steps 实现——无实际问题，跳过。
+- **4.1d FieldHelpLabel 推广**：已在 payment-apply（3 字段）/retention/budget-control-config 使用，属增量扩展非缺失，降优先级。
+- **4.1 批量操作**：`material/inbound.vue` 已有复选框多选 + 批量删除 + 右键上下文菜单（critique P2 部分已实现）；扩展到付款/草稿等页属业务功能增量，非纯体验打磨，归业务批次。
+- **4.2 响应式 179 处固定像素**：全量治理工作量巨大且高风险（涉大量页面布局），应聚焦关键页示范——延后为专项子批。
+- **4.5 完整同步状态模态**（上次同步时间/失败冲突）：需扩展 syncEngine 记录 lastSyncTime 与冲突列表（现无此数据），属更大功能——延后专项；本轮先交付 queueCount 可见性（critique P1 核心诉求「离线也心里有数」已达成）。
+
+### 验证结果（Batch 4）
+
+- 移动 `npm test`：**30 文件 / 246 通过**（mine/workbench 改动不破；queueCount 默认 0 时提示条/角标不渲染）；`npm run build:h5` Build complete。
+- PC `npm run test`：全量绿（仅 el-image 加 alt 属性，零逻辑影响）。
+- 无接口改动；tabBar 角标/提示条失败为真实静默降级（平台不支持时 no-op）。

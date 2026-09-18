@@ -43,6 +43,7 @@
         <el-image
           :src="currentImageUrl"
           fit="contain"
+          alt="流程图"
           style="width: 100%; min-height: 300px"
         >
           <template #error>

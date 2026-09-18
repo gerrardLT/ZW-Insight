@@ -92,11 +92,13 @@
 import { ref, onUnmounted } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { getCompanyOverview, getProjectList, getTodoTasks } from '@/api/common'
+import { useNetworkStore } from '@/stores/network'
 import ZwiSectionCard from '@/components/zwi/ZwiSectionCard.vue'
 import ZwiStatCard from '@/components/zwi/ZwiStatCard.vue'
 import ZwiCell from '@/components/zwi/ZwiCell.vue'
 import ZwiEmptyState from '@/components/zwi/ZwiEmptyState.vue'
 
+const network = useNetworkStore()
 const overview = ref<any>({})
 const overviewFailed = ref(false)
 const projects = ref<any[]>([])
@@ -200,7 +202,22 @@ function goApprovalDetail(item: any) {
   uni.navigateTo({ url: `/pages/approval/detail?taskId=${taskId}&processInstanceId=${item.processInstanceId}` })
 }
 
-onShow(() => { loadData(); startTodoPolling() })
+/** Batch 4.5：离线队列角标——tabBar 工作台(index=1)显示待同步数，>0 时红点数字，=0 时移除。
+ * 可选链 + try/catch：测试环境 uni stub 无 setTabBarBadge、部分平台不支持时静默降级，不阻断页面。 */
+function updateTabBarBadge() {
+  const count = network.queueCount
+  try {
+    if (count > 0) {
+      uni.setTabBarBadge?.({ index: 1, text: String(count) })?.catch?.(() => {})
+    } else {
+      uni.removeTabBarBadge?.({ index: 1 })?.catch?.(() => {})
+    }
+  } catch {
+    /* 平台不支持 tabBar 角标：静默降级 */
+  }
+}
+
+onShow(() => { loadData(); startTodoPolling(); updateTabBarBadge() })
 onHide(() => { stopTodoPolling() })
 onUnmounted(() => { stopTodoPolling() })
 </script>
