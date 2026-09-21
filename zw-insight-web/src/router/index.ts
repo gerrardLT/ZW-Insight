@@ -109,6 +109,12 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '日志管理', icon: 'Document' }
       },
       {
+        path: 'amount-tier',
+        name: 'AmountTierConfig',
+        component: () => import('@/views/system/amount-tier/index.vue'),
+        meta: { title: '审批分级配置', icon: 'Sort' }
+      },
+      {
         path: 'serial-number',
         name: 'SerialNumberManage',
         component: () => import('@/views/system/serial-number/index.vue'),
@@ -317,6 +323,72 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'TaxRate',
         component: () => import('@/views/finance/tax-rate/index.vue'),
         meta: { title: '税率管理', icon: 'Histogram' }
+      },
+      {
+        path: 'fund-category',
+        name: 'FundCategory',
+        component: () => import('@/views/finance/fund-category/index.vue'),
+        meta: { title: '资金分类科目', icon: 'Collection' }
+      },
+      {
+        path: 'security-bond',
+        name: 'SecurityBond',
+        component: () => import('@/views/finance/security-bond/index.vue'),
+        meta: { title: '保证金台账', icon: 'Lock' }
+      },
+      {
+        path: 'wage-account',
+        name: 'WageAccount',
+        component: () => import('@/views/finance/wage-account/index.vue'),
+        meta: { title: '工资专户', icon: 'Wallet' }
+      },
+      {
+        path: 'fund-plan',
+        name: 'FundPlan',
+        component: () => import('@/views/finance/fund-plan/index.vue'),
+        meta: { title: '资金计划', icon: 'Calendar' }
+      },
+      {
+        path: 'fund-dashboard',
+        name: 'FundDashboard',
+        component: () => import('@/views/finance/fund-dashboard/index.vue'),
+        meta: { title: '资金看板', icon: 'DataLine' }
+      },
+      {
+        path: 'bill',
+        name: 'BillLedger',
+        component: () => import('@/views/finance/bill/index.vue'),
+        meta: { title: '票据台账', icon: 'Tickets' }
+      },
+      {
+        path: 'financing',
+        name: 'FinancingLedger',
+        component: () => import('@/views/finance/financing/index.vue'),
+        meta: { title: '融资借贷', icon: 'CreditCard' }
+      },
+      {
+        path: 'bank-account-group',
+        name: 'BankAccountGroup',
+        component: () => import('@/views/finance/bank-account-group/index.vue'),
+        meta: { title: '账户分组', icon: 'Grid' }
+      },
+      {
+        path: 'bank-flow',
+        name: 'BankFlow',
+        component: () => import('@/views/finance/bank-flow/index.vue'),
+        meta: { title: '银行流水', icon: 'Sort' }
+      },
+      {
+        path: 'balance-reconciliation',
+        name: 'BalanceReconciliation',
+        component: () => import('@/views/finance/balance-reconciliation/index.vue'),
+        meta: { title: '余额调节表', icon: 'Operation' }
+      },
+      {
+        path: 'daily-cash-report',
+        name: 'DailyCashReport',
+        component: () => import('@/views/finance/daily-cash-report/index.vue'),
+        meta: { title: '资金日报', icon: 'Calendar' }
       },
       {
         path: 'settlement/:id',

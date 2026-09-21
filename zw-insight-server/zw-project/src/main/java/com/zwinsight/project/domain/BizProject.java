@@ -106,6 +106,11 @@ public class BizProject extends BaseEntity {
     private BigDecimal cumulativeOutput;
 
     /**
+     * 应收账款（已结算未收口径，结算审批通过时回写；53_V2026_51 新增）
+     */
+    private BigDecimal receivableAmount;
+
+    /**
      * 结算金额
      */
     private BigDecimal settlementAmount;

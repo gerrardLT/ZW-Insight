@@ -28,6 +28,9 @@ public class BizBankAccount extends BaseEntity {
     /** 项目ID（可选，关联项目） */
     private Long projectId;
 
+    /** 所属账户分组ID（biz_bank_account_group.id；55_V2026_53 新增） */
+    private Long groupId;
+
     /** 状态（1-启用/0-停用） */
     private Integer status;
 }

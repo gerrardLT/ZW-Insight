@@ -11,6 +11,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.domain.SysAmountTierConfig;
 import com.zwinsight.finance.dto.BatchOperationRequest;
 import com.zwinsight.finance.dto.ContractPayableInfo;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
@@ -48,6 +49,9 @@ public class PaymentApplyService {
     private final SettlementDataMapper settlementDataMapper;
     private final ApprovalService approvalService;
     private final ApplicationEventPublisher eventPublisher;
+    private final FundCategoryService fundCategoryService;
+    private final FundPlanService fundPlanService;
+    private final AmountTierService amountTierService;
 
     /** 走各模块合同表（biz_purchase_contract 等）的合同类型；其余（OTHER_EXPENSE/OTHER_INCOME/空）走 biz_other_contract */
     private static final java.util.Set<String> MODULE_CATEGORIES =
@@ -77,6 +81,13 @@ public class PaymentApplyService {
         if (paymentApply.getPaymentAmount() == null || paymentApply.getPaymentAmount().signum() <= 0) {
             throw new BusinessException("付款金额必须大于0");
         }
+        // 资金分类校验（53_V2026_51）：提供了科目编码时必须有效且为支出向（不静默丢弃）
+        if (paymentApply.getPaymentCategory() != null && !paymentApply.getPaymentCategory().isBlank()) {
+            fundCategoryService.getByCode(paymentApply.getPaymentCategory(), "EXPENSE");
+        }
+        // 先计划后支付（53_V2026_51）：付款日期落月存在 APPROVED 月度计划且超计划时拦截
+        fundPlanService.validatePaymentAgainstPlan(
+                paymentApply.getProjectId(), paymentApply.getPaymentDate(), paymentApply.getPaymentAmount());
         paymentApply.setStatus("DRAFT");
         paymentApplyMapper.insert(paymentApply);
     }
@@ -173,6 +184,18 @@ public class PaymentApplyService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("paymentAmount", paymentApply.getPaymentAmount());
         variables.put("contractId", paymentApply.getContractId());
+        // 金额分级审批（54_V2026_52）：匹配档位并将等级传入流程变量，
+        // 由 payment_apply_approval 的 BPMN 排他网关按 approvalTier 路由到对应审批节点。
+        // approvalTier 恒写入（未命中档位=0，网关走 default 流），避免条件表达式引用未定义变量报错；
+        // 注意：这只是流程路由变量，不伪造 sys_amount_tier_config 配置档（tierName 仅在命中时写入）。
+        SysAmountTierConfig tier = amountTierService.matchTier(
+                SysAmountTierConfig.MODULE_PAYMENT_APPLY, paymentApply.getPaymentAmount());
+        variables.put("approvalTier", tier != null ? tier.getTierLevel() : 0);
+        if (tier != null) {
+            variables.put("tierName", tier.getTierName());
+            log.info("付款申请命中审批档位, id={}, amount={}, tier={}, {}",
+                    id, paymentApply.getPaymentAmount(), tier.getTierLevel(), tier.getTierName());
+        }
         String processInstanceId = approvalService.startProcess(
                 "PAYMENT_APPLY", id, "payment_apply_approval", variables);
 

@@ -39,6 +39,12 @@ public class BizPaymentApply extends BaseEntity {
     /** 付款金额 */
     private BigDecimal paymentAmount;
 
+    /** 支出分类科目编码（biz_fund_category.code；53_V2026_51 新增） */
+    private String paymentCategory;
+
+    /** 关联月度资金计划ID（先计划后支付；53_V2026_51 新增） */
+    private Long fundPlanId;
+
     /** 付款日期 */
     private LocalDate paymentDate;
 

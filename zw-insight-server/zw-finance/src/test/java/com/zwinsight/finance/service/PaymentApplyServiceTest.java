@@ -7,6 +7,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.domain.SysAmountTierConfig;
 import com.zwinsight.finance.dto.BatchOperationRequest;
 import com.zwinsight.finance.dto.ContractPayableInfo;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +27,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,6 +48,9 @@ class PaymentApplyServiceTest {
     @Mock private SettlementDataMapper settlementDataMapper;
     @Mock private ApprovalService approvalService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private FundCategoryService fundCategoryService;
+    @Mock private FundPlanService fundPlanService;
+    @Mock private AmountTierService amountTierService;
 
     @InjectMocks
     private PaymentApplyService paymentApplyService;
@@ -186,6 +192,74 @@ class PaymentApplyServiceTest {
             assertThatThrownBy(() -> paymentApplyService.submit(id))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("仅草稿或已驳回状态可提交");
+        }
+
+        @Test
+        @DisplayName("金额分级审批 — 命中档位时 approvalTier 注入流程变量驱动 BPMN 网关")
+        void submit_tierMatched_injectsApprovalTier() {
+            Long id = 30L;
+            Long contractId = 300L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setProjectId(10L);
+            apply.setPaymentAmount(new BigDecimal("600000.00")); // >50万 → tier 3 财务负责人
+            apply.setStatus("DRAFT");
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(contractId);
+            contract.setCumulativeSettlement(new BigDecimal("1000000.00"));
+            contract.setCumulativePaid(new BigDecimal("100000.00"));
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+            SysAmountTierConfig tier = new SysAmountTierConfig();
+            tier.setTierLevel(3);
+            tier.setTierName("财务负责人审批");
+            when(amountTierService.matchTier(eq(SysAmountTierConfig.MODULE_PAYMENT_APPLY), any()))
+                    .thenReturn(tier);
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+            when(approvalService.startProcess(eq("PAYMENT_APPLY"), eq(id), eq("payment_apply_approval"), captor.capture()))
+                    .thenReturn("proc-30");
+
+            paymentApplyService.submit(id);
+
+            assertThat(captor.getValue().get("approvalTier")).isEqualTo(3);
+            assertThat(captor.getValue().get("tierName")).isEqualTo("财务负责人审批");
+        }
+
+        @Test
+        @DisplayName("金额分级审批 — 未命中档位时 approvalTier=0（网关走默认链，不伪造档位名）")
+        void submit_tierNotMatched_approvalTierZero() {
+            Long id = 31L;
+            Long contractId = 301L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setProjectId(10L);
+            apply.setPaymentAmount(new BigDecimal("30000.00"));
+            apply.setStatus("DRAFT");
+
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(contractId);
+            contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+            contract.setCumulativePaid(new BigDecimal("50000.00"));
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+            // matchTier 未 stub → 返回 null（模块未配置分级）
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+            when(approvalService.startProcess(eq("PAYMENT_APPLY"), eq(id), eq("payment_apply_approval"), captor.capture()))
+                    .thenReturn("proc-31");
+
+            paymentApplyService.submit(id);
+
+            assertThat(captor.getValue().get("approvalTier")).isEqualTo(0);
+            assertThat(captor.getValue()).doesNotContainKey("tierName");
         }
     }
 

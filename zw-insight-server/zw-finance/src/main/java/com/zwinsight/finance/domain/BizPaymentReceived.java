@@ -34,6 +34,9 @@ public class BizPaymentReceived extends BaseEntity {
     /** 收款金额 */
     private BigDecimal receiveAmount;
 
+    /** 收入分类科目编码（biz_fund_category.code；53_V2026_51 新增） */
+    private String receiveCategory;
+
     /** 收款人 */
     private String receiver;
 
