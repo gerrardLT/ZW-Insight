@@ -24,7 +24,11 @@ spring:
     table: flyway_schema_history
     encoding: UTF-8
     validate-on-migrate: true
-    out-of-order: false
+    # 2026-09-21 迁移归位治理开启：一批历史迁移（V2026_22/23/26/34~37 与 41+ 时代脚本）
+    # 此前只存在于 deploy/db-init（仅空库 initdb 执行），运行库 Flyway 历史停在 2026.40；
+    # 归位入 classpath 后存在低于已应用最高版本的待补迁移，out-of-order=false 会直接拒绝启动。
+    # 全部脚本均有幂等守卫（IF NOT EXISTS / INSERT IGNORE / information_schema 检查），乱序补应用安全。
+    out-of-order: true
 
 # MyBatis-Plus 配置
 mybatis-plus:

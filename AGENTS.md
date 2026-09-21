@@ -230,7 +230,12 @@ cd tools/consistency-audit && npm run dev
 
 ### 5. 数据库变更
 
-- 增量迁移脚本放入 `deploy/db-init/`，按序号命名
+- **增量迁移脚本必须双轨放置**（2026-09-21 线上故障后的强制约定）：
+  1. `zw-insight-server/zw-app/src/main/resources/db/migration/Vxxx__desc.sql` —— Flyway 运行库扫描路径（`spring.flyway.locations`），**已上线库靠这里补列**，启动时自动应用
+  2. `deploy/db-init/NN_Vxxx__desc.sql` —— 新环境空库 initdb 编排（按 `NN_` 序号前缀控制执行顺序）
+  - 两处文件名 Flyway 版本段必须一致（`V2026_51__xxx.sql`）；只放 db-init 不入 classpath，就是"代码上线、库结构没跟"的直接故障模式
+- **版本号唯一且有序**：禁止两个脚本共用同一 Flyway 版本（同版本双文件 Flyway 直接拒启）；同版本多脚本用 `V2026_41_1`/`V2026_41_2` 子版本号。低于已应用最高版本的待补脚本依赖 `spring.flyway.out-of-order: true` 乱序补应用（已开启，2026-09-21 治理）
+- **迁移脚本必须幂等**：`CREATE TABLE IF NOT EXISTS` / `INSERT IGNORE` / `information_schema` 检查 + `PREPARE/EXECUTE` 条件 ALTER（裸 `ALTER ADD COLUMN`、`CREATE UNIQUE INDEX` 重复执行会报错）
 - 字段使用规范：`BigDecimal`/`DECIMAL(18,2)`（金额）、`deleted`（逻辑删除）、`version`（乐观锁）、`tenant_id`（租户隔离）
 
 ### 6. 技术方案调研
