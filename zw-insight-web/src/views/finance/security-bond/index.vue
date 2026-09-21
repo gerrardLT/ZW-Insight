@@ -9,13 +9,13 @@
             <el-option label="质量保证金" value="QUALITY" />
             <el-option label="农民工工资保证金" value="WAGE" />
           </el-select>
-          <el-select v-model="query.refundStatus" placeholder="状态" clearable style="width: 140px; margin-left: 8px" @change="loadPage">
+          <el-select v-model="query.refundStatus" placeholder="状态" clearable style="width: 140px; margin-left: var(--zw-space-sm)" @change="loadPage">
             <el-option label="已缴存" value="DEPOSITED" />
             <el-option label="退还申请中" value="REFUND_APPLY" />
             <el-option label="已退还" value="REFUNDED" />
             <el-option label="已动用" value="USED" />
           </el-select>
-          <el-button style="margin-left: 8px" @click="loadExpiring">30天内到期</el-button>
+          <el-button style="margin-left: var(--zw-space-sm)" @click="loadExpiring">30天内到期</el-button>
         </div>
         <el-button type="primary" @click="handleAdd">新增保证金</el-button>
       </div>
@@ -64,7 +64,7 @@
         v-model:page-size="query.size"
         :total="total"
         layout="total, prev, pager, next"
-        style="margin-top: 12px; justify-content: flex-end"
+        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
         @current-change="loadPage"
       />
     </el-card>
@@ -298,13 +298,13 @@ onMounted(loadPage)
 
 <style scoped>
 .security-bond-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md)
 }
 .filter-bar {
   display: flex;

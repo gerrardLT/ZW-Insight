@@ -2,7 +2,7 @@
   <div class="fund-category-container">
     <el-card shadow="never">
       <div class="table-toolbar">
-        <el-radio-group v-model="directionFilter" @change="loadTree" style="margin-right: 12px">
+        <el-radio-group v-model="directionFilter" @change="loadTree" style="margin-right: var(--zw-space-sm-md)">
           <el-radio-button value="">全部</el-radio-button>
           <el-radio-button value="INCOME">收入</el-radio-button>
           <el-radio-button value="EXPENSE">支出</el-radio-button>
@@ -203,12 +203,12 @@ onMounted(loadTree)
 
 <style scoped>
 .fund-category-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md)
 }
 </style>

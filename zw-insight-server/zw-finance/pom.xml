@@ -15,8 +15,10 @@
     <description>财务管理模块 - 发票、收付款、报销、备用金</description>
 
     <properties>
-        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比（779‰），补测后上调并同步基线 -->
-        <jacoco.min.coverage>0.779</jacoco.min.coverage>
+        <!-- JaCoCo 行覆盖率分档门槛（事项 1-B，2026-08-24）：取值 = tests/coverage-baseline.json 当前基线千分比。
+             2026-09-21 随资金管理 P0/P1/P2 大批新代码合入，实测 bundle 行覆盖降至 713‰，
+             经用户决策下调棘轮至 710‰（快速解锁 CI，留 3‰ 抖动余量）；finance 新代码欠测作为后续技术债补测上调。 -->
+        <jacoco.min.coverage>0.710</jacoco.min.coverage>
     </properties>
 
     <dependencies>

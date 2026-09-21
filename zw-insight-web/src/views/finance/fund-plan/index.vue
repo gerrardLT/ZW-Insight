@@ -273,13 +273,13 @@ onMounted(() => {
 
 <style scoped>
 .fund-plan-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md)
 }
 .gap-negative {
   color: var(--el-color-danger);

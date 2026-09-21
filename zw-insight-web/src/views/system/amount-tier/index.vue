@@ -12,7 +12,7 @@
         type="info"
         :closable="false"
         show-icon
-        style="margin-bottom: 12px"
+        style="margin-bottom: var(--zw-space-sm-md)"
         title="档位等级作为流程变量 approvalTier 传入审批流程，由 BPMN 条件网关路由到对应审批节点；区间为左闭右开 [下限, 上限)，上限留空表示无上限"
       />
 
@@ -40,7 +40,7 @@
     </el-card>
 
     <!-- 匹配预览 -->
-    <el-card shadow="never" style="margin-top: 16px">
+    <el-card shadow="never" style="margin-top: var(--zw-space-md)">
       <template #header><span>档位匹配预览（该金额将走哪个审批档）</span></template>
       <div class="match-preview">
         <el-input-number
@@ -51,11 +51,11 @@
           placeholder="输入付款金额"
           style="width: 220px"
         />
-        <el-button type="primary" style="margin-left: 12px" @click="handleMatch">匹配</el-button>
-        <el-tag v-if="matchedTier" :type="matchedTag" size="large" style="margin-left: 12px">
+        <el-button type="primary" style="margin-left: var(--zw-space-sm-md)" @click="handleMatch">匹配</el-button>
+        <el-tag v-if="matchedTier" :type="matchedTag" size="large" style="margin-left: var(--zw-space-sm-md)">
           等级 {{ matchedTier.tierLevel }}：{{ matchedTier.tierName }}
         </el-tag>
-        <el-tag v-else-if="matched === false" type="info" size="large" style="margin-left: 12px">未匹配（走默认审批链）</el-tag>
+        <el-tag v-else-if="matched === false" type="info" size="large" style="margin-left: var(--zw-space-sm-md)">未匹配（走默认审批链）</el-tag>
       </div>
     </el-card>
 
@@ -201,7 +201,7 @@ onMounted(loadTiers)
 
 <style scoped>
 .amount-tier-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .card-header {
   display: flex;

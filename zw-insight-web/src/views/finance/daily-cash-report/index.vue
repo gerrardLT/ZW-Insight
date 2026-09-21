@@ -6,7 +6,7 @@
         <div class="date-picker">
           <span class="label">报告日期：</span>
           <el-date-picker v-model="reportDate" type="date" value-format="YYYY-MM-DD" :clearable="false" />
-          <el-button type="primary" style="margin-left: 12px" @click="handleGenerate" :loading="generating">
+          <el-button type="primary" style="margin-left: var(--zw-space-sm-md)" @click="handleGenerate" :loading="generating">
             生成/刷新日报
           </el-button>
         </div>
@@ -22,7 +22,7 @@
     </el-card>
 
     <!-- 核心指标卡 -->
-    <el-row :gutter="16" style="margin-top: 16px" v-loading="loading">
+    <el-row :gutter="16" style="margin-top: var(--zw-space-md)" v-loading="loading">
       <el-col :span="6">
         <el-card shadow="never" class="metric-card">
           <template #header><span>可用头寸（总余额）</span></template>
@@ -70,13 +70,13 @@
     </el-row>
 
     <!-- 趋势折线 -->
-    <el-card shadow="never" style="margin-top: 16px">
+    <el-card shadow="never" style="margin-top: var(--zw-space-md)">
       <template #header><span>近 {{ trendDays }} 日资金头寸趋势</span></template>
       <div ref="chartRef" style="height: 320px"></div>
     </el-card>
 
     <!-- 大额支出明细 -->
-    <el-card shadow="never" style="margin-top: 16px">
+    <el-card shadow="never" style="margin-top: var(--zw-space-md)">
       <template #header><span>当日大额支出明细（下钻）</span></template>
       <el-table :data="largeOutflows" border>
         <el-table-column prop="flowDate" label="日期" width="110" align="center" />
@@ -201,14 +201,14 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .daily-cash-report-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--zw-space-sm-md);
 }
 .date-picker,
 .trend-switch {
@@ -216,21 +216,21 @@ onBeforeUnmount(() => {
   align-items: center;
 }
 .label {
-  margin-right: 8px;
+  margin-right: var(--zw-space-sm);
   color: var(--el-text-color-secondary);
 }
 .metric-card :deep(.el-card__header) {
-  padding: 12px 16px;
+  padding: var(--zw-space-sm-md) var(--zw-space-md);
 }
 .metric-main {
-  font-size: 26px;
+  font-size: var(--zw-font-size-2xl);
   font-weight: 700;
   line-height: 1.4;
 }
 .metric-sub {
-  margin-top: 8px;
+  margin-top: var(--zw-space-sm);
   color: var(--el-text-color-secondary);
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
 }
 .metric-positive {
   color: var(--el-color-success);

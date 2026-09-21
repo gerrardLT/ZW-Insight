@@ -10,13 +10,13 @@
             value-format="YYYY-MM-DD"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
-            style="width: 240px; margin-left: 8px"
+            style="width: 240px; margin-left: var(--zw-space-sm)"
           />
-          <el-select v-model="query.reconciled" placeholder="勾稽状态" clearable style="width: 120px; margin-left: 8px">
+          <el-select v-model="query.reconciled" placeholder="勾稽状态" clearable style="width: 120px; margin-left: var(--zw-space-sm)">
             <el-option label="未勾稽" :value="0" />
             <el-option label="已勾稽" :value="1" />
           </el-select>
-          <el-button type="primary" style="margin-left: 8px" @click="loadPage">查询</el-button>
+          <el-button type="primary" style="margin-left: var(--zw-space-sm)" @click="loadPage">查询</el-button>
         </div>
         <div>
           <el-button @click="balanceDialogVisible = true">余额登记</el-button>
@@ -60,7 +60,7 @@
         v-model:page-size="query.size"
         :total="total"
         layout="total, prev, pager, next"
-        style="margin-top: 12px; justify-content: flex-end"
+        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
         @current-change="loadPage"
       />
     </el-card>
@@ -101,7 +101,7 @@
 
     <!-- 余额登记 -->
     <el-dialog v-model="balanceDialogVisible" title="账户余额登记" width="460px" destroy-on-close>
-      <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px"
+      <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-sm-md)"
         title="余额来自网银对账单，作为资金日报头寸数据源；同日重复登记执行覆盖" />
       <el-form label-width="100px">
         <el-form-item label="账户ID">
@@ -125,7 +125,7 @@
 
     <!-- CSV 导入 -->
     <el-dialog v-model="importDialogVisible" title="导入银行流水（CSV 粘贴）" width="640px" destroy-on-close>
-      <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px"
+      <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-sm-md)"
         title="从网银导出流水后按「日期,方向(IN/OUT),金额,流水号,对方单位,摘要」每行一条粘贴；按流水号去重，重复行自动跳过" />
       <el-form label-width="80px">
         <el-form-item label="账户ID">
@@ -359,15 +359,15 @@ onMounted(loadPage)
 
 <style scoped>
 .bank-flow-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md);
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--zw-space-sm);
 }
 .filter-bar {
   display: flex;

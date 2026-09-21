@@ -4,7 +4,7 @@
       type="info"
       :closable="false"
       show-icon
-      style="margin-bottom: 12px"
+      style="margin-bottom: var(--zw-space-sm-md)"
       title="农民工工资专用账户（国务院令第724号）：人工费拨付周期不得超过1个月；专户资金专项用于支付农民工工资，不得挪用"
     />
 
@@ -57,7 +57,7 @@
         v-model:page-size="query.size"
         :total="total"
         layout="total, prev, pager, next"
-        style="margin-top: 12px; justify-content: flex-end"
+        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
         @current-change="loadPage"
       />
     </el-card>
@@ -291,13 +291,13 @@ onMounted(loadPage)
 
 <style scoped>
 .wage-account-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md);
 }
 .arrival-warn {
   color: var(--el-color-warning);

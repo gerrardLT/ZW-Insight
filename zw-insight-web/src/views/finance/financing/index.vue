@@ -56,7 +56,7 @@
         v-model:page-size="query.size"
         :total="total"
         layout="total, prev, pager, next"
-        style="margin-top: 12px; justify-content: flex-end"
+        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
         @current-change="loadPage"
       />
     </el-card>
@@ -80,7 +80,7 @@
         </el-form-item>
         <el-form-item label="年利率" prop="annualRatePct">
           <el-input-number v-model="formData.annualRatePct" :min="0" :max="99" :precision="4" controls-position="right" style="width: 100%" />
-          <span style="margin-left: 4px">%</span>
+          <span style="margin-left: var(--zw-space-xs)">%</span>
         </el-form-item>
         <el-form-item label="放款日期" prop="startDate">
           <el-date-picker v-model="formData.startDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
@@ -312,13 +312,13 @@ onMounted(loadPage)
 
 <style scoped>
 .financing-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md)
 }
 .filter-bar {
   display: flex;

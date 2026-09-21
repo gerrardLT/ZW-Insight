@@ -7,14 +7,14 @@
             <el-option label="应收票据" value="RECEIVABLE" />
             <el-option label="应付票据" value="PAYABLE" />
           </el-select>
-          <el-select v-model="query.status" placeholder="状态" clearable style="width: 130px; margin-left: 8px" @change="loadPage">
+          <el-select v-model="query.status" placeholder="状态" clearable style="width: 130px; margin-left: var(--zw-space-sm)" @change="loadPage">
             <el-option label="持有" value="HELD" />
             <el-option label="已背书" value="ENDORSED" />
             <el-option label="已贴现" value="DISCOUNTED" />
             <el-option label="已兑现" value="REDEEMED" />
             <el-option label="已兑付" value="PAID_OUT" />
           </el-select>
-          <el-button style="margin-left: 8px" @click="loadExpiring">30天内到期</el-button>
+          <el-button style="margin-left: var(--zw-space-sm)" @click="loadExpiring">30天内到期</el-button>
         </div>
         <el-button type="primary" @click="handleAdd">登记票据</el-button>
       </div>
@@ -71,7 +71,7 @@
         v-model:page-size="query.size"
         :total="total"
         layout="total, prev, pager, next"
-        style="margin-top: 12px; justify-content: flex-end"
+        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
         @current-change="loadPage"
       />
     </el-card>
@@ -137,7 +137,7 @@
     </el-dialog>
 
     <el-dialog v-model="discountDialogVisible" title="贴现变现" width="440px" destroy-on-close>
-      <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px"
+      <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-sm-md)"
         title="贴现利息 = 票面金额 × 年贴现率 × 剩余天数 / 360（银行惯例）" />
       <el-form label-width="100px">
         <el-form-item label="票面金额">
@@ -145,7 +145,7 @@
         </el-form-item>
         <el-form-item label="贴现年利率">
           <el-input-number v-model="discountRatePct" :min="0.01" :max="99" :precision="2" controls-position="right" style="width: 100%" />
-          <span style="margin-left: 4px">%</span>
+          <span style="margin-left: var(--zw-space-xs)">%</span>
         </el-form-item>
         <el-form-item label="贴现日期">
           <el-date-picker v-model="discountDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
@@ -353,13 +353,13 @@ onMounted(loadPage)
 
 <style scoped>
 .bill-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md);
 }
 .filter-bar {
   display: flex;

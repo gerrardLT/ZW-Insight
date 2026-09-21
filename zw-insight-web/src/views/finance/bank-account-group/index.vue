@@ -177,13 +177,13 @@ onMounted(loadTree)
 
 <style scoped>
 .bank-account-group-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md)
 }
 .title {
   font-weight: 600;

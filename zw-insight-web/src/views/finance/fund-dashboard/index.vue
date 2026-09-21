@@ -63,7 +63,7 @@
     </el-row>
 
     <!-- ============ 辅助指标 ============ -->
-    <el-row :gutter="16" style="margin-top: 16px">
+    <el-row :gutter="16" style="margin-top: var(--zw-space-md)">
       <el-col :span="8">
         <el-card shadow="never">
           <template #header><span>保证金占用（四类）</span></template>
@@ -100,7 +100,7 @@
     </el-row>
 
     <!-- ============ 滚动预测明细 ============ -->
-    <el-card shadow="never" style="margin-top: 16px">
+    <el-card shadow="never" style="margin-top: var(--zw-space-md)">
       <template #header><span>未来月份资金缺口明细（滚动预测快照）</span></template>
       <el-table :data="dashboard.rollingGaps || []" v-loading="loading" border>
         <el-table-column prop="month" label="月份" width="110" align="center" />
@@ -166,10 +166,10 @@ onMounted(loadDashboard)
 
 <style scoped>
 .fund-dashboard-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .metric-card :deep(.el-card__header) {
-  padding: 12px 16px;
+  padding: var(--zw-space-sm-md) var(--zw-space-md);
 }
 .metric-header {
   display: flex;
@@ -182,14 +182,14 @@ onMounted(loadDashboard)
   cursor: help;
 }
 .metric-main {
-  font-size: 28px;
+  font-size: var(--zw-font-size-3xl);
   font-weight: 700;
   line-height: 1.4;
 }
 .metric-sub {
-  margin-top: 8px;
+  margin-top: var(--zw-space-sm);
   color: var(--el-text-color-secondary);
-  font-size: 13px;
+  font-size: var(--zw-font-size-sm);
 }
 .metric-positive {
   color: var(--el-color-success);

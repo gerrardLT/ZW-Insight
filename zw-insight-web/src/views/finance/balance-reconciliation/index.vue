@@ -10,9 +10,9 @@
             value-format="YYYY-MM-DD"
             start-placeholder="开始"
             end-placeholder="结束"
-            style="width: 240px; margin-left: 8px"
+            style="width: 240px; margin-left: var(--zw-space-sm)"
           />
-          <el-button type="primary" style="margin-left: 8px" @click="loadPage">查询</el-button>
+          <el-button type="primary" style="margin-left: var(--zw-space-sm)" @click="loadPage">查询</el-button>
         </div>
         <el-button type="primary" @click="handleAdd">生成调节表</el-button>
       </div>
@@ -55,14 +55,14 @@
         v-model:page-size="query.size"
         :total="total"
         layout="total, prev, pager, next"
-        style="margin-top: 12px; justify-content: flex-end"
+        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
         @current-change="loadPage"
       />
     </el-card>
 
     <!-- 生成调节表 -->
     <el-dialog v-model="dialogVisible" title="生成银行存款余额调节表" width="620px" destroy-on-close>
-      <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px"
+      <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-sm-md)"
         title="调节后银行余额 = 银行对账单 + 银行收企业未收 - 银行付企业未付；调节后账面余额 = 企业账面 + 企业已收银行未收 - 企业已付银行未付。两者相等即调平。" />
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="160px">
         <el-form-item label="账户ID" prop="accountId">
@@ -228,15 +228,15 @@ onMounted(loadPage)
 
 <style scoped>
 .balance-reconciliation-container {
-  padding: 16px;
+  padding: var(--zw-space-md);
 }
 .table-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--zw-space-sm-md);
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--zw-space-sm);
 }
 .filter-bar {
   display: flex;
