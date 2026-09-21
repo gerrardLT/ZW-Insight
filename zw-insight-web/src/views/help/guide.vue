@@ -417,7 +417,7 @@ watch(() => route.hash, scrollToHash)
 }
 
 .zw-md .mermaid-error .mermaid-fallback {
-  border: 1px dashed var(--zw-danger, #d9534f);
+  border: 1px dashed var(--zw-danger);
   padding: var(--zw-space-sm);
   border-radius: var(--zw-radius-xs);
 }
