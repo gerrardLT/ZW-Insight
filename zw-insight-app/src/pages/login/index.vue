@@ -38,11 +38,8 @@
         <button class="login-btn" :loading="loading" @click="handlePasswordLogin">登 录</button>
       </view>
 
-      <!-- 短信验证码登录表单 -->
+      <!-- 短信验证码登录表单（后端 loginBySms 按手机号定位用户与租户，无需组织码） -->
       <view v-if="loginMode === 'sms'">
-        <view class="form-item">
-          <input v-model="smsForm.tenantCode" placeholder="请输入组织码" class="input" />
-        </view>
         <view class="form-item">
           <input v-model="smsForm.phone" type="number" placeholder="请输入手机号" class="input" maxlength="11" />
         </view>
@@ -98,8 +95,8 @@ async function refreshCaptcha() {
 
 onMounted(() => { refreshCaptcha() })
 
-// 短信登录表单
-const smsForm = ref({ tenantCode: '', phone: '', smsCode: '' })
+// 短信登录表单（手机号即定位依据，无需组织码）
+const smsForm = ref({ phone: '', smsCode: '' })
 
 // 短信倒计时
 const smsCooldown = ref(0)
@@ -220,8 +217,7 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
     const res: any = await login({
       phone,
       smsCode,
-      loginType: 'SMS',
-      tenantCode: smsForm.value.tenantCode || undefined
+      loginType: 'SMS'
     })
     userStore.setToken(res.data.token)
     userStore.setUserInfo(res.data)

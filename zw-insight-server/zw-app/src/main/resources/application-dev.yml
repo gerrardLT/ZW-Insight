@@ -83,13 +83,13 @@ auth:
   lock-max-attempts: 5
   lock-duration: 1800
 
-# 短信配置
+# 短信配置（凭证经环境变量注入，见 deploy/.env + docker-compose.deploy.yml；未配置时 enabled=false 仅日志不真发）
 sms:
-  enabled: false
-  access-key-id: your-access-key-id
-  access-key-secret: your-access-key-secret
-  sign-name: ZW-Insight
-  template-code: SMS_000000
+  enabled: ${SMS_ENABLED:false}
+  access-key-id: ${SMS_ACCESS_KEY_ID:}
+  access-key-secret: ${SMS_ACCESS_KEY_SECRET:}
+  sign-name: ${SMS_SIGN_NAME:}
+  template-code: ${SMS_TEMPLATE_CODE:}
 
 # 企业微信群机器人通知配置
 wework:

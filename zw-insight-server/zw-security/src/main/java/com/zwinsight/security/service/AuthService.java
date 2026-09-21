@@ -88,6 +88,9 @@ public class AuthService {
         String phone = request.getPhone();
         String smsCode = request.getSmsCode();
 
+        // 0. 检查 IP 锁定（与密码登录对称，防止跨号暴力尝试短信验证码）
+        captchaService.checkIpLock(clientIp);
+
         // 1. 参数校验
         if (phone == null || phone.isBlank()) {
             throw new BusinessException("手机号不能为空");
@@ -96,32 +99,52 @@ public class AuthService {
             throw new BusinessException("短信验证码不能为空");
         }
 
-        // 2. 校验短信验证码
+        // 2. 手机号级失败锁定：同一手机号在锁定窗口内连续错误达上限后暂时拒绝
+        //    （与密码登录的 username 维度锁定同构，key 以 sms: 前缀隔离命名空间）
+        String smsFailKey = LOGIN_FAIL_PREFIX + "sms:" + phone;
+        if (lockEnabled) {
+            Object failCount = redisUtils.get(smsFailKey);
+            if (failCount != null && Integer.parseInt(failCount.toString()) >= maxAttempts) {
+                throw new BusinessException("验证码错误次数过多，请" + (lockDuration / 60) + "分钟后再试");
+            }
+        }
+
+        // 3. 校验短信验证码（一次性消费，错误即计入 IP 与手机号失败次数）
         if (!captchaService.verifySmsCode(phone, smsCode)) {
+            incrementFailCount(smsFailKey);
+            captchaService.recordIpFailure(clientIp);
             throw new BusinessException("短信验证码错误或已过期");
         }
 
-        // 3. 按手机号查找用户
+        // 4. 按手机号查找用户
         SysUser user = userMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>()
                         .eq(SysUser::getPhone, phone)
                         .eq(SysUser::getDeleted, 0)
         );
         if (user == null) {
+            captchaService.recordIpFailure(clientIp);
             throw new BusinessException("该手机号未注册");
         }
 
-        // 4. 检查状态
+        // 5. 检查状态
         if (user.getStatus() != 1) {
             throw new BusinessException("账号已被停用");
         }
 
-        // 5. 检查租户有效期
+        // 6. 检查租户有效期
         Long tenantId = user.getTenantId();
         SysTenant tenant = checkTenantExpiry(tenantId);
 
-        // 6. 生成 Token 和响应（含设备记录 + 异地检测）
-        return buildLoginResponse(user, tenant, clientIp, deviceInfo);
+        // 7. 生成 Token 和响应（含设备记录 + 异地检测）
+        LoginResponse response = buildLoginResponse(user, tenant, clientIp, deviceInfo);
+
+        // 8. 登录成功清除失败计数
+        redisUtils.delete(smsFailKey);
+        captchaService.clearIpFailure(clientIp);
+
+        log.info("User {} logged in successfully via SMS", user.getUsername());
+        return response;
     }
 
     /**

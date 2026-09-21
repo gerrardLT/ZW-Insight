@@ -15,7 +15,6 @@ interface SmsLoginData {
   phone: string
   smsCode: string
   loginType: 'SMS'
-  tenantCode?: string
 }
 
 /** 获取图形验证码（CaptchaController GET /image，返回 { uuid, imageBase64 }，base64 带 data:image/png 前缀） */
