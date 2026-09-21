@@ -24,6 +24,8 @@
     "dhtmlx-gantt": "^8.0.6",
     "echarts": "^5.5.0",
     "element-plus": "^2.6.3",
+    "markdown-it": "^14.3.2",
+    "mermaid": "^11.17.2",
     "nprogress": "^0.2.0",
     "pinia": "^2.1.7",
     "pinia-plugin-persistedstate": "^3.2.1",
@@ -35,6 +37,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.1.1",
     "@types/nprogress": "^0.2.3",
     "@vitejs/plugin-vue": "^5.0.4",

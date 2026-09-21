@@ -90,5 +90,22 @@ export default defineConfig({
       workers: 1,
       retries: 0,
     },
+
+    // ─── 使用文档配图（真实服务器逐页截图 → src/docs/help/images） ───
+    // 运行：npx playwright test --project=docs-shots
+    // 非 CI 默认项目（按需手动触发），故不纳入常规 e2e 回归
+    {
+      name: 'docs-shots',
+      dependencies: ['setup-real'],
+      testDir: './e2e/docs',
+      testMatch: /.*\.spec\.ts$/,
+      use: {
+        baseURL: realBaseURL,
+        storageState: './e2e/.auth/storage-state.json',
+      },
+      // 串行单 worker：同 visual-real，规避服务器负载抖动与登录态并发问题
+      workers: 1,
+      retries: 0,
+    },
   ],
 })

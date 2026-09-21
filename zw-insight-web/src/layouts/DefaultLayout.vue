@@ -168,7 +168,9 @@ import { useCommandPalette, type PaletteCommand } from '@/composables/useCommand
 import { Expand, Fold, Moon, Sunny, ArrowDown, Bell, Search, SwitchButton } from '@/components/icons/registry'
 import { resolveMenuIcon } from '@/components/icons/registry'
 import { IconHelp } from '@tabler/icons-vue'
-import { USER_GUIDE } from '@/constants/user-guide'
+// 使用文档元数据：仅类型导入（编译擦除）；正文 chunk 由命令面板首次挂载时动态 import，
+// 避免 19 章 Markdown 正文进入主包（CodeReview Major-2）
+import type { GuideChapterMeta } from '@/docs/help/registry'
 // 品牌 logo 双态：亮底黑字 / 暗底反白（随主题切换，与暗色插画同一模式）
 import logoDark from '@/assets/logo.png'
 import logoLight from '@/assets/logo-light.png'
@@ -437,7 +439,7 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     run: () => goHelp(),
   })
   // 使用文档：每章一条命令，keywords 供命令面板检索，run 跳转锚点章节
-  for (const ch of USER_GUIDE) {
+  for (const ch of guideChapters.value) {
     cmds.push({
       id: 'doc-' + ch.id,
       title: ch.title,
@@ -459,12 +461,18 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
   return cmds
 })
 
+/** 使用文档章节元数据：挂载后异步加载 registry chunk（不进主包）；加载完成前命令面板暂无文档命令 */
+const guideChapters = ref<GuideChapterMeta[]>([])
+
 // 命令面板开合接入快捷键事件总线（与 useShortcuts 共用 `/` 与 ⌘K）
 function onPaletteToggleEvent() { togglePalette() }
 function onPaletteEscapeEvent() { closePalette() }
 onMounted(() => {
   window.addEventListener(ZW_SHORTCUT_EVENTS.togglePalette, onPaletteToggleEvent)
   window.addEventListener(ZW_SHORTCUT_EVENTS.escape, onPaletteEscapeEvent)
+  import('@/docs/help/registry')
+    .then((m) => { guideChapters.value = m.USER_GUIDE })
+    .catch(() => { /* 文档 chunk 加载失败：仅影响命令面板「使用文档」组，不阻断布局 */ })
 })
 onBeforeUnmount(() => {
   window.removeEventListener(ZW_SHORTCUT_EVENTS.togglePalette, onPaletteToggleEvent)
