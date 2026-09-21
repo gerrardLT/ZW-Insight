@@ -237,7 +237,7 @@ SET @sql = (SELECT IF(
     (SELECT COUNT(*) FROM information_schema.COLUMNS
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'biz_payment_received' AND COLUMN_NAME = 'receive_category') > 0,
     'SELECT 1',
-    'ALTER TABLE `biz_payment_received` ADD COLUMN `receive_category` VARCHAR(50) NULL COMMENT ''收入分类科目编码（biz_fund_category.code）'' AFTER payment_amount'
+    'ALTER TABLE `biz_payment_received` ADD COLUMN `receive_category` VARCHAR(50) NULL COMMENT ''收入分类科目编码（biz_fund_category.code）'''
 ));
 PREPARE __stmt FROM @sql;
 EXECUTE __stmt;
