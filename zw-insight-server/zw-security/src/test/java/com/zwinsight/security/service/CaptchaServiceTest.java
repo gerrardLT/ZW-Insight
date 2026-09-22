@@ -539,4 +539,112 @@ class CaptchaServiceTest {
                     key.matches("login:ip:fail:\\d+\\.\\d+\\.\\d+\\.\\d+")));
         }
     }
+
+    // ============ 滑块验证码测试 (P2) ============
+
+    @Nested
+    @DisplayName("滑块验证码 - generateSlider / verifySlider / consumeSliderToken")
+    class SliderCaptchaTest {
+
+        @Test
+        @DisplayName("generateSlider - 下发 challengeId 与 gapPct（0.35~0.85）")
+        void generateSlider_returnsChallengeAndGap() {
+            // When
+            var result = captchaService.generateSlider();
+
+            // Then
+            assertThat((String) result.get("challengeId")).isNotNull().isNotBlank();
+            assertThat(result.get("gapPct")).isInstanceOf(Double.class);
+            double gap = (Double) result.get("gapPct");
+            assertThat(gap).isBetween(0.35, 0.85);
+            // Redis key 检查
+            verify(redisUtils).set(eq("slider:" + result.get("challengeId")), anyString(), eq(120L), eq(TimeUnit.SECONDS));
+        }
+
+        @Test
+        @DisplayName("verifySlider - 成功签发一次性 sliderToken")
+        void verifySlider_success_returnsToken() {
+            // Given
+            String cid = "ch-slider-success";
+            double pct = 0.60; // 容差 0.06，正确值 0.60±0.06
+            when(redisUtils.get("slider:" + cid)).thenReturn(String.valueOf(pct));
+
+            // When
+            String token = captchaService.verifySlider(cid, pct);
+
+            // Then
+            assertThat(token).isNotNull().isNotBlank();
+            // 校验后删除挑战 key
+            verify(redisUtils).delete("slider:" + cid);
+            // 创建 token key
+            verify(redisUtils).set(eq("slider:token:" + token), eq("1"), eq(120L), eq(TimeUnit.SECONDS));
+        }
+
+        @Test
+        @DisplayName("verifySlider - 超过容差范围返回 null")
+        void verifySlider_outOfTolerance_returnsNull() {
+            // Given
+            String cid = "ch-out-of-tolerance";
+            double pct = 0.95; // 超出 0.85+0.06 容差
+            when(redisUtils.get("slider:" + cid)).thenReturn(String.valueOf(0.85));
+
+            // When
+            String token = captchaService.verifySlider(cid, pct);
+
+            // Then
+            assertThat(token).isNull();
+        }
+
+        @Test
+        @DisplayName("verifySlider - challengeId 不存在返回 null")
+        void verifySlider_challengeNotFound_returnsNull() {
+            // Given
+            String cid = "ch-not-found";
+            when(redisUtils.get("slider:" + cid)).thenReturn(null);
+
+            // When
+            String token = captchaService.verifySlider(cid, 0.50);
+
+            // Then
+            assertThat(token).isNull();
+        }
+
+        @Test
+        @DisplayName("consumeSliderToken - 一次性令牌有效")
+        void consumeSliderToken_validConsumesToken() {
+            // Given
+            String token = "tok-consume-test";
+            when(redisUtils.hasKey("slider:token:" + token)).thenReturn(true);
+
+            // When
+            boolean ok = captchaService.consumeSliderToken(token);
+
+            // Then
+            assertThat(ok).isTrue();
+            // 消耗后立即删除
+            verify(redisUtils).delete("slider:token:" + token);
+        }
+
+        @Test
+        @DisplayName("consumeSliderToken - 已消耗或过期返回 false")
+        void consumeSliderToken_invalid_returnsFalse() {
+            // Given
+            String token = "tok-invalid";
+            when(redisUtils.hasKey("slider:token:" + token)).thenReturn(false);
+
+            // When
+            boolean ok = captchaService.consumeSliderToken(token);
+
+            // Then
+            assertThat(ok).isFalse();
+        }
+
+        @Test
+        @DisplayName("consumeSliderToken - null/空字符串返回 false")
+        void consumeSliderToken_nullOrBlank_returnsFalse() {
+            // When & Then
+            assertThat(captchaService.consumeSliderToken(null)).isFalse();
+            assertThat(captchaService.consumeSliderToken("")).isFalse();
+        }
+    }
 }
