@@ -185,6 +185,40 @@ class SysUserServiceTest {
     }
 
     @Test
+    @DisplayName("新增用户：手机号已被占用抛异常（短信登录 phone 全局唯一）")
+    void testSave_duplicatePhone() {
+        SysUser user = new SysUser();
+        user.setUsername("newuser");
+        user.setPassword("123456");
+        user.setPhone("13800000000");
+        // 第一次 selectCount=用户名存在0，第二次 selectCount=手机号被占1
+        when(userMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L, 1L);
+
+        assertThatThrownBy(() -> userService.save(user))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("该手机号已被其他账号使用");
+        verify(userMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("更新用户：手机号被其他账号占用抛异常（排除自身后仍命中）")
+    void testUpdate_duplicatePhone() {
+        SysUser existing = new SysUser();
+        existing.setId(2L);
+        when(userMapper.selectById(2L)).thenReturn(existing);
+        when(userMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+
+        SysUser update = new SysUser();
+        update.setId(2L);
+        update.setPhone("13800000000");
+
+        assertThatThrownBy(() -> userService.update(update))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("该手机号已被其他账号使用");
+        verify(userMapper, never()).updateById(any());
+    }
+
+    @Test
     @DisplayName("更新用户：不存在抛异常")
     void testUpdate_notFound() {
         when(userMapper.selectById(999L)).thenReturn(null);

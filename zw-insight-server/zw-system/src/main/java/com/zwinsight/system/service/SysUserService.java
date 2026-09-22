@@ -118,6 +118,8 @@ public class SysUserService {
         if (count > 0) {
             throw new BusinessException("用户名已存在");
         }
+        // 手机号全局唯一（短信登录按 phone 定位用户；DB 层 uk_phone 兜底，此处给出友好报错）
+        checkPhoneUnique(user.getPhone(), null);
         // 密码加密
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userMapper.insert(user);
@@ -132,9 +134,31 @@ public class SysUserService {
         if (existing == null) {
             throw new BusinessException("用户不存在");
         }
+        // 手机号全局唯一（排除自身；updateById 对 null 字段不更新，故仅在携带手机号时校验）
+        if (user.getPhone() != null && !user.getPhone().isBlank()) {
+            checkPhoneUnique(user.getPhone(), user.getId());
+        }
         // 不允许通过此接口修改密码
         user.setPassword(null);
         userMapper.updateById(user);
+    }
+
+    /**
+     * 手机号唯一性校验（全局口径，与 AuthService.loginBySms 按 phone 单条定位一致）。
+     *
+     * @param phone     待校验手机号（null/空串跳过——NULL 不参与唯一约束）
+     * @param excludeId 更新场景排除自身的用户 ID，新增场景传 null
+     */
+    private void checkPhoneUnique(String phone, Long excludeId) {
+        if (phone == null || phone.isBlank()) {
+            return;
+        }
+        long occupied = userMapper.selectCount(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getPhone, phone)
+                .ne(excludeId != null, SysUser::getId, excludeId));
+        if (occupied > 0) {
+            throw new BusinessException("该手机号已被其他账号使用");
+        }
     }
 
     /**
