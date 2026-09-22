@@ -7,9 +7,10 @@ import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { createPinia, setActivePinia } from 'pinia'
 
-const { mockPost, mockImageCaptcha, mockSendSms, mockPush } = vi.hoisted(() => ({
+const { mockPost, mockGetSlider, mockVerifySlider, mockSendSms, mockPush } = vi.hoisted(() => ({
   mockPost: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
-  mockImageCaptcha: vi.fn(async (): Promise<any> => ({ code: 200, data: { uuid: 'cap-1', image: 'data:image/png;base64,x' } })),
+  mockGetSlider: vi.fn(async (): Promise<any> => ({ code: 200, data: { challengeId: 'ch-1', gapPct: 0.6 } })),
+  mockVerifySlider: vi.fn(async (): Promise<any> => ({ code: 200, data: { sliderToken: 'tok-1' } })),
   mockSendSms: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockPush: vi.fn(),
 }))
@@ -18,7 +19,8 @@ vi.mock('@/utils/request', () => ({
   default: { post: mockPost, get: vi.fn() },
 }))
 vi.mock('@/api/captcha', () => ({
-  getImageCaptcha: mockImageCaptcha,
+  getSliderCaptcha: mockGetSlider,
+  verifySliderCaptcha: mockVerifySlider,
   sendSmsCaptcha: mockSendSms,
 }))
 vi.mock('vue-router', async (importOriginal) => {
@@ -54,9 +56,9 @@ async function mountPage() {
 }
 
 describe('login/index.vue 登录页', () => {
-  it('挂载加载图形验证码', async () => {
+  it('挂载加载滑块验证挑战', async () => {
     await mountPage()
-    expect(mockImageCaptcha).toHaveBeenCalled()
+    expect(mockGetSlider).toHaveBeenCalled()
   })
 
   it('登录成功：token/userInfo 写入 store 并跳转首页', async () => {
@@ -72,28 +74,28 @@ describe('login/index.vue 登录页', () => {
     st.formRef = { validate: vi.fn(async () => true) }
     st.loginForm.username = 'admin'
     st.loginForm.password = '123456'
-    st.loginForm.captchaCode = 'abcd'
+    st.sliderToken = 'tok-1'
     await st.handleLogin()
     await flushPromises()
     expect(mockPost).toHaveBeenCalledWith('/v1/auth/login', expect.objectContaining({
-      username: 'admin', password: '123456', captchaCode: 'abcd',
+      username: 'admin', password: '123456', sliderToken: 'tok-1',
     }))
     const store = useUserStore()
     expect(store.token).toBe('tk-xyz')
     expect(mockPush).toHaveBeenCalledWith('/')
   })
 
-  it('登录失败：自动刷新验证码且不跳转', async () => {
+  it('登录失败：滑块令牌重置且不跳转', async () => {
     mockPost.mockRejectedValue(new Error('用户名或密码错误'))
     const w = await mountPage()
     const st = w.vm.$.setupState
     st.formRef = { validate: vi.fn(async () => true) }
     st.loginForm.username = 'admin'
     st.loginForm.password = 'wrong'
-    mockImageCaptcha.mockClear()
+    st.sliderToken = 'tok-1'
     await st.handleLogin()
     await flushPromises()
-    expect(mockImageCaptcha).toHaveBeenCalled() // 失败刷新验证码
+    expect(st.sliderToken).toBe('') // 失败后令牌重置
     expect(mockPush).not.toHaveBeenCalled()
   })
 

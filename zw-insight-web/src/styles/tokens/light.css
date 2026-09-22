@@ -13,6 +13,8 @@
   --zw-bg-mask: rgba(20, 22, 26, 0.45);
   --zw-bg-tag: #eef0ed;
   --zw-bg-surface-3: #e4e7e3;
+  /* 登录/表单区冷调画布（P0 现代化空间感） */
+  --zw-bg-canvas: #f8fafc;
 
   /* 文字（正文最小色阶 = secondary/ink-muted，tertiary 仅辅助） */
   --zw-text-primary: #14161a;

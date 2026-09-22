@@ -1,5 +1,6 @@
 package com.zwinsight.security.controller;
 
+import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.R;
 import com.zwinsight.security.dto.CaptchaVO;
 import com.zwinsight.security.dto.SmsCaptchaDTO;
@@ -7,6 +8,8 @@ import com.zwinsight.security.service.CaptchaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * 验证码控制器
@@ -41,5 +44,28 @@ public class CaptchaController {
     public R<Void> sendSmsCode(@Valid @RequestBody SmsCaptchaDTO dto) {
         captchaService.sendSmsCode(dto.getPhone());
         return R.ok();
+    }
+
+    /**
+     * 获取滑块验证挑战（challengeId + 缺口位置 gapPct）
+     */
+    @GetMapping("/slider")
+    public R<Map<String, Object>> getSlider() {
+        return R.ok(captchaService.generateSlider());
+    }
+
+    /**
+     * 校验滑块位置，成功返回一次性 sliderToken（登录时携带）
+     */
+    @PostMapping("/slider/verify")
+    public R<Map<String, String>> verifySlider(@RequestBody Map<String, Object> body) {
+        Object cid = body.get("challengeId");
+        Object pct = body.get("pct");
+        if (cid == null || pct == null) throw new BusinessException("参数缺失");
+        double p;
+        try { p = Double.parseDouble(String.valueOf(pct)); } catch (NumberFormatException e) { throw new BusinessException("参数非法"); }
+        String token = captchaService.verifySlider(String.valueOf(cid), p);
+        if (token == null) throw new BusinessException("验证失败，请重试");
+        return R.ok(Map.of("sliderToken", token));
     }
 }

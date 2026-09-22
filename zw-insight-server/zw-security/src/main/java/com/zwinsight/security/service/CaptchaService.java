@@ -13,6 +13,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -219,6 +221,53 @@ public class CaptchaService {
             return false;
         }
         return cached.toString().equals(inputCode);
+    }
+
+    // ============ 滑块验证码（现代化替代扭曲图形码） ============
+    private static final String SLIDER_PREFIX = "slider:";
+    private static final String SLIDER_TOKEN_PREFIX = "slider:token:";
+    private static final long SLIDER_TTL_SECONDS = 120L;
+    /** 滑块容差（占轨道宽度比例），兼顾易用与防暴力 */
+    private static final double SLIDER_TOLERANCE = 0.06;
+
+    /**
+     * 生成滑块挑战：下发 challengeId 与缺口位置 gapPct（0~1，前端据此渲染缺口）。
+     * 目标值存 Redis，校验时一次性消费。
+     */
+    public Map<String, Object> generateSlider() {
+        String id = UUID.randomUUID().toString().replace("-", "");
+        double gap = 0.35 + new Random().nextDouble() * 0.5; // 35%~85%
+        redisUtils.set(SLIDER_PREFIX + id, String.valueOf(gap), SLIDER_TTL_SECONDS, TimeUnit.SECONDS);
+        Map<String, Object> m = new HashMap<>();
+        m.put("challengeId", id);
+        m.put("gapPct", gap);
+        return m;
+    }
+
+    /**
+     * 校验滑块：|pct - gap| <= 容差 则签发一次性 sliderToken，否则返回 null。
+     */
+    public String verifySlider(String challengeId, double pct) {
+        if (challengeId == null || challengeId.isBlank()) return null;
+        Object cached = redisUtils.get(SLIDER_PREFIX + challengeId);
+        redisUtils.delete(SLIDER_PREFIX + challengeId);
+        if (cached == null) return null;
+        double gap;
+        try { gap = Double.parseDouble(cached.toString()); } catch (NumberFormatException e) { return null; }
+        if (Math.abs(pct - gap) > SLIDER_TOLERANCE) return null;
+        String token = UUID.randomUUID().toString().replace("-", "");
+        redisUtils.set(SLIDER_TOKEN_PREFIX + token, "1", SLIDER_TTL_SECONDS, TimeUnit.SECONDS);
+        return token;
+    }
+
+    /**
+     * 登录时消费一次性 sliderToken（存在即有效，用后即删）。
+     */
+    public boolean consumeSliderToken(String token) {
+        if (token == null || token.isBlank()) return false;
+        boolean ok = Boolean.TRUE.equals(redisUtils.hasKey(SLIDER_TOKEN_PREFIX + token));
+        if (ok) redisUtils.delete(SLIDER_TOKEN_PREFIX + token);
+        return ok;
     }
 
     // ============ IP 锁定机制 ============

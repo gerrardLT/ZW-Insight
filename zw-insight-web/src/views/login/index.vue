@@ -2,7 +2,7 @@
   <div class="login-page">
     <!-- 左侧品牌视觉区（石墨黑 Hero：工程铭牌语言） -->
     <div class="login-brand">
-      <div class="brand-hazard hazard-divider"></div>
+      <LoginBlueprintBg class="brand-bg" />
       <div class="brand-content">
         <div class="brand-logo">
           <!-- 品牌区恒为石墨黑底，用反白版 logo 保对比度 -->
@@ -13,9 +13,9 @@
         <h1 class="brand-slogan">工程项目全生命周期<br />智能管理平台</h1>
         <p class="brand-desc">涵盖项目、合同、预算、财务、材料、机械、劳务、分包全流程协同，让工程管理更高效。</p>
         <div class="brand-features">
-          <div class="feature-item"><BlueprintCornerIcon class="feature-icon" />全链路业务数字化</div>
-          <div class="feature-item"><TowerCraneIcon class="feature-icon" />多组织多项目协同</div>
-          <div class="feature-item"><HelmetIcon class="feature-icon" />实时数据看板决策</div>
+          <div class="feature-item"><span class="feature-icon-base"><BlueprintCornerIcon class="feature-icon" /></span>全链路业务数字化</div>
+          <div class="feature-item"><span class="feature-icon-base"><TowerCraneIcon class="feature-icon" /></span>多组织多项目协同</div>
+          <div class="feature-item"><span class="feature-icon-base"><HelmetIcon class="feature-icon" /></span>实时数据看板决策</div>
         </div>
       </div>
     </div>
@@ -56,11 +56,8 @@
           <el-form-item prop="password">
             <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
           </el-form-item>
-          <el-form-item prop="captchaCode">
-            <div class="captcha-row">
-              <el-input v-model="loginForm.captchaCode" placeholder="验证码" prefix-icon="Key" @keyup.enter="handleLogin" />
-              <img :src="captchaImage" @click="refreshCaptcha" class="captcha-img" alt="验证码" />
-            </div>
+          <el-form-item prop="slider">
+            <SliderCaptcha ref="sliderRef" @success="onSliderSuccess" @fail="onSliderFail" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="loading" class="login-btn" @click="handleLogin">
@@ -101,13 +98,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { getImageCaptcha, sendSmsCaptcha } from '@/api/captcha'
+import { sendSmsCaptcha } from '@/api/captcha'
+import SliderCaptcha from './SliderCaptcha.vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { BlueprintCornerIcon, TowerCraneIcon, HelmetIcon } from '@/components/icons/zw'
+import LoginBlueprintBg from './LoginBlueprintBg.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 const router = useRouter()
@@ -115,22 +114,20 @@ const userStore = useUserStore()
 const formRef = ref<FormInstance>()
 const smsFormRef = ref<FormInstance>()
 const loading = ref(false)
-const captchaImage = ref('')
-const captchaUuid = ref('')
+const sliderToken = ref('')
+const sliderRef = ref<InstanceType<typeof SliderCaptcha> | null>(null)
 
 // 登录方式：密码 / 短信验证码
 const loginMode = ref<'password' | 'sms'>('password')
 
 const loginForm = ref({
   username: '',
-  password: '',
-  captchaCode: ''
+  password: ''
 })
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
 // 短信验证码登录表单（手机号校验正则与移动端同源）
@@ -166,25 +163,25 @@ function startSmsCooldown() {
   }, 1000)
 }
 
-async function refreshCaptcha() {
-  try {
-    const res: any = await getImageCaptcha()
-    captchaUuid.value = res.data.uuid
-    captchaImage.value = res.data.imageBase64
-  } catch {
-    // 验证码获取失败时不阻断页面
-  }
+function onSliderSuccess(token: string) {
+  sliderToken.value = token
+}
+function onSliderFail() {
+  sliderToken.value = ''
 }
 
 async function handleLogin() {
   await formRef.value?.validate()
+  if (!sliderToken.value) {
+    ElMessage.warning('请先拖动滑块完成验证')
+    return
+  }
   loading.value = true
   try {
     const res: any = await request.post('/v1/auth/login', {
       username: loginForm.value.username,
       password: loginForm.value.password,
-      captchaCode: loginForm.value.captchaCode,
-      captchaUuid: captchaUuid.value
+      sliderToken: sliderToken.value
     })
     userStore.setToken(res.data.token)
     userStore.setUserInfo({
@@ -198,16 +195,13 @@ async function handleLogin() {
     userStore.setPermissions(res.data.permissions || [])
     router.push('/')
   } catch {
-    // 登录失败时自动刷新验证码
-    refreshCaptcha()
+    // 登录失败：滑块令牌已消费，重置滑块
+    sliderToken.value = ''
+    sliderRef.value?.reset()
   } finally {
     loading.value = false
   }
 }
-
-onMounted(() => {
-  refreshCaptcha()
-})
 
 onUnmounted(() => {
   if (smsTimer) clearInterval(smsTimer)
@@ -281,38 +275,29 @@ function goForgotPassword() {
   background-color: var(--zw-bg-card);
 }
 
-/* ===== 左侧品牌区（石墨黑全幅画布，无渐变无光斑） =====
- * 2026-09-16 品牌背景插画：AI 生成夜景鸟瞰工地线稿（等轴测塔吊群+铜架轮廓，
- * 橙色点锥：塔吊警示灯/安全帽）；横向渐变遮罩：左深（0.78）保文案可读，
- * 右浅（0.35）让线稿隐约浮现——低对比背景不抢视觉主体 */
+/* ===== 左侧品牌区（石墨黑画布 + 蓝图线稿动态背景） =====
+ * 2026-09-22：左侧背景改由 <LoginBlueprintBg> 组件渲染（纯 CSS/SVG 动画：
+ * 等高线描边生长 + 网格视差 + 塔吊线框呼吸 + 安全橙体积光扫描 + 尘埃 + 胶片颗粒）。
+ * 底色用石墨径向渐变（token 混合，无裸 hex）；静态底图 login-bg-blueprint.png 保留备用。 */
 .login-brand {
   position: relative;
   width: 55%;
   flex-shrink: 0;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--zw-bg-sidebar) 78%, transparent) 0%, color-mix(in srgb, var(--zw-bg-sidebar) 52%, transparent) 55%, color-mix(in srgb, var(--zw-bg-sidebar) 35%, transparent) 100%),
-    url('@/assets/login-bg-site.png') center / cover no-repeat,
-    var(--zw-bg-sidebar);
+  background: radial-gradient(120% 90% at 28% 12%, color-mix(in srgb, var(--zw-steel-line-strong) 55%, var(--zw-bg-sidebar)) 0%, var(--zw-bg-sidebar) 55%);
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
+/* 动态背景层置于内容之下 */
+.brand-bg { position: absolute; inset: 0; z-index: 0; }
 
 /* 窄屏降级：插画隐藏退回纯色（避免小屏拥挤） */
 @media (max-width: 992px) {
   .login-brand {
     background: var(--zw-bg-sidebar);
   }
-}
-
-/* 顶部 4px 警示条纹：品牌识别线 */
-.brand-hazard {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
 }
 
 .brand-content {
@@ -339,7 +324,7 @@ function goForgotPassword() {
 .brand-logo-text {
   font-size: var(--zw-font-size-2xl);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 /* 大写英文副线（Display 层签名） */
@@ -347,7 +332,7 @@ function goForgotPassword() {
   font-family: var(--zw-font-display);
   font-size: var(--zw-font-size-base);
   font-weight: 700;
-  letter-spacing: 3px;
+  letter-spacing: 4px;
   text-transform: uppercase;
   color: var(--zw-brand);
   margin-bottom: var(--zw-space-md);
@@ -357,9 +342,9 @@ function goForgotPassword() {
 .brand-slogan {
   font-size: var(--zw-font-size-4xl);
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
   margin-bottom: var(--zw-space-lg);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.015em;
 }
 
 .brand-desc {
@@ -383,9 +368,20 @@ function goForgotPassword() {
   color: var(--zw-steel-text);
 }
 
-/* 自绘工程图标（方帽直角，品牌橙） */
+/* P3：图标底座（圆角方块承托，增强精致感） */
+.feature-icon-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--zw-radius-md);
+  background: color-mix(in srgb, var(--zw-brand) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--zw-brand) 26%, transparent);
+  flex-shrink: 0;
+}
 .feature-icon {
-  font-size: var(--zw-font-size-xl);
+  font-size: var(--zw-font-size-lg);
   color: var(--zw-brand);
   flex-shrink: 0;
 }
@@ -399,11 +395,18 @@ function goForgotPassword() {
   justify-content: center;
   padding: var(--zw-space-xl);
   position: relative;
+  background: var(--zw-bg-canvas);
 }
 
+/* P0：表单白底浮层卡片，奠定现代空间感 */
 .login-box {
   width: 100%;
-  max-width: 360px;
+  max-width: 380px;
+  background: var(--zw-bg-card);
+  border: 1px solid var(--zw-border-light);
+  border-radius: var(--zw-radius-xl);
+  padding: var(--zw-space-xl) var(--zw-space-lg);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--zw-bg-sidebar) 10%, transparent);
 }
 
 .login-header {
@@ -502,22 +505,36 @@ function goForgotPassword() {
   width: 100%;
 }
 
-.captcha-img {
-  width: 120px;
-  height: 40px;
-  cursor: pointer;
-  border: 1px solid var(--zw-border);
+/* P1：输入框 Focus 外发光 + 细微渐变 */
+.login-box :deep(.el-input__wrapper) {
   border-radius: var(--zw-radius-sm);
-  flex-shrink: 0;
+  box-shadow: 0 0 0 1px var(--zw-border);
+  transition: box-shadow var(--zw-duration-fast), background var(--zw-duration-fast);
+}
+.login-box :deep(.el-input__wrapper):focus-within,
+.login-box :deep(.el-input__wrapper.is-focus) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--zw-brand) 4%, transparent), transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--zw-brand) 16%, transparent), 0 0 16px color-mix(in srgb, var(--zw-brand) 22%, transparent);
 }
 
+/* P1：登录按钮细微渐变 + 外发光 */
 .login-btn {
   width: 100%;
-  height: 44px;
+  height: 46px;
   font-size: var(--zw-font-size-md);
   font-weight: 600;
   letter-spacing: 4px;
+  border: none;
+  background: linear-gradient(135deg, var(--zw-brand) 0%, var(--zw-brand-hover) 100%);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--zw-brand) 34%, transparent);
+  transition: box-shadow var(--zw-duration-fast), transform var(--zw-duration-fast), filter var(--zw-duration-fast);
 }
+.login-btn:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--zw-brand) 46%, transparent);
+  transform: translateY(-1px);
+}
+.login-btn:active { transform: translateY(0); }
 
 .login-extra {
   width: 100%;

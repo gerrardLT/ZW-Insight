@@ -13,6 +13,8 @@
   --zw-bg-mask: rgba(0, 0, 0, 0.55);
   --zw-bg-tag: #1c1f24;
   --zw-bg-surface-3: #23262c;
+  /* 登录/表单区冷调画布（深色主题对应值） */
+  --zw-bg-canvas: #0e1116;
 
   /* 文字 */
   --zw-text-primary: #f2f3f1;

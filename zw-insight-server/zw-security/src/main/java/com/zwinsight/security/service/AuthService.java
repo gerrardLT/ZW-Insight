@@ -154,12 +154,16 @@ public class AuthService {
         // 1. 检查 IP 锁定
         captchaService.checkIpLock(clientIp);
 
-        // 2. 图形验证码校验
+        // 2. 验证码校验（滑块令牌优先，其次图形验证码）
         if (captchaService.isCaptchaEnabled()) {
             boolean captchaValid = false;
 
-            // 优先使用新版验证码（captchaUuid + captchaCode）
-            if (request.getCaptchaUuid() != null && !request.getCaptchaUuid().isBlank()) {
+            // 滑块验证一次性令牌（现代化滑块验证码）
+            if (request.getSliderToken() != null && !request.getSliderToken().isBlank()) {
+                captchaValid = captchaService.consumeSliderToken(request.getSliderToken());
+            }
+            // 其次新版图形验证码（captchaUuid + captchaCode）
+            else if (request.getCaptchaUuid() != null && !request.getCaptchaUuid().isBlank()) {
                 captchaValid = captchaService.verifyImageCaptcha(
                         request.getCaptchaUuid(), request.getCaptchaCode());
             }

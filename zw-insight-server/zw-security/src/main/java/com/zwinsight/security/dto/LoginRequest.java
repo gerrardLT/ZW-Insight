@@ -55,6 +55,11 @@ public class LoginRequest {
      */
     private String captchaKey;
 
+    /**
+     * 滑块验证一次性令牌（现代化滑块验证码，优先于图形验证码）
+     */
+    private String sliderToken;
+
     // ============ 短信验证码登录字段 ============
 
     /**
