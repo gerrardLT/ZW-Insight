@@ -140,6 +140,9 @@ zw-insight-web/_ciart2/
 # 鏈満璇婃柇鑴氭湰 / 涓存椂宸ュ叿锛堜笉鍏ュ簱锛?
 # ========================
 keys/_*
+# 全局：`_` 前缀临时文件（验证截图/诊断输出，AGENTS.md 命名约定）不得入库
+**/_*.png
+**/_*.jpg
 # 生图 API 凭证与脚本（含密钥，2026-09-16）
 keys/image-api.md
 keys/gen-image.mjs

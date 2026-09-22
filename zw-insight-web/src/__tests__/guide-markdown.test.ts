@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { USER_GUIDE, resolveImage, getChapter } from '@/docs/help/registry'
-import { renderMarkdown } from '@/docs/help/markdown'
+import { renderMarkdown, renderChapter } from '@/docs/help/markdown'
 
 describe('docs/help/registry', () => {
   it('解析出全部 19 个章节，id 唯一', () => {
@@ -78,10 +78,17 @@ describe('docs/help/markdown 渲染器', () => {
     expect(html).toContain('&lt;script&gt;')
   })
 
-  it('表格 / 标题 / 列表等 CommonMark 元素正常渲染', () => {
+  it('表格 / 标题 / 列表等 CommonMark 元素正常渲染，h2 自动带锚点', () => {
     const html = renderMarkdown('## 标题\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n- 甲\n- 乙')
-    expect(html).toContain('<h2>')
+    expect(html).toContain('<h2 id="sec-1">')
     expect(html).toContain('<table>')
     expect(html).toContain('<ul>')
+  })
+
+  it('renderChapter 提取本章小节目录，id 与 h2 锚点同序对齐', () => {
+    const { html, sections } = renderChapter('## 甲\n\n正文\n\n## 乙\n\n更多\n\n## 丙 `code`')
+    expect(sections.map((s) => s.id)).toEqual(['sec-1', 'sec-2', 'sec-3'])
+    expect(sections.map((s) => s.title)).toEqual(['甲', '乙', '丙 code'])
+    for (const s of sections) expect(html).toContain('<h2 id="' + s.id + '">')
   })
 })
