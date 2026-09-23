@@ -44,6 +44,8 @@ class DashboardServiceTest {
     @Mock private BizBudgetDetailMapper budgetDetailMapper;
     @Mock private BizPaymentApplyMapper paymentApplyMapper;
     @Mock private BizPaymentReceivedMapper paymentReceivedMapper;
+    // V2026_64：利润趋势支出侧对 PARTIAL_PAID 只计已勾稽额，需读流水勾稽聚合
+    @Mock private com.zwinsight.finance.mapper.BizBankFlowMapper bankFlowMapper;
     @Mock private BizPurchaseContractMapper purchaseContractMapper;
     @Mock private BizProjectMaterialStockMapper projectMaterialStockMapper;
     @Mock private BizTenderRegisterMapper tenderRegisterMapper;
@@ -229,5 +231,57 @@ class DashboardServiceTest {
             assertThat((BigDecimal) m.get("expense")).isEqualByComparingTo(BigDecimal.ZERO);
         });
         assertThat((BigDecimal) result.get("totalProfit")).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    @DisplayName("利润趋势：PARTIAL_PAID 单据只计已勾稽额（不按全额虚增支出，V2026_64）")
+    @SuppressWarnings("unchecked")
+    void testGetProfitTrend_partialPaidCountsMatchedOnly() {
+        when(paymentReceivedMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        BizPaymentApply partial = new BizPaymentApply();
+        partial.setId(9L);
+        partial.setStatus("APPROVED");
+        partial.setPayStatus(BizPaymentApply.PAY_STATUS_PARTIAL);
+        partial.setPaymentAmount(new BigDecimal("1000000"));
+        partial.setPayDate(LocalDate.of(2026, 5, 20));
+        // 已勾稽 60 万（部分支付）：现金实际流出只有这 60 万
+        when(bankFlowMapper.matchedAmountByPaymentApply())
+                .thenReturn(java.util.Map.of(9L, new BigDecimal("600000")));
+        when(paymentApplyMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(partial));
+
+        Map<String, Object> result = dashboardService.getProfitTrend(2026);
+        List<Map<String, Object>> months = (List<Map<String, Object>>) result.get("months");
+
+        // 5 月支出 = 已勾稽 60 万（而非申请全额 100 万），否则虚增支出、虚减利润
+        assertThat((BigDecimal) months.get(4).get("expense")).isEqualByComparingTo("600000");
+        assertThat((BigDecimal) result.get("totalExpense")).isEqualByComparingTo("600000");
+    }
+
+    @Test
+    @DisplayName("利润趋势：PAID/UNPAID 单据仍按全额计（仅 PARTIAL_PAID 扣减已勾稽）")
+    @SuppressWarnings("unchecked")
+    void testGetProfitTrend_paidAndUnpaidCountFullAmount() {
+        when(paymentReceivedMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        BizPaymentApply paid = new BizPaymentApply();
+        paid.setId(11L);
+        paid.setStatus("APPROVED");
+        paid.setPayStatus(BizPaymentApply.PAY_STATUS_PAID);
+        paid.setPaymentAmount(new BigDecimal("300000"));
+        paid.setPayDate(LocalDate.of(2026, 6, 10));
+        BizPaymentApply unpaid = new BizPaymentApply();
+        unpaid.setId(12L);
+        unpaid.setStatus("APPROVED");
+        unpaid.setPayStatus(BizPaymentApply.PAY_STATUS_UNPAID);
+        unpaid.setPaymentAmount(new BigDecimal("200000"));
+        unpaid.setPaymentDate(LocalDate.of(2026, 6, 20));
+        when(bankFlowMapper.matchedAmountByPaymentApply())
+                .thenReturn(java.util.Map.of(11L, new BigDecimal("300000")));
+        when(paymentApplyMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(paid, unpaid));
+
+        Map<String, Object> result = dashboardService.getProfitTrend(2026);
+        List<Map<String, Object>> months = (List<Map<String, Object>>) result.get("months");
+
+        // 6 月支出 = 30万（已付全额）+ 20万（审批口径未付）= 50万
+        assertThat((BigDecimal) months.get(5).get("expense")).isEqualByComparingTo("500000");
     }
 }

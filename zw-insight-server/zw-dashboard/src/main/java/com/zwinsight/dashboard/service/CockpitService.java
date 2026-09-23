@@ -7,6 +7,8 @@ import com.zwinsight.dashboard.mapper.BizRiskRegisterMapper;
 import com.zwinsight.finance.domain.BizFundRollingForecast;
 import com.zwinsight.finance.mapper.BizBankFlowMapper;
 import com.zwinsight.finance.mapper.BizFundRollingForecastMapper;
+import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
+import com.zwinsight.finance.mapper.ContractPayableMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -42,15 +44,24 @@ public class CockpitService {
     private final BizRiskRegisterMapper riskMapper;
     private final BizFundRollingForecastMapper rollingForecastMapper;
     private final BizBankFlowMapper bankFlowMapper;
+    private final BizPaymentApplyMapper paymentApplyMapper;
+    private final ContractPayableMapper contractPayableMapper;
     private final ProfitSnapshotService profitSnapshotService;
     private final DashboardService dashboardService;
 
     private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
 
     /**
-     * 经营总览（驾驶舱首页 8 卡，§4）：
+     * 经营总览（驾驶舱首页指标卡，§4 / 资金流转 §12）：
      * 经营结果 4 卡（合同收入/预计总成本/预计利润/利润率）
-     * + 资金状态 4 卡（累计回款/累计支付/应收未收/90天资金缺口）+ 账户资金。
+     * + 资金状态（累计回款/累计支付/应收未收/<b>应付未付</b>/90天资金缺口）+ 账户资金。
+     * <p><b>应付未付 vs 已批未付（两者并列，语义不同不可互替）</b>：
+     * 前者 = 已确认付款义务（Σ合同 cumulative_settlement − cumulative_paid），
+     * 后者 = 已进入付款流程但银行未划款（status=APPROVED 且 pay_status≠PAID 的剩余未付额）。
+     * 只用后者会漏掉“已结算但尚未提交付款申请”的义务（UI §9.1 要求的是前者）。</p>
+     * <p><b>90 天资金缺口（资金流转 §10.4）</b>：未来预计支付 − 可用资金，<b>正数=缺钱</b>。
+     * 可用资金 = 账户余额快照合计 + 窗口内预计回款。旧实现只累加正净缺口、
+     * 从不减可用资金，会把“账面能覆盖的缺口”误报为重大风险（2026-09-24 审计修正）。</p>
      */
     public Map<String, Object> getOverview() {
         // 实时逐项目计算预计利润（不依赖快照是否已生成，口径同源）
@@ -77,6 +88,9 @@ public class CockpitService {
             realizedProfit = realizedProfit.add(nvl(p.getTotalIncome())).subtract(nvl(p.getTotalExpense()));
         }
 
+        // 90 天资金缺口（含构成明细，不隐藏口径）
+        Map<String, BigDecimal> gap = computeFundGap90Days();
+
         Map<String, Object> result = new HashMap<>();
         result.put("contractIncome", contractIncome);
         result.put("forecastTotalCost", forecastCost);
@@ -87,9 +101,17 @@ public class CockpitService {
         result.put("cumulativeReceived", received);
         result.put("cumulativePaid", paid);
         result.put("receivableOutstanding", receivable);
-        result.put("gap90Days", computeGap90Days());
-        BigDecimal accountBalance = bankFlowMapper.sumLatestBalances();
-        result.put("accountBalance", accountBalance != null ? accountBalance : BigDecimal.ZERO);
+        // 资金缺口（§10.4 口径）及其构成（账户余额/预计回款/可用资金/预计支付）
+        result.put("gap90Days", gap.get("gap"));
+        result.put("gap90DaysDetail", gap);
+        result.put("accountBalance", gap.get("accountBalance"));
+        result.put("availableFund", gap.get("availableFund"));
+        // 应付未付（已确认义务）与已批未付（已进入付款流程）并列，语义不同不可互替
+        result.put("payableOutstanding", nvl(contractPayableMapper.sumPayableOutstanding(null)));
+        result.put("approvedUnpaid", nvl(paymentApplyMapper.sumApprovedUnpaidRemaining(null)));
+        // 资金流转 §12：本月现金需求 / 三个月资金需求
+        result.put("currentMonthCashNeed", gap.get("currentMonthPayments"));
+        result.put("threeMonthCashNeed", gap.get("expectedPayments"));
         return result;
     }
 
@@ -173,24 +195,62 @@ public class CockpitService {
     // ==================== 私有方法 ====================
 
     /**
-     * 90 天资金缺口：公司级滚动预测快照中，预测月份落在 [当前月, 当前月+2] 的
-     * 正净缺口合计（无快照时为 0，快照由 FundForecastTask 每日刷新）。
+     * 90 天（当月 + 后两个月）资金缺口与可用资金明细。
+     * <p>口径（资金流转 §10.4）：{@code 缺口 = 未来预计支付 − 可用资金}，正数表示缺钱；
+     * {@code 可用资金 = 账户余额快照合计 + 窗口内预计回款}（回款是窗口内真实可用来源，
+     * 只算账面余额会高估缺口）。</p>
+     * <p>数据源为公司级滚动预测快照（projectId IS NULL，FundForecastTask 每日 01:15 刷新）。
+     * 若快照缺失（任务未执行或首次部署）则各项为 0，<b>不伪造估算值</b>；
+     * 同时如实返回 accountBalance，供前端提示“账户余额未登记”（biz_bank_balance 为空时）。</p>
+     *
+     * @return {expectedPayments, expectedReceipts, accountBalance, availableFund, gap, currentMonthPayments}
      */
-    private BigDecimal computeGap90Days() {
+    private Map<String, BigDecimal> computeFundGap90Days() {
         YearMonth current = YearMonth.now();
         YearMonth end = current.plusMonths(2);
+        String currentMonthKey = current.format(MONTH_FMT);
         List<BizFundRollingForecast> snapshots = rollingForecastMapper.selectList(
                 new LambdaQueryWrapper<BizFundRollingForecast>()
                         .isNull(BizFundRollingForecast::getProjectId)
-                        .ge(BizFundRollingForecast::getForecastMonth, current.format(MONTH_FMT))
+                        .ge(BizFundRollingForecast::getForecastMonth, currentMonthKey)
                         .le(BizFundRollingForecast::getForecastMonth, end.format(MONTH_FMT)));
-        BigDecimal gap = BigDecimal.ZERO;
+        BigDecimal expectedPayments = BigDecimal.ZERO;
+        BigDecimal expectedReceipts = BigDecimal.ZERO;
+        BigDecimal currentMonthPayments = BigDecimal.ZERO;
         for (BizFundRollingForecast f : snapshots) {
-            if (f.getNetGap() != null && f.getNetGap().signum() > 0) {
-                gap = gap.add(f.getNetGap());
+            expectedPayments = expectedPayments.add(nvl(f.getExpectedPayments()));
+            expectedReceipts = expectedReceipts.add(nvl(f.getExpectedReceipts()));
+            if (currentMonthKey.equals(f.getForecastMonth())) {
+                currentMonthPayments = nvl(f.getExpectedPayments());
             }
         }
-        return gap;
+        BigDecimal accountBalance = nvl(bankFlowMapper.sumLatestBalances());
+        BigDecimal availableFund = accountBalance.add(expectedReceipts);
+        BigDecimal gap = expectedPayments.subtract(availableFund);
+
+        Map<String, BigDecimal> detail = new HashMap<>();
+        detail.put("expectedPayments", expectedPayments);
+        detail.put("expectedReceipts", expectedReceipts);
+        detail.put("accountBalance", accountBalance);
+        detail.put("availableFund", availableFund);
+        detail.put("gap", gap);
+        detail.put("currentMonthPayments", currentMonthPayments);
+        return detail;
+    }
+
+    /**
+     * 90 天资金缺口（对外只读口径，供风险规则与单测复用）。
+     * <p>正数 = 缺钱（预计支付 &gt; 可用资金）；负数 = 有富余。</p>
+     */
+    public BigDecimal getGap90Days() {
+        return computeFundGap90Days().get("gap");
+    }
+
+    /**
+     * 当前可用资金（账户余额快照 + 未来 90 天预计回款）——供资金风险规则判定“是否可覆盖”。
+     */
+    public BigDecimal getAvailableFund() {
+        return computeFundGap90Days().get("availableFund");
     }
 
     private static int healthRank(String health) {

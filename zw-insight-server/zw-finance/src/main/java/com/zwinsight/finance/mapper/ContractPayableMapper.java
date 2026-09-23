@@ -59,4 +59,67 @@ public interface ContractPayableMapper {
     @Update("UPDATE biz_subcontract SET cumulative_paid = COALESCE(cumulative_paid, 0) + #{amount} "
             + "WHERE id = #{id} AND deleted = 0")
     int addSubcontractPaid(@Param("id") Long id, @Param("amount") BigDecimal amount);
+
+    // ==================== 应付未付聚合（驾驶舱 §9.1/§12，资金流转 §3.1）====================
+
+    /**
+     * 应付未付合计 = Σ（已确认应付 − 已付）= Σ(cumulative_settlement − cumulative_paid)。
+     * <p><b>为何是这 5 张表（实证结论，勿随意增减）</b>：它们正是
+     * {@code PaymentApplyService.resolvePayable/addCumulativePaid} 的付款回写路由目标。
+     * 2026-09-24 线上对账验证：16 笔付款申请按 contract_category 分布
+     * （PURCHASE 2450万 / LABOR 1600万 / SUBCONTRACT 1100万 / MACHINE 600万 / OTHER_EXPENSE 100万）
+     * 与五表 cumulative_paid 逐一对应。</p>
+     * <p><b>为何排除 biz_expense_contract</b>：该表虽名为“通用支出合同”且含
+     * cumulative_settlement/cumulative_paid 列，但付款链路**不回写它**（仅用于合同到期扫描
+     * ContractExpiryService 与档案展示 ArchiveService）。历史教训：2026-08-13 批次二 L4
+     * stage_9K 500 事故正是因为退款扣减查了该表而付款回写在 biz_purchase_contract，
+     * 扣减长期命中 0 行静默失效。若将其纳入聚合会虚增应付（实测多算 200 万）。</p>
+     *
+     * @param projectId 项目ID（空=公司整体）
+     * @return 应付未付合计（无合同时 0）
+     */
+    @Select("<script>"
+            + "SELECT IFNULL(SUM(t.payable), 0) FROM ("
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0) AS payable"
+            + "    FROM biz_purchase_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL"
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0)"
+            + "    FROM biz_labor_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL"
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0)"
+            + "    FROM biz_machine_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL"
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0)"
+            + "    FROM biz_subcontract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL"
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0)"
+            + "    FROM biz_other_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + ") t"
+            + "</script>")
+    BigDecimal sumPayableOutstanding(@Param("projectId") Long projectId);
+
+    /**
+     * 已确认应付合计（Σ cumulative_settlement）——支付率分母（资金流转 §10.2）。
+     * 表范围与口径同 {@link #sumPayableOutstanding(Long)}。
+     */
+    @Select("<script>"
+            + "SELECT IFNULL(SUM(t.settled), 0) FROM ("
+            + "  SELECT COALESCE(cumulative_settlement,0) AS settled FROM biz_purchase_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL SELECT COALESCE(cumulative_settlement,0) FROM biz_labor_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL SELECT COALESCE(cumulative_settlement,0) FROM biz_machine_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL SELECT COALESCE(cumulative_settlement,0) FROM biz_subcontract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL SELECT COALESCE(cumulative_settlement,0) FROM biz_other_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + ") t"
+            + "</script>")
+    BigDecimal sumConfirmedPayable(@Param("projectId") Long projectId);
 }

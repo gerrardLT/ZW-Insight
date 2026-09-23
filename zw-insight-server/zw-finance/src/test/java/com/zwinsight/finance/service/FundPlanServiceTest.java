@@ -47,6 +47,9 @@ class FundPlanServiceTest {
     @Mock private BizPaymentApplyMapper paymentApplyMapper;
     @Mock private BizPaymentReceivedMapper paymentReceivedMapper;
     @Mock private com.zwinsight.finance.mapper.BizReceivableMapper receivableMapper;
+    // V2026_64：预测按「剩余未付额」计入需读已勾稽合计（mock 的 default 方法返回 null，
+    // 由 Service 层 null 保护归零处理，等价于“无任何勾稽”的真实场景）
+    @Mock private com.zwinsight.finance.mapper.BizBankFlowMapper bankFlowMapper;
     @Mock private FundCategoryService fundCategoryService;
 
     @InjectMocks

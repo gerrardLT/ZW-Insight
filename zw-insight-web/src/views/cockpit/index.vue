@@ -1,6 +1,9 @@
 <template>
   <div class="cockpit-container">
-    <!-- 顶部：全局筛选 + 数据时间（§14 / §18 顶部 5%） -->
+    <!-- 顶部筛选 + 数据时间（§18 顶部 5%）
+         ⚠ 与 §14 的差距如实标注：§14 要求 公司/区域/项目/项目经理/年度/月份/刷新 7 项
+         + 6 个快捷筛选（高风险/亏损/资金紧张/利润下降/本月异常），当前仅实现年度 + 刷新（2/7），
+         区域无数据源（拟用所属公司替代，见审计口径决策 8）。不得声称已对齐 §14。 -->
     <div class="cockpit-header">
       <div class="header-title">
         <h2>工程经营驾驶舱</h2>
@@ -40,7 +43,7 @@
             <div class="card-header">
               <span>预计利润趋势</span>
               <el-tag v-if="!hasSnapshot" type="info" size="small">
-                暂无快照（每日 02:30 生成，可先触发风险扫描）
+                暂无快照（每日 03:30 生成，可先触发风险扫描）
               </el-tag>
             </div>
           </template>
@@ -234,8 +237,11 @@ const metricCards = computed(() => {
     },
     {
       label: '90天资金缺口', value: formatWan(o.gap90Days),
-      sub: gapPositive ? '🔴 需安排资金' : '🟢 无缺口',
-      tooltip: '未来 3 个月滚动预测的正净缺口合计（盈余月不抵消缺口月）',
+      sub: gapPositive
+        ? `🔴 需安排资金（可用 ${formatWan(o.availableFund)}）`
+        : `🟢 可用资金 ${formatWan(o.availableFund)} 可覆盖`,
+      tooltip: '资金流转 §10.4：缺口 = 未来 3 个月预计支付 − 可用资金（正数=缺钱）。'
+        + '可用资金 = 账户余额快照 + 窗口内预计回款；旧口径不减可用资金，会高估资金压力',
       valueClass: gapPositive ? 'value-danger' : 'value-success',
       subClass: gapPositive ? 'sub-danger' : 'sub-success', alert: gapPositive
     }

@@ -893,8 +893,8 @@ class PaymentApplyServiceTest {
         }
 
         @Test
-        @DisplayName("边界路径 — 勾稽不足额保持/回到 UNPAID，清空 pay_date（取消勾稽场景）")
-        void refresh_insufficient_staysUnpaid() {
+        @DisplayName("三档路径 — 勾稽不足额置 PARTIAL_PAID，pay_date 记首笔（现金确已流出，V2026_64）")
+        void refresh_partialMatch_marksPartialPaid() {
             BizPaymentApply apply = approved(22L, "100000");
             apply.setPayStatus(BizPaymentApply.PAY_STATUS_PAID);
             apply.setPayDate(LocalDate.of(2026, 9, 1));
@@ -904,9 +904,41 @@ class PaymentApplyServiceTest {
 
             paymentApplyService.refreshPayStatus(22L);
 
+            // 旧行为为 UNPAID（无法表达“已付 4 万”），现按资金流转 §8「07 部分付款」置 PARTIAL_PAID
+            assertThat(apply.getPayStatus()).isEqualTo(BizPaymentApply.PAY_STATUS_PARTIAL);
+            assertThat(apply.getPayDate()).isEqualTo(LocalDate.of(2026, 9, 1));
+            assertThat(apply.getPayAccountId()).isEqualTo(1L);
+            // 口径不变量：部分支付同样不回写项目支出/合同累计已付
+            verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("边界路径 — 全部取消勾稽后回到 UNPAID 并清空 pay_date/账户")
+        void refresh_noMatchAfterUnmatch_backToUnpaid() {
+            BizPaymentApply apply = approved(25L, "100000");
+            apply.setPayStatus(BizPaymentApply.PAY_STATUS_PARTIAL);
+            apply.setPayDate(LocalDate.of(2026, 9, 1));
+            apply.setPayAccountId(1L);
+            when(paymentApplyMapper.selectById(25L)).thenReturn(apply);
+            when(bankFlowMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+            paymentApplyService.refreshPayStatus(25L);
+
             assertThat(apply.getPayStatus()).isEqualTo(BizPaymentApply.PAY_STATUS_UNPAID);
             assertThat(apply.getPayDate()).isNull();
             assertThat(apply.getPayAccountId()).isNull();
+        }
+
+        @Test
+        @DisplayName("边界路径 — 付款金额为 0 的异常单据不得因「0 ≥ 0」被误判为已付")
+        void refresh_zeroAmount_notMarkedPaid() {
+            BizPaymentApply apply = approved(26L, "0");
+            when(paymentApplyMapper.selectById(26L)).thenReturn(apply);
+            when(bankFlowMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+            paymentApplyService.refreshPayStatus(26L);
+
+            assertThat(apply.getPayStatus()).isEqualTo(BizPaymentApply.PAY_STATUS_UNPAID);
         }
 
         @Test

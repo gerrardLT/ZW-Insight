@@ -23,10 +23,36 @@ export interface CockpitOverview {
   cumulativePaid: number
   /** 应收未收 */
   receivableOutstanding: number
-  /** 90 天资金缺口（仅正缺口合计） */
+  /**
+   * 90 天资金缺口（资金流转 §10.4：未来预计支付 − 可用资金）
+   * **正数 = 缺钱**，负数 = 有富余。旧口径为“正净缺口合计”且不减可用资金，
+   * 会把账面能覆盖的缺口误报为重大风险（2026-09-24 修正）。
+   */
   gap90Days: number
-  /** 账户资金（各账户最新余额快照合计） */
+  /** 缺口构成明细（不隐藏口径，供 tooltip 如实展示） */
+  gap90DaysDetail?: {
+    expectedPayments: number
+    expectedReceipts: number
+    accountBalance: number
+    availableFund: number
+    gap: number
+    currentMonthPayments: number
+  }
+  /** 可用资金 = 账户余额快照合计 + 窗口内预计回款 */
+  availableFund?: number
+  /** 账户资金（各账户最新余额快照合计；biz_bank_balance 未登记时为 0） */
   accountBalance: number
+  /**
+   * 应付未付（已确认付款义务）= Σ合同 cumulative_settlement − cumulative_paid
+   * UI §9.1 四卡要求的是本字段；与 approvedUnpaid 语义不同，**不可互替**。
+   */
+  payableOutstanding?: number
+  /** 已批未付（已进入付款流程但银行未划款，按剩余未付额） */
+  approvedUnpaid?: number
+  /** 本月现金需求（资金流转 §12）= 当月预计支付（含逾期） */
+  currentMonthCashNeed?: number
+  /** 三个月资金需求（资金流转 §12）= 未来 3 个月预计支付合计 */
+  threeMonthCashNeed?: number
 }
 
 /** 预计利润月度快照 */

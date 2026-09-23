@@ -49,6 +49,7 @@ public class DashboardService {
     private final BizBudgetDetailMapper budgetDetailMapper;
     private final BizPaymentApplyMapper paymentApplyMapper;
     private final BizPaymentReceivedMapper paymentReceivedMapper;
+    private final com.zwinsight.finance.mapper.BizBankFlowMapper bankFlowMapper;
     private final BizPurchaseContractMapper purchaseContractMapper;
     private final BizProjectMaterialStockMapper projectMaterialStockMapper;
     private final BizTenderRegisterMapper tenderRegisterMapper;
@@ -696,6 +697,11 @@ public class DashboardService {
         }
 
         // 支出：付款申请按实际支付日分月（pay_date 空则回退 payment_date，与 total_expense 审批口径同源单据）
+        // 部分支付（PARTIAL_PAID，V2026_64）只计已勾稽额：现金确已流出的是勾稽部分，
+        // 按全额计会把未付部分也算作支出（虚增支出、虚减利润）
+        Map<Long, BigDecimal> matchedRaw = bankFlowMapper.matchedAmountByPaymentApply();
+        // null 保护：无勾稽记录时为空 Map，防御异常与测试桩返回 null
+        Map<Long, BigDecimal> matchedByApply = matchedRaw != null ? matchedRaw : java.util.Collections.emptyMap();
         List<BizPaymentApply> allPayments = paymentApplyMapper.selectList(
                 new LambdaQueryWrapper<BizPaymentApply>()
                         .eq(BizPaymentApply::getStatus, "APPROVED"));
@@ -704,6 +710,9 @@ public class DashboardService {
             LocalDate expenseDate = payment.getPayDate() != null ? payment.getPayDate() : payment.getPaymentDate();
             if (expenseDate != null && expenseDate.getYear() == targetYear) {
                 BigDecimal amount = payment.getPaymentAmount() != null ? payment.getPaymentAmount() : BigDecimal.ZERO;
+                if (BizPaymentApply.PAY_STATUS_PARTIAL.equals(payment.getPayStatus())) {
+                    amount = matchedByApply.getOrDefault(payment.getId(), BigDecimal.ZERO);
+                }
                 monthlyExpense.merge(expenseDate.getMonthValue(), amount, BigDecimal::add);
             }
         }

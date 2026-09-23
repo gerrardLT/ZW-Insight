@@ -45,6 +45,16 @@ public class ZwDataPermissionHandler implements MultiDataPermissionHandler {
 
     @Override
     public Expression getSqlSegment(Table table, Expression where, String mappedStatementId) {
+        // -1. 系统任务（定时任务/异步作业）无用户身份：数据权限按「租户内全量」放行。
+        //     租户隔离仍由 TenantLineInnerInterceptor 依据 SecurityContextHolder.tenantId 保证，
+        //     不会跨租户泄露；标记由 TenantTaskRunner 统一设置并在 finally 中 clear。
+        //     2026-09-24 线上实证修复：此前定时任务因 userId==null 在此抛 DataPermissionException，
+        //     FundForecastTask 01:15「成功 0/2」、RiskScanTask 02:00 有 3/7 条规则失败，
+        //     而任务层仍报「成功 2/2」（异常被内层 catch 吞掉，属静默失效）。
+        if (SecurityContextHolder.isSystemTask()) {
+            return null;
+        }
+
         // 0. 系统管理模块的 Mapper 不做数据权限过滤（Requirement 5.3）
         if (mappedStatementId != null && mappedStatementId.startsWith(SYSTEM_MAPPER_PREFIX)) {
             log.debug("数据权限：跳过系统管理模块 Mapper - {}", mappedStatementId);

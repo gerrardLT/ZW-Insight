@@ -33,12 +33,10 @@ public class ProfitSnapshotTask {
     public void execute() {
         log.info("预计利润快照任务开始执行");
         tenantTaskRunner.runForActiveTenants("预计利润快照", tenantId -> {
-            try {
-                int count = profitSnapshotService.generateSnapshot();
-                log.info("租户 {} 预计利润快照完成, 项目数={}", tenantId, count);
-            } catch (Exception e) {
-                log.error("租户预计利润快照失败, tenantId={}", tenantId, e);
-            }
+            // 不吞异常：快照生成失败必须传播到 TenantTaskRunner 计入失败，
+            // 否则任务层报「成功 N/N」而快照实际未生成（2026-09-24 同类缺陷修正）
+            int count = profitSnapshotService.generateSnapshot();
+            log.info("租户 {} 预计利润快照完成, 项目数={}", tenantId, count);
         });
     }
 }

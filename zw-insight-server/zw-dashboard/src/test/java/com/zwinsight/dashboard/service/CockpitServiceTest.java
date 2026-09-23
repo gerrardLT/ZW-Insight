@@ -40,6 +40,9 @@ class CockpitServiceTest {
     @Mock private BizRiskRegisterMapper riskMapper;
     @Mock private BizFundRollingForecastMapper rollingForecastMapper;
     @Mock private BizBankFlowMapper bankFlowMapper;
+    // V2026_64：应付未付（合同聚合）与已批未付（付款申请剩余未付额）并列返回
+    @Mock private com.zwinsight.finance.mapper.BizPaymentApplyMapper paymentApplyMapper;
+    @Mock private com.zwinsight.finance.mapper.ContractPayableMapper contractPayableMapper;
     @Mock private ProfitSnapshotService profitSnapshotService;
     @Mock private DashboardService dashboardService;
 
@@ -120,26 +123,81 @@ class CockpitServiceTest {
             assertThat((BigDecimal) result.get("accountBalance")).isEqualByComparingTo("18000000");
         }
 
+        private BizFundRollingForecast forecast(String month, String payments, String receipts) {
+            BizFundRollingForecast f = new BizFundRollingForecast();
+            f.setForecastMonth(month);
+            f.setExpectedPayments(new BigDecimal(payments));
+            f.setExpectedReceipts(new BigDecimal(receipts));
+            f.setNetGap(new BigDecimal(payments).subtract(new BigDecimal(receipts)));
+            return f;
+        }
+
         @Test
-        @DisplayName("90天缺口 — 仅累加正净缺口，盈余月份不抵消缺口（不美化资金压力）")
-        void overview_gap90Days_onlyPositiveSummed() {
+        @DisplayName("90天缺口（§10.4）— 缺口 = 未来预计支付 − 可用资金（账户余额 + 窗口内预计回款）")
+        void overview_gap90Days_paymentsMinusAvailableFund() {
             when(profitSnapshotService.listProjectForecasts()).thenReturn(List.of());
             when(projectMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
-            BizFundRollingForecast gapMonth = new BizFundRollingForecast();
-            gapMonth.setNetGap(new BigDecimal("4000000"));
-            BizFundRollingForecast surplusMonth = new BizFundRollingForecast();
-            surplusMonth.setNetGap(new BigDecimal("-6000000"));
-            BizFundRollingForecast nullGap = new BizFundRollingForecast();
-            nullGap.setNetGap(null);
+            // 三个月快照：预计支付 300+200+100=600万，预计回款 50万（仅当月）
+            String m0 = java.time.YearMonth.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+            String m1 = java.time.YearMonth.now().plusMonths(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+            String m2 = java.time.YearMonth.now().plusMonths(2).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+            when(rollingForecastMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
+                    forecast(m0, "3000000", "500000"),
+                    forecast(m1, "2000000", "0"),
+                    forecast(m2, "1000000", "0")));
+            when(bankFlowMapper.sumLatestBalances()).thenReturn(new BigDecimal("1000000"));
+            when(contractPayableMapper.sumPayableOutstanding(null)).thenReturn(new BigDecimal("3200000"));
+            when(paymentApplyMapper.sumApprovedUnpaidRemaining(null)).thenReturn(new BigDecimal("58500000"));
+
+            Map<String, Object> result = cockpitService.getOverview();
+
+            // 可用资金 = 账户余额 100万 + 预计回款 50万 = 150万
+            assertThat((BigDecimal) result.get("availableFund")).isEqualByComparingTo("1500000");
+            // 缺口 = 600万 − 150万 = 450万（正数=缺钱）。旧实现为“正净缺口合计”=600−50=550万，不减可用资金
+            assertThat((BigDecimal) result.get("gap90Days")).isEqualByComparingTo("4500000");
+            // 应付未付（已确认义务）与已批未付（已进入付款流程）并列，语义不同不可互替
+            assertThat((BigDecimal) result.get("payableOutstanding")).isEqualByComparingTo("3200000");
+            assertThat((BigDecimal) result.get("approvedUnpaid")).isEqualByComparingTo("58500000");
+            // 资金流转 §12：本月现金需求 = 当月预计支付；三个月资金需求 = 窗口合计
+            assertThat((BigDecimal) result.get("currentMonthCashNeed")).isEqualByComparingTo("3000000");
+            assertThat((BigDecimal) result.get("threeMonthCashNeed")).isEqualByComparingTo("6000000");
+            // 构成明细必须可追溯（不隐藏口径）
+            @SuppressWarnings("unchecked")
+            Map<String, BigDecimal> detail = (Map<String, BigDecimal>) result.get("gap90DaysDetail");
+            assertThat(detail).containsKeys("expectedPayments", "expectedReceipts", "accountBalance", "availableFund", "gap");
+        }
+
+        @Test
+        @DisplayName("边界路径 — 可用资金充足时缺口为负（有富余），不得报错也不得归零美化")
+        void overview_gap90Days_surplusIsNegative() {
+            when(profitSnapshotService.listProjectForecasts()).thenReturn(List.of());
+            when(projectMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+            String m0 = java.time.YearMonth.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
             when(rollingForecastMapper.selectList(any(LambdaQueryWrapper.class)))
-                    .thenReturn(List.of(gapMonth, surplusMonth, nullGap));
+                    .thenReturn(List.of(forecast(m0, "1000000", "200000")));
+            when(bankFlowMapper.sumLatestBalances()).thenReturn(new BigDecimal("5000000"));
+
+            Map<String, Object> result = cockpitService.getOverview();
+
+            // 可用资金 520万 > 预计支付 100万 → 缺口 −420万（富余）
+            assertThat((BigDecimal) result.get("gap90Days")).isEqualByComparingTo("-4200000");
+        }
+
+        @Test
+        @DisplayName("边界路径 — 账户余额未登记时如实计 0（不伪造），无快照时各项为 0")
+        void overview_noBalanceNoSnapshot_zerosNotFabricated() {
+            when(profitSnapshotService.listProjectForecasts()).thenReturn(List.of());
+            when(projectMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+            when(rollingForecastMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
             when(bankFlowMapper.sumLatestBalances()).thenReturn(null);
 
             Map<String, Object> result = cockpitService.getOverview();
 
-            assertThat((BigDecimal) result.get("gap90Days")).isEqualByComparingTo("4000000");
-            // 余额无登记时按 0 呈现（不返回 null 导致前端 NaN）
+            // 余额无登记时按 0 呈现（不返回 null 导致前端 NaN），且缺口为 0 而非估算值
             assertThat((BigDecimal) result.get("accountBalance")).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat((BigDecimal) result.get("availableFund")).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat((BigDecimal) result.get("gap90Days")).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat((BigDecimal) result.get("threeMonthCashNeed")).isEqualByComparingTo(BigDecimal.ZERO);
         }
     }
 

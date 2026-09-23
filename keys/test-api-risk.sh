@@ -118,6 +118,25 @@ assert_jq '.code==200 and (.data | has("contractIncome") and has("forecastTotalC
 assert_jq '.code==200 and (.data | has("forecastProfit")) and (.data | has("realizedProfit"))' \
   "经营总览-预计利润与已实现利润双口径并存"
 
+# ---------- P0 口径修正回归（2026-09-24 intended-vs-implemented 审计）----------
+# 应付未付（§9.1/§3.1）与可用资金、现金需求（§12）必须齐备
+assert_jq '.code==200 and (.data | has("payableOutstanding") and has("approvedUnpaid")
+  and has("availableFund") and has("gap90DaysDetail")
+  and has("currentMonthCashNeed") and has("threeMonthCashNeed"))' \
+  "经营总览-应付未付/可用资金/现金需求字段齐备"
+# 资金流转 §10.4 公式：缺口 = 未来预计支付 − 可用资金（旧实现不减可用资金）
+assert_jq '.code==200 and (.data.gap90DaysDetail | ((.expectedPayments - .availableFund - .gap) | fabs) < 0.01)' \
+  "经营总览-缺口=预计支付−可用资金（§10.4 公式）"
+# 可用资金构成：账户余额快照 + 窗口内预计回款
+assert_jq '.code==200 and (.data.gap90DaysDetail | ((.accountBalance + .expectedReceipts - .availableFund) | fabs) < 0.01)' \
+  "经营总览-可用资金=账户余额+预计回款"
+# 对外暴露的 gap90Days 必须与明细一致（防两处计算不同源）
+assert_jq '.code==200 and ((.data.gap90Days - .data.gap90DaysDetail.gap) | fabs) < 0.01' \
+  "经营总览-gap90Days 与构成明细一致"
+# 三个月资金需求 ≥ 本月现金需求（窗口包含关系）
+assert_jq '.code==200 and ((.data.threeMonthCashNeed - .data.currentMonthCashNeed) >= -0.01)' \
+  "经营总览-三个月资金需求≥本月现金需求"
+
 # ---------- 利润趋势 ----------
 call GET "/api/v1/dashboard/cockpit/profit-trend?months=6"
 assert_http 2 "利润趋势 HTTP"

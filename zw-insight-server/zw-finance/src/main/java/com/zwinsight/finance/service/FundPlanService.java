@@ -60,6 +60,7 @@ public class FundPlanService {
     private final BizPaymentApplyMapper paymentApplyMapper;
     private final BizPaymentReceivedMapper paymentReceivedMapper;
     private final BizReceivableMapper receivableMapper;
+    private final com.zwinsight.finance.mapper.BizBankFlowMapper bankFlowMapper;
     private final FundCategoryService fundCategoryService;
 
     private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
@@ -250,13 +251,20 @@ public class FundPlanService {
         Map<String, BigDecimal> paymentsByMonth = new HashMap<>();
         BigDecimal overdueUnpaid = BigDecimal.ZERO;
         LocalDate currentMonthStart = current.atDay(1);
+        // 已勾稽合计（按付款申请分组）：部分支付场景下只计「剩余未付额」，
+        // 否则 100 万申请已付 60 万仍按 100 万计入，重复夸大 40 万资金压力（V2026_64）
+        Map<Long, BigDecimal> matchedByApply = bankFlowMapper.matchedAmountByPaymentApply();
         for (BizPaymentApply a : pendingApplies) {
             LocalDate payDate = a.getPaymentDate();
             if (payDate == null) {
                 // 无计划付款日的已审批单据无法落月，不计入预测（源头由付款日必填校验保证）
                 continue;
             }
-            BigDecimal amount = a.getPaymentAmount() != null ? a.getPaymentAmount() : BigDecimal.ZERO;
+            BigDecimal amount = remainingUnpaid(a, matchedByApply);
+            if (amount.signum() <= 0) {
+                // 已足额勾稽（或异常负值）：无剩余付款压力，不计入预测
+                continue;
+            }
             if (payDate.isBefore(currentMonthStart)) {
                 // 已逾期未付：归集到当月（不向后续月份摊开，避免同一笔重复计入）
                 overdueUnpaid = overdueUnpaid.add(amount);
@@ -392,10 +400,15 @@ public class FundPlanService {
         Map<String, BigDecimal> byCategory = new HashMap<>();
         Map<String, Integer> countByCategory = new HashMap<>();
         Map<String, BigDecimal> overdueByCategory = new HashMap<>();
+        // 部分支付只计剩余未付额（与滚动预测同口径，V2026_64）
+        Map<Long, BigDecimal> matchedByApply = bankFlowMapper.matchedAmountByPaymentApply();
         for (BizPaymentApply a : applies) {
+            BigDecimal amount = remainingUnpaid(a, matchedByApply);
+            if (amount.signum() <= 0) {
+                continue;
+            }
             String code = a.getPaymentCategory() != null && !a.getPaymentCategory().isBlank()
                     ? a.getPaymentCategory() : "UNCATEGORIZED";
-            BigDecimal amount = a.getPaymentAmount() != null ? a.getPaymentAmount() : BigDecimal.ZERO;
             byCategory.merge(code, amount, BigDecimal::add);
             countByCategory.merge(code, 1, Integer::sum);
             LocalDate payDate = a.getPaymentDate();
@@ -434,6 +447,20 @@ public class FundPlanService {
     }
 
     // ==================== 私有方法 ====================
+
+    /**
+     * 单笔付款申请的「剩余未付额」= payment_amount − 已勾稽合计（下限 0）。
+     * <p>资金压力只算尚未流出的部分：部分支付（PARTIAL_PAID）时已付部分不得重复计入。
+     * 已勾稽合计取自 {@code BizBankFlowMapper.matchedAmountByPaymentApply()}（与
+     * BankFlowService.sumMatchedAmount 同口径，并供 DashboardService 复用）。</p>
+     */
+    private BigDecimal remainingUnpaid(BizPaymentApply apply, Map<Long, BigDecimal> matchedByApply) {
+        BigDecimal amount = apply.getPaymentAmount() != null ? apply.getPaymentAmount() : BigDecimal.ZERO;
+        // null 保护：无勾稽记录时 Mapper 返回空 Map，但防御异常/测试桩返回 null
+        BigDecimal matched = matchedByApply == null ? BigDecimal.ZERO
+                : matchedByApply.getOrDefault(apply.getId(), BigDecimal.ZERO);
+        return amount.subtract(matched).max(BigDecimal.ZERO);
+    }
 
     /**
      * 校验科目明细（V2026_58）：科目有效且方向匹配、金额为正、同方向科目不重复、

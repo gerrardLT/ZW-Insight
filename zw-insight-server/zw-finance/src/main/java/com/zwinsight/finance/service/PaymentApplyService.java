@@ -311,8 +311,10 @@ public class PaymentApplyService {
      * pay_status 为<b>现金口径</b>的增量语义，本方法不回写项目账/合同累计已付，
      * 不影响 R7 审计基线与 52_V2026_50 勾稽种子。</p>
      * <p>判定规则（以已勾稽银行流水为唯一事实源，重算幂等）：
-     * 勾稽金额合计（match_amount 空则取流水 amount）≥ 付款金额 → PAID（pay_date 取最早勾稽流水日）；
-     * 否则 UNPAID（部分支付事实由流水体现，不伪造全额支付）。
+     * 勾稽金额合计（match_amount 空则取流水 amount）≥ 付款金额 → PAID；
+     * 0 &lt; 勾稽合计 &lt; 付款金额 → <b>PARTIAL_PAID</b>（V2026_64，资金流转 §8「07 部分付款」）；
+     * 勾稽合计 = 0 → UNPAID。
+     * pay_date/pay_account_id 只要存在勾稽即记首笔（现金确已流出，非足额也如实记录）。
      * 非 APPROVED 单据不处理（未生效单据无支付语义）。</p>
      *
      * @param id 付款申请ID（不存在时抛 BusinessException，不静默跳过）
@@ -347,13 +349,20 @@ public class PaymentApplyService {
             }
         }
         BigDecimal paymentAmount = apply.getPaymentAmount() == null ? BigDecimal.ZERO : apply.getPaymentAmount();
-        boolean paid = matchedTotal.compareTo(paymentAmount) >= 0;
-        apply.setPayStatus(paid ? BizPaymentApply.PAY_STATUS_PAID : BizPaymentApply.PAY_STATUS_UNPAID);
-        apply.setPayDate(paid ? firstFlowDate : null);
-        apply.setPayAccountId(paid ? firstAccountId : null);
+        // 三档判定（V2026_64）：足额→PAID；部分→PARTIAL_PAID；无勾稽→UNPAID
+        // paymentAmount.signum() > 0 保护：金额为 0 的异常单据不得因“0 ≥ 0”被误判为已付
+        boolean paid = paymentAmount.signum() > 0 && matchedTotal.compareTo(paymentAmount) >= 0;
+        boolean partial = !paid && matchedTotal.signum() > 0;
+        String newStatus = paid ? BizPaymentApply.PAY_STATUS_PAID
+                : (partial ? BizPaymentApply.PAY_STATUS_PARTIAL : BizPaymentApply.PAY_STATUS_UNPAID);
+        boolean anyMatched = matchedTotal.signum() > 0;
+        apply.setPayStatus(newStatus);
+        // 只要有勾稽就记首笔支付日/账户（部分支付也确实现金流出）；全部取消勾稽时置空
+        apply.setPayDate(anyMatched ? firstFlowDate : null);
+        apply.setPayAccountId(anyMatched ? firstAccountId : null);
         paymentApplyMapper.updateById(apply);
-        log.info("付款申请支付态刷新, id={}, payStatus={}, 勾稽合计={}, 付款金额={}",
-                id, apply.getPayStatus(), matchedTotal, paymentAmount);
+        log.info("付款申请支付态刷新, id={}, payStatus={}, 勾稽合计={}, 付款金额={}, 剩余未付={}",
+                id, newStatus, matchedTotal, paymentAmount, paymentAmount.subtract(matchedTotal).max(BigDecimal.ZERO));
     }
 
     /**
@@ -373,6 +382,10 @@ public class PaymentApplyService {
         }
         if (BizPaymentApply.PAY_STATUS_PAID.equals(apply.getPayStatus())) {
             throw new BusinessException("该付款申请已标记支付，不可重复标记");
+        }
+        if (BizPaymentApply.PAY_STATUS_PARTIAL.equals(apply.getPayStatus())) {
+            // 部分支付必然源自银行勾稽：手工整笔标记会掩盖“还差多少未付”的事实
+            throw new BusinessException("该付款申请已部分支付（银行勾稽产生），请继续勾稽剩余金额或取消勾稽，不可手工整笔标记");
         }
         Long matchedFlows = bankFlowMapper.selectCount(new LambdaQueryWrapper<BizBankFlow>()
                 .eq(BizBankFlow::getReconciled, 1)
@@ -401,6 +414,9 @@ public class PaymentApplyService {
             throw new BusinessException("付款申请不存在");
         }
         if (!BizPaymentApply.PAY_STATUS_PAID.equals(apply.getPayStatus())) {
+            if (BizPaymentApply.PAY_STATUS_PARTIAL.equals(apply.getPayStatus())) {
+                throw new BusinessException("部分支付状态由银行流水勾稽产生，请通过取消勾稽调整，不可手工撤销");
+            }
             throw new BusinessException("该付款申请未标记支付，无需撤销");
         }
         Long matchedFlows = bankFlowMapper.selectCount(new LambdaQueryWrapper<BizBankFlow>()

@@ -1,6 +1,8 @@
 <template>
   <div class="fund-center-container">
-    <!-- 四卡（§9.1）：账户资金 / 应收未收 / 已批未付 / 90天缺口 -->
+    <!-- 四卡（§9.1）：账户资金 / 应收未收 / 应付未付 / 90天缺口
+         2026-09-24 修正：第三卡原误用「已批未付」顶替文档要求的「应付未付」（口径被换窄，
+         漏掉已结算但尚未提交付款申请的义务），现已改为应付未付，已批未付降为 sub 行 -->
     <div v-loading="cardLoading" class="fund-grid">
       <el-card v-for="card in fundCards" :key="card.label" shadow="never" class="fund-card"
         :class="{ 'fund-alert': card.alert }">
@@ -16,7 +18,9 @@
     </div>
 
     <el-row :gutter="16">
-      <!-- 未来现金流预测（§9.2，月度粒度为后端真实预测口径） -->
+      <!-- 未来现金流预测：本表为**月度粒度**滚动 6 个月。
+           ⚠ 与 §9.2 的差距如实标注：§9.2 要求的是「未来90天资金预测」的 30/60/90 天三档，
+           尚未实现（属已批准的 P1-A 期）；不得声称本表已对齐 §9.2。 -->
       <el-col :xs="24" :lg="14">
         <el-card shadow="never" class="panel-card">
           <template #header>
@@ -184,13 +188,16 @@ const aging = ref<ReceivableAging>({ totalOpen: 0, totalOverdue: 0, projects: []
  */
 const fundCards = computed(() => {
   const o = overview.value
-  const unpaidTotal = unpaidApproved.value
   const gap = Number(o?.gap90Days) || 0
+  const detail = o?.gap90DaysDetail
+  const balance = Number(o?.accountBalance) || 0
   return [
     {
-      label: '账户资金', value: formatWan(o?.accountBalance), sub: '各账户最新余额快照合计',
-      tooltip: '来源为网银对账单手工登记的余额快照（与资金日报头寸同源），非流水推导',
-      valueClass: '', alert: false
+      label: '账户资金', value: formatWan(o?.accountBalance),
+      // 余额未登记时必须如实告知：否则「可用资金」会静默地只剩预计回款，用户无从得知
+      sub: balance > 0 ? '各账户最新余额快照合计' : '⚠ 未登记余额快照（可用资金仅含预计回款）',
+      tooltip: '来源为网银对账单手工登记的余额快照（biz_bank_balance，与资金日报头寸同源），非流水推导；未登记时为 0，不伪造估算值',
+      valueClass: '', alert: balance <= 0
     },
     {
       label: '应收未收', value: formatWan(aging.value.totalOpen),
@@ -199,22 +206,30 @@ const fundCards = computed(() => {
       valueClass: '', alert: Number(aging.value.totalOverdue) > 0
     },
     {
-      label: '已批未付', value: formatWan(unpaidTotal), sub: '审批通过但银行未支付',
-      tooltip: '付款申请 status=APPROVED 且 pay_status≠PAID 合计；支付态由银行流水勾稽或手工标记产生',
-      valueClass: '', alert: false
+      // UI §9.1 第三卡为「应付未付」（已确认付款义务），不是「已批未付」；
+      // 后者降为 sub 行呈现（两者语义不同，已批未付仅是应付未付的子集）
+      label: '应付未付', value: formatWan(o?.payableOutstanding),
+      sub: `其中已进入付款流程 ${formatWan(o?.approvedUnpaid)}`,
+      tooltip: '应付未付 = Σ支出合同（累计结算 − 累计已付），含尚未提交付款申请的义务；'
+        + '「已进入付款流程」= 已审批未付申请的剩余未付额（部分支付只计未付部分）',
+      valueClass: '', alert: Number(o?.payableOutstanding) > 0
     },
     {
       label: '90天资金缺口', value: formatWan(gap),
-      sub: gap > 0 ? '🔴 需安排资金' : '🟢 无缺口',
-      tooltip: '未来 3 个月滚动预测的正净缺口合计（盈余月不抵消缺口月）',
+      sub: gap > 0
+        ? `🔴 需安排资金（可用资金 ${formatWan(o?.availableFund)}）`
+        : `🟢 可用资金 ${formatWan(o?.availableFund)} 可覆盖`,
+      tooltip: '资金流转 §10.4：缺口 = 未来 3 个月预计支付 − 可用资金（正数=缺钱）。'
+        + '可用资金 = 账户余额快照 + 窗口内预计回款。'
+        + (detail
+          ? `当前构成：预计支付 ${formatWan(detail.expectedPayments)}、预计回款 ${formatWan(detail.expectedReceipts)}、账户余额 ${formatWan(detail.accountBalance)}`
+          : ''),
       valueClass: gap > 0 ? 'value-danger' : 'value-success', alert: gap > 0
     }
   ]
 })
 
-/** 已批未付合计：用未来大额支出聚合（同源 APPROVED+UNPAID 口径）求和，窗口取 365 天覆盖存量 */
-const unpaidApproved = ref(0)
-
+/** 风险级别文案 */
 function riskLabel(level: string) {
   return { LOW: '低', MEDIUM: '中', HIGH: '高' }[level] || level
 }
@@ -272,17 +287,8 @@ async function loadTopExpenses() {
   }
 }
 
-/** 已批未付合计（365 天窗口，覆盖存量未付申请） */
-async function loadUnpaidTotal() {
-  try {
-    const res: any = await getFutureExpenseTop({ days: 365 })
-    const rows: FutureExpenseRow[] = res.data || []
-    unpaidApproved.value = rows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
-  } catch (e: any) {
-    unpaidApproved.value = 0
-    ElMessage.error('加载已批未付合计失败：' + (e?.message || '接口异常'))
-  }
-}
+// 已批未付不再用「365 天窗口求和」的前端 workaround（会漏掉更早的逾期单据），
+// 改由后端 overview.approvedUnpaid 权威给出（按剩余未付额聚合，无窗口限制）。
 
 async function loadAging() {
   agingLoading.value = true
@@ -301,7 +307,6 @@ onMounted(() => {
   loadCards()
   loadForecast()
   loadTopExpenses()
-  loadUnpaidTotal()
   loadAging()
 })
 </script>

@@ -50,9 +50,11 @@ public class FundForecastTask {
 
     void doExecute() {
         // 1. 公司整体快照（projectId=null）
+        boolean companyFailed = false;
         try {
             fundPlanService.generateRollingForecast(null, forecastMonths);
         } catch (Exception e) {
+            companyFailed = true;
             log.error("公司级滚动预测刷新失败", e);
         }
 
@@ -70,6 +72,15 @@ public class FundForecastTask {
                 log.error("项目滚动预测刷新失败, projectId={}", project.getId(), e);
             }
         }
-        log.info("滚动资金预测刷新完成, 项目成功{}个, 失败{}个", success, failed);
+
+        // 部分失败必须让 TenantTaskRunner 计入失败：否则任务层报「成功 N/N」掩盖实质空转
+        // （2026-09-24 线上实证：数据权限异常导致成功 0/2，但汇总日志只是 INFO）。
+        // 已成功写入的快照不受影响（每次 generateRollingForecast 独立事务）。
+        if (companyFailed || failed > 0) {
+            throw new IllegalStateException(String.format(
+                    "滚动资金预测部分失败：公司级=%s，项目失败 %d/%d",
+                    companyFailed ? "失败" : "成功", failed, success + failed));
+        }
+        log.info("滚动资金预测刷新完成, 项目成功{}个", success);
     }
 }

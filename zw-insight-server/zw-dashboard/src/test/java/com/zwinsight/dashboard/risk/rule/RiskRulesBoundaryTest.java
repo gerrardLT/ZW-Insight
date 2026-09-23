@@ -6,6 +6,7 @@ import com.zwinsight.budget.mapper.BizCostAccountMapper;
 import com.zwinsight.dashboard.domain.BizProfitSnapshot;
 import com.zwinsight.dashboard.domain.BizRiskRegister;
 import com.zwinsight.dashboard.risk.RiskFinding;
+import com.zwinsight.dashboard.service.CockpitService;
 import com.zwinsight.dashboard.service.ProfitSnapshotService;
 import com.zwinsight.finance.domain.BizFundRollingForecast;
 import com.zwinsight.finance.domain.BizReceivable;
@@ -52,6 +53,8 @@ class RiskRulesBoundaryTest {
     @Mock private BizRetentionMoneyMapper retentionMoneyMapper;
     @Mock private BizWageSpecialAccountMapper wageAccountMapper;
     @Mock private ProfitSnapshotService profitSnapshotService;
+    // V2026_64：资金缺口规则引入「可覆盖」判定，需可用资金基准
+    @Mock private CockpitService cockpitService;
 
     private BizProject project(Long id, String status) {
         BizProject p = new BizProject();
@@ -262,22 +265,44 @@ class RiskRulesBoundaryTest {
     }
 
         @Test
-        @DisplayName("HIGH 风险级 → RED；MEDIUM → YELLOW（映射不断级）")
-        void riskLevelMapping() {
+        @DisplayName("§15 判定式 — 可用资金 ≥ 缺口→YELLOW（可覆盖）；< 缺口→RED（重大）")
+        void coverableGap_yellow_uncoverableGap_red() {
             when(rollingForecastMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
                     forecast(1L, 10L, "HIGH", "400000"),
                     forecast(2L, 20L, "MEDIUM", "50000")));
             when(projectMapper.selectById(10L)).thenReturn(project(10L, "CONSTRUCTION"));
             when(projectMapper.selectById(20L)).thenReturn(project(20L, "CONSTRUCTION"));
+            // 可用资金 10 万：只能覆盖 5 万缺口，覆盖不了 40 万缺口
+            when(cockpitService.getAvailableFund()).thenReturn(new BigDecimal("100000"));
 
             List<RiskFinding> findings =
-                    new FundGapRiskRule(rollingForecastMapper, projectMapper).evaluate();
+                    new FundGapRiskRule(rollingForecastMapper, projectMapper, cockpitService).evaluate();
 
             assertThat(findings).hasSize(2);
+            // 判级不再看 forecast.riskLevel（原实现 HIGH→RED/MEDIUM→YELLOW），而看是否可覆盖
             assertThat(findings.get(0).severity()).isEqualTo(BizRiskRegister.SEVERITY_RED);
             assertThat(findings.get(0).impactAmount()).isEqualByComparingTo("400000");
+            assertThat(findings.get(0).title()).contains("账面无法覆盖");
             assertThat(findings.get(1).severity()).isEqualTo(BizRiskRegister.SEVERITY_YELLOW);
+            assertThat(findings.get(1).title()).contains("账面可覆盖");
+            // reasonDetail 必须记录可用资金与覆盖判定（可追溯）
+            assertThat(findings.get(0).reasonDetail()).contains("\"coverable\":false");
+            assertThat(findings.get(1).reasonDetail()).contains("\"coverable\":true");
             assertThat(findings.get(0).title()).contains("项目10");
+        }
+
+        @Test
+        @DisplayName("边界路径 — 可用资金恰好等于缺口时归为可覆盖（YELLOW，不升红）")
+        void availableFundExactlyEqualsGap_yellow() {
+            when(rollingForecastMapper.selectList(any(LambdaQueryWrapper.class)))
+                    .thenReturn(List.of(forecast(4L, null, "HIGH", "500000")));
+            when(cockpitService.getAvailableFund()).thenReturn(new BigDecimal("500000"));
+
+            List<RiskFinding> findings =
+                    new FundGapRiskRule(rollingForecastMapper, projectMapper, cockpitService).evaluate();
+
+            assertThat(findings).hasSize(1);
+            assertThat(findings.get(0).severity()).isEqualTo(BizRiskRegister.SEVERITY_YELLOW);
         }
 
         @Test
@@ -285,13 +310,27 @@ class RiskRulesBoundaryTest {
         void companyLevelGap() {
             when(rollingForecastMapper.selectList(any(LambdaQueryWrapper.class)))
                     .thenReturn(List.of(forecast(3L, null, "HIGH", "1200000")));
+            when(cockpitService.getAvailableFund()).thenReturn(BigDecimal.ZERO);
 
             List<RiskFinding> findings =
-                    new FundGapRiskRule(rollingForecastMapper, projectMapper).evaluate();
+                    new FundGapRiskRule(rollingForecastMapper, projectMapper, cockpitService).evaluate();
 
             assertThat(findings).hasSize(1);
             assertThat(findings.get(0).title()).contains("公司整体");
             assertThat(findings.get(0).riskCode()).isEqualTo("FUND_GAP:COMPANY:3");
+        }
+
+        @Test
+        @DisplayName("边界路径 — 无缺口快照时不查可用资金也不产生风险（避免无谓查库）")
+        void noGapSnapshots_noFindingsNoFundQuery() {
+            when(rollingForecastMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+            List<RiskFinding> findings =
+                    new FundGapRiskRule(rollingForecastMapper, projectMapper, cockpitService).evaluate();
+
+            assertThat(findings).isEmpty();
+            // 无缺口时不得查可用资金（避免无谓查库）
+            org.mockito.Mockito.verify(cockpitService, org.mockito.Mockito.never()).getAvailableFund();
         }
     }
 

@@ -18,8 +18,17 @@ import java.time.LocalDate;
 @TableName("biz_payment_apply")
 public class BizPaymentApply extends BaseEntity {
 
-    /** 支付状态：未支付（审批通过后的默认态） */
+    /** 支付状态：未支付（审批通过后的默认态，尚无任何银行勾稽） */
     public static final String PAY_STATUS_UNPAID = "UNPAID";
+    /**
+     * 支付状态：部分支付（V2026_64，资金流转 §8「07 部分付款」）。
+     * <p>判定：{@code 0 < 已勾稽合计 < payment_amount}。银行流水侧自 V2026_56 起
+     * 支持部分勾稽（match_amount），但原支付态只有两档，无法表达“已付一部分”：
+     * 100 万申请已实付 60 万时仍显示“未支付”，且预测按全额计入 → 重复夸大 40 万资金压力。</p>
+     * <p>消费方必须按「剩余未付额」（payment_amount − 已勾稽）计算资金压力，
+     * 参见 {@code BizPaymentApplyMapper.sumApprovedUnpaidRemaining}。</p>
+     */
+    public static final String PAY_STATUS_PARTIAL = "PARTIAL_PAID";
     /** 支付状态：已支付（银行流水勾稽足额后回写） */
     public static final String PAY_STATUS_PAID = "PAID";
 
