@@ -87,6 +87,8 @@ deploy/db-init/52_V2026_50__seed_reconcile_documents.sql         # 勾稽补齐�
   | 审批口径 | `biz_project.total_expense` | 付款申请审批通过即计支出 | 项目账、月度计划 `actualExpense` 回填、R7 审计基线、已实现利润 |
   | 现金口径 | `biz_payment_apply.pay_status`/`pay_date` | 银行流水勾稽足额或手工标记后为 PAID | 滚动预测付款侧、未来大额支出 TOP、利润趋势支出分月、驾驶舱「已批未付」卡 |
   - **不变量**：`pay_status` 任何变更**不回写** `total_expense` / 合同 `cumulative_paid`，否则破坏 R7 审计基线与 `52_V2026_50` 勾稽种子
+  - **滚动预测付款侧口径（V2026_63 补正，勿退回）**：预计付款 = 当月计划内未付（`payment_date` 落当月）**+ 已逾期未付全额计入当月**（`payment_date` 早于当月月初且 `pay_status≠PAID`），后者单列 `overdue_unpaid`（**构成项，不可与 `expected_payments` 相加**），且**不向后续月份摊开**（避免同一笔重复计入）。原口径只统计未来窗口，导致线上 16 条/5850 万逾期款从预测中完全消失、当月缺口误显示为盈余 LOW（真实应 HIGH）；`futureExpenseTop`（待支付大额支出 TOP）同源修复——去掉 `payment_date >= today` 下界并返回 `overdueAmount` 构成（原口径下该接口恒返回空数组）
+  - **定时任务通知必须走真实链路**：预警/催办类任务（`RetentionWarningTask`、`ReceivableOverdueTask`）经 `UrgeNotifyEvent` → zw-message 监听器落库站内信，收件人取项目 `PROJECT_MANAGER` 成员。**禁止 `log.info` 后 `return true`**（谎报成功会触发去重 key 写入，导致后续永不重试，属静默失效）；无收件人时返回 false 并记 FAILED 日志，不伪造发送成功
 - **应收台账口径（V2026_57）**：`biz_project.receivable_amount` = 该项目 `biz_receivable` 中 OPEN 记录的 `(receivable_amount − written_off_amount)` 合计，由 `ReceivableService` 同事务双写维护。该字段自 V2026_51 建列后至 V2026_57 前**生产代码从未回写**（看板恒读种子值），新增种子时须与台账一致
 - **资金相关表清单（新增种子需同步）**：`biz_receivable`（结算审批生成）、`biz_receivable_write_off`（回款核销明细，改额/删除按此精确反冲）、`biz_fund_plan_detail`（月度计划科目明细，合计须等于主表总额）、`biz_profit_snapshot` / `biz_risk_register`（由定时任务生成，**不手写种子**）、`biz_reimbursement_detail`（V2026_60 激活的原孤儿表）、`biz_entertainment_detail`
 - **完整口径与全景图**：见 `docs/资金流转全景图.md`（含资金流转 mermaid 全景、7 条风险规则判定式、定时任务错峰时序、设计取舍）

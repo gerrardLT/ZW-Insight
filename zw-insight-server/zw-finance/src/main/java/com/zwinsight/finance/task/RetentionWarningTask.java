@@ -1,6 +1,7 @@
 package com.zwinsight.finance.task;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
@@ -9,10 +10,13 @@ import com.zwinsight.finance.domain.BizRetentionWarningLog;
 import com.zwinsight.finance.mapper.BizRetentionMoneyMapper;
 import com.zwinsight.finance.mapper.BizRetentionWarningLogMapper;
 import com.zwinsight.project.domain.BizProject;
+import com.zwinsight.project.domain.BizProjectMember;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.mapper.BizProjectMemberMapper;
 import com.zwinsight.security.service.TenantTaskRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +32,12 @@ import java.util.concurrent.TimeUnit;
  * 每日 08:00 执行，扫描未退还的质保金记录，按到期日剩余天数进行分级预警。
  * 包含通知去重（非逾期同级别只发一次）和逾期催办频率控制（每3天一次）。
  * </p>
+ * <p><b>通知链路（2026-09-23 修复）</b>：原实现仅 log.info 并 return true，
+ * 属于「谎报发送成功」的静默失效（且会写去重 key 导致后续不再重试），
+ * 违反项目「真实接口真实流程、不得静默处理」铁律。现改为经
+ * {@link UrgeNotifyEvent} 走真实站内信链路（zw-message UrgeNotifyEventListener 消费落库），
+ * 收件人为项目 PROJECT_MANAGER 成员；无收件人时返回 false（记 FAILED 日志、
+ * 不写去重 key，下次仍会重试），不伪造发送成功。范式对齐 {@link ReceivableOverdueTask}。</p>
  */
 @Slf4j
 @Component
@@ -38,8 +48,10 @@ public class RetentionWarningTask {
     private final BizRetentionWarningLogMapper warningLogMapper;
     private final BizProjectMapper projectMapper;
     private final BizConstructionContractMapper contractMapper;
+    private final BizProjectMemberMapper projectMemberMapper;
     private final RedisUtils redisUtils;
     private final TenantTaskRunner tenantTaskRunner;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 去重 key 前缀：retention:warned:{retentionId}:{level} */
     private static final String WARNED_KEY_PREFIX = "retention:warned:";
@@ -220,15 +232,12 @@ public class RetentionWarningTask {
     }
 
     /**
-     * 发送预警通知
-     * <p>
-     * 当前使用 log.info 模拟通知发送，后续集成 MessageService 发送站内信。
-     * 通知内容包含：项目名称、合同名称、质保金金额、到期日期、预警级别。
-     * </p>
+     * 发送预警通知（真实站内信链路：UrgeNotifyEvent → zw-message 监听器落库）
+     * <p>通知内容包含：项目名称、合同名称、质保金金额、到期日期、预警级别。</p>
      *
      * @param record 质保金记录
      * @param level  预警级别
-     * @return true-发送成功，false-发送失败
+     * @return true-已发出站内信；false-未发出（无收件人或异常），调用方据此记 FAILED 日志且不写去重 key
      */
     public boolean sendWarning(BizRetentionMoney record, String level) {
         try {
@@ -241,14 +250,39 @@ public class RetentionWarningTask {
             String content = buildNotificationContent(projectName, contractName,
                     record.getRetentionAmount(), record.getExpireDate(), level);
 
-            // TODO: 后续集成 MessageService 发送站内信给项目负责人 + 财务人员
-            // messageService.sendMessage(receiverIds, title, content, "WARNING", "RETENTION", record.getId());
-            log.info("【质保金预警通知】标题: {}, 内容: {}", title, content);
+            // 收件人：项目 PROJECT_MANAGER 成员（与应收逾期催办同口径）
+            List<Long> managerIds = findProjectManagerIds(record.getProjectId());
+            if (managerIds.isEmpty()) {
+                // 无收件人时不谎报成功：返回 false 让调用方记 FAILED，且不写去重 key（下次仍会重试）
+                log.warn("质保金预警无收件人：项目 {} 未配置 PROJECT_MANAGER 成员, retentionId={}, level={}",
+                        record.getProjectId(), record.getId(), level);
+                return false;
+            }
+            for (Long managerId : managerIds) {
+                eventPublisher.publishEvent(new UrgeNotifyEvent(this, managerId, title, content, null, null));
+            }
+            log.info("质保金预警站内信已发出, retentionId={}, level={}, 收件人数={}",
+                    record.getId(), level, managerIds.size());
             return true;
         } catch (Exception e) {
             log.error("发送质保金预警通知失败, retentionId={}, level={}", record.getId(), level, e);
             return false;
         }
+    }
+
+    /**
+     * 查询项目的 PROJECT_MANAGER 成员用户ID（状态正常，去重）
+     */
+    private List<Long> findProjectManagerIds(Long projectId) {
+        if (projectId == null) {
+            return List.of();
+        }
+        List<BizProjectMember> members = projectMemberMapper.selectList(
+                new LambdaQueryWrapper<BizProjectMember>()
+                        .eq(BizProjectMember::getProjectId, projectId)
+                        .eq(BizProjectMember::getStatus, 1)
+                        .like(BizProjectMember::getProjectRoles, "PROJECT_MANAGER"));
+        return members.stream().map(BizProjectMember::getUserId).distinct().toList();
     }
 
     /**

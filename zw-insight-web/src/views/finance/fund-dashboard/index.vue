@@ -94,6 +94,11 @@
           </div>
           <div class="metric-sub">
             <span>未来各月净缺口合计（付-收）</span>
+            <!-- 逾期堆积必须显式告知：它已计入当月付款，但老板需知道其中多少是拖欠（V2026_63） -->
+            <template v-if="totalOverdue > 0">
+              <el-divider direction="vertical" />
+              <span class="overdue-hint">含逾期未付 {{ formatAmount(totalOverdue) }}</span>
+            </template>
           </div>
         </el-card>
       </el-col>
@@ -102,6 +107,8 @@
     <!-- ============ 滚动预测明细 ============ -->
     <el-card shadow="never" style="margin-top: var(--zw-space-md)">
       <template #header><span>未来月份资金缺口明细（滚动预测快照）</span></template>
+      <el-alert type="info" :closable="false" show-icon class="forecast-tip"
+        title="「预计付款」= 当月计划内未付 + 已逾期未付；「其中逾期」为其构成项（不可与预计付款相加）。逾期未付仅计入当月，不向后续月份摊开。" />
       <el-table :data="dashboard.rollingGaps || []" v-loading="loading" border>
         <el-table-column prop="month" label="月份" width="110" align="center" />
         <el-table-column label="预计收款" width="150" align="right">
@@ -109,6 +116,13 @@
         </el-table-column>
         <el-table-column label="预计付款" width="150" align="right">
           <template #default="{ row }">{{ formatAmount(row.expectedPayments) }}</template>
+        </el-table-column>
+        <el-table-column label="其中逾期" width="140" align="right">
+          <template #default="{ row }">
+            <span :class="Number(row.overdueUnpaid) > 0 ? 'gap-negative' : ''">
+              {{ formatAmount(row.overdueUnpaid) }}
+            </span>
+          </template>
         </el-table-column>
         <el-table-column label="净缺口（付-收）" width="160" align="right">
           <template #default="{ row }">
@@ -135,6 +149,11 @@ const dashboard = ref<FundDashboard>({})
 
 const totalGap = computed(() =>
   (dashboard.value.rollingGaps || []).reduce((sum, g) => sum + (g.netGap || 0), 0)
+)
+
+// 逾期堆积合计（构成项，已含在各月 netGap/expectedPayments 内，仅供告知，不可叠加）
+const totalOverdue = computed(() =>
+  (dashboard.value.rollingGaps || []).reduce((sum, g) => sum + Number(g.overdueUnpaid || 0), 0)
 )
 
 function formatAmount(value?: number) {
@@ -190,6 +209,13 @@ onMounted(loadDashboard)
   margin-top: var(--zw-space-sm);
   color: var(--el-text-color-secondary);
   font-size: var(--zw-font-size-sm);
+}
+.overdue-hint {
+  color: var(--el-color-danger);
+  font-weight: 600;
+}
+.forecast-tip {
+  margin-bottom: var(--zw-space-sm);
 }
 .metric-positive {
   color: var(--el-color-success);

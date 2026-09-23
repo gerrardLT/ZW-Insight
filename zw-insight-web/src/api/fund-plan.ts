@@ -37,12 +37,18 @@ export interface FundPlanDetail {
   remark?: string
 }
 
-/** 未来大额支出按科目聚合行（/rolling/top-expenses，V2026_56） */
+/** 待支付大额支出按科目聚合行（/rolling/top-expenses，V2026_56；V2026_63 含已逾期） */
 export interface FutureExpenseRow {
   categoryCode: string
   categoryName: string
   amount: number
   count: number
+  /**
+   * 其中：已逾期未付金额（payment_date 已过但仍未支付，V2026_63）
+   * 已包含在 amount 内，属构成项；原口径下界为今天会把这部分排除，
+   * 导致待付款在页面上完全消失（线上实测曾返回空数组）。
+   */
+  overdueAmount?: number
 }
 
 export interface FundRollingForecast {
@@ -51,6 +57,8 @@ export interface FundRollingForecast {
   forecastMonth: string
   expectedReceipts?: number
   expectedPayments?: number
+  /** 其中：已逾期未付（V2026_63，已含在 expectedPayments 内，不可相加） */
+  overdueUnpaid?: number
   netGap?: number
   riskLevel?: string
   snapshotDate?: string

@@ -9,8 +9,14 @@
 #   - /api/v1/finance/receivable/page                应收台账分页
 #   - /api/v1/finance/receivable/aging               应收账龄分析
 #   - /api/v1/finance/fund-plan/monthly/{id}/details 月度计划科目明细
-#   - /api/v1/finance/fund-plan/rolling/top-expenses 未来大额支出 TOP
+#   - /api/v1/finance/fund-plan/rolling/generate     滚动预测生成（V2026_63 逾期口径）
+#   - /api/v1/finance/fund-plan/rolling/page         滚动预测快照分页
+#   - /api/v1/finance/fund-plan/rolling/top-expenses 待支付大额支出 TOP（含逾期）
 #   - /api/v1/dashboard/profit-trend                 利润趋势真实化（12月结构）
+#
+# 关键语义用例（V2026_63，单测层无法覆盖的真实口径回归）：
+#   已逾期未付必须计入当月预测、仅计入当月、且为 expectedPayments 的构成项（不可相加）。
+#   原口径下线上 16 条/5850 万逾期款全部漏计，风险等级误判 LOW（应为 HIGH）。
 #
 # 运行位置：服务器；依赖 verify-base.sh 登录基座；jq 断言规范同 test-api-finance2.sh
 # 设计依据：audit-reports/cockpit-fund-gap-analysis-2026-09-22.md 阶段一（1A/1B/1C/1D/1E）
@@ -130,17 +136,51 @@ assert_jq '.code==200 and (.data|type=="object") and (.data.projects|type=="arra
 call GET "/api/v1/finance/fund-plan/monthly//details"
 assert_body_not_success "计划明细-缺planId被拒绝"
 
-# ---------- 1D 滚动预测：未来大额支出 TOP ----------
+# ---------- 1D 滚动预测：逾期未付口径（V2026_63 关键回归）----------
+# 背景：原口径只统计 payment_date 落在未来窗口的单据，线上实测 16 条/5850 万
+#       APPROVED+UNPAID（付款日全在过去）被全部漏计，当月缺口误显示为盈余 LOW。
+# 本段钉住：逾期必须计入当月、且仅计入当月、且为构成项（不可相加）。
+
+# 触发一次预测生成（幂等覆盖式写入，与每日 01:15 FundForecastTask 同口径）
+call POST "/api/v1/finance/fund-plan/rolling/generate?months=6"
+assert_http 2 "滚动预测-手工生成 HTTP"
+assert_body_code 200 "滚动预测-手工生成业务码"
+
+call GET "/api/v1/finance/fund-plan/rolling/page?page=1&size=12"
+assert_http 2 "滚动预测-分页 HTTP"
+assert_jq "$PAGE_EXPR" "滚动预测-分页结构"
+
+FORECAST_MONTH=$(date +%Y-%m)
+assert_jq ".code==200 and ([.data.records[] | select(.forecastMonth==\"$FORECAST_MONTH\")] | length == 1)" \
+  "滚动预测-含当月快照"
+# 当月逾期未付必须 > 0（库内存在 5850 万逾期款；为 0 即说明口径又退回了）
+assert_jq ".code==200 and (([.data.records[] | select(.forecastMonth==\"$FORECAST_MONTH\")][0].overdueUnpaid | tonumber) > 0)" \
+  "滚动预测-当月逾期未付已计入（overdueUnpaid>0，原口径漏计为0）"
+# 构成项校验：expectedPayments 必须 >= overdueUnpaid（包含关系，不是相加关系）
+assert_jq ".code==200 and ([.data.records[] | select(.forecastMonth==\"$FORECAST_MONTH\")][0] | (.expectedPayments | tonumber) >= (.overdueUnpaid | tonumber))" \
+  "滚动预测-逾期为预计付款的构成项（expectedPayments ≥ overdueUnpaid）"
+# 后续月份不得重复摊入同一笔逾期款
+assert_jq ".code==200 and ([.data.records[] | select(.forecastMonth != \"$FORECAST_MONTH\") | select((.overdueUnpaid | tonumber) != 0)] | length == 0)" \
+  "滚动预测-逾期仅计入当月（不向后续月份摊开）"
+# 风险等级不得因漏计而误判：当月有巨额逾期时缺口必为正（付款>收款）
+assert_jq ".code==200 and (([.data.records[] | select(.forecastMonth==\"$FORECAST_MONTH\")][0].netGap | tonumber) > 0)" \
+  "滚动预测-当月净缺口为正（逾期计入后不再误显示盈余）"
+
+# ---------- 1D-2 待支付大额支出 TOP（含逾期）----------
 call GET "/api/v1/finance/fund-plan/rolling/top-expenses?days=30"
-assert_http 2 "未来大额支出TOP HTTP"
-assert_jq '.code==200 and (.data|type=="array")' "未来大额支出TOP-数组结构"
-# 行结构（若有数据）：categoryCode/categoryName/amount/count 齐备
-assert_jq '.code==200 and ([.data[] | select(.categoryCode == null or .amount == null or .count == null)] | length == 0)' \
-  "未来大额支出TOP-行字段齐备"
+assert_http 2 "待支付大额支出TOP HTTP"
+assert_jq '.code==200 and (.data|type=="array")' "待支付大额支出TOP-数组结构"
+# 原口径下界为 today 会返回空数组（线上实测已暴露），修复后必须非空
+assert_jq '.code==200 and (.data | length > 0)' \
+  "待支付大额支出TOP-非空（含已逾期；原口径返回空数组为已知缺陷）"
+assert_jq '.code==200 and ([.data[] | select(.categoryCode == null or .amount == null or .count == null or .overdueAmount == null)] | length == 0)' \
+  "待支付大额支出TOP-行字段齐备（含 overdueAmount）"
+assert_jq '.code==200 and ([.data[] | select((.overdueAmount | tonumber) > (.amount | tonumber))] | length == 0)' \
+  "待支付大额支出TOP-逾期额不超总额（构成项校验）"
 
 # 负向：days 超范围（>365）必须拒绝
 call GET "/api/v1/finance/fund-plan/rolling/top-expenses?days=999"
-assert_body_not_success "未来大额支出TOP-days超范围被拒绝"
+assert_body_not_success "待支付大额支出TOP-days超范围被拒绝"
 
 # ---------- 1E 利润趋势真实化 ----------
 call GET "/api/v1/dashboard/profit-trend"

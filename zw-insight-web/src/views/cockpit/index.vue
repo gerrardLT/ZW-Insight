@@ -56,6 +56,12 @@
             </div>
           </template>
           <div ref="cashChartRef" class="chart-body"></div>
+          <!-- 逾期堆积必须显式告知（V2026_63）：它已计入当月预计付款，
+               但老板需知道其中多少是拖欠；图表不另加系列以免与净缺口配色混淆 -->
+          <div v-if="currentMonthOverdue > 0" class="overdue-note"
+            style="margin-top: var(--zw-space-xs); font-size: var(--zw-font-size-xs); color: var(--el-color-danger)">
+            当月预计付款中含已逾期未付 <strong>{{ formatWan(currentMonthOverdue) }}</strong> 万元（构成项，不另计）
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -168,6 +174,9 @@ const yearOptions = computed(() => {
 const overview = ref<CockpitOverview | null>(null)
 const healthData = ref<ProjectHealth[]>([])
 const rollingData = ref<FundRollingForecast[]>([])
+// 当月逾期未付（rollingData 已按月份升序，首元素即当月）；
+// 构成项：已含在当月 expectedPayments/netGap 内，仅用于告知，不可叠加
+const currentMonthOverdue = computed(() => Number(rollingData.value[0]?.overdueUnpaid || 0))
 const topRisks = ref<RiskRegister[]>([])
 const costStructure = ref<{ category: string; amount: number }[]>([])
 const hasSnapshot = ref(false)

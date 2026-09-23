@@ -19,6 +19,7 @@ import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
 import com.zwinsight.finance.mapper.BizPaymentReceivedMapper;
 import com.zwinsight.finance.mapper.BizReceivableMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,13 +37,18 @@ import java.util.Map;
  * <p>对标广联达 PMCore「先计划后支付」：
  * 1) 年度预算：年初编制，项目或公司维度；
  * 2) 月度计划：预计收支 + 科目明细（V2026_58）+ 月末实际回填（actual 为真实单据聚合，非手填）；
- * 3) 滚动预测（V2026_56/57 数据源重做）：
- *    预计付款 = 已审批且<b>未支付</b>（status=APPROVED 且 pay_status≠PAID）的付款申请按付款日期落月；
+ * 3) 滚动预测（V2026_56/57 数据源重做，V2026_63 补逾期口径）：
+ *    预计付款 = 已审批且<b>未支付</b>（status=APPROVED 且 pay_status≠PAID）的付款申请按付款日期落月，
+ *    <b>其中已逾期未付（payment_date 早于当月月初）全额计入当月</b>并单列 overdue_unpaid 构成；
  *    预计收款 = 应收台账 OPEN 余额按到期日落月（无台账时回退月度计划 income_plan）；
  *    净缺口 = 付款 − 收款。快照由 {@code FundForecastTask} 每日 01:15 自动刷新。</p>
  * <p><b>旧版语义纠正</b>：本类原注释称“预计付款 = 已审批未付”，但当时系统无支付执行态
  * （审批通过即视为已付），“已批未付”状态并不存在；V2026_56 引入 pay_status 后该口径才真实成立。</p>
+ * <p><b>逾期口径补正（V2026_63）</b>：原实现只统计 payment_date 落在未来窗口内的单据，
+ * 已过计划付款日却仍未支付的款项会从预测中完全消失——线上实测 16 条/5850 万逾期款
+ * 被漏计，当月缺口显示为盈余（LOW），而真实待付缺口为 5590 万（应 HIGH）。</p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FundPlanService {
@@ -208,11 +214,15 @@ public class FundPlanService {
     // ==================== 滚动预测 ====================
 
     /**
-     * 生成滚动预测快照（未来 N 个月，按月粒度；V2026_56/57 数据源重做）：
-     * <p>预计付款 = 已审批且<b>未支付</b>（pay_status=UNPAID，现金口径）的付款申请按付款日期落月聚合；</p>
+     * 生成滚动预测快照（未来 N 个月，按月粒度；V2026_56/57 数据源重做，V2026_63 补逾期口径）：
+     * <p>预计付款 = 已审批且<b>未支付</b>（pay_status≠PAID，现金口径）的付款申请按付款日期落月聚合，
+     * <b>并将「已逾期未付」（payment_date 早于当月月初且仍未支付）全额计入当月</b>；</p>
      * <p>预计收款 = 应收台账（biz_receivable OPEN）按到期日落月聚合（真实应收驱动）；
      * 无台账记录的项目维度仍用月度计划（APPROVED）income_plan 兜底；</p>
-     * <p>净缺口 = 付款 - 收款；风险等级按缺口与付款规模判定（口径不变）。</p>
+     * <p>净缺口 = 付款 - 收款；风险等级按缺口与付款规模判定（逾期计入后自然修正）。</p>
+     * <p><b>为何必须计入逾期</b>：原口径只统计未来窗口，已过计划付款日却仍未支付的单据
+     * 会从预测中完全消失。线上实测（2026-09-23）：16 条 APPROVED+UNPAID 合计 5850 万，
+     * payment_date 全在过去，导致当月 net_gap 显示 -260 万（LOW），而真实待付缺口为 5590 万（应 HIGH）。</p>
      */
     @Transactional(rollbackFor = Exception.class)
     public List<BizFundRollingForecast> generateRollingForecast(Long projectId, int months) {
@@ -225,24 +235,48 @@ public class FundPlanService {
         // 收款侧数据源：应收台账 OPEN 余额按到期日落月（一次性加载，避免逐月查库）
         Map<String, BigDecimal> receivableByMonth = sumOpenReceivableByDueMonth(projectId);
 
+        // 付款侧数据源：一次性加载「已审批 + 未支付 + 付款日不晚于预测窗口末」的全部单据，
+        // 再在内存按付款日落月（原实现每月查一次库，months 次查询）。
+        // 注意下界故意不设：payment_date 已过的未付款属「已逾期未付」，必须计入当月（V2026_63）。
+        LocalDate windowEnd = current.plusMonths(months - 1L).atEndOfMonth();
+        List<BizPaymentApply> pendingApplies = paymentApplyMapper.selectList(
+                new LambdaQueryWrapper<BizPaymentApply>()
+                        .eq(BizPaymentApply::getStatus, "APPROVED")
+                        .ne(BizPaymentApply::getPayStatus, BizPaymentApply.PAY_STATUS_PAID)
+                        .eq(projectId != null, BizPaymentApply::getProjectId, projectId)
+                        .isNotNull(BizPaymentApply::getPaymentDate)
+                        .le(BizPaymentApply::getPaymentDate, windowEnd));
+
+        Map<String, BigDecimal> paymentsByMonth = new HashMap<>();
+        BigDecimal overdueUnpaid = BigDecimal.ZERO;
+        LocalDate currentMonthStart = current.atDay(1);
+        for (BizPaymentApply a : pendingApplies) {
+            LocalDate payDate = a.getPaymentDate();
+            if (payDate == null) {
+                // 无计划付款日的已审批单据无法落月，不计入预测（源头由付款日必填校验保证）
+                continue;
+            }
+            BigDecimal amount = a.getPaymentAmount() != null ? a.getPaymentAmount() : BigDecimal.ZERO;
+            if (payDate.isBefore(currentMonthStart)) {
+                // 已逾期未付：归集到当月（不向后续月份摊开，避免同一笔重复计入）
+                overdueUnpaid = overdueUnpaid.add(amount);
+            } else {
+                paymentsByMonth.merge(YearMonth.from(payDate).format(MONTH_FMT), amount, BigDecimal::add);
+            }
+        }
+        if (overdueUnpaid.signum() > 0) {
+            log.warn("滚动预测发现已逾期未付款项，已计入当月预计付款: projectId={}, overdueUnpaid={}",
+                    projectId, overdueUnpaid);
+        }
+
         List<BizFundRollingForecast> result = new ArrayList<>();
         for (int i = 0; i < months; i++) {
             YearMonth ym = current.plusMonths(i);
             String monthKey = ym.format(MONTH_FMT);
 
-            // 预计付款：已审批且未支付的付款申请（当月到期）——现金口径，已付部分不再计入未来流出
-            BigDecimal payments = BigDecimal.ZERO;
-            List<BizPaymentApply> applies = paymentApplyMapper.selectList(
-                    new LambdaQueryWrapper<BizPaymentApply>()
-                            .eq(BizPaymentApply::getStatus, "APPROVED")
-                            .ne(BizPaymentApply::getPayStatus, BizPaymentApply.PAY_STATUS_PAID)
-                            .eq(projectId != null, BizPaymentApply::getProjectId, projectId)
-                            .isNotNull(BizPaymentApply::getPaymentDate)
-                            .ge(BizPaymentApply::getPaymentDate, ym.atDay(1))
-                            .le(BizPaymentApply::getPaymentDate, ym.atEndOfMonth()));
-            for (BizPaymentApply a : applies) {
-                payments = payments.add(a.getPaymentAmount());
-            }
+            // 预计付款 = 当月计划内未付 + （仅当月）已逾期未付——现金口径，已付部分不再计入未来流出
+            BigDecimal monthOverdue = (i == 0) ? overdueUnpaid : BigDecimal.ZERO;
+            BigDecimal payments = paymentsByMonth.getOrDefault(monthKey, BigDecimal.ZERO).add(monthOverdue);
 
             // 预计收款：应收台账优先；台账无任何记录时回退月度计划 income_plan（兜底，不重复叠加）
             BigDecimal receipts = receivableByMonth.getOrDefault(monthKey, BigDecimal.ZERO);
@@ -265,6 +299,8 @@ public class FundPlanService {
             forecast.setForecastMonth(monthKey);
             forecast.setExpectedReceipts(receipts);
             forecast.setExpectedPayments(payments);
+            // 构成项（已包含在 expectedPayments 内，不可相加）：供前端区分“计划内 vs 逾期堆积”
+            forecast.setOverdueUnpaid(monthOverdue);
             forecast.setNetGap(netGap);
             forecast.setRiskLevel(evaluateRisk(payments, netGap));
             forecast.setSnapshotDate(today);
@@ -329,13 +365,16 @@ public class FundPlanService {
     }
 
     /**
-     * 未来大额支出 TOP（驾驶舱 V1 §9.3）：已审批且未支付的付款申请，
-     * 付款日期在未来 days 天内，按支出科目（paymentCategory）聚合降序。
+     * 待支付大额支出 TOP（驾驶舱 V1 §9.3）：已审批且未支付的付款申请，
+     * 付款日期在 今天+days 之前（<b>含已逾期部分</b>），按支出科目（paymentCategory）聚合降序。
+     * <p><b>为何含逾期</b>（V2026_63）：原口径下界为 today，已逾期的待付款被排除——
+     * 线上实测该接口返回空数组，而库内实际有 16 条/5850 万待付款，老板看到的“无大额支出”是错的。
+     * 返回中另给 overdueAmount 字段如实区分“其中已逾期”金额，不混为一个数。</p>
      * <p>无科目编码的单据归入 "UNCATEGORIZED"（如实呈现分类缺失，不隐藏）。</p>
      *
      * @param projectId 项目ID（可选，空则公司整体）
      * @param days      未来天数（1-365）
-     * @return [{categoryCode, categoryName, amount, count}]，按金额降序
+     * @return [{categoryCode, categoryName, amount, count, overdueAmount}]，按金额降序
      */
     public List<Map<String, Object>> futureExpenseTop(Long projectId, int days) {
         if (days < 1 || days > 365) {
@@ -348,16 +387,21 @@ public class FundPlanService {
                         .ne(BizPaymentApply::getPayStatus, BizPaymentApply.PAY_STATUS_PAID)
                         .eq(projectId != null, BizPaymentApply::getProjectId, projectId)
                         .isNotNull(BizPaymentApply::getPaymentDate)
-                        .ge(BizPaymentApply::getPaymentDate, today)
+                        // 不再限定下界：payment_date 已过的未付款仍属待支付义务，必须计入
                         .le(BizPaymentApply::getPaymentDate, today.plusDays(days)));
         Map<String, BigDecimal> byCategory = new HashMap<>();
         Map<String, Integer> countByCategory = new HashMap<>();
+        Map<String, BigDecimal> overdueByCategory = new HashMap<>();
         for (BizPaymentApply a : applies) {
             String code = a.getPaymentCategory() != null && !a.getPaymentCategory().isBlank()
                     ? a.getPaymentCategory() : "UNCATEGORIZED";
-            byCategory.merge(code, a.getPaymentAmount() != null ? a.getPaymentAmount() : BigDecimal.ZERO,
-                    BigDecimal::add);
+            BigDecimal amount = a.getPaymentAmount() != null ? a.getPaymentAmount() : BigDecimal.ZERO;
+            byCategory.merge(code, amount, BigDecimal::add);
             countByCategory.merge(code, 1, Integer::sum);
+            LocalDate payDate = a.getPaymentDate();
+            if (payDate != null && payDate.isBefore(today)) {
+                overdueByCategory.merge(code, amount, BigDecimal::add);
+            }
         }
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map.Entry<String, BigDecimal> entry : byCategory.entrySet()) {
@@ -366,6 +410,8 @@ public class FundPlanService {
             row.put("categoryName", resolveCategoryName(entry.getKey()));
             row.put("amount", entry.getValue());
             row.put("count", countByCategory.getOrDefault(entry.getKey(), 0));
+            // 构成项（已包含在 amount 内）：其中已逾期的金额
+            row.put("overdueAmount", overdueByCategory.getOrDefault(entry.getKey(), BigDecimal.ZERO));
             result.add(row);
         }
         result.sort((x, y) -> ((BigDecimal) y.get("amount")).compareTo((BigDecimal) x.get("amount")));

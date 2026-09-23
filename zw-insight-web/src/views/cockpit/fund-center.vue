@@ -26,7 +26,7 @@
             </div>
           </template>
           <el-alert type="info" :closable="false" show-icon class="panel-tip"
-            title="付款侧 = 已批未付申请按付款日落月；收款侧 = 应收台账按到期日落月（无台账时回退月度计划）。每日 01:15 自动刷新。" />
+            title="付款侧 = 已批未付申请按付款日落月，其中已逾期未付全额计入当月（“其中逾期”列，属构成项不另计）；收款侧 = 应收台账按到期日落月（无台账时回退月度计划）。每日 01:15 自动刷新。" />
           <el-table :data="forecastData" v-loading="forecastLoading" border size="small">
             <el-table-column prop="forecastMonth" label="月份" width="100" align="center" />
             <el-table-column label="预计回款" align="right">
@@ -34,6 +34,14 @@
             </el-table-column>
             <el-table-column label="预计付款" align="right">
               <template #default="{ row }">{{ formatWan(row.expectedPayments) }}</template>
+            </el-table-column>
+            <!-- 构成列：已含在「预计付款」内，标“其中”避免误读为需叠加（V2026_63） -->
+            <el-table-column label="其中逾期" align="right" width="110">
+              <template #default="{ row }">
+                <span :class="Number(row.overdueUnpaid) > 0 ? 'gap-negative' : ''">
+                  {{ formatWan(row.overdueUnpaid) }}
+                </span>
+              </template>
             </el-table-column>
             <el-table-column label="资金差额" align="right">
               <template #default="{ row }">
@@ -54,12 +62,12 @@
         </el-card>
       </el-col>
 
-      <!-- 未来大额支出 TOP（§9.3） -->
+      <!-- 待支付大额支出 TOP（§9.3；V2026_63 含已逾期） -->
       <el-col :xs="24" :lg="10">
         <el-card shadow="never" class="panel-card">
           <template #header>
             <div class="card-header">
-              <span>未来 30 天大额支出</span>
+              <span>待支付大额支出（含逾期）</span>
               <el-select v-model="topDays" size="small" style="width: 100px" @change="loadTopExpenses">
                 <el-option label="30 天" :value="30" />
                 <el-option label="60 天" :value="60" />
@@ -74,10 +82,18 @@
                 <span class="amount-strong">{{ formatWan(row.amount) }}</span>
               </template>
             </el-table-column>
+            <!-- 构成列：已含在「金额」内；原口径下界为今天会漏掉逾期款，导致本表恒为空 -->
+            <el-table-column label="其中逾期" align="right" width="110">
+              <template #default="{ row }">
+                <span :class="Number(row.overdueAmount) > 0 ? 'gap-negative' : ''">
+                  {{ formatWan(row.overdueAmount) }}
+                </span>
+              </template>
+            </el-table-column>
             <el-table-column prop="count" label="笔数" width="70" align="center" />
           </el-table>
           <el-empty v-if="!topLoading && !topExpenses.length"
-            description="该窗口内无已批未付的付款申请" :image-size="60" />
+            description="无已批未付的付款申请（含已逾期）" :image-size="60" />
         </el-card>
       </el-col>
     </el-row>

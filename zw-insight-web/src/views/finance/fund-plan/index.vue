@@ -69,6 +69,8 @@
           <div class="table-toolbar">
             <el-button type="primary" @click="handleGenerate">生成未来6个月预测</el-button>
           </div>
+          <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-sm)"
+            title="「预计付款」= 当月计划内未付 + 已逾期未付；「其中逾期」为其构成项（不可与预计付款相加）。逾期未付仅计入当月，不向后续月份摊开。" />
           <el-table :data="rollingData" v-loading="rollingLoading" border>
             <el-table-column prop="forecastMonth" label="预测月份" width="110" align="center" />
             <el-table-column label="预计收款" width="140" align="right">
@@ -76,6 +78,11 @@
             </el-table-column>
             <el-table-column label="预计付款" width="140" align="right">
               <template #default="{ row }">{{ formatAmount(row.expectedPayments) }}</template>
+            </el-table-column>
+            <el-table-column label="其中逾期" width="140" align="right">
+              <template #default="{ row }">
+                <span :class="Number(row.overdueUnpaid) > 0 ? 'gap-negative' : ''">{{ formatAmount(row.overdueUnpaid) }}</span>
+              </template>
             </el-table-column>
             <el-table-column label="净缺口（付-收）" width="150" align="right">
               <template #default="{ row }">

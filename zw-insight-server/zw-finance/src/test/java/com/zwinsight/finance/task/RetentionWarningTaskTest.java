@@ -1,13 +1,16 @@
 package com.zwinsight.finance.task;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.finance.domain.BizRetentionMoney;
 import com.zwinsight.finance.domain.BizRetentionWarningLog;
 import com.zwinsight.finance.mapper.BizRetentionMoneyMapper;
 import com.zwinsight.finance.mapper.BizRetentionWarningLogMapper;
+import com.zwinsight.project.domain.BizProjectMember;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.mapper.BizProjectMemberMapper;
 import com.zwinsight.security.service.TenantTaskRunner;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -49,10 +53,16 @@ class RetentionWarningTaskTest {
     private BizConstructionContractMapper contractMapper;
 
     @Mock
+    private BizProjectMemberMapper projectMemberMapper;
+
+    @Mock
     private RedisUtils redisUtils;
 
     @Mock
     private TenantTaskRunner tenantTaskRunner;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private RetentionWarningTask retentionWarningTask;
@@ -176,6 +186,56 @@ class RetentionWarningTaskTest {
         verify(redisUtils).delete("retention:warned:" + retentionId + ":OVERDUE");
         verify(redisUtils).delete("retention:overdue:last:" + retentionId);
         verifyNoMoreInteractions(redisUtils);
+    }
+
+    // ============ sendWarning 真实站内信链路（2026-09-23 缺陷 B 修复验证） ============
+
+    @Test
+    @DisplayName("sendWarning — 有项目经理时经 UrgeNotifyEvent 发出真实站内信并返回 true（不再仅写日志）")
+    void sendWarning_withProjectManager_publishesEventAndReturnsTrue() {
+        BizRetentionMoney record = buildRecord(1L, LocalDate.now().plusDays(20));
+        BizProjectMember manager = new BizProjectMember();
+        manager.setUserId(777L);
+        when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(manager));
+
+        boolean result = retentionWarningTask.sendWarning(record, RetentionWarningTask.LEVEL_UPCOMING);
+
+        assertTrue(result);
+        // 必须真实发布事件（原实现只 log.info 却 return true，属谎报成功）
+        ArgumentCaptor<UrgeNotifyEvent> captor = ArgumentCaptor.forClass(UrgeNotifyEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        UrgeNotifyEvent event = captor.getValue();
+        assertEquals(777L, event.getTargetUserId());
+        assertNotNull(event.getTitle());
+        assertTrue(event.getContent().contains("质保金"), "通知内容应包含业务语义：" + event.getContent());
+    }
+
+    @Test
+    @DisplayName("sendWarning — 多个项目经理逐个发送（不漏收件人）")
+    void sendWarning_multipleManagers_publishesPerRecipient() {
+        BizRetentionMoney record = buildRecord(3L, LocalDate.now().minusDays(5));
+        BizProjectMember m1 = new BizProjectMember();
+        m1.setUserId(801L);
+        BizProjectMember m2 = new BizProjectMember();
+        m2.setUserId(802L);
+        when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(m1, m2));
+
+        boolean result = retentionWarningTask.sendWarning(record, RetentionWarningTask.LEVEL_OVERDUE);
+
+        assertTrue(result);
+        verify(eventPublisher, times(2)).publishEvent(any(UrgeNotifyEvent.class));
+    }
+
+    @Test
+    @DisplayName("sendWarning — 无收件人时返回 false 且不发事件（不谎报发送成功，不写去重 key 以便重试）")
+    void sendWarning_withoutRecipient_returnsFalseWithoutPublishing() {
+        BizRetentionMoney record = buildRecord(2L, LocalDate.now().plusDays(20));
+        when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        boolean result = retentionWarningTask.sendWarning(record, RetentionWarningTask.LEVEL_OVERDUE);
+
+        assertFalse(result, "无收件人必须返回 false，否则调用方会误记 SENT 并写去重 key 导致永不重试");
+        verify(eventPublisher, never()).publishEvent(any(UrgeNotifyEvent.class));
     }
 
     // ============ doExecute 端到端 SENT/FAILED + 逐租户（P1 FIN-RWR-07/08/09） ============
