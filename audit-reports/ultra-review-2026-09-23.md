@@ -56,5 +56,30 @@
 
 - 本次审查发现 **6 项缺陷（2 Critical / 4 Major）**，全部已修复并通过回归验证；其中 #1 若不拦截将导致**生产迁移失败**，#2 会**静默丢失在管风险**。
 - 一致性审计零 Critical/Major；三端测试全绿（后端 dashboard 166 / finance 全量 SUCCESS / 移动端 246）。
-- 待部署验证项 4 条（上文第三节），已在 L3 脚本中预置对应断言，部署后一次跑通即可闭环。
-- 建议下一步：部署联调环境 → 执行 `keys/test-api-risk.sh` + `audit-data.ps1` 回归（确认 R7 基线 PASS=65 未被破坏）→ 提交。
+- 第三节 1/2/3 项未验证项已由本次部署完成闭环（见第五节）。
+
+---
+
+## 五、部署与线上验证（2026-09-23 完成）
+
+**提交**：`1d59329`（后端）/ `a3ca45a`（前端）/ `8bbe923`（文档）→ ff 合并 main → push → CI/CD 部署成功
+**流水线**：`35831117355`（Backend Build L1 + JaCoCo、三端前端单测、Deploy to Server 均 success；k6/Integration 按 push 策略 skipped）
+
+| 验证项 | 结果 |
+|--------|------|
+| Flyway 迁移 V2026_56~62 | **7/7 OK**（2026-09-23 15:34:59，应用日志确认 repair+migrate 完成、Started in 22.81s 无 ERROR） |
+| 新表 6 张 / 新列 6 列 | 齐备 |
+| 应收台账存量初始化 | 2 条（OPEN，合计 260 万）；**不变量校验 mismatch_rows=0** |
+| 菜单与角色绑定 | 驾驶舱 4 菜单 + 应收台账菜单，18 条绑定；`910062` permission=NULL 经复核符合既有惯例（资金模块 12 个菜单全为 NULL，全表 171 个菜单中 82 个如此；侧边栏由 sys_role_menu 决定，不看 permission） |
+| **L3 风险中心**（含本次新增断言） | **通过 36 / 失败 0 / 跳过 1**。关键：[21] 分页排序「YELLOW 之后不再出现 RED」通过（验证 `last()`+`FIELD` 排序方案在真实 DB 生效）；[26] `skippedAutoCloseTypes` 字段断言通过；扫描 7 规则全部成功（`failedRules: []`）并真实产出 1 条应收逾期风险 `RECEIVABLE_OVERDUE:90002:ALL` |
+| **L3 资金闭环** | **通过 21 / 失败 0**。真实数据验证：应收账龄 260 万（逾期 6 天，D0_30 桶）、利润趋势真实分月（income 分布 0/1000万/1100万…而非均摊）且月度合计=年度总收入（3100 万） |
+| **数据审计 R7 回归** | **PASS=65 / FAIL=0 / WARN=0 / INFO=40 —— 与基线完全一致**（报告：`audit-reports/data-audit-round7-2026-09-23T07-45-59Z.md`） |
+
+**唯一 SKIP 项**：`[15] 利润归因-结构校验` —— 当月无预计利润快照（快照由 ProfitSnapshotTask 每日 03:30 生成，部署当天尚未到执行时间）。脚本已如实记 SKIP，且「无快照时明确报错而非返回空对象」的负向断言仍 PASS。**待次日 03:30 任务执行后即可闭环**（逻辑本身已被 `ProfitSnapshotServiceTest` 9 个单测覆盖）。
+
+**运维备注**：
+- 审计脚本（9/18 版）尚未覆盖新表（biz_receivable / biz_profit_snapshot / biz_risk_register）的勾稽检查，本轮由 `_verify_deploy.sh` 与 L3 脚本补齐（不变量 mismatch=0）；建议后续将新表检查并入 audit-data-round7.sh。
+- `keys/*.sh` 在仓库中以 CRLF 存储（本次已把 test-api-risk/fund-loop 修为 LF）；建议后续加 `.gitattributes`（`*.sh text eol=lf`）根治人工上传执行时的 CRLF 问题。
+
+**结论**：改造已完整上线并闭环验证，R7 数据基线未被破坏，无遗留 FAIL 项。
+
