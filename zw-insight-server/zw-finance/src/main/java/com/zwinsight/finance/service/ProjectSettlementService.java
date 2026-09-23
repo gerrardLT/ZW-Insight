@@ -55,6 +55,7 @@ public class ProjectSettlementService {
     private final BizConstructionContractMapper constructionContractMapper;
     private final SettlementDataMapper settlementDataMapper;
     private final ApprovalService approvalService;
+    private final ReceivableService receivableService;
 
     /**
      * 创建结算单（自动汇总数据）
@@ -440,6 +441,10 @@ public class ProjectSettlementService {
         // 更新结算单状态为 APPROVED
         settlement.setStatus("APPROVED");
         settlementMapper.updateById(settlement);
+
+        // 应收台账生成（V2026_57）：最终结算金额（空则累计产值）− 累计收款 的正差额入台账，
+        // 同事务双写 biz_project.receivable_amount（不变量：单值 = OPEN 余额合计）
+        receivableService.generateFromSettlement(settlement);
 
         // 施工合同状态流转：EFFECTIVE → SETTLED
         int settledContracts = constructionContractMapper.settleByProjectId(settlement.getProjectId());

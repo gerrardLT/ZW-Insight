@@ -1,5 +1,6 @@
 package com.zwinsight.finance.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -7,6 +8,7 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 项目报销实体
@@ -39,4 +41,8 @@ public class BizProjectReimbursement extends BaseEntity {
 
     /** 流程实例ID */
     private String workflowInstanceId;
+
+    /** 费用科目明细（请求/展示透传，不持久化；落库于 biz_reimbursement_detail，V2026_60） */
+    @TableField(exist = false)
+    private List<BizReimbursementDetail> details;
 }

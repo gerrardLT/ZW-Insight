@@ -1,11 +1,13 @@
 package com.zwinsight.finance.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 月度资金计划实体（资金计划三层之二：月度，先计划后支付）
@@ -41,4 +43,8 @@ public class BizFundMonthlyPlan extends BaseEntity {
 
     /** 状态（DRAFT/APPROVED） */
     private String status;
+
+    /** 科目明细（请求/展示透传字段，不持久化；落库于 biz_fund_plan_detail，V2026_58） */
+    @TableField(exist = false)
+    private List<BizFundPlanDetail> details;
 }

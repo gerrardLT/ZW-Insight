@@ -73,6 +73,8 @@ class ProjectSettlementServiceMutationTest {
     private SettlementDataMapper settlementDataMapper;
     @Mock
     private ApprovalService approvalService;
+    @Mock
+    private ReceivableService receivableService;
 
     @InjectMocks
     private ProjectSettlementService service;

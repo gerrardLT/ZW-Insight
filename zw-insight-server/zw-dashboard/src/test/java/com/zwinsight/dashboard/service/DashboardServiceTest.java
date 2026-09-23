@@ -6,7 +6,10 @@ import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BizBudgetMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
+import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.domain.BizPaymentReceived;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
+import com.zwinsight.finance.mapper.BizPaymentReceivedMapper;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
@@ -24,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +43,7 @@ class DashboardServiceTest {
     @Mock private BizBudgetMapper budgetMapper;
     @Mock private BizBudgetDetailMapper budgetDetailMapper;
     @Mock private BizPaymentApplyMapper paymentApplyMapper;
+    @Mock private BizPaymentReceivedMapper paymentReceivedMapper;
     @Mock private BizPurchaseContractMapper purchaseContractMapper;
     @Mock private BizProjectMaterialStockMapper projectMaterialStockMapper;
     @Mock private BizTenderRegisterMapper tenderRegisterMapper;
@@ -160,5 +165,69 @@ class DashboardServiceTest {
         Map<String, Object> result = dashboardService.getBudgetVariance(1L);
 
         assertThat(result).isNotNull();
+    }
+
+    @Test
+    @DisplayName("利润趋势：收入按回款登记 receive_date 真实分月（钉住废弃年均摊模拟口径，V2026_56）")
+    @SuppressWarnings("unchecked")
+    void testGetProfitTrend_realReceiptsByMonth() {
+        BizPaymentReceived r1 = new BizPaymentReceived();
+        r1.setStatus("APPROVED");
+        r1.setReceiveDate(LocalDate.of(2026, 3, 15));
+        r1.setReceiveAmount(new BigDecimal("100000"));
+        BizPaymentReceived r2 = new BizPaymentReceived();
+        r2.setStatus("APPROVED");
+        r2.setReceiveDate(LocalDate.of(2026, 3, 20));
+        r2.setReceiveAmount(new BigDecimal("50000"));
+        // 非目标年份，不应计入
+        BizPaymentReceived r3 = new BizPaymentReceived();
+        r3.setStatus("APPROVED");
+        r3.setReceiveDate(LocalDate.of(2025, 12, 1));
+        r3.setReceiveAmount(new BigDecimal("999"));
+        when(paymentReceivedMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(r1, r2, r3));
+
+        BizPaymentApply p1 = new BizPaymentApply();
+        p1.setStatus("APPROVED");
+        p1.setPayDate(LocalDate.of(2026, 3, 18));
+        p1.setPaymentAmount(new BigDecimal("60000"));
+        // 无 pay_date 回退 payment_date（存量单据兼容）
+        BizPaymentApply p2 = new BizPaymentApply();
+        p2.setStatus("APPROVED");
+        p2.setPaymentDate(LocalDate.of(2026, 4, 10));
+        p2.setPaymentAmount(new BigDecimal("20000"));
+        when(paymentApplyMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(p1, p2));
+
+        Map<String, Object> result = dashboardService.getProfitTrend(2026);
+        List<Map<String, Object>> months = (List<Map<String, Object>>) result.get("months");
+
+        Map<String, Object> march = months.get(2);
+        assertThat((BigDecimal) march.get("income")).isEqualByComparingTo("150000");
+        assertThat((BigDecimal) march.get("expense")).isEqualByComparingTo("60000");
+        assertThat((BigDecimal) march.get("profit")).isEqualByComparingTo("90000");
+        Map<String, Object> april = months.get(3);
+        assertThat((BigDecimal) april.get("income")).isEqualByComparingTo("0");
+        assertThat((BigDecimal) april.get("expense")).isEqualByComparingTo("20000");
+        // 年度合计为当年真实单据口径（非项目 totalIncome 均摊）
+        assertThat((BigDecimal) result.get("totalIncome")).isEqualByComparingTo("150000");
+        assertThat((BigDecimal) result.get("totalExpense")).isEqualByComparingTo("80000");
+        assertThat((BigDecimal) result.get("totalProfit")).isEqualByComparingTo("70000");
+    }
+
+    @Test
+    @DisplayName("利润趋势：无任何单据时 12 个月全 0，不抛异常不伪造数据")
+    @SuppressWarnings("unchecked")
+    void testGetProfitTrend_emptyAllZero() {
+        when(paymentReceivedMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        when(paymentApplyMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        Map<String, Object> result = dashboardService.getProfitTrend(null);
+        List<Map<String, Object>> months = (List<Map<String, Object>>) result.get("months");
+
+        assertThat(months).hasSize(12);
+        assertThat(months).allSatisfy(m -> {
+            assertThat((BigDecimal) m.get("income")).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat((BigDecimal) m.get("expense")).isEqualByComparingTo(BigDecimal.ZERO);
+        });
+        assertThat((BigDecimal) result.get("totalProfit")).isEqualByComparingTo(BigDecimal.ZERO);
     }
 }

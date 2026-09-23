@@ -80,6 +80,19 @@ public interface BizProjectMapper extends BaseMapper<BizProject> {
     int addTotalExpense(@Param("projectId") Long projectId, @Param("amount") BigDecimal amount);
 
     /**
+     * 原子增减项目应收账款（台账口径：biz_receivable OPEN 余额合计；V2026_57 新增）
+     * <p>由结算审批生成应收（正向）与回款核销（负向）同事务双写，
+     * 支持负 amount 冲减；不变量：receivable_amount ≥ 0 由调用方校验。</p>
+     *
+     * @param projectId 项目ID
+     * @param amount    增减金额（可为负）
+     * @return 影响行数
+     */
+    @Update("UPDATE biz_project SET receivable_amount = COALESCE(receivable_amount, 0) + #{amount} " +
+            "WHERE id = #{projectId} AND deleted = 0")
+    int addReceivableAmount(@Param("projectId") Long projectId, @Param("amount") BigDecimal amount);
+
+    /**
      * 原子累加项目累计合同金额（施工合同审批通过时回写，避免并发丢失更新）
      *
      * @param projectId 项目ID

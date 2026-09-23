@@ -5,12 +5,14 @@ import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizFundAnnualBudget;
 import com.zwinsight.finance.domain.BizFundMonthlyPlan;
+import com.zwinsight.finance.domain.BizFundPlanDetail;
 import com.zwinsight.finance.domain.BizFundRollingForecast;
 import com.zwinsight.finance.service.FundPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 资金计划接口（三层联动：年度预算 / 月度计划 / 滚动预测）
@@ -81,6 +83,14 @@ public class FundPlanController {
         return R.ok();
     }
 
+    /**
+     * 查询月度计划科目明细（V2026_58）
+     */
+    @GetMapping("/monthly/{planId}/details")
+    public R<List<BizFundPlanDetail>> listPlanDetails(@PathVariable Long planId) {
+        return R.ok(fundPlanService.listPlanDetails(planId));
+    }
+
     // ==================== 滚动预测 ====================
 
     /**
@@ -102,5 +112,15 @@ public class FundPlanController {
             @RequestParam(defaultValue = "12") int size,
             @RequestParam(required = false) Long projectId) {
         return R.ok(fundPlanService.pageRollingForecast(page, size, projectId));
+    }
+
+    /**
+     * 未来大额支出 TOP（按科目聚合，驾驶舱资金中心消费；V2026_56）
+     */
+    @GetMapping("/rolling/top-expenses")
+    public R<List<Map<String, Object>>> futureExpenseTop(
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(defaultValue = "30") int days) {
+        return R.ok(fundPlanService.futureExpenseTop(projectId, days));
     }
 }

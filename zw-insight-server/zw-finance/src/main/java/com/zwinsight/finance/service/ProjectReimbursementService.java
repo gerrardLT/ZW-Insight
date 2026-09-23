@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizProjectReimbursement;
+import com.zwinsight.finance.domain.BizReimbursementDetail;
 import com.zwinsight.finance.domain.BizReserveFundApply;
 import com.zwinsight.finance.mapper.BizProjectReimbursementMapper;
 import com.zwinsight.finance.mapper.BizReserveFundApplyMapper;
@@ -27,6 +28,7 @@ public class ProjectReimbursementService {
     private final BizProjectReimbursementMapper reimbursementMapper;
     private final BizReserveFundApplyMapper reserveFundApplyMapper;
     private final ApprovalService approvalService;
+    private final ReimbursementDetailService reimbursementDetailService;
 
     /**
      * 分页查询
@@ -41,11 +43,19 @@ public class ProjectReimbursementService {
     }
 
     /**
-     * 新增项目报销
+     * 新增项目报销（携带 details 时级联保存费用科目明细，V2026_60）
+     * <p>主表与明细同事务：明细合计与总额不一致、科目无效、招待费专项缺失均整体回滚。</p>
      */
+    @Transactional(rollbackFor = Exception.class)
     public Long save(BizProjectReimbursement reimbursement) {
         reimbursement.setStatus("DRAFT");
         reimbursementMapper.insert(reimbursement);
+        reimbursementDetailService.saveDetails(
+                BizReimbursementDetail.SOURCE_PROJECT,
+                reimbursement.getId(),
+                reimbursement.getProjectId(),
+                reimbursement.getDetails(),
+                reimbursement.getTotalAmount());
         return reimbursement.getId();
     }
 

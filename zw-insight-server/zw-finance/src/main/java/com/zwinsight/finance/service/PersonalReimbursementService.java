@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizPersonalReimbursement;
+import com.zwinsight.finance.domain.BizReimbursementDetail;
 import com.zwinsight.finance.mapper.BizPersonalReimbursementMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class PersonalReimbursementService {
 
     private final BizPersonalReimbursementMapper personalReimbursementMapper;
     private final ApprovalService approvalService;
+    private final ReimbursementDetailService reimbursementDetailService;
 
     /**
      * 分页查询
@@ -37,10 +39,19 @@ public class PersonalReimbursementService {
 
     /**
      * 新增个人报销（返回新记录 id，供移动端链式调用 submit 完成两段式提交）
+     * <p>携带 details 时级联保存费用科目明细（V2026_60）；本表无 projectId 列，
+     * 项目相关招待费需由明细的 entertainment.projectId 显式携带项目归属。</p>
      */
+    @Transactional(rollbackFor = Exception.class)
     public Long save(BizPersonalReimbursement reimbursement) {
         reimbursement.setStatus("DRAFT");
         personalReimbursementMapper.insert(reimbursement);
+        reimbursementDetailService.saveDetails(
+                BizReimbursementDetail.SOURCE_PERSONAL,
+                reimbursement.getId(),
+                null,
+                reimbursement.getDetails(),
+                reimbursement.getTotalAmount());
         return reimbursement.getId();
     }
 

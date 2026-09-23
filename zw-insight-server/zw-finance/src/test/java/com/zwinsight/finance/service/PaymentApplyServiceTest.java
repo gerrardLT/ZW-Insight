@@ -6,6 +6,7 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
+import com.zwinsight.finance.domain.BizBankFlow;
 import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.domain.SysAmountTierConfig;
 import com.zwinsight.finance.dto.BatchOperationRequest;
@@ -26,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -42,6 +44,7 @@ import static org.mockito.Mockito.*;
 class PaymentApplyServiceTest {
 
     @Mock private BizPaymentApplyMapper paymentApplyMapper;
+    @Mock private com.zwinsight.finance.mapper.BizBankFlowMapper bankFlowMapper;
     @Mock private BizOtherContractMapper otherContractMapper;
     @Mock private ContractPayableMapper contractPayableMapper;
     @Mock private BizProjectMapper projectMapper;
@@ -722,7 +725,7 @@ class PaymentApplyServiceTest {
     class PageTests {
 
         @Test
-        @DisplayName("分页筛选透传（FIN-PAY-21）")
+        @DisplayName("分页筛选透传（FIN-PAY-21，含 payStatus 筛选 V2026_56）")
         void page_delegates() {
             Page<BizPaymentApply> page = new Page<>(1, 10);
             BizPaymentApply a = new BizPaymentApply();
@@ -731,7 +734,7 @@ class PaymentApplyServiceTest {
             page.setTotal(1);
             when(paymentApplyMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
 
-            PageResult<BizPaymentApply> result = paymentApplyService.page(1, 10, 5L, 100L, "APPROVED");
+            PageResult<BizPaymentApply> result = paymentApplyService.page(1, 10, 5L, 100L, "APPROVED", "UNPAID");
 
             assertThat(result.getRecords()).hasSize(1);
             assertThat(result.getTotal()).isEqualTo(1);
@@ -829,6 +832,184 @@ class PaymentApplyServiceTest {
             assertThatThrownBy(() -> paymentApplyService.batch(req("audit", List.of(1L))))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("不支持的批量操作类型");
+        }
+    }
+
+    @Nested
+    @DisplayName("refreshPayStatus() 支付执行态刷新（V2026_56）")
+    class RefreshPayStatusTests {
+
+        private BizPaymentApply approved(Long id, String amount) {
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setStatus("APPROVED");
+            apply.setPayStatus(BizPaymentApply.PAY_STATUS_UNPAID);
+            apply.setPaymentAmount(new BigDecimal(amount));
+            return apply;
+        }
+
+        private BizBankFlow matchedFlow(String amount, LocalDate flowDate, Long accountId) {
+            BizBankFlow flow = new BizBankFlow();
+            flow.setReconciled(1);
+            flow.setMatchedType(BizBankFlow.MATCH_PAYMENT_APPLY);
+            flow.setAmount(new BigDecimal(amount));
+            flow.setFlowDate(flowDate);
+            flow.setAccountId(accountId);
+            return flow;
+        }
+
+        @Test
+        @DisplayName("正常路径 — 勾稽足额置 PAID，pay_date 取最早流水日，不回写项目账")
+        void refresh_fullMatch_marksPaid() {
+            BizPaymentApply apply = approved(20L, "100000");
+            when(paymentApplyMapper.selectById(20L)).thenReturn(apply);
+            when(bankFlowMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
+                    matchedFlow("40000", LocalDate.of(2026, 9, 5), 2L),
+                    matchedFlow("60000", LocalDate.of(2026, 9, 10), 1L)));
+
+            paymentApplyService.refreshPayStatus(20L);
+
+            assertThat(apply.getPayStatus()).isEqualTo(BizPaymentApply.PAY_STATUS_PAID);
+            assertThat(apply.getPayDate()).isEqualTo(LocalDate.of(2026, 9, 5));
+            assertThat(apply.getPayAccountId()).isEqualTo(2L);
+            // 口径不变量：支付态不回写项目支出/合同累计已付
+            verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("正常路径 — match_amount 部分勾稽累计足额同样置 PAID")
+        void refresh_partialMatchAmounts_summedToPaid() {
+            BizPaymentApply apply = approved(21L, "100000");
+            when(paymentApplyMapper.selectById(21L)).thenReturn(apply);
+            BizBankFlow f1 = matchedFlow("80000", LocalDate.of(2026, 9, 1), 1L);
+            f1.setMatchAmount(new BigDecimal("50000"));
+            BizBankFlow f2 = matchedFlow("80000", LocalDate.of(2026, 9, 2), 1L);
+            f2.setMatchAmount(new BigDecimal("50000"));
+            when(bankFlowMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(f1, f2));
+
+            paymentApplyService.refreshPayStatus(21L);
+
+            assertThat(apply.getPayStatus()).isEqualTo(BizPaymentApply.PAY_STATUS_PAID);
+        }
+
+        @Test
+        @DisplayName("边界路径 — 勾稽不足额保持/回到 UNPAID，清空 pay_date（取消勾稽场景）")
+        void refresh_insufficient_staysUnpaid() {
+            BizPaymentApply apply = approved(22L, "100000");
+            apply.setPayStatus(BizPaymentApply.PAY_STATUS_PAID);
+            apply.setPayDate(LocalDate.of(2026, 9, 1));
+            when(paymentApplyMapper.selectById(22L)).thenReturn(apply);
+            when(bankFlowMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
+                    matchedFlow("40000", LocalDate.of(2026, 9, 1), 1L)));
+
+            paymentApplyService.refreshPayStatus(22L);
+
+            assertThat(apply.getPayStatus()).isEqualTo(BizPaymentApply.PAY_STATUS_UNPAID);
+            assertThat(apply.getPayDate()).isNull();
+            assertThat(apply.getPayAccountId()).isNull();
+        }
+
+        @Test
+        @DisplayName("边界路径 — 非 APPROVED 单据不处理支付态（未生效无支付语义）")
+        void refresh_notApproved_skipped() {
+            BizPaymentApply apply = approved(23L, "100000");
+            apply.setStatus("SUBMITTED");
+            when(paymentApplyMapper.selectById(23L)).thenReturn(apply);
+
+            paymentApplyService.refreshPayStatus(23L);
+
+            verify(bankFlowMapper, never()).selectList(any(LambdaQueryWrapper.class));
+            verify(paymentApplyMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("异常路径 — 申请不存在抛异常不静默跳过")
+        void refresh_notFound_throws() {
+            when(paymentApplyMapper.selectById(24L)).thenReturn(null);
+
+            assertThatThrownBy(() -> paymentApplyService.refreshPayStatus(24L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("付款申请不存在");
+        }
+    }
+
+    @Nested
+    @DisplayName("markPaid()/revokePaid() 手工支付标记（V2026_56）")
+    class ManualPayTests {
+
+        private BizPaymentApply approvedUnpaid(Long id) {
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setStatus("APPROVED");
+            apply.setPayStatus(BizPaymentApply.PAY_STATUS_UNPAID);
+            apply.setPaymentAmount(new BigDecimal("50000"));
+            return apply;
+        }
+
+        @Test
+        @DisplayName("正常路径 — 无勾稽流水时手工标记 PAID 并记录日期/账户")
+        void markPaid_noFlows_ok() {
+            BizPaymentApply apply = approvedUnpaid(30L);
+            when(paymentApplyMapper.selectById(30L)).thenReturn(apply);
+            when(bankFlowMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+
+            paymentApplyService.markPaid(30L, LocalDate.of(2026, 9, 21), 5L);
+
+            assertThat(apply.getPayStatus()).isEqualTo(BizPaymentApply.PAY_STATUS_PAID);
+            assertThat(apply.getPayDate()).isEqualTo(LocalDate.of(2026, 9, 21));
+            assertThat(apply.getPayAccountId()).isEqualTo(5L);
+            verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("异常路径 — 已有勾稽流水时拒绝手工标记（流水为唯一事实源）")
+        void markPaid_hasMatchedFlows_rejected() {
+            when(paymentApplyMapper.selectById(31L)).thenReturn(approvedUnpaid(31L));
+            when(bankFlowMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+
+            assertThatThrownBy(() -> paymentApplyService.markPaid(31L, LocalDate.now(), null))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("已有银行流水勾稽");
+        }
+
+        @Test
+        @DisplayName("异常路径 — 重复标记/未审批单据被拦截")
+        void markPaid_invalidState_rejected() {
+            BizPaymentApply paid = approvedUnpaid(32L);
+            paid.setPayStatus(BizPaymentApply.PAY_STATUS_PAID);
+            when(paymentApplyMapper.selectById(32L)).thenReturn(paid);
+            assertThatThrownBy(() -> paymentApplyService.markPaid(32L, LocalDate.now(), null))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("不可重复标记");
+
+            BizPaymentApply draft = approvedUnpaid(33L);
+            draft.setStatus("DRAFT");
+            when(paymentApplyMapper.selectById(33L)).thenReturn(draft);
+            assertThatThrownBy(() -> paymentApplyService.markPaid(33L, LocalDate.now(), null))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅审批通过的付款申请可标记支付");
+        }
+
+        @Test
+        @DisplayName("正常路径 — 撤销手工标记回到 UNPAID；流水产生的支付态拒绝撤销")
+        void revokePaid_paths() {
+            BizPaymentApply paid = approvedUnpaid(34L);
+            paid.setPayStatus(BizPaymentApply.PAY_STATUS_PAID);
+            paid.setPayDate(LocalDate.now());
+            when(paymentApplyMapper.selectById(34L)).thenReturn(paid);
+            when(bankFlowMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+
+            paymentApplyService.revokePaid(34L);
+            assertThat(paid.getPayStatus()).isEqualTo(BizPaymentApply.PAY_STATUS_UNPAID);
+            assertThat(paid.getPayDate()).isNull();
+
+            BizPaymentApply flowPaid = approvedUnpaid(35L);
+            flowPaid.setPayStatus(BizPaymentApply.PAY_STATUS_PAID);
+            when(paymentApplyMapper.selectById(35L)).thenReturn(flowPaid);
+            when(bankFlowMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(2L);
+            assertThatThrownBy(() -> paymentApplyService.revokePaid(35L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("请通过取消勾稽撤销");
         }
     }
 }

@@ -10,7 +10,10 @@ import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.dto.BatchOperationRequest;
 import com.zwinsight.finance.service.PaymentApplyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 /**
  * 付款申请接口
@@ -29,8 +32,9 @@ public class PaymentApplyController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) Long contractId,
-            @RequestParam(required = false) String status) {
-        return R.ok(paymentApplyService.page(page, size, projectId, contractId, status));
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String payStatus) {
+        return R.ok(paymentApplyService.page(page, size, projectId, contractId, status, payStatus));
     }
 
     @GetMapping("/{id}")
@@ -79,5 +83,30 @@ public class PaymentApplyController {
     @OperLog(module = "付款管理", operType = "BATCH", description = "批量操作付款申请")
     public R<Integer> batch(@RequestBody BatchOperationRequest request) {
         return R.ok(paymentApplyService.batch(request));
+    }
+
+    /**
+     * 手工标记已支付（V2026_56；无网银流水导入场景的备选路径，已勾稽流水的单据拒绝手工标记）
+     */
+    @PostMapping("/{id}/mark-paid")
+    @RequiresPermission("finance:payment:submit")
+    @OperLog(module = "付款管理", operType = "UPDATE", description = "手工标记付款申请已支付")
+    public R<Void> markPaid(
+            @PathVariable Long id,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate payDate,
+            @RequestParam(required = false) Long payAccountId) {
+        paymentApplyService.markPaid(id, payDate, payAccountId);
+        return R.ok();
+    }
+
+    /**
+     * 撤销手工支付标记（V2026_56；流水勾稽产生的支付态须走取消勾稽）
+     */
+    @PostMapping("/{id}/revoke-paid")
+    @RequiresPermission("finance:payment:submit")
+    @OperLog(module = "付款管理", operType = "UPDATE", description = "撤销付款申请手工支付标记")
+    public R<Void> revokePaid(@PathVariable Long id) {
+        paymentApplyService.revokePaid(id);
+        return R.ok();
     }
 }

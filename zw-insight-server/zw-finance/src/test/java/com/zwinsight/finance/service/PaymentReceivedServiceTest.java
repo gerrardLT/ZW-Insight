@@ -33,6 +33,7 @@ class PaymentReceivedServiceTest {
     @Mock private BizPaymentReceivedMapper paymentReceivedMapper;
     @Mock private BizProjectMapper projectMapper;
     @Mock private BizConstructionContractMapper contractMapper;
+    @Mock private ReceivableService receivableService;
 
     @InjectMocks
     private PaymentReceivedService paymentReceivedService;

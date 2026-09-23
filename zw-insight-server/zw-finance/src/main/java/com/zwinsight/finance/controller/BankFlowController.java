@@ -89,8 +89,9 @@ public class BankFlowController {
     public R<Void> matchFlow(
             @PathVariable Long id,
             @RequestParam String matchedType,
-            @RequestParam Long matchedId) {
-        bankFlowService.matchFlow(id, matchedType, matchedId);
+            @RequestParam Long matchedId,
+            @RequestParam(required = false) java.math.BigDecimal matchAmount) {
+        bankFlowService.matchFlow(id, matchedType, matchedId, matchAmount);
         return R.ok();
     }
 

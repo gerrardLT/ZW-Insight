@@ -4,9 +4,11 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.finance.domain.BizBankAccount;
 import com.zwinsight.finance.domain.BizBankBalance;
 import com.zwinsight.finance.domain.BizBankFlow;
+import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.mapper.BizBankAccountMapper;
 import com.zwinsight.finance.mapper.BizBankBalanceMapper;
 import com.zwinsight.finance.mapper.BizBankFlowMapper;
+import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,6 +41,8 @@ class BankFlowServiceTest {
     @Mock private BizBankFlowMapper flowMapper;
     @Mock private BizBankBalanceMapper balanceMapper;
     @Mock private BizBankAccountMapper accountMapper;
+    @Mock private BizPaymentApplyMapper paymentApplyMapper;
+    @Mock private PaymentApplyService paymentApplyService;
 
     @InjectMocks
     private BankFlowService bankFlowService;
@@ -152,27 +156,68 @@ class BankFlowServiceTest {
     }
 
     @Nested
-    @DisplayName("matchFlow() 勾稽方向一致性")
+    @DisplayName("matchFlow() 勾稽方向一致性与支付态联动（V2026_56）")
     class MatchTests {
 
         private BizBankFlow flow(String direction) {
             BizBankFlow flow = new BizBankFlow();
             flow.setId(1L);
+            flow.setAccountId(1L);
             flow.setDirection(direction);
+            flow.setAmount(new BigDecimal("10000"));
+            flow.setFlowDate(LocalDate.of(2026, 9, 20));
             flow.setReconciled(0);
             return flow;
         }
 
+        private BizPaymentApply approvedApply(String amount) {
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(100L);
+            apply.setStatus("APPROVED");
+            apply.setPayStatus(BizPaymentApply.PAY_STATUS_UNPAID);
+            apply.setPaymentAmount(new BigDecimal(amount));
+            return apply;
+        }
+
         @Test
-        @DisplayName("正常路径 — 支出流水匹配付款申请成功")
+        @DisplayName("正常路径 — 支出流水匹配付款申请成功并联动刷新支付态")
         void matchFlow_outToPaymentApply_ok() {
             BizBankFlow f = flow(BizBankFlow.DIRECTION_OUT);
             when(flowMapper.selectById(1L)).thenReturn(f);
+            when(paymentApplyMapper.selectById(100L)).thenReturn(approvedApply("10000"));
+            when(flowMapper.selectList(any())).thenReturn(List.of());
 
-            bankFlowService.matchFlow(1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L);
+            bankFlowService.matchFlow(1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L, null);
 
             assertThat(f.getReconciled()).isEqualTo(1);
             assertThat(f.getMatchedType()).isEqualTo(BizBankFlow.MATCH_PAYMENT_APPLY);
+            verify(paymentApplyService).refreshPayStatus(100L);
+        }
+
+        @Test
+        @DisplayName("正常路径 — 收入流水匹配回款登记不触发付款支付态刷新")
+        void matchFlow_inToPaymentReceived_ok() {
+            BizBankFlow f = flow(BizBankFlow.DIRECTION_IN);
+            when(flowMapper.selectById(1L)).thenReturn(f);
+
+            bankFlowService.matchFlow(1L, BizBankFlow.MATCH_PAYMENT_RECEIVED, 200L, null);
+
+            assertThat(f.getReconciled()).isEqualTo(1);
+            verify(paymentApplyService, never()).refreshPayStatus(any());
+        }
+
+        @Test
+        @DisplayName("正常路径 — 部分勾稽记录 matchAmount 且校验通过")
+        void matchFlow_partialAmount_ok() {
+            BizBankFlow f = flow(BizBankFlow.DIRECTION_OUT);
+            when(flowMapper.selectById(1L)).thenReturn(f);
+            when(paymentApplyMapper.selectById(100L)).thenReturn(approvedApply("10000"));
+            when(flowMapper.selectList(any())).thenReturn(List.of());
+
+            bankFlowService.matchFlow(1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L, new BigDecimal("4000"));
+
+            assertThat(f.getMatchAmount()).isEqualByComparingTo("4000");
+            verify(paymentApplyService).refreshPayStatus(100L);
         }
 
         @Test
@@ -181,7 +226,7 @@ class BankFlowServiceTest {
             when(flowMapper.selectById(1L)).thenReturn(flow(BizBankFlow.DIRECTION_IN));
 
             assertThatThrownBy(() -> bankFlowService.matchFlow(
-                    1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L))
+                    1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L, null))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("收入流水只能匹配回款登记");
         }
@@ -194,9 +239,76 @@ class BankFlowServiceTest {
             when(flowMapper.selectById(1L)).thenReturn(f);
 
             assertThatThrownBy(() -> bankFlowService.matchFlow(
-                    1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L))
+                    1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L, null))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("已勾稽");
+        }
+
+        @Test
+        @DisplayName("异常路径 — 未审批付款申请不可勾稽支付")
+        void matchFlow_applyNotApproved_rejected() {
+            BizBankFlow f = flow(BizBankFlow.DIRECTION_OUT);
+            when(flowMapper.selectById(1L)).thenReturn(f);
+            BizPaymentApply draft = approvedApply("10000");
+            draft.setStatus("DRAFT");
+            when(paymentApplyMapper.selectById(100L)).thenReturn(draft);
+
+            assertThatThrownBy(() -> bankFlowService.matchFlow(
+                    1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L, null))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅审批通过的付款申请可勾稽支付");
+            verify(paymentApplyService, never()).refreshPayStatus(any());
+        }
+
+        @Test
+        @DisplayName("异常路径 — 累计勾稽超付款金额被拦截（防超付勾稽）")
+        void matchFlow_exceedPaymentAmount_rejected() {
+            BizBankFlow f = flow(BizBankFlow.DIRECTION_OUT);
+            when(flowMapper.selectById(1L)).thenReturn(f);
+            when(paymentApplyMapper.selectById(100L)).thenReturn(approvedApply("10000"));
+            BizBankFlow matched = flow(BizBankFlow.DIRECTION_OUT);
+            matched.setMatchAmount(new BigDecimal("8000"));
+            when(flowMapper.selectList(any())).thenReturn(List.of(matched));
+
+            assertThatThrownBy(() -> bankFlowService.matchFlow(
+                    1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L, new BigDecimal("3000")))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("累计勾稽金额不能超过付款金额");
+        }
+
+        @Test
+        @DisplayName("异常路径 — 勾稽金额超流水金额/非正数被拦截")
+        void matchFlow_invalidAmount_rejected() {
+            BizBankFlow f = flow(BizBankFlow.DIRECTION_OUT);
+            when(flowMapper.selectById(1L)).thenReturn(f);
+
+            assertThatThrownBy(() -> bankFlowService.matchFlow(
+                    1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L, new BigDecimal("10001")))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("勾稽金额不能超过流水金额");
+
+            assertThatThrownBy(() -> bankFlowService.matchFlow(
+                    1L, BizBankFlow.MATCH_PAYMENT_APPLY, 100L, BigDecimal.ZERO))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("勾稽金额必须大于0");
+        }
+
+        @Test
+        @DisplayName("正常路径 — 取消勾稽清空字段并联动重算支付态")
+        void unmatchFlow_triggersRefresh() {
+            BizBankFlow f = flow(BizBankFlow.DIRECTION_OUT);
+            f.setReconciled(1);
+            f.setMatchedType(BizBankFlow.MATCH_PAYMENT_APPLY);
+            f.setMatchedId(100L);
+            f.setMatchAmount(new BigDecimal("10000"));
+            when(flowMapper.selectById(1L)).thenReturn(f);
+
+            bankFlowService.unmatchFlow(1L);
+
+            assertThat(f.getReconciled()).isZero();
+            assertThat(f.getMatchedType()).isNull();
+            assertThat(f.getMatchAmount()).isNull();
+            verify(paymentApplyService).refreshPayStatus(100L);
         }
     }
 }

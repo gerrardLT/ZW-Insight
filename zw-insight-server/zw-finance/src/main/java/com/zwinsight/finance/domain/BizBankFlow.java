@@ -1,5 +1,7 @@
 package com.zwinsight.finance.domain;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
@@ -53,11 +55,17 @@ public class BizBankFlow extends BaseEntity {
     /** 是否已勾稽（0-未 1-已） */
     private Integer reconciled;
 
-    /** 匹配单据类型 */
+    /** 匹配单据类型（ALWAYS 策略：取消勾稽时需置空） */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String matchedType;
 
-    /** 匹配单据ID */
+    /** 匹配单据ID（ALWAYS 策略：取消勾稽时需置空） */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long matchedId;
+
+    /** 本次勾稽金额（NULL=按流水整笔金额勾稽，兼容存量；V2026_56 新增；ALWAYS 策略：取消勾稽时需置空） */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private BigDecimal matchAmount;
 
     /** 来源（MANUAL-手工/IMPORT-文件导入） */
     private String source;

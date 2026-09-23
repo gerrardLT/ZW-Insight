@@ -10,9 +10,11 @@ import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.finance.domain.BizInvoiceApply;
 import com.zwinsight.finance.domain.BizInvoiceReceived;
 import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.domain.BizPaymentReceived;
 import com.zwinsight.finance.mapper.BizInvoiceApplyMapper;
 import com.zwinsight.finance.mapper.BizInvoiceReceivedMapper;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
+import com.zwinsight.finance.mapper.BizPaymentReceivedMapper;
 import com.zwinsight.material.domain.BizProjectMaterialStock;
 import com.zwinsight.material.mapper.BizProjectMaterialStockMapper;
 import com.zwinsight.project.domain.BizProject;
@@ -46,6 +48,7 @@ public class DashboardService {
     private final BizBudgetMapper budgetMapper;
     private final BizBudgetDetailMapper budgetDetailMapper;
     private final BizPaymentApplyMapper paymentApplyMapper;
+    private final BizPaymentReceivedMapper paymentReceivedMapper;
     private final BizPurchaseContractMapper purchaseContractMapper;
     private final BizProjectMaterialStockMapper projectMaterialStockMapper;
     private final BizTenderRegisterMapper tenderRegisterMapper;
@@ -665,61 +668,65 @@ public class DashboardService {
     /**
      * 利润趋势分析（按月展示全公司收入/支出/利润曲线）
      * <p>
-     * 按月汇总所有项目的 totalIncome（收入）和 totalExpense（支出），
-     * 计算每月利润 = 收入 - 支出。
-     * 数据来源：BizPaymentApply（支出，按审批通过时间分月）、
-     * BizPaymentReceived（收入，按收款日期分月）。
+     * 真实单据口径（V2026_56 重做，废弃旧版「年收入按 12 个月均摊」的模拟实现）：
+     * 收入 = 回款登记（APPROVED）按 receive_date 分月；
+     * 支出 = 付款申请（APPROVED）按实际支付日 pay_date 分月（未支付/存量无 pay_date 时回退计划付款日 payment_date）；
+     * 每月利润 = 当月收入 − 当月支出（收付实现制，与 total_income/total_expense 回写口径同源）。
      * </p>
      *
      * @param year 年份（默认当年）
-     * @return {year, months: [{month, income, expense, profit}]}
+     * @return {year, months: [{month, income, expense, profit}], totalIncome, totalExpense, totalProfit}（均为当年口径）
      */
     public Map<String, Object> getProfitTrend(Integer year) {
         Map<String, Object> result = new HashMap<>();
         int targetYear = year != null ? year : LocalDate.now().getYear();
         result.put("year", targetYear);
 
-        // 查询所有项目的累计数据按月展示（简化实现：基于付款申请和回款数据按月分组）
-        List<BizPaymentApply> allPayments = paymentApplyMapper.selectList(
-                new LambdaQueryWrapper<BizPaymentApply>()
-                        .eq(BizPaymentApply::getStatus, "APPROVED"));
-
-        // 按月汇总支出
-        Map<Integer, BigDecimal> monthlyExpense = new HashMap<>();
-        for (BizPaymentApply payment : allPayments) {
-            if (payment.getPaymentDate() != null && payment.getPaymentDate().getYear() == targetYear) {
-                int month = payment.getPaymentDate().getMonthValue();
-                BigDecimal amount = payment.getPaymentAmount() != null ? payment.getPaymentAmount() : BigDecimal.ZERO;
-                monthlyExpense.merge(month, amount, BigDecimal::add);
+        // 收入：回款登记按收款日期分月（真实单据，非均摊）
+        List<BizPaymentReceived> allReceived = paymentReceivedMapper.selectList(
+                new LambdaQueryWrapper<BizPaymentReceived>()
+                        .eq(BizPaymentReceived::getStatus, "APPROVED")
+                        .isNotNull(BizPaymentReceived::getReceiveDate));
+        Map<Integer, BigDecimal> monthlyIncome = new HashMap<>();
+        for (BizPaymentReceived received : allReceived) {
+            if (received.getReceiveDate().getYear() == targetYear) {
+                BigDecimal amount = received.getReceiveAmount() != null ? received.getReceiveAmount() : BigDecimal.ZERO;
+                monthlyIncome.merge(received.getReceiveDate().getMonthValue(), amount, BigDecimal::add);
             }
         }
 
-        // 使用项目信息按创建时间分月模拟收入趋势
-        // 实际收入来自 PaymentReceived 按 receiveDate 分月
-        List<BizProject> projects = projectMapper.selectList(new LambdaQueryWrapper<>());
-        BigDecimal totalAnnualIncome = projects.stream()
-                .map(p -> p.getTotalIncome() != null ? p.getTotalIncome() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 支出：付款申请按实际支付日分月（pay_date 空则回退 payment_date，与 total_expense 审批口径同源单据）
+        List<BizPaymentApply> allPayments = paymentApplyMapper.selectList(
+                new LambdaQueryWrapper<BizPaymentApply>()
+                        .eq(BizPaymentApply::getStatus, "APPROVED"));
+        Map<Integer, BigDecimal> monthlyExpense = new HashMap<>();
+        for (BizPaymentApply payment : allPayments) {
+            LocalDate expenseDate = payment.getPayDate() != null ? payment.getPayDate() : payment.getPaymentDate();
+            if (expenseDate != null && expenseDate.getYear() == targetYear) {
+                BigDecimal amount = payment.getPaymentAmount() != null ? payment.getPaymentAmount() : BigDecimal.ZERO;
+                monthlyExpense.merge(expenseDate.getMonthValue(), amount, BigDecimal::add);
+            }
+        }
 
         // 构建12个月数据
         List<Map<String, Object>> months = new ArrayList<>();
         for (int m = 1; m <= 12; m++) {
             Map<String, Object> monthData = new HashMap<>();
             monthData.put("month", m);
+            BigDecimal income = monthlyIncome.getOrDefault(m, BigDecimal.ZERO);
             BigDecimal expense = monthlyExpense.getOrDefault(m, BigDecimal.ZERO);
-            // 收入按月均摊（简化），实际应从 payment_received 表按月汇总
-            BigDecimal income = totalAnnualIncome.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
             monthData.put("income", income);
             monthData.put("expense", expense);
             monthData.put("profit", income.subtract(expense));
             months.add(monthData);
         }
 
-        result.put("months", months);
-        result.put("totalIncome", totalAnnualIncome);
+        BigDecimal totalIncome = monthlyIncome.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalExpense = monthlyExpense.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        result.put("months", months);
+        result.put("totalIncome", totalIncome);
         result.put("totalExpense", totalExpense);
-        result.put("totalProfit", totalAnnualIncome.subtract(totalExpense));
+        result.put("totalProfit", totalIncome.subtract(totalExpense));
 
         return result;
     }

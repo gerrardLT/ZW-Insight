@@ -43,7 +43,10 @@ public class FundDashboardVO {
 
     // ==================== 核心三：回款分析 ====================
 
-    /** 应收账款余额（已结算未收口径） */
+    /** 应收账款余额（已结算未收口径）
+     * <p>V2026_57 起有真实台账支撑：由结算审批生成 biz_receivable、回款 FIFO 核销，
+     * 并同事务双写 biz_project.receivable_amount（不变量：单值 = 台账 OPEN 余额合计）。
+     * 此前该字段自 V2026_51 建列后生产代码从未回写，看板实际恒读种子值。</p> */
     private BigDecimal receivableTotal;
 
     /** 回款率 = 累计收款 / (累计收款 + 应收) （分母为0时为0） */
@@ -62,7 +65,9 @@ public class FundDashboardVO {
 
     // ==================== 滚动预测 ====================
 
-    /** 未来月份缺口列表（来自滚动预测快照） */
+    /** 未来月份缺口列表（来自滚动预测快照，由 FundForecastTask 每日 01:15 刷新）
+     * <p>V2026_56/57 数据源：付款侧 = 已批未付（pay_status≠PAID）申请；
+     * 收款侧 = 应收台账 OPEN 余额按到期日落月。VO 结构不变，仅数据源更真实。</p> */
     private List<GapItem> rollingGaps;
 
     /** 单月缺口条目 */

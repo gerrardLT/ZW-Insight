@@ -1,8 +1,11 @@
 package com.zwinsight.finance.service;
 
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.finance.domain.BizFundCategory;
 import com.zwinsight.finance.domain.BizFundMonthlyPlan;
+import com.zwinsight.finance.domain.BizFundPlanDetail;
 import com.zwinsight.finance.domain.BizPaymentApply;
+import com.zwinsight.finance.domain.BizReceivable;
 import com.zwinsight.finance.mapper.BizFundAnnualBudgetMapper;
 import com.zwinsight.finance.mapper.BizFundMonthlyPlanMapper;
 import com.zwinsight.finance.mapper.BizFundRollingForecastMapper;
@@ -18,11 +21,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -34,9 +42,12 @@ class FundPlanServiceTest {
 
     @Mock private BizFundAnnualBudgetMapper annualBudgetMapper;
     @Mock private BizFundMonthlyPlanMapper monthlyPlanMapper;
+    @Mock private com.zwinsight.finance.mapper.BizFundPlanDetailMapper planDetailMapper;
     @Mock private BizFundRollingForecastMapper rollingForecastMapper;
     @Mock private BizPaymentApplyMapper paymentApplyMapper;
     @Mock private BizPaymentReceivedMapper paymentReceivedMapper;
+    @Mock private com.zwinsight.finance.mapper.BizReceivableMapper receivableMapper;
+    @Mock private FundCategoryService fundCategoryService;
 
     @InjectMocks
     private FundPlanService fundPlanService;
@@ -158,6 +169,122 @@ class FundPlanServiceTest {
             assertThatThrownBy(() -> fundPlanService.generateRollingForecast(null, 13))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("预测月数需在1-12之间");
+        }
+
+        @Test
+        @DisplayName("收款侧数据源 — 存在应收台账时按到期日落月聚合，不再读月度计划（V2026_57）")
+        void generateRollingForecast_receivableDrivenReceipts() {
+            // 台账到期日落在预测窗口首月（当前月）
+            BizReceivable r = new BizReceivable();
+            r.setStatus(BizReceivable.STATUS_OPEN);
+            r.setReceivableAmount(new BigDecimal("250000"));
+            r.setWrittenOffAmount(new BigDecimal("50000"));
+            r.setDueDate(YearMonth.now().atDay(15));
+            when(receivableMapper.selectList(any())).thenReturn(List.of(r));
+            when(paymentApplyMapper.selectList(any())).thenReturn(List.of());
+
+            var result = fundPlanService.generateRollingForecast(10L, 1);
+
+            // OPEN 余额 20万入账；月度计划未被读取（台账非空不走兜底）
+            assertThat(result.get(0).getExpectedReceipts()).isEqualByComparingTo("200000");
+            verify(monthlyPlanMapper, never()).selectOne(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("saveMonthlyPlan() 科目明细级联保存（V2026_58）")
+    class PlanDetailTests {
+
+        private BizFundMonthlyPlan newPlan(String income, String expense) {
+            BizFundMonthlyPlan plan = new BizFundMonthlyPlan();
+            plan.setPlanYear(2026);
+            plan.setPlanMonth(11);
+            plan.setProjectId(10L);
+            plan.setIncomePlan(new BigDecimal(income));
+            plan.setExpensePlan(new BigDecimal(expense));
+            return plan;
+        }
+
+        private BizFundPlanDetail detail(String direction, String code, String amount) {
+            BizFundPlanDetail d = new BizFundPlanDetail();
+            d.setDirection(direction);
+            d.setCategoryCode(code);
+            d.setAmount(new BigDecimal(amount));
+            return d;
+        }
+
+        @Test
+        @DisplayName("正常路径 — 明细合计与总额一致时级联落库")
+        void savePlan_withConsistentDetails_inserts() {
+            BizFundMonthlyPlan plan = newPlan("0", "300000");
+            List<BizFundPlanDetail> details = new ArrayList<>();
+            details.add(detail(BizFundPlanDetail.DIRECTION_EXPENSE, "EXP-DIRECT-MATERIAL", "200000"));
+            details.add(detail(BizFundPlanDetail.DIRECTION_EXPENSE, "EXP-DIRECT-LABOR", "100000"));
+            plan.setDetails(details);
+            when(monthlyPlanMapper.selectOne(any())).thenReturn(null);
+            // 模拟 MyBatis-Plus 雪花主键回填，使明细 planId 绑定断言真实有效
+            when(monthlyPlanMapper.insert(any(BizFundMonthlyPlan.class))).thenAnswer(inv -> {
+                inv.getArgument(0, BizFundMonthlyPlan.class).setId(77L);
+                return 1;
+            });
+            BizFundCategory category = new BizFundCategory();
+            category.setCode("X");
+            when(fundCategoryService.getByCode(anyString(), anyString())).thenReturn(category);
+
+            fundPlanService.saveMonthlyPlan(plan);
+
+            verify(monthlyPlanMapper).insert(plan);
+            // 明细逐笔落库，且 planId 在插入时已绑定主计划
+            org.mockito.ArgumentCaptor<BizFundPlanDetail> captor =
+                    org.mockito.ArgumentCaptor.forClass(BizFundPlanDetail.class);
+            verify(planDetailMapper, org.mockito.Mockito.times(2)).insert(captor.capture());
+            assertThat(captor.getAllValues())
+                    .extracting(BizFundPlanDetail::getPlanId)
+                    .containsExactly(77L, 77L);
+        }
+
+        @Test
+        @DisplayName("异常路径 — 明细合计与计划总额不一致被拦截（不静默落库）")
+        void savePlan_inconsistentDetails_rejected() {
+            BizFundMonthlyPlan plan = newPlan("0", "300000");
+            List<BizFundPlanDetail> details = new ArrayList<>();
+            details.add(detail(BizFundPlanDetail.DIRECTION_EXPENSE, "EXP-DIRECT-MATERIAL", "100000"));
+            plan.setDetails(details);
+            BizFundCategory category = new BizFundCategory();
+            when(fundCategoryService.getByCode(anyString(), anyString())).thenReturn(category);
+
+            assertThatThrownBy(() -> fundPlanService.saveMonthlyPlan(plan))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("不一致");
+            verify(monthlyPlanMapper, never()).insert(any(BizFundMonthlyPlan.class));
+        }
+
+        @Test
+        @DisplayName("异常路径 — 同方向科目重复被拦截")
+        void savePlan_duplicateCategory_rejected() {
+            BizFundMonthlyPlan plan = newPlan("0", "300000");
+            List<BizFundPlanDetail> details = new ArrayList<>();
+            details.add(detail(BizFundPlanDetail.DIRECTION_EXPENSE, "EXP-DIRECT-MATERIAL", "150000"));
+            details.add(detail(BizFundPlanDetail.DIRECTION_EXPENSE, "EXP-DIRECT-MATERIAL", "150000"));
+            plan.setDetails(details);
+            BizFundCategory category = new BizFundCategory();
+            when(fundCategoryService.getByCode(anyString(), anyString())).thenReturn(category);
+
+            assertThatThrownBy(() -> fundPlanService.saveMonthlyPlan(plan))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("同方向科目重复");
+        }
+
+        @Test
+        @DisplayName("兼容路径 — 无明细（details=null）仍按总额保存，向后兼容存量计划")
+        void savePlan_withoutDetails_backwardCompatible() {
+            BizFundMonthlyPlan plan = newPlan("100000", "300000");
+            when(monthlyPlanMapper.selectOne(any())).thenReturn(null);
+
+            fundPlanService.saveMonthlyPlan(plan);
+
+            verify(monthlyPlanMapper).insert(plan);
+            verify(planDetailMapper, never()).insert(any(BizFundPlanDetail.class));
         }
     }
 }

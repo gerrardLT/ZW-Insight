@@ -36,6 +36,7 @@ public class PaymentReceivedService {
     private final BizPaymentReceivedMapper paymentReceivedMapper;
     private final BizProjectMapper projectMapper;
     private final BizConstructionContractMapper contractMapper;
+    private final ReceivableService receivableService;
 
     /**
      * 分页查询（支持按认领状态筛选）
@@ -101,6 +102,10 @@ public class PaymentReceivedService {
             contract.setCumulativeReceivedAmount(cumulativeReceived.add(receiveAmount));
             contractMapper.updateById(contract);
         }
+
+        // 应收台账核销（V2026_57）：回款登记即生效（status=APPROVED），FIFO 冲减 OPEN 应收；
+        // 无台账/不足额部分为预收事实，不冲减不报错（日志可见）
+        receivableService.writeOff(paymentReceived.getId(), paymentReceived.getProjectId(), receiveAmount);
     }
 
     /**
@@ -184,6 +189,13 @@ public class PaymentReceivedService {
 
         paymentReceivedMapper.updateById(paymentReceived);
 
+        // 应收核销对称调整（V2026_57）：先按旧核销明细全额反冲，再按新金额重新 FIFO 核销，
+        // 避免差额近似回滚导致的台账漂移
+        if (diff.signum() != 0) {
+            receivableService.reverseWriteOff(existing.getId());
+            receivableService.writeOff(existing.getId(), existing.getProjectId(), newAmount);
+        }
+
         // 按差额回冲/追加项目总收入
         if (diff.signum() != 0) {
             BizProject project = projectMapper.selectById(existing.getProjectId());
@@ -231,5 +243,8 @@ public class PaymentReceivedService {
                 contractMapper.updateById(contract);
             }
         }
+
+        // 反冲应收核销（V2026_57，与 save 核销对称）：台账余额回加、CLOSED 恢复 OPEN
+        receivableService.reverseWriteOff(id);
     }
 }

@@ -10,10 +10,12 @@ import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
+import com.zwinsight.finance.domain.BizBankFlow;
 import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.domain.SysAmountTierConfig;
 import com.zwinsight.finance.dto.BatchOperationRequest;
 import com.zwinsight.finance.dto.ContractPayableInfo;
+import com.zwinsight.finance.mapper.BizBankFlowMapper;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
 import com.zwinsight.finance.mapper.ContractPayableMapper;
 import com.zwinsight.finance.mapper.SettlementDataMapper;
@@ -27,7 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -43,6 +47,7 @@ import java.util.Map;
 public class PaymentApplyService {
 
     private final BizPaymentApplyMapper paymentApplyMapper;
+    private final BizBankFlowMapper bankFlowMapper;
     private final BizOtherContractMapper otherContractMapper;
     private final ContractPayableMapper contractPayableMapper;
     private final BizProjectMapper projectMapper;
@@ -58,14 +63,16 @@ public class PaymentApplyService {
             java.util.Set.of("PURCHASE", "LABOR", "MACHINE", "SUBCONTRACT");
 
     /**
-     * 分页查询
+     * 分页查询（payStatus 筛选支持「已批未付」清单，V2026_56）
      */
-    public PageResult<BizPaymentApply> page(int page, int size, Long projectId, Long contractId, String status) {
+    public PageResult<BizPaymentApply> page(int page, int size, Long projectId, Long contractId,
+                                            String status, String payStatus) {
         Page<BizPaymentApply> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizPaymentApply> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizPaymentApply::getProjectId, projectId)
                 .eq(contractId != null, BizPaymentApply::getContractId, contractId)
                 .eq(StrUtil.isNotBlank(status), BizPaymentApply::getStatus, status)
+                .eq(StrUtil.isNotBlank(payStatus), BizPaymentApply::getPayStatus, payStatus)
                 .orderByDesc(BizPaymentApply::getCreatedAt);
         Page<BizPaymentApply> result = paymentApplyMapper.selectPage(pageParam, wrapper);
         ProjectNameFiller.fill(result.getRecords(), projectMapper,
@@ -296,6 +303,118 @@ public class PaymentApplyService {
         paymentApply.setStatus("REJECTED");
         paymentApplyMapper.updateById(paymentApply);
         log.info("付款申请审批驳回, id={}", id);
+    }
+
+    /**
+     * 支付执行态刷新（V2026_56，由 {@link BankFlowService#matchFlow}/{@link BankFlowService#unmatchFlow} 勾稽变更后调用）。
+     * <p>口径不变量：total_expense 仍为<b>审批口径</b>（仅 {@link #onApproved(Long)} 回写）；
+     * pay_status 为<b>现金口径</b>的增量语义，本方法不回写项目账/合同累计已付，
+     * 不影响 R7 审计基线与 52_V2026_50 勾稽种子。</p>
+     * <p>判定规则（以已勾稽银行流水为唯一事实源，重算幂等）：
+     * 勾稽金额合计（match_amount 空则取流水 amount）≥ 付款金额 → PAID（pay_date 取最早勾稽流水日）；
+     * 否则 UNPAID（部分支付事实由流水体现，不伪造全额支付）。
+     * 非 APPROVED 单据不处理（未生效单据无支付语义）。</p>
+     *
+     * @param id 付款申请ID（不存在时抛 BusinessException，不静默跳过）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void refreshPayStatus(Long id) {
+        BizPaymentApply apply = paymentApplyMapper.selectById(id);
+        if (apply == null) {
+            throw new BusinessException("付款申请不存在");
+        }
+        if (!"APPROVED".equals(apply.getStatus())) {
+            return;
+        }
+        List<BizBankFlow> flows = bankFlowMapper.selectList(
+                new LambdaQueryWrapper<BizBankFlow>()
+                        .eq(BizBankFlow::getReconciled, 1)
+                        .eq(BizBankFlow::getMatchedType, BizBankFlow.MATCH_PAYMENT_APPLY)
+                        .eq(BizBankFlow::getMatchedId, id)
+                        .orderByAsc(BizBankFlow::getFlowDate));
+        BigDecimal matchedTotal = BigDecimal.ZERO;
+        LocalDate firstFlowDate = null;
+        Long firstAccountId = null;
+        for (BizBankFlow flow : flows) {
+            BigDecimal amount = flow.getMatchAmount() != null ? flow.getMatchAmount() : flow.getAmount();
+            if (amount == null) {
+                continue;
+            }
+            matchedTotal = matchedTotal.add(amount);
+            if (firstFlowDate == null) {
+                firstFlowDate = flow.getFlowDate();
+                firstAccountId = flow.getAccountId();
+            }
+        }
+        BigDecimal paymentAmount = apply.getPaymentAmount() == null ? BigDecimal.ZERO : apply.getPaymentAmount();
+        boolean paid = matchedTotal.compareTo(paymentAmount) >= 0;
+        apply.setPayStatus(paid ? BizPaymentApply.PAY_STATUS_PAID : BizPaymentApply.PAY_STATUS_UNPAID);
+        apply.setPayDate(paid ? firstFlowDate : null);
+        apply.setPayAccountId(paid ? firstAccountId : null);
+        paymentApplyMapper.updateById(apply);
+        log.info("付款申请支付态刷新, id={}, payStatus={}, 勾稽合计={}, 付款金额={}",
+                id, apply.getPayStatus(), matchedTotal, paymentAmount);
+    }
+
+    /**
+     * 手工标记已支付（无网银流水导入场景的备选路径，与流水勾稽同一状态字段）。
+     * <p>仅 APPROVED 且 UNPAID 可标记；若已存在勾稽流水则拒绝手工标记
+     * （流水为唯一事实源，防双轨冲突）。口径不变量同 {@link #refreshPayStatus(Long)}：
+     * 不回写项目账/合同累计已付。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void markPaid(Long id, LocalDate payDate, Long payAccountId) {
+        BizPaymentApply apply = paymentApplyMapper.selectById(id);
+        if (apply == null) {
+            throw new BusinessException("付款申请不存在");
+        }
+        if (!"APPROVED".equals(apply.getStatus())) {
+            throw new BusinessException("仅审批通过的付款申请可标记支付，当前状态：" + apply.getStatus());
+        }
+        if (BizPaymentApply.PAY_STATUS_PAID.equals(apply.getPayStatus())) {
+            throw new BusinessException("该付款申请已标记支付，不可重复标记");
+        }
+        Long matchedFlows = bankFlowMapper.selectCount(new LambdaQueryWrapper<BizBankFlow>()
+                .eq(BizBankFlow::getReconciled, 1)
+                .eq(BizBankFlow::getMatchedType, BizBankFlow.MATCH_PAYMENT_APPLY)
+                .eq(BizBankFlow::getMatchedId, id));
+        if (matchedFlows != null && matchedFlows > 0) {
+            throw new BusinessException("该付款申请已有银行流水勾稽，支付态以流水为准，不可手工标记");
+        }
+        if (payDate == null) {
+            throw new BusinessException("支付日期不能为空");
+        }
+        apply.setPayStatus(BizPaymentApply.PAY_STATUS_PAID);
+        apply.setPayDate(payDate);
+        apply.setPayAccountId(payAccountId);
+        paymentApplyMapper.updateById(apply);
+        log.info("付款申请手工标记已支付, id={}, payDate={}, accountId={}", id, payDate, payAccountId);
+    }
+
+    /**
+     * 撤销手工支付标记（仅无勾稽流水的手工标记可撤；有流水时须走取消勾稽联动）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void revokePaid(Long id) {
+        BizPaymentApply apply = paymentApplyMapper.selectById(id);
+        if (apply == null) {
+            throw new BusinessException("付款申请不存在");
+        }
+        if (!BizPaymentApply.PAY_STATUS_PAID.equals(apply.getPayStatus())) {
+            throw new BusinessException("该付款申请未标记支付，无需撤销");
+        }
+        Long matchedFlows = bankFlowMapper.selectCount(new LambdaQueryWrapper<BizBankFlow>()
+                .eq(BizBankFlow::getReconciled, 1)
+                .eq(BizBankFlow::getMatchedType, BizBankFlow.MATCH_PAYMENT_APPLY)
+                .eq(BizBankFlow::getMatchedId, id));
+        if (matchedFlows != null && matchedFlows > 0) {
+            throw new BusinessException("支付态由银行流水勾稽产生，请通过取消勾稽撤销");
+        }
+        apply.setPayStatus(BizPaymentApply.PAY_STATUS_UNPAID);
+        apply.setPayDate(null);
+        apply.setPayAccountId(null);
+        paymentApplyMapper.updateById(apply);
+        log.info("付款申请撤销手工支付标记, id={}", id);
     }
 
     /**

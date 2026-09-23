@@ -37,6 +37,9 @@ class PersonalReimbursementServiceTest {
     @Mock
     private ApprovalService approvalService;
 
+    @Mock
+    private ReimbursementDetailService reimbursementDetailService;
+
     @InjectMocks
     private PersonalReimbursementService service;
 

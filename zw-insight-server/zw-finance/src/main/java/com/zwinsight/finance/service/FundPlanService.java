@@ -6,14 +6,18 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizFundAnnualBudget;
 import com.zwinsight.finance.domain.BizFundMonthlyPlan;
+import com.zwinsight.finance.domain.BizFundPlanDetail;
 import com.zwinsight.finance.domain.BizFundRollingForecast;
 import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.domain.BizPaymentReceived;
+import com.zwinsight.finance.domain.BizReceivable;
 import com.zwinsight.finance.mapper.BizFundAnnualBudgetMapper;
 import com.zwinsight.finance.mapper.BizFundMonthlyPlanMapper;
+import com.zwinsight.finance.mapper.BizFundPlanDetailMapper;
 import com.zwinsight.finance.mapper.BizFundRollingForecastMapper;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
 import com.zwinsight.finance.mapper.BizPaymentReceivedMapper;
+import com.zwinsight.finance.mapper.BizReceivableMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +27,21 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 资金计划三层联动服务（年度预算 + 月度计划 + 滚动预测）
  * <p>对标广联达 PMCore「先计划后支付」：
  * 1) 年度预算：年初编制，项目或公司维度；
- * 2) 月度计划：预计收支 + 月末实际回填（actual 数据源为真实单据聚合，非手填）；
- * 3) 滚动预测：预计付款 = 已审批未付付款申请（按付款日期落月聚合），
- *    预计收款 = 月度计划（APPROVED），净缺口 = 付款 - 收款。</p>
+ * 2) 月度计划：预计收支 + 科目明细（V2026_58）+ 月末实际回填（actual 为真实单据聚合，非手填）；
+ * 3) 滚动预测（V2026_56/57 数据源重做）：
+ *    预计付款 = 已审批且<b>未支付</b>（status=APPROVED 且 pay_status≠PAID）的付款申请按付款日期落月；
+ *    预计收款 = 应收台账 OPEN 余额按到期日落月（无台账时回退月度计划 income_plan）；
+ *    净缺口 = 付款 − 收款。快照由 {@code FundForecastTask} 每日 01:15 自动刷新。</p>
+ * <p><b>旧版语义纠正</b>：本类原注释称“预计付款 = 已审批未付”，但当时系统无支付执行态
+ * （审批通过即视为已付），“已批未付”状态并不存在；V2026_56 引入 pay_status 后该口径才真实成立。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -39,9 +49,12 @@ public class FundPlanService {
 
     private final BizFundAnnualBudgetMapper annualBudgetMapper;
     private final BizFundMonthlyPlanMapper monthlyPlanMapper;
+    private final BizFundPlanDetailMapper planDetailMapper;
     private final BizFundRollingForecastMapper rollingForecastMapper;
     private final BizPaymentApplyMapper paymentApplyMapper;
     private final BizPaymentReceivedMapper paymentReceivedMapper;
+    private final BizReceivableMapper receivableMapper;
+    private final FundCategoryService fundCategoryService;
 
     private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
 
@@ -87,11 +100,13 @@ public class FundPlanService {
     // ==================== 月度计划 ====================
 
     /**
-     * 保存月度计划（项目+年月唯一；存在即更新，不存在即新增）
+     * 保存月度计划（项目+年月唯一；存在即更新，不存在即新增）；
+     * 携带 details 时级联保存科目明细（V2026_58，先校验后落库，不静默丢弃）。
      */
     @Transactional(rollbackFor = Exception.class)
     public void saveMonthlyPlan(BizFundMonthlyPlan plan) {
         validateMonthlyPlan(plan);
+        validatePlanDetails(plan);
         LambdaQueryWrapper<BizFundMonthlyPlan> unique = new LambdaQueryWrapper<BizFundMonthlyPlan>()
                 .eq(BizFundMonthlyPlan::getPlanYear, plan.getPlanYear())
                 .eq(BizFundMonthlyPlan::getPlanMonth, plan.getPlanMonth());
@@ -106,12 +121,31 @@ public class FundPlanService {
             existing.setExpensePlan(plan.getExpensePlan());
             existing.setRemark(plan.getRemark());
             monthlyPlanMapper.updateById(existing);
+            if (plan.getDetails() != null) {
+                replacePlanDetails(existing.getId(), plan.getDetails());
+            }
         } else {
             plan.setStatus("DRAFT");
             plan.setActualIncome(BigDecimal.ZERO);
             plan.setActualExpense(BigDecimal.ZERO);
             monthlyPlanMapper.insert(plan);
+            if (plan.getDetails() != null) {
+                replacePlanDetails(plan.getId(), plan.getDetails());
+            }
         }
+    }
+
+    /**
+     * 查询某月度计划的科目明细（V2026_58）
+     */
+    public List<BizFundPlanDetail> listPlanDetails(Long planId) {
+        if (planId == null) {
+            throw new BusinessException(400, "计划ID不能为空");
+        }
+        return planDetailMapper.selectList(new LambdaQueryWrapper<BizFundPlanDetail>()
+                .eq(BizFundPlanDetail::getPlanId, planId)
+                .orderByAsc(BizFundPlanDetail::getDirection)
+                .orderByAsc(BizFundPlanDetail::getId));
     }
 
     /**
@@ -131,6 +165,8 @@ public class FundPlanService {
      * 回填月度实际收支（真实单据聚合，非手填）：
      * 实际收款 = 当月回款登记总额（回款日期落月）；
      * 实际付款 = 当月审批通过的付款申请总额（付款日期落月，付款口径与 total_expense 一致）
+     * <p>注：实际付款仍按<b>审批口径</b>统计（与 total_expense 同源），不按 pay_status 现金口径，
+     * 保证月度计划回填与项目支出账、R7 审计基线一致。</p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void fillActual(int year, int month, Long projectId) {
@@ -172,10 +208,11 @@ public class FundPlanService {
     // ==================== 滚动预测 ====================
 
     /**
-     * 生成滚动预测快照（未来 N 个月，按月粒度）：
-     * 预计付款 = 已审批未付付款申请按付款日期落月聚合；
-     * 预计收款 = 月度计划 APPROVED 的 income_plan（未回填实际部分）；
-     * 净缺口 = 付款 - 收款；风险等级按缺口与付款规模判定。
+     * 生成滚动预测快照（未来 N 个月，按月粒度；V2026_56/57 数据源重做）：
+     * <p>预计付款 = 已审批且<b>未支付</b>（pay_status=UNPAID，现金口径）的付款申请按付款日期落月聚合；</p>
+     * <p>预计收款 = 应收台账（biz_receivable OPEN）按到期日落月聚合（真实应收驱动）；
+     * 无台账记录的项目维度仍用月度计划（APPROVED）income_plan 兜底；</p>
+     * <p>净缺口 = 付款 - 收款；风险等级按缺口与付款规模判定（口径不变）。</p>
      */
     @Transactional(rollbackFor = Exception.class)
     public List<BizFundRollingForecast> generateRollingForecast(Long projectId, int months) {
@@ -185,16 +222,20 @@ public class FundPlanService {
         LocalDate today = LocalDate.now();
         YearMonth current = YearMonth.from(today);
 
+        // 收款侧数据源：应收台账 OPEN 余额按到期日落月（一次性加载，避免逐月查库）
+        Map<String, BigDecimal> receivableByMonth = sumOpenReceivableByDueMonth(projectId);
+
         List<BizFundRollingForecast> result = new ArrayList<>();
         for (int i = 0; i < months; i++) {
             YearMonth ym = current.plusMonths(i);
             String monthKey = ym.format(MONTH_FMT);
 
-            // 预计付款：已审批付款申请（当月到期）
+            // 预计付款：已审批且未支付的付款申请（当月到期）——现金口径，已付部分不再计入未来流出
             BigDecimal payments = BigDecimal.ZERO;
             List<BizPaymentApply> applies = paymentApplyMapper.selectList(
                     new LambdaQueryWrapper<BizPaymentApply>()
                             .eq(BizPaymentApply::getStatus, "APPROVED")
+                            .ne(BizPaymentApply::getPayStatus, BizPaymentApply.PAY_STATUS_PAID)
                             .eq(projectId != null, BizPaymentApply::getProjectId, projectId)
                             .isNotNull(BizPaymentApply::getPaymentDate)
                             .ge(BizPaymentApply::getPaymentDate, ym.atDay(1))
@@ -203,17 +244,19 @@ public class FundPlanService {
                 payments = payments.add(a.getPaymentAmount());
             }
 
-            // 预计收款：月度计划（APPROVED）的收款计划
-            BigDecimal receipts = BigDecimal.ZERO;
-            BizFundMonthlyPlan plan = monthlyPlanMapper.selectOne(
-                    new LambdaQueryWrapper<BizFundMonthlyPlan>()
-                            .eq(BizFundMonthlyPlan::getPlanYear, ym.getYear())
-                            .eq(BizFundMonthlyPlan::getPlanMonth, ym.getMonthValue())
-                            .eq(BizFundMonthlyPlan::getStatus, "APPROVED")
-                            .eq(projectId != null, BizFundMonthlyPlan::getProjectId, projectId)
-                            .isNull(projectId == null, BizFundMonthlyPlan::getProjectId));
-            if (plan != null && plan.getIncomePlan() != null) {
-                receipts = plan.getIncomePlan();
+            // 预计收款：应收台账优先；台账无任何记录时回退月度计划 income_plan（兜底，不重复叠加）
+            BigDecimal receipts = receivableByMonth.getOrDefault(monthKey, BigDecimal.ZERO);
+            if (receivableByMonth.isEmpty()) {
+                BizFundMonthlyPlan plan = monthlyPlanMapper.selectOne(
+                        new LambdaQueryWrapper<BizFundMonthlyPlan>()
+                                .eq(BizFundMonthlyPlan::getPlanYear, ym.getYear())
+                                .eq(BizFundMonthlyPlan::getPlanMonth, ym.getMonthValue())
+                                .eq(BizFundMonthlyPlan::getStatus, "APPROVED")
+                                .eq(projectId != null, BizFundMonthlyPlan::getProjectId, projectId)
+                                .isNull(projectId == null, BizFundMonthlyPlan::getProjectId));
+                if (plan != null && plan.getIncomePlan() != null) {
+                    receipts = plan.getIncomePlan();
+                }
             }
 
             BigDecimal netGap = payments.subtract(receipts);
@@ -285,7 +328,149 @@ public class FundPlanService {
         return PageResult.of(rollingForecastMapper.selectPage(pageParam, wrapper));
     }
 
+    /**
+     * 未来大额支出 TOP（驾驶舱 V1 §9.3）：已审批且未支付的付款申请，
+     * 付款日期在未来 days 天内，按支出科目（paymentCategory）聚合降序。
+     * <p>无科目编码的单据归入 "UNCATEGORIZED"（如实呈现分类缺失，不隐藏）。</p>
+     *
+     * @param projectId 项目ID（可选，空则公司整体）
+     * @param days      未来天数（1-365）
+     * @return [{categoryCode, categoryName, amount, count}]，按金额降序
+     */
+    public List<Map<String, Object>> futureExpenseTop(Long projectId, int days) {
+        if (days < 1 || days > 365) {
+            throw new BusinessException(400, "预测天数需在1-365之间");
+        }
+        LocalDate today = LocalDate.now();
+        List<BizPaymentApply> applies = paymentApplyMapper.selectList(
+                new LambdaQueryWrapper<BizPaymentApply>()
+                        .eq(BizPaymentApply::getStatus, "APPROVED")
+                        .ne(BizPaymentApply::getPayStatus, BizPaymentApply.PAY_STATUS_PAID)
+                        .eq(projectId != null, BizPaymentApply::getProjectId, projectId)
+                        .isNotNull(BizPaymentApply::getPaymentDate)
+                        .ge(BizPaymentApply::getPaymentDate, today)
+                        .le(BizPaymentApply::getPaymentDate, today.plusDays(days)));
+        Map<String, BigDecimal> byCategory = new HashMap<>();
+        Map<String, Integer> countByCategory = new HashMap<>();
+        for (BizPaymentApply a : applies) {
+            String code = a.getPaymentCategory() != null && !a.getPaymentCategory().isBlank()
+                    ? a.getPaymentCategory() : "UNCATEGORIZED";
+            byCategory.merge(code, a.getPaymentAmount() != null ? a.getPaymentAmount() : BigDecimal.ZERO,
+                    BigDecimal::add);
+            countByCategory.merge(code, 1, Integer::sum);
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, BigDecimal> entry : byCategory.entrySet()) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("categoryCode", entry.getKey());
+            row.put("categoryName", resolveCategoryName(entry.getKey()));
+            row.put("amount", entry.getValue());
+            row.put("count", countByCategory.getOrDefault(entry.getKey(), 0));
+            result.add(row);
+        }
+        result.sort((x, y) -> ((BigDecimal) y.get("amount")).compareTo((BigDecimal) x.get("amount")));
+        return result;
+    }
+
+    /**
+     * 科目编码→名称（UNCATEGORIZED 固定文案；科目已删除/不存在时回退编码本身，不中断聚合）
+     */
+    private String resolveCategoryName(String code) {
+        if ("UNCATEGORIZED".equals(code)) {
+            return "未分类";
+        }
+        try {
+            var category = fundCategoryService.getByCode(code, "EXPENSE");
+            return category != null && category.getName() != null ? category.getName() : code;
+        } catch (BusinessException e) {
+            return code;
+        }
+    }
+
     // ==================== 私有方法 ====================
+
+    /**
+     * 校验科目明细（V2026_58）：科目有效且方向匹配、金额为正、同方向科目不重复、
+     * 各方向合计与主表总额一致（容差 0.01，不一致抛异常不静默）。
+     * details 为 null 时跳过（明细可选，存量计划向后兼容）；空列表视为清空明细。
+     */
+    private void validatePlanDetails(BizFundMonthlyPlan plan) {
+        List<BizFundPlanDetail> details = plan.getDetails();
+        if (details == null) {
+            return;
+        }
+        Map<String, BigDecimal> sums = new HashMap<>();
+        Map<String, String> seen = new HashMap<>();
+        for (BizFundPlanDetail d : details) {
+            if (d.getDirection() == null
+                    || !(BizFundPlanDetail.DIRECTION_INCOME.equals(d.getDirection())
+                    || BizFundPlanDetail.DIRECTION_EXPENSE.equals(d.getDirection()))) {
+                throw new BusinessException(400, "明细方向不合法，需为 INCOME 或 EXPENSE");
+            }
+            if (d.getAmount() == null || d.getAmount().signum() <= 0) {
+                throw new BusinessException(400, "明细金额必须大于0，科目：" + d.getCategoryCode());
+            }
+            // 科目有效性 + 方向匹配（getByCode 内部校验不存在/方向不符抛异常）
+            String expectDirection = BizFundPlanDetail.DIRECTION_INCOME.equals(d.getDirection())
+                    ? "INCOME" : "EXPENSE";
+            fundCategoryService.getByCode(d.getCategoryCode(), expectDirection);
+            String dupKey = d.getDirection() + ":" + d.getCategoryCode();
+            if (seen.put(dupKey, d.getCategoryCode()) != null) {
+                throw new BusinessException(400, "同方向科目重复：" + d.getCategoryCode());
+            }
+            sums.merge(d.getDirection(), d.getAmount(), BigDecimal::add);
+        }
+        BigDecimal tolerance = new BigDecimal("0.01");
+        assertSumMatches(sums.get(BizFundPlanDetail.DIRECTION_INCOME), plan.getIncomePlan(), tolerance, "收款");
+        assertSumMatches(sums.get(BizFundPlanDetail.DIRECTION_EXPENSE), plan.getExpensePlan(), tolerance, "付款");
+    }
+
+    private void assertSumMatches(BigDecimal detailSum, BigDecimal planTotal, BigDecimal tolerance, String label) {
+        BigDecimal sum = detailSum != null ? detailSum : BigDecimal.ZERO;
+        BigDecimal total = planTotal != null ? planTotal : BigDecimal.ZERO;
+        // 该方向无任何明细时不校验（允许仅拆单侧，如只拆付款不拆收款）
+        if (detailSum == null) {
+            return;
+        }
+        if (sum.subtract(total).abs().compareTo(tolerance) > 0) {
+            throw new BusinessException(400, label + "明细合计 " + sum + " 与计划总额 " + total + " 不一致");
+        }
+    }
+
+    /**
+     * 替换式保存明细（先逻辑删除旧明细再插入，与滚动快照覆盖式写入惯例一致）
+     */
+    private void replacePlanDetails(Long planId, List<BizFundPlanDetail> details) {
+        planDetailMapper.delete(new LambdaQueryWrapper<BizFundPlanDetail>()
+                .eq(BizFundPlanDetail::getPlanId, planId));
+        for (BizFundPlanDetail d : details) {
+            d.setId(null);
+            d.setPlanId(planId);
+            planDetailMapper.insert(d);
+        }
+    }
+
+    /**
+     * 应收台账 OPEN 余额按到期日落月汇总（滚动预测收款侧数据源，V2026_57）
+     */
+    private Map<String, BigDecimal> sumOpenReceivableByDueMonth(Long projectId) {
+        List<BizReceivable> opens = receivableMapper.selectList(new LambdaQueryWrapper<BizReceivable>()
+                .eq(projectId != null, BizReceivable::getProjectId, projectId)
+                .eq(BizReceivable::getStatus, BizReceivable.STATUS_OPEN));
+        Map<String, BigDecimal> byMonth = new HashMap<>();
+        for (BizReceivable r : opens) {
+            if (r.getDueDate() == null) {
+                continue;
+            }
+            BigDecimal balance = (r.getReceivableAmount() != null ? r.getReceivableAmount() : BigDecimal.ZERO)
+                    .subtract(r.getWrittenOffAmount() != null ? r.getWrittenOffAmount() : BigDecimal.ZERO);
+            if (balance.signum() <= 0) {
+                continue;
+            }
+            byMonth.merge(YearMonth.from(r.getDueDate()).format(MONTH_FMT), balance, BigDecimal::add);
+        }
+        return byMonth;
+    }
 
     private void validateMonthlyPlan(BizFundMonthlyPlan plan) {
         if (plan.getPlanYear() == null || plan.getPlanYear() < 2000 || plan.getPlanYear() > 2100) {

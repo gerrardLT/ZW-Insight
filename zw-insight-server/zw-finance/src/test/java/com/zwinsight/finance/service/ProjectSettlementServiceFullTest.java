@@ -68,6 +68,9 @@ class ProjectSettlementServiceFullTest {
     @Mock
     private ApprovalService approvalService;
 
+    @Mock
+    private ReceivableService receivableService;
+
     @InjectMocks
     private ProjectSettlementService service;
 

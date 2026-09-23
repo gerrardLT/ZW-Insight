@@ -1,17 +1,17 @@
 package com.zwinsight.finance.controller;
 
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
-import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizProjectReimbursement;
-import com.zwinsight.common.security.RequiresPermission;
+import com.zwinsight.finance.domain.BizReimbursementDetail;
 import com.zwinsight.finance.service.ProjectReimbursementService;
+import com.zwinsight.finance.service.ReimbursementDetailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 项目报销接口
@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class ProjectReimbursementController {
 
     private final ProjectReimbursementService reimbursementService;
+    private final ReimbursementDetailService reimbursementDetailService;
 
     @GetMapping
     public R<PageResult<BizProjectReimbursement>> page(
@@ -42,5 +43,14 @@ public class ProjectReimbursementController {
     public R<Void> submit(@PathVariable Long id) {
         reimbursementService.submit(id);
         return R.ok();
+    }
+
+    /**
+     * 查询报销单费用科目明细（含招待费专项信息；V2026_60）
+     */
+    @GetMapping("/{id}/details")
+    public R<List<BizReimbursementDetail>> details(@PathVariable Long id) {
+        return R.ok(reimbursementDetailService.listDetails(
+                BizReimbursementDetail.SOURCE_PROJECT, id));
     }
 }
