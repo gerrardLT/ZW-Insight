@@ -79,7 +79,17 @@ deploy/db-init/52_V2026_50__seed_reconcile_documents.sql         # 勾稽补齐�
 - **依赖顺序**：按 Layer 0-14 从底层到顶层插入（基础数据→项目→投标→合同→预算→产值→材料→机械→劳务→分包→现场→财务→询价→消息→评价），覆盖 55+ 张业务表
 - **数据闭环**：4 个不同生命周期项目――`90001 滨江花园一期`（施工中，全模块）、`90002 城南市政道路改造`（已竣工，结算/质保金）、`90003 高新区产业园二期`（已报备，投标）、`90004 城北河道综合整治`（可结项，E2E 结项链路夹具）；金额按「合同→产值→开票→收款→预算→各支出合同→结算→付款」逻辑自洽
 - **累计值必须有单据支撑（2026-09-18 R7-03 修复后强制）**：合同的 `cumulative_*` 与项目的 `total_income`/`total_expense`/`cumulative_output` 不得凭空写数，必须与对应 APPROVED 单据的汇总相等（容差 0.01）。`52_V2026_50` 已把三个项目的缺口全部补齐；**新增种子数据时必须同步补单据**，否则 `keys/audit-data.ps1` 的 Section 3 会报 MISMATCH
-- **`total_expense` 口径**：统一为「付款口径」（实际现金流出），**仅**由付款申请审批通过（`PaymentApplyService.onApproved`）与资金调拨回写，**不含** `biz_other_payment`（后者单列于 `total_other_payment`）。权威说明见 `SubcontractSettlementService` 的类内注释
+- **`total_expense` 口径（审批口径，非现金口径）**：**仅**由付款申请审批通过（`PaymentApplyService.onApproved`）与资金调拨回写，**不含** `biz_other_payment`（后者单列于 `total_other_payment`）。权威说明见 `SubcontractSettlementService` 的类内注释
+  - ⚠️ **历史表述纠正（2026-09-23）**：旧文档称其为「付款口径（实际现金流出）」并不准确——`onApproved` 在**审批通过时点**即回写，与银行是否实际划款无关。真实现金流出由 `biz_payment_apply.pay_status`（V2026_56 引入）表达
+- **双口径不得混用（2026-09-23 资金闭环改造后强制）**：
+  | 口径 | 字段 | 语义 | 消费方 |
+  |---|---|---|---|
+  | 审批口径 | `biz_project.total_expense` | 付款申请审批通过即计支出 | 项目账、月度计划 `actualExpense` 回填、R7 审计基线、已实现利润 |
+  | 现金口径 | `biz_payment_apply.pay_status`/`pay_date` | 银行流水勾稽足额或手工标记后为 PAID | 滚动预测付款侧、未来大额支出 TOP、利润趋势支出分月、驾驶舱「已批未付」卡 |
+  - **不变量**：`pay_status` 任何变更**不回写** `total_expense` / 合同 `cumulative_paid`，否则破坏 R7 审计基线与 `52_V2026_50` 勾稽种子
+- **应收台账口径（V2026_57）**：`biz_project.receivable_amount` = 该项目 `biz_receivable` 中 OPEN 记录的 `(receivable_amount − written_off_amount)` 合计，由 `ReceivableService` 同事务双写维护。该字段自 V2026_51 建列后至 V2026_57 前**生产代码从未回写**（看板恒读种子值），新增种子时须与台账一致
+- **资金相关表清单（新增种子需同步）**：`biz_receivable`（结算审批生成）、`biz_receivable_write_off`（回款核销明细，改额/删除按此精确反冲）、`biz_fund_plan_detail`（月度计划科目明细，合计须等于主表总额）、`biz_profit_snapshot` / `biz_risk_register`（由定时任务生成，**不手写种子**）、`biz_reimbursement_detail`（V2026_60 激活的原孤儿表）、`biz_entertainment_detail`
+- **完整口径与全景图**：见 `docs/资金流转全景图.md`（含资金流转 mermaid 全景、7 条风险规则判定式、定时任务错峰时序、设计取舍）
 - **新增种子的 ID 分配**：`99500-99999` 段为 `52_V2026_50` 占用（付款/结算/合同/开票/收款/产值）；再往后新增请先探针确认目标表该段空闲，`INSERT IGNORE` 撞主键会**静默跳过**而非报错
 
 ### 导入与验证
