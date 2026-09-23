@@ -88,7 +88,7 @@ export function writeOffPaymentReceived(id: number) {
 }
 
 // ======================== 付款申请 ========================
-export function getPaymentApplyPage(params: { page?: number; size?: number; projectId?: number }) {
+export function getPaymentApplyPage(params: { page?: number; size?: number; projectId?: number; status?: string; payStatus?: string }) {
   return request.get<R<PageResult<PaymentApply>>>('/v1/finance/payment-apply/page', { params })
 }
 
@@ -118,6 +118,22 @@ export function submitPaymentApply(id: number) {
  */
 export function batchPaymentApply(action: 'delete' | 'submit', ids: number[]) {
   return request.post<R<number>>('/v1/finance/payment-apply/batch', { action, ids })
+}
+
+/**
+ * 手工标记已支付（V2026_56；已勾稽银行流水的单据后端会拒绝，支付态以流水为准）
+ */
+export function markPaymentApplyPaid(id: number, payDate: string, payAccountId?: number) {
+  return request.post<R<void>>(`/v1/finance/payment-apply/${id}/mark-paid`, null, {
+    params: { payDate, payAccountId }
+  })
+}
+
+/**
+ * 撤销手工支付标记（V2026_56；流水勾稽产生的支付态需走取消勾稽）
+ */
+export function revokePaymentApplyPaid(id: number) {
+  return request.post<R<void>>(`/v1/finance/payment-apply/${id}/revoke-paid`)
 }
 
 // ======================== 其他费用付款 ========================

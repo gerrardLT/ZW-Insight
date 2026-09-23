@@ -157,6 +157,18 @@
         <el-form-item label="单据ID">
           <el-input-number v-model="matchForm.matchedId" :min="1" controls-position="right" style="width: 100%" />
         </el-form-item>
+        <el-form-item label="勾稽金额">
+          <el-input-number
+            v-model="matchForm.matchAmount"
+            :min="0.01"
+            :max="currentRow?.amount"
+            :precision="2"
+            controls-position="right"
+            style="width: 100%"
+            placeholder="留空按流水整笔金额勾稽"
+          />
+          <div class="match-hint">支持部分勾稽；付款申请累计勾稽足额后自动标记已支付（UNPAID→PAID）</div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="matchDialogVisible = false">取消</el-button>
@@ -210,7 +222,11 @@ const balanceForm = ref({
 })
 const importAccountId = ref<number | undefined>(undefined)
 const importText = ref('')
-const matchForm = ref({ matchedType: 'PAYMENT_APPLY', matchedId: undefined as number | undefined })
+const matchForm = ref({
+  matchedType: 'PAYMENT_APPLY',
+  matchedId: undefined as number | undefined,
+  matchAmount: undefined as number | undefined
+})
 
 const flowRules: FormRules = {
   accountId: [{ required: true, message: '请输入账户ID', trigger: 'blur' }],
@@ -332,7 +348,8 @@ function handleMatch(row: BankFlow) {
   // 方向决定可匹配的单据类型：收入→回款，支出→付款
   matchForm.value = {
     matchedType: row.direction === 'IN' ? 'PAYMENT_RECEIVED' : 'PAYMENT_APPLY',
-    matchedId: undefined
+    matchedId: undefined,
+    matchAmount: undefined
   }
   matchDialogVisible.value = true
 }
@@ -342,7 +359,12 @@ async function submitMatch() {
     ElMessage.warning('请填写匹配单据ID')
     return
   }
-  await matchFlow(currentRow.value.id as number, matchForm.value.matchedType, matchForm.value.matchedId)
+  await matchFlow(
+    currentRow.value.id as number,
+    matchForm.value.matchedType,
+    matchForm.value.matchedId,
+    matchForm.value.matchAmount
+  )
   ElMessage.success('勾稽成功')
   matchDialogVisible.value = false
   await loadPage()
@@ -372,5 +394,11 @@ onMounted(loadPage)
 .filter-bar {
   display: flex;
   align-items: center;
+}
+.match-hint {
+  font-size: var(--zw-font-size-xs);
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
+  margin-top: var(--zw-space-xs);
 }
 </style>

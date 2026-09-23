@@ -31,7 +31,7 @@
         <!-- ============ 月度计划 ============ -->
         <el-tab-pane label="月度计划" name="monthly">
           <div class="table-toolbar">
-            <el-button type="primary" @click="monthlyDialogVisible = true">编制月度计划</el-button>
+            <el-button type="primary" @click="openMonthlyDialog">编制月度计划</el-button>
           </div>
           <el-table :data="monthlyData" v-loading="monthlyLoading" border>
             <el-table-column label="月份" width="110" align="center">
@@ -117,7 +117,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="monthlyDialogVisible" title="编制月度计划" width="480px" destroy-on-close>
+    <el-dialog v-model="monthlyDialogVisible" title="编制月度计划" width="640px" destroy-on-close>
       <el-form label-width="110px">
         <el-form-item label="计划年度">
           <el-input-number v-model="monthlyForm.planYear" :min="2000" :max="2100" controls-position="right" style="width: 100%" />
@@ -134,17 +134,35 @@
         <el-form-item label="当月预计付款">
           <el-input-number v-model="monthlyForm.expensePlan" :min="0" :precision="2" controls-position="right" style="width: 100%" />
         </el-form-item>
+        <!-- 科目明细（V2026_58）：可选维护；维护后合计必须与总额一致（前后端双重校验，不静默） -->
+        <el-divider content-position="left">科目明细（选填，按资金科目拆分付款计划）</el-divider>
+        <el-form-item v-for="(d, idx) in monthlyDetails" :key="idx" :label="`付款科目 ${idx + 1}`">
+          <div class="detail-row">
+            <el-select v-model="d.categoryCode" filterable placeholder="选择科目" style="flex: 1">
+              <el-option v-for="c in expenseCategories" :key="c.code" :label="`${c.name}（${c.code}）`" :value="c.code" />
+            </el-select>
+            <el-input-number v-model="d.amount" :min="0.01" :precision="2" controls-position="right" style="width: 180px" />
+            <el-button link type="danger" @click="removeDetail(idx)">删除</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item label-width="110px">
+          <el-button link type="primary" @click="addDetail">+ 添加科目明细</el-button>
+          <span class="detail-sum" :class="{ 'detail-sum-error': detailSumMismatch }">
+            明细合计 {{ formatAmount(detailSum) }} / 计划付款 {{ formatAmount(monthlyForm.expensePlan) }}
+            <template v-if="detailSumMismatch">（不一致，提交将被拒绝）</template>
+          </span>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="monthlyDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitMonthly">确定</el-button>
+        <el-button type="primary" :disabled="detailSumMismatch" @click="submitMonthly">确定</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getAnnualBudgetPage,
@@ -156,8 +174,10 @@ import {
   getRollingForecastPage,
   type FundAnnualBudget,
   type FundMonthlyPlan,
+  type FundPlanDetail,
   type FundRollingForecast
 } from '@/api/fund-plan'
+import { getEnabledCategories, type FundCategory } from '@/api/fund-category'
 
 const activeTab = ref('annual')
 const annualLoading = ref(false)
@@ -183,6 +203,38 @@ const monthlyForm = ref({
   incomePlan: undefined as number | undefined,
   expensePlan: undefined as number | undefined
 })
+
+// ================= 科目明细（V2026_58） =================
+const monthlyDetails = ref<FundPlanDetail[]>([])
+const expenseCategories = ref<FundCategory[]>([])
+
+const detailSum = computed(() =>
+  monthlyDetails.value.reduce((sum, d) => sum + (Number(d.amount) || 0), 0))
+// 有明细时合计必须与计划付款总额一致（容差 0.01，与后端同口径）；无明细不校验（可选维护）
+const detailSumMismatch = computed(() => {
+  if (!monthlyDetails.value.length) return false
+  const total = Number(monthlyForm.value.expensePlan) || 0
+  return Math.abs(detailSum.value - total) > 0.01
+})
+
+function addDetail() {
+  monthlyDetails.value.push({ direction: 'EXPENSE', categoryCode: '', amount: undefined as unknown as number })
+}
+
+function openMonthlyDialog() {
+  // 重置明细编辑态，避免上次未提交的残留行被带入
+  monthlyDetails.value = []
+  monthlyDialogVisible.value = true
+}
+
+function removeDetail(idx: number) {
+  monthlyDetails.value.splice(idx, 1)
+}
+
+async function loadExpenseCategories() {
+  const res = await getEnabledCategories('EXPENSE')
+  expenseCategories.value = res.data.data || []
+}
 
 function formatAmount(value?: number) {
   return value != null ? `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}` : '—'
@@ -241,7 +293,24 @@ async function submitMonthly() {
     ElMessage.warning('请填写月度收支计划')
     return
   }
-  await saveMonthlyPlan(monthlyForm.value as FundMonthlyPlan)
+  // 明细预检（不静默）：科目必选、金额必填、同科目不重复；合计一致性由 detailSumMismatch 门禁按钮拦截
+  if (monthlyDetails.value.length) {
+    const invalid = monthlyDetails.value.find(d => !d.categoryCode || d.amount == null)
+    if (invalid) {
+      ElMessage.warning('科目明细存在未选科目或未填金额的行')
+      return
+    }
+    const codes = monthlyDetails.value.map(d => d.categoryCode)
+    if (new Set(codes).size !== codes.length) {
+      ElMessage.warning('同方向科目不可重复')
+      return
+    }
+  }
+  const payload: FundMonthlyPlan = {
+    ...monthlyForm.value as FundMonthlyPlan,
+    details: monthlyDetails.value.length ? monthlyDetails.value : undefined
+  }
+  await saveMonthlyPlan(payload)
   ElMessage.success('月度计划已编制')
   monthlyDialogVisible.value = false
   await loadMonthly()
@@ -268,6 +337,7 @@ onMounted(() => {
   loadAnnual()
   loadMonthly()
   loadRolling()
+  loadExpenseCategories()
 })
 </script>
 
@@ -287,5 +357,20 @@ onMounted(() => {
 }
 .gap-positive {
   color: var(--el-color-success);
+}
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: var(--zw-space-sm);
+  width: 100%;
+}
+.detail-sum {
+  margin-left: var(--zw-space-md);
+  font-size: var(--zw-font-size-xs);
+  color: var(--el-text-color-secondary);
+}
+.detail-sum-error {
+  color: var(--el-color-danger);
+  font-weight: 600;
 }
 </style>

@@ -21,6 +21,8 @@ const {
   mockDeletePaymentApply,
   mockSubmitPaymentApply,
   mockBatchPaymentApply,
+  mockMarkPaymentApplyPaid,
+  mockRevokePaymentApplyPaid,
   mockGetProjectList,
   mockGetOtherContractPage,
   mockGetPurchaseContractPage,
@@ -34,6 +36,8 @@ const {
   mockDeletePaymentApply: vi.fn(async (_p?: any): Promise<any> => ({ code: 200 })),
   mockSubmitPaymentApply: vi.fn(async (_p?: any): Promise<any> => ({ code: 200 })),
   mockBatchPaymentApply: vi.fn(async (_a?: any, _ids?: any): Promise<any> => ({ code: 200, data: 2 })),
+  mockMarkPaymentApplyPaid: vi.fn(async (_id?: any, _d?: any, _a?: any): Promise<any> => ({ code: 200 })),
+  mockRevokePaymentApplyPaid: vi.fn(async (_id?: any): Promise<any> => ({ code: 200 })),
   mockGetProjectList: vi.fn(async (_p?: any): Promise<any> => ({ code: 200, data: [] })),
   mockGetOtherContractPage: vi.fn(async (_p?: any): Promise<any> => ({ code: 200, data: { records: [] } })),
   mockGetPurchaseContractPage: vi.fn(async (_p?: any): Promise<any> => ({ code: 200, data: { records: [] } })),
@@ -49,6 +53,10 @@ vi.mock('@/api/finance', () => ({
   deletePaymentApply: mockDeletePaymentApply,
   submitPaymentApply: mockSubmitPaymentApply,
   batchPaymentApply: mockBatchPaymentApply,
+  // V2026_56 支付执行态：组件已 import 这两个导出，mock 必须同步提供，
+  // 否则组件内拿到 undefined（静默缺陷，调用时才崩）
+  markPaymentApplyPaid: mockMarkPaymentApplyPaid,
+  revokePaymentApplyPaid: mockRevokePaymentApplyPaid,
   getFundPlan: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
 }))
 vi.mock('@/api/project', () => ({
@@ -83,6 +91,14 @@ vi.mock('@/stores/app', () => ({
   useAppStore: () => ({ isDark: false }),
 }))
 import PaymentApply from '@/views/finance/payment-apply.vue'
+
+// 重型 Element Plus 全量挂载：本文件 19 个用例均真实 mount（查询区 3 个 el-select
+// + 6 列表格 + 详情抽屉 + 新增/标记支付对话框），全量并发满载时单次 mount
+// 可超 vitest 默认 5s 预算而随机超时（实测失败用例在轮次间漂移：D7/D4/详情抽屉轮流命中）。
+// 与 contract-form-view.component.test.ts（timeout: 20_000）同口径校准测试预算，
+// 不放宽断言、不跳过用例。组件侧已同步做真实挂载成本优化：
+// 标记支付对话框 v-if 懒挂载、支付状态列改用原生 title 而非每行 el-tooltip 实例。
+vi.setConfig({ testTimeout: 20_000 })
 
 async function mountPage() {
   const wrapper = mount(PaymentApply, {
@@ -314,6 +330,82 @@ describe('payment-apply.vue 详情抽屉（真实接口，2026-08-28 补全）',
     expect(mockGetPaymentApplyDetail).toHaveBeenCalledTimes(2)
     expect(st.detailData.paymentAmount).toBe(100000)
     expect(st.detailError).toBe('')
+    wrapper.unmount()
+  })
+})
+
+describe('payment-apply.vue 支付执行态（V2026_56）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetPaymentApplyPage.mockResolvedValue({ code: 200, data: { records: [], total: 0 } })
+  })
+
+  it('标记支付：传支付日期与账户调 mark-paid 并刷新列表', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.payRow = { id: 31, paymentAmount: 88000, status: 'APPROVED' }
+    st.payForm.payDate = '2026-09-21'
+    st.payForm.payAccountId = 7
+
+    await st.submitMarkPaid()
+    await flushPromises()
+
+    expect(mockMarkPaymentApplyPaid).toHaveBeenCalledWith(31, '2026-09-21', 7)
+    // 提交后关闭弹框并重拉列表（支付态列需反映最新值）
+    expect(st.payDialogVisible).toBe(false)
+    expect(mockGetPaymentApplyPage).toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('标记支付：未选支付日期时不发请求（前置校验，不依赖后端报错）', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.payRow = { id: 32, paymentAmount: 1000, status: 'APPROVED' }
+    st.payForm.payDate = ''
+
+    await st.submitMarkPaid()
+    await flushPromises()
+
+    expect(mockMarkPaymentApplyPaid).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('撤销支付标记：二次确认后调 revoke-paid', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    vi.spyOn(ElMessageBox, 'confirm').mockResolvedValueOnce('confirm' as any)
+
+    await st.handleRevokePaid({ id: 33, status: 'APPROVED', payStatus: 'PAID' })
+    await flushPromises()
+
+    expect(mockRevokePaymentApplyPaid).toHaveBeenCalledWith(33)
+    wrapper.unmount()
+  })
+
+  it('支付状态筛选透传：payStatus 随分页参数一同下发（已批未付清单）', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.queryParams.payStatus = 'UNPAID'
+    st.queryParams.status = 'APPROVED'
+
+    await st.loadData()
+    await flushPromises()
+
+    expect(mockGetPaymentApplyPage).toHaveBeenCalledWith(
+      expect.objectContaining({ payStatus: 'UNPAID', status: 'APPROVED' })
+    )
+    wrapper.unmount()
+  })
+
+  it('重置清空支付状态筛选（不残留隐性过滤条件）', async () => {
+    const wrapper = await mountPage()
+    const st = setupState(wrapper)
+    st.queryParams.payStatus = 'PAID'
+
+    st.handleReset()
+    await flushPromises()
+
+    expect(st.queryParams.payStatus).toBe('')
     wrapper.unmount()
   })
 })

@@ -66,6 +66,82 @@
       </el-row>
       </el-row>
 
+      <!-- 经营视角 + TOP 偏差（V2026_59）：成本页回答“花了多少”，这里回答“还赚不赚钱、哪里超了” -->
+      <el-row :gutter="16" class="biz-row">
+        <el-col :span="10">
+          <el-card shadow="never" class="biz-card" v-loading="bizLoading">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">经营视角</span>
+                <span class="health-badge" :class="healthMeta.cls">{{ healthMeta.text }}</span>
+              </div>
+            </template>
+            <template v-if="bizHealth">
+              <div class="biz-metrics">
+                <div class="biz-item">
+                  <span class="b-label">合同收入</span>
+                  <span class="b-value">{{ formatAmount(bizHealth.contractIncome) }}</span>
+                </div>
+                <div class="biz-item">
+                  <span class="b-label">预计总成本</span>
+                  <span class="b-value">{{ formatAmount(bizHealth.forecastTotalCost) }}</span>
+                </div>
+                <div class="biz-item">
+                  <span class="b-label">预计利润</span>
+                  <span class="b-value" :class="{ 'is-danger': Number(bizHealth.forecastProfit) < 0 }">
+                    {{ formatAmount(bizHealth.forecastProfit) }}
+                  </span>
+                </div>
+                <div class="biz-item">
+                  <span class="b-label">预计利润率</span>
+                  <span class="b-value">{{ ((Number(bizHealth.profitRate) || 0) * 100).toFixed(1) }}%</span>
+                </div>
+              </div>
+              <!-- 口径如实告知：无 CBS 时“预计”退化为已实现，不能让用户误读 -->
+              <el-alert v-if="bizHealth.costBasis === 'FALLBACK_TOTAL_EXPENSE'" type="warning" :closable="false"
+                show-icon class="biz-alert"
+                title="本项目未建 CBS 成本账户，“预计总成本”已退化为已实现支出，不具备预测意义" />
+              <el-alert v-else-if="bizHealth.incomeBasis === 'PROJECT_CONTRACT_AMOUNT'" type="info" :closable="false"
+                show-icon class="biz-alert"
+                title="无生效施工合同，合同收入已回退为项目合同额" />
+              <div v-if="bizHealth.topRisks?.length" class="biz-risks">
+                <div class="biz-risks-title">
+                  <span>TOP 风险（🔴{{ bizHealth.redCount }}　🟡{{ bizHealth.yellowCount }}）</span>
+                  <el-button link type="primary" size="small" @click="goRiskCenter">风险中心 →</el-button>
+                </div>
+                <div v-for="(t, i) in bizHealth.topRisks" :key="i" class="biz-risk-item">{{ t }}</div>
+              </div>
+            </template>
+            <el-empty v-else-if="!bizLoading"
+              description="无经营快照（项目状态不在预计利润计算范围，或成本/合同数据未建立）"
+              :image-size="50" />
+          </el-card>
+        </el-col>
+        <el-col :span="14">
+          <el-card shadow="never" class="biz-card">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">TOP 成本偏差</span>
+                <span class="card-hint">按超支额降序，最多 8 条；点击下钻至成本账户</span>
+              </div>
+            </template>
+            <div v-if="riskItems.length" class="deviation-list">
+              <div v-for="item in riskItems" :key="item.level + item.code" class="deviation-item"
+                @click="goAccountByCode(item.code)">
+                <el-tag :type="item.level === 'high' ? 'danger' : 'warning'" size="small" effect="plain">
+                  {{ item.level === 'high' ? '已超支' : '预测超支' }}
+                </el-tag>
+                <span class="d-code">{{ item.code }}</span>
+                <span class="d-name">{{ item.name }}</span>
+                <span class="d-detail">{{ item.detail }}</span>
+                <span class="d-over">+{{ formatAmount(item.overAmount) }}</span>
+              </div>
+            </div>
+            <el-empty v-else description="无超支账户（实际与预测均未超当前预算）" :image-size="50" />
+          </el-card>
+        </el-col>
+      </el-row>
+
       <!-- 主内容区：左侧树形筛选 + 右侧成本账户表格 -->
       <el-row :gutter="16" class="content-row">
         <!-- CBS/WBS 树形筛选 -->
@@ -203,6 +279,7 @@ import { Refresh } from '@element-plus/icons-vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import { getProjectCostControl, type ProjectCostControlDTO, type CostAccountSummary } from '@/api/dashboard'
 import { getChangeEventOpenCount, getApprovedCostDelta } from '@/api/change-event'
+import { getProjectHealth, type ProjectHealth } from '@/api/cockpit'
 import { useAppStore } from '@/stores/app'
 import emptyLight from '@/assets/empty-blueprint.png'
 import emptyDark from '@/assets/empty-blueprint-dark.png'
@@ -238,12 +315,71 @@ const actualOverrunAccounts = computed(() => {
   return accounts
 })
 
-/** 风险清单：高优先级（已超支） + 低优先级（预测超支） */
+/**
+ * TOP 成本偏差清单（驾驶舱 V1 §6「TOP 成本偏差」）
+ * <p>修正两个旧缺陷：① 同一账户实际与预测均超支时会被重复列入；
+ * ② 未按超支额排序（文档要求 TOP）。现按超支额降序取前 8 条。</p>
+ */
 const riskItems = computed(() => {
-  const items: { level: 'high' | 'low'; code: string; name: string; detail: string }[] = []
-  actualOverrunAccounts.value.forEach(a => items.push({ level: 'high', code: a.code, name: a.name, detail: a.detail }))
-  overrunAccounts.value.forEach(a => items.push({ level: 'low', code: a.code, name: a.name, detail: a.detail }))
-  return items
+  const items: { level: 'high' | 'low'; code: string; name: string; detail: string; overAmount: number }[] = []
+  const accounts: any[] = costData.data?.accounts || []
+  accounts.forEach((a: any) => {
+    const current = Number(a.current) || 0
+    const actual = Number(a.actual) || 0
+    const forecast = Number(a.forecast) || 0
+    const actualOver = actual - current
+    if (actualOver > 0) {
+      // 已实际超支（高优先）；不再重复计入预测超支
+      items.push({
+        level: 'high', code: a.code, name: a.name,
+        detail: `实际${formatAmount(actual)} > 当前${formatAmount(current)}`,
+        overAmount: actualOver
+      })
+      return
+    }
+    const forecastOver = forecast - current
+    if (forecastOver > 0) {
+      items.push({
+        level: 'low', code: a.code, name: a.name,
+        detail: `预测${formatAmount(forecast)} > 当前${formatAmount(current)}`,
+        overAmount: forecastOver
+      })
+    }
+  })
+  return items.sort((x, y) => y.overAmount - x.overAmount).slice(0, 8)
+})
+
+// 经营视角（V2026_59）：预计利润/健康度由驾驶舱规则统一计算，本页只读呈现不重复实现口径
+const bizLoading = ref(false)
+const bizHealth = ref<ProjectHealth | null>(null)
+
+/** 加载当前项目的经营视角（预计利润 + 健康度 + TOP 风险） */
+async function loadBizView() {
+  if (!selectedProjectId.value) {
+    bizHealth.value = null
+    return
+  }
+  bizLoading.value = true
+  try {
+    const res: any = await getProjectHealth()
+    const list: ProjectHealth[] = res.data || []
+    // 未命中（如项目状态不在快照范围）时为 null，模板展示空态而不伪造 0
+    bizHealth.value = list.find(p => p.projectId === selectedProjectId.value) || null
+  } catch (e: any) {
+    bizHealth.value = null
+    ElMessage.error(`加载经营视角失败：${e?.message || '接口异常'}`)
+  } finally {
+    bizLoading.value = false
+  }
+}
+
+/** 健康度徽章文案（规则自动定级，不允许人工选） */
+const healthMeta = computed(() => {
+  const h = bizHealth.value?.health
+  if (h === 'RED') return { text: '🔴 高风险', cls: 'health-red' }
+  if (h === 'YELLOW') return { text: '🟡 关注', cls: 'health-yellow' }
+  if (h === 'GREEN') return { text: '🟢 正常', cls: 'health-green' }
+  return { text: '—', cls: '' }
 })
 
 /** 加载变更信号（待办数 + 累计影响）」 */
@@ -268,9 +404,28 @@ async function loadChangeSignals() {
   }
 }
 
-/** 刷新全部数据（成本主线 + 变更信号） */
+/** 刷新全部数据（成本主线 + 变更信号 + 经营视角） */
 async function loadAll() {
-  await Promise.all([loadCostData(), loadChangeSignals()])
+  await Promise.all([loadCostData(), loadChangeSignals(), loadBizView()])
+}
+
+/** TOP 偏差下钻：携账户编码跳成本账户页定位该账户 */
+function goAccountByCode(code: string) {
+  router.push({
+    path: '/budget/cost-account',
+    query: {
+      projectId: selectedProjectId.value ? String(selectedProjectId.value) : undefined,
+      code
+    }
+  })
+}
+
+/** 风险中心下钻（按项目过滤） */
+function goRiskCenter() {
+  router.push({
+    path: '/cockpit/risk-center',
+    query: { projectId: selectedProjectId.value ? String(selectedProjectId.value) : undefined }
+  })
 }
 
 /** 直接跳转到变更事件列表 */
@@ -415,6 +570,7 @@ watch(selectedProjectId, (newVal) => {
     costData.error = null
     openChangeCount.value = 0
     approvedChangeDelta.value = 0
+    bizHealth.value = null
   }
 })
 </script>
@@ -554,6 +710,80 @@ watch(selectedProjectId, (newVal) => {
 }
 
 .change-actions { margin-left: auto; }
+
+/* 经营视角 + TOP 偏差（V2026_59） */
+.biz-row { margin-bottom: var(--zw-space-sm-md); }
+
+.biz-card {
+  height: 100%;
+  .card-hint { font-size: var(--zw-font-size-xs); color: var(--zw-text-quaternary); font-weight: normal; }
+}
+
+.health-badge {
+  font-size: var(--zw-font-size-xs);
+  font-weight: var(--zw-font-weight-semibold);
+  padding: var(--zw-space-xs) var(--zw-space-sm);
+  border-radius: var(--zw-radius-sm);
+  &.health-red { color: var(--zw-danger); background-color: color-mix(in srgb, var(--zw-danger) 10%, transparent); }
+  &.health-yellow { color: var(--zw-warning); background-color: color-mix(in srgb, var(--zw-warning) 12%, transparent); }
+  &.health-green { color: var(--zw-success); background-color: color-mix(in srgb, var(--zw-success) 10%, transparent); }
+}
+
+.biz-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--zw-space-sm-md);
+}
+
+.biz-item {
+  display: flex; flex-direction: column; gap: var(--zw-space-xs);
+  .b-label { font-size: var(--zw-font-size-xs); color: var(--zw-text-tertiary); }
+  .b-value {
+    font-family: var(--zw-font-mono); font-size: var(--zw-font-size-lg);
+    font-weight: var(--zw-font-weight-semibold); color: var(--zw-text-primary);
+    &.is-danger { color: var(--zw-danger); }
+  }
+}
+
+.biz-alert { margin-top: var(--zw-space-sm); }
+
+.biz-risks {
+  margin-top: var(--zw-space-sm);
+  padding-top: var(--zw-space-sm);
+  border-top: 1px dashed var(--zw-border-light);
+  .biz-risks-title {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: var(--zw-font-size-sm); font-weight: var(--zw-font-weight-semibold);
+    color: var(--zw-text-secondary); margin-bottom: var(--zw-space-xs);
+  }
+  .biz-risk-item {
+    font-size: var(--zw-font-size-xs); color: var(--zw-text-tertiary);
+    padding: var(--zw-space-xs) 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+}
+
+.deviation-list { max-height: 260px; overflow-y: auto; }
+
+.deviation-item {
+  display: flex; align-items: center; gap: var(--zw-space-sm);
+  padding: var(--zw-space-sm) 0;
+  border-bottom: 1px solid var(--zw-border-light);
+  cursor: pointer;
+  font-size: var(--zw-font-size-sm);
+  &:last-child { border-bottom: none; }
+  &:hover { background-color: var(--zw-bg-hover); }
+  .d-code { font-family: var(--zw-font-mono); color: var(--zw-text-tertiary); min-width: 70px; }
+  .d-name { font-weight: var(--zw-font-weight-medium); color: var(--zw-text-primary); min-width: 110px; }
+  .d-detail {
+    flex: 1; min-width: 0; font-size: var(--zw-font-size-xs); color: var(--zw-text-quaternary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .d-over {
+    font-family: var(--zw-font-mono); font-weight: var(--zw-font-weight-semibold);
+    color: var(--zw-danger); white-space: nowrap;
+  }
+}
 
 .risk-list {
   max-height: 200px; overflow-y: auto; margin-top: var(--zw-space-sm);

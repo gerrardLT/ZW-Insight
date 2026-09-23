@@ -239,6 +239,33 @@ const constantRoutes: RouteRecordRaw[] = [
       }
     ]
   },
+  // 经营驾驶舱（工程老板视角，V2026_59；与项目管理层 dashboard 分开，不改造旧首页）
+  {
+    path: '/cockpit',
+    component: () => import('@/layouts/DefaultLayout.vue'),
+    redirect: '/cockpit/overview',
+    meta: { title: '经营驾驶舱', icon: 'Odometer', permission: 'dashboard:view' },
+    children: [
+      {
+        path: 'overview',
+        name: 'CockpitOverview',
+        component: () => import('@/views/cockpit/index.vue'),
+        meta: { title: '经营总览', icon: 'DataBoard' }
+      },
+      {
+        path: 'fund-center',
+        name: 'CockpitFundCenter',
+        component: () => import('@/views/cockpit/fund-center.vue'),
+        meta: { title: '资金中心', icon: 'Money' }
+      },
+      {
+        path: 'risk-center',
+        name: 'CockpitRiskCenter',
+        component: () => import('@/views/cockpit/risk-center.vue'),
+        meta: { title: '风险中心', icon: 'WarnTriangleFilled' }
+      }
+    ]
+  },
   // 财务管理
   {
     path: '/finance',
@@ -389,6 +416,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'DailyCashReport',
         component: () => import('@/views/finance/daily-cash-report/index.vue'),
         meta: { title: '资金日报', icon: 'Calendar' }
+      },
+      {
+        path: 'receivable',
+        name: 'ReceivableLedger',
+        component: () => import('@/views/finance/receivable/index.vue'),
+        meta: { title: '应收台账', icon: 'Money' }
       },
       {
         path: 'settlement/:id',

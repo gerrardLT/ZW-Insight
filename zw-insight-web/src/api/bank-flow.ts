@@ -15,6 +15,8 @@ export interface BankFlow {
   reconciled?: number
   matchedType?: string
   matchedId?: number
+  /** 本次勾稽金额（空=按流水整笔金额勾稽；V2026_56 部分勾稽） */
+  matchAmount?: number
   source?: string
 }
 
@@ -56,9 +58,9 @@ export function importFlows(flows: BankFlow[]) {
   return request.post<R<Record<string, number>>>('/v1/finance/bank-flow/import', flows)
 }
 
-export function matchFlow(id: number, matchedType: string, matchedId: number) {
+export function matchFlow(id: number, matchedType: string, matchedId: number, matchAmount?: number) {
   return request.post<R<void>>(`/v1/finance/bank-flow/${id}/match`, null, {
-    params: { matchedType, matchedId }
+    params: { matchedType, matchedId, matchAmount }
   })
 }
 

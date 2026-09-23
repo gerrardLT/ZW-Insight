@@ -381,3 +381,55 @@ export function getCostAccountPage(params?: {
 export function getProjectCostControl(projectId: number) {
   return request({ url: `/v1/dashboard/project/${projectId}/cost-control` })
 }
+
+// ==================== 经营驾驶舱·风险中心（V2026_59，老板移动高频场景）====================
+// 后端：CockpitController @RequestMapping("/api/v1/dashboard/cockpit")
+// 口径：severity 由 RiskRule 规则自动判定（RED/YELLOW/INFO），前端不得人工改级
+
+/** 风险分级汇总（数量 + 影响金额，仅统计未关闭风险） */
+export function getRiskSummary(projectId?: number) {
+  return request({ url: '/v1/dashboard/cockpit/risk/summary', data: { projectId } })
+}
+
+/**
+ * 风险台账分页（严重级别降序 → 影响金额降序）
+ * <p>GET 请求，uni.request 会将 data 序列化为 query string。</p>
+ */
+export function getRiskPage(params: {
+  page?: number
+  size?: number
+  severity?: string
+  handleStatus?: string
+  riskType?: string
+  projectId?: number
+}) {
+  return request({ url: '/v1/dashboard/cockpit/risk/page', data: params })
+}
+
+/** 风险详情（六要素完整体；不存在时后端抛业务异常） */
+export function getRiskDetail(id: number) {
+  return request({ url: `/v1/dashboard/cockpit/risk/${id}` })
+}
+
+/**
+ * 风险处理流转（PROCESSING-认领 / RESOLVED-解决 / IGNORED-忽略 / OPEN-重开）
+ * <p>后端 RiskHandleRequest 走请求体（uni.request 对 PUT 会将 data 放 body），
+ * 与 PC 端 axios 传 body 保持一致。</p>
+ */
+export function handleRisk(id: number, action: string, handleNote?: string) {
+  return request({
+    url: `/v1/dashboard/cockpit/risk/${id}/handle`,
+    method: 'PUT',
+    data: { action, handleNote }
+  })
+}
+
+/** 手动触发风险扫描（定时任务每日 02:00 自动执行，此处供移动端主动刷新） */
+export function scanRisks() {
+  return request({ url: '/v1/dashboard/cockpit/risk/scan', method: 'PUT' })
+}
+
+/** 项目经营健康度（异常项目排最前，含预计利润与 TOP 风险） */
+export function getProjectHealth() {
+  return request({ url: '/v1/dashboard/cockpit/project-health' })
+}

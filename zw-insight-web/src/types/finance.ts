@@ -73,6 +73,12 @@ export interface PaymentApply {
   cumulativeSettlement?: number
   unpaidAmount?: number
   status: string
+  /** 支付状态（UNPAID/PAID，现金口径，V2026_56） */
+  payStatus?: 'UNPAID' | 'PAID'
+  /** 实际支付日期（流水勾稽/手工标记回写） */
+  payDate?: string
+  /** 支付账户ID */
+  payAccountId?: ID
   workflowInstanceId?: string
   createdAt?: string
 }

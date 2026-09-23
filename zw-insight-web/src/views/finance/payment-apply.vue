@@ -16,14 +16,19 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <!-- 筛选值域与下方 statusMap 同源：后端 PaymentApplyService 仅产生
-               DRAFT/SUBMITTED/APPROVED/REJECTED；PAID 为付款执行功能预留（后端暂未产生，勿删） -->
+          <!-- 筛选值域与下方 statusMap 同源：后端 PaymentApplyService 产生
+               DRAFT/SUBMITTED/APPROVED/REJECTED；支付态另走 payStatus 筛选（V2026_56） -->
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
             <el-option label="草稿" value="DRAFT" />
             <el-option label="审批中" value="SUBMITTED" />
             <el-option label="已通过" value="APPROVED" />
             <el-option label="已驳回" value="REJECTED" />
-            <el-option label="已付款" value="PAID" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="支付状态">
+          <el-select v-model="queryParams.payStatus" placeholder="全部" clearable style="width: 120px">
+            <el-option label="未支付" value="UNPAID" />
+            <el-option label="已支付" value="PAID" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -80,11 +85,23 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column v-if="columnVisible[5]" label="支付状态" width="110" align="center">
+          <template #default="{ row }">
+            <!-- 支付态仅对已审批单据有意义（V2026_56：审批≠已付，现金口径）；
+                 用原生 title 提示而非 el-tooltip 组件实例，避免每行额外组件开销 -->
+            <el-tag v-if="row.status === 'APPROVED' && row.payStatus === 'PAID'" type="success" size="small"
+              effect="dark" :title="row.payDate ? `支付日期 ${row.payDate}` : ''">已支付</el-tag>
+            <el-tag v-else-if="row.status === 'APPROVED'" type="warning" size="small">未支付</el-tag>
+            <span v-else class="pay-status-na">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看</el-button>
             <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="success" @click="handleSubmitApply(row)">提交</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="row.status === 'APPROVED' && row.payStatus !== 'PAID'" link type="warning" @click="handleMarkPaid(row)">标记支付</el-button>
+            <el-button v-if="row.status === 'APPROVED' && row.payStatus === 'PAID'" link type="info" @click="handleRevokePaid(row)">撤销标记</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -213,10 +230,41 @@
           <el-descriptions-item label="状态">
             <el-tag :type="getStatusType(detailData.status)" size="small">{{ getStatusLabel(detailData.status) }}</el-tag>
           </el-descriptions-item>
+          <el-descriptions-item label="支付状态">
+            <template v-if="detailData.status === 'APPROVED'">
+              <el-tag :type="detailData.payStatus === 'PAID' ? 'success' : 'warning'" size="small">
+                {{ detailData.payStatus === 'PAID' ? '已支付' : '未支付' }}
+              </el-tag>
+              <span v-if="detailData.payDate" class="pay-date-text">支付日期：{{ detailData.payDate }}</span>
+            </template>
+            <span v-else>—</span>
+          </el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ detailData.createdAt || '-' }}</el-descriptions-item>
         </el-descriptions>
       </div>
     </el-drawer>
+
+    <!-- 手工标记支付（V2026_56；已勾稽银行流水的单据后端会拒绝，支付态以流水为准）
+         v-if 懒挂载：未打开时不创建 date-picker/input-number 组件实例，降低首屏挂载成本 -->
+    <el-dialog v-if="payDialogVisible" v-model="payDialogVisible" title="标记已支付" width="440px" destroy-on-close>
+      <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-sm-md)"
+        title="支付标记为现金口径，不改变项目支出（审批口径）；若已导入网银流水，请优先在银行流水页勾稽自动产生支付态" />
+      <el-form label-width="100px">
+        <el-form-item label="付款金额">
+          <span>{{ formatMoney(payRow?.paymentAmount) }}</span>
+        </el-form-item>
+        <el-form-item label="支付日期" required>
+          <el-date-picker v-model="payForm.payDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="支付账户ID">
+          <el-input-number v-model="payForm.payAccountId" :min="1" controls-position="right" style="width: 100%" placeholder="选填，银行账户ID" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="payDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="paySubmitLoading" @click="submitMarkPaid">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -227,7 +275,7 @@ import type { FormInstance } from 'element-plus'
 import { ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
-import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, batchPaymentApply, getFundPlan } from '@/api/finance'
+import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, batchPaymentApply, getFundPlan, markPaymentApplyPaid, revokePaymentApplyPaid } from '@/api/finance'
 
 // 列显隐配置（S2.1）：按 payment-apply-table 持久化 localStorage
 const paymentColumns = [
@@ -236,6 +284,7 @@ const paymentColumns = [
   { key: 'paymentAmount', label: '付款金额' },
   { key: 'paymentDate', label: '付款日期' },
   { key: 'status', label: '状态' },
+  { key: 'payStatus', label: '支付状态' },
 ]
 const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('payment-apply-table', paymentColumns)
 import { getProjectList } from '@/api/project'
@@ -263,7 +312,8 @@ const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
   projectId: undefined as number | undefined,
-  status: ''
+  status: '',
+  payStatus: ''
 })
 
 const formData = ref({
@@ -404,7 +454,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined, status: '' }
+  queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined, status: '', payStatus: '' }
   loadData()
   planPanelRef.value?.reload()
 }
@@ -490,6 +540,45 @@ async function handleDelete(row: any) {
   await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' })
   await deletePaymentApply(row.id)
   ElMessage.success('删除成功')
+  loadData()
+}
+
+// ================= 支付执行态（V2026_56） =================
+// 支付态优先由银行流水勾稽自动产生；无网银流水导入场景用手工标记备选。
+// 口径不变量：标记支付不回写项目 total_expense（审批口径），仅变更现金口径 pay_status。
+const payDialogVisible = ref(false)
+const paySubmitLoading = ref(false)
+const payRow = ref<any>(null)
+const payForm = ref({ payDate: '', payAccountId: undefined as number | undefined })
+
+function handleMarkPaid(row: any) {
+  payRow.value = row
+  payForm.value = { payDate: new Date().toISOString().slice(0, 10), payAccountId: undefined }
+  payDialogVisible.value = true
+}
+
+async function submitMarkPaid() {
+  if (!payForm.value.payDate) {
+    ElMessage.warning('请选择支付日期')
+    return
+  }
+  paySubmitLoading.value = true
+  try {
+    await markPaymentApplyPaid(payRow.value.id, payForm.value.payDate, payForm.value.payAccountId)
+    ElMessage.success('已标记支付')
+    payDialogVisible.value = false
+    loadData()
+  } finally {
+    paySubmitLoading.value = false
+  }
+}
+
+async function handleRevokePaid(row: any) {
+  await ElMessageBox.confirm(
+    '确定撤销该付款申请的支付标记吗？若支付态由银行流水勾稽产生，需到银行流水页取消勾稽。',
+    '提示', { type: 'warning' })
+  await revokePaymentApplyPaid(row.id)
+  ElMessage.success('已撤销支付标记')
   loadData()
 }
 
@@ -615,5 +704,13 @@ function buildFundPlanOption(list: any[]) {
 .keyboard-hint {
   border-left: 3px solid var(--el-color-warning);
   padding-left: var(--zw-space-sm);
+}
+.pay-status-na {
+  color: var(--el-text-color-placeholder);
+}
+.pay-date-text {
+  margin-left: var(--zw-space-sm);
+  font-size: var(--zw-font-size-xs);
+  color: var(--el-text-color-secondary);
 }
 </style>

@@ -113,6 +113,9 @@ let todoTimer: ReturnType<typeof setInterval> | null = null
 
 // 常用现场业务入口（静态数据收敛为单一事实源，图标 bizicons 与工作台/首页快捷入口同源）
 const BIZ_ENTRIES = [
+  // 风险中心置于首位（V2026_59）：老板/管理层移动高频场景——「今天需要处理什么」；
+  // 图标复用 biz-inspect.png（巡检语义最贴近，未新增图片资产避免包体膨胀）
+  { name: '风险中心', path: '/pages/cockpit/risk-center', icon: '/static/bizicons/biz-inspect.png' },
   { name: '变更事件', path: '/pages/contract/change-event/index', icon: '/static/bizicons/biz-change.png' },
   { name: '机械台班', path: '/pages/machine/work-log/index', icon: '/static/bizicons/biz-machine.png' },
   { name: '劳务点工', path: '/pages/labor/work-order/index', icon: '/static/bizicons/biz-labor.png' },
