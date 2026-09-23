@@ -2,6 +2,7 @@
   <div class="login-page">
     <!-- 背景：视频为主、静帧 jpg 兜底；登录卡靠右 -->
     <video
+      ref="bgVideoRef"
       class="login-bg-video"
       src="@/assets/media/login-bg-web.mp4"
       poster="@/assets/login-bg-poster.jpg"
@@ -10,6 +11,7 @@
       loop
       playsinline
       preload="metadata"
+      @play="onBgPlay"
     ></video>
     <!-- 左侧品牌文案（浮于背景视频之上） -->
     <div class="login-brand-content">
@@ -120,6 +122,13 @@ const smsFormRef = ref<FormInstance>()
 const loading = ref(false)
 const sliderToken = ref('')
 const sliderRef = ref<InstanceType<typeof SliderCaptcha> | null>(null)
+
+// 背景视频慢放：调此常量即可（1=原速，0.6=六成速，越小越慢）
+const BG_PLAYBACK_RATE = 0.6
+const bgVideoRef = ref<HTMLVideoElement | null>(null)
+function onBgPlay() {
+  if (bgVideoRef.value) bgVideoRef.value.playbackRate = BG_PLAYBACK_RATE
+}
 
 // 登录方式：密码 / 短信验证码
 const loginMode = ref<'password' | 'sms'>('password')
