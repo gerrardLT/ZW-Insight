@@ -11,11 +11,22 @@
       playsinline
       preload="metadata"
     ></video>
-    <div class="login-form-area">
-      <div class="login-brand-mark">
+    <!-- 左侧品牌文案（浮于背景视频之上） -->
+    <div class="login-brand-content">
+      <div class="brand-logo">
         <img class="brand-logo-icon" src="@/assets/logo-light.png" alt="中维智营" />
         <span class="brand-logo-text">中维智营</span>
       </div>
+      <div class="brand-eyebrow">Project Management Platform</div>
+      <h1 class="brand-slogan">工程项目全生命周期<br />智能管理平台</h1>
+      <p class="brand-desc">涵盖项目、合同、预算、财务、材料、机械、劳务、分包全流程协同，让工程管理更高效。</p>
+      <div class="brand-features">
+        <div class="feature-item"><span class="feature-icon-base"><BlueprintCornerIcon class="feature-icon" /></span>全链路业务数字化</div>
+        <div class="feature-item"><span class="feature-icon-base"><TowerCraneIcon class="feature-icon" /></span>多组织多项目协同</div>
+        <div class="feature-item"><span class="feature-icon-base"><HelmetIcon class="feature-icon" /></span>实时数据看板决策</div>
+      </div>
+    </div>
+    <div class="login-form-area">
       <div class="login-box">
         <div class="login-header">
           <h2 class="login-title">{{ loginMode === 'password' ? '欢迎回来' : '快捷登录' }}</h2>
@@ -97,6 +108,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { sendSmsCaptcha } from '@/api/captcha'
 import SliderCaptcha from './SliderCaptcha.vue'
+import { BlueprintCornerIcon, TowerCraneIcon, HelmetIcon } from '@/components/icons/zw'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -266,13 +278,17 @@ function goForgotPassword() {
   overflow: hidden;
   background: url('@/assets/login-bg-hero.jpg') center / cover no-repeat, var(--zw-bg-sidebar);
 }
-/* 背景压暗遮罩：右侧（登录卡区）加重，保证白卡与浅色字清晰；左侧保留视频展示 */
+/* 背景压暗遮罩：左（品牌文案）右（登录卡）加重，中部保留视频展示 */
 .login-page::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: radial-gradient(120% 120% at 78% 50%, color-mix(in srgb, var(--zw-bg-sidebar) 38%, transparent) 0%, color-mix(in srgb, var(--zw-bg-sidebar) 14%, transparent) 45%, color-mix(in srgb, var(--zw-bg-sidebar) 42%, transparent) 100%);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--zw-bg-sidebar) 58%, transparent) 0%,
+    color-mix(in srgb, var(--zw-bg-sidebar) 20%, transparent) 36%,
+    color-mix(in srgb, var(--zw-bg-sidebar) 16%, transparent) 60%,
+    color-mix(in srgb, var(--zw-bg-sidebar) 46%, transparent) 100%);
 }
 
 /* 背景视频：铺满裁切，置于遮罩之下 */
@@ -285,17 +301,25 @@ function goForgotPassword() {
   z-index: 0;
 }
 
-/* 居中品牌标识（浮于整张背景图之上，浅色） */
-.login-brand-mark {
+/* ===== 左侧品牌文案（浮于背景视频之上，浅色） ===== */
+.login-brand-content {
+  position: absolute;
+  left: clamp(1.5rem, 6vw, 6rem);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  max-width: 30rem;
+  color: var(--zw-steel-text);
+}
+.brand-logo {
   display: flex;
   align-items: center;
   gap: var(--zw-space-sm-md);
-  margin-bottom: var(--zw-space-lg);
-  color: var(--zw-steel-text);
+  margin-bottom: var(--zw-space-xl);
 }
 .brand-logo-icon {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
   filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent));
 }
@@ -304,6 +328,60 @@ function goForgotPassword() {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-shadow: 0 2px 10px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
+}
+.brand-eyebrow {
+  font-family: var(--zw-font-display);
+  font-size: var(--zw-font-size-base);
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--zw-brand);
+  margin-bottom: var(--zw-space-md);
+  text-shadow: 0 2px 10px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
+}
+.brand-slogan {
+  font-size: var(--zw-font-size-4xl);
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: var(--zw-space-lg);
+  letter-spacing: 0.015em;
+  text-shadow: 0 4px 18px color-mix(in srgb, var(--zw-bg-sidebar) 65%, transparent);
+}
+.brand-desc {
+  font-size: var(--zw-font-size-md);
+  line-height: 1.7;
+  color: var(--zw-steel-text-muted);
+  margin-bottom: var(--zw-space-xl);
+  text-shadow: 0 2px 10px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
+}
+.brand-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--zw-space-md);
+}
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: var(--zw-space-sm-md);
+  font-size: var(--zw-font-size-md);
+  color: var(--zw-steel-text);
+  text-shadow: 0 2px 8px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
+}
+.feature-icon-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--zw-radius-md);
+  background: color-mix(in srgb, var(--zw-brand) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--zw-brand) 30%, transparent);
+  flex-shrink: 0;
+}
+.feature-icon {
+  font-size: var(--zw-font-size-lg);
+  color: var(--zw-brand);
+  flex-shrink: 0;
 }
 
 /* ===== 表单区：登录卡靠右浮于背景之上 ===== */
@@ -471,7 +549,12 @@ function goForgotPassword() {
   color: var(--zw-steel-text-muted);
 }
 
-/* ===== 响应式：窄屏登录卡回到居中 ===== */
+/* ===== 响应式：窄屏隐藏左侧文案、登录卡回居中 ===== */
+@media (max-width: 992px) {
+  .login-brand-content {
+    display: none;
+  }
+}
 @media (max-width: 768px) {
   .login-form-area {
     align-items: center;
