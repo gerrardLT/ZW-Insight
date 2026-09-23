@@ -1,27 +1,21 @@
 <template>
   <div class="login-page">
-    <!-- 左侧品牌视觉区（石墨黑 Hero：工程铭牌语言） -->
-    <div class="login-brand">
-      <LoginBlueprintBg class="brand-bg" />
-      <div class="brand-content">
-        <div class="brand-logo">
-          <!-- 品牌区恒为石墨黑底，用反白版 logo 保对比度 -->
-          <img class="brand-logo-icon" src="@/assets/logo-light.png" alt="中维智营" />
-          <span class="brand-logo-text">中维智营</span>
-        </div>
-        <div class="brand-eyebrow">Project Management Platform</div>
-        <h1 class="brand-slogan">工程项目全生命周期<br />智能管理平台</h1>
-        <p class="brand-desc">涵盖项目、合同、预算、财务、材料、机械、劳务、分包全流程协同，让工程管理更高效。</p>
-        <div class="brand-features">
-          <div class="feature-item"><span class="feature-icon-base"><BlueprintCornerIcon class="feature-icon" /></span>全链路业务数字化</div>
-          <div class="feature-item"><span class="feature-icon-base"><TowerCraneIcon class="feature-icon" /></span>多组织多项目协同</div>
-          <div class="feature-item"><span class="feature-icon-base"><HelmetIcon class="feature-icon" /></span>实时数据看板决策</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 右侧登录表单区 -->
+    <!-- 背景：视频为主、静帧 jpg 兜底；登录卡靠右 -->
+    <video
+      class="login-bg-video"
+      src="@/assets/media/insight-bg-web.mp4"
+      poster="@/assets/login-bg-hero.jpg"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="metadata"
+    ></video>
     <div class="login-form-area">
+      <div class="login-brand-mark">
+        <img class="brand-logo-icon" src="@/assets/logo-light.png" alt="中维智营" />
+        <span class="brand-logo-text">中维智营</span>
+      </div>
       <div class="login-box">
         <div class="login-header">
           <h2 class="login-title">{{ loginMode === 'password' ? '欢迎回来' : '快捷登录' }}</h2>
@@ -105,8 +99,6 @@ import { sendSmsCaptcha } from '@/api/captcha'
 import SliderCaptcha from './SliderCaptcha.vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
-import { BlueprintCornerIcon, TowerCraneIcon, HelmetIcon } from '@/components/icons/zw'
-import LoginBlueprintBg from './LoginBlueprintBg.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
 const router = useRouter()
@@ -269,133 +261,62 @@ function goForgotPassword() {
 
 <style scoped>
 .login-page {
+  position: relative;
   height: 100vh;
-  display: flex;
   overflow: hidden;
-  background-color: var(--zw-bg-card);
+  background: url('@/assets/login-bg-hero.jpg') center / cover no-repeat, var(--zw-bg-sidebar);
 }
-
-/* ===== 左侧品牌区（石墨黑画布 + 蓝图线稿动态背景） =====
- * 2026-09-22：左侧背景改由 <LoginBlueprintBg> 组件渲染（纯 CSS/SVG 动画：
- * 等高线描边生长 + 网格视差 + 塔吊线框呼吸 + 安全橙体积光扫描 + 尘埃 + 胶片颗粒）。
- * 底色用石墨径向渐变（token 混合，无裸 hex）；静态底图 login-bg-blueprint.png 保留备用。 */
-.login-brand {
-  position: relative;
-  width: 55%;
-  flex-shrink: 0;
-  overflow: hidden;
-  background: radial-gradient(120% 90% at 28% 12%, color-mix(in srgb, var(--zw-steel-line-strong) 55%, var(--zw-bg-sidebar)) 0%, var(--zw-bg-sidebar) 55%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 动态背景层置于内容之下 */
-.brand-bg { position: absolute; inset: 0; z-index: 0; }
-
-/* 窄屏降级：插画隐藏退回纯色（避免小屏拥挤） */
-@media (max-width: 992px) {
-  .login-brand {
-    background: var(--zw-bg-sidebar);
-  }
-}
-
-.brand-content {
-  position: relative;
+/* 背景压暗遮罩：右侧（登录卡区）加重，保证白卡与浅色字清晰；左侧保留视频展示 */
+.login-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
   z-index: 1;
-  max-width: 460px;
-  padding: 0 var(--zw-space-2xl);
-  color: var(--zw-steel-text);
+  background: radial-gradient(120% 120% at 78% 50%, color-mix(in srgb, var(--zw-bg-sidebar) 38%, transparent) 0%, color-mix(in srgb, var(--zw-bg-sidebar) 14%, transparent) 45%, color-mix(in srgb, var(--zw-bg-sidebar) 42%, transparent) 100%);
 }
 
-.brand-logo {
+/* 背景视频：铺满裁切，置于遮罩之下 */
+.login-bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/* 居中品牌标识（浮于整张背景图之上，浅色） */
+.login-brand-mark {
   display: flex;
   align-items: center;
   gap: var(--zw-space-sm-md);
-  margin-bottom: var(--zw-space-xl);
+  margin-bottom: var(--zw-space-lg);
+  color: var(--zw-steel-text);
 }
-
 .brand-logo-icon {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
+  filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent));
 }
-
 .brand-logo-text {
   font-size: var(--zw-font-size-2xl);
   font-weight: 600;
   letter-spacing: 0.06em;
+  text-shadow: 0 2px 10px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
 }
 
-/* 大写英文副线（Display 层签名） */
-.brand-eyebrow {
-  font-family: var(--zw-font-display);
-  font-size: var(--zw-font-size-base);
-  font-weight: 700;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  color: var(--zw-brand);
-  margin-bottom: var(--zw-space-md);
-}
-
-/* 中文铭牌：重黑 + 宽字距 */
-.brand-slogan {
-  font-size: var(--zw-font-size-4xl);
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: var(--zw-space-lg);
-  letter-spacing: 0.015em;
-}
-
-.brand-desc {
-  font-size: var(--zw-font-size-md);
-  line-height: 1.7;
-  color: var(--zw-steel-text-muted);
-  margin-bottom: var(--zw-space-xl);
-}
-
-.brand-features {
-  display: flex;
-  flex-direction: column;
-  gap: var(--zw-space-md);
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: var(--zw-space-sm-md);
-  font-size: var(--zw-font-size-md);
-  color: var(--zw-steel-text);
-}
-
-/* P3：图标底座（圆角方块承托，增强精致感） */
-.feature-icon-base {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--zw-radius-md);
-  background: color-mix(in srgb, var(--zw-brand) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--zw-brand) 26%, transparent);
-  flex-shrink: 0;
-}
-.feature-icon {
-  font-size: var(--zw-font-size-lg);
-  color: var(--zw-brand);
-  flex-shrink: 0;
-}
-
-/* ===== 右侧表单区 ===== */
+/* ===== 表单区：登录卡靠右浮于背景之上 ===== */
 .login-form-area {
-  flex: 1;
+  position: relative;
+  z-index: 2;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   padding: var(--zw-space-xl);
-  position: relative;
-  background: var(--zw-bg-canvas);
+  padding-right: clamp(1.5rem, 8vw, 7.5rem);
 }
 
 /* P0：表单白底浮层卡片，奠定现代空间感 */
@@ -406,7 +327,7 @@ function goForgotPassword() {
   border: 1px solid var(--zw-border-light);
   border-radius: var(--zw-radius-xl);
   padding: var(--zw-space-xl) var(--zw-space-lg);
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--zw-bg-sidebar) 10%, transparent);
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--zw-bg-sidebar) 45%, transparent);
 }
 
 .login-header {
@@ -547,13 +468,14 @@ function goForgotPassword() {
   position: absolute;
   bottom: 24px;
   font-size: var(--zw-font-size-sm);
-  color: var(--zw-text-quaternary);
+  color: var(--zw-steel-text-muted);
 }
 
-/* ===== 响应式 ===== */
-@media (max-width: 900px) {
-  .login-brand {
-    display: none;
+/* ===== 响应式：窄屏登录卡回到居中 ===== */
+@media (max-width: 768px) {
+  .login-form-area {
+    align-items: center;
+    padding: var(--zw-space-xl);
   }
 }
 </style>
