@@ -124,7 +124,7 @@ const sliderToken = ref('')
 const sliderRef = ref<InstanceType<typeof SliderCaptcha> | null>(null)
 
 // 背景视频慢放：调此常量即可（1=原速，0.6=六成速，越小越慢）
-const BG_PLAYBACK_RATE = 0.6
+const BG_PLAYBACK_RATE = 0.1
 const bgVideoRef = ref<HTMLVideoElement | null>(null)
 function onBgPlay() {
   if (bgVideoRef.value) bgVideoRef.value.playbackRate = BG_PLAYBACK_RATE
