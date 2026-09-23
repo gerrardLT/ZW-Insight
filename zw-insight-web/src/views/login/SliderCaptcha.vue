@@ -144,9 +144,9 @@ onMounted(load)
 .slider-captcha.ok .handle { background: var(--zw-success); color: var(--zw-text-inverse); border-color: var(--zw-success); }
 .h-icon { width: 20px; height: 20px; }
 
-/* 文案 */
-.hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--zw-font-size-sm); letter-spacing: .12em; color: var(--zw-text-quaternary); pointer-events: none; transition: opacity var(--zw-duration-fast); }
-.ok-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--zw-font-size-sm); font-weight: 600; letter-spacing: .12em; color: var(--zw-success); pointer-events: none; }
+/* 文案：低对比、紧字距，弱存在感 */
+.hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--zw-font-size-sm); font-weight: 400; letter-spacing: .02em; color: var(--zw-text-quaternary); opacity: .7; pointer-events: none; transition: opacity var(--zw-duration-fast); }
+.ok-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--zw-font-size-sm); font-weight: 600; letter-spacing: .04em; color: var(--zw-success); pointer-events: none; }
 
 /* 刷新按钮：圆形图标钮 */
 .refresh {
