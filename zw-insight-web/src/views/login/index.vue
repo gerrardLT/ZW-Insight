@@ -3,8 +3,8 @@
     <!-- 背景：视频为主、静帧 jpg 兜底；登录卡靠右 -->
     <video
       class="login-bg-video"
-      src="@/assets/media/insight-bg-web.mp4"
-      poster="@/assets/login-bg-hero.jpg"
+      src="@/assets/media/login-bg-web.mp4"
+      poster="@/assets/login-bg-poster.jpg"
       autoplay
       muted
       loop
@@ -276,7 +276,7 @@ function goForgotPassword() {
   position: relative;
   height: 100vh;
   overflow: hidden;
-  background: url('@/assets/login-bg-hero.jpg') center / cover no-repeat, var(--zw-bg-sidebar);
+  background: url('@/assets/login-bg-poster.jpg') center / cover no-repeat, var(--zw-bg-sidebar);
 }
 /* 背景压暗遮罩：左（品牌文案）右（登录卡）加重，中部保留视频展示 */
 .login-page::before {
