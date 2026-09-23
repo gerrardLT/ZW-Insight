@@ -6,6 +6,9 @@ import com.zwinsight.finance.domain.BizFundMonthlyPlan;
 import com.zwinsight.finance.domain.BizFundPlanDetail;
 import com.zwinsight.finance.domain.BizPaymentApply;
 import com.zwinsight.finance.domain.BizReceivable;
+import com.zwinsight.project.domain.BizProject;
+
+import java.util.Map;
 import com.zwinsight.finance.mapper.BizFundAnnualBudgetMapper;
 import com.zwinsight.finance.mapper.BizFundMonthlyPlanMapper;
 import com.zwinsight.finance.mapper.BizFundRollingForecastMapper;
@@ -50,6 +53,8 @@ class FundPlanServiceTest {
     // V2026_64：预测按「剩余未付额」计入需读已勾稽合计（mock 的 default 方法返回 null，
     // 由 Service 层 null 保护归零处理，等价于“无任何勾稽”的真实场景）
     @Mock private com.zwinsight.finance.mapper.BizBankFlowMapper bankFlowMapper;
+    // 缺口归因需项目名称
+    @Mock private com.zwinsight.project.mapper.BizProjectMapper projectMapper;
     @Mock private FundCategoryService fundCategoryService;
 
     @InjectMocks
@@ -309,6 +314,200 @@ class FundPlanServiceTest {
             assertThatThrownBy(() -> fundPlanService.futureExpenseTop(null, 999))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("预测天数需在1-365之间");
+        }
+    }
+
+    @Nested
+    @DisplayName("forecastByDays() 未来 N 天预测（UI §9.2 的 30/60/90 天三档）")
+    class ForecastByDaysTests {
+
+        private BizPaymentApply applyOn(Long id, String amount, java.time.LocalDate payDate, String supplier) {
+            BizPaymentApply a = new BizPaymentApply();
+            a.setId(id);
+            a.setProjectId(10L);
+            a.setPaymentAmount(new BigDecimal(amount));
+            a.setPaymentDate(payDate);
+            a.setSupplierName(supplier);
+            a.setStatus("APPROVED");
+            a.setPayStatus(BizPaymentApply.PAY_STATUS_UNPAID);
+            return a;
+        }
+
+        private BizReceivable openReceivable(String amount, String written, java.time.LocalDate dueDate) {
+            BizReceivable r = new BizReceivable();
+            r.setProjectId(10L);
+            r.setStatus(BizReceivable.STATUS_OPEN);
+            r.setReceivableAmount(new BigDecimal(amount));
+            r.setWrittenOffAmount(new BigDecimal(written));
+            r.setDueDate(dueDate);
+            return r;
+        }
+
+        @Test
+        @DisplayName("正常路径 — 累计窗口聚合：付款含逾期，netFlow（§9.2）与 gap（§10.4）两套口径并存")
+        void forecastByDays_aggregatesBothBases() {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            when(paymentApplyMapper.selectList(any())).thenReturn(List.of(
+                    applyOn(1L, "1000000", today.minusDays(10), "甲公司"),
+                    applyOn(2L, "600000", today.plusDays(20), "乙公司")));
+            when(receivableMapper.selectList(any()))
+                    .thenReturn(List.of(openReceivable("500000", "100000", today.plusDays(15))));
+            when(bankFlowMapper.sumLatestBalances()).thenReturn(new BigDecimal("200000"));
+
+            Map<String, Object> res = fundPlanService.forecastByDays(null, 30);
+
+            assertThat(res.get("days")).isEqualTo(30);
+            assertThat((BigDecimal) res.get("expectedPayments")).isEqualByComparingTo("1600000");
+            assertThat((BigDecimal) res.get("overdueUnpaid")).isEqualByComparingTo("1000000");
+            // OPEN 余额 = 50万 − 10万 = 40万
+            assertThat((BigDecimal) res.get("expectedReceipts")).isEqualByComparingTo("400000");
+            // §9.2 资金差额 = 回款 − 付款 = −120万（负数=净流出）
+            assertThat((BigDecimal) res.get("netFlow")).isEqualByComparingTo("-1200000");
+            // §10.4 可用资金 = 余额 20万 + 回款 40万 = 60万；缺口 = 160万 − 60万 = 100万
+            assertThat((BigDecimal) res.get("availableFund")).isEqualByComparingTo("600000");
+            assertThat((BigDecimal) res.get("gap")).isEqualByComparingTo("1000000");
+            assertThat(res.get("coverable")).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("边界路径 — 可用资金足额覆盖时 coverable=true（§15 黄而非红）")
+        void forecastByDays_coverableWhenFundSufficient() {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            when(paymentApplyMapper.selectList(any()))
+                    .thenReturn(List.of(applyOn(1L, "300000", today.plusDays(10), "甲公司")));
+            when(receivableMapper.selectList(any())).thenReturn(List.of());
+            when(bankFlowMapper.sumLatestBalances()).thenReturn(new BigDecimal("500000"));
+
+            Map<String, Object> res = fundPlanService.forecastByDays(null, 30);
+
+            assertThat((BigDecimal) res.get("gap")).isEqualByComparingTo("-200000");
+            assertThat(res.get("coverable")).isEqualTo(true);
+        }
+
+        @Test
+        @DisplayName("边界路径 — 部分支付只计剩余未付额（与滚动预测同口径）")
+        void forecastByDays_partialPaidCountsRemainingOnly() {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            BizPaymentApply partial = applyOn(3L, "1000000", today.plusDays(5), "甲公司");
+            partial.setPayStatus(BizPaymentApply.PAY_STATUS_PARTIAL);
+            when(paymentApplyMapper.selectList(any())).thenReturn(List.of(partial));
+            when(receivableMapper.selectList(any())).thenReturn(List.of());
+            // 已勾稽 60万 → 剩余 40万
+            when(bankFlowMapper.matchedAmountByPaymentApply())
+                    .thenReturn(java.util.Map.of(3L, new BigDecimal("600000")));
+            when(bankFlowMapper.sumLatestBalances()).thenReturn(BigDecimal.ZERO);
+
+            Map<String, Object> res = fundPlanService.forecastByDays(null, 30);
+
+            assertThat((BigDecimal) res.get("expectedPayments")).isEqualByComparingTo("400000");
+        }
+
+        @Test
+        @DisplayName("异常路径 — days 超范围被拒绍")
+        void forecastByDays_invalidDays_rejected() {
+            assertThatThrownBy(() -> fundPlanService.forecastByDays(null, 999))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("预测天数需在1-365之间");
+        }
+    }
+
+    @Nested
+    @DisplayName("gapAttribution() 缺口归因（§9.2：哪个项目导致 + 主要付款对象）")
+    class GapAttributionTests {
+
+        private BizPaymentApply applyOn(Long id, Long projectId, String amount,
+                                        java.time.LocalDate payDate, String supplier) {
+            BizPaymentApply a = new BizPaymentApply();
+            a.setId(id);
+            a.setProjectId(projectId);
+            a.setPaymentAmount(new BigDecimal(amount));
+            a.setPaymentDate(payDate);
+            a.setSupplierName(supplier);
+            a.setStatus("APPROVED");
+            a.setPayStatus(BizPaymentApply.PAY_STATUS_UNPAID);
+            return a;
+        }
+
+        private BizProject project(Long id, String name) {
+            BizProject p = new BizProject();
+            p.setId(id);
+            p.setProjectName(name);
+            return p;
+        }
+
+        @Test
+        @DisplayName("正常路径 — 按项目与付款对象双维度归因，项目按净缺口降序")
+        void attribution_byProjectAndPayee() {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            when(paymentApplyMapper.selectList(any())).thenReturn(List.of(
+                    applyOn(1L, 10L, "3000000", today.plusDays(10), "甲供应商"),
+                    applyOn(2L, 10L, "1000000", today.plusDays(20), "乙供应商"),
+                    applyOn(3L, 20L, "500000", today.plusDays(5), "甲供应商")));
+            when(receivableMapper.selectList(any())).thenReturn(List.of());
+            when(projectMapper.selectById(10L)).thenReturn(project(10L, "项目A"));
+            when(projectMapper.selectById(20L)).thenReturn(project(20L, "项目B"));
+
+            Map<String, Object> res = fundPlanService.gapAttribution(null, 90, 10);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> byProject = (List<Map<String, Object>>) res.get("byProject");
+            assertThat(byProject).hasSize(2);
+            // 项目A 缺口 400万 排在项目B 50万 之前
+            assertThat(byProject.get(0).get("projectName")).isEqualTo("项目A");
+            assertThat((BigDecimal) byProject.get(0).get("netGap")).isEqualByComparingTo("4000000");
+            assertThat((BigDecimal) byProject.get(1).get("netGap")).isEqualByComparingTo("500000");
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> byPayee = (List<Map<String, Object>>) res.get("byPayee");
+            assertThat(byPayee).hasSize(2);
+            // 甲供应商合计 350万（两笔）排首
+            assertThat(byPayee.get(0).get("supplierName")).isEqualTo("甲供应商");
+            assertThat((BigDecimal) byPayee.get(0).get("amount")).isEqualByComparingTo("3500000");
+            assertThat(byPayee.get(0).get("count")).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("边界路径 — 无供应商名称归入「（未登记收款方）」，不隐藏也不丢弃")
+        void attribution_missingSupplierGroupedExplicitly() {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            when(paymentApplyMapper.selectList(any())).thenReturn(List.of(
+                    applyOn(1L, 10L, "800000", today.plusDays(10), null)));
+            when(receivableMapper.selectList(any())).thenReturn(List.of());
+            when(projectMapper.selectById(10L)).thenReturn(project(10L, "项目A"));
+
+            Map<String, Object> res = fundPlanService.gapAttribution(null, 30, 10);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> byPayee = (List<Map<String, Object>>) res.get("byPayee");
+            assertThat(byPayee).hasSize(1);
+            assertThat(byPayee.get(0).get("supplierName")).isEqualTo("（未登记收款方）");
+        }
+
+        @Test
+        @DisplayName("边界路径 — topN 限制生效（只返回前 N 条）")
+        void attribution_topNLimits() {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            when(paymentApplyMapper.selectList(any())).thenReturn(List.of(
+                    applyOn(1L, 10L, "300000", today.plusDays(1), "A"),
+                    applyOn(2L, 10L, "200000", today.plusDays(2), "B"),
+                    applyOn(3L, 10L, "100000", today.plusDays(3), "C")));
+            when(receivableMapper.selectList(any())).thenReturn(List.of());
+            when(projectMapper.selectById(10L)).thenReturn(project(10L, "项目A"));
+
+            Map<String, Object> res = fundPlanService.gapAttribution(null, 30, 2);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> byPayee = (List<Map<String, Object>>) res.get("byPayee");
+            assertThat(byPayee).hasSize(2);
+            assertThat(byPayee.get(0).get("supplierName")).isEqualTo("A");
+        }
+
+        @Test
+        @DisplayName("异常路径 — topN 超范围被拒绍（不静默截取）")
+        void attribution_invalidTopN_rejected() {
+            assertThatThrownBy(() -> fundPlanService.gapAttribution(null, 30, 999))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("TOP 条数需在1-50之间");
         }
     }
 

@@ -163,6 +163,24 @@ assert_http 2 "项目预计利润 HTTP"
 assert_jq '.code==200 and ([.data[] | select(.incomeBasis == null or .costBasis == null)] | length == 0)' \
   "项目预计利润-收入/成本口径标记齐备（不静默混口径）"
 
+# ---------- 资金比率（资金流转 §10.2 支付率 / §10.3 合同执行率）----------
+call GET "/api/v1/dashboard/cockpit/fund-ratios"
+assert_http 2 "资金比率 HTTP"
+assert_jq '.code==200 and (.data | has("paymentRate") and has("cashPaymentRate") and has("paidBasis")
+  and has("contractExecutionRate") and has("settlementTotal") and has("dynamicContractTotal")
+  and has("cashPaidTotal") and has("outputTotal"))' \
+  "资金比率-字段齐备（审批口径与现金口径并列）"
+# 口径必须显式标注：cumulative_paid 由审批回写，不得笼统称“实际支付”
+assert_jq '.code==200 and (.data.paidBasis == "APPROVAL_WRITEBACK")' \
+  "资金比率-支付率口径显式标注为审批回写"
+# 分母为 0 时比率必须为 0 而非 null/NaN（不伪造也不报错）
+assert_jq '.code==200 and (.data.paymentRate != null) and (.data.contractExecutionRate != null)
+  and (.data.paymentRate | type == "number") and (.data.contractExecutionRate | type == "number")' \
+  "资金比率-比率为数值类型（分母为0时为0）"
+# 现金口径不得超审批口径（勾稽只会少于等于已审批回写额）
+assert_jq '.code==200 and ((.data.cashPaidTotal - .data.paidTotal) <= 0.01)' \
+  "资金比率-现金口径已付 ≤ 审批口径已付"
+
 # ---------- 利润归因 ----------
 CURRENT_MONTH=$(date +%Y-%m)
 call GET "/api/v1/dashboard/cockpit/profit-attribution?month=$CURRENT_MONTH"

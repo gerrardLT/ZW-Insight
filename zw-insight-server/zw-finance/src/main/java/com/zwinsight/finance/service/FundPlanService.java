@@ -18,6 +18,7 @@ import com.zwinsight.finance.mapper.BizFundRollingForecastMapper;
 import com.zwinsight.finance.mapper.BizPaymentApplyMapper;
 import com.zwinsight.finance.mapper.BizPaymentReceivedMapper;
 import com.zwinsight.finance.mapper.BizReceivableMapper;
+import com.zwinsight.project.domain.BizProject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,8 +30,11 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 资金计划三层联动服务（年度预算 + 月度计划 + 滚动预测）
@@ -61,6 +65,7 @@ public class FundPlanService {
     private final BizPaymentReceivedMapper paymentReceivedMapper;
     private final BizReceivableMapper receivableMapper;
     private final com.zwinsight.finance.mapper.BizBankFlowMapper bankFlowMapper;
+    private final com.zwinsight.project.mapper.BizProjectMapper projectMapper;
     private final FundCategoryService fundCategoryService;
 
     private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
@@ -429,6 +434,198 @@ public class FundPlanService {
         }
         result.sort((x, y) -> ((BigDecimal) y.get("amount")).compareTo((BigDecimal) x.get("amount")));
         return result;
+    }
+
+    /**
+     * 未来 N 天资金预测（驾驶舱 UI §9.2：30/60/90 天三档，<b>累计窗口</b>口径）。
+     * <p>与月度滚动预测并存：月度表回答“未来半年逐月收支”，本方法回答“30/60/90 天内缺不缺钱”
+     *（§9.2 原型表格为 30/60/90 三列，数值递增即累计窗口）。旧实现仅有月度粒度，
+     * 却在前端注释里声称对齐 §9.2，属审计指出的失实声称，现补齐。</p>
+     * <p>口径：
+     * 付款侧 = APPROVED 且未足额支付、payment_date ≤ today+N（<b>含已逾期</b>），按剩余未付额；
+     * 收款侧 = 应收台账 OPEN 余额、due_date ≤ today+N；
+     * {@code netFlow} = 回款 − 付款（§9.2 表格“资金差额”，负数=净流出）；
+     * {@code gap} = 付款 − 可用资金（§10.4 口径，正数=缺钱），可用资金 = 账户余额快照 + 窗口内回款。</p>
+     * <p>账户余额为公司级（biz_bank_balance 无项目维度），项目级查询时仍取公司余额——
+     * 资金由公司统筹，与 FundGapRiskRule 的覆盖判定同口径。</p>
+     *
+     * @param projectId 项目ID（空=公司整体）
+     * @param days      窗口天数（1-365；§9.2 常用 30/60/90）
+     */
+    public Map<String, Object> forecastByDays(Long projectId, int days) {
+        if (days < 1 || days > 365) {
+            throw new BusinessException(400, "预测天数需在1-365之间");
+        }
+        LocalDate today = LocalDate.now();
+        LocalDate until = today.plusDays(days);
+        Map<Long, BigDecimal> matchedByApply = bankFlowMapper.matchedAmountByPaymentApply();
+
+        // 付款侧：不设下界（已逾期未付同样属未来必须面对的资金压力）
+        List<BizPaymentApply> applies = paymentApplyMapper.selectList(
+                new LambdaQueryWrapper<BizPaymentApply>()
+                        .eq(BizPaymentApply::getStatus, "APPROVED")
+                        .ne(BizPaymentApply::getPayStatus, BizPaymentApply.PAY_STATUS_PAID)
+                        .eq(projectId != null, BizPaymentApply::getProjectId, projectId)
+                        .isNotNull(BizPaymentApply::getPaymentDate)
+                        .le(BizPaymentApply::getPaymentDate, until));
+        BigDecimal payments = BigDecimal.ZERO;
+        BigDecimal overdue = BigDecimal.ZERO;
+        for (BizPaymentApply a : applies) {
+            BigDecimal remaining = remainingUnpaid(a, matchedByApply);
+            if (remaining.signum() <= 0) {
+                continue;
+            }
+            payments = payments.add(remaining);
+            if (a.getPaymentDate().isBefore(today)) {
+                overdue = overdue.add(remaining);
+            }
+        }
+
+        // 收款侧：应收台账 OPEN 余额，到期日在窗口内
+        List<BizReceivable> receivables = receivableMapper.selectList(
+                new LambdaQueryWrapper<BizReceivable>()
+                        .eq(BizReceivable::getStatus, BizReceivable.STATUS_OPEN)
+                        .eq(projectId != null, BizReceivable::getProjectId, projectId)
+                        .isNotNull(BizReceivable::getDueDate)
+                        .le(BizReceivable::getDueDate, until));
+        BigDecimal receipts = BigDecimal.ZERO;
+        for (BizReceivable r : receivables) {
+            BigDecimal amount = r.getReceivableAmount() != null ? r.getReceivableAmount() : BigDecimal.ZERO;
+            BigDecimal written = r.getWrittenOffAmount() != null ? r.getWrittenOffAmount() : BigDecimal.ZERO;
+            BigDecimal open = amount.subtract(written);
+            if (open.signum() > 0) {
+                receipts = receipts.add(open);
+            }
+        }
+
+        BigDecimal accountBalance = nullToZero(bankFlowMapper.sumLatestBalances());
+        BigDecimal availableFund = accountBalance.add(receipts);
+        BigDecimal netFlow = receipts.subtract(payments);
+        BigDecimal gap = payments.subtract(availableFund);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("days", days);
+        result.put("windowEnd", until.toString());
+        result.put("expectedReceipts", receipts);
+        result.put("expectedPayments", payments);
+        result.put("overdueUnpaid", overdue);
+        result.put("netFlow", netFlow);
+        result.put("accountBalance", accountBalance);
+        result.put("availableFund", availableFund);
+        result.put("gap", gap);
+        // §15：可用资金能否覆盖净流出（coverable=true 时即使有净流出也属 YELLOW 而非 RED）
+        result.put("coverable", gap.signum() <= 0);
+        return result;
+    }
+
+    /**
+     * 资金缺口归因（驾驶舱 UI §9.2：“哪个项目导致 + 主要付款对象”）。
+     * <p>旧实现完全无归因，老板只看到一个总缺口数字而无法行动。</p>
+     * <p>byProject：窗口内按项目聚合预计付款/预计收款/净缺口，按缺口降序；
+     * byPayee：窗口内按供应商（supplierName）聚合待付金额，按金额降序（取前 N 条）。
+     * 无供应商名称的单据归入“（未登记收款方）”，如实呈现不隐藏。</p>
+     *
+     * @param projectId 项目ID（空=公司整体）
+     * @param days      窗口天数（1-365）
+     * @param topN      每个维度返回条数上限（1-50）
+     */
+    public Map<String, Object> gapAttribution(Long projectId, int days, int topN) {
+        if (days < 1 || days > 365) {
+            throw new BusinessException(400, "预测天数需在1-365之间");
+        }
+        if (topN < 1 || topN > 50) {
+            throw new BusinessException(400, "TOP 条数需在1-50之间");
+        }
+        LocalDate today = LocalDate.now();
+        LocalDate until = today.plusDays(days);
+        Map<Long, BigDecimal> matchedByApply = bankFlowMapper.matchedAmountByPaymentApply();
+
+        List<BizPaymentApply> applies = paymentApplyMapper.selectList(
+                new LambdaQueryWrapper<BizPaymentApply>()
+                        .eq(BizPaymentApply::getStatus, "APPROVED")
+                        .ne(BizPaymentApply::getPayStatus, BizPaymentApply.PAY_STATUS_PAID)
+                        .eq(projectId != null, BizPaymentApply::getProjectId, projectId)
+                        .isNotNull(BizPaymentApply::getPaymentDate)
+                        .le(BizPaymentApply::getPaymentDate, until));
+
+        Map<Long, BigDecimal> payByProject = new LinkedHashMap<>();
+        Map<String, BigDecimal> payByPayee = new LinkedHashMap<>();
+        Map<String, Integer> countByPayee = new HashMap<>();
+        for (BizPaymentApply a : applies) {
+            BigDecimal remaining = remainingUnpaid(a, matchedByApply);
+            if (remaining.signum() <= 0) {
+                continue;
+            }
+            payByProject.merge(a.getProjectId(), remaining, BigDecimal::add);
+            String payee = a.getSupplierName() != null && !a.getSupplierName().isBlank()
+                    ? a.getSupplierName() : "（未登记收款方）";
+            payByPayee.merge(payee, remaining, BigDecimal::add);
+            countByPayee.merge(payee, 1, Integer::sum);
+        }
+
+        // 应收侧按项目聚合（回款能抵消哪部分缺口）
+        List<BizReceivable> receivables = receivableMapper.selectList(
+                new LambdaQueryWrapper<BizReceivable>()
+                        .eq(BizReceivable::getStatus, BizReceivable.STATUS_OPEN)
+                        .eq(projectId != null, BizReceivable::getProjectId, projectId)
+                        .isNotNull(BizReceivable::getDueDate)
+                        .le(BizReceivable::getDueDate, until));
+        Map<Long, BigDecimal> receiveByProject = new HashMap<>();
+        for (BizReceivable r : receivables) {
+            BigDecimal amount = r.getReceivableAmount() != null ? r.getReceivableAmount() : BigDecimal.ZERO;
+            BigDecimal written = r.getWrittenOffAmount() != null ? r.getWrittenOffAmount() : BigDecimal.ZERO;
+            BigDecimal open = amount.subtract(written);
+            if (open.signum() > 0) {
+                receiveByProject.merge(r.getProjectId(), open, BigDecimal::add);
+            }
+        }
+
+        // 项目维度合并（付款项目 ∪ 收款项目），按净缺口降序
+        Set<Long> allProjectIds = new LinkedHashSet<>(payByProject.keySet());
+        allProjectIds.addAll(receiveByProject.keySet());
+        List<Map<String, Object>> byProject = new ArrayList<>();
+        for (Long pid : allProjectIds) {
+            if (pid == null) {
+                continue;
+            }
+            BigDecimal pay = payByProject.getOrDefault(pid, BigDecimal.ZERO);
+            BigDecimal receive = receiveByProject.getOrDefault(pid, BigDecimal.ZERO);
+            BizProject project = projectMapper.selectById(pid);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("projectId", pid);
+            row.put("projectName", project != null ? project.getProjectName() : String.valueOf(pid));
+            row.put("expectedPayments", pay);
+            row.put("expectedReceipts", receive);
+            row.put("netGap", pay.subtract(receive));
+            byProject.add(row);
+        }
+        byProject.sort((x, y) -> ((BigDecimal) y.get("netGap")).compareTo((BigDecimal) x.get("netGap")));
+        if (byProject.size() > topN) {
+            byProject = new ArrayList<>(byProject.subList(0, topN));
+        }
+
+        List<Map<String, Object>> byPayee = new ArrayList<>();
+        for (Map.Entry<String, BigDecimal> e : payByPayee.entrySet()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("supplierName", e.getKey());
+            row.put("amount", e.getValue());
+            row.put("count", countByPayee.getOrDefault(e.getKey(), 0));
+            byPayee.add(row);
+        }
+        byPayee.sort((x, y) -> ((BigDecimal) y.get("amount")).compareTo((BigDecimal) x.get("amount")));
+        if (byPayee.size() > topN) {
+            byPayee = new ArrayList<>(byPayee.subList(0, topN));
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("days", days);
+        result.put("byProject", byProject);
+        result.put("byPayee", byPayee);
+        return result;
+    }
+
+    private static BigDecimal nullToZero(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     /**

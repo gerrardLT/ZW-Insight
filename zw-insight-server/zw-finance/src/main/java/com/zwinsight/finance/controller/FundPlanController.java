@@ -115,12 +115,37 @@ public class FundPlanController {
     }
 
     /**
-     * 未来大额支出 TOP（按科目聚合，驾驶舱资金中心消费；V2026_56）
+     * 待支付大额支出 TOP（按科目聚合，驾驶舱资金中心消费；V2026_56）
+     * <p>V2026_63 起含已逾期部分（原口径下界为 today 会漏掉全部逾期待付款），
+     * 返回中另给 overdueAmount 字段区分“其中已逾期”。</p>
      */
     @GetMapping("/rolling/top-expenses")
     public R<List<Map<String, Object>>> futureExpenseTop(
             @RequestParam(required = false) Long projectId,
             @RequestParam(defaultValue = "30") int days) {
         return R.ok(fundPlanService.futureExpenseTop(projectId, days));
+    }
+
+    /**
+     * 未来 N 天资金预测（驾驶舱 UI §9.2：30/60/90 天三档，累计窗口）
+     * <p>返回：预计回款/预计付款（含其中逾期）/资金差额 netFlow/可用资金/缺口 gap/coverable。
+     * netFlow 为 §9.2 表格口径（回款−付款），gap 为 §10.4 口径（付款−可用资金），两者不可混用。</p>
+     */
+    @GetMapping("/rolling/days")
+    public R<Map<String, Object>> forecastByDays(
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(defaultValue = "30") int days) {
+        return R.ok(fundPlanService.forecastByDays(projectId, days));
+    }
+
+    /**
+     * 资金缺口归因（驾驶舱 UI §9.2：“哪个项目导致 + 主要付款对象”）
+     */
+    @GetMapping("/rolling/gap-attribution")
+    public R<Map<String, Object>> gapAttribution(
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(defaultValue = "90") int days,
+            @RequestParam(defaultValue = "10") int topN) {
+        return R.ok(fundPlanService.gapAttribution(projectId, days, topN));
     }
 }

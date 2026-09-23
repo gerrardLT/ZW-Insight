@@ -54,16 +54,37 @@
         <el-card shadow="never" class="chart-card">
           <template #header>
             <div class="card-header">
-              <span>现金流预测（滚动 6 个月）</span>
-              <el-tag v-if="!rollingData.length" type="info" size="small">暂无预测快照</el-tag>
+              <span>{{ cashMode === 'month' ? '现金流预测（滚动 6 个月）' : `未来 ${cashMode} 天资金预测` }}</span>
+              <div class="header-tags">
+                <!-- §9.2 要求 30/60/90 天三档；月度视图保留为趋势补充 -->
+                <el-tag v-if="cashMode !== 'month' && dayForecast"
+                  :type="Number(dayForecast.gap) > 0 ? (dayForecast.coverable ? 'warning' : 'danger') : 'success'"
+                  size="small">
+                  缺口 {{ formatWan(dayForecast.gap) }}·{{ Number(dayForecast.gap) > 0 ? (dayForecast.coverable ? '可覆盖' : '需筹资') : '无缺口' }}
+                </el-tag>
+                <el-tag v-if="cashMode === 'month' && !rollingData.length" type="info" size="small">暂无预测快照</el-tag>
+                <el-radio-group v-model="cashMode" size="small" @change="onCashModeChange">
+                  <el-radio-button label="month">月度</el-radio-button>
+                  <el-radio-button :label="30">30天</el-radio-button>
+                  <el-radio-button :label="60">60天</el-radio-button>
+                  <el-radio-button :label="90">90天</el-radio-button>
+                </el-radio-group>
+              </div>
             </div>
           </template>
           <div ref="cashChartRef" class="chart-body"></div>
           <!-- 逾期堆积必须显式告知（V2026_63）：它已计入当月预计付款，
                但老板需知道其中多少是拖欠；图表不另加系列以免与净缺口配色混淆 -->
-          <div v-if="currentMonthOverdue > 0" class="overdue-note"
+          <div v-if="cashMode === 'month' && currentMonthOverdue > 0" class="overdue-note"
             style="margin-top: var(--zw-space-xs); font-size: var(--zw-font-size-xs); color: var(--el-color-danger)">
             当月预计付款中含已逾期未付 <strong>{{ formatWan(currentMonthOverdue) }}</strong> 万元（构成项，不另计）
+          </div>
+          <!-- 天窗口下如实告知口径（§9.2 资金差额 vs §10.4 资金缺口不同） -->
+          <div v-if="cashMode !== 'month' && dayForecast" class="overdue-note"
+            style="margin-top: var(--zw-space-xs); font-size: var(--zw-font-size-xs); color: var(--el-text-color-secondary)">
+            资金差额（回款−付款）<strong>{{ formatWan(dayForecast.netFlow) }}</strong> 万；
+            资金缺口（付款−可用资金）<strong>{{ formatWan(dayForecast.gap) }}</strong> 万；
+            其中已逾期 {{ formatWan(dayForecast.overdueUnpaid) }} 万
           </div>
         </el-card>
       </el-col>
@@ -159,7 +180,7 @@ import {
   type RiskRegister,
   type RiskSummary
 } from '@/api/cockpit'
-import { getRollingForecastPage, type FundRollingForecast } from '@/api/fund-plan'
+import { getRollingForecastPage, getForecastByDays, type FundRollingForecast, type DayForecast } from '@/api/fund-plan'
 import { formatWan, toWan } from '@/utils/chart-format'
 import { pickChartTheme, chartAxisStyle, chartTooltipStyle, chartSeriesLineStyle } from '@/constants/chart-theme'
 
@@ -194,6 +215,26 @@ const costChartRef = ref<HTMLElement>()
 let profitChart: echarts.ECharts | null = null
 let cashChart: echarts.ECharts | null = null
 let costChart: echarts.ECharts | null = null
+
+// 现金流预测视图：月度滚动（趋势）/ 30、60、90 天窗口（§9.2 累计口径）
+const cashMode = ref<'month' | 30 | 60 | 90>('month')
+const dayForecast = ref<DayForecast | null>(null)
+
+async function loadDayForecast() {
+  if (cashMode.value === 'month') return
+  try {
+    const res: any = await getForecastByDays({ days: cashMode.value })
+    dayForecast.value = res?.data || null
+  } catch (e: any) {
+    dayForecast.value = null
+    ElMessage.error('加载天窗口资金预测失败：' + (e?.message || '接口异常'))
+  }
+}
+
+async function onCashModeChange() {
+  await loadDayForecast()
+  renderCharts()
+}
 
 // ==================== 指标卡（当前值 + 目标/口径 + 风险态，§4） ====================
 const metricCards = computed(() => {
@@ -286,6 +327,29 @@ function buildProfitOption(theme: Theme) {
 }
 
 function buildCashOption(theme: Theme) {
+  // 天窗口模式（§9.2）：三项对比柱状；缺口与覆盖状态由卡头 tag + 下方口径行呈现
+  if (cashMode.value !== 'month' && dayForecast.value) {
+    const d = dayForecast.value
+    return {
+      tooltip: { trigger: 'axis', ...chartTooltipStyle(theme) },
+      grid: { left: '3%', right: '4%', bottom: '8%', top: '18%', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: ['预计回款', '预计付款', '可用资金'],
+        ...chartAxisStyle(theme)
+      },
+      yAxis: { type: 'value', name: '万元', ...chartAxisStyle(theme) },
+      series: [{
+        name: `未来 ${cashMode.value} 天`, type: 'bar', barMaxWidth: 56,
+        data: [
+          { value: toWan(Number(d.expectedReceipts) || 0), itemStyle: { color: theme.semantic.success } },
+          { value: toWan(Number(d.expectedPayments) || 0), itemStyle: { color: theme.semantic.warning } },
+          { value: toWan(Number(d.availableFund) || 0), itemStyle: { color: theme.highlight } }
+        ],
+        label: { show: true, position: 'top', formatter: '{c} 万', color: theme.text.secondary }
+      }]
+    }
+  }
   const months = rollingData.value.map(r => r.forecastMonth)
   return {
     tooltip: { trigger: 'axis', ...chartTooltipStyle(theme) },
@@ -441,8 +505,17 @@ function renderCharts() {
   }
   if (cashChartRef.value) {
     if (!cashChart || cashChart.isDisposed()) cashChart = echarts.init(cashChartRef.value)
+    // 数据源随视图切换：月度看滚动快照，天窗口看 forecastByDays
+    const hasCashData = cashMode.value === 'month'
+      ? rollingData.value.length > 0
+      : !!dayForecast.value
     cashChart.setOption(
-      rollingData.value.length ? buildCashOption(theme) : emptyOption(theme, '暂无滚动预测快照'), true)
+      hasCashData
+        ? buildCashOption(theme)
+        : emptyOption(theme, cashMode.value === 'month'
+          ? '暂无滚动预测快照'
+          : '暂无天窗口预测数据（需存在已批未付单据或应收台账）'),
+      true)
   }
   if (costChartRef.value) {
     if (!costChart || costChart.isDisposed()) costChart = echarts.init(costChartRef.value)
@@ -591,6 +664,12 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--zw-space-sm);
+}
+.header-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--zw-space-sm);
+  flex-wrap: wrap;
 }
 .chart-body { height: 260px; }
 

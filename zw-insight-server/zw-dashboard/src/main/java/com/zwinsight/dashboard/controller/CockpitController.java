@@ -87,6 +87,16 @@ public class CockpitController {
     }
 
     /**
+     * 资金比率（资金流转 §10.2 支付率、§10.3 合同执行率）
+     * <p>支付率同时返回审批口径（paymentRate，paidBasis=APPROVAL_WRITEBACK）
+     * 与现金口径（cashPaymentRate，银行勾稽合计），前端必须标明用的哪个口径。</p>
+     */
+    @GetMapping("/fund-ratios")
+    public R<Map<String, Object>> getFundRatios() {
+        return R.ok(cockpitService.getFundRatios());
+    }
+
+    /**
      * 项目预计利润明细（单项目详情/成本中心数据源，实时计算不依赖快照）
      */
     @GetMapping("/project-forecasts")

@@ -102,6 +102,75 @@
       </el-col>
     </el-row>
 
+    <!-- 未来 90 天资金预测（§9.2 严格版式：30/60/90 天三档累计窗口）+ 缺口归因 -->
+    <el-row :gutter="16">
+      <el-col :xs="24" :lg="12">
+        <el-card shadow="never" class="panel-card">
+          <template #header>
+            <div class="card-header">
+              <span>未来 90 天资金预测</span>
+              <el-tag type="info" size="small">累计窗口（§9.2）</el-tag>
+            </div>
+          </template>
+          <el-alert type="info" :closable="false" show-icon class="panel-tip"
+            title="资金差额 = 预计回款 − 预计付款（§9.2 口径，负数=净流出）；资金缺口 = 预计付款 − 可用资金（§10.4 口径，正数=缺钱）。两者口径不同，不可混用。" />
+          <el-table :data="dayForecastRows" v-loading="dayLoading" border size="small">
+            <el-table-column prop="label" label="指标" width="130" />
+            <el-table-column v-for="d in dayWindows" :key="d" :label="`${d} 天`" align="right">
+              <template #default="{ row }">
+                <span :class="row.cls(d)">{{ row.val(d) }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-col>
+
+      <el-col :xs="24" :lg="12">
+        <el-card shadow="never" class="panel-card">
+          <template #header>
+            <div class="card-header">
+              <span>缺口归因：哪个项目 / 主要付款对象</span>
+              <el-select v-model="attrDays" size="small" style="width: 100px" @change="loadAttribution">
+                <el-option label="30 天" :value="30" />
+                <el-option label="60 天" :value="60" />
+                <el-option label="90 天" :value="90" />
+              </el-select>
+            </div>
+          </template>
+          <!-- §9.2 要求老板能看到“哪个项目导致缺口 + 主要付款对象”，旧实现完全无归因 -->
+          <div class="attr-title">按项目（净缺口降序）</div>
+          <el-table :data="attribution?.byProject || []" v-loading="attrLoading" border size="small">
+            <el-table-column label="项目" min-width="140" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.projectName }}</template>
+            </el-table-column>
+            <el-table-column label="预计付款" align="right">
+              <template #default="{ row }">{{ formatWan(row.expectedPayments) }}</template>
+            </el-table-column>
+            <el-table-column label="预计回款" align="right">
+              <template #default="{ row }">{{ formatWan(row.expectedReceipts) }}</template>
+            </el-table-column>
+            <el-table-column label="净缺口" align="right">
+              <template #default="{ row }">
+                <span :class="Number(row.netGap) > 0 ? 'gap-negative' : 'gap-positive'">{{ formatWan(row.netGap) }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="attr-title">主要付款对象（待付金额降序）</div>
+          <el-table :data="attribution?.byPayee || []" v-loading="attrLoading" border size="small">
+            <el-table-column label="收款方" min-width="160" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.supplierName }}</template>
+            </el-table-column>
+            <el-table-column label="待付金额" align="right">
+              <template #default="{ row }">{{ formatWan(row.amount) }}</template>
+            </el-table-column>
+            <el-table-column prop="count" label="笔数" width="70" align="center" />
+          </el-table>
+          <el-empty v-if="!attrLoading && !attribution?.byPayee?.length"
+            description="窗口内无待付款单据" :image-size="60" />
+        </el-card>
+      </el-col>
+    </el-row>
+
     <!-- 应收账龄（§10 回款风险：逾期项目排前） -->
     <el-card shadow="never" class="panel-card">
       <template #header>
@@ -156,7 +225,8 @@ import { IconArrowRight } from '@tabler/icons-vue'
 import { getCockpitOverview, type CockpitOverview } from '@/api/cockpit'
 import {
   getRollingForecastPage, getFutureExpenseTop, generateRollingForecast,
-  type FundRollingForecast, type FutureExpenseRow
+  getForecastByDays, getGapAttribution,
+  type FundRollingForecast, type FutureExpenseRow, type DayForecast, type GapAttribution
 } from '@/api/fund-plan'
 import { getReceivableAging, type ReceivableAging, type AgingBucket } from '@/api/receivable'
 import { formatWan } from '@/utils/chart-format'
@@ -179,6 +249,83 @@ const forecastData = ref<FundRollingForecast[]>([])
 const topExpenses = ref<FutureExpenseRow[]>([])
 const topDays = ref(30)
 const aging = ref<ReceivableAging>({ totalOpen: 0, totalOverdue: 0, projects: [] })
+
+// ==================== §9.2 未来 90 天预测（30/60/90 三档累计窗口）====================
+const dayWindows = [30, 60, 90]
+const dayForecasts = ref<Record<number, DayForecast | null>>({})
+const dayLoading = ref(false)
+const attrDays = ref(90)
+const attribution = ref<GapAttribution | null>(null)
+const attrLoading = ref(false)
+
+/**
+ * §9.2 表格为「行=指标、列=30/60/90 天」的转置版式（数值随窗口递增即累计口径）。
+ * 同时呈现两套口径：资金差额 netFlow（§9.2）与资金缺口 gap（§10.4），避免用户混用。
+ */
+const dayForecastRows = computed(() => {
+  const get = (d: number) => dayForecasts.value[d] || null
+  const num = (d: number, key: keyof DayForecast) => Number(get(d)?.[key] ?? 0)
+  return [
+    { label: '预计回款', val: (d: number) => formatWan(get(d)?.expectedReceipts), cls: () => '' },
+    { label: '预计付款', val: (d: number) => formatWan(get(d)?.expectedPayments), cls: () => '' },
+    {
+      label: '　其中逾期',
+      val: (d: number) => formatWan(get(d)?.overdueUnpaid),
+      cls: (d: number) => (num(d, 'overdueUnpaid') > 0 ? 'gap-negative' : '')
+    },
+    {
+      label: '资金差额',
+      val: (d: number) => formatWan(get(d)?.netFlow),
+      cls: (d: number) => (num(d, 'netFlow') < 0 ? 'gap-negative' : 'gap-positive')
+    },
+    { label: '可用资金', val: (d: number) => formatWan(get(d)?.availableFund), cls: () => '' },
+    {
+      label: '资金缺口',
+      val: (d: number) => formatWan(get(d)?.gap),
+      cls: (d: number) => (num(d, 'gap') > 0 ? 'gap-negative' : 'gap-positive')
+    },
+    {
+      label: '覆盖状态',
+      val: (d: number) => {
+        const f = get(d)
+        if (!f) return '—'
+        if (num(d, 'gap') <= 0) return '🟢 无缺口'
+        return f.coverable ? '🟡 可覆盖' : '🔴 需筹资'
+      },
+      cls: (d: number) => (num(d, 'gap') > 0 && !get(d)?.coverable ? 'gap-negative' : '')
+    }
+  ]
+})
+
+async function loadDayForecasts() {
+  dayLoading.value = true
+  try {
+    const results = await Promise.all(dayWindows.map(d => getForecastByDays({ days: d })))
+    const map: Record<number, DayForecast | null> = {}
+    results.forEach((r: any, i) => {
+      map[dayWindows[i]] = r?.data || null
+    })
+    dayForecasts.value = map
+  } catch (e: any) {
+    dayForecasts.value = {}
+    ElMessage.error('加载 90 天资金预测失败：' + (e?.message || '接口异常'))
+  } finally {
+    dayLoading.value = false
+  }
+}
+
+async function loadAttribution() {
+  attrLoading.value = true
+  try {
+    const res: any = await getGapAttribution({ days: attrDays.value, topN: 8 })
+    attribution.value = res?.data || null
+  } catch (e: any) {
+    attribution.value = null
+    ElMessage.error('加载缺口归因失败：' + (e?.message || '接口异常'))
+  } finally {
+    attrLoading.value = false
+  }
+}
 
 /**
  * 四卡数据源均为真实端点：
@@ -308,6 +455,8 @@ onMounted(() => {
   loadForecast()
   loadTopExpenses()
   loadAging()
+  loadDayForecasts()
+  loadAttribution()
 })
 </script>
 
@@ -357,6 +506,13 @@ onMounted(() => {
 .value-success { color: var(--el-color-success); }
 .panel-card { height: 100%; }
 .panel-tip { margin-bottom: var(--zw-space-sm-md); }
+.attr-title {
+  margin: var(--zw-space-sm) 0 var(--zw-space-xs);
+  font-size: var(--zw-font-size-sm);
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+}
+.attr-title:first-of-type { margin-top: 0; }
 .card-header {
   display: flex;
   align-items: center;

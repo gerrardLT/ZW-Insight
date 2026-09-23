@@ -46,6 +46,7 @@ public class CockpitService {
     private final BizBankFlowMapper bankFlowMapper;
     private final BizPaymentApplyMapper paymentApplyMapper;
     private final ContractPayableMapper contractPayableMapper;
+    private final com.zwinsight.contract.mapper.BizConstructionContractMapper constructionContractMapper;
     private final ProfitSnapshotService profitSnapshotService;
     private final DashboardService dashboardService;
 
@@ -251,6 +252,63 @@ public class CockpitService {
      */
     public BigDecimal getAvailableFund() {
         return computeFundGap90Days().get("availableFund");
+    }
+
+    /** 计入合同执行率的施工合同状态（与 {@link ProfitSnapshotService} 收入口径一致） */
+    private static final List<String> EXECUTION_CONTRACT_STATUSES = List.of("EFFECTIVE", "SETTLED");
+
+    /**
+     * 资金比率（资金流转 §10.2 支付率、§10.3 合同执行率）。
+     * <p><b>支付率口径声明（不得笼统称“实际支付”）</b>：
+     * {@code paymentRate} = Σ合同 cumulative_paid ÷ Σ cumulative_settlement，其中 cumulative_paid
+     * 由付款申请<b>审批通过</b>回写，属<b>审批口径</b>；另并列返回现金口径
+     * {@code cashPaidTotal}/{@code cashPaymentRate}（银行流水勾稽合计）。
+     * 未导入银行流水时现金口径为 0，此时必须如实呈现而非用审批口径冒充。</p>
+     * <p>合同执行率 = Σ累计完成产值 ÷ Σ动态合同金额（合同额 + 累计变更），
+     * 仅计 EFFECTIVE/SETTLED 施工合同（与预计利润的收入口径同源，避免两套口径打架）。</p>
+     */
+    public Map<String, Object> getFundRatios() {
+        // §10.2 支付率
+        BigDecimal settlementTotal = nvl(contractPayableMapper.sumConfirmedPayable(null));
+        BigDecimal paidTotal = nvl(contractPayableMapper.sumCumulativePaid(null));
+        BigDecimal cashPaidTotal = BigDecimal.ZERO;
+        Map<Long, BigDecimal> matched = bankFlowMapper.matchedAmountByPaymentApply();
+        if (matched != null) {
+            for (BigDecimal v : matched.values()) {
+                cashPaidTotal = cashPaidTotal.add(v);
+            }
+        }
+
+        // §10.3 合同执行率（动态合同金额 = 合同额 + 累计变更）
+        List<com.zwinsight.contract.domain.BizConstructionContract> contracts =
+                constructionContractMapper.selectList(
+                        new LambdaQueryWrapper<com.zwinsight.contract.domain.BizConstructionContract>()
+                                .in(com.zwinsight.contract.domain.BizConstructionContract::getStatus,
+                                        EXECUTION_CONTRACT_STATUSES));
+        BigDecimal outputTotal = BigDecimal.ZERO;
+        BigDecimal dynamicContractTotal = BigDecimal.ZERO;
+        for (com.zwinsight.contract.domain.BizConstructionContract c : contracts) {
+            outputTotal = outputTotal.add(nvl(c.getCumulativeOutput()));
+            dynamicContractTotal = dynamicContractTotal
+                    .add(nvl(c.getContractAmount()))
+                    .add(nvl(c.getCumulativeChangeAmount()));
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("settlementTotal", settlementTotal);
+        result.put("paidTotal", paidTotal);
+        result.put("paidBasis", "APPROVAL_WRITEBACK");
+        result.put("paymentRate", settlementTotal.signum() > 0
+                ? paidTotal.divide(settlementTotal, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        // 现金口径并列返回（无银行流水时为 0，如实呈现）
+        result.put("cashPaidTotal", cashPaidTotal);
+        result.put("cashPaymentRate", settlementTotal.signum() > 0
+                ? cashPaidTotal.divide(settlementTotal, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        result.put("outputTotal", outputTotal);
+        result.put("dynamicContractTotal", dynamicContractTotal);
+        result.put("contractExecutionRate", dynamicContractTotal.signum() > 0
+                ? outputTotal.divide(dynamicContractTotal, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        return result;
     }
 
     private static int healthRank(String health) {

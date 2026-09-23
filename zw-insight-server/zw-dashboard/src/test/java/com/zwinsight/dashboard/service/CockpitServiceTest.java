@@ -43,6 +43,8 @@ class CockpitServiceTest {
     // V2026_64：应付未付（合同聚合）与已批未付（付款申请剩余未付额）并列返回
     @Mock private com.zwinsight.finance.mapper.BizPaymentApplyMapper paymentApplyMapper;
     @Mock private com.zwinsight.finance.mapper.ContractPayableMapper contractPayableMapper;
+    // 合同执行率（§10.3）需施工合同产值与动态合同额
+    @Mock private com.zwinsight.contract.mapper.BizConstructionContractMapper constructionContractMapper;
     @Mock private ProfitSnapshotService profitSnapshotService;
     @Mock private DashboardService dashboardService;
 
@@ -198,6 +200,58 @@ class CockpitServiceTest {
             assertThat((BigDecimal) result.get("availableFund")).isEqualByComparingTo(BigDecimal.ZERO);
             assertThat((BigDecimal) result.get("gap90Days")).isEqualByComparingTo(BigDecimal.ZERO);
             assertThat((BigDecimal) result.get("threeMonthCashNeed")).isEqualByComparingTo(BigDecimal.ZERO);
+        }
+    }
+
+    @Nested
+    @DisplayName("getFundRatios() 资金比率（§10.2 支付率 / §10.3 合同执行率）")
+    class FundRatioTests {
+
+        private com.zwinsight.contract.domain.BizConstructionContract contract(
+                String amount, String change, String output) {
+            com.zwinsight.contract.domain.BizConstructionContract c =
+                    new com.zwinsight.contract.domain.BizConstructionContract();
+            c.setContractAmount(new BigDecimal(amount));
+            c.setCumulativeChangeAmount(new BigDecimal(change));
+            c.setCumulativeOutput(new BigDecimal(output));
+            c.setStatus("EFFECTIVE");
+            return c;
+        }
+
+        @Test
+        @DisplayName("正常路径 — 支付率=已付÷已确认应付；合同执行率=产值÷(合同额+累计变更)")
+        void fundRatios_computed() {
+            when(contractPayableMapper.sumConfirmedPayable(null)).thenReturn(new BigDecimal("10000000"));
+            when(contractPayableMapper.sumCumulativePaid(null)).thenReturn(new BigDecimal("8000000"));
+            when(bankFlowMapper.matchedAmountByPaymentApply())
+                    .thenReturn(java.util.Map.of(1L, new BigDecimal("5000000")));
+            when(constructionContractMapper.selectList(any(LambdaQueryWrapper.class)))
+                    .thenReturn(List.of(contract("8000000", "500000", "6000000")));
+
+            Map<String, Object> r = cockpitService.getFundRatios();
+
+            assertThat((BigDecimal) r.get("paymentRate")).isEqualByComparingTo("0.8000");
+            // 现金口径并列返回（银行勾稽 500万 / 应付 1000万）
+            assertThat((BigDecimal) r.get("cashPaymentRate")).isEqualByComparingTo("0.5000");
+            assertThat(r.get("paidBasis")).isEqualTo("APPROVAL_WRITEBACK");
+            assertThat((BigDecimal) r.get("dynamicContractTotal")).isEqualByComparingTo("8500000");
+            assertThat((BigDecimal) r.get("contractExecutionRate")).isEqualByComparingTo("0.7059");
+        }
+
+        @Test
+        @DisplayName("边界路径 — 分母为 0 时比率为 0（不抛除零异常）；无银行流水时现金口径如实为 0")
+        void fundRatios_zeroDenominator_returnsZero() {
+            when(contractPayableMapper.sumConfirmedPayable(null)).thenReturn(BigDecimal.ZERO);
+            when(contractPayableMapper.sumCumulativePaid(null)).thenReturn(BigDecimal.ZERO);
+            when(bankFlowMapper.matchedAmountByPaymentApply()).thenReturn(java.util.Map.of());
+            when(constructionContractMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+            Map<String, Object> r = cockpitService.getFundRatios();
+
+            assertThat((BigDecimal) r.get("paymentRate")).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat((BigDecimal) r.get("contractExecutionRate")).isEqualByComparingTo(BigDecimal.ZERO);
+            // 现金口径为 0 时如实返回 0，不得用审批口径冒充
+            assertThat((BigDecimal) r.get("cashPaidTotal")).isEqualByComparingTo(BigDecimal.ZERO);
         }
     }
 

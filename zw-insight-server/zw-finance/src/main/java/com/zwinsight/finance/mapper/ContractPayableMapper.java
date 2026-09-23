@@ -122,4 +122,27 @@ public interface ContractPayableMapper {
             + ") t"
             + "</script>")
     BigDecimal sumConfirmedPayable(@Param("projectId") Long projectId);
+
+    /**
+     * 已付合计（Σ cumulative_paid）——支付率分子（资金流转 §10.2）。
+     * <p><b>口径声明</b>：cumulative_paid 由付款申请<b>审批通过</b>时回写
+     * （{@code PaymentApplyService.onApproved}），属<b>审批口径</b>而非银行现金口径。
+     * 现金口径请看 {@code BizBankFlowMapper.sumMatchedGroupByPaymentApply()}（勾稽合计），
+     * 调用方必须向用户标明用的是哪个口径，不得笼统称“实际支付”。</p>
+     */
+    @Select("<script>"
+            + "SELECT IFNULL(SUM(t.paid), 0) FROM ("
+            + "  SELECT COALESCE(cumulative_paid,0) AS paid FROM biz_purchase_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL SELECT COALESCE(cumulative_paid,0) FROM biz_labor_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL SELECT COALESCE(cumulative_paid,0) FROM biz_machine_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL SELECT COALESCE(cumulative_paid,0) FROM biz_subcontract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + "  UNION ALL SELECT COALESCE(cumulative_paid,0) FROM biz_other_contract WHERE deleted = 0"
+            + "    <if test='projectId != null'> AND project_id = #{projectId}</if>"
+            + ") t"
+            + "</script>")
+    BigDecimal sumCumulativePaid(@Param("projectId") Long projectId);
 }

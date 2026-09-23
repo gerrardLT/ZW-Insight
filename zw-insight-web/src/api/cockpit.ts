@@ -189,6 +189,29 @@ export function getProfitAttribution(params: { month: string; projectId?: number
   return request.get<R<ProfitAttribution>>('/v1/dashboard/cockpit/profit-attribution', { params })
 }
 
+/**
+ * 资金比率（资金流转 §10.2 支付率、§10.3 合同执行率）。
+ * paymentRate 为审批口径（paidBasis=APPROVAL_WRITEBACK，cumulative_paid 由审批回写）；
+ * cashPaymentRate 为现金口径（银行流水勾稽合计）。无银行流水时现金口径为 0，
+ * 展示时必须标明口径，不得用审批口径冒充“实际支付”。
+ */
+export interface FundRatios {
+  settlementTotal: number
+  paidTotal: number
+  paidBasis: string
+  paymentRate: number
+  cashPaidTotal: number
+  cashPaymentRate: number
+  outputTotal: number
+  /** 动态合同金额 = 合同额 + 累计变更（§10.3 分母） */
+  dynamicContractTotal: number
+  contractExecutionRate: number
+}
+
+export function getFundRatios() {
+  return request.get<R<FundRatios>>('/v1/dashboard/cockpit/fund-ratios')
+}
+
 export function getProjectHealth() {
   return request.get<R<ProjectHealth[]>>('/v1/dashboard/cockpit/project-health')
 }

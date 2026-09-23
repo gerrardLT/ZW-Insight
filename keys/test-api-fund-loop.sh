@@ -182,6 +182,62 @@ assert_jq '.code==200 and ([.data[] | select((.overdueAmount | tonumber) > (.amo
 call GET "/api/v1/finance/fund-plan/rolling/top-expenses?days=999"
 assert_body_not_success "待支付大额支出TOP-days超范围被拒绝"
 
+# ---------- 1D-3 未来 N 天预测（UI §9.2：30/60/90 三档累计窗口）----------
+# 旧实现只有月度粒度却声称对齐 §9.2，本节钉住天粒度三档与两套口径不得混用
+for D in 30 60 90; do
+  call GET "/api/v1/finance/fund-plan/rolling/days?days=$D"
+  assert_body_code 200 "未来${D}天预测-业务码"
+  assert_jq '.code==200 and (.data | has("expectedReceipts") and has("expectedPayments")
+    and has("overdueUnpaid") and has("netFlow") and has("availableFund") and has("gap") and has("coverable"))' \
+    "未来${D}天预测-字段齐备（含§9.2 netFlow 与 §10.4 gap 两套口径）"
+  # §9.2 资金差额 = 回款 − 付款
+  assert_jq '.code==200 and ((.data.expectedReceipts - .data.expectedPayments - .data.netFlow) | fabs) < 0.01' \
+    "未来${D}天预测-netFlow=回款−付款（§9.2）"
+  # §10.4 缺口 = 付款 − 可用资金
+  assert_jq '.code==200 and ((.data.expectedPayments - .data.availableFund - .data.gap) | fabs) < 0.01' \
+    "未来${D}天预测-gap=付款−可用资金（§10.4）"
+  # 可用资金 = 账户余额 + 窗口内回款
+  assert_jq '.code==200 and ((.data.accountBalance + .data.expectedReceipts - .data.availableFund) | fabs) < 0.01' \
+    "未来${D}天预测-可用资金=余额+回款"
+  # coverable 必须与 gap 符号一致（gap≤0 → 可覆盖）
+  assert_jq '.code==200 and ((.data.gap <= 0) == (.data.coverable == true))' \
+    "未来${D}天预测-coverable 与 gap 符号一致（§15）"
+  cp /tmp/zwi_body "/tmp/zwi_day_$D.json"
+done
+
+# 累计窗口单调性：90 天预计付款 ≥ 30 天（累计口径，窗口变大不得减少）
+TOTAL_COUNT=$((TOTAL_COUNT + 1))
+if jq -e --slurpfile d30 /tmp/zwi_day_30.json \
+    '.data.expectedPayments >= ($d30[0].data.expectedPayments - 0.01)' /tmp/zwi_day_90.json >/dev/null 2>&1; then
+  PASS_COUNT=$((PASS_COUNT + 1)); log "  PASS [$TOTAL_COUNT] 累计窗口单调性（90天预计付款 ≥ 30天）"
+else
+  FAIL_COUNT=$((FAIL_COUNT + 1)); log "  FAIL [$TOTAL_COUNT] 累计窗口单调性（90天预计付款 ≥ 30天）"
+fi
+
+# 负向：days 超范围
+for BAD in 0 999; do
+  call GET "/api/v1/finance/fund-plan/rolling/days?days=$BAD"
+  assert_body_not_success "未来N天预测-days=$BAD 被拒绝"
+done
+
+# ---------- 1D-4 缺口归因（§9.2：哪个项目导致 + 主要付款对象）----------
+call GET "/api/v1/finance/fund-plan/rolling/gap-attribution?days=90&topN=5"
+assert_http 2 "缺口归因 HTTP"
+assert_jq '.code==200 and (.data.byProject|type=="array") and (.data.byPayee|type=="array")' \
+  "缺口归因-双维度结构（byProject/byPayee）"
+assert_jq '.code==200 and ([.data.byPayee[] | select(.supplierName == null or .amount == null or .count == null)] | length == 0)' \
+  "缺口归因-付款对象字段齐备（无供应商时归入未登记而非丢弃）"
+assert_jq '.code==200 and ([.data.byProject[] | select(.projectName == null or .netGap == null)] | length == 0)' \
+  "缺口归因-项目维度字段齐备"
+assert_jq '.code==200 and (.data.byPayee | length <= 5)' "缺口归因-topN 限制生效"
+# 项目维度按净缺口降序（首项为最大缺口）
+assert_jq '.code==200 and ((.data.byProject | length) < 2 or ((.data.byProject[0].netGap - .data.byProject[1].netGap) >= -0.01))' \
+  "缺口归因-项目按净缺口降序"
+
+# 负向：topN 超范围必须拒绝（不静默截取）
+call GET "/api/v1/finance/fund-plan/rolling/gap-attribution?days=90&topN=999"
+assert_body_not_success "缺口归因-topN超范围被拒绝"
+
 # ---------- 1E 利润趋势真实化 ----------
 call GET "/api/v1/dashboard/profit-trend"
 assert_http 2 "利润趋势 HTTP"

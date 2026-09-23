@@ -104,3 +104,52 @@ export function getRollingForecastPage(params: { page?: number; size?: number; p
 export function getFutureExpenseTop(params: { projectId?: number; days?: number }) {
   return request.get<R<FutureExpenseRow[]>>('/v1/finance/fund-plan/rolling/top-expenses', { params })
 }
+
+/**
+ * 未来 N 天资金预测（UI §9.2：30/60/90 天三档，累计窗口）。
+ * netFlow 为 §9.2 表格口径（回款−付款，负数=净流出）；
+ * gap 为 §10.4 口径（付款−可用资金，正数=缺钱）。两者不可混用。
+ */
+export interface DayForecast {
+  days: number
+  windowEnd: string
+  expectedReceipts: number
+  expectedPayments: number
+  /** 其中：已逾期未付（构成项，已含在 expectedPayments 内） */
+  overdueUnpaid: number
+  /** §9.2 资金差额 = 回款 − 付款 */
+  netFlow: number
+  accountBalance: number
+  /** 可用资金 = 账户余额 + 窗口内预计回款 */
+  availableFund: number
+  /** §10.4 缺口 = 付款 − 可用资金（正数=缺钱） */
+  gap: number
+  /** §15：可用资金能否覆盖（true → 黄色关注而非红色严重） */
+  coverable: boolean
+}
+
+export function getForecastByDays(params: { projectId?: number; days?: number }) {
+  return request.get<R<DayForecast>>('/v1/finance/fund-plan/rolling/days', { params })
+}
+
+/** 资金缺口归因（UI §9.2：哪个项目导致 + 主要付款对象） */
+export interface GapAttribution {
+  days: number
+  byProject: {
+    projectId: number
+    projectName: string
+    expectedPayments: number
+    expectedReceipts: number
+    netGap: number
+  }[]
+  byPayee: {
+    /** 无供应商名称时为「（未登记收款方）」，不隐藏 */
+    supplierName: string
+    amount: number
+    count: number
+  }[]
+}
+
+export function getGapAttribution(params: { projectId?: number; days?: number; topN?: number }) {
+  return request.get<R<GapAttribution>>('/v1/finance/fund-plan/rolling/gap-attribution', { params })
+}
