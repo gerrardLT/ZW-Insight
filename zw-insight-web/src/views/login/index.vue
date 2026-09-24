@@ -95,11 +95,6 @@
             </el-button>
           </el-form-item>
         </el-form>
-
-        <!-- 滑块验证码：置于卡片下方；密码模式强制（短信模式由后端限流防护） -->
-        <div v-show="loginMode === 'password'" class="slider-wrap">
-          <SliderCaptcha ref="sliderRef" @success="onSliderSuccess" @fail="onSliderFail" />
-        </div>
       </div>
       <p class="login-copyright">© 2026 中维智营 · 工程项目管理平台</p>
     </div>
@@ -337,9 +332,6 @@ function goForgotPassword() {
 .login-tab.active { color: var(--zw-brand); }
 .login-tab.active::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--zw-brand); }
 .login-tab:focus-visible { outline: 2px solid var(--zw-brand); outline-offset: 2px; }
-
-/* 滑块验证码容器（卡片下方） */
-.slider-wrap { margin-top: var(--zw-space-md); }
 
 /* 输入：粗下划线 + 橙色 focus */
 .login-box :deep(.el-input__wrapper) { border-radius: 0; box-shadow: 0 2px 0 0 var(--zw-border-light); background: transparent; transition: box-shadow var(--zw-duration-fast); }
