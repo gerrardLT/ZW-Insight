@@ -189,16 +189,70 @@ jobs:
           path: ${{ matrix.project }}/coverage/
           retention-days: 14
 
+  # ──────────────────────────────────────────────
+  # 1.5 前端产物构建（runner 侧）—— 2026-09-24 新增，根治生产机资源争抢
+  #
+  # 背景：原本前端在**生产服务器上**做 `npm ci + vite build`（frontend Dockerfile 的
+  # stage 1），实测后果：
+  #   ① vite `rendering chunks` 阶段 5 分钟无输出 → SSH 空闲断连（run 35951954498 / 35955467495
+  #     均报 exit 255，但远端 bash 已跑完，形成「CI 报失败、部署实际成功」的误导状态）；
+  #   ② 4 核 / 7.6GB 且可用内存仅 1.3GB 的生产机上，构建与在跑的生产容器争抢资源，
+  #     2026-09-24 实测 load average 冲到 146、sshd 无法完成 banner 交换、
+  #     宿主机 nginx（80）与业务端口应用层全部超时，整机不可服务约 40 分钟，最终只能重启。
+  # 改为在 runner 上构建、服务器只 COPY 产物，构建耗时从部署链路中彻底移除。
+  #
+  # 本 job **不受 fast_deploy 影响**（无 if 条件）：快速路径跳过的是测试，而 dist 是部署必需产物。
+  # ──────────────────────────────────────────────
+  frontend-build:
+    name: Build Frontend Dist (runner)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: zw-insight-web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: zw-insight-web
+        run: npm ci --no-audit --no-fund
+
+      - name: Build production bundle (vite)
+        working-directory: zw-insight-web
+        run: npm run build
+
+      # 硬断言：产物不存在就红灯，绝不让部署阶段拿到空目录或陈旧产物
+      - name: Assert dist exists
+        working-directory: zw-insight-web
+        run: |
+          test -f dist/index.html || { echo "dist/index.html 缺失，构建未产出"; exit 1; }
+          echo "--- dist 产物概览 ---"
+          du -sh dist
+          find dist -maxdepth 2 -type f | head -10
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: zw-insight-web/dist/
+          retention-days: 3
+          if-no-files-found: error
+
   # ────────────────────────────────────────────────────
   # 2. 部署到宝塔服务器
   # ────────────────────────────────────────────────────
   deploy:
     name: Deploy to Server
     runs-on: ubuntu-latest
-    needs: [backend, frontend-test]
-    # backend 成功 且（frontend 成功或 fast_deploy 跳过）才部署；frontend 失败仍不部署（保留质量门禁）
+    needs: [backend, frontend-test, frontend-build]
+    # backend 与 frontend-build 必须成功；frontend-test 成功或被 fast_deploy 跳过均可
+    # （frontend-build 不在豁免列表里：dist 是部署必需产物，无它则镜像构建必失败）
     if: |
       always() && needs.backend.result == 'success' &&
+      needs.frontend-build.result == 'success' &&
       (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped')
     environment: production
     steps:
@@ -249,15 +303,17 @@ jobs:
 
       - name: Sync project to server
         run: |
+          # 注意：**不再排除 dist/**——前端产物由 frontend-build job 在 runner 上构建后
+          # 随本步同步到服务器，服务器上的 frontend Dockerfile 只做 COPY（不再 npm build）。
+          # 若重新加上 --exclude='**/dist/'，镜像构建会因 COPY 找不到目录而失败。
           rsync -avz --delete \
             --exclude='.git/' \
             --exclude='node_modules/' \
             --exclude='**/target/' \
-            --exclude='**/dist/' \
             --exclude='test-results/' \
             --exclude='.kiro/' \
             --exclude='deploy/.env' \
-            -e "ssh -i ~/.ssh/deploy_key" \
+            -e "ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=30 -o ServerAliveCountMax=20" \
             ./ "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.DEPLOY_DIR }}/"
 
       - name: Deploy via SSH

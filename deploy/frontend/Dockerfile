@@ -1,28 +1,17 @@
 # ============================================================
-# Stage 1: Build - 基于 node:20-alpine 构建前端产物
+# Stage: Serve - 服务器端不再做 npm build（避免资源争抢与 SSH 断连）
 # ============================================================
-FROM node:20-alpine AS builder
+# 变更背景：2026-09-24 实测生产机上做 vite build（rendering chunks 5 分钟无输出）导致 SSH 断连、
+#   负载飙升 146、整机不可服务约 40 分钟（详见 CI job frontend-build 注释）。
+# 修复方案：runner 侧构建 dist 产物，服务器只做 COPY 到 nginx（单阶段镜像）。
+# ------------------------------------------------------------
+FROM nginx:1.25-alpine AS builder
 
-WORKDIR /app
-
-# 使用国内镜像源加速依赖安装（先复制包描述文件，利用 Docker 缓存层）
-COPY zw-insight-web/package*.json ./
-RUN npm ci --registry=https://registry.npmmirror.com
-
-# 复制前端源码并执行构建（vue-tsc 类型检查 + vite build）
-COPY zw-insight-web/ .
-RUN npm run build
-
-# ============================================================
-# Stage 2: Serve - 使用 nginx:1.25-alpine 提供静态资源服务
-# ============================================================
-FROM nginx:1.25-alpine
-
-# 复制构建产物到 nginx 默认目录
-COPY --from=builder /app/dist /usr/share/nginx/html
+# 复制构建产物到默认 nginx 目录（部署上下文是项目根 /root/zwi-deploy/，故路径为 zw-insight-web/dist）
+COPY --chmod=755 zw-insight-web/dist ./usr/share/nginx/html/
 
 # 复制自定义 nginx 配置（含 SPA 路由 + API 反向代理）
-COPY deploy/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=644 deploy/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
