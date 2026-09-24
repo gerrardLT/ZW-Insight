@@ -264,6 +264,36 @@ jobs:
           name: backend-jar
           path: deploy/
 
+      # 前端产物：先下到临时目录，再根据实际结构落位到 zw-insight-web/dist。
+      # 为何不直接 path: zw-insight-web/dist/：upload-artifact@v4 会保留上传时的相对路径层级，
+      # 直接下载可能得到 zw-insight-web/dist/zw-insight-web/dist/* 的嵌套结构（run 35977354762
+      # 因漏加本步骤而 COPY 失败，修复时不能再引入一个不确定的路径假设）。
+      - name: Download frontend dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: _frontend-dist-tmp/
+
+      - name: Place frontend dist into web project
+        run: |
+          set -euo pipefail
+          if [ -f _frontend-dist-tmp/index.html ]; then
+            SRC=_frontend-dist-tmp
+          elif [ -f _frontend-dist-tmp/zw-insight-web/dist/index.html ]; then
+            SRC=_frontend-dist-tmp/zw-insight-web/dist
+          else
+            echo "无法定位 dist 产物，实际结构："
+            find _frontend-dist-tmp -maxdepth 4 | head -20
+            exit 1
+          fi
+          rm -rf zw-insight-web/dist
+          cp -r "$SRC" zw-insight-web/dist
+          rm -rf _frontend-dist-tmp
+          test -f zw-insight-web/dist/index.html
+          echo "--- 待同步的 dist ---"
+          ls zw-insight-web/dist | head
+          du -sh zw-insight-web/dist
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -312,9 +342,18 @@ jobs:
             --exclude='**/target/' \
             --exclude='test-results/' \
             --exclude='.kiro/' \
+            --exclude='_frontend-dist-tmp/' \
             --exclude='deploy/.env' \
             -e "ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=30 -o ServerAliveCountMax=20" \
             ./ "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.DEPLOY_DIR }}/"
+
+      # 硬断言：dist 必须已到达服务器，否则后面镜像构建必败（失败信息比 Docker 报错直白）
+      - name: Assert dist arrived on server
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+            "test -f ${{ env.DEPLOY_DIR }}/zw-insight-web/dist/index.html && echo 'dist OK: $(du -sh ${{ env.DEPLOY_DIR }}/zw-insight-web/dist | cut -f1)' || { echo '服务器未收到 dist 产物'; exit 1; }"
 
       - name: Deploy via SSH
         run: |
