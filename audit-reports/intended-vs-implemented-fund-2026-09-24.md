@@ -127,7 +127,7 @@
 | 第四期 P2-2 | 应收下钻 8 级链 §10（7 新列 + 人工登记，V2026_69） | `000eb3e` | 已验证 |
 | 第四期 P2-3 | 驾驶舱「项目经营」「成本中心」两页面 §12/§6/§7/§8（V2026_70） | `06ca578` | 已验证 |
 | 修复 | 清空登记失效的 ORM 陷阱 + 部署 SSH 断连与构建期停机根因 | `defc5bb` | 待验证 |
-| **未做** | **P2-4 单据穿透链（DrillDownService + 导航条 + 三处接入）** | — | — |
+| 第五期 P2-4 | 单据穿透链（DrillDownService + 5 端点 + 审批轨迹端点 + DrillDownBreadcrumb + 三处接入，无库表变更） | 本次提交 | 本地验证（待部署） |
 
 ### 7.2 三处被实证推翻的计划假设（均已按事实调整并写入代码注释）
 
@@ -186,7 +186,7 @@
 
 ### 7.5 已知待办（如实记录，未修复）
 
-1. **P2-4 单据穿透链未实施**（`DrillDownService` + `DrillDownBreadcrumb.vue` + 三处接入）。
+1. ~~**P2-4 单据穿透链未实施**~~ → **已于第五期实施**（见下方「七·附二 P2-4 实施记录」）。
    原因：本轮上下文预算不足以同时保证实现、测试与提交质量，为避免留下半成品而暂缓。
 2. **`UrgeScheduleTask.autoUrge` 每 30 分钟抛异常**（线上日志实证）：
    `IllegalStateException: 租户上下文缺失，拒绝 INSERT（防止数据写入幽灵租户 0）`，
@@ -271,3 +271,55 @@ ID 落 99701-99773，三项不变量（孤儿账户/幂等键重复/ID 冲突）
 - **月度资金计划跨月失效**：`plan_year/plan_month` 取当月而 Flyway 只执行一次，属如实行为
 - **`actual_amount` 会被每日 02:30 归集校正**：本次部署后勾稽仍为 0/0，说明校正尚未发生或
   差额为 0；持续演示时需按上表基线复核
+
+---
+
+## 七·附二：P2-4 单据穿透链实施记录（2026-09-24 第五期）
+
+### 链路（逐环实证后确定，无库表变更）
+
+```text
+经营数字（复用 project-health 真实逐项目值）
+  → 成本分类（biz_cost_account 按 CBS cost_category 聚合 + 五类合同侧对照数）
+  → 供应商（PURCHASE/LABOR/MACHINE/SUBCONTRACT/OTHER_EXPENSE 五表按乙方聚合）
+     ↳ INDIRECT/OTHER 无供应商维度 → 分流到「成本流水」（biz_cost_account_txn ACTUAL 维度）
+  → 合同（供应商名下该类合同清单）
+  → 原始单据（结算单/付款申请/收票登记/入库单[采购]）
+  → 审批轨迹（wf_approval_record 按流程实例，新增 GET /workflow/approval/trace）
+  → 原始附件（⚠ 实证无数据源，前端固定展示说明文案，不伪造环节）
+```
+
+### 实施中被实证推翻的第四处计划假设
+
+**「穿透到原始附件」不可行**：全仓业务实体中仅现场整改单有 `attachmentIds`；
+付款申请/结算/收票/合同四类单据均**无附件上传功能**（前端 `el-upload` 只存在于
+流程部署/BOQ/批量导入三处，`file_info` 通用表无任何业务单据挂接方）。
+→ 穿透链终点如实止步于审批轨迹，`ATTACHMENT_NOTE` 随每级响应下发并由前端固定展示。
+
+### 其余三处实证口径（写入代码注释，防后续维护误改）
+
+1. **类别词汇表以 `biz_payment_apply.contract_category` 为准**（PURCHASE/LABOR/MACHINE/
+   SUBCONTRACT/OTHER_EXPENSE，线上 16 笔分布已验证）；CBS 的 MATERIAL 穿透到合同侧是
+   PURCHASE，INDIRECT/OTHER 归 OTHER_EXPENSE；非法值报 400 不静默。
+2. **供应商列名五表不统一**（party_b_name / supplier_name / subcontractor），Mapper 内用
+   `COALESCE(NULLIF(...))` 归一；聚合行点进来必能筛出合同（同一表达式）。
+3. **劳务/机械/分包结算单无单号与业务日期列**，登记时间如实取 `created_at` 并标
+   「创建时间」；收票登记表无发票号列，单号展示「单据#id」不合成假编号；
+   机械/分包/其他合同表无 workflow 列 → 合同级无审批轨迹（响应内 note 声明）。
+
+### 变更清单
+
+- 后端：新增 `DrillDownMapper`（原生 SQL，仿 `ContractPayableMapper` 先例，tenant 拦截器
+  自动注入 + 显式 `deleted=0`）/ `DrillDownService` / `CockpitController` 五端点
+  （`/cockpit/drill/{cost-categories|suppliers|account-txn|contracts|contract-docs}`，
+  类级 `dashboard:view` 权限）；`ApprovalService.getApprovalTrace` +
+  `GET /workflow/approval/trace`（与 getTaskDetail 同记录映射口径）
+- 前端：`components/DrillDownBreadcrumb.vue`（面包屑逐级抽屉，每级 basis/note 以 alert
+  直陈，口径列不藏 hover）；三处接入：首页卡下钻弹窗行内「穿透」+健康度行「穿透」、
+  成本中心七类行「穿透」（四类直接映射直达供应商级，措施/管理/商务从成本分类级进入）、
+  项目经营页头「单据穿透」+执行率七类行「穿透」
+- 测试：`DrillDownServiceTest` 13 例、`ApprovalServiceTest` 新增 4 例（均过）；
+  前端 `drill-down-breadcrumb.component.test.ts` 6 例 + 全量 118 套件 1237 例全过；
+  stylelint / vite build 通过。测试实证一个响应性陷阱：`reactive` 数组内闭包持有原始
+  对象引用时 fetch 赋值不触发渲染，改为经代理（self 参数）写入后修复
+- 无 Flyway/库表变更 → 审计基线 PASS=67 不受影响（未动任何累计值字段）

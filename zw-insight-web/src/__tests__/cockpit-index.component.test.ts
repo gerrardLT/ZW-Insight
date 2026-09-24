@@ -73,10 +73,21 @@ vi.mock('@/api/cockpit', () => ({
   getRiskSummary: mockRiskSummary,
   getRiskPage: mockRiskPage,
   scanRisks: mockScan,
+  // §13 穿透链（DrillDownBreadcrumb 经由 index.vue 间接导入，需同步 mock 导出）
+  getDrillCostCategories: vi.fn(async (): Promise<any> => ({ code: 200, data: { rows: [] } })),
+  getDrillSuppliers: vi.fn(async (): Promise<any> => ({ code: 200, data: { rows: [] } })),
+  getDrillAccountTxn: vi.fn(async (): Promise<any> => ({ code: 200, data: { rows: [] } })),
+  getDrillContracts: vi.fn(async (): Promise<any> => ({ code: 200, data: { rows: [] } })),
+  getDrillContractDocs: vi.fn(async (): Promise<any> => ({ code: 200, data: { rows: [] } })),
 }))
 vi.mock('@/api/fund-plan', () => ({
   getRollingForecastPage: mockRollingPage,
   getForecastByDays: mockByDays,
+}))
+// §13 穿透链抽屉内联导入 @/api/workflow（真实模块会拉 utils/request → router，
+// 与本套件 vue-router mock 冲突），需同步 mock
+vi.mock('@/api/workflow', () => ({
+  getApprovalTrace: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
 }))
 vi.mock('@/stores/app', async () => {
   const { reactive } = await import('vue')

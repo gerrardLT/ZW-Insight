@@ -521,6 +521,65 @@ public class ApprovalService {
     }
 
     /**
+     * 按流程实例查审批轨迹（单据穿透链 §13 末环，驾驶舱 P2-4）。
+     * <p>业务单据（合同/付款申请等）只存 workflowInstanceId，无 taskId 入口；
+     * 本方法直接按流程实例聚合流程信息 + wf_approval_record 时间线（与
+     * {@link #getTaskDetail} 同一记录映射口径，不另搞一套）。无审批记录时返回空列表
+     * +如实提示（可能未经审批直接生效或历史已清理），不伪造轨迹。</p>
+     *
+     * @param processInstanceId 流程实例ID（单据表 workflow_instance_id 列）
+     */
+    public Map<String, Object> getApprovalTrace(String processInstanceId) {
+        if (processInstanceId == null || processInstanceId.isBlank()) {
+            throw new BusinessException("流程实例ID不能为空");
+        }
+        HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .singleResult();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("processInstanceId", processInstanceId);
+        result.put("processName", instance != null ? instance.getProcessDefinitionName() : null);
+        result.put("startTime", instance != null ? instance.getStartTime() : null);
+        result.put("endTime", instance != null ? instance.getEndTime() : null);
+        result.put("status", instance == null ? "UNKNOWN"
+                : (instance.getEndTime() == null ? "RUNNING" : "COMPLETED"));
+        String startUserId = instance != null ? instance.getStartUserId() : null;
+        result.put("startUserName", lookupRealNames(
+                startUserId != null ? List.of(startUserId) : Collections.emptyList()).get(startUserId));
+
+        List<WfApprovalRecord> records = approvalRecordMapper.selectList(
+                new LambdaQueryWrapper<WfApprovalRecord>()
+                        .eq(WfApprovalRecord::getProcessInstanceId, processInstanceId)
+                        .orderByAsc(WfApprovalRecord::getOperTime));
+        Map<String, String> assigneeNames = lookupRealNames(records.stream()
+                .map(WfApprovalRecord::getAssignee)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList()));
+        List<Map<String, Object>> recordMaps = records.stream().map(r -> {
+            Map<String, Object> m = new LinkedHashMap<String, Object>();
+            m.put("taskName", r.getTaskName());
+            m.put("assigneeName", r.getAssigneeName() != null && !r.getAssigneeName().isBlank()
+                    ? r.getAssigneeName()
+                    : assigneeNames.getOrDefault(r.getAssignee(), r.getAssignee()));
+            String[] mapped = mapOperationType(r.getOperationType());
+            m.put("result", mapped[0]);
+            m.put("resultText", mapped[1]);
+            m.put("comment", r.getComment());
+            m.put("endTime", r.getOperTime());
+            return m;
+        }).collect(Collectors.toList());
+        result.put("approvalRecords", recordMaps);
+        if (instance == null) {
+            result.put("note", "流程实例不存在（可能历史已清理或单据未经流程审批），无审批轨迹");
+        } else if (recordMaps.isEmpty()) {
+            result.put("note", "该流程无审批操作记录（如自动通过/历史记录未落），不伪造轨迹");
+        }
+        return result;
+    }
+
+    /**
      * 我的已办
      *
      * @param userId 用户ID

@@ -335,3 +335,132 @@ export function handleRisk(id: number, action: string, handleNote?: string) {
 export function scanRisks() {
   return request.put<R<RiskScanResult>>('/v1/dashboard/cockpit/risk/scan')
 }
+
+// ==================== 单据穿透链（UI §13/§16，P2-4） ====================
+// 链路：经营数字 → 成本分类 → 供应商（或成本流水）→ 合同 → 原始单据 → 审批轨迹。
+// 口径纪律：每级响应携带 basis/note/attachmentNote，前端必须展示，不得只给数字不给口径。
+
+/** 穿透链合同类别词汇表（= 付款申请 contract_category 值域） */
+export type DrillContractCategory =
+  | 'PURCHASE' | 'LABOR' | 'MACHINE' | 'SUBCONTRACT' | 'OTHER_EXPENSE'
+
+/** L2 成本分类行（CBS 侧 + 合同侧对照，两口径并列不强行轧平） */
+export interface DrillCostCategoryRow {
+  costCategory: string
+  categoryName: string
+  contractCategory: DrillContractCategory
+  accountCount: number
+  baseline: number
+  current: number
+  commitment: number
+  actual: number
+  forecast: number
+  contractAmount: number
+  contractSettlement: number
+  contractPaid: number
+  basis: string
+}
+
+/** L3 供应商行 */
+export interface DrillSupplierRow {
+  supplierName: string | null
+  contractCount: number
+  contractAmount: number
+  settlementTotal: number
+  paidTotal: number
+  invoiceTotal: number
+}
+
+/** L3 替代路径：成本账户实际流水行 */
+export interface DrillTxnRow {
+  id: number
+  accountId: number
+  accountCode: string
+  accountName: string
+  costCategory: string
+  deltaAmount: number
+  balanceAfter: number
+  sourceType: string
+  sourceId: string
+  sourceNumber: string | null
+  occurredAt: string | null
+  remark: string | null
+}
+
+/** L4 合同行 */
+export interface DrillContractRow {
+  id: number
+  contractCode: string | null
+  contractName: string
+  supplierName: string | null
+  signingDate: string | null
+  contractAmount: number
+  cumulativeSettlement: number
+  cumulativePaid: number
+  cumulativeInvoiceReceived: number
+  status: string
+  workflowInstanceId: string | null
+}
+
+/** L5 原始单据行（结算/付款/收票/入库） */
+export interface DrillDocRow {
+  docType: 'SETTLEMENT' | 'PAYMENT' | 'INVOICE' | 'INBOUND'
+  docTypeName: string
+  docId: number
+  docNo: string | null
+  docDate: string | null
+  dateLabel: string
+  amount: number | null
+  status: string | null
+  payStatus?: string | null
+  supplierName?: string | null
+  workflowInstanceId: string | null
+  refInboundCode?: string | null
+  refInboundAmount?: number | null
+}
+
+export interface DrillResult<T> {
+  rows: T[]
+  basis?: string
+  note?: string
+  categoryName?: string
+  attachmentNote?: string
+  hasCbs?: boolean
+}
+
+/** 项目 → 成本分类构成 */
+export function getDrillCostCategories(params: { projectId: number }) {
+  return request.get<R<DrillResult<DrillCostCategoryRow>>>(
+    '/v1/dashboard/cockpit/drill/cost-categories', { params })
+}
+
+/** 成本分类 → 供应商构成 */
+export function getDrillSuppliers(params: { projectId: number; contractCategory: DrillContractCategory }) {
+  return request.get<R<DrillResult<DrillSupplierRow>>>(
+    '/v1/dashboard/cockpit/drill/suppliers', { params })
+}
+
+/** 成本分类 → 成本账户实际流水（报销/人工记账类的构成答案） */
+export function getDrillAccountTxn(params: { projectId: number; contractCategory: DrillContractCategory }) {
+  return request.get<R<DrillResult<DrillTxnRow>>>(
+    '/v1/dashboard/cockpit/drill/account-txn', { params })
+}
+
+/** 供应商 → 合同清单（supplierName 不传 = 该类全部） */
+export function getDrillContracts(params: {
+  projectId: number
+  contractCategory: DrillContractCategory
+  supplierName?: string
+}) {
+  return request.get<R<DrillResult<DrillContractRow>>>(
+    '/v1/dashboard/cockpit/drill/contracts', { params })
+}
+
+/** 合同 → 原始单据 */
+export function getDrillContractDocs(params: {
+  contractCategory: DrillContractCategory
+  contractId: number
+}) {
+  return request.get<R<DrillResult<DrillDocRow>>>(
+    '/v1/dashboard/cockpit/drill/contract-docs', { params })
+}

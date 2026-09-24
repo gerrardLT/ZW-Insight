@@ -730,6 +730,97 @@ class ApprovalServiceTest {
                 .hasMessageContaining("任务不存在");
     }
 
+    // =====================================================================
+    // getApprovalTrace（单据穿透链末环，驾驶舱 P2-4）
+    // =====================================================================
+
+    @Test
+    @DisplayName("审批轨迹：按流程实例聚合流程信息 + 记录时间线（与 getTaskDetail 同口径）")
+    void testGetApprovalTrace_success() {
+        HistoricProcessInstanceQuery hpiQuery = mock(HistoricProcessInstanceQuery.class);
+        HistoricProcessInstance hpi = mock(HistoricProcessInstance.class);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
+        when(hpiQuery.processInstanceId("pi-001")).thenReturn(hpiQuery);
+        when(hpiQuery.singleResult()).thenReturn(hpi);
+        when(hpi.getProcessDefinitionName()).thenReturn("付款审批流程");
+        // Flowable 历史接口时间为 java.util.Date（非 LocalDateTime）
+        when(hpi.getStartTime()).thenReturn(new java.util.Date(1756700000000L));
+        when(hpi.getEndTime()).thenReturn(new java.util.Date(1756786400000L));
+        when(hpi.getStartUserId()).thenReturn("100");
+
+        WfApprovalRecord record = new WfApprovalRecord();
+        record.setProcessInstanceId("pi-001");
+        record.setTaskName("财务复核");
+        record.setAssignee("200");
+        record.setAssigneeName(null);
+        record.setOperationType("APPROVE");
+        record.setComment("无异议");
+        record.setOperTime(LocalDateTime.of(2026, 9, 2, 10, 0));
+        when(approvalRecordMapper.selectList(any())).thenReturn(List.of(record));
+
+        SysUser starter = new SysUser();
+        starter.setId(100L);
+        starter.setRealName("张三");
+        SysUser approver = new SysUser();
+        approver.setId(200L);
+        approver.setRealName("李四");
+        when(sysUserMapper.selectBatchIds(anyList())).thenReturn(List.of(starter, approver));
+
+        Map<String, Object> trace = approvalService.getApprovalTrace("pi-001");
+
+        assertThat(trace.get("status")).isEqualTo("COMPLETED");
+        assertThat(trace.get("processName")).isEqualTo("付款审批流程");
+        assertThat(trace.get("startUserName")).isEqualTo("张三");
+        assertThat(trace.get("note")).isNull();
+        List<Map<String, Object>> records = castList(trace.get("approvalRecords"));
+        assertThat(records).hasSize(1);
+        assertThat(records.get(0).get("assigneeName")).isEqualTo("李四");
+        assertThat(records.get(0).get("resultText")).isEqualTo("已通过");
+    }
+
+    @Test
+    @DisplayName("审批轨迹：流程实例不存在 → UNKNOWN + 如实提示，不伪造轨迹")
+    void testGetApprovalTrace_instanceMissing_honestNote() {
+        HistoricProcessInstanceQuery hpiQuery = mock(HistoricProcessInstanceQuery.class);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
+        when(hpiQuery.processInstanceId("pi-ghost")).thenReturn(hpiQuery);
+        when(hpiQuery.singleResult()).thenReturn(null);
+        when(approvalRecordMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        Map<String, Object> trace = approvalService.getApprovalTrace("pi-ghost");
+
+        assertThat(trace.get("status")).isEqualTo("UNKNOWN");
+        assertThat(castList(trace.get("approvalRecords"))).isEmpty();
+        assertThat(String.valueOf(trace.get("note"))).contains("流程实例不存在");
+    }
+
+    @Test
+    @DisplayName("审批轨迹：无审批记录时给出口径提示（区分于实例不存在）")
+    void testGetApprovalTrace_emptyRecords_note() {
+        HistoricProcessInstanceQuery hpiQuery = mock(HistoricProcessInstanceQuery.class);
+        HistoricProcessInstance hpi = mock(HistoricProcessInstance.class);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
+        when(hpiQuery.processInstanceId("pi-run")).thenReturn(hpiQuery);
+        when(hpiQuery.singleResult()).thenReturn(hpi);
+        when(hpi.getEndTime()).thenReturn(null);
+        when(approvalRecordMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        Map<String, Object> trace = approvalService.getApprovalTrace("pi-run");
+
+        assertThat(trace.get("status")).isEqualTo("RUNNING");
+        assertThat(String.valueOf(trace.get("note"))).contains("无审批操作记录");
+    }
+
+    @Test
+    @DisplayName("审批轨迹：空流程实例ID 拒绝（400 语义，不返空对象静默）")
+    void testGetApprovalTrace_blankId_rejected() {
+        assertThatThrownBy(() -> approvalService.getApprovalTrace(" "))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("流程实例ID");
+        assertThatThrownBy(() -> approvalService.getApprovalTrace(null))
+                .isInstanceOf(BusinessException.class);
+    }
+
     @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> castList(Object obj) {
         return (List<Map<String, Object>>) obj;

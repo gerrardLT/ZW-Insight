@@ -68,6 +68,10 @@
                 <span class="st-amount">{{ formatMoney(c.forecast) }}</span>
                 <span class="st-rate" :class="rateClass(c)">{{ rateText(c) }}</span>
                 <span class="st-flag">{{ riskFlag(c.riskLevel) }}</span>
+                <!-- §13 穿透链：四类直接映射类别直达供应商构成，措施/管理/商务等
+                     关键词子类无单一合同源（实证：归集任务不覆盖），从成本分类级进入不伪造映射 -->
+                <el-button link type="primary" size="small" class="st-drill"
+                  @click.stop="openCategoryDrill(c)">穿透</el-button>
                 <el-tooltip v-if="c.code === 'OTHER' && c.accountCount" placement="top"
                   content="子类名不在关键词表的账户，如实单列（不静默并入其他类）；请在 CBS 中规范子类命名">
                   <el-icon class="st-help"><QuestionFilled /></el-icon>
@@ -136,6 +140,9 @@
           :image-size="50" />
       </el-card>
     </template>
+
+    <!-- 单据穿透链（§13，P2-4） -->
+    <DrillDownBreadcrumb v-model="drillVisible" :entry="drillEntry" />
   </div>
 </template>
 
@@ -145,6 +152,8 @@ import { ElMessage } from 'element-plus'
 import { Refresh, QuestionFilled } from '@element-plus/icons-vue'
 import { IconArrowRight } from '@tabler/icons-vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
+import DrillDownBreadcrumb, { type DrillEntry } from '@/components/DrillDownBreadcrumb.vue'
+import type { DrillContractCategory } from '@/api/cockpit'
 import {
   getProjectCostControl,
   type ProjectCostTotals, type DocCategorySummary, type CostAccountSummary
@@ -159,6 +168,29 @@ const businessRef = ref()
 const totals = ref<ProjectCostTotals>({})
 const docCategories = ref<DocCategorySummary[]>([])
 const accounts = ref<CostAccountSummary[]>([])
+const projectName = ref('')
+
+// ==================== 单据穿透链入口（§13，P2-4）====================
+const drillVisible = ref(false)
+const drillEntry = ref<DrillEntry | null>(null)
+
+/** 文档七类 → 穿透链合同类别（仅四类可直接映射；其余从成本分类级进入） */
+const DOC_TO_CONTRACT: Record<string, DrillContractCategory> = {
+  MATERIAL: 'PURCHASE', LABOR: 'LABOR', MACHINE: 'MACHINE', SUBCONTRACT: 'SUBCONTRACT'
+}
+
+function openCategoryDrill(c: DocCategorySummary) {
+  if (!selectedProjectId.value) return
+  const base: DrillEntry = {
+    projectId: selectedProjectId.value,
+    projectName: projectName.value || `项目${selectedProjectId.value}`
+  }
+  const token = DOC_TO_CONTRACT[c.code]
+  drillEntry.value = token
+    ? { ...base, contractCategory: token, categoryLabel: c.name }
+    : base
+  drillVisible.value = true
+}
 
 // 招待费（§8.1）：来自真实报销明细聚合，无数据时如实显示未编计划/无异常
 const entActual = ref<number>(0)
@@ -274,6 +306,7 @@ async function loadCost() {
     totals.value = res?.data?.totals || {}
     docCategories.value = res?.data?.docCategories || []
     accounts.value = res?.data?.accounts || []
+    projectName.value = res?.data?.projectName || ''
   } catch (e: any) {
     totals.value = {}
     docCategories.value = []
@@ -424,6 +457,10 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 .st-flag { flex-shrink: 0; width: 20px; }
+.st-drill {
+  flex-shrink: 0;
+  font-size: var(--zw-font-size-xs);
+}
 .st-help {
   flex-shrink: 0;
   cursor: help;

@@ -97,6 +97,10 @@
               </el-tag>
             </span>
             <span class="card-hint">回答：还能不能赚钱 / 利润为何变化 / 哪类成本出问题 / 回款付款是否匹配 / 是否有资金缺口</span>
+            <!-- §13 单据穿透链：本页入口从成本分类级起步 -->
+            <el-button type="primary" link size="small" @click="openProjectDrill">
+              单据穿透<el-icon><IconArrowRight /></el-icon>
+            </el-button>
           </div>
         </template>
 
@@ -168,6 +172,9 @@
                   class="e-bar" :show-text="false" />
                 <span class="e-rate" :class="e.rateClass">{{ e.rateText }}</span>
                 <span class="e-flag">{{ e.flag }}</span>
+                <!-- §13 七类行直达穿透链（四类映射供应商级，其余从成本分类级） -->
+                <el-button link type="primary" size="small" class="e-drill"
+                  @click="openCategoryDrill(e.code, e.name)">穿透</el-button>
               </div>
             </div>
             <el-empty v-else description="无成本账户数据" :image-size="50" />
@@ -226,6 +233,9 @@
       </el-card>
     </template>
     <el-empty v-else description="点击上表任意项目查看单项目经营详情（§6）" :image-size="70" />
+
+    <!-- 单据穿透链（§13，P2-4） -->
+    <DrillDownBreadcrumb v-model="drillVisible" :entry="drillEntry" />
   </div>
 </template>
 
@@ -236,6 +246,8 @@ import { Refresh, QuestionFilled } from '@element-plus/icons-vue'
 import { IconArrowRight } from '@tabler/icons-vue'
 import * as echarts from 'echarts'
 import { useAppStore } from '@/stores/app'
+import DrillDownBreadcrumb, { type DrillEntry } from '@/components/DrillDownBreadcrumb.vue'
+import type { DrillContractCategory } from '@/api/cockpit'
 import {
   getProjectHealth, getCockpitProfitTrend, getCockpitFilterOptions, getRiskPage,
   type ProjectHealth, type RiskRegister, type CockpitFilterOptions
@@ -264,6 +276,37 @@ const detail = ref<{
 }>({ budget: null, docCategories: [], accounts: [], snapshots: [], realized: null })
 const risks = ref<RiskRegister[]>([])
 const hasSnapshot = ref(false)
+
+// ==================== 单据穿透链入口（§13，P2-4）====================
+const drillVisible = ref(false)
+const drillEntry = ref<DrillEntry | null>(null)
+
+/** 七类→合同类别（仅四类直接映射；措施/管理/商务无单一合同源，从成本分类级进入） */
+const DOC_TO_CONTRACT: Record<string, DrillContractCategory> = {
+  MATERIAL: 'PURCHASE', LABOR: 'LABOR', MACHINE: 'MACHINE', SUBCONTRACT: 'SUBCONTRACT'
+}
+
+function openProjectDrill() {
+  if (!current.value) return
+  drillEntry.value = {
+    projectId: current.value.projectId,
+    projectName: current.value.projectName
+  }
+  drillVisible.value = true
+}
+
+function openCategoryDrill(code: string, name: string) {
+  if (!current.value) return
+  const base: DrillEntry = {
+    projectId: current.value.projectId,
+    projectName: current.value.projectName
+  }
+  const token = DOC_TO_CONTRACT[code]
+  drillEntry.value = token
+    ? { ...base, contractCategory: token, categoryLabel: name }
+    : base
+  drillVisible.value = true
+}
 
 const profitChartRef = ref<HTMLElement>()
 const cashChartRef = ref<HTMLElement>()
@@ -625,6 +668,10 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums;
 }
 .e-flag { flex-shrink: 0; width: 20px; }
+.e-drill {
+  flex-shrink: 0;
+  font-size: var(--zw-font-size-xs);
+}
 /* TOP 成本偏差 */
 .deviation-list {
   display: flex;

@@ -177,6 +177,9 @@
                 </div>
                 <div v-if="item.topRisks?.length" class="health-top-risk">{{ item.topRisks[0] }}</div>
               </div>
+              <!-- §13 穿透链入口（stop 防止误触整行跳成本主线） -->
+              <el-button link type="primary" size="small" class="health-drill"
+                @click.stop="openProjectDrill(item)">穿透</el-button>
               <el-icon class="health-arrow"><IconArrowRight /></el-icon>
             </div>
           </div>
@@ -271,10 +274,15 @@
           <el-table-column v-if="!drillIsRate" label="占比" align="right" width="100">
             <template #default="{ row }">{{ shareOf(row.value) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="80" align="center">
+          <el-table-column label="操作" width="150" align="center">
             <template #default="{ row }">
               <el-button link type="primary" size="small" @click="goProjectCost(row.projectId)">
                 详情
+              </el-button>
+              <!-- §13 单据穿透链：项目→成本分类→供应商→合同→单据→审批 -->
+              <el-button v-if="row.projectId" link type="primary" size="small"
+                @click="openProjectDrill(row)">
+                穿透
               </el-button>
             </template>
           </el-table-column>
@@ -293,6 +301,9 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 单据穿透链（§13，P2-4）：从数字卡/健康度行进入的逐级下钻抽屉 -->
+    <DrillDownBreadcrumb v-model="drillChainVisible" :entry="drillChainEntry" />
   </div>
 </template>
 
@@ -304,6 +315,7 @@ import { Refresh, QuestionFilled } from '@element-plus/icons-vue'
 import { IconArrowRight } from '@tabler/icons-vue'
 import * as echarts from 'echarts'
 import { useAppStore } from '@/stores/app'
+import DrillDownBreadcrumb, { type DrillEntry } from '@/components/DrillDownBreadcrumb.vue'
 import {
   getCockpitOverview,
   getCockpitFilterOptions,
@@ -595,6 +607,20 @@ function profitClass(value?: number) {
 
 function goProjectCost(projectId: number) {
   router.push({ path: '/project-cost-control', query: { projectId: String(projectId) } })
+}
+
+// ==================== 单据穿透链入口（§13，P2-4）====================
+const drillChainVisible = ref(false)
+const drillChainEntry = ref<DrillEntry | null>(null)
+
+/** 从项目行（健康度列表/卡下钻弹窗）进入：项目 → 成本分类 → … */
+function openProjectDrill(row: { projectId: number; projectName?: string }) {
+  if (!row?.projectId) return
+  drillChainEntry.value = {
+    projectId: row.projectId,
+    projectName: row.projectName || `项目${row.projectId}`
+  }
+  drillChainVisible.value = true
 }
 
 // ==================== 图表 ====================

@@ -43,6 +43,15 @@ export function batchApprove(data: any) {
   return request.post('/v1/workflow/approval/batch-approve', data)
 }
 
+/**
+ * 按流程实例查审批轨迹（单据穿透链末环，驾驶舱 P2-4）。
+ * 业务单据只存 workflowInstanceId，无 taskId 入口时使用本接口；
+ * 无记录/实例不存在时后端返回空列表 + note 如实提示，不伪造轨迹。
+ */
+export function getApprovalTrace(processInstanceId: string) {
+  return request.get('/v1/workflow/approval/trace', { params: { processInstanceId } })
+}
+
 // ======================== 流程定义 ========================
 // ProcessDefinitionController: /api/v1/workflow/process
 

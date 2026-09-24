@@ -121,6 +121,14 @@ public class ApprovalController {
     }
 
     /**
+     * 按流程实例查审批轨迹（单据穿透链末环：业务表只有 workflowInstanceId，无 taskId 入口）
+     */
+    @GetMapping("/trace")
+    public R<Map<String, Object>> getApprovalTrace(@RequestParam String processInstanceId) {
+        return R.ok(approvalService.getApprovalTrace(processInstanceId));
+    }
+
+    /**
      * 我的已办（分页）
      */
     @GetMapping("/done")

@@ -9,6 +9,7 @@ import com.zwinsight.dashboard.domain.BizProfitSnapshot;
 import com.zwinsight.dashboard.domain.BizRiskRegister;
 import com.zwinsight.dashboard.dto.RiskHandleRequest;
 import com.zwinsight.dashboard.service.CockpitService;
+import com.zwinsight.dashboard.service.DrillDownService;
 import com.zwinsight.dashboard.service.ProfitSnapshotService;
 import com.zwinsight.dashboard.service.RiskScanService;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class CockpitController {
     private final CockpitService cockpitService;
     private final ProfitSnapshotService profitSnapshotService;
     private final RiskScanService riskScanService;
+    private final DrillDownService drillDownService;
 
     /**
      * 经营总览 8 卡（§4）：合同收入/预计总成本/预计利润/预计利润率
@@ -199,5 +201,58 @@ public class CockpitController {
     @OperLog(module = "风险中心", operType = "UPDATE", description = "手动触发风险扫描")
     public R<Map<String, Object>> scanRisks() {
         return R.ok(riskScanService.scan());
+    }
+
+    // ==================== 单据穿透链（§13/§16，P2-4） ====================
+    // 链路：经营数字 → 成本分类 → 供应商（或成本流水）→ 合同 → 原始单据 → 审批轨迹。
+    // 非法类别报 400 不静默；口径说明（basis/note）随响应下发，前端必须展示。
+
+    /**
+     * 项目 → 成本分类构成（CBS 六类 + 合同侧对照数）
+     */
+    @GetMapping("/drill/cost-categories")
+    public R<Map<String, Object>> drillCostCategories(@RequestParam Long projectId) {
+        return R.ok(drillDownService.getCostCategories(projectId));
+    }
+
+    /**
+     * 成本分类 → 供应商构成（五类支出合同按乙方聚合）
+     *
+     * @param contractCategory PURCHASE/LABOR/MACHINE/SUBCONTRACT/OTHER_EXPENSE
+     */
+    @GetMapping("/drill/suppliers")
+    public R<Map<String, Object>> drillSuppliers(@RequestParam Long projectId,
+                                                 @RequestParam String contractCategory) {
+        return R.ok(drillDownService.getSuppliers(projectId, contractCategory));
+    }
+
+    /**
+     * 成本分类 → 成本账户实际流水（报销/人工记账类无供应商维度时的构成答案）
+     */
+    @GetMapping("/drill/account-txn")
+    public R<Map<String, Object>> drillAccountTxn(@RequestParam Long projectId,
+                                                  @RequestParam String contractCategory) {
+        return R.ok(drillDownService.getCategoryTxn(projectId, contractCategory));
+    }
+
+    /**
+     * 供应商 → 合同清单（supplierName 可选，不传=该类全部）
+     */
+    @GetMapping("/drill/contracts")
+    public R<Map<String, Object>> drillContracts(@RequestParam Long projectId,
+                                                 @RequestParam String contractCategory,
+                                                 @RequestParam(required = false) String supplierName) {
+        return R.ok(drillDownService.getContracts(projectId, contractCategory, supplierName));
+    }
+
+    /**
+     * 合同 → 原始单据（结算单/付款申请/收票登记/入库单[采购]）；
+     * 行内 workflowInstanceId 非空时可继续穿透审批轨迹
+     * （GET /api/v1/workflow/approval/trace）
+     */
+    @GetMapping("/drill/contract-docs")
+    public R<Map<String, Object>> drillContractDocs(@RequestParam String contractCategory,
+                                                    @RequestParam Long contractId) {
+        return R.ok(drillDownService.getContractDocs(contractCategory, contractId));
     }
 }
