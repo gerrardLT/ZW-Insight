@@ -380,6 +380,14 @@ assert_body_not_success() {
   fi
 }
 
+# 跳过项记录（无数据无法验证时使用）。与 test-api-risk.sh 的同名函数有意不同：
+# 本文件不将跳过项计入 TOTAL_COUNT（其 report_summary 无 SKIP 行，计入会造成
+# TOTAL ≠ PASS+FAIL 的不一致）；跳过事实仅在本行日志中显式标注，**绝不静默当作通过**。
+skip_case() {
+  local test_name="$1" reason="$2"
+  log "  SKIP [-] $test_name（$reason）——未验证，需人工确认，不计入通过数"
+}
+
 # ---------------------------------------------------------------------------
 # 月度经营分析表（V2026_67，资金流转 §9：10 类费用 × 6 列）
 # 本组会写库（generate），但写入的是基于真实 CBS/合同聚合的业务数据，
@@ -443,6 +451,63 @@ test_monthly_analysis() {
   assert_body_not_success "月度分析-月份格式非法被拒绝"
   call GET "/api/v1/finance/monthly-analysis?month=${month}"
   assert_body_not_success "月度分析-缺 projectId 被拒绝"
+}
+
+# ---------------------------------------------------------------------------
+# 应收台账 §10 下钻 8 级链（V2026_69）
+# 会写库（登记后随即清空撤回），不残留测试数据。
+# ---------------------------------------------------------------------------
+test_receivable_drill() {
+  log "▶ 测试：应收台账下钻八级链（§10）"
+  call GET "/api/v1/finance/receivable/page?page=1&size=1"
+  assert_http 2 "应收下钻-台账分页 HTTP"
+  local rid
+  rid=$(jq -r '.data.records[0].id // empty' /tmp/zwi_body 2>/dev/null)
+  if [ -z "$rid" ]; then
+    skip_case "应收下钻-八级链全部断言" "应收台账无数据（需先有已审批结算单）"
+    return
+  fi
+
+  call GET "/api/v1/finance/receivable/drill/$rid"
+  assert_http 2 "应收下钻-八级链 HTTP"
+  assert_jq '.code==200 and (.data.chain | length == 8)' "应收下钻-共 8 级"
+  assert_jq '.code==200 and ([.data.chain[].label] == ["项目","应收款","对应工程节点","应收日期","实际申请日期","甲方审核状态","负责人","下一步动作"])' \
+    "应收下钻-八级标签与顺序符合 §10"
+  assert_jq '.code==200 and ([.data.chain[].level] == [1,2,3,4,5,6,7,8])' "应收下钻-level 连续 1-8"
+  assert_jq '.code==200 and ([.data.chain[] | select(.registered == null)] | length == 0)' \
+    "应收下钻-每级均带 registered 标记"
+  # 未登记的级 value 必须为 null（不得用“待审核”“未知”等默认词冒充已登记）
+  assert_jq '.code==200 and ([.data.chain[] | select(.registered == false) | select(.value != null)] | length == 0)' \
+    "应收下钻-未登记级 value 为 null"
+  assert_jq '.code==200 and (.data | has("drillInfo") and has("openBalance") and has("overdueDays") and has("unregisteredCount") and has("complete"))' \
+    "应收下钻-原始登记值与派生字段齐备"
+  assert_jq '.code==200 and (.data | if (.receivableAmount - .writtenOffAmount) > 0 then ((.receivableAmount - .writtenOffAmount - .openBalance) | fabs) < 0.01 else (.openBalance == 0) end)' \
+    "应收下钻-未结清余额=应收−已核销（下限 0）"
+
+  # 负向：非法甲方审核状态被拒绝（不静默当作未登记）
+  call PUT "/api/v1/finance/receivable/drill/$rid" '{"ownerReviewStatus":"WHATEVER"}'
+  assert_body_not_success "应收下钻-非法审核状态被拒绝"
+
+  # 登记：四项人工维护字段
+  call PUT "/api/v1/finance/receivable/drill/$rid" '{"milestoneNode":"L3测试节点","ownerReviewStatus":"UNDER_REVIEW","ownerName":"L3测试负责人","nextAction":"L3测试动作"}'
+  assert_http 2 "应收下钻-登记 HTTP"
+  call GET "/api/v1/finance/receivable/drill/$rid"
+  assert_jq '.code==200 and (.data.drillInfo.milestoneNode == "L3测试节点") and (.data.drillInfo.ownerReviewStatus == "UNDER_REVIEW") and (.data.drillInfo.ownerName == "L3测试负责人")' \
+    "应收下钻-登记已落库"
+  # 八级链中审核状态返回中文标签（不直接把 UNDER_REVIEW 丢给老板）
+  assert_jq '.code==200 and ([.data.chain[] | select(.label == "甲方审核状态") | select(.value == "甲方审核中")] | length == 1)' \
+    "应收下钻-审核状态展示中文标签"
+  assert_jq '.code==200 and (.data.complete == false or .data.complete == true)' "应收下钻-complete 标记存在"
+
+  # 清空（撤回登记）：空串 → null，且审核日期与负责人ID 连带撤回（不残留孤立值）
+  call PUT "/api/v1/finance/receivable/drill/$rid" '{"milestoneNode":"","ownerReviewStatus":"","ownerName":"","nextAction":""}'
+  assert_http 2 "应收下钻-清空登记 HTTP"
+  call GET "/api/v1/finance/receivable/drill/$rid"
+  assert_jq '.code==200 and (.data.drillInfo.milestoneNode == null) and (.data.drillInfo.ownerReviewStatus == null) and (.data.drillInfo.ownerReviewDate == null) and (.data.drillInfo.ownerName == null) and (.data.drillInfo.ownerId == null)' \
+    "应收下钻-清空后为未登记（审核日期/负责人ID 连带撤回，不残留测试数据）"
+
+  call GET "/api/v1/finance/receivable/drill/999999999"
+  assert_body_not_success "应收下钻-记录不存在被拒绝"
 }
 
 test_get_settlement_nonexistent() {
@@ -510,6 +575,11 @@ main() {
   echo ""
   log "─── 月度经营分析表测试 ───"
   test_monthly_analysis
+
+  # --- 应收台账下钻八级链（V2026_69，驾驶舱 §10）---
+  echo ""
+  log "─── 应收台账下钻八级链测试 ───"
+  test_receivable_drill
 
   # 日志核对
   echo ""

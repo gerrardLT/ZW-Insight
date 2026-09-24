@@ -338,4 +338,191 @@ public class ReceivableService {
         }
         return "OVER_90";
     }
+
+    // ==================== §10 下钻 8 级链（V2026_69）====================
+
+    /**
+     * 维护应收下钻信息（§10 第 3/5/6/7/8 级的人工登记项）。
+     * <p>为何需要人工登记：<b>工程节点无自动回填数据源</b>——结算单
+     * {@code biz_project_settlement} 无任何节点/期次字段；产值报告 {@code biz_output_report}
+     * 虽有 report_period，但与结算单之间无外键或单号关联，按 project_id + 时间近似匹配
+     * 会制造假关联，属伪造数据，故不采用。甲方审核状态/负责人/下一步动作属甲方侧与
+     * 内部管理信息，系统内同样无来源单据。</p>
+     * <p>语义：字符串字段 null=不修改、空串=清空；日期字段 null=不修改且不支持清空
+     * （见 {@link com.zwinsight.finance.dto.ReceivableDrillInfoRequest} 类注释）。
+     * 甲方审核状态非法值报 400，<b>不静默当作未登记</b>（否则录错字会静默丢数据）。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public BizReceivable updateDrillInfo(Long id,
+                                        com.zwinsight.finance.dto.ReceivableDrillInfoRequest request) {
+        if (id == null) {
+            throw new BusinessException(400, "应收台账记录ID不能为空");
+        }
+        if (request == null) {
+            throw new BusinessException(400, "请求体不能为空");
+        }
+        BizReceivable receivable = receivableMapper.selectById(id);
+        if (receivable == null) {
+            throw new BusinessException(404, "应收台账记录不存在：" + id);
+        }
+
+        if (request.getOwnerReviewStatus() != null) {
+            String status = request.getOwnerReviewStatus().trim();
+            if (status.isEmpty()) {
+                receivable.setOwnerReviewStatus(null);
+                // 状态撤回时审核日期一并清空，否则残留孤立日期（无状态的审核日无意义）
+                receivable.setOwnerReviewDate(null);
+            } else {
+                String upper = status.toUpperCase(java.util.Locale.ROOT);
+                if (!BizReceivable.REVIEW_STATUSES.contains(upper)) {
+                    throw new BusinessException(400,
+                            "甲方审核状态不合法，可选值：" + BizReceivable.REVIEW_STATUSES);
+                }
+                receivable.setOwnerReviewStatus(upper);
+            }
+        }
+        if (request.getMilestoneNode() != null) {
+            receivable.setMilestoneNode(blankToNull(request.getMilestoneNode()));
+        }
+        if (request.getNextAction() != null) {
+            receivable.setNextAction(blankToNull(request.getNextAction()));
+        }
+        if (request.getOwnerName() != null) {
+            String name = blankToNull(request.getOwnerName());
+            receivable.setOwnerName(name);
+            if (name == null) {
+                // 姓名清空时 ID 一并撤回，避免残留指向不明用户的 ownerId
+                receivable.setOwnerId(null);
+            }
+        }
+        if (request.getOwnerId() != null) {
+            receivable.setOwnerId(request.getOwnerId());
+        }
+        if (request.getApplyDate() != null) {
+            receivable.setApplyDate(request.getApplyDate());
+        }
+        if (request.getOwnerReviewDate() != null) {
+            receivable.setOwnerReviewDate(request.getOwnerReviewDate());
+        }
+
+        receivableMapper.updateById(receivable);
+        log.info("应收下钻信息已更新, id={}, reviewStatus={}, owner={}, milestone={}",
+                id, receivable.getOwnerReviewStatus(), receivable.getOwnerName(),
+                receivable.getMilestoneNode());
+        return receivable;
+    }
+
+    /**
+     * §10 下钻 8 级链：项目 → 应收款 → 对应工程节点 → 应收日期 → 实际申请日期
+     * → 甲方审核状态 → 负责人 → 下一步动作。
+     * <p>每级带 {@code registered} 标记：false 即「未登记」，前端据此显示“未登记”并提供编辑入口，
+     * <b>不用默认值冒充已登记</b>。另附派生信息：未结清余额、逾期天数、账龄分档、
+     * 甲方停留天数（申请日→审核日，未审核时算至今）。</p>
+     */
+    public Map<String, Object> getDrillChain(Long id) {
+        if (id == null) {
+            throw new BusinessException(400, "应收台账记录ID不能为空");
+        }
+        BizReceivable r = receivableMapper.selectById(id);
+        if (r == null) {
+            throw new BusinessException(404, "应收台账记录不存在：" + id);
+        }
+        // projectName 为非持久化展示字段，需单独取（不伪造为空）
+        String projectName = null;
+        if (r.getProjectId() != null) {
+            com.zwinsight.project.domain.BizProject project = projectMapper.selectById(r.getProjectId());
+            projectName = project != null ? project.getProjectName() : null;
+        }
+
+        BigDecimal amount = r.getReceivableAmount() == null ? BigDecimal.ZERO : r.getReceivableAmount();
+        BigDecimal writtenOff = r.getWrittenOffAmount() == null ? BigDecimal.ZERO : r.getWrittenOffAmount();
+        // 未结清余额下限 0：超收事实由回款单据体现，不在台账上出负数
+        BigDecimal openBalance = amount.subtract(writtenOff).max(BigDecimal.ZERO);
+
+        List<Map<String, Object>> chain = new ArrayList<>();
+        chain.add(drillLevel(1, "项目", projectName, projectName != null, r.getProjectId()));
+        chain.add(drillLevel(2, "应收款", openBalance, true, r.getId()));
+        chain.add(drillLevel(3, "对应工程节点", r.getMilestoneNode(), r.getMilestoneNode() != null, null));
+        chain.add(drillLevel(4, "应收日期", r.getDueDate(), r.getDueDate() != null, null));
+        chain.add(drillLevel(5, "实际申请日期", r.getApplyDate(), r.getApplyDate() != null, null));
+        chain.add(drillLevel(6, "甲方审核状态", reviewStatusLabel(r.getOwnerReviewStatus()),
+                r.getOwnerReviewStatus() != null, null));
+        chain.add(drillLevel(7, "负责人", r.getOwnerName(), r.getOwnerName() != null, r.getOwnerId()));
+        chain.add(drillLevel(8, "下一步动作", r.getNextAction(), r.getNextAction() != null, null));
+
+        // 派生信息（均为真实计算，无估算）
+        long overdueDays = 0;
+        boolean overdue = false;
+        if (r.getDueDate() != null && BizReceivable.STATUS_OPEN.equals(r.getStatus())
+                && r.getDueDate().isBefore(LocalDate.now())) {
+            overdueDays = ChronoUnit.DAYS.between(r.getDueDate(), LocalDate.now());
+            overdue = true;
+        }
+        Long ownerStayDays = null;
+        if (r.getApplyDate() != null) {
+            LocalDate end = r.getOwnerReviewDate() != null ? r.getOwnerReviewDate() : LocalDate.now();
+            // 审核日早于申请日属录入错误，如实给负值而不是归零掩盖
+            ownerStayDays = ChronoUnit.DAYS.between(r.getApplyDate(), end);
+        }
+        long unregisteredCount = chain.stream().filter(l -> !Boolean.TRUE.equals(l.get("registered"))).count();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("receivableId", r.getId());
+        result.put("projectId", r.getProjectId());
+        result.put("projectName", projectName);
+        result.put("sourceType", r.getSourceType());
+        result.put("sourceId", r.getSourceId());
+        result.put("status", r.getStatus());
+        result.put("receivableAmount", amount);
+        result.put("writtenOffAmount", writtenOff);
+        result.put("openBalance", openBalance);
+        result.put("overdue", overdue);
+        result.put("overdueDays", overdueDays);
+        result.put("agingBucket", overdue ? bucketOf(overdueDays) : null);
+        result.put("ownerStayDays", ownerStayDays);
+        result.put("chain", chain);
+        // 原始登记值（chain 里的甲方审核状态已转中文标签，前端编辑表单回填需要原码）
+        Map<String, Object> drillInfo = new LinkedHashMap<>();
+        drillInfo.put("milestoneNode", r.getMilestoneNode());
+        drillInfo.put("applyDate", r.getApplyDate());
+        drillInfo.put("ownerReviewStatus", r.getOwnerReviewStatus());
+        drillInfo.put("ownerReviewDate", r.getOwnerReviewDate());
+        drillInfo.put("ownerId", r.getOwnerId());
+        drillInfo.put("ownerName", r.getOwnerName());
+        drillInfo.put("nextAction", r.getNextAction());
+        result.put("drillInfo", drillInfo);
+        result.put("unregisteredCount", unregisteredCount);
+        // 下钻链未登记的级数不为 0 时，前端应引导补登（而不是把空链当成正常）
+        result.put("complete", unregisteredCount == 0);
+        return result;
+    }
+
+    private Map<String, Object> drillLevel(int level, String label, Object value,
+                                           boolean registered, Object refId) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("level", level);
+        node.put("label", label);
+        node.put("value", value);
+        node.put("registered", registered);
+        node.put("refId", refId);
+        return node;
+    }
+
+    /** 甲方审核状态中文标签；NULL 返回 null（由前端显示「未登记」，不返回“未知”之类默认词） */
+    private String reviewStatusLabel(String status) {
+        if (status == null) {
+            return null;
+        }
+        return switch (status) {
+            case BizReceivable.REVIEW_SUBMITTED -> "已提交甲方";
+            case BizReceivable.REVIEW_UNDER_REVIEW -> "甲方审核中";
+            case BizReceivable.REVIEW_CONFIRMED -> "甲方已确认";
+            case BizReceivable.REVIEW_DISPUTED -> "甲方有异议";
+            default -> status;
+        };
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
 }
