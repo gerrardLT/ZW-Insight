@@ -13,29 +13,30 @@
       preload="metadata"
       @play="onBgPlay"
     ></video>
-    <!-- 左侧品牌文案（浮于背景视频之上） -->
+    <!-- 左侧品牌区（B·精密仪器：标签 + 大标题 + 规格表） -->
     <div class="login-brand-content">
       <div class="brand-logo">
         <img class="brand-logo-icon" src="@/assets/logo-light.png" alt="中维智营" />
         <span class="brand-logo-text">中维智营</span>
       </div>
-      <div class="brand-eyebrow">Project Management Platform</div>
+      <span class="brand-tag"><i></i>ZW-INSIGHT / PM PLATFORM</span>
       <h1 class="brand-slogan">工程项目全生命周期<br />智能管理平台</h1>
-      <p class="brand-desc">涵盖项目、合同、预算、财务、材料、机械、劳务、分包全流程协同，让工程管理更高效。</p>
-      <div class="brand-features">
-        <div class="feature-item"><span class="feature-icon-base"><BlueprintCornerIcon class="feature-icon" /></span>全链路业务数字化</div>
-        <div class="feature-item"><span class="feature-icon-base"><TowerCraneIcon class="feature-icon" /></span>多组织多项目协同</div>
-        <div class="feature-item"><span class="feature-icon-base"><HelmetIcon class="feature-icon" /></span>实时数据看板决策</div>
-      </div>
+      <dl class="brand-spec">
+        <div><dt>业务覆盖</dt><dd>项目·合同·预算·财务·材料·机械·劳务·分包</dd></div>
+        <div><dt>协同模式</dt><dd>多组织 / 多项目 / 实时</dd></div>
+        <div><dt>决策支撑</dt><dd><b>●</b> 实时数据看板</dd></div>
+      </dl>
     </div>
     <div class="login-form-area">
       <div class="login-box">
+        <i class="box-corner tl"></i><i class="box-corner br"></i>
+        <div class="box-head"><span>ACCESS / 登录</span><b>NO.2026</b></div>
         <div class="login-header">
           <h2 class="login-title">{{ loginMode === 'password' ? '欢迎回来' : '快捷登录' }}</h2>
           <p class="login-subtitle">{{ loginMode === 'password' ? '登录账户，继续您的工程项目管理' : '输入手机号，验证码一键登录' }}</p>
         </div>
 
-        <!-- 登录方式切换：密码 / 短信验证码（对齐移动端双 Tab 范式，沿用工业精密设计语言） -->
+        <!-- 登录方式：分段开关（B 方案） -->
         <div class="login-tabs" role="tablist" aria-label="登录方式">
           <button
             type="button"
@@ -58,9 +59,11 @@
         <!-- 密码登录表单 -->
         <el-form v-show="loginMode === 'password'" :model="loginForm" :rules="rules" ref="formRef" size="large">
           <el-form-item prop="username">
+            <div class="row-label"><span>USERNAME</span><b>01</b></div>
             <el-input v-model="loginForm.username" placeholder="请输入用户名" prefix-icon="User" />
           </el-form-item>
           <el-form-item prop="password">
+            <div class="row-label"><span>PASSWORD</span><b>02</b></div>
             <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
           </el-form-item>
           <el-form-item prop="slider">
@@ -68,10 +71,11 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="loading" class="login-btn" @click="handleLogin">
-              进入系统
+              <span class="btn-label">进入系统</span>
             </el-button>
           </el-form-item>
           <div class="login-extra">
+            <span class="extra-hint">滑块验证已就绪</span>
             <el-link type="primary" :underline="false" @click="goForgotPassword">忘记密码？</el-link>
           </div>
         </el-form>
@@ -79,9 +83,11 @@
         <!-- 短信验证码登录表单（后端 AuthService#loginBySms 已就绪，按手机号定位用户与租户） -->
         <el-form v-show="loginMode === 'sms'" :model="smsForm" :rules="smsRules" ref="smsFormRef" size="large">
           <el-form-item prop="phone">
+            <div class="row-label"><span>PHONE</span><b>01</b></div>
             <el-input v-model="smsForm.phone" placeholder="请输入手机号" prefix-icon="Iphone" maxlength="11" clearable @keyup.enter="handleSmsLogin" />
           </el-form-item>
           <el-form-item prop="smsCode">
+            <div class="row-label"><span>CODE</span><b>02</b></div>
             <div class="captcha-row">
               <el-input v-model="smsForm.smsCode" placeholder="验证码" prefix-icon="Key" maxlength="6" @keyup.enter="handleSmsLogin" />
               <button
@@ -94,7 +100,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="loading" class="login-btn" @click="handleSmsLogin">
-              进入系统
+              <span class="btn-label">进入系统</span>
             </el-button>
           </el-form-item>
         </el-form>
@@ -110,7 +116,6 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { sendSmsCaptcha } from '@/api/captcha'
 import SliderCaptcha from './SliderCaptcha.vue'
-import { BlueprintCornerIcon, TowerCraneIcon, HelmetIcon } from '@/components/icons/zw'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -123,7 +128,7 @@ const loading = ref(false)
 const sliderToken = ref('')
 const sliderRef = ref<InstanceType<typeof SliderCaptcha> | null>(null)
 
-// 背景视频慢放：调此常量即可（1=原速，0.6=六成速，越小越慢）
+// 背景视频慢放：调此常量即可（1=原速，0.5=半速，越小越慢）
 const BG_PLAYBACK_RATE = 0.5
 const bgVideoRef = ref<HTMLVideoElement | null>(null)
 function onBgPlay() {
@@ -287,325 +292,93 @@ function goForgotPassword() {
   overflow: hidden;
   background: url('@/assets/login-bg-poster.jpg') center / cover no-repeat, var(--zw-bg-sidebar);
 }
-/* 背景压暗遮罩：左（品牌文案）右（登录卡）加重，中部保留视频展示 */
+/* 背景压暗遮罩：左（品牌）右（卡）加重，中部保留视频 */
 .login-page::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 1;
   background: linear-gradient(90deg,
-    color-mix(in srgb, var(--zw-bg-sidebar) 58%, transparent) 0%,
-    color-mix(in srgb, var(--zw-bg-sidebar) 20%, transparent) 36%,
-    color-mix(in srgb, var(--zw-bg-sidebar) 16%, transparent) 60%,
-    color-mix(in srgb, var(--zw-bg-sidebar) 46%, transparent) 100%);
+    color-mix(in srgb, var(--zw-bg-sidebar) 62%, transparent) 0%,
+    color-mix(in srgb, var(--zw-bg-sidebar) 22%, transparent) 45%,
+    color-mix(in srgb, var(--zw-bg-sidebar) 50%, transparent) 100%);
 }
+.login-bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
 
-/* 背景视频：铺满裁切，置于遮罩之下 */
-.login-bg-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-}
+/* ===== 左：精密仪器品牌区 ===== */
+.login-brand-content { position: absolute; left: clamp(1.5rem, 6vw, 6rem); top: 50%; transform: translateY(-50%); z-index: 2; max-width: 32rem; color: var(--zw-steel-text); }
+.brand-logo { display: flex; align-items: center; gap: var(--zw-space-sm-md); margin-bottom: var(--zw-space-xl); }
+.brand-logo-icon { width: 2.5rem; height: 2.5rem; object-fit: contain; filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent)); }
+.brand-logo-text { font-size: var(--zw-font-size-2xl); font-weight: 600; letter-spacing: .06em; text-shadow: 0 2px 10px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent); }
+.brand-tag { display: inline-flex; align-items: center; gap: var(--zw-space-sm); font-family: Consolas, 'SFMono-Regular', Menlo, monospace; font-size: var(--zw-font-size-xs); letter-spacing: .3em; color: var(--zw-brand); border: 1px solid color-mix(in srgb, var(--zw-brand) 50%, transparent); padding: var(--zw-space-xs) var(--zw-space-md); margin-bottom: var(--zw-space-lg); }
+.brand-tag i { width: .375rem; height: .375rem; background: var(--zw-brand); }
+.brand-slogan { font-size: var(--zw-font-size-4xl); font-weight: 700; line-height: 1.2; letter-spacing: .02em; margin-bottom: var(--zw-space-lg); text-shadow: 0 4px 18px color-mix(in srgb, var(--zw-bg-sidebar) 65%, transparent); }
+.brand-spec { margin-top: var(--zw-space-xl); border-top: 1px solid color-mix(in srgb, var(--zw-steel-text) 25%, transparent); }
+.brand-spec div { display: flex; justify-content: space-between; gap: var(--zw-space-lg); padding: var(--zw-space-md) 0; border-bottom: 1px solid color-mix(in srgb, var(--zw-steel-text) 16%, transparent); font-size: var(--zw-font-size-sm); }
+.brand-spec dt { color: var(--zw-steel-text-muted); }
+.brand-spec dd { font-family: Consolas, 'SFMono-Regular', Menlo, monospace; letter-spacing: .08em; color: var(--zw-steel-text); text-align: right; }
+.brand-spec dd b { color: var(--zw-brand); font-weight: 400; }
 
-/* ===== 左侧品牌文案（浮于背景视频之上，浅色） ===== */
-.login-brand-content {
-  position: absolute;
-  left: clamp(1.5rem, 6vw, 6rem);
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
-  max-width: 30rem;
-  color: var(--zw-steel-text);
-}
-.brand-logo {
-  display: flex;
-  align-items: center;
-  gap: var(--zw-space-sm-md);
-  margin-bottom: var(--zw-space-xl);
-}
-.brand-logo-icon {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent));
-}
-.brand-logo-text {
-  font-size: var(--zw-font-size-2xl);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-shadow: 0 2px 10px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
-}
-.brand-eyebrow {
-  font-family: var(--zw-font-display);
-  font-size: var(--zw-font-size-base);
-  font-weight: 700;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  color: var(--zw-brand);
-  margin-bottom: var(--zw-space-md);
-  text-shadow: 0 2px 10px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
-}
-.brand-slogan {
-  font-size: var(--zw-font-size-4xl);
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: var(--zw-space-lg);
-  letter-spacing: 0.015em;
-  text-shadow: 0 4px 18px color-mix(in srgb, var(--zw-bg-sidebar) 65%, transparent);
-}
-.brand-desc {
-  font-size: var(--zw-font-size-md);
-  line-height: 1.7;
-  color: var(--zw-steel-text-muted);
-  margin-bottom: var(--zw-space-xl);
-  text-shadow: 0 2px 10px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
-}
-.brand-features {
-  display: flex;
-  flex-direction: column;
-  gap: var(--zw-space-md);
-}
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: var(--zw-space-sm-md);
-  font-size: var(--zw-font-size-md);
-  color: var(--zw-steel-text);
-  text-shadow: 0 2px 8px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
-}
-.feature-icon-base {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--zw-radius-md);
-  background: color-mix(in srgb, var(--zw-brand) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--zw-brand) 30%, transparent);
-  flex-shrink: 0;
-}
-.feature-icon {
-  font-size: var(--zw-font-size-lg);
-  color: var(--zw-brand);
-  flex-shrink: 0;
-}
+/* ===== 右：仪器面板卡 ===== */
+.login-form-area { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: var(--zw-space-xl); padding-right: clamp(1.5rem, 8vw, 7.5rem); }
+.login-box { position: relative; width: 100%; max-width: 26rem; background: var(--zw-bg-card); border: 1px solid var(--zw-border-light); border-radius: 0; padding: var(--zw-space-xl) var(--zw-space-lg); box-shadow: 0 2px 6px color-mix(in srgb, var(--zw-bg-sidebar) 12%, transparent), 0 26px 70px color-mix(in srgb, var(--zw-bg-sidebar) 45%, transparent); animation: rise-in .6s .18s cubic-bezier(.22, .61, .36, 1) both; }
+.box-corner { position: absolute; width: .85rem; height: .85rem; border: 2px solid var(--zw-brand); pointer-events: none; }
+.box-corner.tl { top: .4rem; left: .4rem; border-right: 0; border-bottom: 0; }
+.box-corner.br { bottom: .4rem; right: .4rem; border-left: 0; border-top: 0; }
+.box-head { display: flex; justify-content: space-between; font-family: Consolas, 'SFMono-Regular', Menlo, monospace; font-size: var(--zw-font-size-xs); letter-spacing: .18em; color: var(--zw-text-tertiary); padding-bottom: var(--zw-space-sm); border-bottom: 1px solid var(--zw-border); margin-bottom: var(--zw-space-lg); }
+.box-head b { color: var(--zw-brand); font-weight: 400; }
+.login-header { margin-bottom: var(--zw-space-lg); }
+.login-title { font-size: var(--zw-font-size-3xl); font-weight: 700; letter-spacing: .01em; color: var(--zw-text-primary); margin-bottom: var(--zw-space-sm); }
+.login-subtitle { font-size: var(--zw-font-size-sm); color: var(--zw-text-tertiary); }
 
-/* ===== 表单区：登录卡靠右浮于背景之上 ===== */
-.login-form-area {
-  position: relative;
-  z-index: 2;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  padding: var(--zw-space-xl);
-  padding-right: clamp(1.5rem, 8vw, 7.5rem);
-}
+/* 分段开关 */
+.login-tabs { display: flex; border: 1px solid var(--zw-border); margin-bottom: var(--zw-space-xl); }
+.login-tab { flex: 1; appearance: none; border: 0; background: var(--zw-bg-card); padding: var(--zw-space-sm-md) 0; font-size: var(--zw-font-size-md); color: var(--zw-text-tertiary); cursor: pointer; transition: background var(--zw-duration-fast), color var(--zw-duration-fast); }
+.login-tab:hover:not(.active) { color: var(--zw-brand); }
+.login-tab.active { background: var(--zw-bg-sidebar); color: var(--zw-text-inverse); }
+.login-tab:focus-visible { outline: 2px solid var(--zw-brand); outline-offset: -2px; }
 
-/* P0：表单白底浮层卡片，奠定现代空间感 */
-.login-box {
-  width: 100%;
-  max-width: 380px;
-  background: var(--zw-bg-card);
-  border: 1px solid var(--zw-border-light);
-  border-radius: var(--zw-radius-xl);
-  padding: var(--zw-space-xl) var(--zw-space-lg);
-  box-shadow: 0 24px 64px color-mix(in srgb, var(--zw-bg-sidebar) 45%, transparent);
-}
+/* 等宽行标签 */
+.row-label { display: flex; justify-content: space-between; width: 100%; font-family: Consolas, 'SFMono-Regular', Menlo, monospace; font-size: var(--zw-font-size-xs); letter-spacing: .16em; color: var(--zw-text-tertiary); margin-bottom: var(--zw-space-sm); }
+.row-label b { color: var(--zw-brand); font-weight: 400; }
 
-.login-header {
-  margin-bottom: var(--zw-space-xl);
-}
+/* 输入：直角边框 + 橙色 focus 环 + 前缀点亮 */
+.login-box :deep(.el-input__wrapper) { border-radius: 0; box-shadow: 0 0 0 1px var(--zw-border); transition: box-shadow var(--zw-duration-fast); }
+.login-box :deep(.el-input__wrapper):focus-within, .login-box :deep(.el-input__wrapper).is-focus { box-shadow: 0 0 0 1px var(--zw-brand), 0 0 0 4px color-mix(in srgb, var(--zw-brand) 14%, transparent); }
+.login-box :deep(.el-input__prefix) { color: var(--zw-text-tertiary); transition: color var(--zw-duration-fast); }
+.login-box :deep(.el-input__wrapper):focus-within .el-input__prefix { color: var(--zw-brand); }
+.login-box :deep(.el-input__inner) { caret-color: var(--zw-brand); }
 
-.login-title {
-  font-size: var(--zw-font-size-3xl);
-  font-weight: 700;
-  color: var(--zw-text-primary);
-  margin-bottom: var(--zw-space-sm);
-}
+/* 短信按钮 / 验证码行 */
+.sms-code-btn { appearance: none; width: 7.5rem; height: 2.5rem; flex-shrink: 0; font-size: var(--zw-font-size-base); font-weight: 600; color: var(--zw-brand); background: var(--zw-brand-light); border: 1px solid var(--zw-brand-light); border-radius: 0; cursor: pointer; white-space: nowrap; transition: background var(--zw-duration-fast), color var(--zw-duration-fast); }
+.sms-code-btn:hover:not(:disabled) { background: var(--zw-brand); color: var(--zw-on-primary); }
+.sms-code-btn:disabled { color: var(--zw-text-quaternary); background: var(--zw-bg-hover); border-color: var(--zw-border-light); cursor: not-allowed; }
+.captcha-row { display: flex; gap: var(--zw-space-sm-md); width: 100%; }
 
-.login-subtitle {
-  font-size: var(--zw-font-size-base);
-  color: var(--zw-text-tertiary);
-}
+/* CTA：墨黑 + 橙色扫入 */
+.login-btn { position: relative; overflow: hidden; width: 100%; height: 2.875rem; border: none; border-radius: 0; background: var(--zw-bg-sidebar); color: var(--zw-text-inverse); font-size: var(--zw-font-size-md); font-weight: 600; letter-spacing: .24em; transition: box-shadow var(--zw-duration-fast); }
+.login-btn .btn-label { position: relative; z-index: 1; }
+.login-btn::after { content: ''; position: absolute; inset: 0; background: var(--zw-brand); transform: scaleX(0); transform-origin: left; transition: transform .25s var(--zw-ease-out); }
+.login-btn:hover::after { transform: scaleX(1); }
+.login-btn:hover { box-shadow: 0 10px 26px color-mix(in srgb, var(--zw-brand) 35%, transparent); }
 
-/* ===== 登录方式切换 Tab（工业精密：2px 下划线强调，零阴影零渐变） ===== */
-.login-tabs {
-  display: flex;
-  gap: var(--zw-space-xl);
-  margin-bottom: var(--zw-space-xl);
-  border-bottom: 1px solid var(--zw-border);
-}
+.login-extra { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: calc(var(--zw-space-sm) * -1); font-size: var(--zw-font-size-sm); }
+.extra-hint { color: var(--zw-text-quaternary); font-family: Consolas, 'SFMono-Regular', Menlo, monospace; letter-spacing: .08em; }
+.login-extra :deep(.el-link) { color: var(--zw-brand); }
 
-.login-tab {
-  position: relative;
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 0 0 var(--zw-space-md);
-  font-size: var(--zw-font-size-md);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--zw-text-tertiary);
-  cursor: pointer;
-  transition: color var(--zw-duration-fast) var(--zw-ease-out);
-}
+.login-copyright { position: absolute; bottom: 1.5rem; font-family: Consolas, 'SFMono-Regular', Menlo, monospace; font-size: var(--zw-font-size-xs); letter-spacing: .12em; color: var(--zw-steel-text-muted); animation: rise-in .6s .4s cubic-bezier(.22, .61, .36, 1) both; }
 
-.login-tab:hover {
-  color: var(--zw-text-secondary);
-}
+/* 响应式 */
+@media (max-width: 992px) { .login-brand-content { display: none; } }
+@media (max-width: 768px) { .login-form-area { align-items: center; padding: var(--zw-space-xl); } }
 
-.login-tab.active {
-  color: var(--zw-brand);
-}
-
-.login-tab.active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--zw-brand);
-}
-
-.login-tab:focus-visible {
-  outline: 2px solid var(--zw-brand);
-  outline-offset: 2px;
-}
-
-/* 获取验证码按钮（与验证码图片同宽，复用精密直角语言） */
-.sms-code-btn {
-  appearance: none;
-  width: 120px;
-  height: 40px;
-  flex-shrink: 0;
-  font-size: var(--zw-font-size-base);
-  font-weight: 600;
-  color: var(--zw-brand);
-  background: var(--zw-brand-light);
-  border: 1px solid var(--zw-brand-light);
-  border-radius: var(--zw-radius-sm);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: opacity var(--zw-duration-fast) var(--zw-ease-out);
-}
-
-.sms-code-btn:hover:not(:disabled) {
-  background: var(--zw-brand);
-  color: var(--zw-on-primary);
-}
-
-.sms-code-btn:disabled {
-  color: var(--zw-text-quaternary);
-  background: var(--zw-bg-hover);
-  border-color: var(--zw-border-light);
-  cursor: not-allowed;
-}
-
-.captcha-row {
-  display: flex;
-  gap: var(--zw-space-sm-md);
-  width: 100%;
-}
-
-/* P1：输入框 Focus 外发光 + 细微渐变 */
-.login-box :deep(.el-input__wrapper) {
-  border-radius: var(--zw-radius-sm);
-  box-shadow: 0 0 0 1px var(--zw-border);
-  transition: box-shadow var(--zw-duration-fast), background var(--zw-duration-fast);
-}
-.login-box :deep(.el-input__wrapper):focus-within,
-.login-box :deep(.el-input__wrapper.is-focus) {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--zw-brand) 4%, transparent), transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--zw-brand) 16%, transparent), 0 0 16px color-mix(in srgb, var(--zw-brand) 22%, transparent);
-}
-
-/* P1：登录按钮细微渐变 + 外发光 */
-.login-btn {
-  width: 100%;
-  height: 46px;
-  font-size: var(--zw-font-size-md);
-  font-weight: 600;
-  letter-spacing: 4px;
-  border: none;
-  background: linear-gradient(135deg, var(--zw-brand) 0%, var(--zw-brand-hover) 100%);
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--zw-brand) 34%, transparent);
-  transition: box-shadow var(--zw-duration-fast), transform var(--zw-duration-fast), filter var(--zw-duration-fast);
-}
-.login-btn:hover {
-  filter: brightness(1.05);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--zw-brand) 46%, transparent);
-  transform: translateY(-1px);
-}
-.login-btn:active { transform: translateY(0); }
-
-.login-extra {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  margin-top: calc(var(--zw-space-sm) * -1);
-}
-
-.login-copyright {
-  position: absolute;
-  bottom: 24px;
-  font-size: var(--zw-font-size-sm);
-  color: var(--zw-steel-text-muted);
-}
-
-/* ===== 响应式：窄屏隐藏左侧文案、登录卡回居中 ===== */
-@media (max-width: 992px) {
-  .login-brand-content {
-    display: none;
-  }
-}
-@media (max-width: 768px) {
-  .login-form-area {
-    align-items: center;
-    padding: var(--zw-space-xl);
-  }
-}
-/* ===== 细节打磨：微动效 / 字阶层级 / 入场动画（克制，不改整体结构） ===== */
-/* 入场：品牌文案与登录卡错峰上浮 */
+/* 入场错峰 + reduced-motion + 选区 */
 @keyframes rise-in { from { opacity: 0; transform: translateY(.75rem); } to { opacity: 1; transform: translateY(0); } }
 .login-brand-content > * { animation: rise-in .6s cubic-bezier(.22, .61, .36, 1) both; }
 .login-brand-content > *:nth-child(1) { animation-delay: .05s; }
 .login-brand-content > *:nth-child(2) { animation-delay: .12s; }
 .login-brand-content > *:nth-child(3) { animation-delay: .19s; }
 .login-brand-content > *:nth-child(4) { animation-delay: .26s; }
-.login-brand-content > *:nth-child(5) { animation-delay: .33s; }
-.login-box { position: relative; animation: rise-in .6s .18s cubic-bezier(.22, .61, .36, 1) both; }
-.login-copyright { animation: rise-in .6s .4s cubic-bezier(.22, .61, .36, 1) both; }
-@media (prefers-reduced-motion: reduce) {
-  .login-brand-content > *, .login-box, .login-copyright { animation: none; }
-}
-
-/* 字阶层级：标题更挺、副标题更轻、眉标更疏、描述更松 */
-.login-title { letter-spacing: .01em; }
-.login-subtitle { font-size: var(--zw-font-size-sm); color: var(--zw-text-tertiary); }
-.brand-eyebrow { letter-spacing: .3em; }
-.brand-slogan { letter-spacing: .02em; }
-.brand-desc { line-height: 1.8; }
-.login-copyright { letter-spacing: .04em; }
-
-/* 卡片顶部一条极细品牌渐变线（克制签名） */
-.login-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: var(--zw-radius-xl) var(--zw-radius-xl) 0 0; background: linear-gradient(90deg, var(--zw-brand), color-mix(in srgb, var(--zw-brand) 0%, transparent)); }
-
-/* 微交互：按钮悬浮轻抬、Tab 悬浮变色、特性图标底座微亮 */
-.login-btn { transition: transform var(--zw-duration-fast), box-shadow var(--zw-duration-fast); }
-.login-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, var(--zw-brand) 35%, transparent); }
-.login-btn:active { transform: translateY(0); }
-.login-tab { transition: color var(--zw-duration-fast), background var(--zw-duration-fast); }
-.login-tab:hover:not(.active) { color: var(--zw-brand); }
-.feature-icon-base { transition: background var(--zw-duration-fast); }
-.feature-item:hover .feature-icon-base { background: color-mix(in srgb, var(--zw-brand) 22%, transparent); }
-
-/* 输入焦点：前缀图标点亮 */
-.login-box :deep(.el-input__prefix) { transition: color var(--zw-duration-fast); }
-.login-box :deep(.el-input__wrapper:focus-within .el-input__prefix), .login-box :deep(.el-input__wrapper.is-focus .el-input__prefix) { color: var(--zw-brand); }
+@media (prefers-reduced-motion: reduce) { .login-brand-content > *, .login-box, .login-copyright { animation: none; } }
+::selection { background: color-mix(in srgb, var(--zw-brand) 25%, transparent); }
 </style>
