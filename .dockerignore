@@ -5,8 +5,11 @@ node_modules/
 .kiro/
 target/
 **/target/
-dist/
-**/dist/
+# 注：原先此处的 dist/ 与 **/dist/ 排除已移除（2026-09-24）。
+# 原因：前端改为在 CI runner 上构建产物、服务器只做 COPY（见 CI job frontend-build），
+# 因此 zw-insight-web/dist 必须进入 build context；保留排除会使
+# deploy/frontend/Dockerfile 的 COPY 报 “/zw-insight-web/dist: not found”（run 35975640896 实测）。
+# 体积影响：dist 约数 MB，远小于原「服务器内 npm ci + 全量源码构建」的 context 成本。
 test-results/
 e2e/test-results/
 
