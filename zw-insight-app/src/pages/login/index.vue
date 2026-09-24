@@ -1,7 +1,11 @@
 <template>
   <view class="login-page">
-    <!-- 品牌铭牌（设计文档：登录页 = 表单 + 品牌铭牌，不渲染 hero-band） -->
+    <!-- G·斜切动感：斜切橙带装饰（与 PC 登录页同语言） -->
+    <view class="slash"></view>
+    <view class="slash thin"></view>
+    <!-- 品牌铭牌 + 斜切标签 -->
     <view class="login-header">
+      <view class="brand-kicker"><text>ENGINEERING · FORWARD</text></view>
 		<!-- 品牌背景（2026-09-16 AI 生成：夜景工地线稿，弱透明置于铭牌后；09-17 JPEG q72 压缩 178KB→48KB） -->
 		<image class="brand-bg" src="/static/brand/login-bg.jpg" mode="aspectFill" />
       <view class="brand-mark"><image class="brand-mark-img" src="/static/brand/logo.png" mode="aspectFit" /></view>
@@ -402,4 +406,19 @@ async function handleSmsLogin() {  const phone = smsForm.value.phone.trim()
   font-size: 26rpx;
   color: var(--zw-brand);
 }
+
+/* ===== G·斜切动感（与 PC 登录页同一设计语言） ===== */
+.login-page { position: relative; overflow: hidden; }
+.slash { position: absolute; top: -10%; right: 12%; width: 40vw; height: 130%; background: var(--zw-brand); transform: skewX(-14deg); opacity: .16; }
+.slash.thin { right: 8%; width: 6vw; opacity: .1; }
+.login-header { text-align: left; width: 100%; }
+.brand-kicker { display: inline-block; background: var(--zw-brand); transform: skewX(-14deg); padding: 8rpx 24rpx; margin-bottom: 24rpx; }
+.brand-kicker text { display: inline-block; transform: skewX(14deg); color: #fff; font-size: 22rpx; letter-spacing: 4rpx; }
+.brand-mark { margin: 0 0 24rpx; }
+.app-title { font-size: 56rpx; letter-spacing: 2rpx; }
+.login-form { border: none; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%); }
+.input { border: none; border-bottom: 2rpx solid var(--zw-border-light); border-radius: 0; background: transparent; }
+.tab-item.active::after { width: 100%; left: 0; transform: none; }
+.login-btn { background: var(--zw-bg-sidebar); color: #fff; border-radius: 0; clip-path: polygon(0 0, 100% 0, 100% 70%, calc(100% - 14px) 100%, 0 100%); }
+.login-btn:active { background: var(--zw-brand); }
 </style>

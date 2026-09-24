@@ -15,8 +15,6 @@
         <svg v-if="state === 'success'" class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6" /></svg>
         <svg v-else class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l5 5-5 5" /><path d="M14 7l5 5-5 5" /></svg>
       </div>
-      <span class="hint" v-if="showHint">拖动滑块完成验证</span>
-      <span class="ok-label" v-if="state === 'success'">验证通过</span>
     </div>
     <button type="button" class="refresh" title="换一个" @click="load">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 3v6h-6" /></svg>
@@ -41,7 +39,6 @@ let startPiece = 0
 
 const gapLeft = computed(() => `calc(${(gapPct.value * 100).toFixed(2)}% - ${HANDLE / 2}px)`)
 const fillWidth = computed(() => `${pieceX.value + HANDLE / 2}px`)
-const showHint = computed(() => pieceX.value === 0 && state.value !== 'success' && state.value !== 'drag')
 const noop = () => {}
 
 async function load() {
@@ -144,10 +141,6 @@ onMounted(load)
 .slider-captcha.ok .handle { background: var(--zw-success); color: var(--zw-text-inverse); border-color: var(--zw-success); }
 .h-icon { width: 20px; height: 20px; }
 
-/* 文案：低对比、紧字距，弱存在感 */
-.hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--zw-font-size-sm); font-weight: 400; letter-spacing: .02em; color: var(--zw-text-quaternary); opacity: .7; pointer-events: none; transition: opacity var(--zw-duration-fast); }
-.ok-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--zw-font-size-sm); font-weight: 600; letter-spacing: .04em; color: var(--zw-success); pointer-events: none; }
-
 /* 刷新按钮：圆形图标钮 */
 .refresh {
   flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%;
@@ -157,4 +150,8 @@ onMounted(load)
 }
 .refresh svg { width: 18px; height: 18px; }
 .refresh:hover { color: var(--zw-brand); border-color: color-mix(in srgb, var(--zw-brand) 45%, var(--zw-border)); transform: rotate(40deg); }
+
+/* 成功勾：描边绘制动效（单一编排，不散落） */
+.slider-captcha.ok .h-icon path { stroke-dasharray: 26; stroke-dashoffset: 26; animation: draw-check .35s var(--zw-ease-out) forwards; }
+@keyframes draw-check { to { stroke-dashoffset: 0; } }
 </style>
