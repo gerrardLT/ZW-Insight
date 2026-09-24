@@ -106,3 +106,100 @@
 - 已排除的"表面漂移"（不作为发现）：卡片数量 8 张与文档一致、四象限布局与 §18 一致、风险三级汇总与 §11 一致、风险六要素与 §11 一致、状态由规则自动产生符合 §15 原则、TOP 风险清单符合 §11、招待费"正常隐藏异常冒出"原则符合 §8.1
 - **文档沉默处不臆造意图**：如 §9.1 未定义"应付未付"的精确计算式，本报告按资金流转 §3.1「应付金额=已产生付款义务」推定，并标注可用数据源；若业务口径另有定义，应以业务确认为准
 - 未验证项：本报告为静态代码审计，未在浏览器中逐页交互验证下钻链路完整性（`project-cost-control` 的 TOP 偏差下钻、风险详情穿透路由已有单测覆盖，但端到端点击链未走查）
+
+---
+
+## 七、实施结果与线上验证（2026-09-24 补记）
+
+本审计发现经用户批准「全部补齐（含 P2）」后分四期实施，本节记录实际完成情况、
+线上实测结果、以及实施过程中**被实证推翻的三处计划假设**。
+
+### 7.1 分期与提交
+
+| 期 | 范围 | 提交 | 部署 |
+|---|---|---|---|
+| 前置 | 定时任务无用户上下文导致全面空转（线上日志实证 FundForecastTask「成功 0/2」、RiskScanTask 3/7 规则失败却报「成功 2/2」） | `f591009` 内含 | 已验证 |
+| 第一期 P0 | 应付未付 5 表聚合、缺口公式 §10.4、FundGapRiskRule 三档、PARTIAL_PAID、V2026_64 | `f591009` | 已验证 |
+| 第二期 P1-A | forecastByDays 30/60/90、gap-attribution、fund-ratios | `f024fa1` | 已验证 |
+| 第三期 P1-B | 数字卡四要素、全局筛选器、七类成本、招待费分析页、§16.1 下钻、§5.1 归因 | `7df81d5` | 已验证 |
+| 数据补齐 | CBS 30 账户 + WBS 9 节点 + 间接费子类字典 12 + 招待费链路 + 月度资金计划（V2026_66） | `3fab732` | 已验证 |
+| 第四期 P2-1 | 月度经营分析表 §9（10 类×6 列，V2026_67/68） | `8b6d2b6` | 已验证 |
+| 第四期 P2-2 | 应收下钻 8 级链 §10（7 新列 + 人工登记，V2026_69） | `000eb3e` | 已验证 |
+| 第四期 P2-3 | 驾驶舱「项目经营」「成本中心」两页面 §12/§6/§7/§8（V2026_70） | `06ca578` | 已验证 |
+| 修复 | 清空登记失效的 ORM 陷阱 + 部署 SSH 断连与构建期停机根因 | `defc5bb` | 待验证 |
+| **未做** | **P2-4 单据穿透链（DrillDownService + 导航条 + 三处接入）** | — | — |
+
+### 7.2 三处被实证推翻的计划假设（均已按事实调整并写入代码注释）
+
+1. **「7 类映射」缺基础数据**：计划假定按 CBS 子类即可映射七类，实测 `biz_cost_subcategory`
+   只有 8 行（MATERIAL/LABOR/MACHINE/SUBCONTRACT），**INDIRECT 无任何子类**，且
+   `biz_cost_account` 线上 **0 行**（`31_V2026_26` 的成本账户挂在 `project_id=92001`，
+   而真实演示项目是 90001-90004，该批数据从未入库）。→ 先补子类字典 12 行 + 成本账户 30 行，
+   七类才有真实数据；连带修复了「预计利润 `costBasis` 恒为 `FALLBACK_TOTAL_EXPENSE`」
+   （线上实测已变为 `CBS_FORECAST`，即预计利润不再退化为已实现支出）。
+2. **「工程节点结算时回填」不可行**：计划称取结算单关联的产值申报节点。实测
+   `biz_project_settlement` **无任何节点/期次字段**；`biz_output_report` 虽有 `report_period`，
+   但与结算单**无外键或单号关联**，按 project_id + 时间近似匹配会制造假关联（伪造数据）。
+   → 改为人工登记；计划估的「3 新列」实际需 **7 列**（负责人拆 id+name、另需申请日期与审核日期）。
+3. **「本月发生按单据聚合」不可行**：实测 `biz_cost_account_txn`（有 `occurred_at`，本可月度归集）
+   **0 行**；四类结算单中仅 purchase/final 有 `settlement_date` 且 purchase 的 4 行该列**全为 NULL**，
+   labor/subcontract 结算单根本没有该列；用 `created_at` 冒充业务日期会把补录单据落错月份。
+   → 改为「本月末累计 − 上月末累计」（两个真实时点快照之差），**首次生成如实为 NULL**
+   并标 `occurred_basis=NO_BASELINE`，不用 0 冒充「本月无发生」。
+
+### 7.3 线上实测结果（部署后取证，非推断）
+
+- Flyway `V2026_65`~`V2026_70` 六个迁移全部 `success=1`，失败记录 0
+- 新表 `biz_monthly_operation_analysis` 就位；`biz_receivable` 7 个新列全部存在
+- 菜单 910074（招待费分析）/910075（月度经营分析）/910076（项目经营）/910077（成本中心）
+  各 4 条角色绑定（SUPER_ADMIN + 90061/90062/90064）
+- V2026_66 种子：子类字典 12 / WBS 9 / 成本账户 30 / 报销单 5 / 明细 9 / 招待费专项 10 /
+  资金计划 2+5；既有明细 99061、99062 的 `category_code` 已从 NULL 修复
+- CBS 对齐：90001 Σbaseline 4500万 = `budget_amount`、90002 3000万、90004 1000万；
+  90003 无 CBS（0 账户，符合「已报备未开工」设计，页面如实提示而非显示 0）
+- `overview` 实测：无筛选时 `gapBasis=COMPANY_SNAPSHOT_WITH_ACCOUNT_BALANCE`、
+  `scope.filtered=false`、`changes.basis=NO_BASELINE` 且三个 delta 为 **null**（未伪造 0）、
+  `targets.forecastProfitRate=0.08`；按公司 90501 筛选后
+  `gapBasis=PROJECT_SNAPSHOT_WITHOUT_ACCOUNT_BALANCE`、`accountBalance=0`、`projectCount=1`、
+  `forecastTotalCost` 4961万（与该项目 CBS forecast 精确一致）
+- L3：`test-api-risk.sh` **80 项全通过**（1 项 SKIP 为「当月无利润快照」如实跳过）；
+  `test-api-finance.sh` 80 项通过、2 项失败已定位为**断言自身错误**并修正
+
+### 7.4 部署事故与根因修复（本次最重要的工程发现）
+
+- **现象**：run `35951954498`、`35955467495` 连续两次在 `Deploy via SSH` 报 exit 255
+  （`client_loop: send disconnect: Broken pipe`），且线上 18080 无响应约 25 分钟。
+- **根因一（SSH 空闲断连）**：前端 vite `rendering chunks` 阶段 5 分钟无任何输出 → SSH 会话被断。
+  但 heredoc 的远端 bash 未收到 SIGHUP，**继续跑完了 build + up** → 形成「CI 报失败、
+  部署实际成功」的误导性状态（Flyway 记录与容器状态均证实已部署）。
+- **根因二（构建期停机）**：`deploy.yml` 顺序为 `stop backend frontend` → `build` → `up`，
+  构建期间（实测 5-20 分钟，负载高时更久）**无任何容器提供服务**；构建失败或断连时
+  旧容器已停、新容器未起 → 直接成为停机事故。
+- **修复**：① ssh 加 `-o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes`；
+  ② 顺序改为 **build → stop → rm → up**（停机窗口从「整个构建时长」缩短到秒级，
+  构建失败时旧容器继续服务）；③ `keys/manual-deploy.sh` 作为应急预案入库
+  （nohup 后台执行，SSH 立即返回，不受空闲超时影响）。
+- **操作失误自述**：CI 失败后我在未确认远端 build 是否仍在运行的情况下又启动了一次手动
+  build，与残留进程叠加导致服务器 load average 冲到 146（4 核机、可用内存仅 1.3GB），
+  SSH 一度被服务器关闭。事后确认服务器已自行恢复空闲（CPU 95% idle、IO 0、D 进程 0）。
+  教训：**接管部署前必须先确认远端是否仍有构建进程在跑**，否则会加剧资源竞争。
+
+### 7.5 已知待办（如实记录，未修复）
+
+1. **P2-4 单据穿透链未实施**（`DrillDownService` + `DrillDownBreadcrumb.vue` + 三处接入）。
+   原因：本轮上下文预算不足以同时保证实现、测试与提交质量，为避免留下半成品而暂缓。
+2. **`UrgeScheduleTask.autoUrge` 每 30 分钟抛异常**（线上日志实证）：
+   `IllegalStateException: 租户上下文缺失，拒绝 INSERT（防止数据写入幽灵租户 0）`，
+   即自动催办功能**从未生效**。与第一期修复的定时任务空转同类，但修复需先确认
+   Flowable 的租户集成方式——`UrgeService` 的 `TaskQuery` 未加 `taskTenantId` 过滤，
+   若直接套 `TenantTaskRunner` 逐租户执行，会在租户 A 的上下文里处理租户 B 的任务
+   并把催办记录写成 A 的 `tenant_id`（数据错乱），风险高于收益 → 留待专项处理
+   （需先查 `ACT_RU_TASK.TENANT_ID_` 实际值域）。
+3. **`overview` 接口首次调用可能 >15s**（聚合 4 项目 × 多表 + JIT 未热）：
+   诊断脚本曾因 `curl -m 15` 超时误判为「返回全 null」。属性能待优化项，非功能缺陷。
+4. **月度资金计划的跨月失效**：`plan_year/plan_month` 用 `YEAR/MONTH(CURDATE())` 动态取当月，
+   而 Flyway 只执行一次 → 跨月后招待费第 8 类预警会因「无当月计划」而不判定
+   （如实行为，非缺陷；已在脚本与 AGENTS.md 标注，需持续演示时手工补当月计划）。
+5. **`actual_amount` 会被 `CostRollUpTask` 校正**：每日 02:30 按单据汇总做目标绝对值对账，
+   种子写入的 initial 值若与单据口径有差异会被自动调整（设计行为）。部署后应比对
+   校正前后差额并把校正值记为演示基线。
