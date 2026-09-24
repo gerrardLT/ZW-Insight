@@ -263,6 +263,20 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'CockpitRiskCenter',
         component: () => import('@/views/cockpit/risk-center.vue'),
         meta: { title: '风险中心', icon: 'WarnTriangleFilled' }
+      },
+      {
+        // 项目经营（§12 列表 + §6 单项目详情：8 指标/四象限/项目风险）
+        path: 'project-operation',
+        name: 'CockpitProjectOperation',
+        component: () => import('@/views/cockpit/project-operation.vue'),
+        meta: { title: '项目经营', icon: 'OfficeBuilding' }
+      },
+      {
+        // 成本中心（§7.1 总览 + §7.2 七类结构 + §8 商务费用下钻 + §8.1 招待费）
+        path: 'cost-center',
+        name: 'CockpitCostCenter',
+        component: () => import('@/views/cockpit/cost-center.vue'),
+        meta: { title: '成本中心', icon: 'Coin' }
       }
     ]
   },

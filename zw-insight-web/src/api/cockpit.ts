@@ -150,6 +150,13 @@ export interface ProjectHealth {
   profitDelta?: number | null
   /** 资金缺口影响额（仅 FUND_GAP 类活跃风险的 impactAmount 合计；无则 0） */
   fundGapAmount?: number
+  /**
+   * §16.1「点击数字 → 项目构成」所需的逐项目资金状态（V2026_65 后端新增）。
+   * 取项目表审批回写字段（与 overview 同源）；项目不存在时为 null，不用 0 冒充。
+   */
+  cumulativeReceived?: number | null
+  cumulativePaid?: number | null
+  receivableOutstanding?: number | null
   /** TOP 风险标题（最多 3 条） */
   topRisks: string[]
 }
