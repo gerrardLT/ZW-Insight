@@ -363,6 +363,88 @@ test_delete_bank_account() {
 # 测试用例 — 项目结算（汇总查询）
 # ===========================================================================
 
+# 非成功断言（与 test-api-risk.sh 同名同语义）：body code != 200 或 HTTP 4xx/5xx 即为通过。
+# 本文件原本没有该 helper，而月度分析的三个负向用例需要它（仅靠 assert_body_code 400
+# 不够稳：Spring 对 @RequestParam 缺失返回的错误体可能没有 code 字段）。
+assert_body_not_success() {
+  local test_name="$1" actual http_code
+  actual=$(grep -oE '"code"\s*:\s*\"?[0-9]+' /tmp/zwi_body 2>/dev/null | head -1 | grep -oE '[0-9]+$')
+  http_code=$(cat /tmp/zwi_last_code 2>/dev/null || echo "000")
+  TOTAL_COUNT=$((TOTAL_COUNT + 1))
+  if [ "$actual" != "200" ] || [[ "$http_code" == 4* ]] || [[ "$http_code" == 5* ]]; then
+    PASS_COUNT=$((PASS_COUNT + 1))
+    log "  PASS [$TOTAL_COUNT] $test_name (code=$actual, HTTP $http_code)"
+  else
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    log "  FAIL [$TOTAL_COUNT] $test_name (期望非 200, 实际 code=$actual HTTP $http_code)"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# 月度经营分析表（V2026_67，资金流转 §9：10 类费用 × 6 列）
+# 本组会写库（generate），但写入的是基于真实 CBS/合同聚合的业务数据，
+# 且同项目同月重跑为覆盖更新（唯一键 upsert），不会累积垃圾行。
+# ---------------------------------------------------------------------------
+test_monthly_analysis() {
+  log "▶ 测试：月度经营分析表（§9 十类×六列）"
+  local pid=90001
+  local month
+  month=$(date +%Y-%m)
+
+  # 1) 类别清单：十类且行序与文档一致（前端表头与导出共用，不写死）
+  call GET "/api/v1/finance/monthly-analysis/categories"
+  assert_http 2 "月度分析-类别清单 HTTP"
+  assert_jq '.code==200 and (.data | length == 10)' "月度分析-类别为 §9 十类"
+  assert_jq '.code==200 and ([.data | keys[]] | index("ENTERTAIN") != null) and ([.data | keys[]] | index("TRAVEL_VEHICLE") != null) and ([.data | keys[]] | index("PROFESSIONAL") != null) and ([.data | keys[]] | index("TAX") != null)' \
+    "月度分析-含招待/差旅车辆/专业服务/财税四类"
+
+  # 2) 手工生成（首次）
+  call POST "/api/v1/finance/monthly-analysis/generate?projectId=${pid}&month=${month}"
+  assert_http 2 "月度分析-生成 HTTP"
+  assert_jq '.code==200 and (.data.rows >= 10)' "月度分析-生成十类行（实得 $(jq -r '.data.rows // 0' /tmp/zwi_body 2>/dev/null) 行）"
+  assert_jq '.code==200 and (.data.month == "'"$month"'")' "月度分析-生成月份回写正确"
+
+  # 3) 幂等：同项目同月重跑为覆盖更新（inserted=0、updated=行数）
+  call POST "/api/v1/finance/monthly-analysis/generate?projectId=${pid}&month=${month}"
+  assert_jq '.code==200 and (.data.inserted == 0) and (.data.updated == .data.rows)' \
+    "月度分析-重跑幂等（不重复插行）"
+
+  # 4) 查询矩阵：行序、列齐备、口径标记
+  call GET "/api/v1/finance/monthly-analysis?projectId=${pid}&month=${month}"
+  assert_http 2 "月度分析-查询 HTTP"
+  assert_jq '.code==200 and (.data.rows | type == "array") and (.data.totals | type == "object") and (.data.notes | type == "array")' \
+    "月度分析-矩阵/合计/口径说明三段齐备"
+  assert_jq '.code==200 and ([.data.rows[].categoryCode] == ["LABOR","MATERIAL","MACHINE","SUBCONTRACT","MEASURE","ADMIN","ENTERTAIN","TRAVEL_VEHICLE","PROFESSIONAL","TAX"])' \
+    "月度分析-十类行序与文档一致"
+  assert_jq '.code==200 and ([.data.rows[] | select(.budgetAmount == null or .cumulativeOccurred == null or .forecastFinal == null or .occurredBasis == null or .paidBasis == null)] | length == 0)' \
+    "月度分析-六列与两个口径标记均非空"
+  # 直接费四类有付款数据源（APPROVAL_WRITEBACK），间接费六类为 NO_PAYMENT_SOURCE 且 paid 为 null
+  assert_jq '.code==200 and ([.data.rows[] | select(.categoryCode == "LABOR" or .categoryCode == "MATERIAL" or .categoryCode == "MACHINE" or .categoryCode == "SUBCONTRACT") | select(.paidBasis != "APPROVAL_WRITEBACK")] | length == 0)' \
+    "月度分析-直接费四类累计支付为审批回写口径"
+  assert_jq '.code==200 and ([.data.rows[] | select(.paidBasis == "NO_PAYMENT_SOURCE") | select(.cumulativePaid != null or .payableOutstanding != null)] | length == 0)' \
+    "月度分析-无付款数据源的类为空而非 0"
+  # 本月发生口径受控；无上月基期时必须为 null（不得用 0 冒充）
+  assert_jq '.code==200 and ([.data.rows[] | select(.occurredBasis != "VS_LAST_MONTH" and .occurredBasis != "NO_BASELINE" and .occurredBasis != "NO_DATA_SOURCE")] | length == 0)' \
+    "月度分析-本月发生口径值域受控"
+  assert_jq '.code==200 and ([.data.rows[] | select(.occurredBasis != "VS_LAST_MONTH") | select(.currentMonthOccurred != null)] | length == 0)' \
+    "月度分析-无基期/无数据源时本月发生为 null"
+  # 合计口径：应付未付合计 = 有付款数据源类的累计发生 − 累计支付（不混入间接费）
+  assert_jq '.code==200 and (.data.totals | ((.directOccurredTotal - .cumulativePaid - .payableOutstanding) | fabs) < 0.01)' \
+    "月度分析-应付未付合计=直接费累计发生−累计支付"
+  assert_jq '.code==200 and (.data.totals.paidScope == "DIRECT_FOUR_CATEGORIES")' \
+    "月度分析-合计口径范围已标明"
+
+  # 5) 负向：未来月份 / 非法格式 / 缺项目均被拒绝（不静默按当月处理）
+  local next_month
+  next_month=$(date -d "+1 month" +%Y-%m 2>/dev/null || date -v+1m +%Y-%m 2>/dev/null || echo "2099-01")
+  call POST "/api/v1/finance/monthly-analysis/generate?projectId=${pid}&month=${next_month}"
+  assert_body_not_success "月度分析-未来月份被拒绝"
+  call POST "/api/v1/finance/monthly-analysis/generate?projectId=${pid}&month=bad-month"
+  assert_body_not_success "月度分析-月份格式非法被拒绝"
+  call GET "/api/v1/finance/monthly-analysis?month=${month}"
+  assert_body_not_success "月度分析-缺 projectId 被拒绝"
+}
+
 test_get_settlement_nonexistent() {
   log "▶ 测试：查询不存在的结算单"
   call GET "/api/v1/project-settlements/999999999"
@@ -423,6 +505,11 @@ main() {
   echo ""
   log "─── 项目结算汇总查询测试 ───"
   test_get_settlement_nonexistent
+
+  # --- 月度经营分析表（V2026_67，资金流转 §9：10 类×6 列）---
+  echo ""
+  log "─── 月度经营分析表测试 ───"
+  test_monthly_analysis
 
   # 日志核对
   echo ""

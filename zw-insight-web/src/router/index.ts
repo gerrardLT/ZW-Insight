@@ -431,6 +431,13 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '招待费分析', icon: 'DataAnalysis' }
       },
       {
+        // 月度经营分析表（资金流转 §9：10 类费用 × 6 列，项目管理层“最终只看一张表”）
+        path: 'monthly-analysis',
+        name: 'MonthlyOperationAnalysis',
+        component: () => import('@/views/finance/monthly-analysis/index.vue'),
+        meta: { title: '月度经营分析', icon: 'Tickets' }
+      },
+      {
         path: 'settlement/:id',
         name: 'SettlementDetail',
         component: () => import('@/views/finance/settlement/detail.vue'),

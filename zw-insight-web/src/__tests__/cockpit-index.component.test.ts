@@ -277,7 +277,8 @@ describe('cockpit/index.vue 经营驾驶舱首页（§4 四要素 / §14 筛选 
     vm.quickFilter = 'ALL'
     await vm.loadHealth()
     // ALL 等同不筛选：不传 quickFilter（后端对非法值报 400，避免误传）
-    const arg = mockHealth.mock.calls[0][0]
+    // mock 定义为无参函数，mock.calls 被推为 [] 元组，故经 any 取实参
+    const arg: any = (mockHealth as any).mock.calls[0]?.[0] || {}
     expect(arg.quickFilter).toBeUndefined()
     wrapper.unmount()
   })
