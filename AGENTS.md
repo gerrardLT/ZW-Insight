@@ -80,6 +80,7 @@ deploy/db-init/68_V2026_66__seed_cbs_entertainment.sql           # CBS 成本账
 - **依赖顺序**：按 Layer 0-14 从底层到顶层插入（基础数据→项目→投标→合同→预算→产值→材料→机械→劳务→分包→现场→财务→询价→消息→评价），覆盖 55+ 张业务表
 - **数据闭环**：4 个不同生命周期项目――`90001 滨江花园一期`（施工中，全模块）、`90002 城南市政道路改造`（已竣工，结算/质保金）、`90003 高新区产业园二期`（已报备，投标）、`90004 城北河道综合整治`（可结项，E2E 结项链路夹具）；金额按「合同→产值→开票→收款→预算→各支出合同→结算→付款」逻辑自洽
 - **累计值必须有单据支撑（2026-09-18 R7-03 修复后强制）**：合同的 `cumulative_*` 与项目的 `total_income`/`total_expense`/`cumulative_output` 不得凭空写数，必须与对应 APPROVED 单据的汇总相等（容差 0.01）。`52_V2026_50` 已把三个项目的缺口全部补齐；**新增种子数据时必须同步补单据**，否则 `keys/audit-data.ps1` 的 Section 3 会报 MISMATCH
+- **CBS 成本账户余额必须有流水支撑（2026-09-24 V2026_71 补全）**：`biz_cost_account` 的 `actual_amount`/`commitment_amount` 必须等于 `biz_cost_account_txn` 按 `(account_id, amount_type)` 的 `SUM(delta_amount)`。种子里只写账户余额不写流水会被 Section 3.6 判 FAIL；补流水时用 `source_type='SEED'` + `source_id='V2026_66:<账户id>'` 保留溯源，且**必须推演与 `CostRollUpTask` 的兼容性**（归集按 `delta = target − current` 记账，所以 `SEED + ROLLUP = target`，勾稽关系在归集前后恒成立）
 - **`total_expense` 口径（审批口径，非现金口径）**：**仅**由付款申请审批通过（`PaymentApplyService.onApproved`）与资金调拨回写，**不含** `biz_other_payment`（后者单列于 `total_other_payment`）。权威说明见 `SubcontractSettlementService` 的类内注释
   - ⚠️ **历史表述纠正（2026-09-23）**：旧文档称其为「付款口径（实际现金流出）」并不准确——`onApproved` 在**审批通过时点**即回写，与银行是否实际划款无关。真实现金流出由 `biz_payment_apply.pay_status`（V2026_56 引入）表达
 - **CBS 成本账户种子（`68_V2026_66`，2026-09-24）**：之前 `biz_cost_account`/`biz_project_wbs_node`/`biz_entertainment_detail` 均为 **0 行**（`31_V2026_26` 的成本账户挂在 `project_id=92001`，而真实演示项目是 90001-90004，故从未入库），导致成本中心、驾驶舱成本结构卡、招待费分析全空，且预计利润的 `costBasis` 恒为 `FALLBACK_TOTAL_EXPENSE`（“预计”退化为“已实现支出”）。本脚本按真实项目重建，口径约束：
@@ -139,7 +140,14 @@ bash keys/verify-seed.sh
 
 经 SSH 上传 `keys/audit-data-round7.sh` 到服务器执行，报告回落 `audit-reports/data-audit-round7-<ts>.md`。**全程只读**，脚本内置写操作关键字拦截。
 
-当前基线（2026-09-18 R7 修复后）：**PASS=65 FAIL=0 WARN=0 INFO=40**。
+当前基线（2026-09-24 V2026_71 后）：**PASS=67 FAIL=0 WARN=0 INFO=39**。
+
+> ❗ **补数据会让原本 SKIP 的检查项突然生效，从而改变基线 PASS 数**。2026-09-24 实例：
+> Section 3.6 的 CBS 勾稽在 `biz_cost_account` 为 0 行时走 `SKIP` 分支（计入 INFO 不计 PASS），
+> 所以长期表现为 PASS=65；V2026_66 补了 30 个成本账户后该检查首次真实执行，立即暴露
+> FAIL=2（账户写了 `actual_amount`/`commitment_amount` 却没写 `biz_cost_account_txn` 流水）。
+> 因此：**基线数字变动时先查「是新失败还是新生效」，不得直接改基线记录掩盖**；
+> 账户余额类字段属于「累计值」，同样适用下条的「必须有单据支撑」约束。
 
 > ⚠️ **改审计脚本时必须验证「FAIL 是否真的能触发」**。2026-09-18 发现 3.2 节用 `biz_machine_work_settlement.contract_id` 做 JOIN，而该表**根本没有 `contract_id` 列**——SQL 报错返回空被误判为「0/8 MISMATCH PASS」。这类**把报错当成零违规**的静默失败比漏检更危险。同类修正还有：5.4 节漏检 `biz_other_contract`（OTHER 类别付款是合法路径，会产生假 FAIL）、4.5 节「种子项目数」期望值 3 已过期（实为 4）。
 
@@ -371,6 +379,31 @@ AI 代理在开发、调试、评审过程中产生的临时产物必须遵循�
 3. **新增含 `project_id` 的表时，必须同步登记到所属模块的 Listener**，否则该表会成为新的孤儿源。表归属以 `information_schema` 实际列为准
 
 > 例外：仓库中确有「直接跨表 SQL 避免循环依赖」的惯例（见 `BizProjectMapper.countTenderRegisters` 注释）。该做法适用于**只读查询**；级联删除是**写命令**且各模块需处理自己的副作用，故用事件而非跨表 SQL。
+
+### 11. 部署：严禁在生产服务器上构建镜像
+
+服务器 `129.204.3.200` 只有 **4 核 / 7.6 GB 内存**，且不只跑本系统（同机还有 workfusion、
+zkiot-admin、unified-auth、influxdb 等），**没有能力同时承载镜像构建与生产服务**。
+
+2026-09-24 实测事故：原 `deploy/frontend/Dockerfile` 在服务器上做 `npm ci + vite build`，
+与在跑的生产容器争抢资源 → load average 冲到 **146**、sshd 无法完成 banner 交换、
+宿主机 nginx（80）与业务端口应用层全部超时，整机不可服务约 40 分钟，最终只能云重启。
+
+必须保持的约束：
+
+- 前端产物由 CI 的 **`frontend-build` job 在 runner 上构建**，以 `frontend-dist` artifact 传递；
+  `deploy/frontend/Dockerfile` 是**单阶段**，只 `COPY zw-insight-web/dist` 到 nginx
+- **`.dockerignore` 不得重新排除 `dist/`**——一旦加回，镜像构建会报
+  `COPY "/zw-insight-web/dist": not found`（rsync 传得上去也没用，build context 会过滤）
+- rsync 同步步骤不得加 `--exclude='**/dist/'`；rsync 后由
+  `Assert dist arrived on server` 硬断言兜底
+- `frontend-build` **不受 `fast_deploy` 豁免**：快速路径跳的是测试，dist 是部署必需产物
+- `download-artifact@v4` **会保留上传时的相对路径层级**，不得假设解压位置。现方案是先下到
+  `_frontend-dist-tmp/` 再探测 `index.html` 实际层级落位，改这里不要简化成直接下到目标路径
+- 部署顺序为 **build → stop → rm → up**（构建期旧容器继续服务）。在服务器不构建的前提下这是安全的；
+  若未来回到「服务器上构建」，必须先评估内存余量（可用 < 2 GB 时构建会拖垮整机）
+- 接管部署前**先确认远端是否仍有构建进程**（`ps -e | grep -cE 'node|vite'`）。CI 的 SSH 断开后
+  远端 heredoc bash **不会收到 SIGHUP 会继续跑完**，此时再手动起一份会叠加负载（2026-09-24 操作失误）
 
 ---
 

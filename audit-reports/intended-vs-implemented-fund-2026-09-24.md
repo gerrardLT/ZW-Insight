@@ -203,3 +203,71 @@
 5. **`actual_amount` 会被 `CostRollUpTask` 校正**：每日 02:30 按单据汇总做目标绝对值对账，
    种子写入的 initial 值若与单据口径有差异会被自动调整（设计行为）。部署后应比对
    校正前后差额并把校正值记为演示基线。
+
+---
+
+## 七·附：终期部署验证与部署链路根治（2026-09-24 完成）
+
+### 最终线上状态（全部为实测取证，非推断）
+
+| 验证项 | 结果 |
+|---|---|
+| 数据审计 | **PASS=67 FAIL=0 WARN=0 INFO=39**（基线 65 → 67，两项 CBS 勾稽真实通过） |
+| Flyway | V2026_65~**71** 全 `success=1`，失败记录 0 |
+| L3 risk | 80 通过 / 0 失败 / 1 SKIP（当月无利润快照，如实跳过） |
+| L3 finance | **82 通过 / 0 失败**（此前 80/2，两处已修） |
+| 部署后负载 | load 0.12、可用内存 4336 MB（事故时 load 146、可用 1.3 GB） |
+
+### V2026_71：修数据不修标尺
+
+`audit-data.ps1` 首次跑出 FAIL=2（CBS `actual_amount`/`commitment_amount` vs 流水汇总差 27/23 项）。
+根因是 V2026_66 种子直接写了账户累计值却没写 `biz_cost_account_txn` 流水，违反 AGENTS.md
+「累计值必须有单据支撑」。此前该检查因 CBS 0 账户一直走 SKIP 分支，补数据后才真实生效——
+**这是审计在工作，不是误报**。曾考虑放宽期望值，按 AGENTS.md 记录的 3.2 节事故教训
+（「把报错当成零违规的静默失败比漏检更危险」）予以否决，改为补流水。
+
+与 `CostRollUpTask` 的兼容性已推演：归集任务按 `delta = target − current` 记账并更新余额，故
+`SUM(txn) = SEED(初始) + ROLLUP(target−初始) = target = account.actual`，**归集前后勾稽恒成立**。
+事务内验证（`START TRANSACTION` → 执行 → 复算 → `ROLLBACK`）结果为 0/0 且回滚后表仍 0 行，
+ID 落 99701-99773，三项不变量（孤儿账户/幂等键重复/ID 冲突）全 0。
+
+### 部署链路根治（三次失败后才收敛）
+
+| 轮次 | 结果 | 根因 |
+|---|---|---|
+| run 35975640896 | Deploy 失败：`COPY "/zw-insight-web/dist": not found` | `.dockerignore` 仍排除 dist（原本为「服务器内 build」省 context） |
+| run 35977354762 | 同样报错 | **我的编辑遗漏**：首次 SearchReplace 为 partial success，含「Download frontend dist artifact」的替换被丢弃，第二次只补了 needs/if → deploy job 根本没下载 dist |
+| run 35979998063 | **Deploy 2m36s 成功** | 补下载步骤 + 探测 artifact 实际层级再落位 + rsync 后远端硬断言 |
+
+改造三处：① CI 新增 `frontend-build` job（runner 构建，实测 **47s~1m15s**，不受 `fast_deploy` 影响，
+因 dist 是部署必需产物）；② `deploy/frontend/Dockerfile` 由两阶段改单阶段只 `COPY`；
+③ `.dockerignore` 移除 dist 排除。
+
+**不假设 `upload-artifact@v4` 的路径结构**：先下载到 `_frontend-dist-tmp/`，探测 `index.html`
+实际层级（平铺 or 嵌套 `zw-insight-web/dist/`）再落位，两种可能都覆盖，定位失败即 `exit 1`
+并打印真实结构；rsync 之后另加「Assert dist arrived on server」硬断言，失败信息比 Docker 报错直白。
+
+### 两处需要记录的操作失误
+
+1. **deploy.yml「先 build 后 stop」判断失误**：为消除停机窗口调整顺序，代价是构建期旧容器仍在运行，
+   在 4 核 / 7.6 GB（可用仅 1.3 GB）的机器上与生产服务争抢资源，把整机压到应用层无响应约 40 分钟
+   （TCP 22/18080 可达但 sshd 与宿主机 nginx 均不响应），最终只能重启恢复。前两次构建快恰恰
+   是因为 stop 先释放了资源。现已从根上消除——服务器不再构建。
+2. **接管部署前未确认远端是否仍有构建进程**，手动 build 与残留进程叠加加剧负载。
+
+### 取证中纠正的一个长期误解
+
+`DEPLOY_DIR` 是 `/root/zw-insight`（secrets 未设时取 workflow 默认值），`/root/zwi-deploy`
+只是运维脚本目录；两者都有 `docker-compose.deploy.yml`，极易混淆（我一度把验证脚本的
+数据源路径搞错，靠 `find` 取证才纠正）。
+
+### 当前遗留（未修，如实记录）
+
+- **P2-4 单据穿透链未实施**（DrillDownService + 面包屑组件 + 三处接入）
+- **`UrgeScheduleTask.autoUrge` 租户上下文缺失**，自动催办从未生效；直接套 `TenantTaskRunner`
+  会造成跨租户错乱（`UrgeService` 的 TaskQuery 未加 `taskTenantId` 过滤），需先查
+  `ACT_RU_TASK.TENANT_ID_` 值域，风险高于收益故留待专项
+- **`overview` 首调 > 15s**（聚合 4 项目 × 多表 + JIT 未热）：性能待优化，非功能缺陷
+- **月度资金计划跨月失效**：`plan_year/plan_month` 取当月而 Flyway 只执行一次，属如实行为
+- **`actual_amount` 会被每日 02:30 归集校正**：本次部署后勾稽仍为 0/0，说明校正尚未发生或
+  差额为 0；持续演示时需按上表基线复核
