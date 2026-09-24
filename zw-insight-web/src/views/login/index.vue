@@ -13,19 +13,12 @@
       preload="metadata"
       @play="onBgPlay"
     ></video>
-    <!-- CAD HUD：全屏框线 + 四角标 + 等宽读数（品牌识别层） -->
-    <div class="hud-frame" aria-hidden="true">
-      <i class="hud-corner tl"></i><i class="hud-corner tr"></i><i class="hud-corner bl"></i><i class="hud-corner br"></i>
-      <span class="hud-readout hud-tl">ZW-INSIGHT // ACCESS</span>
-      <span class="hud-readout hud-br">SYS.STATUS · ONLINE</span>
-    </div>
     <!-- 左侧品牌文案（浮于背景视频之上） -->
     <div class="login-brand-content">
       <div class="brand-logo">
         <img class="brand-logo-icon" src="@/assets/logo-light.png" alt="中维智营" />
         <span class="brand-logo-text">中维智营</span>
       </div>
-      <i class="brand-slash"></i>
       <div class="brand-eyebrow">Project Management Platform</div>
       <h1 class="brand-slogan">工程项目全生命周期<br />智能管理平台</h1>
       <p class="brand-desc">涵盖项目、合同、预算、财务、材料、机械、劳务、分包全流程协同，让工程管理更高效。</p>
@@ -37,11 +30,9 @@
     </div>
     <div class="login-form-area">
       <div class="login-box">
-        <i class="plate-corner tl"></i><i class="plate-corner tr"></i><i class="plate-corner bl"></i><i class="plate-corner br"></i>
-        <div class="plate-head"><span>NO.2026-ZW</span><span>ACCESS TERMINAL</span></div>
         <div class="login-header">
           <h2 class="login-title">{{ loginMode === 'password' ? '欢迎回来' : '快捷登录' }}</h2>
-          <p class="login-subtitle">{{ loginMode === 'password' ? '请登录您的账户以继续' : '使用手机短信验证码快速登录' }}</p>
+          <p class="login-subtitle">{{ loginMode === 'password' ? '登录账户，继续您的工程项目管理' : '输入手机号，验证码一键登录' }}</p>
         </div>
 
         <!-- 登录方式切换：密码 / 短信验证码（对齐移动端双 Tab 范式，沿用工业精密设计语言） -->
@@ -61,17 +52,15 @@
             role="tab"
             :aria-selected="loginMode === 'sms'"
             @click="switchMode('sms')"
-          >短信验证码登录</button>
+          >短信登录</button>
         </div>
 
         <!-- 密码登录表单 -->
         <el-form v-show="loginMode === 'password'" :model="loginForm" :rules="rules" ref="formRef" size="large">
           <el-form-item prop="username">
-            <span class="field-tag"><i>01</i>USERNAME / 用户名</span>
             <el-input v-model="loginForm.username" placeholder="请输入用户名" prefix-icon="User" />
           </el-form-item>
           <el-form-item prop="password">
-            <span class="field-tag"><i>02</i>PASSWORD / 密码</span>
             <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
           </el-form-item>
           <el-form-item prop="slider">
@@ -79,7 +68,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="loading" class="login-btn" @click="handleLogin">
-              登 录
+              进入系统
             </el-button>
           </el-form-item>
           <div class="login-extra">
@@ -90,11 +79,9 @@
         <!-- 短信验证码登录表单（后端 AuthService#loginBySms 已就绪，按手机号定位用户与租户） -->
         <el-form v-show="loginMode === 'sms'" :model="smsForm" :rules="smsRules" ref="smsFormRef" size="large">
           <el-form-item prop="phone">
-            <span class="field-tag"><i>01</i>PHONE / 手机号</span>
             <el-input v-model="smsForm.phone" placeholder="请输入手机号" prefix-icon="Iphone" maxlength="11" clearable @keyup.enter="handleSmsLogin" />
           </el-form-item>
           <el-form-item prop="smsCode">
-            <span class="field-tag"><i>02</i>CODE / 验证码</span>
             <div class="captcha-row">
               <el-input v-model="smsForm.smsCode" placeholder="验证码" prefix-icon="Key" maxlength="6" @keyup.enter="handleSmsLogin" />
               <button
@@ -107,7 +94,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="loading" class="login-btn" @click="handleSmsLogin">
-              登 录
+              进入系统
             </el-button>
           </el-form-item>
         </el-form>
@@ -583,78 +570,42 @@ function goForgotPassword() {
     padding: var(--zw-space-xl);
   }
 }
-/* ===== 工业铭牌 / CAD HUD 识别层（覆盖通用样式，建立品牌记忆点） ===== */
-/* 全屏 HUD：细框 + 四角标 + 等宽读数 */
-.hud-frame { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-.hud-frame::before { content: ''; position: absolute; inset: 1.25rem; border: 1px solid color-mix(in srgb, var(--zw-brand) 20%, transparent); }
-.hud-corner { position: absolute; width: 1.1rem; height: 1.1rem; border: 2px solid var(--zw-brand); }
-.hud-corner.tl { top: 1.25rem; left: 1.25rem; border-right: 0; border-bottom: 0; }
-.hud-corner.tr { top: 1.25rem; right: 1.25rem; border-left: 0; border-bottom: 0; }
-.hud-corner.bl { bottom: 1.25rem; left: 1.25rem; border-right: 0; border-top: 0; }
-.hud-corner.br { bottom: 1.25rem; right: 1.25rem; border-left: 0; border-top: 0; }
-.hud-readout { position: absolute; font-family: Consolas, 'SFMono-Regular', Menlo, monospace; font-size: var(--zw-font-size-xs); letter-spacing: .18em; color: color-mix(in srgb, var(--zw-brand) 82%, var(--zw-steel-text)); }
-.hud-readout.hud-tl { top: 2rem; left: 3rem; }
-.hud-readout.hud-br { bottom: 2rem; right: 3rem; }
-
-/* 左侧品牌：橙色斜切签名 */
-.brand-slash { display: block; width: 3.5rem; height: .35rem; background: var(--zw-brand); transform: skewX(-20deg); margin-bottom: var(--zw-space-md); }
-.brand-eyebrow { font-family: Consolas, 'SFMono-Regular', Menlo, monospace; }
-
-/* 铭牌卡：深色金属 + 切角 + 橙边 + 四角 bracket */
-.login-box {
-  position: relative;
-  background: color-mix(in srgb, var(--zw-bg-sidebar) 84%, transparent);
-  backdrop-filter: blur(14px);
-  border: 1px solid color-mix(in srgb, var(--zw-brand) 35%, transparent);
-  border-radius: 0;
-  clip-path: polygon(0 0, calc(100% - 1.5rem) 0, 100% 1.5rem, 100% 100%, 0 100%);
-  box-shadow: 0 24px 64px color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent);
-  color: var(--zw-steel-text);
+/* ===== 细节打磨：微动效 / 字阶层级 / 入场动画（克制，不改整体结构） ===== */
+/* 入场：品牌文案与登录卡错峰上浮 */
+@keyframes rise-in { from { opacity: 0; transform: translateY(.75rem); } to { opacity: 1; transform: translateY(0); } }
+.login-brand-content > * { animation: rise-in .6s cubic-bezier(.22, .61, .36, 1) both; }
+.login-brand-content > *:nth-child(1) { animation-delay: .05s; }
+.login-brand-content > *:nth-child(2) { animation-delay: .12s; }
+.login-brand-content > *:nth-child(3) { animation-delay: .19s; }
+.login-brand-content > *:nth-child(4) { animation-delay: .26s; }
+.login-brand-content > *:nth-child(5) { animation-delay: .33s; }
+.login-box { position: relative; animation: rise-in .6s .18s cubic-bezier(.22, .61, .36, 1) both; }
+.login-copyright { animation: rise-in .6s .4s cubic-bezier(.22, .61, .36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .login-brand-content > *, .login-box, .login-copyright { animation: none; }
 }
-.plate-corner { position: absolute; width: .85rem; height: .85rem; border: 2px solid var(--zw-brand); pointer-events: none; }
-.plate-corner.tl { top: .4rem; left: .4rem; border-right: 0; border-bottom: 0; }
-.plate-corner.tr { top: .4rem; right: .4rem; border-left: 0; border-bottom: 0; }
-.plate-corner.bl { bottom: .4rem; left: .4rem; border-right: 0; border-top: 0; }
-.plate-corner.br { bottom: .4rem; right: .4rem; border-left: 0; border-top: 0; }
-.plate-head {
-  display: flex; justify-content: space-between; align-items: center;
-  margin: calc(var(--zw-space-xl) * -1) calc(var(--zw-space-lg) * -1) var(--zw-space-md);
-  padding: var(--zw-space-sm) var(--zw-space-md);
-  background: color-mix(in srgb, var(--zw-brand) 10%, transparent);
-  border-bottom: 1px dashed color-mix(in srgb, var(--zw-brand) 45%, transparent);
-  font-family: Consolas, 'SFMono-Regular', Menlo, monospace;
-  font-size: var(--zw-font-size-xs); letter-spacing: .16em;
-  color: color-mix(in srgb, var(--zw-brand) 85%, var(--zw-steel-text));
-}
-.login-title { color: var(--zw-steel-text); }
-.login-subtitle { color: var(--zw-steel-text-muted); }
 
-/* 等宽编号字段标签 */
-.field-tag { display: flex; align-items: center; gap: var(--zw-space-sm); font-family: Consolas, 'SFMono-Regular', Menlo, monospace; font-size: var(--zw-font-size-xs); letter-spacing: .16em; color: var(--zw-steel-text-muted); margin-bottom: var(--zw-space-sm); }
-.field-tag i { font-style: normal; color: var(--zw-brand); }
+/* 字阶层级：标题更挺、副标题更轻、眉标更疏、描述更松 */
+.login-title { letter-spacing: .01em; }
+.login-subtitle { font-size: var(--zw-font-size-sm); color: var(--zw-text-tertiary); }
+.brand-eyebrow { letter-spacing: .3em; }
+.brand-slogan { letter-spacing: .02em; }
+.brand-desc { line-height: 1.8; }
+.login-copyright { letter-spacing: .04em; }
 
-/* 输入框：深色下划线 + 橙色 focus 扫光 */
-.login-box :deep(.el-input__wrapper) { background: transparent; box-shadow: none; border-radius: 0; border-bottom: 1px solid color-mix(in srgb, var(--zw-steel-line) 65%, transparent); transition: border-color var(--zw-duration-fast), box-shadow var(--zw-duration-fast); }
-.login-box :deep(.el-input__wrapper.is-focus), .login-box :deep(.el-input__wrapper:focus-within) { border-bottom-color: var(--zw-brand); box-shadow: 0 1px 0 0 var(--zw-brand); }
-.login-box :deep(.el-input__inner) { color: var(--zw-steel-text); }
-.login-box :deep(.el-input__inner::placeholder) { color: var(--zw-steel-text-muted); }
-.login-box :deep(.el-input__prefix) { color: var(--zw-brand); }
+/* 卡片顶部一条极细品牌渐变线（克制签名） */
+.login-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: var(--zw-radius-xl) var(--zw-radius-xl) 0 0; background: linear-gradient(90deg, var(--zw-brand), color-mix(in srgb, var(--zw-brand) 0%, transparent)); }
 
-/* 工业分段 Tab */
-.login-tabs { background: color-mix(in srgb, var(--zw-bg-sidebar) 60%, transparent); border: 1px solid color-mix(in srgb, var(--zw-steel-line) 50%, transparent); border-radius: 0; }
-.login-tab { color: var(--zw-steel-text-muted); border-radius: 0; }
-.login-tab.active { background: var(--zw-brand); color: var(--zw-text-inverse); }
+/* 微交互：按钮悬浮轻抬、Tab 悬浮变色、特性图标底座微亮 */
+.login-btn { transition: transform var(--zw-duration-fast), box-shadow var(--zw-duration-fast); }
+.login-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, var(--zw-brand) 35%, transparent); }
+.login-btn:active { transform: translateY(0); }
+.login-tab { transition: color var(--zw-duration-fast), background var(--zw-duration-fast); }
+.login-tab:hover:not(.active) { color: var(--zw-brand); }
+.feature-icon-base { transition: background var(--zw-duration-fast); }
+.feature-item:hover .feature-icon-base { background: color-mix(in srgb, var(--zw-brand) 22%, transparent); }
 
-/* 钢印橙 CTA + 斜纹 */
-.login-btn { position: relative; overflow: hidden; background: var(--zw-brand); border-radius: 0; letter-spacing: .3em; font-weight: 700; }
-.login-btn::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, transparent 0 .5rem, color-mix(in srgb, var(--zw-text-inverse) 12%, transparent) .5rem .62rem); pointer-events: none; }
-
-/* 短信按钮 / 滑块 / 链接 适配深色铭牌 */
-.sms-code-btn { background: transparent; border: 1px solid color-mix(in srgb, var(--zw-brand) 45%, transparent); color: var(--zw-brand); border-radius: 0; }
-.login-extra :deep(.el-link) { color: var(--zw-brand); }
-.login-box :deep(.slider-captcha .track) { background: color-mix(in srgb, var(--zw-bg-sidebar) 55%, transparent); border-color: color-mix(in srgb, var(--zw-steel-line) 60%, transparent); }
-.login-box :deep(.slider-captcha .handle) { background: var(--zw-brand); color: var(--zw-text-inverse); border-color: var(--zw-brand); }
-.login-box :deep(.slider-captcha .hint) { color: var(--zw-steel-text-muted); }
-.login-box :deep(.slider-captcha .refresh) { background: transparent; border-color: color-mix(in srgb, var(--zw-steel-line) 60%, transparent); color: var(--zw-steel-text-muted); }
-.login-copyright { color: var(--zw-steel-text-muted); }
+/* 输入焦点：前缀图标点亮 */
+.login-box :deep(.el-input__prefix) { transition: color var(--zw-duration-fast); }
+.login-box :deep(.el-input__wrapper:focus-within .el-input__prefix), .login-box :deep(.el-input__wrapper.is-focus .el-input__prefix) { color: var(--zw-brand); }
 </style>
