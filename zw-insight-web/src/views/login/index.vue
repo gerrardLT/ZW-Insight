@@ -60,6 +60,9 @@
           <el-form-item prop="password">
             <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
           </el-form-item>
+          <el-form-item prop="slider">
+            <SliderCaptcha ref="sliderRef" @success="onSliderSuccess" @fail="onSliderFail" />
+          </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="loading" class="login-btn" @click="handleLogin">
               <span class="btn-label">进入系统</span>
