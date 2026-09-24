@@ -1,6 +1,7 @@
 package com.zwinsight.finance.task;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.finance.domain.BizReceivable;
@@ -176,7 +177,9 @@ public class ReceivableOverdueTask {
                 projectName, balance.toPlainString(), record.getDueDate(),
                 overdueDays > 0 ? "已逾期 " + overdueDays + " 天" : "即将到期");
         for (Long managerId : managerIds) {
-            eventPublisher.publishEvent(new UrgeNotifyEvent(this, managerId, title, content, null, null));
+            // 逐租户任务：事件携带租户供 @Async 监听器恢复上下文（否则站内消息从未落库）
+            eventPublisher.publishEvent(new UrgeNotifyEvent(this, managerId, title, content,
+                    null, null, SecurityContextHolder.getTenantId()));
         }
         return true;
     }

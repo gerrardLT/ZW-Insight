@@ -1,6 +1,7 @@
 package com.zwinsight.finance.task;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.contract.domain.BizConstructionContract;
@@ -259,7 +260,9 @@ public class RetentionWarningTask {
                 return false;
             }
             for (Long managerId : managerIds) {
-                eventPublisher.publishEvent(new UrgeNotifyEvent(this, managerId, title, content, null, null));
+                // 逐租户任务：上下文已由 TenantTaskRunner 设置，事件携带租户供 @Async 监听器恢复
+                eventPublisher.publishEvent(new UrgeNotifyEvent(this, managerId, title, content,
+                        null, null, SecurityContextHolder.getTenantId()));
             }
             log.info("质保金预警站内信已发出, retentionId={}, level={}, 收件人数={}",
                     record.getId(), level, managerIds.size());

@@ -186,6 +186,9 @@
 
 ### 7.5 已知待办（如实记录，未修复）
 
+> **2026-09-25 更新**：下列第 2、3、4 项已在后续专项中修复/处置（见文末
+> 「七·附三」），第 1 项（P2-4）已在第五期实施，第 5 项不变。
+
 1. ~~**P2-4 单据穿透链未实施**~~ → **已于第五期实施**（见下方「七·附二 P2-4 实施记录」）。
    原因：本轮上下文预算不足以同时保证实现、测试与提交质量，为避免留下半成品而暂缓。
 2. **`UrgeScheduleTask.autoUrge` 每 30 分钟抛异常**（线上日志实证）：
@@ -323,3 +326,57 @@ ID 落 99701-99773，三项不变量（孤儿账户/幂等键重复/ID 冲突）
   stylelint / vite build 通过。测试实证一个响应性陷阱：`reactive` 数组内闭包持有原始
   对象引用时 fetch 赋值不触发渲染，改为经代理（self 参数）写入后修复
 - 无 Flyway/库表变更 → 审计基线 PASS=67 不受影响（未动任何累计值字段）
+
+---
+
+## 七·附三：遗留三项专项处置（2026-09-25）
+
+### 1. UrgeScheduleTask.autoUrge 租户上下文缺失（修复，含同根因的第二处缺陷）
+
+**前置取证（只读）**：`ACT_RU_TASK.TENANT_ID_` 全库单值域 '1'（160 行，无 NULL/空），
+流程发起已经 `startProcessInstanceByKeyAndTenantId` 写入租户 → `taskTenantId` 过滤
+可安全启用，不存在历史数据筛不出的问题；存量超 24h 且带 assignee 的待办 154 条
+全部属于 admin 账号（E2E/演示残留，生效首轮会一次性命中，每任务封顶 3 次、
+间隔 4h；企微推送 `wework.robot.enabled=false` 不受扰）。
+
+**修复中另发现同根因第二处缺陷（取证 wf_urge_record 时暴露）**：
+`UrgeNotifyEventListener` 是 `@Async`，ThreadLocal 租户上下文不随异步线程继承，
+而 `msg_message` 插入含 tenantId 字段被写防护拒绝且异常被监听器 catch 吞掉 ——
+**含手动催办在内的全部催办站内消息（及质保金预警/应收逾期/开票驳回通知等
+6 处共用该事件的通知）从未真正落库**。线上证据：近 24h 「催办通知推送失败」需
+结合 DB 侧 msg_message 无 URGE 记录交叉印证。
+
+变更：
+- `UrgeScheduleTask`：套 `TenantTaskRunner` 逐租户执行，不吞异常（RiskScanTask 同模式）
+- `UrgeService.autoUrge(tenantId)`：TaskQuery 加 `taskTenantId` 过滤，封死
+  「租户 A 上下文处理租户 B 任务并把 wf_urge_record 写成 A」的错乱路径；
+  manualUrge 无租户上下文直接拒绝（不伪造）
+- `UrgeNotifyEvent` 新增 tenantId 字段（zw-common Published Language）；
+  监听器据事件设置异步线程上下文 + finally 清理；全部 6 处发布方同步传入
+  （回滚超时告警在 @Async 链无上下文 → 传 null，监听器 ERROR 拒落幽灵租户，
+  log.error 管理员告警仍保底，不丢信号）
+- 测试：UrgeServiceTest 10/10（含 taskTenantId 硬断言 + 事件租户捕获）；
+  受影响 5 模块（workflow/message/finance/contract/dashboard）全量测试 BUILD SUCCESS
+
+### 2. overview 首调 > 15s（诊断后定位为冷启动，非结构慢查询）
+
+**实测（服务运行 30 分钟后）**：overview 稳态仅 **0.15~0.3s**（四轮 0.30/0.21/0.15/0.16s），
+各子端点 0.03~0.15s → 「首调 >15s」全部集中在重启后第一次请求（JIT 未编译热点路径 +
+HikariCP 建连 + MyBatis 映射缓存冷启动）。**修复：`CockpitWarmupListener`**
+（ApplicationReadyEvent 后逐租户异步预热 getOverview + getProjectHealth 真实查询链，
+结果不落库不缓存，失败仅 WARN 不阻断启动）；含单测 2 例（预热链路调用 + 异常不传播）。
+
+### 3. 月度资金计划跨月失效（处置：权威补齐工具，不改定时任务）
+
+保持「如实行为」判定不变（生产计划由人编制，自动复制上月计划=伪造编制值，
+否决自动结转）。新增幂等运维脚本 `keys/reseed-monthly-plan.sh`：把演示计划
+99661（项目 90001）/99662（公司级）拨到当前年月并补行（金额不动，预警对局
+保持），`--show` 可只读查看；跨月后持续演示时执行一次即恢复第 8 类「超月度限额」
+判定。
+
+### 验证计划（部署后取证）
+
+- 催办：重启后 initialDelay 60s 即首扫 → 查 `wf_urge_record` 当日新增 >0、
+  `msg_message` 出现 URGE 站内信、日志无「自动催办扫描异常」
+- 预热：启动日志「驾驶舱预热完成，耗时=」；紧接首调 overview 应 < 2s
+- 回归：test-api-risk 80/0/1、finance 82/0 基线不变（未动其接口/表）

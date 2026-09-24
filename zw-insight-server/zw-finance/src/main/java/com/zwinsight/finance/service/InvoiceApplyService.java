@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.E2eTestGuard;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizConstructionContract;
@@ -241,7 +242,8 @@ public class InvoiceApplyService {
             return;
         }
         try {
-            eventPublisher.publishEvent(new UrgeNotifyEvent(this, userId, title, content, workflowInstanceId, null));
+            eventPublisher.publishEvent(new UrgeNotifyEvent(this, userId, title, content,
+                    workflowInstanceId, null, SecurityContextHolder.getTenantId()));
         } catch (Exception e) {
             log.error("发送开票申请通知失败, workflowInstanceId={}", workflowInstanceId, e);
         }

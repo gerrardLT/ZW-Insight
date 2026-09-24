@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.E2eTestGuard;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
@@ -504,7 +505,9 @@ public class PaymentApplyService {
             return;
         }
         try {
-            eventPublisher.publishEvent(new UrgeNotifyEvent(this, userId, title, content, workflowInstanceId, null));
+            // 事件携带当前租户：催办监听器为 @Async，不传则站内消息被写防护拒绝
+            eventPublisher.publishEvent(new UrgeNotifyEvent(this, userId, title, content,
+                    workflowInstanceId, null, SecurityContextHolder.getTenantId()));
         } catch (Exception e) {
             log.error("发送付款申请通知失败, workflowInstanceId={}", workflowInstanceId, e);
         }

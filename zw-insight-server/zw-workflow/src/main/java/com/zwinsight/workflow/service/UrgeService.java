@@ -1,6 +1,7 @@
 package com.zwinsight.workflow.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.workflow.domain.WfUrgeConfig;
@@ -44,18 +45,25 @@ public class UrgeService {
     private static final int DEFAULT_MAX_URGE_COUNT = 3;
 
     /**
-     * 自动催办 - 被定时任务调用
-     * 扫描所有超时未处理的待办任务，按配置进行催办
+     * 自动催办 - 被定时任务逐租户调用（租户上下文已由 TenantTaskRunner 设置）
+     * 扫描<b>本租户</b>超时未处理的待办任务，按配置进行催办
+     * <p><b>taskTenantId 过滤（2026-09-25 修复）</b>：Flowable 的 TaskQuery 不经
+     * MyBatis 租户拦截器，无过滤时会在租户 A 上下文处理租户 B 的任务并把
+     * wf_urge_record 写成 A 的 tenant_id（跨租户错乱）。流程发起时已经
+     * {@code startProcessInstanceByKeyAndTenantId} 写入 TENANT_ID_（线上实证
+     * ACT_RU_TASK.TENANT_ID_ 值域干净），此处显式按租户过滤。
+     * 催办通知异常<b>直接传播</b>，由 TenantTaskRunner 计入租户级失败（不吞异常）。</p>
      *
+     * @param tenantId 当前租户ID（上下文已由调用方设置，INSERT 填充依此生效）
      * @return 本次催办的任务数
      */
     @Transactional(rollbackFor = Exception.class)
-    public int autoUrge() {
+    public int autoUrge(Long tenantId) {
         WfUrgeConfig config = getEffectiveConfig();
 
         // 自动催办未启用
         if (config.getAutoUrgeEnabled() == null || config.getAutoUrgeEnabled() != 1) {
-            log.debug("自动催办未启用，跳过扫描");
+            log.debug("自动催办未启用，跳过扫描, tenantId={}", tenantId);
             return 0;
         }
 
@@ -67,8 +75,9 @@ public class UrgeService {
         LocalDateTime thresholdTime = LocalDateTime.now().minusHours(timeoutHours);
         Date thresholdDate = Date.from(thresholdTime.atZone(ZoneId.systemDefault()).toInstant());
 
-        // 查询所有创建时间早于阈值的待办任务
+        // 查询本租户创建时间早于阈值的待办任务（租户隔离由 taskTenantId 保证）
         List<Task> overdueTasks = taskService.createTaskQuery()
+                .taskTenantId(String.valueOf(tenantId))
                 .taskCreatedBefore(thresholdDate)
                 .list();
 
@@ -91,8 +100,8 @@ public class UrgeService {
                 continue;
             }
 
-            // 执行催办
-            doUrge(task, "SYSTEM", "AUTO", buildAutoUrgeMessage(task));
+            // 执行催办（事件携带租户，供 @Async 监听器恢复上下文）
+            doUrge(task, "SYSTEM", "AUTO", buildAutoUrgeMessage(task), tenantId);
             urgedCount++;
         }
 
@@ -138,9 +147,13 @@ public class UrgeService {
             throw new BusinessException("催办间隔不足，请稍后再试");
         }
 
-        // 执行催办
+        // 执行催办（手动催办在 HTTP 线程，取当前登录上下文租户；缺失即拒绝，不伪造）
+        Long tenantId = SecurityContextHolder.getTenantId();
+        if (tenantId == null) {
+            throw new BusinessException("租户上下文缺失，无法催办（防止站内消息落入幽灵租户）");
+        }
         String message = "您有一条待办任务【" + task.getName() + "】需要尽快处理，发起人正在催办。";
-        doUrge(task, urgeBy, "MANUAL", message);
+        doUrge(task, urgeBy, "MANUAL", message, tenantId);
 
         log.info("手动催办成功, taskId={}, urgeBy={}, assignee={}", taskId, urgeBy, task.getAssignee());
     }
@@ -155,9 +168,10 @@ public class UrgeService {
     // ===== 私有方法 =====
 
     /**
-     * 执行催办动作：记录 + 发送通知事件
+     * 执行催办动作：记录 + 发送通知事件（事件必须携带租户ID：
+     * 监听器 @Async 不继承 ThreadLocal 上下文，站内消息插入需租户填充）
      */
-    private void doUrge(Task task, String urgeBy, String urgeType, String message) {
+    private void doUrge(Task task, String urgeBy, String urgeType, String message, Long tenantId) {
         // 保存催办记录
         WfUrgeRecord record = new WfUrgeRecord();
         record.setProcessInstanceId(task.getProcessInstanceId());
@@ -170,12 +184,12 @@ public class UrgeService {
         record.setUrgeTime(LocalDateTime.now());
         urgeRecordMapper.insert(record);
 
-        // 发布催办通知事件（由 message 模块监听处理）
+        // 发布催办通知事件（由 message 模块监听处理），携带租户供异步侧恢复上下文
         Long targetUserId = Long.parseLong(task.getAssignee());
         String title = "【催办通知】" + task.getName();
         UrgeNotifyEvent event = new UrgeNotifyEvent(
                 this, targetUserId, title, message,
-                task.getProcessInstanceId(), task.getId()
+                task.getProcessInstanceId(), task.getId(), tenantId
         );
         eventPublisher.publishEvent(event);
 

@@ -270,8 +270,11 @@ public class ApprovalRollbackServiceImpl implements ApprovalRollbackService {
         String content = String.format("业务类型: %s\n业务ID: %d\n流程实例: %s\n错误原因: %s\n请及时处理！",
                 bizType, bizId, workflowInstanceId, errorMsg);
         try {
+            // 事件携带当前线程租户（回滚链路多为 @Async 无上下文 → null，监听器会记 ERROR
+            // 拒落幽灵租户；上面的 log.error 管理员告警仍保底送达，不丢信号）
             com.zwinsight.common.event.UrgeNotifyEvent notifyEvent = new com.zwinsight.common.event.UrgeNotifyEvent(
-                    this, 1L, title, content, workflowInstanceId, null);
+                    this, 1L, title, content, workflowInstanceId, null,
+                    com.zwinsight.common.config.SecurityContextHolder.getTenantId());
             eventPublisher.publishEvent(notifyEvent);
             log.info("回滚超时告警已发送站内通知: workflowInstanceId={}", workflowInstanceId);
         } catch (Exception e) {

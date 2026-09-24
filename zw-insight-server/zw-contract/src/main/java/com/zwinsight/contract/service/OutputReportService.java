@@ -3,6 +3,7 @@ package com.zwinsight.contract.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.util.E2eTestGuard;
@@ -245,8 +246,10 @@ public class OutputReportService {
             return;
         }
         try {
+            // 事件携带当前租户：催办监听器为 @Async，不传则站内消息被写防护拒绝
             eventPublisher.publishEvent(new UrgeNotifyEvent(
-                    this, report.getCreatedBy(), title, content, report.getWorkflowInstanceId(), null));
+                    this, report.getCreatedBy(), title, content, report.getWorkflowInstanceId(), null,
+                    SecurityContextHolder.getTenantId()));
         } catch (Exception e) {
             log.error("发送产值上报通知失败, reportId={}", report.getId(), e);
         }
