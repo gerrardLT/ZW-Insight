@@ -69,6 +69,7 @@ deploy/db-init/31_V2026_26__seed_demo_data.sql                   # 种子主文�
 deploy/db-init/44_V2026_42__seed_negative_profit_settlement.sql  # 负利润结算单 99361（项目 90002）
 deploy/db-init/45_V2026_43__seed_closeable_project.sql           # 可结项项目 90004 + 结算单 93302
 deploy/db-init/52_V2026_50__seed_reconcile_documents.sql         # 勾稽补齐：使累计值 = 单据汇总
+deploy/db-init/68_V2026_66__seed_cbs_entertainment.sql           # CBS 成本账户/WBS/间接费子类字典/招待费报销链路/月度资金计划（2026-09-24）
 ```
 
 ### 设计要点
@@ -81,6 +82,22 @@ deploy/db-init/52_V2026_50__seed_reconcile_documents.sql         # 勾稽补齐�
 - **累计值必须有单据支撑（2026-09-18 R7-03 修复后强制）**：合同的 `cumulative_*` 与项目的 `total_income`/`total_expense`/`cumulative_output` 不得凭空写数，必须与对应 APPROVED 单据的汇总相等（容差 0.01）。`52_V2026_50` 已把三个项目的缺口全部补齐；**新增种子数据时必须同步补单据**，否则 `keys/audit-data.ps1` 的 Section 3 会报 MISMATCH
 - **`total_expense` 口径（审批口径，非现金口径）**：**仅**由付款申请审批通过（`PaymentApplyService.onApproved`）与资金调拨回写，**不含** `biz_other_payment`（后者单列于 `total_other_payment`）。权威说明见 `SubcontractSettlementService` 的类内注释
   - ⚠️ **历史表述纠正（2026-09-23）**：旧文档称其为「付款口径（实际现金流出）」并不准确——`onApproved` 在**审批通过时点**即回写，与银行是否实际划款无关。真实现金流出由 `biz_payment_apply.pay_status`（V2026_56 引入）表达
+- **CBS 成本账户种子（`68_V2026_66`，2026-09-24）**：之前 `biz_cost_account`/`biz_project_wbs_node`/`biz_entertainment_detail` 均为 **0 行**（`31_V2026_26` 的成本账户挂在 `project_id=92001`，而真实演示项目是 90001-90004，故从未入库），导致成本中心、驾驶舱成本结构卡、招待费分析全空，且预计利润的 `costBasis` 恒为 `FALLBACK_TOTAL_EXPENSE`（“预计”退化为“已实现支出”）。本脚本按真实项目重建，口径约束：
+  - `Σ baseline_amount` = 项目 `budget_amount`（90001=4500万 / 90002=3000万 / 90004=1000万；90003 已报备未开工故不建 CBS）
+  - `Σ actual_amount` **按类别逐一等于五类支出合同的 `cumulative_settlement`**（已线上事务内验证：90001 材料 1200万/人工 500万/机械 300万/分包 400万/其他 30万）；间接费部分来自报销单据
+  - `actual_amount`/`commitment_amount` **会被 `CostRollUpTask`（每日 02:30）按单据汇总做目标绝对值对账而自动校正**（`CostRollUpService.syncAccount`，幂等键 `ROLLUP:{accountId}:{amountType}:{from}->{to}`）；`baseline`/`current`/`forecast` 属人工编制值不被改
+  - 招待费链路覆盖近 4 个月（当月/上月/上上月/3月前），按 §11 逐类布置异常样本（单笔超限/无发票/无事由/无事前审批/同人同日/同人高频/超月度限额），使八类预警均有真实命中数据；当月招待费计划限额 8000 元 vs 实际 13100 元→第 8 类预警可验
+  - 本脚本**不触碰** `biz_project.total_*` / 合同 `cumulative_*` / 付款申请，故 R7 审计基线 PASS=65 不受影响；上线前已用 `START TRANSACTION` + `ROLLBACK` 做**零副作用验证**：
+
+    ```bash
+    # 先上传种子与校验脚本，再在事务内执行并回滚（不写库）
+    scp -i keys/zwinsight.pem zw-insight-server/zw-app/src/main/resources/db/migration/V2026_66__seed_cbs_entertainment.sql \
+         keys/verify-seed-cbs.sh keys/verify-seed-cbs-checks.sql root@<server>:/root/zwi-deploy/
+    ssh -i keys/zwinsight.pem root@<server> "bash /root/zwi-deploy/verify-seed-cbs.sh"
+    ```
+
+    校验项（`verify-seed-cbs-checks.sql`）10 组：各表新增行数、审计 Section 2 的四项不变量（孤儿 parent/孤儿 wbs/编码重复/负值均须为 0）、Σbaseline 与 budget_amount 对齐、CBS actual 按类别 vs 五类合同结算、七类归类分布、招待费月度趋势与当月限额、八类预警样本命中数、主表金额=明细合计、科目修复结果、专项记录无孤儿；末尾 `ROLLBACK` 并事务外复核各表仍为 0 行。**任何种子脚本上线前都应跑一次这类事务内验证**（Flyway 语法错会直接导致应用启动失败）
+  - ⚠ 月度资金计划用 `YEAR/MONTH(CURDATE())` 动态取当月，而 Flyway 只执行一次：**跨月后第 8 类预警会因“无当月计划”而不判定**（这是如实行为，非缺陷）；需持续演示时手工补当月计划
 - **双口径不得混用（2026-09-23 资金闭环改造后强制）**：
   | 口径 | 字段 | 语义 | 消费方 |
   |---|---|---|---|
