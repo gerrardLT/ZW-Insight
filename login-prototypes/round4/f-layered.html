@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>方向F · 层叠深度 Layered</title>
+<style>
+  :root { --orange:#ff6b00; --sans:"Source Han Sans SC","PingFang SC",sans-serif; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; }
+  body { font-family:var(--sans); overflow:hidden; position:relative; }
+  .bg { position:absolute; inset:0; background:url("../../zw-insight-web/src/assets/login-bg-poster.jpg") center/cover no-repeat #0e1116; }
+  .scrim { position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,12,14,.6), rgba(10,12,14,.2) 50%, rgba(10,12,14,.5)); }
+  .wrap { position:relative; height:100%; display:flex; align-items:center; justify-content:space-between; padding:0 7vw; }
+  .left { color:#f2f3f1; max-width:34rem; }
+  .left .k { font-size:13px; letter-spacing:.3em; color:var(--orange); margin-bottom:1.4rem; }
+  h1 { font-size:clamp(38px,4.2vw,60px); font-weight:700; line-height:1.18; }
+  .left p { margin-top:1.4rem; font-size:15px; line-height:1.9; color:rgba(242,243,241,.75); }
+  .stats { margin-top:2rem; display:flex; gap:2.6rem; }
+  .stats b { display:block; font-size:26px; color:#fff; }
+  .stats b i { font-style:normal; color:var(--orange); }
+  .stats span { font-size:12px; color:rgba(242,243,241,.6); }
+  /* 层叠卡：橙色背板偏移 + 白前台 */
+  .stack { position:relative; width:400px; }
+  .stack::before { content:''; position:absolute; inset:0; transform:translate(14px,14px); background:var(--orange); }
+  .card { position:relative; background:#fff; padding:40px 36px; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+  .card h2 { font-size:24px; font-weight:700; margin-bottom:.3rem; }
+  .card .s { font-size:13px; color:#888; margin-bottom:1.8rem; }
+  .f { margin-bottom:1.2rem; }
+  .f input { width:100%; border:1px solid #e2e5e8; background:#fafbfc; padding:.8rem .9rem; font-size:15px; outline:none; transition:border-color .2s, background .2s; }
+  .f input:focus { border-color:var(--orange); background:#fff; }
+  .btn { width:100%; border:0; background:var(--orange); color:#fff; padding:.95rem 0; font-size:15px; font-weight:600; letter-spacing:.2em; cursor:pointer; box-shadow:0 8px 20px rgba(255,107,0,.35); }
+  .foot { margin-top:1.2rem; display:flex; justify-content:space-between; font-size:12px; color:#999; }
+  .foot a { color:var(--orange); text-decoration:none; }
+</style>
+</head>
+<body>
+  <div class="bg"></div><div class="scrim"></div>
+  <div class="wrap">
+    <div class="left">
+      <div class="k">ZHONGWEI INSIGHT</div>
+      <h1>一个平台，<br />管住所有项目。</h1>
+      <p>项目、合同、预算、财务、材料、机械、劳务、分包全流程协同。</p>
+      <div class="stats">
+        <span><b>8<i>+</i></b>业务模块</span>
+        <span><b>1<i>屏</i></b>实时看板</span>
+        <span><b>N<i>组织</i></b>协同</span>
+      </div>
+    </div>
+    <div class="stack">
+      <form class="card" onsubmit="return false">
+        <h2>欢迎回来</h2>
+        <p class="s">登录账户，继续您的工程项目管理</p>
+        <div class="f"><input placeholder="用户名" /></div>
+        <div class="f"><input type="password" placeholder="密码" /></div>
+        <button class="btn" type="button">进入系统</button>
+        <div class="foot"><span>短信登录</span><a href="#">忘记密码？</a></div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

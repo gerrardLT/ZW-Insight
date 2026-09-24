@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>方向E · 瑞士极简 Swiss</title>
+<style>
+  :root { --orange:#ff6b00; --sans:"Helvetica Neue","Source Han Sans SC","PingFang SC",sans-serif; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; }
+  body { font-family:var(--sans); overflow:hidden; position:relative; color:#fff; }
+  .bg { position:absolute; inset:0; background:url("../../zw-insight-web/src/assets/login-bg-poster.jpg") center/cover no-repeat #0e1116; }
+  .scrim { position:absolute; inset:0; background:linear-gradient(90deg, rgba(0,0,0,.72), rgba(0,0,0,.3) 55%, rgba(0,0,0,.5)); }
+  .grid { position:absolute; inset:0; background-image:linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px); background-size:calc(100%/12) 100%; }
+  .wrap { position:relative; height:100%; display:grid; grid-template-columns:7fr 5fr; }
+  .left { padding:8vh 6vw; display:flex; flex-direction:column; justify-content:space-between; }
+  .top { display:flex; justify-content:space-between; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.6); }
+  .top b { color:var(--orange); }
+  h1 { font-size:clamp(48px,6vw,92px); font-weight:800; line-height:1.02; letter-spacing:-.02em; }
+  h1 span { display:block; color:var(--orange); }
+  .bottom { display:flex; gap:3rem; font-size:13px; color:rgba(255,255,255,.65); }
+  .bottom i { display:block; width:10px; height:10px; background:var(--orange); margin-bottom:.5rem; }
+  /* 右：纯白极简卡，强网格对齐 */
+  .right { background:#fff; color:#111; padding:8vh 4vw; display:flex; flex-direction:column; justify-content:center; }
+  .right h2 { font-size:28px; font-weight:800; letter-spacing:-.01em; margin-bottom:.4rem; }
+  .right .s { font-size:13px; color:#777; margin-bottom:2.4rem; }
+  .f { margin-bottom:1.5rem; }
+  .f label { display:block; font-size:11px; letter-spacing:.2em; color:#999; margin-bottom:.4rem; text-transform:uppercase; }
+  .f input { width:100%; border:0; border-bottom:2px solid #111; padding:.6rem 0; font-size:16px; outline:none; transition:border-color .2s; }
+  .f input:focus { border-bottom-color:var(--orange); }
+  .btn { margin-top:.6rem; border:0; background:#111; color:#fff; padding:1rem 0; width:100%; font-size:15px; letter-spacing:.2em; cursor:pointer; transition:background .2s; }
+  .btn:hover { background:var(--orange); }
+  .foot { margin-top:1.6rem; display:flex; justify-content:space-between; font-size:12px; color:#999; }
+  .foot a { color:#111; }
+</style>
+</head>
+<body>
+  <div class="bg"></div><div class="scrim"></div><div class="grid"></div>
+  <div class="wrap">
+    <div class="left">
+      <div class="top"><span>Zhongwei Insight</span><b>●</b><span>Engineering OS</span></div>
+      <h1>工程管理<span>操作系统</span></h1>
+      <div class="bottom">
+        <span><i></i>全链路数字化</span>
+        <span><i></i>多组织协同</span>
+        <span><i></i>实时看板</span>
+      </div>
+    </div>
+    <form class="right" onsubmit="return false">
+      <h2>登录</h2>
+      <p class="s">进入您的工程项目空间</p>
+      <div class="f"><label>Username</label><input placeholder="用户名" /></div>
+      <div class="f"><label>Password</label><input type="password" placeholder="密码" /></div>
+      <button class="btn" type="button">进入系统</button>
+      <div class="foot"><span>短信登录</span><a href="#">忘记密码</a></div>
+    </form>
+  </div>
+</body>
+</html>

@@ -17,6 +17,12 @@
 → 选定 **方向 B · 精密仪器 Precision**（login-prototypes/round3/b-precision.html），已落地到 index.vue；背景保留视频 login-bg-web.mp4。
 三版初稿：round3/a-editorial.html、b-precision.html、c-darkglass.html（截图 a/b/c.png 本地）。
 
+## 用户选定（2026-09-24 · 二次）
+用户原话："方向G 重构 然后 部署 一定要注意要有滑块验证码"。
+→ 改选 **方向 G · 斜切动感 Diagonal**（login-prototypes/round4/g-diagonal.html），覆盖之前的 B；已落地 index.vue。
+滑块验证码保留：密码模式强制（单一实例，v-show 密码态）；短信模式由后端限流防护（不携带 sliderToken，与后端 loginBySms 契约一致）。
+新增变体：round4/d-blueprint、e-swiss、f-layered、g-diagonal（截图 d/e/f/g.png 本地）。
+
 ## 记录
 - 豁免依据：skill Fallback「唯一豁免」#2（已选定方向后的迭代）。
 - 记录时间：2026-09-24。
