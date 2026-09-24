@@ -262,7 +262,13 @@ jobs:
 
       - name: Deploy via SSH
         run: |
-          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'DEPLOY_SCRIPT'
+          # ServerAliveInterval：2026-09-24 两次部署失败（run 35951954498 / 35955467495）的根因——
+          # 前端 vite "rendering chunks" 阶段 5 分钟无任何输出，SSH 会话因空闲被中间设备/sshd 断开
+          # （client_loop: send disconnect: Broken pipe，exit 255），CI 报失败但远端 bash 已跑完。
+          # 每 30s 发一次保活探测，允许连续 60 次无响应（共 30 分钟）才断开。
+          ssh -i ~/.ssh/deploy_key \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes \
+            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'DEPLOY_SCRIPT'
           set -euo pipefail
           DEPLOY_DIR="${DEPLOY_DIR:-/root/zw-insight}"
           cd "$DEPLOY_DIR/deploy"
@@ -289,14 +295,20 @@ jobs:
             -e "DELETE FROM flyway_schema_history WHERE success = 0;" 2>/dev/null || true
 
           echo "=== [4/5] 重建并启动应用容器 ==="
-          # 只停止并重建 backend 和 frontend，基础设施保持运行
+          # 只重建 backend 和 frontend，基础设施保持运行
           # 2026-08-14 提速优化：去掉 --no-cache——前端 Dockerfile 已按 package*.json
           # 分层，lockfile 不变时依赖层命中服务器本地缓存（npm ci 2.5min→~0），
-          # COPY 层内容寻址保证源码变更必然重建，无陈旧产物风险；
-          # 实测 Deploy via SSH 185s → 预期 ~60s
+          # COPY 层内容寻址保证源码变更必然重建，无陈旧产物风险。
+          #
+          # 2026-09-24 修复：**先 build 后 stop**（原顺序为 stop → build → up）。
+          # 原顺序的两个后果：① 构建期间（前端 vite rendering chunks 实测 5-20 分钟，
+          # 服务器负载高时更久）服务完全不可用；② 构建失败或 SSH 断连时，旧容器已停而
+          # 新容器未起，直接变成停机事故（run 35951954498 / 35955467495 均如此，
+          # 线上 18080 无响应约 25 分钟）。改为先构建镜像，成功后才停旧容器，
+          # 停机窗口从“整个构建时长”缩短到秒级；构建失败时旧容器继续服务（不会更糟）。
+          docker compose -f docker-compose.deploy.yml build backend frontend
           docker compose -f docker-compose.deploy.yml stop backend frontend 2>/dev/null || true
           docker rm -f zwi-backend zwi-frontend 2>/dev/null || true
-          docker compose -f docker-compose.deploy.yml build backend frontend
           docker compose -f docker-compose.deploy.yml up -d backend frontend
 
           echo "=== [5/5] 清理 docker 无用资源（镜像/容器/网络/构建缓存） ==="

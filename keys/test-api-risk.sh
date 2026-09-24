@@ -175,7 +175,9 @@ assert_jq '.code==200 and ([.data[] | select(.health != "RED" and .health != "YE
 assert_jq '.code==200 and ([.data[] | select(.forecastProfit == null or .costBasis == null)] | length == 0)' \
   "项目健康度-含预计利润与成本口径标记"
 # §16.1 项目构成与利润变化字段齐备（前端下钻依赖，无数据时空数组也算通过）
-assert_jq '.code==200 and ((.data | length == 0) or ([.data[] | select(has("cumulativeReceived") and has("cumulativePaid") and has("receivableOutstanding") and has("profitDelta") and has("fundGapAmount"))] | length == (.data | length)))' \
+# 注：必须用 `.data as $d` 先绑定——jq 中 `[...] | length == (.data | length)` 的
+# `.data` 已处于数组上下文（得 null→length 0），会造成假 FAIL（2026-09-24 线上实测踩到）
+assert_jq '.code==200 and (.data as $d | ($d | length == 0) or ([$d[] | select(has("cumulativeReceived") and has("cumulativePaid") and has("receivableOutstanding") and has("profitDelta") and has("fundGapAmount"))] | length == ($d | length)))' \
   "项目健康度-§16.1 构成与利润变化字段齐备"
 HEALTH_ALL_COUNT=$(jq -r '.data | length' /tmp/zwi_body 2>/dev/null || echo 0)
 FIRST_PROJECT_ID=$(jq -r '.data[0].projectId // empty' /tmp/zwi_body 2>/dev/null)
@@ -218,7 +220,7 @@ COMPANY_ID=$(jq -r '.data.companies[0].companyId // empty' /tmp/zwi_body 2>/dev/
 if [ -n "$COMPANY_ID" ]; then
   call GET "/api/v1/dashboard/cockpit/overview?ownerCompanyId=$COMPANY_ID"
   assert_http 2 "经营总览-按公司筛选 HTTP"
-  assert_jq '.code==200 and (.data.scope.filtered == true) and (.data.scope.ownerCompanyId == '"$COMPANY_ID"')' \
+  assert_jq '.code==200 and (.data.scope.filtered == true) and ((.data.scope.ownerCompanyId | tostring) == "'"$COMPANY_ID"'")' \
     "经营总览-按公司筛选元信息正确"
   # 项目级口径：账户余额属公司资金池不可拆分，必须计 0 并标明口径（不得冒充项目级可用资金）
   assert_jq '.code==200 and (.data.gapBasis == "PROJECT_SNAPSHOT_WITHOUT_ACCOUNT_BALANCE") and ((.data.accountBalance | tonumber) == 0)' \

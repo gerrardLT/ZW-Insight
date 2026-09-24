@@ -496,5 +496,35 @@ class ReceivableServiceTest {
             assertThatThrownBy(() -> receivableService.updateDrillInfo(1L, null))
                     .isInstanceOf(BusinessException.class);
         }
+
+        /**
+         * ORM 契约测试（针对 2026-09-24 L3 实测发现的真实缺陷）。
+         * <p>MyBatis-Plus {@code updateById} 默认字段策略 NOT_NULL：实体中置 null 的列不会
+         * 出现在 UPDATE 语句里 → 「空串=清空登记」在 Service 层正确置了 null，但库里仍是旧值。
+         * 该缺陷<b>单测无法发现</b>（mock 的 updateById 不模拟 ORM 字段策略），是 L3 契约测试抛出的。
+         * 本用例用反射钉住注解，防止后人“清理冗余注解”时静默退回该缺陷。</p>
+         */
+        @Test
+        @DisplayName("ORM 契约 — 可清空字段必须标 FieldStrategy.ALWAYS，否则 updateById 会忽略 null 使清空失效")
+        void clearableFieldsMustUseAlwaysUpdateStrategy() throws Exception {
+            for (String name : List.of("milestoneNode", "ownerReviewStatus", "ownerReviewDate",
+                    "ownerId", "ownerName", "nextAction")) {
+                java.lang.reflect.Field f = BizReceivable.class.getDeclaredField(name);
+                com.baomidou.mybatisplus.annotation.TableField tf =
+                        f.getAnnotation(com.baomidou.mybatisplus.annotation.TableField.class);
+                assertThat(tf).as("%s 必须标 @TableField（否则清空不生效）", name).isNotNull();
+                assertThat(tf.updateStrategy())
+                        .as("%s 的 updateStrategy 必须为 ALWAYS（null 也要写入 UPDATE）", name)
+                        .isEqualTo(com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS);
+            }
+            // applyDate 故意不标 ALWAYS：日期字段不支持清空，默认 NOT_NULL 策略恰好实现「null=不修改」
+            java.lang.reflect.Field applyDate = BizReceivable.class.getDeclaredField("applyDate");
+            com.baomidou.mybatisplus.annotation.TableField tf =
+                    applyDate.getAnnotation(com.baomidou.mybatisplus.annotation.TableField.class);
+            assertThat(tf == null || tf.updateStrategy()
+                    != com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+                    .as("applyDate 不应标 ALWAYS（日期不支持清空，标了会把「不修改」变成「置空」）")
+                    .isTrue();
+        }
     }
 }

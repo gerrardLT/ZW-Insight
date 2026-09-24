@@ -422,8 +422,11 @@ test_monthly_analysis() {
   assert_http 2 "月度分析-查询 HTTP"
   assert_jq '.code==200 and (.data.rows | type == "array") and (.data.totals | type == "object") and (.data.notes | type == "array")' \
     "月度分析-矩阵/合计/口径说明三段齐备"
-  assert_jq '.code==200 and ([.data.rows[].categoryCode] == ["LABOR","MATERIAL","MACHINE","SUBCONTRACT","MEASURE","ADMIN","ENTERTAIN","TRAVEL_VEHICLE","PROFESSIONAL","TAX"])' \
-    "月度分析-十类行序与文档一致"
+  # 行序：前 10 行必须是 §9 十类的固定顺序；第 11 行仅在确有未归类账户时出现
+  # （2026-09-24 实测：演示种子 90001 有一个子类为空的 OTHER 账户 → 落 UNCLASSIFIED，
+  #   这是设计行为「不静默并入其他类」，故断言不能写死为恰好 10 行）
+  assert_jq '.code==200 and ((.data.rows | length) >= 10) and ((.data.rows[0:10] | map(.categoryCode)) == ["LABOR","MATERIAL","MACHINE","SUBCONTRACT","MEASURE","ADMIN","ENTERTAIN","TRAVEL_VEHICLE","PROFESSIONAL","TAX"]) and ((.data.rows | length) == 10 or (.data.rows[10].categoryCode == "UNCLASSIFIED"))' \
+    "月度分析-十类行序与文档一致（未归类只可能出现在末行）"
   assert_jq '.code==200 and ([.data.rows[] | select(.budgetAmount == null or .cumulativeOccurred == null or .forecastFinal == null or .occurredBasis == null or .paidBasis == null)] | length == 0)' \
     "月度分析-六列与两个口径标记均非空"
   # 直接费四类有付款数据源（APPROVAL_WRITEBACK），间接费六类为 NO_PAYMENT_SOURCE 且 paid 为 null
