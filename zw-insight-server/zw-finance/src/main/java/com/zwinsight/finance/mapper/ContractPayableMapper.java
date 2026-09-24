@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 
 /**
  * 合同可付数据跨模块读写 Mapper
@@ -102,6 +103,41 @@ public interface ContractPayableMapper {
             + ") t"
             + "</script>")
     BigDecimal sumPayableOutstanding(@Param("projectId") Long projectId);
+
+    /**
+     * 应付未付合计（限定项目集合）——驾驶舱全局筛选器按「所属公司」维度下钻时使用。
+     * <p>口径与 {@link #sumPayableOutstanding(Long)} 完全一致，仅把过滤条件从单项目
+     * 换成项目集合（公司 → 其下项目由 Service 层先查出，避免在本 SQL 里 JOIN biz_project
+     * 造成 5 张合同表各多一次连接）。<b>调用方须保证集合非空</b>：空集合会生成
+     * {@code IN ()} 导致 SQL 语法错误，Service 层应先判空并直接返回 0。</p>
+     *
+     * @param projectIds 项目ID集合（非空）
+     * @return 应付未付合计（无合同时 0）
+     */
+    @Select("<script>"
+            + "SELECT IFNULL(SUM(t.payable), 0) FROM ("
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0) AS payable"
+            + "    FROM biz_purchase_contract WHERE deleted = 0"
+            + "    AND project_id IN <foreach collection='projectIds' item='pid' open='(' separator=',' close=')'>#{pid}</foreach>"
+            + "  UNION ALL"
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0)"
+            + "    FROM biz_labor_contract WHERE deleted = 0"
+            + "    AND project_id IN <foreach collection='projectIds' item='pid' open='(' separator=',' close=')'>#{pid}</foreach>"
+            + "  UNION ALL"
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0)"
+            + "    FROM biz_machine_contract WHERE deleted = 0"
+            + "    AND project_id IN <foreach collection='projectIds' item='pid' open='(' separator=',' close=')'>#{pid}</foreach>"
+            + "  UNION ALL"
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0)"
+            + "    FROM biz_subcontract WHERE deleted = 0"
+            + "    AND project_id IN <foreach collection='projectIds' item='pid' open='(' separator=',' close=')'>#{pid}</foreach>"
+            + "  UNION ALL"
+            + "  SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0)"
+            + "    FROM biz_other_contract WHERE deleted = 0"
+            + "    AND project_id IN <foreach collection='projectIds' item='pid' open='(' separator=',' close=')'>#{pid}</foreach>"
+            + ") t"
+            + "</script>")
+    BigDecimal sumPayableOutstandingByProjects(@Param("projectIds") Collection<Long> projectIds);
 
     /**
      * 已确认应付合计（Σ cumulative_settlement）——支付率分母（资金流转 §10.2）。

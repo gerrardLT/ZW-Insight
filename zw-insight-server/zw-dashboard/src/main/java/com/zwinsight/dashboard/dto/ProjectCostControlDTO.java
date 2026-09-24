@@ -36,6 +36,14 @@ public class ProjectCostControlDTO {
     /** 按费用类别分组汇总 */
     private List<CategorySummary> categorySummaries;
 
+    /**
+     * 按 UI 原型 §7.2「七类成本结构」口径分组汇总
+     * （材料/分包/人工/机械/措施/管理/商务，另附未能归类的 OTHER）。
+     * <p>与 {@link #categorySummaries}（CBS 六类原始口径）<b>并存不互替</b>：
+     * 前者回答“钱花到哪个业务类别”，后者回答“CBS 账户如何分类”。</p>
+     */
+    private List<DocCategorySummary> docCategories;
+
     /** 趋势数据（月度） */
     private List<MonthlyTrend> trends;
 
@@ -60,6 +68,12 @@ public class ProjectCostControlDTO {
         private BigDecimal varianceAmount;
         /** 偏差率（variance / current * 100） */
         private BigDecimal varianceRate;
+        /**
+         * 预计超支（UI §7.1）= forecastTotal − baselineTotal，<b>正数 = 预计超出目标成本</b>。
+         * <p>与 {@link #varianceAmount}（相对当前预算的节约/超支）口径不同：
+         * 本字段以<b>目标成本（原始批准基准）</b>为分母基准，回答“比最初批的多了多少”。</p>
+         */
+        private BigDecimal forecastOverrun;
         /** 预算使用率（actual / current * 100） */
         private BigDecimal usageRate;
         /** 承诺率（commitment / current * 100） */
@@ -99,7 +113,12 @@ public class ProjectCostControlDTO {
         private BigDecimal remaining;
         /** 偏差金额 */
         private BigDecimal variance;
-        /** 使用率 */
+        /**
+         * 偏差率（variance / current * 100，UI §7.2 要求逐类展示）。
+         * <p>当前预算为 0 时为 <b>null</b>（无基准不可算率），不用 0 冒充“无偏差”。</p>
+         */
+        private BigDecimal varianceRate;
+        /** 使用率（actual / current * 100） */
         private BigDecimal usageRate;
         /** 状态 */
         private String status;
@@ -126,6 +145,41 @@ public class ProjectCostControlDTO {
         private BigDecimal forecast;
         /** 偏差 */
         private BigDecimal variance;
+        /** 偏差率（variance / current * 100）；当前预算为 0 时 null */
+        private BigDecimal varianceRate;
+        /** 账户数量 */
+        private Integer accountCount;
+    }
+
+    /**
+     * UI §7.2 文档口径的成本类别汇总（七类）。
+     * <p>归类依据写在 {@code basis} 里，<b>不隐藏映射规则</b>：</p>
+     * <ul>
+     *   <li>{@code CBS_CATEGORY}：由 cost_category 直接映射（材料/人工/机械/分包）</li>
+     *   <li>{@code CBS_SUBCATEGORY_KEYWORD}：INDIRECT/OTHER 下按子类名关键词归入（措施/管理/商务）</li>
+     *   <li>{@code UNCLASSIFIED}：未能归类（子类名为空或不在关键词表），如实单列不并入其他类</li>
+     * </ul>
+     */
+    @Data
+    public static class DocCategorySummary {
+        /** 文档类别码（MATERIAL/SUBCONTRACT/LABOR/MACHINE/MEASURE/ADMIN/BUSINESS/OTHER） */
+        private String code;
+        /** 文档类别中文名 */
+        private String name;
+        /** 归类依据（见类注释） */
+        private String basis;
+        /** 预算（当前预算） */
+        private BigDecimal current;
+        /** 实际发生 */
+        private BigDecimal actual;
+        /** 预计最终（EAC） */
+        private BigDecimal forecast;
+        /** 偏差金额（current - forecast，正数=节约） */
+        private BigDecimal variance;
+        /** 偏差率（%）；预算为 0 时 null */
+        private BigDecimal varianceRate;
+        /** 风险等级（RED：预计超支 &gt;10%；YELLOW：预计超支 &gt;0；GREEN：未超支；INFO：无预算基准） */
+        private String riskLevel;
         /** 账户数量 */
         private Integer accountCount;
     }

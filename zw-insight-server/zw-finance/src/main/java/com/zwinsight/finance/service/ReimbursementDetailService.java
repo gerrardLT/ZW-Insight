@@ -143,11 +143,70 @@ public class ReimbursementDetailService {
         addAnomaly(anomalies, "同人同日多笔", nullToZero(entertainmentMapper.countSameHandlerSameDay(projectId)),
                 "核查是否拆单规避审批");
 
+        // §6.3「月度变化」：近 6 个月按月聚合（旧实现缺失该维度）
+        java.time.LocalDate trendFrom = java.time.YearMonth.now().minusMonths(5).atDay(1);
+        List<Map<String, Object>> monthlyTrend = entertainmentMapper.monthlyTrend(projectId, trendFrom);
+        if (monthlyTrend == null) {
+            monthlyTrend = List.of();
+        }
+
+        // §6.3「预算执行率」+ §11 第 8 类预警「超月度限额」：
+        // 分母取月度资金计划科目明细（biz_fund_plan_detail）的招待费计划额；
+        // 无计划时 hasBaseline=false、rate=null，**不判定超限**（避免无基准误报）
+        Map<String, Object> budgetExecution = computeBudgetExecution(projectId, monthlyTrend);
+        if (Boolean.TRUE.equals(budgetExecution.get("overLimit"))) {
+            addAnomaly(anomalies, "超月度限额", 1L, String.format(
+                    "当月招待费 %s 元已超计划限额 %s 元，需说明原因并压降后续支出",
+                    budgetExecution.get("actual"), budgetExecution.get("planned")));
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("summary", summary);
         result.put("byHandler", byHandler);
         result.put("anomalies", anomalies);
+        result.put("monthlyTrend", monthlyTrend);
+        result.put("budgetExecution", budgetExecution);
         return result;
+    }
+
+    /**
+     * 当月招待费预算执行情况（§6.3 预算执行率）。
+     * <p>实际额从月度趋势结果中取当月行（避免重复查库）；计划额取
+     * {@code sumEntertainmentPlanLimit}。无计划明细时 {@code hasBaseline=false}、
+     * {@code rate=null}、{@code overLimit=false}，<b>不把“未编计划”当成“限额 0 元”而误报超限</b>。</p>
+     */
+    private Map<String, Object> computeBudgetExecution(Long projectId, List<Map<String, Object>> monthlyTrend) {
+        java.time.YearMonth current = java.time.YearMonth.now();
+        String currentMonth = current.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+        BigDecimal actual = BigDecimal.ZERO;
+        for (Map<String, Object> row : monthlyTrend) {
+            if (currentMonth.equals(String.valueOf(row.get("month")))) {
+                actual = toBigDecimal(row.get("amount"));
+                break;
+            }
+        }
+        BigDecimal planned = entertainmentMapper.sumEntertainmentPlanLimit(
+                projectId, current.getYear(), current.getMonthValue());
+
+        Map<String, Object> budget = new HashMap<>();
+        budget.put("month", currentMonth);
+        budget.put("actual", actual);
+        budget.put("planned", planned);
+        budget.put("hasBaseline", planned != null);
+        budget.put("rate", planned != null && planned.signum() > 0
+                ? actual.divide(planned, 4, java.math.RoundingMode.HALF_UP) : null);
+        budget.put("overLimit", planned != null && actual.compareTo(planned) > 0);
+        return budget;
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        if (value instanceof BigDecimal b) {
+            return b;
+        }
+        return new BigDecimal(String.valueOf(value));
     }
 
     // ==================== 私有方法 ====================

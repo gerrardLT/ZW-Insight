@@ -18,10 +18,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 招待费异常风险规则（资金流转文档 §11 招待费预警项）：
+ * 招待费异常风险规则（资金流转文档 §11 招待费预警项，共 8 类）：
  * <pre>
- * 单笔超限额 / 无事由 / 无招待对象          → RED（合规硬伤，票据与事由缺失不可入账）
- * 无事前审批 / 同人同日多笔 / 同人单月高频  → YELLOW（管理偏差，需核查）
+ * 单笔超限额 / 无事由 / 无招待对象 / 发票不完整   → RED（合规硬伤）
+ * 无事前审批 / 同人同日多笔 / 同人单月高频 / 超月度限额 → YELLOW（管理偏差）
  * </pre>
  * 数据源：biz_reimbursement_detail(category_code=EXP-INDIRECT-ENTERTAIN)
  * JOIN biz_entertainment_detail，且仅统计已生效（APPROVED）报销单。
@@ -98,6 +98,27 @@ public class EntertainmentAnomalyRule implements RiskRule {
             if (frequentHandler != null && frequentHandler > 0) {
                 yellowHits.add(currentMonth + " 同人超 " + handlerMonthlyCountLimit
                         + " 次的经办人 " + frequentHandler + " 人");
+            }
+            // §11 第 8 类：超月度限额（旧实现缺失，仅 7/8 类）。
+            // 分母取月度资金计划科目明细的招待费计划额；<b>无计划基准时不判定</b>，
+            // 否则会把“未编计划”当成“限额 0 元”而对所有支出误报。
+            YearMonth ym = YearMonth.now();
+            BigDecimal planLimit = entertainmentMapper.sumEntertainmentPlanLimit(
+                    projectId, ym.getYear(), ym.getMonthValue());
+            if (planLimit != null) {
+                BigDecimal monthActual = BigDecimal.ZERO;
+                List<Map<String, Object>> trend = entertainmentMapper.monthlyTrend(projectId, ym.atDay(1));
+                if (trend != null) {
+                    for (Map<String, Object> row : trend) {
+                        if (currentMonth.equals(String.valueOf(row.get("month")))) {
+                            monthActual = toDecimal(row.get("amount"));
+                            break;
+                        }
+                    }
+                }
+                if (monthActual.compareTo(planLimit) > 0) {
+                    yellowHits.add(currentMonth + " 招待费 " + monthActual + " 元超计划限额 " + planLimit + " 元");
+                }
             }
 
             if (redHits.isEmpty() && yellowHits.isEmpty()) {

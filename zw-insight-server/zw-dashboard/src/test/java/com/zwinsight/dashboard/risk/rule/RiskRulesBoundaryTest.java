@@ -12,6 +12,7 @@ import com.zwinsight.finance.domain.BizFundRollingForecast;
 import com.zwinsight.finance.domain.BizReceivable;
 import com.zwinsight.finance.domain.BizRetentionMoney;
 import com.zwinsight.finance.domain.BizWageSpecialAccount;
+import com.zwinsight.finance.mapper.BizEntertainmentDetailMapper;
 import com.zwinsight.finance.mapper.BizFundRollingForecastMapper;
 import com.zwinsight.finance.mapper.BizReceivableMapper;
 import com.zwinsight.finance.mapper.BizRetentionMoneyMapper;
@@ -30,10 +31,16 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
@@ -55,6 +62,8 @@ class RiskRulesBoundaryTest {
     @Mock private ProfitSnapshotService profitSnapshotService;
     // V2026_64：资金缺口规则引入「可覆盖」判定，需可用资金基准
     @Mock private CockpitService cockpitService;
+    // §11 第 8 类「超月度限额」：分母取月度资金计划科目明细的招待费计划额
+    @Mock private BizEntertainmentDetailMapper entertainmentMapper;
 
     private BizProject project(Long id, String status) {
         BizProject p = new BizProject();
@@ -477,6 +486,97 @@ class RiskRulesBoundaryTest {
             assertThat(findings.get(1).severity()).isEqualTo(BizRiskRegister.SEVERITY_YELLOW);
             // 影响金额 = 工资预算 − 已到账 = 40万
             assertThat(findings.get(0).impactAmount()).isEqualByComparingTo("400000");
+        }
+    }
+
+    @Nested
+    @DisplayName("EntertainmentAnomalyRule — 招待费 8 类预警（§11）")
+    class EntertainmentTests {
+
+        private EntertainmentAnomalyRule rule() {
+            EntertainmentAnomalyRule r = new EntertainmentAnomalyRule(entertainmentMapper, projectMapper);
+            ReflectionTestUtils.setField(r, "singleLimit", new BigDecimal("3000"));
+            ReflectionTestUtils.setField(r, "handlerMonthlyCountLimit", 5);
+            return r;
+        }
+
+        private Map<String, Object> summary(String total, String maxSingle, long count) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("totalAmount", new BigDecimal(total));
+            m.put("maxSingleAmount", new BigDecimal(maxSingle));
+            m.put("totalCount", count);
+            m.put("noReasonCount", 0L);
+            m.put("noHostCount", 0L);
+            m.put("noPreApprovalCount", 0L);
+            m.put("noInvoiceCount", 0L);
+            return m;
+        }
+
+        /** 前 7 类全部正常（单笔未超限/有事由/有对象/有审批/票据齐/无拆单/无高频），只留第 8 类作变量 */
+        private void stubSevenClean() {
+            when(entertainmentMapper.listProjectIdsWithEntertainment()).thenReturn(List.of(1L));
+            when(entertainmentMapper.analyzeEntertainment(eq(1L), any()))
+                    .thenReturn(summary("50000", "2000", 10));
+            when(entertainmentMapper.countSameHandlerSameDay(1L)).thenReturn(0L);
+            when(entertainmentMapper.countFrequentHandlerInMonth(eq(1L), any(), anyInt())).thenReturn(0L);
+            when(projectMapper.selectById(1L)).thenReturn(project(1L, "CONSTRUCTION"));
+        }
+
+        private List<Map<String, Object>> trendThisMonth(String amount) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("month", YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM")));
+            row.put("amount", new BigDecimal(amount));
+            return List.of(row);
+        }
+
+        @Test
+        @DisplayName("§11 第 8 类 — 当月超计划限额 → YELLOW（旧实现仅 7/8 类，该项恒不产生）")
+        void overPlanLimit_yellow() {
+            stubSevenClean();
+            when(entertainmentMapper.sumEntertainmentPlanLimit(eq(1L), anyInt(), anyInt()))
+                    .thenReturn(new BigDecimal("30000"));
+            when(entertainmentMapper.monthlyTrend(eq(1L), any())).thenReturn(trendThisMonth("45000"));
+
+            List<RiskFinding> findings = rule().evaluate();
+
+            assertThat(findings).hasSize(1);
+            assertThat(findings.get(0).riskType()).isEqualTo(EntertainmentAnomalyRule.TYPE);
+            assertThat(findings.get(0).severity()).isEqualTo(BizRiskRegister.SEVERITY_YELLOW);
+            // 判级依据必须可追溯（写明实际额与限额，不笼统报“异常”）
+            assertThat(findings.get(0).title()).contains("超计划限额");
+        }
+
+        @Test
+        @DisplayName("边界路径 — 未编月度计划（限额 null）时不判定，不得把「无基准」当「限额 0 元」误报")
+        void noPlanBaseline_noFalsePositive() {
+            stubSevenClean();
+            // Mapper 故意不用 COALESCE：无计划明细返回 null，null 即「无基准」
+            when(entertainmentMapper.sumEntertainmentPlanLimit(eq(1L), anyInt(), anyInt())).thenReturn(null);
+            when(entertainmentMapper.monthlyTrend(eq(1L), any())).thenReturn(trendThisMonth("45000"));
+
+            assertThat(rule().evaluate()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("边界路径 — 当月实际恰好等于限额时不命中（严格大于才判超限）")
+        void exactlyAtLimit_noFinding() {
+            stubSevenClean();
+            when(entertainmentMapper.sumEntertainmentPlanLimit(eq(1L), anyInt(), anyInt()))
+                    .thenReturn(new BigDecimal("45000"));
+            when(entertainmentMapper.monthlyTrend(eq(1L), any())).thenReturn(trendThisMonth("45000"));
+
+            assertThat(rule().evaluate()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("边界路径 — 趋势查询返回 null 时当月实际计 0，不抛 NPE 也不误报")
+        void nullTrend_noNpe() {
+            stubSevenClean();
+            when(entertainmentMapper.sumEntertainmentPlanLimit(eq(1L), anyInt(), anyInt()))
+                    .thenReturn(new BigDecimal("30000"));
+            when(entertainmentMapper.monthlyTrend(eq(1L), any())).thenReturn(null);
+
+            assertThat(rule().evaluate()).isEmpty();
         }
     }
 }

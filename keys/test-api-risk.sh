@@ -137,6 +137,24 @@ assert_jq '.code==200 and ((.data.gap90Days - .data.gap90DaysDetail.gap) | fabs)
 assert_jq '.code==200 and ((.data.threeMonthCashNeed - .data.currentMonthCashNeed) >= -0.01)' \
   "经营总览-三个月资金需求≥本月现金需求"
 
+# ---------- §4 数字卡四要素（环比/目标）+ §14 筛选元信息 ----------
+assert_jq '.code==200 and (.data | has("changes") and has("targets") and has("scope") and has("gapBasis"))' \
+  "经营总览-四要素字段齐备（changes/targets/scope/gapBasis）"
+# 环比 basis 只能是两种受控值
+assert_jq '.code==200 and (.data.changes.basis == "VS_LAST_MONTH_SNAPSHOT" or .data.changes.basis == "NO_BASELINE")' \
+  "经营总览-环比 basis 值域受控"
+# 无基期时三个 delta 必须为 null（不得用 0 冒充“无变化”）
+assert_jq '.code==200 and (if .data.changes.basis == "NO_BASELINE" then (.data.changes.contractIncome == null and .data.changes.forecastTotalCost == null and .data.changes.forecastProfit == null) else true end)' \
+  "经营总览-无基期时环比为 null 而非 0"
+# 目标利润率由后端配置下发（前端不写死）且附口径来源
+assert_jq '.code==200 and (.data.targets.forecastProfitRate != null) and (.data.targets.basis != null)' \
+  "经营总览-目标利润率由后端配置下发"
+# 未带筛选参数时：公司级完整口径（含账户余额）且 filtered=false
+assert_jq '.code==200 and (.data.gapBasis == "COMPANY_SNAPSHOT_WITH_ACCOUNT_BALANCE")' \
+  "经营总览-无筛选时为公司级完整口径"
+assert_jq '.code==200 and (.data.scope.filtered == false)' \
+  "经营总览-未带筛选时 filtered=false"
+
 # ---------- 利润趋势 ----------
 call GET "/api/v1/dashboard/cockpit/profit-trend?months=6"
 assert_http 2 "利润趋势 HTTP"
@@ -156,6 +174,98 @@ assert_jq '.code==200 and ([.data[] | select(.health != "RED" and .health != "YE
   "项目健康度-health 值域合法"
 assert_jq '.code==200 and ([.data[] | select(.forecastProfit == null or .costBasis == null)] | length == 0)' \
   "项目健康度-含预计利润与成本口径标记"
+# §16.1 项目构成与利润变化字段齐备（前端下钻依赖，无数据时空数组也算通过）
+assert_jq '.code==200 and ((.data | length == 0) or ([.data[] | select(has("cumulativeReceived") and has("cumulativePaid") and has("receivableOutstanding") and has("profitDelta") and has("fundGapAmount"))] | length == (.data | length)))' \
+  "项目健康度-§16.1 构成与利润变化字段齐备"
+HEALTH_ALL_COUNT=$(jq -r '.data | length' /tmp/zwi_body 2>/dev/null || echo 0)
+FIRST_PROJECT_ID=$(jq -r '.data[0].projectId // empty' /tmp/zwi_body 2>/dev/null)
+
+# ---------- §14 快捷筛选（合法值过滤 + 非法值拒绝）----------
+call GET "/api/v1/dashboard/cockpit/project-health?quickFilter=LOSS"
+assert_http 2 "项目健康度-LOSS 筛选 HTTP"
+# LOSS 集合与判定式一致：返回项均预计利润 < 0
+assert_jq '.code==200 and ([.data[] | select((.forecastProfit | tonumber) >= 0)] | length == 0)' \
+  "项目健康度-LOSS 集合与判定式一致"
+
+call GET "/api/v1/dashboard/cockpit/project-health?quickFilter=HIGH_RISK"
+assert_jq '.code==200 and ([.data[] | select(.health != "RED")] | length == 0)' \
+  "项目健康度-HIGH_RISK 集合均为 RED"
+
+call GET "/api/v1/dashboard/cockpit/project-health?quickFilter=ALL"
+assert_jq '.code==200 and (.data | length == '"${HEALTH_ALL_COUNT:-0}"')' \
+  "项目健康度-ALL 与不传参结果一致"
+
+# 非法筛选码必须拒绝（不得静默当作“全部”而让用户误以为无异常）
+call GET "/api/v1/dashboard/cockpit/project-health?quickFilter=WHATEVER"
+assert_body_not_success "项目健康度-非法快捷筛选被拒绝"
+
+# ---------- §14 全局筛选器可选项 ----------
+call GET "/api/v1/dashboard/cockpit/filter-options"
+assert_http 2 "筛选器可选项 HTTP"
+assert_jq '.code==200 and (.data | has("companies") and has("projects") and has("quickFilters") and has("unsupportedDimensions"))' \
+  "筛选器可选项-四类字段齐备"
+assert_jq '.code==200 and (.data.quickFilters | length == 6)' \
+  "筛选器可选项-6 个快捷筛选"
+assert_jq '.code==200 and ([.data.quickFilters[].code] | contains(["ALL","HIGH_RISK","LOSS","FUND_TIGHT","PROFIT_DOWN","MONTH_ABNORMAL"]))' \
+  "筛选器可选项-快捷筛选码与后端合法值同源"
+# 无数据源维度（区域/项目经理）必须显式声明并附原因，不得静默缺失让前端做假下拉
+assert_jq '.code==200 and ([.data.unsupportedDimensions[].code] | contains(["REGION","PROJECT_MANAGER"]))' \
+  "筛选器可选项-无数据源维度如实声明"
+assert_jq '.code==200 and ([.data.unsupportedDimensions[] | select(.reason == null or .reason == "")] | length == 0)' \
+  "筛选器可选项-无数据源维度附原因"
+
+COMPANY_ID=$(jq -r '.data.companies[0].companyId // empty' /tmp/zwi_body 2>/dev/null)
+if [ -n "$COMPANY_ID" ]; then
+  call GET "/api/v1/dashboard/cockpit/overview?ownerCompanyId=$COMPANY_ID"
+  assert_http 2 "经营总览-按公司筛选 HTTP"
+  assert_jq '.code==200 and (.data.scope.filtered == true) and (.data.scope.ownerCompanyId == '"$COMPANY_ID"')' \
+    "经营总览-按公司筛选元信息正确"
+  # 项目级口径：账户余额属公司资金池不可拆分，必须计 0 并标明口径（不得冒充项目级可用资金）
+  assert_jq '.code==200 and (.data.gapBasis == "PROJECT_SNAPSHOT_WITHOUT_ACCOUNT_BALANCE") and ((.data.accountBalance | tonumber) == 0)' \
+    "经营总览-筛选后为项目级口径且账户余额计 0"
+else
+  skip_case "经营总览-按公司筛选" "项目未登记所属公司（owner_company_id 全为空）"
+fi
+
+# ---------- 招待费分析（资金流转 §6.3 分析维度 + §11 八类预警）----------
+call GET "/api/v1/finance/reimbursement/entertainment-analysis"
+assert_http 2 "招待费分析 HTTP"
+assert_jq '.code==200 and (.data | has("summary") and has("byHandler") and has("anomalies") and has("monthlyTrend") and has("budgetExecution"))' \
+  "招待费分析-五段结构齐备"
+# 月度趋势为数组（无数据时空数组而不是 null，前端可直接遍历）
+assert_jq '.code==200 and (.data.monthlyTrend | type == "array")' \
+  "招待费分析-月度趋势为数组"
+# 预算执行口径自洽：未编计划 → hasBaseline=false 且 planned/rate 为 null、overLimit=false
+assert_jq '.code==200 and (.data.budgetExecution | if .hasBaseline == false then (.planned == null and .rate == null and .overLimit == false) else (.planned != null) end)' \
+  "招待费分析-无计划基准不误报超限"
+# 异常清单只含命中项（count > 0），正常项隐藏
+assert_jq '.code==200 and ([.data.anomalies[] | select((.count | tonumber) <= 0)] | length == 0)' \
+  "招待费分析-异常清单不含零命中项"
+assert_jq '.code==200 and ([.data.anomalies[] | select(.suggestion == null or .suggestion == "")] | length == 0)' \
+  "招待费分析-异常项均附处置建议"
+
+# ---------- 成本中心七类结构（UI §7.1 预计超支 / §7.2 偏差率与归类）----------
+if [ -n "$FIRST_PROJECT_ID" ]; then
+  call GET "/api/v1/dashboard/project/$FIRST_PROJECT_ID/cost-control"
+  assert_http 2 "成本控制看板 HTTP"
+  assert_jq '.code==200 and (.data.docCategories | length == 8)' \
+    "成本控制-七类+未归类共 8 行"
+  assert_jq '.code==200 and ([.data.docCategories[].code] == ["MATERIAL","SUBCONTRACT","LABOR","MACHINE","MEASURE","ADMIN","BUSINESS","OTHER"])' \
+    "成本控制-七类顺序与文档一致"
+  assert_jq '.code==200 and (.data.totals | has("forecastOverrun"))' \
+    "成本控制-预计超支字段齐备"
+  # §7.1 预计超支 = 预计最终成本 − 目标成本（原始批准基准）
+  assert_jq '.code==200 and (.data.totals | ((.forecastTotal - .baselineTotal - .forecastOverrun) | fabs) < 0.01)' \
+    "成本控制-预计超支=预计最终−目标成本"
+  # 每类必须标注归类依据（口径可追溯，不隐藏映射规则）
+  assert_jq '.code==200 and ([.data.docCategories[] | select(.basis == null or .basis == "")] | length == 0)' \
+    "成本控制-每类均标注归类依据"
+  # 七类与 CBS 六类两套口径的当前预算合计必须相等（同一批账户，仅分组不同）
+  assert_jq '.code==200 and ((([.data.docCategories[].current] | add) - ([.data.categorySummaries[].current] | add)) | fabs) < 0.01' \
+    "成本控制-七类与 CBS 六类总额一致"
+else
+  skip_case "成本控制看板七类结构" "project-health 无项目数据"
+fi
 
 # ---------- 项目预计利润（口径可追溯） ----------
 call GET "/api/v1/dashboard/cockpit/project-forecasts"

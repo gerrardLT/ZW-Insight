@@ -28,6 +28,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -325,6 +326,102 @@ class ReimbursementDetailServiceTest {
 
             assertThat(result.get("summary")).isNotNull();
             assertThat(result.get("anomalies")).isNotNull();
+            // monthlyTrend 查询返回 null（Mapper 空结果）时不得透传 null，前端可直接遍历
+            assertThat(result.get("monthlyTrend")).isNotNull();
+        }
+
+        private List<Map<String, Object>> trend(String month, String amount) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("month", month);
+            row.put("amount", new BigDecimal(amount));
+            row.put("count", 3L);
+            return List.of(row);
+        }
+
+        private String currentMonth() {
+            return java.time.YearMonth.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+        }
+
+        @Test
+        @DisplayName("§6.3 月度变化 — 近 6 月趋势透传，预算执行率按计划额计算")
+        @SuppressWarnings("unchecked")
+        void analyze_monthlyTrendAndBudgetRate() {
+            when(entertainmentMapper.analyzeEntertainment(eq(10L), any()))
+                    .thenReturn(summary("86000", 12, "5800", 0, 0, 0, 0));
+            when(entertainmentMapper.sumByHandler(10L)).thenReturn(List.of());
+            when(entertainmentMapper.countSameHandlerSameDay(10L)).thenReturn(0L);
+            when(entertainmentMapper.monthlyTrend(eq(10L), any()))
+                    .thenReturn(trend(currentMonth(), "50000"));
+            when(entertainmentMapper.sumEntertainmentPlanLimit(eq(10L), anyInt(), anyInt()))
+                    .thenReturn(new BigDecimal("100000"));
+
+            Map<String, Object> result = service.analyzeEntertainment(10L, null);
+
+            assertThat((List<Map<String, Object>>) result.get("monthlyTrend")).hasSize(1);
+            Map<String, Object> budget = (Map<String, Object>) result.get("budgetExecution");
+            assertThat(budget.get("month")).isEqualTo(currentMonth());
+            // 实际额取趋势中的当月行（不重复查库），计划额取资金计划科目明细
+            assertThat((BigDecimal) budget.get("actual")).isEqualByComparingTo("50000");
+            assertThat((BigDecimal) budget.get("planned")).isEqualByComparingTo("100000");
+            assertThat((Boolean) budget.get("hasBaseline")).isTrue();
+            assertThat((BigDecimal) budget.get("rate")).isEqualByComparingTo("0.5");
+            assertThat((Boolean) budget.get("overLimit")).isFalse();
+            // 未超限不得混入异常清单（老板视角默认看异常，噪音即失真）
+            assertThat((List<Map<String, Object>>) result.get("anomalies"))
+                    .extracting(a -> a.get("name")).doesNotContain("超月度限额");
+        }
+
+        @Test
+        @DisplayName("§11 第 8 类 — 当月实际超计划时产出「超月度限额」异常项（旧实现仅 7/8 类）")
+        @SuppressWarnings("unchecked")
+        void analyze_overLimit_addsAnomaly() {
+            when(entertainmentMapper.analyzeEntertainment(eq(10L), any()))
+                    .thenReturn(summary("120000", 20, "9000", 0, 0, 0, 0));
+            when(entertainmentMapper.sumByHandler(10L)).thenReturn(List.of());
+            when(entertainmentMapper.countSameHandlerSameDay(10L)).thenReturn(0L);
+            when(entertainmentMapper.monthlyTrend(eq(10L), any()))
+                    .thenReturn(trend(currentMonth(), "120000"));
+            when(entertainmentMapper.sumEntertainmentPlanLimit(eq(10L), anyInt(), anyInt()))
+                    .thenReturn(new BigDecimal("100000"));
+
+            Map<String, Object> result = service.analyzeEntertainment(10L, null);
+
+            Map<String, Object> budget = (Map<String, Object>) result.get("budgetExecution");
+            assertThat((Boolean) budget.get("overLimit")).isTrue();
+            assertThat((BigDecimal) budget.get("rate")).isEqualByComparingTo("1.2");
+            List<Map<String, Object>> anomalies = (List<Map<String, Object>>) result.get("anomalies");
+            assertThat(anomalies).extracting(a -> a.get("name")).contains("超月度限额");
+            // 处置建议须给出实际额与限额，便于直接问责
+            assertThat(anomalies.stream()
+                    .filter(a -> "超月度限额".equals(a.get("name")))
+                    .findFirst().orElseThrow().get("suggestion").toString())
+                    .contains("120000").contains("100000");
+        }
+
+        @Test
+        @DisplayName("边界路径 — 未编月度计划时不判定超限（不得把「无基准」当「限额 0 元」误报）")
+        @SuppressWarnings("unchecked")
+        void analyze_noPlanBaseline_notOverLimit() {
+            when(entertainmentMapper.analyzeEntertainment(eq(10L), any()))
+                    .thenReturn(summary("300000", 30, "9000", 0, 0, 0, 0));
+            when(entertainmentMapper.sumByHandler(10L)).thenReturn(List.of());
+            when(entertainmentMapper.countSameHandlerSameDay(10L)).thenReturn(0L);
+            when(entertainmentMapper.monthlyTrend(eq(10L), any()))
+                    .thenReturn(trend(currentMonth(), "300000"));
+            // 未编计划：Mapper 故意返回 null（非 COALESCE 0），null 即「无基准」
+            when(entertainmentMapper.sumEntertainmentPlanLimit(eq(10L), anyInt(), anyInt()))
+                    .thenReturn(null);
+
+            Map<String, Object> result = service.analyzeEntertainment(10L, null);
+
+            Map<String, Object> budget = (Map<String, Object>) result.get("budgetExecution");
+            assertThat(budget.get("planned")).isNull();
+            assertThat((Boolean) budget.get("hasBaseline")).isFalse();
+            assertThat(budget.get("rate")).isNull();
+            assertThat((Boolean) budget.get("overLimit")).isFalse();
+            assertThat((List<Map<String, Object>>) result.get("anomalies"))
+                    .extracting(a -> a.get("name")).doesNotContain("超月度限额");
         }
     }
 

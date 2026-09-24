@@ -22,11 +22,12 @@
     <!-- KPI 指标卡片区域 -->
     <template v-else>
       <el-row :gutter="16" class="kpi-row">
-        <el-col :span="6" v-for="metric in kpiMetrics" :key="metric.key">
+        <!-- UI §7.1 总览四要素（目标成本/已发生/预计最终/预计超支）+ 当前预算与偏差率，共 6 卡 -->
+        <el-col :xs="12" :sm="8" :md="4" v-for="metric in kpiMetrics" :key="metric.key">
           <el-card shadow="hover" class="kpi-card">
             <div class="kpi-content">
               <div class="kpi-label">{{ metric.label }}</div>
-              <div class="kpi-value">{{ formatAmount(metric.value) }}</div>
+              <div class="kpi-value" :class="metric.cls">{{ metric.display }}</div>
               <div class="kpi-subtitle">{{ metric.subtitle }}</div>
             </div>
           </el-card>
@@ -142,6 +143,69 @@
         </el-col>
       </el-row>
 
+      <!-- UI §7.2 七类成本结构（材料/分包/人工/机械/措施/管理/商务）
+           与 CBS 六类并存不互替：本表回答“钱花到哪个业务类别”，每类标注归类依据（basis）。
+           无账户的类别仍展示且 riskLevel=INFO，不把“无基准”当“未超支”给绿灯。 -->
+      <el-row :gutter="16" class="doc-cat-row">
+        <el-col :span="24">
+          <el-card shadow="never" class="doc-cat-card">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">成本结构（七类口径）</span>
+                <span class="card-hint">预算 / 实际发生 / 预计最终 / 偏差额 / 偏差率 / 风险级，归类依据逐行标注</span>
+              </div>
+            </template>
+            <el-table :data="docCategories" size="small" border>
+              <el-table-column prop="name" label="类别" width="80" />
+              <el-table-column label="风险" width="110" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="riskTagType(row.riskLevel)" size="small" effect="plain">
+                    {{ riskTagText(row.riskLevel) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="预算" align="right" min-width="100">
+                <template #default="{ row }">{{ formatAmount(row.current) }}</template>
+              </el-table-column>
+              <el-table-column label="实际发生" align="right" min-width="100">
+                <template #default="{ row }">{{ formatAmount(row.actual) }}</template>
+              </el-table-column>
+              <el-table-column label="预计最终" align="right" min-width="100">
+                <template #default="{ row }">{{ formatAmount(row.forecast) }}</template>
+              </el-table-column>
+              <el-table-column label="偏差额" align="right" min-width="100">
+                <template #default="{ row }">
+                  <span :class="{ 'negative-variance': Number(row.variance) < 0 }">
+                    {{ formatAmount(row.variance) }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column label="偏差率" align="right" min-width="90">
+                <template #default="{ row }">
+                  <span :class="{ 'negative-variance': Number(row.varianceRate) < 0 }">
+                    {{ formatRate(row.varianceRate) }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column label="账户数" align="right" width="80">
+                <template #default="{ row }">{{ row.accountCount }}</template>
+              </el-table-column>
+              <el-table-column label="归类依据" min-width="200">
+                <template #default="{ row }">
+                  <span class="basis-text">{{ basisText(row) }}</span>
+                </template>
+              </el-table-column>
+            </el-table>
+            <!-- 未归类账户必须显式告知（金额去向可追溯），不静默并入任意一类 -->
+            <el-alert v-if="unclassifiedCount > 0" type="warning" :closable="false" show-icon
+              class="doc-cat-alert"
+              :title="`有 ${unclassifiedCount} 个成本账户未能归入七类（子类名不在关键词表），已单列为「未归类」；请在 CBS 中规范子类命名`" />
+            <el-alert v-if="!docCategoryTotal" type="info" :closable="false" class="doc-cat-alert"
+              title="本项目未建 CBS 成本账户，七类结构均为 0（非隐藏数据，请到「预算 → 成本账户」建立 CBS 后重看）" />
+          </el-card>
+        </el-col>
+      </el-row>
+
       <!-- 主内容区：左侧树形筛选 + 右侧成本账户表格 -->
       <el-row :gutter="16" class="content-row">
         <!-- CBS/WBS 树形筛选 -->
@@ -243,6 +307,14 @@
                     </span>
                   </template>
                 </el-table-column>
+                <!-- UI §7.2 要求逐行给偏差率；null = 无当前预算基准，显示“—”而非 0% -->
+                <el-table-column prop="varianceRate" label="偏差率" width="100" align="right">
+                  <template #default="scope">
+                    <span :class="{ 'negative-variance': Number(scope.row.varianceRate) < 0 }">
+                      {{ formatRate(scope.row.varianceRate) }}
+                    </span>
+                  </template>
+                </el-table-column>
                 <el-table-column prop="status" label="状态" width="100" align="center">
                   <template #default="scope">
                     <el-tag :type="getStatusType(scope.row.status)" size="small">
@@ -277,7 +349,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
-import { getProjectCostControl, type ProjectCostControlDTO, type CostAccountSummary } from '@/api/dashboard'
+import { getProjectCostControl, type ProjectCostControlDTO, type CostAccountSummary, type DocCategorySummary } from '@/api/dashboard'
 import { getChangeEventOpenCount, getApprovedCostDelta } from '@/api/change-event'
 import { getProjectHealth, type ProjectHealth } from '@/api/cockpit'
 import { useAppStore } from '@/stores/app'
@@ -444,36 +516,103 @@ const costData = reactive({
   data: null as ProjectCostControlDTO | null
 })
 
-// KPI 指标
+// KPI 指标（UI §7.1 总览四要素 + 当前预算/偏差率，共 6 卡）
 const kpiMetrics = computed(() => {
   const totals = costData.data?.totals || {}
+  // 预计超支 = 预计最终 − 目标成本（正数=超支），与 varianceAmount（相对当前预算）口径不同
+  const overrun = Number(totals.forecastOverrun || 0)
   return [
     {
       key: 'baseline',
-      label: '基准预算',
-      value: totals.baselineTotal || 0,
-      subtitle: '原始批准预算总额'
+      label: '目标成本',
+      display: formatAmount(totals.baselineTotal || 0),
+      subtitle: '原始批准预算总额（Σ基准）',
+      cls: ''
     },
     {
       key: 'current',
       label: '当前预算',
-      value: totals.currentTotal || 0,
-      subtitle: '经变更后预算总额'
+      display: formatAmount(totals.currentTotal || 0),
+      subtitle: '经变更后预算总额',
+      cls: ''
     },
     {
       key: 'actual',
-      label: '实际成本',
-      value: totals.actualTotal || 0,
-      subtitle: `使用率 ${(totals.usageRate || 0).toFixed(2)}%`
+      label: '已发生成本',
+      display: formatAmount(totals.actualTotal || 0),
+      subtitle: `使用率 ${(totals.usageRate || 0).toFixed(2)}%`,
+      cls: ''
     },
     {
       key: 'forecast',
-      label: '预测完工 (EAC)',
-      value: totals.forecastTotal || 0,
-      subtitle: `偏差 ${formatAmount(totals.varianceAmount || 0)}`
+      label: '预计最终成本',
+      display: formatAmount(totals.forecastTotal || 0),
+      subtitle: `偏差 ${formatAmount(totals.varianceAmount || 0)}`,
+      cls: ''
+    },
+    {
+      key: 'overrun',
+      label: '预计超支',
+      display: `${overrun > 0 ? '+' : ''}${formatAmount(overrun)}`,
+      subtitle: overrun > 0 ? '🔴 超出目标成本' : '🟢 未超目标成本',
+      cls: overrun > 0 ? 'kpi-danger' : 'kpi-success'
+    },
+    {
+      key: 'varianceRate',
+      label: '偏差率',
+      display: formatRate(totals.varianceRate),
+      subtitle: '偏差 ÷ 当前预算',
+      cls: ''
     }
   ]
 })
+
+// ==================== UI §7.2 七类成本结构 ====================
+const docCategories = computed<DocCategorySummary[]>(() => costData.data?.docCategories || [])
+
+/** 未归类账户数（>0 时必须显式告知，否则金额去向不可追溯） */
+const unclassifiedCount = computed(() =>
+  Number(docCategories.value.find(c => c.code === 'OTHER')?.accountCount || 0))
+
+/** 七类预算合计（为 0 说明本项目未建 CBS，需提示而不是留白） */
+const docCategoryTotal = computed(() =>
+  docCategories.value.reduce((sum, c) => sum + Number(c.current || 0), 0))
+
+/** 百分比格式化：null/undefined/NaN → “—”（无预算基准不得显示 0%） */
+function formatRate(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '—'
+  const n = Number(value)
+  if (Number.isNaN(n)) return '—'
+  return `${n.toFixed(2)}%`
+}
+
+/** el-tag 的 type 只接受字面量联合，故显式声明返回类型（不能返 string） */
+type TagType = 'success' | 'primary' | 'warning' | 'info' | 'danger'
+
+function riskTagType(level: string): TagType {
+  if (level === 'RED') return 'danger'
+  if (level === 'YELLOW') return 'warning'
+  if (level === 'GREEN') return 'success'
+  return 'info'
+}
+
+function riskTagText(level: string): string {
+  if (level === 'RED') return '🔴 超支>10%'
+  if (level === 'YELLOW') return '🟡 预计超支'
+  if (level === 'GREEN') return '🟢 未超支'
+  return '⚪ 无基准'
+}
+
+/** 归类依据文案（口径透明，不隐藏映射规则）。
+ *  参数用宽松结构而不用 DocCategorySummary：el-table 插槽 row 为 DefaultRow，
+ *  直接声明完整类型会报不可赋值（与本文件既有的 viewAccountDetail 同类问题）。 */
+function basisText(row: { basis?: string; accountCount?: number }): string {
+  if (row.basis === 'CBS_CATEGORY') return 'CBS 费用类别直接映射'
+  if (row.basis === 'UNCLASSIFIED') return '未能归类（子类名不在关键词表）'
+  return Number(row.accountCount || 0) > 0
+    ? '间接费按子类名关键词归入'
+    : '间接费按子类名关键词归入（当前无账户）'
+}
 
 // 过滤后的账户列表（支持搜索）
 const filteredAccounts = computed(() => {
@@ -618,6 +757,10 @@ watch(selectedProjectId, (newVal) => {
         color: var(--zw-text-primary);
         margin-bottom: var(--zw-space-xs);
         font-family: var(--zw-font-mono);
+
+        /* 预计超支卡：正数（超支）红、未超绿 */
+        &.kpi-danger { color: var(--zw-danger); }
+        &.kpi-success { color: var(--zw-success); }
       }
       
       .kpi-subtitle {
@@ -713,6 +856,20 @@ watch(selectedProjectId, (newVal) => {
 
 /* 经营视角 + TOP 偏差（V2026_59） */
 .biz-row { margin-bottom: var(--zw-space-sm-md); }
+
+/* UI §7.2 七类成本结构 */
+.doc-cat-row { margin-bottom: var(--zw-space-sm-md); }
+
+.doc-cat-card {
+  .card-hint { font-size: var(--zw-font-size-xs); color: var(--zw-text-quaternary); font-weight: normal; }
+}
+
+.doc-cat-alert { margin-top: var(--zw-space-sm); }
+
+.basis-text {
+  font-size: var(--zw-font-size-xs);
+  color: var(--zw-text-tertiary);
+}
 
 .biz-card {
   height: 100%;

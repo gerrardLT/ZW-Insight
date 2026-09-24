@@ -424,6 +424,13 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '应收台账', icon: 'Money' }
       },
       {
+        // 招待费分析（资金流转 §6.3 分析维度 + §8.1 老板默认看异常）
+        path: 'entertainment-analysis',
+        name: 'EntertainmentAnalysis',
+        component: () => import('@/views/finance/entertainment-analysis/index.vue'),
+        meta: { title: '招待费分析', icon: 'DataAnalysis' }
+      },
+      {
         path: 'settlement/:id',
         name: 'SettlementDetail',
         component: () => import('@/views/finance/settlement/detail.vue'),

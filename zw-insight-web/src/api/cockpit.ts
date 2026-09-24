@@ -53,6 +53,40 @@ export interface CockpitOverview {
   currentMonthCashNeed?: number
   /** 三个月资金需求（资金流转 §12）= 未来 3 个月预计支付合计 */
   threeMonthCashNeed?: number
+  /**
+   * 资金缺口口径标识：
+   * - COMPANY_SNAPSHOT_WITH_ACCOUNT_BALANCE：无筛选，公司级快照 + 账户余额（完整口径）
+   * - PROJECT_SNAPSHOT_WITHOUT_ACCOUNT_BALANCE：有公司/项目筛选，读项目级快照，
+   *   **账户余额未计入**（银行账户属公司级资金池，无法按项目拆分），
+   *   可用资金仅含窗口内预计回款 → 缺口偏保守（可能高估资金压力），前端必须提示
+   */
+  gapBasis?: string
+  /**
+   * 指标环比（UI §4 数字卡四要素之二）。
+   * basis=NO_BASELINE 时三个 delta 为 **null**（无上期快照），前端显示“—”，
+   * **不得当作 0 呈现**（否则“无法判断”被伪装成“无变化”）。
+   */
+  changes?: {
+    basis: 'VS_LAST_MONTH_SNAPSHOT' | 'NO_BASELINE'
+    baseMonth?: string | null
+    contractIncome: number | null
+    forecastTotalCost: number | null
+    forecastProfit: number | null
+    /** 本月新增回款（receive_date 落本月的 APPROVED 回款登记，真实单据口径） */
+    receivedThisMonth: number
+  }
+  /** 目标值（UI §4 四要素之三），由后端配置 cockpit.target-profit-rate 下发，前端不写死 */
+  targets?: {
+    forecastProfitRate: number
+    basis: string
+  }
+  /** 当前筛选范围元信息（UI §14） */
+  scope?: {
+    ownerCompanyId?: number | null
+    projectId?: number | null
+    projectCount: number
+    filtered: boolean
+  }
 }
 
 /** 预计利润月度快照 */
@@ -109,8 +143,34 @@ export interface ProjectHealth {
   health: 'RED' | 'YELLOW' | 'GREEN'
   redCount: number
   yellowCount: number
+  /**
+   * 当月快照的利润环比（§5.2“利润变化”列）。
+   * **无当月快照或无上期基期时为 null**，前端显示“—”而非 0。
+   */
+  profitDelta?: number | null
+  /** 资金缺口影响额（仅 FUND_GAP 类活跃风险的 impactAmount 合计；无则 0） */
+  fundGapAmount?: number
   /** TOP 风险标题（最多 3 条） */
   topRisks: string[]
+}
+
+/** 全局筛选器可选项（UI §14） */
+export interface CockpitFilterOptions {
+  /** 所属公司（取项目表 distinct 真实值，不造虚拟公司） */
+  companies: { companyId: number; companyName: string }[]
+  projects: {
+    projectId: number
+    projectName: string
+    projectCode?: string
+    ownerCompanyId?: number | null
+  }[]
+  /** 6 个快捷筛选（与后端 applyQuickFilter 合法值同源，前端不写死） */
+  quickFilters: { code: string; label: string }[]
+  /**
+   * 无数据源的筛选维度（区域 / 项目经理）。
+   * 前端据此**置灰并说明原因**，不得做成选了不生效的假下拉。
+   */
+  unsupportedDimensions: { code: string; reason: string }[]
 }
 
 /** 风险台账记录（驾驶舱 §11-12 六要素） */
@@ -177,8 +237,17 @@ export interface CockpitProfitTrend {
   }
 }
 
-export function getCockpitOverview() {
-  return request.get<R<CockpitOverview>>('/v1/dashboard/cockpit/overview')
+/**
+ * 经营总览 8 卡（UI §14 全局筛选：所属公司 / 项目，均可选）。
+ * 有筛选时资金缺口读项目级快照且不含账户余额，须按 gapBasis 提示口径。
+ */
+export function getCockpitOverview(params?: { ownerCompanyId?: number; projectId?: number }) {
+  return request.get<R<CockpitOverview>>('/v1/dashboard/cockpit/overview', { params })
+}
+
+/** 全局筛选器可选项（公司 / 项目 / 快捷筛选 / 无数据源维度声明） */
+export function getCockpitFilterOptions() {
+  return request.get<R<CockpitFilterOptions>>('/v1/dashboard/cockpit/filter-options')
 }
 
 export function getCockpitProfitTrend(params: { projectId?: number; months?: number; year?: number }) {
@@ -212,8 +281,16 @@ export function getFundRatios() {
   return request.get<R<FundRatios>>('/v1/dashboard/cockpit/fund-ratios')
 }
 
-export function getProjectHealth() {
-  return request.get<R<ProjectHealth[]>>('/v1/dashboard/cockpit/project-health')
+/**
+ * 项目经营健康度（§5.2）+ 快捷筛选 + 全局筛选。
+ * quickFilter 非法值后端报 400（不静默当作“全部”），前端只传 quickFilters 中的 code。
+ */
+export function getProjectHealth(params?: {
+  quickFilter?: string
+  ownerCompanyId?: number
+  projectId?: number
+}) {
+  return request.get<R<ProjectHealth[]>>('/v1/dashboard/cockpit/project-health', { params })
 }
 
 export function getProjectForecasts() {

@@ -500,4 +500,158 @@ class ProjectCostControlServiceTest {
             assertThat(service.getCostControl(PROJECT_ID).getWbsCount()).isZero();
         }
     }
+
+    // =====================================================================
+    // UI §7.2 七类成本结构映射 + §7.1 预计超支 / 偏差率
+    // =====================================================================
+
+    @Nested
+    @DisplayName("文档七类口径（材料/分包/人工/机械/措施/管理/商务）与偏差率")
+    class DocCategoryTests {
+
+        private BizCostAccount docAccount(Long id, String category, String subcategory,
+                                          String baseline, String current, String forecast) {
+            BizCostAccount a = account(id, "A" + id, category, baseline, current, "0", "0", forecast);
+            a.setCostSubcategory(subcategory);
+            return a;
+        }
+
+        private ProjectCostControlDTO.DocCategorySummary pick(ProjectCostControlDTO dto, String code) {
+            return dto.getDocCategories().stream()
+                    .filter(c -> code.equals(c.getCode())).findFirst().orElseThrow();
+        }
+
+        @Test
+        @DisplayName("结构完整 — 恒返回 7 类 + 未归类共 8 行且顺序与文档一致（无账户也返回，金额为零）")
+        void alwaysReturnsSevenPlusOther() {
+            stubAccounts();
+
+            ProjectCostControlDTO dto = service.getCostControl(PROJECT_ID);
+
+            assertThat(dto.getDocCategories()).hasSize(8);
+            assertThat(dto.getDocCategories()).extracting(ProjectCostControlDTO.DocCategorySummary::getCode)
+                    .containsExactly("MATERIAL", "SUBCONTRACT", "LABOR", "MACHINE",
+                            "MEASURE", "ADMIN", "BUSINESS", "OTHER");
+            // 无账户时 riskLevel=INFO（无预算基准），不得给 GREEN 伪装“未超支”
+            assertThat(dto.getDocCategories()).allSatisfy(c -> {
+                assertThat(c.getRiskLevel()).isEqualTo("INFO");
+                assertThat(c.getVarianceRate()).isNull();
+                assertThat(c.getAccountCount()).isZero();
+                assertThat(c.getCurrent()).isEqualByComparingTo("0");
+            });
+        }
+
+        @Test
+        @DisplayName("四类直接映射 — 由 cost_category 归类（basis=CBS_CATEGORY）并按超支率定风险级")
+        void directCategoryMapping() {
+            stubAccounts(
+                    docAccount(1L, "MATERIAL", "主材", "100", "100", "120"),
+                    docAccount(2L, "SUBCONTRACT", "专业分包", "200", "200", "180"),
+                    docAccount(3L, "LABOR", "主体劳务", "50", "50", "50"),
+                    docAccount(4L, "MACHINE", "大型机械", "30", "30", "30"));
+
+            ProjectCostControlDTO dto = service.getCostControl(PROJECT_ID);
+
+            assertThat(pick(dto, "MATERIAL").getBasis()).isEqualTo("CBS_CATEGORY");
+            assertThat(pick(dto, "MATERIAL").getForecast()).isEqualByComparingTo("120");
+            // 材料超支 20/100 = 20% > 10% → RED
+            assertThat(pick(dto, "MATERIAL").getRiskLevel()).isEqualTo("RED");
+            // 分包 forecast 180 < current 200 → 节约 → GREEN；人工恰好持平也归 GREEN（非超支）
+            assertThat(pick(dto, "SUBCONTRACT").getRiskLevel()).isEqualTo("GREEN");
+            assertThat(pick(dto, "LABOR").getRiskLevel()).isEqualTo("GREEN");
+            assertThat(pick(dto, "LABOR").getVarianceRate()).isEqualByComparingTo("0.00");
+        }
+
+        @Test
+        @DisplayName("间接费按子类关键词细分 — 临设费→措施、招待费→商务、管理费→管理")
+        void subcategoryKeywordMapping() {
+            stubAccounts(
+                    docAccount(1L, "INDIRECT", "临设费", "100", "100", "105"),
+                    docAccount(2L, "INDIRECT", "招待费", "20", "20", "28"),
+                    docAccount(3L, "INDIRECT", "管理费", "200", "200", "190"));
+
+            ProjectCostControlDTO dto = service.getCostControl(PROJECT_ID);
+
+            assertThat(pick(dto, "MEASURE").getBasis()).isEqualTo("CBS_SUBCATEGORY_KEYWORD");
+            assertThat(pick(dto, "MEASURE").getCurrent()).isEqualByComparingTo("100");
+            assertThat(pick(dto, "BUSINESS").getCurrent()).isEqualByComparingTo("20");
+            assertThat(pick(dto, "ADMIN").getCurrent()).isEqualByComparingTo("200");
+            // 商务超支 8/20 = 40% → RED；措施超支 5/100 = 5% → YELLOW（未过 10% 阈值）；管理节约 → GREEN
+            assertThat(pick(dto, "BUSINESS").getRiskLevel()).isEqualTo("RED");
+            assertThat(pick(dto, "MEASURE").getRiskLevel()).isEqualTo("YELLOW");
+            assertThat(pick(dto, "ADMIN").getRiskLevel()).isEqualTo("GREEN");
+            // 间接费已全部分流，不得残留在未归类
+            assertThat(pick(dto, "OTHER").getAccountCount()).isZero();
+        }
+
+        @Test
+        @DisplayName("未命中关键词不猜类 — 归 OTHER 且 basis=UNCLASSIFIED（金额去向可追溯）")
+        void unclassifiedGoesToOther() {
+            stubAccounts(
+                    docAccount(1L, "INDIRECT", "某某专项支出", "100", "100", "100"),
+                    // 子类为空 → 降级看账户名（“账户-A2”），仍无关键词 → 未归类
+                    docAccount(2L, "OTHER", null, "50", "50", "50"));
+
+            ProjectCostControlDTO dto = service.getCostControl(PROJECT_ID);
+
+            ProjectCostControlDTO.DocCategorySummary other = pick(dto, "OTHER");
+            assertThat(other.getBasis()).isEqualTo("UNCLASSIFIED");
+            assertThat(other.getAccountCount()).isEqualTo(2);
+            assertThat(other.getCurrent()).isEqualByComparingTo("150");
+            // 关键：未被静默并入措施/管理/商务任意一类
+            assertThat(pick(dto, "MEASURE").getAccountCount()).isZero();
+            assertThat(pick(dto, "ADMIN").getAccountCount()).isZero();
+            assertThat(pick(dto, "BUSINESS").getAccountCount()).isZero();
+        }
+
+        @Test
+        @DisplayName("§7.1 预计超支 = 预计最终 − 目标成本（正数=超支）；偏差率无预算基准时为 null")
+        void totalsForecastOverrunAndNullRate() {
+            stubAccounts(
+                    docAccount(1L, "MATERIAL", "主材", "1000", "1200", "1600"),
+                    docAccount(2L, "LABOR", "主体劳务", "500", "0", "0"));
+
+            ProjectCostControlDTO dto = service.getCostControl(PROJECT_ID);
+
+            // 目标成本（Σ baseline）1500；预计最终（Σ forecast）1600 → 预计超支 +100
+            assertThat(dto.getTotals().getBaselineTotal()).isEqualByComparingTo("1500");
+            assertThat(dto.getTotals().getForecastTotal()).isEqualByComparingTo("1600");
+            assertThat(dto.getTotals().getForecastOverrun()).isEqualByComparingTo("100");
+            // MATERIAL：variance = 1200 − 1600 = −400 → 偏差率 −33.33%
+            assertThat(dto.getAccounts().stream()
+                    .filter(a -> "MATERIAL".equals(a.getCostCategory())).findFirst().orElseThrow()
+                    .getVarianceRate()).isEqualByComparingTo("-33.33");
+            // LABOR：当前预算为 0 → 偏差率必须 null（不得用 0 冒充“无偏差”）
+            assertThat(dto.getAccounts().stream()
+                    .filter(a -> "LABOR".equals(a.getCostCategory())).findFirst().orElseThrow()
+                    .getVarianceRate()).isNull();
+        }
+
+        @Test
+        @DisplayName("七类与 CBS 六类并存不互替（两套口径同时返回，金额各自自洽）")
+        void docAndCbsCategoriesCoexist() {
+            stubAccounts(
+                    docAccount(1L, "MATERIAL", "主材", "100", "100", "100"),
+                    docAccount(2L, "INDIRECT", "招待费", "20", "20", "20"),
+                    docAccount(3L, "INDIRECT", "管理费", "30", "30", "30"));
+
+            ProjectCostControlDTO dto = service.getCostControl(PROJECT_ID);
+
+            // CBS 口径：MATERIAL + INDIRECT 共 2 类
+            assertThat(dto.getCategorySummaries())
+                    .extracting(ProjectCostControlDTO.CategorySummary::getCostCategory)
+                    .containsExactlyInAnyOrder("MATERIAL", "INDIRECT");
+            // 文档口径：招待费+管理费 同属 INDIRECT，但分归商务与管理
+            assertThat(pick(dto, "BUSINESS").getCurrent()).isEqualByComparingTo("20");
+            assertThat(pick(dto, "ADMIN").getCurrent()).isEqualByComparingTo("30");
+            // 两套口径总额相等（同一批账户，仅分组方式不同）
+            BigDecimal cbsTotal = dto.getCategorySummaries().stream()
+                    .map(ProjectCostControlDTO.CategorySummary::getCurrent)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal docTotal = dto.getDocCategories().stream()
+                    .map(ProjectCostControlDTO.DocCategorySummary::getCurrent)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            assertThat(docTotal).isEqualByComparingTo(cbsTotal);
+        }
+    }
 }

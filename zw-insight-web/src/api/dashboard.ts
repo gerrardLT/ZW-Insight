@@ -182,6 +182,11 @@ export interface ProjectCostTotals {
   varianceAmount?: number
   /** 偏差率 (%) */
   varianceRate?: number
+  /**
+   * 预计超支（UI §7.1）= forecastTotal − baselineTotal，**正数 = 预计超出目标成本**。
+   * 与 varianceAmount（相对当前预算）口径不同，不可互替。
+   */
+  forecastOverrun?: number
   /** 预算使用率 (%) */
   usageRate?: number
   /** 承诺率 (%) */
@@ -218,6 +223,11 @@ export interface CostAccountSummary {
   remaining: number
   /** 偏差金额 */
   variance: number
+  /**
+   * 偏差率 (%) = variance / current * 100。
+   * **当前预算为 0 时为 null**（无基准不可算率），前端显示“—”而非 0%。
+   */
+  varianceRate?: number | null
   /** 使用率 (%) */
   usageRate: number
   /** 状态 */
@@ -242,6 +252,40 @@ export interface CategorySummary {
   forecast: number
   /** 偏差 */
   variance: number
+  /** 偏差率 (%)；当前预算为 0 时 null */
+  varianceRate?: number | null
+  /** 账户数量 */
+  accountCount: number
+}
+
+/**
+ * UI §7.2「七类成本结构」汇总（材料/分包/人工/机械/措施/管理/商务 + 未归类）。
+ * 与 CBS 六类 {@link CategorySummary} **并存不互替**。
+ */
+export interface DocCategorySummary {
+  /** 文档类别码 */
+  code: 'MATERIAL' | 'SUBCONTRACT' | 'LABOR' | 'MACHINE' | 'MEASURE' | 'ADMIN' | 'BUSINESS' | 'OTHER'
+  /** 中文名 */
+  name: string
+  /**
+   * 归类依据（不隐藏映射规则）：
+   * CBS_CATEGORY=由 cost_category 直接映射；
+   * CBS_SUBCATEGORY_KEYWORD=间接费按子类名关键词细分；
+   * UNCLASSIFIED=未能归类（如实单列，不并入其他类）
+   */
+  basis: string
+  /** 预算（当前预算） */
+  current: number
+  /** 实际发生 */
+  actual: number
+  /** 预计最终（EAC） */
+  forecast: number
+  /** 偏差金额（current − forecast，正数=节约） */
+  variance: number
+  /** 偏差率 (%)；预算为 0 时 null */
+  varianceRate?: number | null
+  /** 风险等级：RED 超支&gt;10% / YELLOW 超支 / GREEN 未超支 / INFO 无预算基准 */
+  riskLevel: 'RED' | 'YELLOW' | 'GREEN' | 'INFO'
   /** 账户数量 */
   accountCount: number
 }
@@ -276,6 +320,8 @@ export interface ProjectCostControlDTO {
   accounts: CostAccountSummary[]
   /** 按费用类别分组汇总 */
   categorySummaries: CategorySummary[]
+  /** 按 UI §7.2 七类口径分组汇总（恒 8 行：7 类 + 未归类） */
+  docCategories?: DocCategorySummary[]
   /** 趋势数据 */
   trends: MonthlyTrend[]
 }

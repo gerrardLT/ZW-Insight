@@ -126,6 +126,58 @@ public interface BizEntertainmentDetailMapper extends BaseMapper<BizEntertainmen
     List<Long> listProjectIdsWithEntertainment();
 
     /**
+     * 招待费按月聚合（§6.3「月度变化」分析维度，旧实现缺失）。
+     * <p>月份归属取报销单业务日期 reimbursement_date（PROJECT/PERSONAL 两类主表分别关联），
+     * 主表无该日期时回退明细创建时间——回退仅作兜底，不因此丢数据。</p>
+     *
+     * @param projectId 项目ID（可空=全部项目）
+     * @param fromDate  起始日期（含），用于限定近 N 月
+     * @return [{month: 'yyyy-MM', amount, cnt}]，按月份升序
+     */
+    @Select("<script>"
+            + "SELECT DATE_FORMAT(COALESCE(pr.reimbursement_date, pp.reimbursement_date, DATE(d.created_at)), '%Y-%m') AS month, "
+            + "       COALESCE(SUM(d.amount),0) AS amount, COUNT(*) AS cnt "
+            + "FROM biz_reimbursement_detail d "
+            + "JOIN biz_entertainment_detail e ON e.reimbursement_detail_id = d.id AND e.deleted = 0 "
+            + "LEFT JOIN biz_project_reimbursement pr ON d.source_type = 'PROJECT' "
+            + "       AND pr.id = d.reimbursement_id AND pr.deleted = 0 "
+            + "LEFT JOIN biz_personal_reimbursement pp ON d.source_type = 'PERSONAL' "
+            + "       AND pp.id = d.reimbursement_id AND pp.deleted = 0 "
+            + "WHERE d.deleted = 0 AND d.category_code = 'EXP-INDIRECT-ENTERTAIN' "
+            + APPROVED_SOURCE_GUARD
+            + "  AND COALESCE(pr.reimbursement_date, pp.reimbursement_date, DATE(d.created_at)) &gt;= #{fromDate} "
+            + "  <if test='projectId != null'> AND e.project_id = #{projectId} </if>"
+            + "GROUP BY month ORDER BY month"
+            + "</script>")
+    List<Map<String, Object>> monthlyTrend(@Param("projectId") Long projectId,
+                                          @Param("fromDate") java.time.LocalDate fromDate);
+
+    /**
+     * 当月招待费计划限额（§6.3「预算执行率」分母、§11「超月度限额」预警基准）。
+     * <p>数据源：月度资金计划科目明细（biz_fund_plan_detail，V2026_58）中
+     * 科目 EXP-INDIRECT-ENTERTAIN 的 APPROVED 计划金额。</p>
+     * <p><b>故意不用 COALESCE</b>：无计划明细时必须返回 null 而非 0，
+     * 否则调用方会把“未编制计划”误判为“限额 0 元 → 任何支出都超限”而大量误报。</p>
+     *
+     * @param projectId 项目ID（空=公司级计划 project_id IS NULL）
+     * @return 计划限额；无计划明细时 null
+     */
+    @Select("<script>"
+            + "SELECT SUM(fd.amount) FROM biz_fund_plan_detail fd "
+            + "JOIN biz_fund_monthly_plan p ON p.id = fd.plan_id AND p.deleted = 0 AND p.status = 'APPROVED' "
+            + "WHERE fd.deleted = 0 AND fd.direction = 'EXPENSE' "
+            + "  AND fd.category_code = 'EXP-INDIRECT-ENTERTAIN' "
+            + "  AND p.plan_year = #{year} AND p.plan_month = #{month} "
+            + "  <choose>"
+            + "    <when test='projectId != null'> AND p.project_id = #{projectId}</when>"
+            + "    <otherwise> AND p.project_id IS NULL</otherwise>"
+            + "  </choose>"
+            + "</script>")
+    BigDecimal sumEntertainmentPlanLimit(@Param("projectId") Long projectId,
+                                        @Param("year") int year,
+                                        @Param("month") int month);
+
+    /**
      * 同一经办人单月招待笔数超阈值的命中数（§11「同一经办人频繁报销」预警数据源）。
      *
      * @param projectId   项目ID（可空=全部项目）
