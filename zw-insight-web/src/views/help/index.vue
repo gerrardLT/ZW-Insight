@@ -144,6 +144,38 @@ const TERMS: HelpTerm[] = [
     definition:
       '删除等高危操作可能被后端拦截并要求二次确认（HTTP 449）：系统弹出密码输入框，确认后自动携带密码重发原请求。密码错误返回 403；连续错误次数过多将临时锁定（423）。取消输入即终止本次操作。',
     where: '启用二次确认的删除/变更入口'
+  },
+  {
+    id: 'dual-cash-metric',
+    name: '资金双口径（审批口径 vs 现金口径）',
+    tag: '核心口径',
+    definition:
+      '审批口径（total_expense）由付款申请审批通过（onApproved）与资金调拨触发回写，表达法定义务与支出责任，用于项目账、R7 审计基线与已实现利润；现金口径（pay_status/pay_date）由银行流水核销或实付打款标记为 PAID，表达真实现金流出，用于滚动资金预测与已批未付卡。pay_status 变更绝不重复回写 total_expense。',
+    where: '经营驾驶舱、财务管理 › 付款申请、月度经营分析'
+  },
+  {
+    id: 'receivable-writeoff',
+    name: '应收台账与回款核销（FIFO）',
+    tag: '资金闭环',
+    definition:
+      '应收台账（biz_receivable）由施工合同结算单审批通过时自动生成，由回款登记单审批通过时按先到期先核销（FIFO）原则自动冲抵未结余额；项目应收账款（receivable_amount）由后端服务同事务双写维护，保证单据与台账强勾稽。',
+    where: '财务管理 › 应收台账、回款登记'
+  },
+  {
+    id: 'cbs-rollup',
+    name: 'CBS 成本归集与完工预测（Rollup）',
+    tag: '成本管控',
+    definition:
+      'CBS 成本账户的实际发生额由 CostRollUpTask 定时任务按单据汇总做目标绝对值对账而自动校正，按 delta 记账并生成流水溯源；完工预测（EAC）与目标成本（baseline）对比计算预计超支，驱动成本中心与风险中心预警。',
+    where: '预算管理 › 成本账户CBS、经营驾驶舱 › 成本中心'
+  },
+  {
+    id: 'drilldown-chain',
+    name: '单据穿透链（P2-4 下钻）',
+    tag: '穿透决策',
+    definition:
+      '从高管经营驾驶舱的核心指标卡、成本分类条形图或单项目运营大屏中的宏观数字，逐级向下钻取到项目构成、供应商明细，并直达原始业务单据详情（合同、结算、付款、报销）的完整闭环下钻能力。',
+    where: '经营驾驶舱（总览/成本中心/项目经营）'
   }
 ]
 

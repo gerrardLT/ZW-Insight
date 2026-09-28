@@ -29,9 +29,19 @@ function mountHelp() {
 }
 
 describe('help/index.vue 帮助中心', () => {
-  it('渲染全部 5 条业务术语（含定义与相关页面）', async () => {
+  it('渲染全部 9 条业务术语（含定义与相关页面）', async () => {
     const w = await mountHelp()
-    const termIds = ['budget-block', 'retention-overdue', 'advance-funding', 'payable-limit', 'secondary-confirm']
+    const termIds = [
+      'budget-block',
+      'retention-overdue',
+      'advance-funding',
+      'payable-limit',
+      'secondary-confirm',
+      'dual-cash-metric',
+      'receivable-writeoff',
+      'cbs-rollup',
+      'drilldown-chain'
+    ]
     for (const id of termIds) {
       const el = w.find(`[data-testid="help-term-${id}"]`)
       expect(el.exists(), `术语块 ${id} 应存在`).toBe(true)

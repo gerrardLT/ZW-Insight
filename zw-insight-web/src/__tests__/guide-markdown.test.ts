@@ -10,15 +10,18 @@ import { USER_GUIDE, resolveImage, getChapter } from '@/docs/help/registry'
 import { renderMarkdown, renderChapter } from '@/docs/help/markdown'
 
 describe('docs/help/registry', () => {
-  it('解析出全部 19 个章节，id 唯一', () => {
-    expect(USER_GUIDE.length).toBe(19)
+  it('解析出全部 22 个章节，id 唯一', () => {
+    expect(USER_GUIDE.length).toBe(22)
     const ids = USER_GUIDE.map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
 
   it('章节顺序为业务主线序（quickstart → workflow-approval → main-flow 打头）', () => {
     expect(USER_GUIDE.slice(0, 3).map((c) => c.id)).toEqual(['quickstart', 'workflow-approval', 'main-flow'])
+    expect(USER_GUIDE.map((c) => c.id)).toContain('cockpit')
     expect(USER_GUIDE.map((c) => c.id)).toContain('finance')
+    expect(USER_GUIDE.map((c) => c.id)).toContain('message')
+    expect(USER_GUIDE.map((c) => c.id)).toContain('platform')
     expect(USER_GUIDE.map((c) => c.id)).toContain('system')
     expect(USER_GUIDE.map((c) => c.id)).toContain('basedata')
   })

@@ -51,10 +51,10 @@ afterEach(() => {
 })
 
 describe('guide.vue 三栏阅读器', () => {
-  it('默认打开首章（快速上手），左栏渲染 19 个导航项', async () => {
+  it('默认打开首章（快速上手），左栏渲染 22 个导航项', async () => {
     const w = await mountGuide()
     expect(w.find('.doc-title').text()).toContain('快速上手')
-    expect(w.findAll('.nav-item')).toHaveLength(19)
+    expect(w.findAll('.nav-item')).toHaveLength(22)
     expect(w.find('.nav-item.active').text()).toContain('快速上手')
   })
 
@@ -82,7 +82,7 @@ describe('guide.vue 三栏阅读器', () => {
     await flushPromises()
     const items = w.findAll('.nav-item')
     expect(items.length).toBeGreaterThan(0)
-    expect(items.length).toBeLessThan(19)
+    expect(items.length).toBeLessThan(22)
     // 首章 quickstart 不含该词 → 应自动切到某个命中章
     expect(w.find('.nav-item.active').exists()).toBe(true)
     expect(w.findAll('.nav-item-hits').length).toBe(items.length)

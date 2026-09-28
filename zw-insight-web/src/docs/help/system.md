@@ -9,7 +9,7 @@ summary: 组织机构、用户角色权限、数据字典、模板打印、编�
 
 系统管理是平台的"配置与运维中枢"：组织与权限、字典与模板、编号规则，以及日志/备份/版本/监控。多数能力仅管理员可见。
 
-> 入口：**系统管理** 菜单：机构 `/system/org`、人员 `/system/user`、角色 `/system/role`、菜单 `/system/menu`、数据字典 `/system/dict`、岗位 `/system/post`、模板 `/system/template`、打印模板 `/system/print-template`、日志 `/system/log`、审批分级 `/system/amount-tier`、编号规则 `/system/serial-number`、数据备份 `/system/backup`、版本 `/system/version`、监控 `/system/monitor`。
+> 入口：**系统管理** 菜单：机构 `/system/org`、人员 `/system/user`、角色 `/system/role`、菜单 `/system/menu`、数据字典 `/system/dict`、岗位 `/system/post`、系统设置 `/system/config`、模板 `/system/template`、打印模板 `/system/print-template`、日志 `/system/log`、审批分级 `/system/amount-tier`、编号规则 `/system/serial-number`、数据备份 `/system/backup`、版本 `/system/version`、监控 `/system/monitor`；另有个人中心 **登录设备** `/user/devices`。
 
 ## 组织与人员
 
@@ -55,6 +55,8 @@ summary: 组织机构、用户角色权限、数据字典、模板打印、编�
 - **数据备份**：手动备份/下载/恢复/删除；**恢复为高风险操作**，需二次确认（449 密码确认），会覆盖当前库。
 - **版本管理**：版本号、发布日期、更新日志。
 - **系统监控**：运行状态查看。
+- **系统设置 (`/system/config`)**：按「安全设置 / 审批设置 / 文件设置 / 通知设置」四个页签维护全局参数（密码复杂度、会话超时、上传大小限制等），修改后点击「保存设置」即时生效。
+- **登录设备 (`/user/devices`)**：从顶栏右上角头像下拉进入，展示当前账号所有活跃登录会话（设备名称、操作系统、IP 地址、登录地点、登录时间），若发现陌生异地登录可一键**远程注销**踢出异常设备。
 
 ## 关键校验与规则
 

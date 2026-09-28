@@ -39,6 +39,7 @@ const ORDER: string[] = [
   'workflow-approval',
   'main-flow',
   'dashboard',
+  'cockpit',
   'project',
   'tender',
   'contract',
@@ -52,7 +53,9 @@ const ORDER: string[] = [
   'site',
   'hr',
   'archive',
+  'message',
   'system',
+  'platform',
   'basedata',
 ]
 
