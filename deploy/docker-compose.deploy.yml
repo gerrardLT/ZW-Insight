@@ -129,7 +129,6 @@ services:
     volumes:
       # CI 构建 dist 经 rsync 落盘；nginx 直接只读服务该目录
       - ../zw-insight-web/dist:/usr/share/nginx/html:ro
-      - zwi_brand:/usr/share/nginx/html/brand:ro
     mem_limit: ${FRONTEND_MEM_LIMIT:-128m}
     networks: [zwi-net]
 
