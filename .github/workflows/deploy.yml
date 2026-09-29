@@ -1,4 +1,4 @@
-﻿name: CI/CD Deploy to BaoTa Server
+name: CI/CD Deploy to BaoTa Server
 
 on:
   push:
@@ -864,4 +864,3 @@ jobs:
              cp -r /tmp/zwi-perf ${{ env.DEPLOY_DIR }}/tests/performance && \
              cd ${{ env.DEPLOY_DIR }}/tests/performance && \
              ZWI_K6_FORCE=1 bash run-k6.sh all"
-
