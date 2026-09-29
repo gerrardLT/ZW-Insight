@@ -547,18 +547,18 @@ class CaptchaServiceTest {
     class SliderCaptchaTest {
 
         @Test
-        @DisplayName("generateSlider - 下发 challengeId 与 gapPct（0.35~0.85）")
-        void generateSlider_returnsChallengeAndGap() {
-            // When
+        @DisplayName("generateSlider - 返回真实 PNG 拼图且不泄露目标 x")
+        void generateSlider_returnsImagesWithoutTarget() {
             var result = captchaService.generateSlider();
 
-            // Then
-            assertThat((String) result.get("challengeId")).isNotNull().isNotBlank();
-            assertThat(result.get("gapPct")).isInstanceOf(Double.class);
-            double gap = (Double) result.get("gapPct");
-            assertThat(gap).isBetween(0.35, 0.85);
-            // Redis key 检查
-            verify(redisUtils).set(eq("slider:" + result.get("challengeId")), anyString(), eq(120L), eq(TimeUnit.SECONDS));
+            assertThat(result.getChallengeId()).isNotBlank();
+            assertThat(result.getBackgroundImage()).startsWith("data:image/png;base64,");
+            assertThat(result.getPieceImage()).startsWith("data:image/png;base64,");
+            assertThat(result.getImageWidth()).isEqualTo(320);
+            assertThat(result.getImageHeight()).isEqualTo(160);
+            assertThat(result.getPieceWidth()).isEqualTo(52);
+            assertThat(result.getPieceY()).isBetween(25, 83);
+            verify(redisUtils).set(eq("slider:" + result.getChallengeId()), anyString(), eq(120L), eq(TimeUnit.SECONDS));
         }
 
         @Test
@@ -566,8 +566,8 @@ class CaptchaServiceTest {
         void verifySlider_success_returnsToken() {
             // Given
             String cid = "ch-slider-success";
-            double pct = 0.60; // 容差 0.06，正确值 0.60±0.06
-            when(redisUtils.get("slider:" + cid)).thenReturn(String.valueOf(pct));
+            double pct = 0.60;
+            when(redisUtils.get("slider:" + cid)).thenReturn("192");
 
             // When
             String token = captchaService.verifySlider(cid, pct);
@@ -585,8 +585,8 @@ class CaptchaServiceTest {
         void verifySlider_outOfTolerance_returnsNull() {
             // Given
             String cid = "ch-out-of-tolerance";
-            double pct = 0.95; // 超出 0.85+0.06 容差
-            when(redisUtils.get("slider:" + cid)).thenReturn(String.valueOf(0.85));
+            double pct = 0.70;
+            when(redisUtils.get("slider:" + cid)).thenReturn("160");
 
             // When
             String token = captchaService.verifySlider(cid, pct);
@@ -607,6 +607,24 @@ class CaptchaServiceTest {
 
             // Then
             assertThat(token).isNull();
+        }
+
+        @Test
+        @DisplayName("verifySliderX - 边界非法时不消费挑战")
+        void verifySliderX_invalidBoundary_returnsNullWithoutConsumption() {
+            assertThat(captchaService.verifySliderX("cid", -1)).isNull();
+            assertThat(captchaService.verifySliderX("cid", 269)).isNull();
+            assertThat(captchaService.verifySlider("cid", Double.NaN)).isNull();
+            verify(redisUtils, never()).get(anyString());
+        }
+
+        @Test
+        @DisplayName("verifySliderX - 验证失败后挑战不可重放")
+        void verifySliderX_failureConsumesChallenge() {
+            when(redisUtils.get("slider:cid")).thenReturn("180", null);
+            assertThat(captchaService.verifySliderX("cid", 100)).isNull();
+            assertThat(captchaService.verifySliderX("cid", 180)).isNull();
+            verify(redisUtils, times(2)).delete("slider:cid");
         }
 
         @Test

@@ -4,10 +4,12 @@
       <div v-if="visible" class="palette-overlay" role="presentation">
         <div class="palette-backdrop" @mousedown="close" />
         <div
+          ref="panelRef"
           class="palette-panel"
           role="dialog"
           aria-modal="true"
           aria-label="命令面板"
+          @keydown.tab="trapFocus"
         >
           <div class="palette-input-row">
             <el-icon class="palette-search-icon"><Search /></el-icon>
@@ -45,6 +47,7 @@
                 :id="'zw-palette-opt-' + item.id"
                 class="palette-item"
                 :class="{ active: i === selectedIndex }"
+                tabindex="-1"
                 role="option"
                 :aria-selected="i === selectedIndex"
                 @mouseenter="selectedIndex = i"
@@ -80,10 +83,17 @@ import {
 
 const props = defineProps<{ commands: PaletteCommand[] }>()
 
-const { visible, close } = useCommandPalette()
+const { visible, close: closePalette } = useCommandPalette()
 const inputRef = ref<HTMLInputElement>()
+const panelRef = ref<HTMLElement>()
 const query = ref('')
 const selectedIndex = ref(0)
+let returnFocusTo: HTMLElement | null = null
+
+function close() {
+  closePalette()
+  nextTick(() => returnFocusTo?.focus())
+}
 
 /** 渲染上限：命令量小，封顶保证 DOM 轻量（替代重量级虚拟滚动） */
 const MAX_RESULTS = 60
@@ -108,10 +118,26 @@ const activeId = computed(() => {
   return cur ? 'zw-palette-opt-' + cur.id : undefined
 })
 
-function move(delta: number) {
+async function move(delta: number) {
   const n = results.value.length
   if (!n) return
   selectedIndex.value = (selectedIndex.value + delta + n) % n
+  await nextTick()
+  document.getElementById('zw-palette-opt-' + results.value[selectedIndex.value]?.id)?.scrollIntoView({ block: 'nearest' })
+}
+
+function trapFocus(event: KeyboardEvent) {
+  const focusable = panelRef.value?.querySelectorAll<HTMLElement>('input, button, [href], [tabindex]:not([tabindex="-1"])')
+  if (!focusable?.length) return
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 
 function run(cmd: PaletteCommand) {
@@ -127,6 +153,7 @@ function runSelected() {
 // 打开时重置查询与选中，聚焦输入框
 watch(visible, async (v) => {
   if (!v) return
+  returnFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
   query.value = ''
   selectedIndex.value = 0
   await nextTick()
@@ -314,6 +341,27 @@ watch(results, (list) => {
 .zw-palette-enter-from .palette-panel,
 .zw-palette-leave-to .palette-panel {
   transform: translateY(-8px);
+}
+
+@media (max-width: 640px) {
+  .palette-overlay {
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .palette-panel {
+    width: 100%;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  .palette-list {
+    max-height: none;
+    flex: 1;
+  }
+
+  .palette-ai-note,
+  .palette-footer {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

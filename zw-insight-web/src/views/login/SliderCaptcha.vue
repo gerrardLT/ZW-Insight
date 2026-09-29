@@ -1,157 +1,214 @@
 <template>
-  <!-- 精致版滑块验证码：后端下发缺口位置，前端拖动对齐，服务端校验签发一次性令牌 -->
-  <div class="slider-captcha" :class="{ ok: state === 'success', fail: state === 'fail', dragging: state === 'drag' }">
-    <div ref="trackRef" class="track" @pointerdown.self="noop">
-      <!-- 目标缺口槽 -->
-      <div class="gap" :style="{ left: gapLeft }">
-        <svg class="gap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-          <path d="M12 3l3 3h4a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l3-3z" />
-        </svg>
-      </div>
-      <!-- 已滑过填充（品牌渐变 + 流动高光） -->
-      <div class="fill" :style="{ width: fillWidth }"><i class="sheen"></i></div>
-      <!-- 拖块 -->
-      <div class="handle" :style="{ transform: `translateX(${pieceX}px)` }" @pointerdown="onDown">
-        <svg v-if="state === 'success'" class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6" /></svg>
-        <svg v-else class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l5 5-5 5" /><path d="M14 7l5 5-5 5" /></svg>
-      </div>
-    </div>
-    <button type="button" class="refresh" title="换一个" @click="load">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 3v6h-6" /></svg>
+  <div ref="rootRef" class="captcha-shell">
+    <button
+      type="button"
+      class="captcha-trigger"
+      :class="{ verified: state === 'success' }"
+      :aria-expanded="panelOpen"
+      aria-haspopup="dialog"
+      @click="openPanel"
+    >
+      <span class="trigger-icon" aria-hidden="true">
+        <svg v-if="state === 'success'" viewBox="0 0 24 24"><path d="M5 12.5l4 4L19 6.5" /></svg>
+        <svg v-else viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-2.8 8-7 10-4.2-2-7-5.4-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg>
+      </span>
+      <span>{{ state === 'success' ? '安全验证已完成' : '点击完成安全验证' }}</span>
+      <span v-if="state !== 'success'" class="trigger-action">验证</span>
     </button>
+
+    <Transition name="captcha-panel">
+      <div v-if="panelOpen" class="captcha-panel" role="dialog" aria-label="图片拼图验证">
+        <header>
+          <div>
+            <strong>完成拼图验证</strong>
+            <span>拖动滑块，将拼图移动到缺口位置</span>
+          </div>
+          <button type="button" class="icon-button" aria-label="关闭验证" @click="closePanel">×</button>
+        </header>
+
+        <div class="image-stage" :style="stageStyle">
+          <div v-if="loading" class="stage-state">正在生成安全图片…</div>
+          <div v-else-if="loadError" class="stage-state error-state">
+            <span>{{ loadError }}</span>
+            <button type="button" @click="load">重新加载</button>
+          </div>
+          <template v-else-if="challenge">
+            <img class="background-image" :src="imageSrc(challenge.backgroundImage)" alt="拼图验证背景" draggable="false" />
+            <img
+              class="puzzle-piece"
+              :src="imageSrc(challenge.pieceImage)"
+              alt=""
+              draggable="false"
+              :style="pieceStyle"
+            />
+          </template>
+        </div>
+
+        <div ref="trackRef" class="slider-track" :class="{ dragging: state === 'drag', fail: state === 'fail' }">
+          <div class="slider-fill" :style="{ width: `${pieceX + HANDLE / 2}px` }" />
+          <span class="slider-copy">{{ state === 'verify' ? '正在验证…' : '按住滑块，拖动完成拼图' }}</span>
+          <button
+            class="slider-handle"
+            type="button"
+            :disabled="loading || !!loadError || state === 'verify'"
+            :style="{ transform: `translateX(${pieceX}px)` }"
+            aria-label="拖动拼图"
+            @pointerdown="onDown"
+            @keydown.left.prevent="nudge(-4)"
+            @keydown.right.prevent="nudge(4)"
+            @keydown.enter.prevent="verify"
+          >
+            <svg viewBox="0 0 24 24"><path d="M7 8l4 4-4 4M13 8l4 4-4 4" /></svg>
+          </button>
+        </div>
+
+        <footer>
+          <span v-if="state === 'fail'" class="failure-copy">位置不正确，请重试</span>
+          <span v-else>验证将在 2 分钟后失效</span>
+          <button type="button" class="refresh-button" :disabled="loading" @click="load">换一张</button>
+        </footer>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { getSliderCaptcha, verifySliderCaptcha } from '@/api/captcha'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { getSliderCaptcha, verifySliderCaptcha, type SliderCaptchaChallenge } from '@/api/captcha'
 
-const emit = defineEmits<{ (e: 'success', token: string): void; (e: 'fail'): void }>()
-
-const trackRef = ref<HTMLElement | null>(null)
+const emit = defineEmits<{ success: [token: string]; fail: [] }>()
 const HANDLE = 46
+const rootRef = ref<HTMLElement | null>(null)
+const trackRef = ref<HTMLElement | null>(null)
+const panelOpen = ref(false)
+const loading = ref(false)
+const loadError = ref('')
+const challenge = ref<SliderCaptchaChallenge | null>(null)
 const pieceX = ref(0)
-const gapPct = ref(0.6)
-const challengeId = ref('')
 const state = ref<'idle' | 'drag' | 'verify' | 'success' | 'fail'>('idle')
-let startX = 0
-let startPiece = 0
+let startClientX = 0
+let startPieceX = 0
 
-const gapLeft = computed(() => `calc(${(gapPct.value * 100).toFixed(2)}% - ${HANDLE / 2}px)`)
-const fillWidth = computed(() => `${pieceX.value + HANDLE / 2}px`)
-const noop = () => {}
+const displayMaxX = computed(() => Math.max(0, (trackRef.value?.clientWidth || challenge.value?.imageWidth || 0) - HANDLE))
+const stageStyle = computed(() => challenge.value ? { aspectRatio: `${challenge.value.imageWidth} / ${challenge.value.imageHeight}` } : undefined)
+const pieceStyle = computed(() => ({
+  width: `${challenge.value?.pieceWidth || HANDLE}px`,
+  top: `${challenge.value?.pieceY || 0}px`,
+  transform: `translateX(${pieceX.value}px)`,
+}))
+
+function imageSrc(value: string) {
+  return value.startsWith('data:') ? value : `data:image/png;base64,${value}`
+}
+
+async function openPanel() {
+  if (state.value === 'success') return
+  panelOpen.value = true
+  if (!challenge.value) await load()
+}
+
+function closePanel() {
+  if (state.value !== 'verify') panelOpen.value = false
+}
 
 async function load() {
-  state.value = 'idle'
+  loading.value = true
+  loadError.value = ''
+  challenge.value = null
   pieceX.value = 0
+  state.value = 'idle'
   try {
-    const res: any = await getSliderCaptcha()
-    challengeId.value = res.data.challengeId
-    gapPct.value = Number(res.data.gapPct)
+    const res = await getSliderCaptcha()
+    challenge.value = res.data
   } catch {
-    // 挑战获取失败：保持可重试（refresh 按钮）
+    loadError.value = '图片加载失败，请检查网络后重试'
+  } finally {
+    loading.value = false
   }
 }
 
-function onDown(e: PointerEvent) {
-  if (state.value === 'success' || state.value === 'verify') return
+function onDown(event: PointerEvent) {
+  if (!challenge.value || state.value === 'verify') return
   state.value = 'drag'
-  startX = e.clientX
-  startPiece = pieceX.value
-  const move = (ev: PointerEvent) => {
-    const w = (trackRef.value?.clientWidth ?? 0) - HANDLE
-    let x = startPiece + (ev.clientX - startX)
-    x = Math.max(0, Math.min(w, x))
-    pieceX.value = x
-  }
+  startClientX = event.clientX
+  startPieceX = pieceX.value
+  const move = (e: PointerEvent) => { pieceX.value = Math.max(0, Math.min(displayMaxX.value, startPieceX + e.clientX - startClientX)) }
   const up = async () => {
     window.removeEventListener('pointermove', move)
     window.removeEventListener('pointerup', up)
     await verify()
   }
   window.addEventListener('pointermove', move)
-  window.addEventListener('pointerup', up)
+  window.addEventListener('pointerup', up, { once: true })
+}
+
+function nudge(delta: number) {
+  if (!challenge.value) return
+  pieceX.value = Math.max(0, Math.min(displayMaxX.value, pieceX.value + delta))
 }
 
 async function verify() {
-  const w = trackRef.value?.clientWidth ?? 1
-  const pct = (pieceX.value + HANDLE / 2) / w
+  if (!challenge.value || state.value === 'verify') return
   state.value = 'verify'
   try {
-    const res: any = await verifySliderCaptcha(challengeId.value, pct)
+    const sourceMaxX = challenge.value.imageWidth - challenge.value.pieceWidth
+    const sourceX = displayMaxX.value > 0 ? pieceX.value / displayMaxX.value * sourceMaxX : 0
+    const res = await verifySliderCaptcha(challenge.value.challengeId, sourceX)
     state.value = 'success'
     emit('success', res.data.sliderToken)
+    await nextTick()
+    setTimeout(() => { panelOpen.value = false }, 320)
   } catch {
     state.value = 'fail'
     emit('fail')
-    setTimeout(() => load(), 550)
+    setTimeout(load, 650)
   }
 }
 
-defineExpose({ reset: load })
-onMounted(load)
+function onDocumentPointerDown(event: PointerEvent) {
+  if (panelOpen.value && !rootRef.value?.contains(event.target as Node)) closePanel()
+}
+document.addEventListener('pointerdown', onDocumentPointerDown)
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPointerDown))
+
+defineExpose({ reset: () => { challenge.value = null; panelOpen.value = false; state.value = 'idle'; pieceX.value = 0 } })
 </script>
 
 <style scoped>
-.slider-captcha { display: flex; gap: var(--zw-space-sm); align-items: center; width: 100%; }
-
-/* 轨道：内凹质感 + 细边 */
-.track {
-  position: relative; flex: 1; height: 48px; border-radius: var(--zw-radius-lg);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--zw-bg-hover) 70%, transparent), color-mix(in srgb, var(--zw-bg-card) 60%, transparent));
-  border: 1px solid var(--zw-border);
-  box-shadow: inset 0 2px 6px color-mix(in srgb, var(--zw-bg-sidebar) 8%, transparent);
-  overflow: hidden; user-select: none; touch-action: none;
-  transition: border-color var(--zw-duration-fast), box-shadow var(--zw-duration-fast);
-}
-.slider-captcha.dragging .track { border-color: color-mix(in srgb, var(--zw-brand) 45%, var(--zw-border)); }
-.slider-captcha.ok .track { border-color: color-mix(in srgb, var(--zw-success) 55%, var(--zw-border)); box-shadow: inset 0 2px 6px color-mix(in srgb, var(--zw-success) 10%, transparent), 0 0 0 3px color-mix(in srgb, var(--zw-success) 14%, transparent); }
-.slider-captcha.fail .track { border-color: color-mix(in srgb, var(--zw-danger) 55%, var(--zw-border)); animation: shake .32s; }
-@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 45%{transform:translateX(4px)} 70%{transform:translateX(-3px)} 90%{transform:translateX(2px)} }
-
-/* 目标缺口槽：虚线圆角 + 内阴影 + 图标 */
-.gap {
-  position: absolute; top: 0; bottom: 0; width: 46px;
-  display: flex; align-items: center; justify-content: center;
-  color: color-mix(in srgb, var(--zw-text-tertiary) 70%, transparent);
-  background: color-mix(in srgb, var(--zw-bg-sidebar) 6%, transparent);
-  border-left: 1px dashed var(--zw-border-hover); border-right: 1px dashed var(--zw-border-hover);
-  box-shadow: inset 0 0 10px color-mix(in srgb, var(--zw-bg-sidebar) 10%, transparent);
-}
-.gap-icon { width: 20px; height: 20px; opacity: .8; }
-
-/* 填充：品牌渐变 + 流动高光 */
-.fill { position: absolute; left: 0; top: 0; bottom: 0; overflow: hidden; background: linear-gradient(90deg, color-mix(in srgb, var(--zw-brand) 16%, transparent), color-mix(in srgb, var(--zw-brand) 26%, transparent)); }
-.slider-captcha.ok .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--zw-success) 16%, transparent), color-mix(in srgb, var(--zw-success) 26%, transparent)); }
-.sheen { position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--zw-text-inverse) 22%, transparent), transparent); animation: sheen 2.2s linear infinite; }
-@keyframes sheen { from { left: -40%; } to { left: 110%; } }
-
-/* 拖块：圆角白底 + 品牌图标 + 阴影，成功变绿打勾 */
-.handle {
-  position: absolute; left: 0; top: 0;
-  width: 46px; height: 46px; border-radius: var(--zw-radius-md);
-  display: flex; align-items: center; justify-content: center;
-  background: var(--zw-bg-card); color: var(--zw-brand);
-  border: 1px solid color-mix(in srgb, var(--zw-brand) 30%, var(--zw-border));
-  box-shadow: 0 3px 10px color-mix(in srgb, var(--zw-bg-sidebar) 22%, transparent);
-  cursor: grab; transition: box-shadow var(--zw-duration-fast), transform var(--zw-duration-fast), background var(--zw-duration-fast), color var(--zw-duration-fast);
-}
-.handle:hover { box-shadow: 0 5px 14px color-mix(in srgb, var(--zw-brand) 30%, transparent); }
-.slider-captcha.dragging .handle { cursor: grabbing; box-shadow: 0 6px 18px color-mix(in srgb, var(--zw-brand) 38%, transparent); }
-.slider-captcha.ok .handle { background: var(--zw-success); color: var(--zw-text-inverse); border-color: var(--zw-success); }
-.h-icon { width: 20px; height: 20px; }
-
-/* 刷新按钮：圆形图标钮 */
-.refresh {
-  flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--zw-border); background: var(--zw-bg-card); color: var(--zw-text-tertiary);
-  cursor: pointer; transition: color var(--zw-duration-fast), border-color var(--zw-duration-fast), transform var(--zw-duration-fast);
-}
-.refresh svg { width: 18px; height: 18px; }
-.refresh:hover { color: var(--zw-brand); border-color: color-mix(in srgb, var(--zw-brand) 45%, var(--zw-border)); transform: rotate(40deg); }
-
-/* 成功勾：描边绘制动效（单一编排，不散落） */
-.slider-captcha.ok .h-icon path { stroke-dasharray: 26; stroke-dashoffset: 26; animation: draw-check .35s var(--zw-ease-out) forwards; }
-@keyframes draw-check { to { stroke-dashoffset: 0; } }
+.captcha-shell { position: relative; width: 100%; }
+.captcha-trigger { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid var(--zw-border); border-radius: var(--zw-radius-md); background: var(--zw-bg-card); color: var(--zw-text-secondary); font: inherit; cursor: pointer; transition: border-color var(--zw-duration-fast), background var(--zw-duration-fast); }
+.captcha-trigger:hover { border-color: var(--zw-brand); background: var(--zw-bg-hover); }
+.captcha-trigger.verified { border-color: color-mix(in srgb, var(--zw-success) 55%, var(--zw-border)); color: var(--zw-success); }
+.trigger-icon { width: 24px; height: 24px; color: var(--zw-brand); }
+.trigger-icon svg, .slider-handle svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.trigger-action { margin-inline-start: auto; color: var(--zw-brand); font-weight: var(--zw-font-weight-semibold); }
+.captcha-panel { position: absolute; inset-inline: 0; top: calc(100% + 8px); z-index: var(--zw-z-popover); padding: 14px; border: 1px solid var(--zw-border); border-radius: var(--zw-radius-lg); background: var(--zw-bg-elevated); box-shadow: var(--zw-shadow-overlay); }
+.captcha-panel header, .captcha-panel footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.captcha-panel header { margin-bottom: 12px; }
+.captcha-panel header div { display: flex; flex-direction: column; gap: 2px; }
+.captcha-panel header strong { color: var(--zw-text-primary); font-size: var(--zw-font-size-md); }
+.captcha-panel header span, .captcha-panel footer { color: var(--zw-text-tertiary); font-size: var(--zw-font-size-xs); }
+.icon-button, .refresh-button { border: 0; background: transparent; color: var(--zw-text-secondary); cursor: pointer; }
+.icon-button { width: 32px; height: 32px; font-size: 22px; }
+.refresh-button { color: var(--zw-brand); font-weight: var(--zw-font-weight-semibold); }
+.image-stage { position: relative; width: 100%; min-height: 156px; overflow: hidden; border-radius: var(--zw-radius-md); background: var(--zw-bg-surface-3); }
+.background-image { width: 100%; height: 100%; position: absolute; inset: 0; object-fit: fill; user-select: none; }
+.puzzle-piece { position: absolute; inset-inline-start: 0; filter: drop-shadow(0 3px 5px rgba(0,0,0,.35)); transition: transform 30ms linear; user-select: none; }
+.stage-state { position: absolute; inset: 0; display: grid; place-content: center; gap: 8px; color: var(--zw-text-tertiary); font-size: var(--zw-font-size-sm); text-align: center; }
+.error-state button { border: 1px solid var(--zw-border); background: var(--zw-bg-card); color: var(--zw-brand); padding: 6px 10px; cursor: pointer; }
+.slider-track { position: relative; height: 46px; margin: 12px 0 10px; overflow: hidden; border: 1px solid var(--zw-border); border-radius: var(--zw-radius-md); background: var(--zw-bg-hover); }
+.slider-fill { position: absolute; inset-block: 0; inset-inline-start: 0; background: color-mix(in srgb, var(--zw-brand) 16%, transparent); }
+.slider-copy { position: absolute; inset: 0; display: grid; place-items: center; color: var(--zw-text-tertiary); font-size: var(--zw-font-size-sm); pointer-events: none; }
+.slider-handle { position: absolute; inset-block-start: -1px; inset-inline-start: -1px; width: 46px; height: 46px; display: grid; place-items: center; padding: 12px; border: 1px solid var(--zw-brand); border-radius: var(--zw-radius-md); background: var(--zw-bg-card); color: var(--zw-brand); cursor: grab; touch-action: none; }
+.slider-handle:disabled { cursor: wait; opacity: .7; }
+.dragging .slider-handle { cursor: grabbing; }
+.fail { border-color: var(--zw-danger); animation: captcha-shake .3s; }
+.failure-copy { color: var(--zw-danger); }
+.captcha-trigger:focus-visible, .icon-button:focus-visible, .refresh-button:focus-visible, .slider-handle:focus-visible { outline: 2px solid var(--zw-brand); outline-offset: 2px; }
+.captcha-panel-enter-active { transition: opacity var(--zw-duration-fast) var(--zw-ease-out), transform var(--zw-duration-fast) var(--zw-ease-out); }
+.captcha-panel-leave-active { transition: opacity var(--zw-duration-exit-fast) var(--zw-ease-in), transform var(--zw-duration-exit-fast) var(--zw-ease-in); }
+.captcha-panel-enter-from, .captcha-panel-leave-to { opacity: 0; transform: translateY(-6px); }
+@keyframes captcha-shake { 25% { transform: translateX(-4px); } 55% { transform: translateX(3px); } 80% { transform: translateX(-2px); } }
+@media (max-width: 640px) { .captcha-panel { position: fixed; inset: auto 12px max(12px, env(safe-area-inset-bottom)); } }
+@media (prefers-reduced-motion: reduce) { .captcha-panel-enter-active, .captcha-panel-leave-active, .puzzle-piece { transition: none; } }
 </style>

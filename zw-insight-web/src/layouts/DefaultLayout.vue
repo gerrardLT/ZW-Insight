@@ -1,67 +1,70 @@
 <template>
   <div class="layout-container">
-    <!-- 侧边栏 -->
-    <aside 
-      class="layout-aside" 
-      :class="{ collapsed: isCollapse, expanded: !isCollapse }"
+    <div v-if="isNarrow && mobileNavOpen" class="nav-backdrop" @click="mobileNavOpen = false" />
+    <aside
       ref="asideRef"
+      class="layout-aside"
+      :class="{ collapsed: isCollapse, expanded: !isCollapse, 'mobile-open': mobileNavOpen }"
+      aria-label="主导航"
       @transitionend="handleTransitionEnd"
     >
-      <div class="logo">
-        <img class="logo-icon" :src="brandStore.resolveLogo(appStore.isDark)" :alt="brandStore.systemName" />
-        <transition name="fade">
-          <div v-if="!isCollapse" class="logo-text-group">
-            <span class="logo-text">{{ brandStore.systemName }}</span>
-            <span class="logo-sub">{{ brandStore.systemSub }}</span>
-          </div>
-        </transition>
-      </div>
-      <el-scrollbar class="menu-scrollbar">
-        <el-menu
-          :default-active="$route.path"
-          :collapse="isCollapse"
-          class="side-menu"
+      <nav class="domain-rail" aria-label="业务域">
+        <div class="rail-brand">
+          <img class="logo-icon" :src="brandStore.resolveLogo(appStore.isDark)" :alt="brandStore.systemName" />
+        </div>
+        <button
+          v-for="domain in navigation.domains"
+          :key="domain.key"
+          class="domain-button"
+          :class="{ active: activeDomainKey === domain.key }"
+          type="button"
+          :aria-current="activeDomainKey === domain.key ? 'page' : undefined"
+          @click="selectDomain(domain.key)"
         >
-          <template v-for="route in menuRoutes" :key="route.path">
-            <!-- 单层菜单 -->
-            <el-menu-item
-              v-if="route.singleChild"
-              :index="route.singleChild.fullPath"
-              @click="handleMenuClick(route.singleChild.fullPath)"
-            >
-              <el-icon class="menu-item-icon"><component :is="resolveMenuIcon(route.singleChild.icon)" /></el-icon>
-              <template #title>{{ route.singleChild.title }}</template>
-            </el-menu-item>
+          <el-icon><component :is="resolveMenuIcon(domainIcon(domain.key))" /></el-icon>
+          <span>{{ domain.title }}</span>
+        </button>
+      </nav>
 
-            <!-- 多层目录 -->
-            <el-sub-menu v-else :index="route.path">
-              <template #title>
-                <el-icon class="sub-menu-icon"><component :is="resolveMenuIcon(route.icon)" /></el-icon>
-                <span>{{ route.title }}</span>
-              </template>
-              <el-menu-item
-                v-for="child in route.children"
-                :key="child.fullPath"
-                :index="child.fullPath"
-                @click="handleMenuClick(child.fullPath)"
-              >
-                <el-icon class="child-menu-icon"><component :is="resolveMenuIcon(child.icon)" /></el-icon>
-                <template #title>{{ child.title }}</template>
-              </el-menu-item>
-            </el-sub-menu>
-          </template>
-        </el-menu>
-      </el-scrollbar>
+      <section v-if="!isCollapse || isNarrow" class="nav-panel" aria-label="功能导航">
+        <header class="nav-panel-header">
+          <div>
+            <strong>{{ activeDomain?.title || '功能导航' }}</strong>
+            <span>{{ activeDomainItemCount }} 项已授权功能</span>
+          </div>
+          <button v-if="isNarrow" class="nav-close" type="button" aria-label="关闭导航" @click="mobileNavOpen = false">×</button>
+        </header>
+
+        <div v-if="menuStatus === 'loading'" class="nav-state">正在加载授权导航…</div>
+        <div v-else-if="menuStatus === 'error'" class="nav-state nav-error">
+          <span>导航加载失败</span>
+          <button type="button" @click="loadUserMenus">重试</button>
+        </div>
+        <el-scrollbar v-else class="menu-scrollbar">
+          <section v-if="favoriteItems.length" class="nav-section">
+            <h2>常用</h2>
+            <NavLink v-for="item in favoriteItems" :key="item.path" :item="item" :active="$route.path === item.path" :favorite="true" @navigate="handleMenuClick" @favorite="toggleFavorite" />
+          </section>
+          <section v-if="recentItems.length" class="nav-section">
+            <h2>最近访问</h2>
+            <NavLink v-for="item in recentItems" :key="item.path" :item="item" :active="$route.path === item.path" :favorite="favoritePaths.includes(item.path)" @navigate="handleMenuClick" @favorite="toggleFavorite" />
+          </section>
+          <section v-for="section in activeDomain?.sections || []" :key="section.title" class="nav-section">
+            <h2>{{ section.title }}</h2>
+            <NavLink v-for="item in section.items" :key="item.path" :item="item" :active="$route.path === item.path" :favorite="favoritePaths.includes(item.path)" @navigate="handleMenuClick" @favorite="toggleFavorite" />
+          </section>
+          <div v-if="menuStatus === 'ready' && !navigation.items.length" class="nav-state">当前账号暂无可用菜单</div>
+        </el-scrollbar>
+      </section>
     </aside>
 
     <div class="layout-body">
       <!-- 顶部导航 -->
       <header class="layout-header">
         <div class="header-left">
-          <el-icon class="collapse-btn" @click="toggleCollapse">
-            <Expand v-if="isCollapse" />
-            <Fold v-else />
-          </el-icon>
+          <button class="collapse-btn" type="button" :aria-label="isNarrow ? '打开导航' : (isCollapse ? '展开导航' : '收起导航')" @click="toggleCollapse">
+            <el-icon><Expand v-if="isCollapse || isNarrow" /><Fold v-else /></el-icon>
+          </button>
           <AppBreadcrumb />
         </div>
         <div class="header-right">
@@ -135,17 +138,17 @@
          失败，气泡不渲染只剩全屏遮罩拦截点击，且遮住「跳过/完成」→ 标记永写不上 → 每次登录都弹 -->
     <el-tour v-model="tourVisible" data-testid="first-login-tour" @finish="markTourDone" @close="markTourDone">
       <el-tour-step
-        :target="() => asideRef.value ?? undefined"
+        :target="() => asideRef ?? undefined"
         title="模块导航"
         description="左侧菜单按你的授权展示全部业务模块，顶部面包屑显示当前位置。菜单可折叠，窄屏下自动收起。"
       />
       <el-tour-step
-        :target="() => paletteBtnRef.value ?? undefined"
+        :target="() => paletteBtnRef ?? undefined"
         title="命令面板"
         description="按 Ctrl+K（或非输入态按 /）随时唤起命令面板，输入名称即可快速跳转任意页面、执行常用操作。"
       />
       <el-tour-step
-        :target="() => helpBtnRef.value ?? undefined"
+        :target="() => helpBtnRef ?? undefined"
         title="帮助中心"
         description="业务术语、键盘快捷键与错误码速查都在这里。点击此按钮，或按 Ctrl+K 搜索「帮助」。"
       />
@@ -154,15 +157,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
-import type { RouteRecordRaw } from 'vue-router'
+import { computed, ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
-import { getUserMenus } from '@/api/system'
+import { getUserMenus, type AuthorizedMenuDto } from '@/api/system'
+import { buildNavigation, type NavItem } from '@/utils/navigation'
 import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
+import NavLink from '@/components/NavLink.vue'
 import { useShortcuts, ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
 import { useCommandPalette, type PaletteCommand } from '@/composables/useCommandPalette'
 import { Expand, Fold, Moon, Sunny, ArrowDown, Bell, Search, SwitchButton } from '@/components/icons/registry'
@@ -174,6 +178,7 @@ import type { GuideChapterMeta } from '@/docs/help/registry'
 import { useBrandStore } from '@/stores/brand'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const appStore = useAppStore()
 // 品牌 Store：Logo 双态（亮底黑字/暗底反白）、系统名称与副标题按部署环境动态取值，
@@ -195,9 +200,14 @@ function onMediaChange(e: MediaQueryListEvent) {
 onMounted(() => narrowMql.addEventListener('change', onMediaChange))
 onBeforeUnmount(() => narrowMql.removeEventListener('change', onMediaChange))
 
-const isCollapse = computed(() => appStore.sidebarCollapsed || isNarrow.value)
+const mobileNavOpen = ref(false)
+const isCollapse = computed(() => !isNarrow.value && appStore.sidebarCollapsed)
 
 function toggleCollapse() {
+  if (isNarrow.value) {
+    mobileNavOpen.value = !mobileNavOpen.value
+    return
+  }
   appStore.toggleSidebar()
   // 使用类切换而非样式变化，配合 CSS transform 优化性能
   nextTick(() => {
@@ -225,112 +235,82 @@ const avatarText = computed(() => userName.value.charAt(0).toUpperCase())
 import defaultAvatar from '@/assets/default-avatar.png'
 const userAvatarImg = computed(() => userStore.userInfo?.avatar || defaultAvatar)
 
-/** 规范化拼接父子路径 */
-function joinPath(parent: string, child: string): string {
-  if (child.startsWith('/')) return child
-  return (parent.endsWith('/') ? parent.slice(0, -1) : parent) + '/' + child
-}
+type MenuStatus = 'loading' | 'ready' | 'error'
+const menuStatus = ref<MenuStatus>('loading')
+const authorizedMenus = ref<AuthorizedMenuDto[]>([])
+const navigation = computed(() => buildNavigation(router.options.routes, authorizedMenus.value))
+const activeDomainKey = ref('')
+const activeDomain = computed(() => navigation.value.domains.find((domain) => domain.key === activeDomainKey.value) || navigation.value.domains[0])
+const activeDomainItemCount = computed(() => activeDomain.value?.sections.reduce((sum, section) => sum + section.items.length, 0) || 0)
 
-/**
- * 菜单权限状态（2026-08-21 台账 PERM-GAP 修复）：数据源为 GET /v1/system/menu/user
- * （后端经 sys_role_menu JOIN 的真实授权）。
- * - authorizedPaths：授权菜单的完整路由路径（一级绝对路径 / 二级 parent.path 拼接）
- * - authorizedDirs：授权的一级 DIR 路径 —— DIR 已授权但其子菜单均未单独授权时整组显示
- */
-const authorizedPaths = ref<Set<string>>(new Set())
-const authorizedDirs = ref<Set<string>>(new Set())
+const storageUserKey = computed(() => String(userStore.userInfo?.id || userStore.userInfo?.username || userName.value))
+const favoritePaths = ref<string[]>([])
+const recentPaths = ref<string[]>([])
+const favoriteStorageKey = computed(() => `zw-nav-favorites:${storageUserKey.value}`)
+const recentStorageKey = computed(() => `zw-nav-recent:${storageUserKey.value}`)
+const itemByPath = computed(() => new Map(navigation.value.items.map((item) => [item.path, item])))
+const favoriteItems = computed(() => favoritePaths.value.map((path) => itemByPath.value.get(path)).filter((item): item is NavItem => Boolean(item)))
+const recentItems = computed(() => recentPaths.value.map((path) => itemByPath.value.get(path)).filter((item): item is NavItem => Boolean(item)).slice(0, 5))
 
-interface UserMenu {
-  id: number | string
-  menuType?: string
-  parentId?: number | string | null
-  path?: string
+function loadPersonalNavigation() {
+  try {
+    favoritePaths.value = JSON.parse(localStorage.getItem(favoriteStorageKey.value) || '[]').slice(0, 8)
+    recentPaths.value = JSON.parse(localStorage.getItem(recentStorageKey.value) || '[]').slice(0, 10)
+  } catch {
+    favoritePaths.value = []
+    recentPaths.value = []
+  }
 }
 
 async function loadUserMenus() {
+  menuStatus.value = 'loading'
   try {
-    const res: any = await getUserMenus()
-    const menus: UserMenu[] = Array.isArray(res?.data) ? res.data : []
-    const byId = new Map<string, UserMenu>(menus.map((m) => [String(m.id), m]))
-    const paths = new Set<string>()
-    const dirs = new Set<string>()
-    for (const m of menus) {
-      if (!m.path) continue
-      const parent = m.parentId != null && m.parentId !== 0 ? byId.get(String(m.parentId)) : undefined
-      if (parent && parent.path) {
-        // 二级菜单：用父菜单 path 拼接完整路径
-        paths.add(joinPath(parent.path, m.path))
-      } else if (m.path.startsWith('/')) {
-        // 一级 MENU / DIR（绝对路径）
-        if (m.menuType === 'DIR') dirs.add(m.path)
-        paths.add(m.path)
-      }
-    }
-    authorizedPaths.value = paths
-    authorizedDirs.value = dirs
+    const res = await getUserMenus()
+    authorizedMenus.value = Array.isArray(res?.data) ? res.data : []
+    menuStatus.value = 'ready'
   } catch {
-    // 全局响应拦截器已提示错误；失败时菜单置空（真实行为，不静默回落静态路由）
-    authorizedPaths.value = new Set()
-    authorizedDirs.value = new Set()
+    authorizedMenus.value = []
+    menuStatus.value = 'error'
   }
 }
 
-onMounted(loadUserMenus)
+function selectDomain(key: string) {
+  activeDomainKey.value = key
+}
 
-/**
- * 侧边栏菜单：基于路由表(constantRoutes)动态生成，
- * 自动列出所有挂在布局下的模块及其可见子菜单（尊重 meta.hidden / title / icon），
- * 并按用户授权菜单过滤（fullPath 命中授权路径；DIR 整组授权显示全组）。
- */
-const menuRoutes = computed(() => {
-  const roots = router.options.routes as RouteRecordRaw[]
-  const groups: any[] = []
+function domainIcon(key: string) {
+  return ({ overview: 'Odometer', business: 'Briefcase', cost: 'Coin', site: 'Place', finance: 'Money', resources: 'FolderOpened', collaboration: 'Bell', administration: 'Setting' } as Record<string, string>)[key] || 'Grid'
+}
 
-  for (const r of roots) {
-    if (!r.children || r.children.length === 0) continue
-    if (r.meta?.hidden) continue
+function toggleFavorite(path: string) {
+  favoritePaths.value = favoritePaths.value.includes(path)
+    ? favoritePaths.value.filter((item) => item !== path)
+    : [path, ...favoritePaths.value].slice(0, 8)
+  localStorage.setItem(favoriteStorageKey.value, JSON.stringify(favoritePaths.value))
+}
 
-    const visibleChildren = r.children
-      .filter((c) => !c.meta?.hidden && c.meta?.title)
-      .map((c) => ({
-        fullPath: joinPath(r.path, c.path),
-        title: c.meta?.title as string,
-        icon: c.meta?.icon as string | undefined
-      }))
+function recordRecent(path: string) {
+  if (!itemByPath.value.has(path)) return
+  recentPaths.value = [path, ...recentPaths.value.filter((item) => item !== path)].slice(0, 10)
+  localStorage.setItem(recentStorageKey.value, JSON.stringify(recentPaths.value))
+}
 
-    if (visibleChildren.length === 0) continue
+onMounted(() => {
+  loadPersonalNavigation()
+  loadUserMenus()
+})
 
-    const groupTitle = r.meta?.title as string | undefined
+watch(() => route.path, (path) => {
+  const item = itemByPath.value.get(path)
+  if (item) activeDomainKey.value = item.domain
+  recordRecent(path)
+  mobileNavOpen.value = false
+}, { immediate: true })
 
-    // 权限过滤：子项 fullPath 授权命中；DIR 授权但子项均未单独授权 → 显示整组
-    const allowedChildren = visibleChildren.filter((c) => authorizedPaths.value.has(c.fullPath))
-    const dirAuthorized = authorizedDirs.value.has(r.path)
-
-    if (!groupTitle) {
-      for (const c of allowedChildren) {
-        groups.push({ path: c.fullPath, singleChild: c })
-      }
-      continue
-    }
-
-    if (allowedChildren.length === 0 && !dirAuthorized) continue
-    const shownChildren = allowedChildren.length > 0 ? allowedChildren : visibleChildren
-
-    if (shownChildren.length === 1) {
-      groups.push({
-        path: r.path,
-        singleChild: { ...shownChildren[0], title: groupTitle, icon: r.meta?.icon }
-      })
-    } else {
-      groups.push({
-        path: r.path,
-        title: groupTitle,
-        icon: r.meta?.icon as string | undefined,
-        children: shownChildren
-      })
-    }
-  }
-  return groups
+watch(navigation, (model) => {
+  const item = itemByPath.value.get(route.path)
+  activeDomainKey.value = item?.domain || model.domains[0]?.key || ''
+  recordRecent(route.path)
 })
 
 function goMessage() {
@@ -378,6 +358,7 @@ function handleLogout() {
  */
 function handleMenuClick(path: string) {
   router.push(path)
+  mobileNavOpen.value = false
 }
 
 /* ================= 命令面板（Phase 1.1） ================= */
@@ -389,31 +370,17 @@ const { toggle: togglePalette, close: closePalette } = useCommandPalette()
  */
 const paletteCommands = computed<PaletteCommand[]>(() => {
   const cmds: PaletteCommand[] = []
-  for (const group of menuRoutes.value) {
-    if (group.singleChild) {
-      const c = group.singleChild
-      cmds.push({
-        id: 'nav-' + c.fullPath,
-        title: c.title,
-        group: '导航',
-        keywords: c.fullPath,
-        hint: c.fullPath,
-        icon: c.icon ? resolveMenuIcon(c.icon) : undefined,
-        run: () => router.push(c.fullPath),
-      })
-    } else {
-      for (const child of group.children || []) {
-        cmds.push({
-          id: 'nav-' + child.fullPath,
-          title: child.title,
-          group: '导航',
-          keywords: `${group.title} ${child.title} ${child.fullPath}`,
-          hint: child.fullPath,
-          icon: child.icon ? resolveMenuIcon(child.icon) : (group.icon ? resolveMenuIcon(group.icon) : undefined),
-          run: () => router.push(child.fullPath),
-        })
-      }
-    }
+  for (const item of navigation.value.items) {
+    const domain = navigation.value.domains.find((entry) => entry.key === item.domain)
+    cmds.push({
+      id: 'nav-' + item.path,
+      title: item.title,
+      group: domain?.title || '导航',
+      keywords: `${domain?.title || ''} ${item.section} ${item.title} ${item.path}`,
+      hint: `${domain?.title || '导航'} / ${item.section}`,
+      icon: item.icon ? resolveMenuIcon(item.icon) : undefined,
+      run: () => router.push(item.path),
+    })
   }
   cmds.push({
     id: 'act-theme',
@@ -467,7 +434,10 @@ const guideChapters = ref<GuideChapterMeta[]>([])
 
 // 命令面板开合接入快捷键事件总线（与 useShortcuts 共用 `/` 与 ⌘K）
 function onPaletteToggleEvent() { togglePalette() }
-function onPaletteEscapeEvent() { closePalette() }
+function onPaletteEscapeEvent() {
+  closePalette()
+  mobileNavOpen.value = false
+}
 onMounted(() => {
   window.addEventListener(ZW_SHORTCUT_EVENTS.togglePalette, onPaletteToggleEvent)
   window.addEventListener(ZW_SHORTCUT_EVENTS.escape, onPaletteEscapeEvent)
@@ -488,52 +458,31 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-/* ===== 侧边栏 ===== */
-.layout-aside {
-  /* 使用 transform 代替 width 过渡避免重排（reflow）导致 jank */
-  flex-shrink: 0;
-  background-color: var(--zw-bg-sidebar);
-  contain: layout paint;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  /* 初始宽度通过 class 切换 */
-}
+/* ===== 业务域导航 ===== */
+.layout-aside { flex-shrink: 0; display: flex; overflow: hidden; background: var(--zw-bg-sidebar); transition: transform var(--zw-transition-slow); z-index: var(--zw-z-drawer); }
+.layout-aside.expanded { width: 320px; }
+.layout-aside.collapsed { width: var(--zw-sidebar-collapsed-width); }
+.layout-aside.transition-end { will-change: auto; }
+.domain-rail { width: var(--zw-sidebar-collapsed-width); flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid var(--zw-steel-line); }
+.rail-brand { height: var(--zw-header-height); display: grid; place-items: center; border-bottom: 1px solid var(--zw-steel-line); }
+.domain-button { min-height: 58px; padding: 7px 3px; border: 0; border-bottom: 1px solid transparent; background: transparent; color: var(--zw-steel-text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; font-size: 11px; cursor: pointer; }
+.domain-button :deep(.el-icon) { font-size: 18px; }
+.domain-button:hover, .domain-button.active { color: var(--zw-brand); background: var(--zw-bg-sidebar-hover); }
+.domain-button:focus-visible, .nav-close:focus-visible, .collapse-btn:focus-visible { outline: 2px solid var(--zw-brand); outline-offset: -2px; }
+.nav-panel { width: 256px; min-width: 0; display: flex; flex-direction: column; background: var(--zw-bg-card); color: var(--zw-text-primary); }
+.nav-panel-header { min-height: var(--zw-header-height); padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--zw-border); }
+.nav-panel-header div { display: flex; flex-direction: column; gap: 2px; }
+.nav-panel-header strong { font-size: var(--zw-font-size-md); }
+.nav-panel-header span { color: var(--zw-text-tertiary); font-size: var(--zw-font-size-xs); }
+.nav-close { border: 0; background: transparent; color: var(--zw-text-secondary); font-size: 24px; cursor: pointer; }
+.nav-section { padding: 10px 8px; border-bottom: 1px solid var(--zw-border-light); }
+.nav-section h2 { margin: 0 10px 6px; color: var(--zw-text-tertiary); font-size: var(--zw-font-size-xs); font-weight: var(--zw-font-weight-semibold); }
+.nav-state { padding: var(--zw-space-lg); color: var(--zw-text-tertiary); font-size: var(--zw-font-size-sm); }
+.nav-error { display: flex; align-items: center; justify-content: space-between; color: var(--zw-danger); }
+.nav-error button { border: 1px solid var(--zw-border); background: transparent; color: inherit; padding: 5px 9px; cursor: pointer; }
+.nav-backdrop { display: none; }
 
-/* 展开状态：translateX(0)，保持 GPU 合成 */
-.layout-aside.expanded {
-  width: var(--zw-sidebar-width);
-  transform: translateX(0);
-}
-
-/* 折叠状态：translateX(-n px)，直接移动图层避免重排 */
-.layout-aside.collapsed {
-  width: var(--zw-sidebar-collapsed-width);
-  transform: translateX(calc(var(--zw-sidebar-collapsed-width) - var(--zw-sidebar-width)));
-}
-
-/* 平滑动画：transform + opacity，完全 GPU 加速 */
-.layout-aside {
-  transition: 
-    transform var(--zw-transition-slow) cubic-bezier(0.4, 0, 0.2, 1),
-    width var(--zw-transition-slow) ease-out;
-  will-change: transform, width;
-}
-
-/* 动画结束时移除 will-change，避免持续占用 GPU 资源 */
-.layout-aside.transition-end {
-  will-change: auto;
-}
-
-.logo {
-  height: var(--zw-header-height);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 18px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--zw-steel-line);
-}
+.logo { height: var(--zw-header-height); display: flex; align-items: center; gap: 10px; padding: 0 18px; flex-shrink: 0; border-bottom: 1px solid var(--zw-steel-line); }
 
 .logo-icon {
   width: 32px;
@@ -627,10 +576,16 @@ onBeforeUnmount(() => {
 }
 
 .collapse-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
   font-size: 18px;
   color: var(--zw-text-secondary);
   cursor: pointer;
-  transition: color var(--zw-transition-fast);
+  transition: color var(--zw-transition-fast), background var(--zw-transition-fast);
 }
 
 .collapse-btn:hover {
@@ -729,5 +684,28 @@ onBeforeUnmount(() => {
   flex: 1;
   overflow-y: auto;
   background-color: var(--zw-bg-page);
+}
+
+@media (max-width: 992px) {
+  .layout-aside,
+  .layout-aside.expanded,
+  .layout-aside.collapsed {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(340px, 92vw);
+    transform: translateX(-100%);
+    box-shadow: var(--zw-shadow-overlay);
+  }
+
+  .layout-aside.mobile-open { transform: translateX(0); }
+  .nav-panel { flex: 1; width: auto; }
+  .nav-backdrop { display: block; position: fixed; inset: 0; z-index: calc(var(--zw-z-drawer) - 1); background: var(--zw-bg-mask); }
+  .layout-header { padding: 0 var(--zw-space-sm); }
+  .header-left { min-width: 0; gap: var(--zw-space-xs); }
+  .user-name, .user-arrow { display: none; }
+}
+
+@media (max-width: 640px) {
+  .layout-header .header-action:nth-of-type(n + 3) { display: none; }
 }
 </style>

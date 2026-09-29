@@ -5,16 +5,23 @@ import cn.hutool.captcha.LineCaptcha;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.security.dto.CaptchaVO;
+import com.zwinsight.security.dto.SliderCaptchaVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Base64;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -227,37 +234,116 @@ public class CaptchaService {
     private static final String SLIDER_PREFIX = "slider:";
     private static final String SLIDER_TOKEN_PREFIX = "slider:token:";
     private static final long SLIDER_TTL_SECONDS = 120L;
-    /** 滑块容差（占轨道宽度比例），兼顾易用与防暴力 */
-    private static final double SLIDER_TOLERANCE = 0.06;
+    private static final int SLIDER_WIDTH = 320;
+    private static final int SLIDER_HEIGHT = 160;
+    private static final int SLIDER_PIECE_SIZE = 52;
+    private static final int SLIDER_TOLERANCE_PX = 6;
 
-    /**
-     * 生成滑块挑战：下发 challengeId 与缺口位置 gapPct（0~1，前端据此渲染缺口）。
-     * 目标值存 Redis，校验时一次性消费。
-     */
-    public Map<String, Object> generateSlider() {
+    /** 生成真正的拼图挑战；仅服务端保存目标 x，响应绝不泄露 x 或比例。 */
+    public SliderCaptchaVO generateSlider() {
+        Random random = new Random();
+        int targetX = 90 + random.nextInt(SLIDER_WIDTH - SLIDER_PIECE_SIZE - 110);
+        int targetY = 25 + random.nextInt(SLIDER_HEIGHT - SLIDER_PIECE_SIZE - 45);
+        BufferedImage source = createSliderBackground(random);
+        Shape pieceShape = createPieceShape(targetX, targetY);
+        BufferedImage piece = new BufferedImage(SLIDER_PIECE_SIZE, SLIDER_PIECE_SIZE, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D pg = piece.createGraphics();
+        configureGraphics(pg);
+        pg.translate(-targetX, -targetY);
+        pg.setClip(pieceShape);
+        pg.drawImage(source, 0, 0, null);
+        pg.dispose();
+
+        BufferedImage background = new BufferedImage(SLIDER_WIDTH, SLIDER_HEIGHT, BufferedImage.TYPE_INT_RGB);
+        Graphics2D bg = background.createGraphics();
+        configureGraphics(bg);
+        bg.drawImage(source, 0, 0, null);
+        bg.setColor(new Color(20, 30, 45, 150));
+        bg.fill(pieceShape);
+        bg.setColor(new Color(255, 255, 255, 210));
+        bg.setStroke(new BasicStroke(2f));
+        bg.draw(pieceShape);
+        bg.dispose();
+
         String id = UUID.randomUUID().toString().replace("-", "");
-        double gap = 0.35 + new Random().nextDouble() * 0.5; // 35%~85%
-        redisUtils.set(SLIDER_PREFIX + id, String.valueOf(gap), SLIDER_TTL_SECONDS, TimeUnit.SECONDS);
-        Map<String, Object> m = new HashMap<>();
-        m.put("challengeId", id);
-        m.put("gapPct", gap);
-        return m;
+        redisUtils.set(SLIDER_PREFIX + id, String.valueOf(targetX), SLIDER_TTL_SECONDS, TimeUnit.SECONDS);
+        return new SliderCaptchaVO(id, toPngDataUrl(background), toPngDataUrl(piece), targetY,
+                SLIDER_WIDTH, SLIDER_HEIGHT, SLIDER_PIECE_SIZE);
     }
 
-    /**
-     * 校验滑块：|pct - gap| <= 容差 则签发一次性 sliderToken，否则返回 null。
-     */
+    /** pct 契约：滑块左边缘 x 占图片宽度的比例，取值 [0,1]。 */
     public String verifySlider(String challengeId, double pct) {
-        if (challengeId == null || challengeId.isBlank()) return null;
-        Object cached = redisUtils.get(SLIDER_PREFIX + challengeId);
-        redisUtils.delete(SLIDER_PREFIX + challengeId);
+        if (!Double.isFinite(pct) || pct < 0 || pct > 1) return null;
+        return verifySliderX(challengeId, pct * SLIDER_WIDTH);
+    }
+
+    /** x 契约：滑块左边缘在原图坐标系中的像素值。 */
+    public String verifySliderX(String challengeId, double x) {
+        if (challengeId == null || challengeId.isBlank() || !Double.isFinite(x)
+                || x < 0 || x > SLIDER_WIDTH - SLIDER_PIECE_SIZE) return null;
+        String key = SLIDER_PREFIX + challengeId;
+        Object cached = redisUtils.get(key);
+        redisUtils.delete(key);
         if (cached == null) return null;
-        double gap;
-        try { gap = Double.parseDouble(cached.toString()); } catch (NumberFormatException e) { return null; }
-        if (Math.abs(pct - gap) > SLIDER_TOLERANCE) return null;
+        int targetX;
+        try { targetX = Integer.parseInt(cached.toString()); } catch (NumberFormatException e) { return null; }
+        if (Math.abs(x - targetX) > SLIDER_TOLERANCE_PX) return null;
         String token = UUID.randomUUID().toString().replace("-", "");
         redisUtils.set(SLIDER_TOKEN_PREFIX + token, "1", SLIDER_TTL_SECONDS, TimeUnit.SECONDS);
         return token;
+    }
+
+    private BufferedImage createSliderBackground(Random random) {
+        BufferedImage image = new BufferedImage(SLIDER_WIDTH, SLIDER_HEIGHT, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = image.createGraphics();
+        configureGraphics(g);
+        Color a = new Color(70 + random.nextInt(70), 120 + random.nextInt(70), 160 + random.nextInt(70));
+        Color b = new Color(180 + random.nextInt(60), 150 + random.nextInt(70), 80 + random.nextInt(100));
+        g.setPaint(new GradientPaint(0, 0, a, SLIDER_WIDTH, SLIDER_HEIGHT, b));
+        g.fillRect(0, 0, SLIDER_WIDTH, SLIDER_HEIGHT);
+        for (int i = 0; i < 18; i++) {
+            g.setColor(new Color(random.nextInt(256), random.nextInt(256), random.nextInt(256), 55 + random.nextInt(55)));
+            int size = 15 + random.nextInt(65);
+            g.fill(new Ellipse2D.Double(random.nextInt(SLIDER_WIDTH), random.nextInt(SLIDER_HEIGHT), size, size));
+        }
+        g.setColor(new Color(255, 255, 255, 100));
+        g.setStroke(new BasicStroke(3f));
+        for (int i = 0; i < 5; i++) {
+            int y = 15 + random.nextInt(SLIDER_HEIGHT - 30);
+            g.drawLine(0, y, SLIDER_WIDTH, Math.max(0, Math.min(SLIDER_HEIGHT, y + random.nextInt(61) - 30)));
+        }
+        g.dispose();
+        return image;
+    }
+
+    private Shape createPieceShape(int x, int y) {
+        int s = SLIDER_PIECE_SIZE;
+        int tab = 8;
+        Path2D path = new Path2D.Double();
+        path.moveTo(x, y);
+        path.lineTo(x + s / 2 - tab, y);
+        path.curveTo(x + s / 2 - tab, y + tab * 2, x + s / 2 + tab, y + tab * 2, x + s / 2 + tab, y);
+        path.lineTo(x + s, y);
+        path.lineTo(x + s, y + s / 2 - tab);
+        path.curveTo(x + s - tab * 2, y + s / 2 - tab, x + s - tab * 2, y + s / 2 + tab, x + s, y + s / 2 + tab);
+        path.lineTo(x + s, y + s);
+        path.lineTo(x, y + s);
+        path.closePath();
+        return path;
+    }
+
+    private void configureGraphics(Graphics2D g) {
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+    }
+
+    private String toPngDataUrl(BufferedImage image) {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            ImageIO.write(image, "png", out);
+            return "data:image/png;base64," + Base64.getEncoder().encodeToString(out.toByteArray());
+        } catch (IOException e) {
+            throw new IllegalStateException("生成滑块验证码图片失败", e);
+        }
     }
 
     /**

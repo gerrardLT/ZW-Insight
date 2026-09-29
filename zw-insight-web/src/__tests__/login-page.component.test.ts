@@ -9,7 +9,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 const { mockPost, mockGetSlider, mockVerifySlider, mockSendSms, mockPush } = vi.hoisted(() => ({
   mockPost: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
-  mockGetSlider: vi.fn(async (): Promise<any> => ({ code: 200, data: { challengeId: 'ch-1', gapPct: 0.6 } })),
+  mockGetSlider: vi.fn(async (): Promise<any> => ({ code: 200, data: { challengeId: 'ch-1', backgroundImage: 'bg', pieceImage: 'piece', pieceY: 40, imageWidth: 320, imageHeight: 180, pieceWidth: 46 } })),
   mockVerifySlider: vi.fn(async (): Promise<any> => ({ code: 200, data: { sliderToken: 'tok-1' } })),
   mockSendSms: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockPush: vi.fn(),
@@ -56,9 +56,13 @@ async function mountPage() {
 }
 
 describe('login/index.vue 登录页', () => {
-  it('挂载加载滑块验证挑战', async () => {
-    await mountPage()
-    expect(mockGetSlider).toHaveBeenCalled()
+  it('点击安全验证后才加载图片挑战', async () => {
+    const w = await mountPage()
+    expect(mockGetSlider).not.toHaveBeenCalled()
+    await w.get('.captcha-trigger').trigger('click')
+    await flushPromises()
+    expect(mockGetSlider).toHaveBeenCalledTimes(1)
+    expect(w.find('.captcha-panel').exists()).toBe(true)
   })
 
   it('登录成功：token/userInfo 写入 store 并跳转首页', async () => {

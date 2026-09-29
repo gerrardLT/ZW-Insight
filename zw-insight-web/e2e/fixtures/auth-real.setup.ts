@@ -13,84 +13,35 @@
  * - E2E_SSH_HOST:  SSH 目标（默认 root@129.204.3.200）
  */
 import { test as setup, expect } from '@playwright/test'
-import { execFileSync } from 'node:child_process'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-// ESM 兼容（package.json type=module 无 __dirname；2026-08-14 P0 修复既有隐患）
-const __dirname = dirname(fileURLToPath(import.meta.url))
-
 const API_BASE = process.env.E2E_API_BASE || 'http://129.204.3.200:18080'
-// 本地默认回退到仓库内密钥（相对解析，跨机器可用）；CI 通过 E2E_SSH_KEY 显式覆盖，行为不变
-const SSH_KEY = process.env.E2E_SSH_KEY || resolve(__dirname, '../../../keys/zwinsight.pem')
-const SSH_HOST = process.env.E2E_SSH_HOST || 'root@129.204.3.200'
-
-/** 经 SSH 从服务器 Redis 读取验证码答案（真实组件，需求 5.1 同源链路） */
-function readCaptchaFromRedis(uuid: string): string {
-  const out = execFileSync(
-    'ssh',
-    [
-      '-i', SSH_KEY,
-      '-o', 'StrictHostKeyChecking=no',
-      '-o', 'ConnectTimeout=10',
-      SSH_HOST,
-      `docker exec zwi-redis redis-cli GET "captcha:${uuid}"`,
-    ],
-    { encoding: 'utf-8', timeout: 20_000 }
-  )
-  return out.replace(/["\r\n]/g, '').trim()
-}
 
 setup('authenticate against real server', async ({ page }) => {
-  // 1. 准备拦截页面自身的验证码响应（页面 onMounted 会调 /captcha/image，uuid 必须与页面一致）
-  const captchaRespPromise = page.waitForResponse(
-    (resp) => resp.url().includes('/captcha/image') && resp.ok(),
+  const challengeResponse = page.waitForResponse(
+    (resp) => resp.url().includes('/captcha/slider') && !resp.url().includes('/verify') && resp.ok(),
     { timeout: 15_000 }
   )
-
-  // 2. 导航到登录页
   await page.goto('/login')
   await page.waitForSelector('.login-box', { timeout: 15_000 })
+  const challenge = await (await challengeResponse).json()
+  const gapPct = Number(challenge.data?.gapPct)
+  if (!Number.isFinite(gapPct)) throw new Error(`[auth-real.setup] 滑块挑战异常: ${JSON.stringify(challenge)}`)
 
-  const captchaResp = await captchaRespPromise
-  const captchaJson = await captchaResp.json()
-  const uuid: string = captchaJson.data?.uuid
+  const track = page.locator('.slider-captcha .track')
+  const handle = page.locator('.slider-captcha .handle')
+  const box = await track.boundingBox()
+  if (!box) throw new Error('[auth-real.setup] 无法读取滑块轨道尺寸')
+  const startX = box.x + 23
+  const y = box.y + box.height / 2
+  await handle.hover()
+  await page.mouse.move(startX, y)
+  await page.mouse.down()
+  await page.mouse.move(box.x + gapPct * box.width, y, { steps: 12 })
+  await page.mouse.up()
+  await expect(page.locator('.slider-captcha')).toHaveClass(/ok/)
 
-  if (!uuid) {
-    throw new Error(
-      `[auth-real.setup] 页面验证码响应异常，未获取到 uuid。响应: ${JSON.stringify(captchaJson)}`
-    )
-  }
-
-  // 3. 获取验证码答案：优先 SSH 读 Redis；备选 /api/v1/test/captcha-code（仅 test profile 可用）
-  let captchaCode = ''
-  try {
-    captchaCode = readCaptchaFromRedis(uuid)
-    if (captchaCode) console.log('[auth-real.setup] 验证码已从服务器 Redis 获取')
-  } catch (e) {
-    console.warn(`[auth-real.setup] SSH 读 Redis 失败: ${(e as Error).message}`)
-  }
-
-  if (!captchaCode) {
-    const codeResp = await page.request.get(`${API_BASE}/api/v1/test/captcha-code/${uuid}`)
-    if (codeResp.ok()) {
-      const codeJson = await codeResp.json()
-      captchaCode = String(codeJson.data || '')
-      console.log('[auth-real.setup] 验证码已从测试端点获取')
-    }
-  }
-
-  if (!captchaCode) {
-    throw new Error(
-      '[auth-real.setup] 无法获取验证码（SSH Redis 与测试端点均不可用），登录流程中止'
-    )
-  }
-
-  // 4. 填写用户名、密码、验证码并提交
   await page.fill('input[placeholder="请输入用户名"]', 'admin')
   await page.fill('input[placeholder="请输入密码"]', '123456')
-  await page.fill('input[placeholder="验证码"]', captchaCode)
-  await page.click('button:has-text("登 录")')
+  await page.click('button:has-text("进入系统")')
 
   // 5. 等待登录成功跳转（离开 /login 页面）
   await page.waitForURL((url) => !url.pathname.includes('/login'), {

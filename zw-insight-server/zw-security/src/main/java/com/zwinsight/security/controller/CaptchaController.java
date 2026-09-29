@@ -4,6 +4,7 @@ import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.R;
 import com.zwinsight.security.dto.CaptchaVO;
 import com.zwinsight.security.dto.SmsCaptchaDTO;
+import com.zwinsight.security.dto.SliderCaptchaVO;
 import com.zwinsight.security.service.CaptchaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -46,11 +47,9 @@ public class CaptchaController {
         return R.ok();
     }
 
-    /**
-     * 获取滑块验证挑战（challengeId + 缺口位置 gapPct）
-     */
+    /** 获取拼图滑块挑战；图片为 PNG data URL，不下发目标 x。 */
     @GetMapping("/slider")
-    public R<Map<String, Object>> getSlider() {
+    public R<SliderCaptchaVO> getSlider() {
         return R.ok(captchaService.generateSlider());
     }
 
@@ -60,11 +59,17 @@ public class CaptchaController {
     @PostMapping("/slider/verify")
     public R<Map<String, String>> verifySlider(@RequestBody Map<String, Object> body) {
         Object cid = body.get("challengeId");
+        Object x = body.get("x");
         Object pct = body.get("pct");
-        if (cid == null || pct == null) throw new BusinessException("参数缺失");
-        double p;
-        try { p = Double.parseDouble(String.valueOf(pct)); } catch (NumberFormatException e) { throw new BusinessException("参数非法"); }
-        String token = captchaService.verifySlider(String.valueOf(cid), p);
+        if (cid == null || (x == null) == (pct == null)) {
+            throw new BusinessException("challengeId 与 x/pct（二选一）为必填参数");
+        }
+        double position;
+        try { position = Double.parseDouble(String.valueOf(x != null ? x : pct)); }
+        catch (NumberFormatException e) { throw new BusinessException("参数非法"); }
+        String token = x != null
+                ? captchaService.verifySliderX(String.valueOf(cid), position)
+                : captchaService.verifySlider(String.valueOf(cid), position);
         if (token == null) throw new BusinessException("验证失败，请重试");
         return R.ok(Map.of("sliderToken", token));
     }
