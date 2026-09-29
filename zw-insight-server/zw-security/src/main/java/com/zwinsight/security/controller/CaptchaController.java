@@ -2,6 +2,9 @@ package com.zwinsight.security.controller;
 
 import cloud.tianai.captcha.application.vo.ImageCaptchaVO;
 import cloud.tianai.captcha.validator.common.model.dto.ImageCaptchaTrack;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.zwinsight.common.result.R;
 import com.zwinsight.security.dto.CaptchaVO;
 import com.zwinsight.security.dto.SmsCaptchaDTO;
@@ -10,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 /**
@@ -28,6 +33,7 @@ public class CaptchaController {
     private static final int TAC_VERIFY_FAILED = 4001;
 
     private final CaptchaService captchaService;
+    private final ObjectMapper objectMapper;
 
     /**
      * 获取图形验证码
@@ -62,11 +68,36 @@ public class CaptchaController {
      */
     @PostMapping("/slider/verify")
     public R<Map<String, String>> verifySlider(@RequestBody SliderVerifyRequest body) {
-        String token = body == null ? null : captchaService.verifySlider(body.id(), body.data());
+        ImageCaptchaTrack track = body == null ? null : toTrack(body.data());
+        String token = body == null ? null : captchaService.verifySlider(body.id(), track);
         if (token == null) return R.fail(TAC_VERIFY_FAILED, "验证失败，请重试");
         return R.ok(Map.of("sliderToken", token));
     }
 
+    private ImageCaptchaTrack toTrack(JsonNode raw) {
+        if (raw == null || !raw.isObject()) return null;
+        ObjectNode data = ((ObjectNode) raw).deepCopy();
+        if (!normalizeTime(data, "startTime") || !normalizeTime(data, "stopTime")) return null;
+        try {
+            return objectMapper.treeToValue(data, ImageCaptchaTrack.class);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /** TAC 1.4 发 ISO-8601；core 1.5.5 要 epoch ms。同时兼容数值载荷。 */
+    private boolean normalizeTime(ObjectNode data, String field) {
+        JsonNode value = data.get(field);
+        if (value == null || value.isNull() || value.isNumber()) return value != null && !value.isNull();
+        if (!value.isTextual()) return false;
+        try {
+            data.put(field, Instant.parse(value.textValue()).toEpochMilli());
+            return true;
+        } catch (DateTimeParseException ignored) {
+            return false;
+        }
+    }
+
     /** TAC Web SDK 校验请求体。 */
-    public record SliderVerifyRequest(String id, ImageCaptchaTrack data) {}
+    public record SliderVerifyRequest(String id, JsonNode data) {}
 }
