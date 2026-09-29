@@ -134,8 +134,7 @@ import {
 import { uploadBrandImage } from '@/api/brand'
 import { useBrandStore } from '@/stores/brand'
 
-const brandStore = useBrandStore()
-const activeTab = ref('brand')
+const activeTab = ref('security')
 const loading = ref(false)
 const saveLoading = ref(false)
 const configList = ref<SysConfigItem[]>([])
@@ -247,6 +246,7 @@ async function handleSave() {
     await loadGroupConfig(activeTab.value)
     // 如果修改了品牌分组，同步刷新全局品牌 Store
     if (activeTab.value === 'brand') {
+      const brandStore = useBrandStore()
       brandStore.loaded = false
       await brandStore.fetchBrandConfig()
     }
@@ -268,6 +268,7 @@ async function handleResetDefault(item: SysConfigItem) {
     ElMessage.success('已恢复默认值')
     await loadGroupConfig(activeTab.value)
     if (activeTab.value === 'brand') {
+      const brandStore = useBrandStore()
       brandStore.loaded = false
       await brandStore.fetchBrandConfig()
     }
