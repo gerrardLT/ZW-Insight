@@ -293,7 +293,7 @@ jobs:
           mkdir -p _images
           docker save zwinsight-backend:debug zwinsight-frontend:debug | gzip -1 > _images/zwinsight-images.tar.gz
           test -s _images/zwinsight-images.tar.gz
-          sha256sum _images/zwinsight-images.tar.gz > _images/zwinsight-images.tar.gz.sha256
+          (cd _images && sha256sum zwinsight-images.tar.gz > zwinsight-images.tar.gz.sha256)
           du -sh _images/zwinsight-images.tar.gz
 
       - name: Upload transferable images
