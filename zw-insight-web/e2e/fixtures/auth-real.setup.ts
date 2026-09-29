@@ -43,10 +43,15 @@ setup('authenticate against real server', async ({ page }) => {
   if (!handleBox || !bgBox) throw new Error('[auth-real.setup] 无法读取 TAC 滑块尺寸')
   const startX = handleBox.x + handleBox.width / 2
   const y = handleBox.y + handleBox.height / 2
+  const verifyResponse = page.waitForResponse(resp => resp.url().includes('/captcha/slider/verify'))
   await page.mouse.move(startX, y)
   await page.mouse.down()
   await page.mouse.move(startX + percentage * bgBox.width, y + 2, { steps: 25 })
   await page.mouse.up()
+  const verifyBody = await (await verifyResponse).json()
+  if (verifyBody.code !== 200) {
+    throw new Error(`[auth-real.setup] 滑块校验失败: ${JSON.stringify({ percentage, bgWidth: bgBox.width, handleWidth: handleBox.width, response: verifyBody })}`)
+  }
   await expect(page.getByRole('button', { name: '安全验证已完成' })).toBeVisible()
 
   await page.fill('input[placeholder="请输入用户名"]', 'admin')

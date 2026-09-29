@@ -26,6 +26,14 @@ export function installTacApiAdapter(config: TacConfig) {
       if (type === 'requestCaptchaData') {
         param.method = 'GET'
         param.data = undefined
+      } else if (type === 'validCaptcha') {
+        // TAC 1.4 发送 ISO-8601 时间；tianai-captcha 1.5.5 core 的轨迹字段要求 epoch ms。
+        // 仅规范化协议类型，位置与完整行为轨迹原样透传。
+        const track = (param.data as { data?: { startTime?: string | number; stopTime?: string | number } })?.data
+        if (track) {
+          if (typeof track.startTime === 'string') track.startTime = Date.parse(track.startTime)
+          if (typeof track.stopTime === 'string') track.stopTime = Date.parse(track.stopTime)
+        }
       }
       return true
     },
