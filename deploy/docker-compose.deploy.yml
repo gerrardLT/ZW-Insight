@@ -108,6 +108,8 @@ services:
     ports:
       - "${BACKEND_PORT:-18080}:8080"
     volumes:
+      # CI 构建 jar 经 rsync 落盘；运行时只读挂载，不在生产服务器构建镜像
+      - ./zw-insight-app.jar:/app/app.jar:ro
       - zwi_brand:/usr/share/nginx/html/brand
     mem_limit: ${BACKEND_MEM_LIMIT:-1200m}
     networks: [zwi-net]
@@ -125,6 +127,8 @@ services:
     ports:
       - "${FRONTEND_PORT:-18081}:80"
     volumes:
+      # CI 构建 dist 经 rsync 落盘；nginx 直接只读服务该目录
+      - ../zw-insight-web/dist:/usr/share/nginx/html:ro
       - zwi_brand:/usr/share/nginx/html/brand:ro
     mem_limit: ${FRONTEND_MEM_LIMIT:-128m}
     networks: [zwi-net]
