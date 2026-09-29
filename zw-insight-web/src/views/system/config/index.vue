@@ -316,7 +316,7 @@ onMounted(() => {
   justify-content: center;
   background: var(--zw-bg-card);
   border: 1px dashed var(--zw-border-light);
-  border-radius: 4px;
+  border-radius: var(--zw-radius-xs);
   overflow: hidden;
 }
 
