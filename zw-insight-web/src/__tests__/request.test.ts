@@ -366,24 +366,27 @@ describe('401 统一处理（token 过期弹回死循环修复）', () => {
     expect(mockPush).toHaveBeenCalledWith('/login')
   })
 
-  it('已在登录页时不重复 push（防导航警告堆积）', async () => {
+  it('并发 401 只提示一次，已在登录页时不重复 push', async () => {
     mockLogout.mockClear()
     mockPush.mockClear()
+    vi.mocked(ElMessage.error).mockClear()
     const errFn = await loadFreshModule()
 
-    // 场景：dashboard 页并发两个 401——第一个触发跳转，第二个到达时已在登录页
+    // 场景：dashboard 页并发两个 401——第一个提示并跳转，第二个不再重复提示
     const error: any = {
       config: { method: 'get', url: '/api/x' },
-      response: { status: 401, data: {} },
+      response: { status: 401, data: { message: 'Token无效或已过期' } },
     }
-    await expect(errFn(error)).rejects.toBeDefined()
-    expect(mockPush).toHaveBeenCalledTimes(1) // 第一个 401：在 dashboard → push
+    await expect(errFn(error)).rejects.toMatchObject({ __zwHandled: true })
+    expect(mockPush).toHaveBeenCalledTimes(1)
+    expect(ElMessage.error).toHaveBeenCalledTimes(1)
 
     // 模拟跳转完成：当前路由已是登录页
     ;(router as any).currentRoute.value.path = '/login'
     mockPush.mockClear()
-    await expect(errFn(error)).rejects.toBeDefined()
-    expect(mockPush).not.toHaveBeenCalled() // 第二个 401：已在登录页 → 不重复 push
+    await expect(errFn(error)).rejects.toMatchObject({ __zwHandled: true })
+    expect(mockPush).not.toHaveBeenCalled()
+    expect(ElMessage.error).toHaveBeenCalledTimes(1)
 
     ;(router as any).currentRoute.value.path = '/dashboard' // 还原供后续用例
   })

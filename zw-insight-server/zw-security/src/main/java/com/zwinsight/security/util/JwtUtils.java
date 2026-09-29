@@ -16,7 +16,7 @@ public class JwtUtils {
     @Value("${jwt.secret:ZwInsight2024SecretKeyForJwtTokenGeneration}")
     private String secret;
 
-    @Value("${jwt.expiration:86400000}")
+    @Value("${jwt.expiration:604800000}")
     private long expiration;
 
     private SecretKey getSigningKey() {

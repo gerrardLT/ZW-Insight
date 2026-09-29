@@ -50,6 +50,10 @@ app.config.errorHandler = (err, instance, info) => {
   ElMessage.error('页面渲染异常，请刷新重试')
 }
 window.addEventListener('unhandledrejection', event => {
+  if (event.reason?.__zwHandled) {
+    event.preventDefault()
+    return
+  }
   const reason = event.reason?.message || String(event.reason)
   console.error('[PromiseRejection]', reason, event)
   ElMessage.error('系统异常，请刷新页面')

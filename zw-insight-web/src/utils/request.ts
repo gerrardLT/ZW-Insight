@@ -14,16 +14,30 @@ const HTTP_SECONDARY_CONFIRM = 449
  * 被守卫「已登录访问登录页」弹回首页，页面停在 dashboard 且首登引导
  * el-tour 全屏遮罩拦截点击（实证复现：蒙层无法点击 + 数据全 0 + 无法到达登录页）。
  */
-function handleUnauthorized() {
+let unauthorizedHandled = false
+let rejectedToken: string | null = null
+
+function handleUnauthorized(): boolean {
+  const shouldNotify = !unauthorizedHandled
+  unauthorizedHandled = true
+  rejectedToken ??= localStorage.getItem('token')
   try {
     useUserStore().logout()
   } catch {
-    // store 未就绪时兑底只清持久化 token
+    // store 未就绪时兜底只清持久化 token
     localStorage.removeItem('token')
   }
   if (router.currentRoute.value.path !== '/login') {
     router.push('/login')
   }
+  return shouldNotify
+}
+
+function markHandled<T>(error: T): T {
+  if (error && typeof error === 'object') {
+    ;(error as any).__zwHandled = true
+  }
+  return error
 }
 
 const service: AxiosInstance = axios.create({
@@ -35,6 +49,10 @@ const service: AxiosInstance = axios.create({
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token')
+    if (token && token !== rejectedToken) {
+      unauthorizedHandled = false
+      rejectedToken = null
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -71,11 +89,12 @@ service.interceptors.response.use(
       res.data.total = Number(res.data.total)
     }
     if (res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
-        handleUnauthorized()
+        if (handleUnauthorized()) ElMessage.error(res.message || '登录已过期，请重新登录')
+        return Promise.reject(markHandled(new Error(res.message || '登录已过期，请重新登录')))
       }
-      return Promise.reject(new Error(res.message || '请求失败'))
+      ElMessage.error(res.message || '请求失败')
+      return Promise.reject(markHandled(new Error(res.message || '请求失败')))
     }
     // 重置失败计数（成功请求后清空状态）
     localStorage.removeItem('request-failure-count')
@@ -143,11 +162,11 @@ service.interceptors.response.use(
     }
 
     const message = responseData?.message || error.message || '网络异常'
-    ElMessage.error(message)
     if (response?.status === 401) {
-      handleUnauthorized()
-      return Promise.reject(error)
+      if (handleUnauthorized()) ElMessage.error(message || '登录已过期，请重新登录')
+      return Promise.reject(markHandled(error))
     }
+    ElMessage.error(message)
     // 成功后的在线监听注册：网络恢复时自动重试最近失败的 GET 请求（全局一次）
     if (!(window as any).__zwNetworkRecoveryBound) {
       ;(window as any).__zwNetworkRecoveryBound = true
