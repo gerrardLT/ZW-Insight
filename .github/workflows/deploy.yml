@@ -12,6 +12,15 @@ on:
       - 'docs/**'
   workflow_dispatch:
     inputs:
+      target_server:
+        description: '选择部署目标服务器：all（全部部署）、server1（主环境 129.204.3.200）、server2（徽颖 43.142.44.145）'
+        required: true
+        type: choice
+        default: 'all'
+        options:
+          - 'all'
+          - 'server1'
+          - 'server2'
       run_tests:
         description: '是否跑全量测试套件（L3/L4/L5 + k6）？默认否，仅 build + deploy + 冒烟'
         required: true
@@ -37,12 +46,7 @@ on:
 #     ② github.event.repository.labels——push 事件 payload 的 repository 对象
 #       不携带 labels 字段，表达式恒为假，不可用
 
-# 并发互斥（用户决策 2026-08-10，方案 A）：单服务器部署只有最新提交有意义，
-# 新 push 取消正在跑的旧流水线，避免两条流水线并行操作同一台服务器
-# （实证事故：2026-08-10 run 31346854580 跑 k6 时被 run 31347158609 的部署重启干扰，
-# 登录失败率超阈值标红）。部署脚本幂等（scp jar+重启），中途被取消的脏状态由后续 run 覆盖修复。
-# 注：performance-k6.yml cron 不入本组——cancel-in-progress 对称生效，
-# cron 若取消正在部署的流水线代价更高，且 23:00 低峰窗口与 push 碰撞概率极低。
+# 并发互斥：
 concurrency:
   group: deploy-production
   cancel-in-progress: true
@@ -50,8 +54,6 @@ concurrency:
 env:
   JAVA_VERSION: '21'
   NODE_VERSION: '20'
-  SERVER_HOST: ${{ secrets.SERVER_HOST }}
-  SERVER_USER: ${{ secrets.SERVER_USER }}
   DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/root/zw-insight' }}
 
 jobs:
@@ -242,141 +244,202 @@ jobs:
           if-no-files-found: error
 
   # ────────────────────────────────────────────────────
-  # 2. 部署到宝塔服务器
+  # 1.8 GitHub Packages (ghcr.io) 镜像构建与推送
+  #     在 Runner 侧使用 GITHUB_TOKEN 一键构建前后端镜像并推送到 ghcr.io，
+  #     零外部配置成本，所有目标服务器只需 docker compose pull 即可秒级拉起，
+  #     实现标准的“构建一次、到处部署”。
   # ────────────────────────────────────────────────────
-  deploy:
-    name: Deploy to Server
+  docker-publish:
+    name: Build & Push Images (GHCR)
     runs-on: ubuntu-latest
     needs: [backend, frontend-test, frontend-build]
-    # backend 与 frontend-build 必须成功；frontend-test 成功或被 fast_deploy 跳过均可
-    # （frontend-build 不在豁免列表里：dist 是部署必需产物，无它则镜像构建必失败）
+    permissions:
+      contents: read
+      packages: write
     if: |
       always() && needs.backend.result == 'success' &&
       needs.frontend-build.result == 'success' &&
       (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped')
-    environment: production
+    outputs:
+      image_tag: ${{ steps.push_images.outputs.image_tag || github.sha }}
+      repo_owner: ${{ steps.push_images.outputs.repo_owner }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Download backend artifact
+        if: inputs.image_tag == ''
         uses: actions/download-artifact@v4
         with:
           name: backend-jar
           path: deploy/
 
-      # 前端产物：先下到临时目录，再根据实际结构落位到 zw-insight-web/dist。
-      # 为何不直接 path: zw-insight-web/dist/：upload-artifact@v4 会保留上传时的相对路径层级，
-      # 直接下载可能得到 zw-insight-web/dist/zw-insight-web/dist/* 的嵌套结构（run 35977354762
-      # 因漏加本步骤而 COPY 失败，修复时不能再引入一个不确定的路径假设）。
       - name: Download frontend dist artifact
+        if: inputs.image_tag == ''
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
           path: _frontend-dist-tmp/
 
-      - name: Place frontend dist into web project
+      - name: Build and push images to GitHub Packages (ghcr.io)
+        id: push_images
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SPECIFIED_TAG: ${{ inputs.image_tag }}
         run: |
           set -euo pipefail
+          TAG="${SPECIFIED_TAG:-${GITHUB_SHA::12}}"
+          echo "image_tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          # 转为小写以兼容 Docker/GHCR 镜像命名规范
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "repo_owner=$REPO_OWNER" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$SPECIFIED_TAG" ]; then
+            echo "✅ 指定了已有镜像标签 ($SPECIFIED_TAG)，直接复用 ghcr.io 制品进行部署/回滚"
+            exit 0
+          fi
+
+          # 整理前端 dist 目录结构
           if [ -f _frontend-dist-tmp/index.html ]; then
             SRC=_frontend-dist-tmp
           elif [ -f _frontend-dist-tmp/zw-insight-web/dist/index.html ]; then
             SRC=_frontend-dist-tmp/zw-insight-web/dist
           else
-            echo "无法定位 dist 产物，实际结构："
-            find _frontend-dist-tmp -maxdepth 4 | head -20
-            exit 1
+            echo "无法定位 dist 产物" && exit 1
           fi
           rm -rf zw-insight-web/dist
           cp -r "$SRC" zw-insight-web/dist
           rm -rf _frontend-dist-tmp
-          test -f zw-insight-web/dist/index.html
-          echo "--- 待同步的 dist ---"
-          ls zw-insight-web/dist | head
-          du -sh zw-insight-web/dist
+
+          echo "🔐 登录 GitHub Packages (ghcr.io)"
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+          BACKEND_IMG="ghcr.io/${REPO_OWNER}/zwinsight-backend"
+          FRONTEND_IMG="ghcr.io/${REPO_OWNER}/zwinsight-frontend"
+
+          echo "📦 构建并推送后端镜像: ${BACKEND_IMG}:${TAG}"
+          docker build -t "${BACKEND_IMG}:${TAG}" -t "${BACKEND_IMG}:latest" -f deploy/Dockerfile deploy/
+          docker push "${BACKEND_IMG}:${TAG}"
+          docker push "${BACKEND_IMG}:latest"
+
+          echo "📦 构建并推送前端镜像: ${FRONTEND_IMG}:${TAG}"
+          docker build -t "${FRONTEND_IMG}:${TAG}" -t "${FRONTEND_IMG}:latest" -f deploy/frontend/Dockerfile .
+          docker push "${FRONTEND_IMG}:${TAG}"
+          docker push "${FRONTEND_IMG}:latest"
+
+  # ────────────────────────────────────────────────────
+  # 2. 部署到目标服务器（双机并行/指定环境）
+  # ────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to ${{ matrix.server.name }} (${{ matrix.server.host }})
+    runs-on: ubuntu-latest
+    needs: [backend, frontend-test, frontend-build, docker-publish]
+    if: |
+      always() && needs.backend.result == 'success' &&
+      needs.frontend-build.result == 'success' &&
+      (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped') &&
+      needs.docker-publish.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        server:
+          - id: server1
+            name: '主服务器1 (中维)'
+            host: ${{ secrets.SERVER_HOST }}
+            user: ${{ secrets.SERVER_USER }}
+            key: ${{ secrets.SSH_PRIVATE_KEY }}
+            dir: ${{ secrets.DEPLOY_DIR || '/root/zw-insight' }}
+          - id: server2
+            name: '新服务器2 (徽颖)'
+            host: ${{ secrets.SERVER2_HOST || '43.142.44.145' }}
+            user: ${{ secrets.SERVER2_USER || 'root' }}
+            key: ${{ secrets.SERVER2_SSH_KEY }}
+            dir: ${{ secrets.SERVER2_DEPLOY_DIR || '/root/zw-insight' }}
+    steps:
+      - name: Filter target server
+        if: inputs.target_server != 'all' && inputs.target_server != matrix.server.id && github.event_name == 'workflow_dispatch'
+        run: |
+          echo "跳过当前机器：指定目标为 ${{ inputs.target_server }}，当前为 ${{ matrix.server.id }}"
+          exit 0
+
+      - uses: actions/checkout@v4
 
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ matrix.server.key }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H ${{ matrix.server.host }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      # 磁盘防护①（2026-08-13，run 31613613775 磁盘满事故后新增）：
-      # rsync 前先清理 docker 无用资源并检查剩余空间，不足则快速失败（附诊断），
-      # 避免传到一半报 No space left on device 留下半截 jar
+      # 磁盘防护①：rsync 前先清理 docker 无用资源并检查剩余空间
       - name: Pre-deploy disk guard & docker cleanup
         run: |
-          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'DISK_GUARD'
+          ssh -i ~/.ssh/deploy_key "${{ matrix.server.user }}@${{ matrix.server.host }}" bash -s <<'DISK_GUARD'
           set -uo pipefail
           MIN_FREE_MB=1024
           df_line=$(df -mP / | tail -1)
           avail_mb=$(echo "$df_line" | awk '{print $4}')
           echo "部署前磁盘可用空间: ${avail_mb}MB（阈值 ${MIN_FREE_MB}MB）"
           if [ "$avail_mb" -lt "$MIN_FREE_MB" ]; then
-            echo "空间不足，先自动清理 docker 无用资源（停止容器/悬空镜像/无用网络/构建缓存）..."
+            echo "空间不足，先自动清理 docker 无用资源..."
             docker container prune -f || true
             docker image prune -f || true
             docker network prune -f || true
             docker builder prune -f || true
             avail_mb=$(df -mP / | tail -1 | awk '{print $4}')
             echo "清理后可用空间: ${avail_mb}MB"
-            echo "--- docker system df ---"
-            docker system df || true
-            echo "--- / 占用 Top10 ---"
-            du -x -m --max-depth=2 / 2>/dev/null | sort -rn | head -10 || true
           fi
           if [ "$avail_mb" -lt "$MIN_FREE_MB" ]; then
-            echo "::error::部署目录可用空间 ${avail_mb}MB 低于 ${MIN_FREE_MB}MB，自动清理后仍不足，拒绝部署（防半截 jar）"
+            echo "::error::部署目录可用空间不足，拒绝部署"
             exit 1
           fi
           DISK_GUARD
 
-      - name: Sync project to server
+      - name: Sync deployment files to server
         run: |
-          # 注意：**不再排除 dist/**——前端产物由 frontend-build job 在 runner 上构建后
-          # 随本步同步到服务器，服务器上的 frontend Dockerfile 只做 COPY（不再 npm build）。
-          # 若重新加上 --exclude='**/dist/'，镜像构建会因 COPY 找不到目录而失败。
+          echo "🚀 同步 deploy/ 编排与初始化脚本到 ${{ matrix.server.name }}"
+          ssh -i ~/.ssh/deploy_key "${{ matrix.server.user }}@${{ matrix.server.host }}" "mkdir -p ${{ matrix.server.dir }}/deploy"
           rsync -avz --delete \
-            --exclude='.git/' \
-            --exclude='node_modules/' \
-            --exclude='**/target/' \
-            --exclude='test-results/' \
-            --exclude='.kiro/' \
-            --exclude='_frontend-dist-tmp/' \
-            --exclude='deploy/.env' \
+            --exclude='.env' \
+            --exclude='zw-insight-app.jar' \
             -e "ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=30 -o ServerAliveCountMax=20" \
-            ./ "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.DEPLOY_DIR }}/"
-
-      # 硬断言：dist 必须已到达服务器，否则后面镜像构建必败（失败信息比 Docker 报错直白）
-      - name: Assert dist arrived on server
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
-            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
-            "test -f ${{ env.DEPLOY_DIR }}/zw-insight-web/dist/index.html && echo 'dist OK: $(du -sh ${{ env.DEPLOY_DIR }}/zw-insight-web/dist | cut -f1)' || { echo '服务器未收到 dist 产物'; exit 1; }"
+            ./deploy/ "${{ matrix.server.user }}@${{ matrix.server.host }}:${{ matrix.server.dir }}/deploy/"
 
       - name: Deploy via SSH
+        env:
+          DEPLOY_DIR: ${{ matrix.server.dir }}
+          IMAGE_TAG: ${{ needs.docker-publish.outputs.image_tag }}
+          REPO_OWNER: ${{ needs.docker-publish.outputs.repo_owner }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # ServerAliveInterval：2026-09-24 两次部署失败（run 35951954498 / 35955467495）的根因——
-          # 前端 vite "rendering chunks" 阶段 5 分钟无任何输出，SSH 会话因空闲被中间设备/sshd 断开
-          # （client_loop: send disconnect: Broken pipe，exit 255），CI 报失败但远端 bash 已跑完。
-          # 每 30s 发一次保活探测，允许连续 60 次无响应（共 30 分钟）才断开。
           ssh -i ~/.ssh/deploy_key \
             -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes \
-            "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'DEPLOY_SCRIPT'
+            "${{ matrix.server.user }}@${{ matrix.server.host }}" \
+            "DEPLOY_DIR='$DEPLOY_DIR' IMAGE_TAG='$IMAGE_TAG' REPO_OWNER='$REPO_OWNER' GHCR_USER='$GHCR_USER' GHCR_TOKEN='$GHCR_TOKEN' bash -s" <<'DEPLOY_SCRIPT'
           set -euo pipefail
           DEPLOY_DIR="${DEPLOY_DIR:-/root/zw-insight}"
           cd "$DEPLOY_DIR/deploy"
 
+          # 若首次在新服务器部署且不存在 .env，自动从 .env.example 生成初始配置
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            echo "⚠️ 检测到新服务器尚未创建 .env，自动根据 .env.example 初始化..."
+            cp .env.example .env
+          fi
+
+          set -a
+          [ -f .env ] && source <(sed 's/\r$//' .env)
+          set +a
+          CT_PREFIX="${CONTAINER_PREFIX:-zwi}"
+          DB_NAME="${MYSQL_DATABASE:-zw_insight}"
+
           echo "=== [1/5] 确保基础设施运行 ==="
-          # 拉取最新 MySQL 镜像（升级到 8.0.37 以支持 IF NOT EXISTS 语法）
           docker compose -f docker-compose.deploy.yml pull mysql
-          # 启动 MySQL/Redis/MinIO/RabbitMQ（如已运行则无操作，如镜像更新则自动重建）
           docker compose -f docker-compose.deploy.yml up -d mysql redis minio rabbitmq
 
           echo "=== [2/5] 等待 MySQL 就绪 ==="
           for i in $(seq 1 30); do
-            if docker exec zwi-mysql mysqladmin ping -h 127.0.0.1 -uroot -pzwinsight123 --silent 2>/dev/null; then
+            if docker exec "${CT_PREFIX}-mysql" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqladmin ping -h 127.0.0.1 -uroot --silent' 2>/dev/null; then
               echo "MySQL 就绪"
               break
             fi
@@ -385,55 +448,45 @@ jobs:
           done
 
           echo "=== [3/5] 清理 Flyway 失败记录 ==="
-          # 直接清理（表不存在或无记录时静默忽略）
-          docker exec zwi-mysql mysql -uroot -pzwinsight123 zw_insight \
-            -e "DELETE FROM flyway_schema_history WHERE success = 0;" 2>/dev/null || true
+          docker exec "${CT_PREFIX}-mysql" sh -c "MYSQL_PWD=\"\$MYSQL_ROOT_PASSWORD\" mysql -uroot \"$DB_NAME\" -e 'DELETE FROM flyway_schema_history WHERE success = 0;'" 2>/dev/null || true
 
-          echo "=== [4/5] 重建并启动应用容器 ==="
-          # 只重建 backend 和 frontend，基础设施保持运行
-          # 2026-08-14 提速优化：去掉 --no-cache——前端 Dockerfile 已按 package*.json
-          # 分层，lockfile 不变时依赖层命中服务器本地缓存（npm ci 2.5min→~0），
-          # COPY 层内容寻址保证源码变更必然重建，无陈旧产物风险。
-          #
-          # 2026-09-24 修复：**先 build 后 stop**（原顺序为 stop → build → up）。
-          # 原顺序的两个后果：① 构建期间（前端 vite rendering chunks 实测 5-20 分钟，
-          # 服务器负载高时更久）服务完全不可用；② 构建失败或 SSH 断连时，旧容器已停而
-          # 新容器未起，直接变成停机事故（run 35951954498 / 35955467495 均如此，
-          # 线上 18080 无响应约 25 分钟）。改为先构建镜像，成功后才停旧容器，
-          # 停机窗口从“整个构建时长”缩短到秒级；构建失败时旧容器继续服务（不会更糟）。
-          docker compose -f docker-compose.deploy.yml build backend frontend
-          docker compose -f docker-compose.deploy.yml stop backend frontend 2>/dev/null || true
-          docker rm -f zwi-backend zwi-frontend 2>/dev/null || true
-          docker compose -f docker-compose.deploy.yml up -d backend frontend
+          echo "=== [4/5] 从 GitHub Packages (ghcr.io) 拉取并启动应用容器 ==="
+          if [ -n "${GHCR_TOKEN:-}" ]; then
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin 2>/dev/null || true
+          fi
 
-          echo "=== [5/5] 清理 docker 无用资源（镜像/容器/网络/构建缓存） ==="
-          # 2026-08-13 强化：每次部署 build --no-cache 会累积旧镜像层与构建缓存，
-          # 原来仅 docker image prune -f（悬空镜像）不足以防磁盘满（run 31613613775 事故）。
-          # 不用 system prune -a：避免误删其他 compose 栈镜像；prune 只清未被运行容器引用的资源，
-          # 正在运行的 mysql/redis/minio/rabbitmq/backend/frontend 不受影响。清理失败不阻断部署。
+          export BACKEND_IMAGE="ghcr.io/${REPO_OWNER}/zwinsight-backend"
+          export FRONTEND_IMAGE="ghcr.io/${REPO_OWNER}/zwinsight-frontend"
+          export IMAGE_TAG="$IMAGE_TAG"
+
+          echo "拉取镜像: ${BACKEND_IMAGE}:${IMAGE_TAG} 与 ${FRONTEND_IMAGE}:${IMAGE_TAG} ..."
+          docker compose -f docker-compose.deploy.yml pull backend frontend
+          docker compose -f docker-compose.deploy.yml up -d --no-build backend frontend
+
+          echo "=== [5/5] 清理 docker 无用资源 ==="
           docker container prune -f || true
           docker image prune -f || true
           docker network prune -f || true
           docker builder prune -f || true
           echo "--- 清理后磁盘与 docker 占用 ---"
           df -h / | tail -1
-          docker system df || true
 
           echo ""
           echo "=== 部署完成 ==="
           docker compose -f docker-compose.deploy.yml ps
           DEPLOY_SCRIPT
-        env:
-          DEPLOY_DIR: ${{ env.DEPLOY_DIR }}
 
       - name: Health check
         continue-on-error: true
         run: |
-          echo "等待服务启动（Spring Boot + Flyway 迁移）..."
+          REMOTE_PORT=$(ssh -i ~/.ssh/deploy_key "${{ matrix.server.user }}@${{ matrix.server.host }}" \
+            "grep -E '^BACKEND_PORT=' ${{ matrix.server.dir }}/deploy/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'" || true)
+          BACKEND_PORT="${REMOTE_PORT:-18080}"
+          echo "等待服务启动（端口: $BACKEND_PORT）..."
           sleep 30
           for i in $(seq 1 15); do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              "http://${{ env.SERVER_HOST }}:18080/api/v1/system/menu/user" || true)
+              "http://${{ matrix.server.host }}:${BACKEND_PORT}/api/v1/system/menu/user" || true)
             if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
               echo "✅ 后端健康检查通过 (HTTP $HTTP_CODE)"
               exit 0
@@ -441,8 +494,8 @@ jobs:
             echo "等待中... ($i/15, HTTP $HTTP_CODE)"
             sleep 10
           done
-          echo "⚠️ 后端健康检查未通过，服务可能仍在启动中，请手动检查服务器日志"
-          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+          echo "⚠️ 后端健康检查未通过"
+          ssh -i ~/.ssh/deploy_key "${{ matrix.server.user }}@${{ matrix.server.host }}" \
             "docker logs zwi-backend --tail 30" || true
 
       # 生产收敛硬断言（2026-08-10）：API 文档端点不得对公网免认证暴露，
@@ -450,9 +503,11 @@ jobs:
       # 不静默：任一端点返回 200 则 job 标红
       - name: Verify API docs disabled in production
         run: |
-          # 前置：确认后端可达（避免服务未启动时 curl 000 被误判为“未暴露”的假通过）
+          REMOTE_PORT=$(ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+            "grep -E '^BACKEND_PORT=' ${{ env.DEPLOY_DIR }}/deploy/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'" || true)
+          BACKEND_PORT="${REMOTE_PORT:-18080}"
           PROBE=$(curl -s -o /dev/null -w "%{http_code}" \
-            "http://${{ env.SERVER_HOST }}:18080/api/v1/captcha/image" || true)
+            "http://${{ env.SERVER_HOST }}:${BACKEND_PORT}/api/v1/captcha/image" || true)
           if [ "$PROBE" = "000" ]; then
             echo "❌ 后端不可达，无法验证文档收敛，拒绝假通过"
             exit 1
@@ -460,7 +515,7 @@ jobs:
           echo "后端可达（探针 HTTP $PROBE），开始验证文档端点收敛"
           for path in /doc.html /v3/api-docs; do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              "http://${{ env.SERVER_HOST }}:18080$path" || true)
+              "http://${{ env.SERVER_HOST }}:${BACKEND_PORT}$path" || true)
             if [ "$HTTP_CODE" = "200" ]; then
               echo "❌ $path 在生产环境免认证可达 (HTTP 200)，收敛未生效"
               exit 1
