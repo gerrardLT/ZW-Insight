@@ -157,8 +157,15 @@ async function handleUploadImage(uploadFile: any, configKey: string) {
   try {
     const res: any = await uploadBrandImage(file, logoType)
     if (res?.data) {
-      formModel[configKey] = res.data
-      ElMessage.success('图片上传成功，保存设置后生效')
+      const imageUrl = res.data
+      // 上传与配置持久化是一个用户动作：禁止返回 URL 后仍要求再点一次“保存设置”。
+      await batchUpdateConfig([{ configKey, configValue: imageUrl }])
+      formModel[configKey] = imageUrl
+      originalValues.value[configKey] = imageUrl
+      const brandStore = useBrandStore()
+      brandStore.loaded = false
+      await brandStore.fetchBrandConfig()
+      ElMessage.success('图片上传成功并已生效')
     }
   } catch (e: any) {
     ElMessage.error(e?.message || '图片上传失败')

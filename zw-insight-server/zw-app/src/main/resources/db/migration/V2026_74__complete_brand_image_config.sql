@@ -1,5 +1,6 @@
 -- 补齐品牌设置图片分类。历史环境中 43 已手工存在 1045/1046，129 缺失；
 -- INSERT IGNORE 保证两端幂等收敛为同一组配置，不覆盖各环境已保存的品牌值。
+SET NAMES utf8mb4;
 INSERT IGNORE INTO sys_config
 (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at)
 VALUES

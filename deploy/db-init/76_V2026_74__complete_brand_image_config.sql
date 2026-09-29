@@ -1,4 +1,5 @@
 -- 新环境 initdb 双轨：与 Flyway V2026_74 保持一致。
+SET NAMES utf8mb4;
 INSERT IGNORE INTO sys_config
 (id, config_key, config_value, config_name, config_group, value_type, default_value, value_range, remark, created_at, updated_at)
 VALUES
