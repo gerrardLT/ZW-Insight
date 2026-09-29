@@ -353,11 +353,6 @@ jobs:
           - id: server2
             name: '新服务器2 (徽颖)'
     environment: production
-    env:
-      SERVER_HOST: ${{ matrix.server.id == 'server1' && secrets.SERVER_HOST || secrets.SERVER2_HOST }}
-      SERVER_USER: ${{ matrix.server.id == 'server1' && secrets.SERVER_USER || secrets.SERVER2_USER }}
-      SSH_PRIVATE_KEY: ${{ matrix.server.id == 'server1' && secrets.SSH_PRIVATE_KEY || secrets.SERVER2_SSH_KEY }}
-      SERVER_DEPLOY_DIR: ${{ matrix.server.id == 'server1' && secrets.DEPLOY_DIR || secrets.SERVER2_DEPLOY_DIR }}
     steps:
       - name: Filter target server
         if: inputs.target_server != 'all' && inputs.target_server != matrix.server.id && github.event_name == 'workflow_dispatch'
@@ -366,6 +361,33 @@ jobs:
           exit 0
 
       - uses: actions/checkout@v4
+
+      - name: Select server credentials
+        env:
+          SERVER1_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER1_USER: ${{ secrets.SERVER_USER }}
+          SERVER1_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER1_DIR: ${{ secrets.DEPLOY_DIR }}
+          SERVER2_HOST: ${{ secrets.SERVER2_HOST }}
+          SERVER2_USER: ${{ secrets.SERVER2_USER }}
+          SERVER2_KEY: ${{ secrets.SERVER2_SSH_KEY }}
+          SERVER2_DIR: ${{ secrets.SERVER2_DEPLOY_DIR }}
+        run: |
+          if [ "${{ matrix.server.id }}" = "server1" ]; then
+            echo "SERVER_HOST=$SERVER1_HOST" >> "$GITHUB_ENV"
+            echo "SERVER_USER=${SERVER1_USER:-root}" >> "$GITHUB_ENV"
+            echo "SSH_PRIVATE_KEY<<__KEY__" >> "$GITHUB_ENV"
+            echo "$SERVER1_KEY" >> "$GITHUB_ENV"
+            echo "__KEY__" >> "$GITHUB_ENV"
+            echo "SERVER_DEPLOY_DIR=${SERVER1_DIR:-/root/zw-insight}" >> "$GITHUB_ENV"
+          else
+            echo "SERVER_HOST=${SERVER2_HOST:-43.142.44.145}" >> "$GITHUB_ENV"
+            echo "SERVER_USER=${SERVER2_USER:-root}" >> "$GITHUB_ENV"
+            echo "SSH_PRIVATE_KEY<<__KEY__" >> "$GITHUB_ENV"
+            echo "$SERVER2_KEY" >> "$GITHUB_ENV"
+            echo "__KEY__" >> "$GITHUB_ENV"
+            echo "SERVER_DEPLOY_DIR=${SERVER2_DIR:-/root/zw-insight}" >> "$GITHUB_ENV"
+          fi
 
       - name: Setup SSH
         run: |
