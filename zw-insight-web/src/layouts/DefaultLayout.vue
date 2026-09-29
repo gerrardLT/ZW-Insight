@@ -8,11 +8,11 @@
       @transitionend="handleTransitionEnd"
     >
       <div class="logo">
-        <img class="logo-icon" :src="appStore.isDark ? logoLight : logoDark" alt="中维智营" />
+        <img class="logo-icon" :src="brandStore.resolveLogo(appStore.isDark)" :alt="brandStore.systemName" />
         <transition name="fade">
           <div v-if="!isCollapse" class="logo-text-group">
-            <span class="logo-text">中维智营</span>
-            <span class="logo-sub">INSIGHT OS</span>
+            <span class="logo-text">{{ brandStore.systemName }}</span>
+            <span class="logo-sub">{{ brandStore.systemSub }}</span>
           </div>
         </transition>
       </div>
@@ -171,13 +171,14 @@ import { IconHelp } from '@tabler/icons-vue'
 // 使用文档元数据：仅类型导入（编译擦除）；正文 chunk 由命令面板首次挂载时动态 import，
 // 避免 19 章 Markdown 正文进入主包（CodeReview Major-2）
 import type { GuideChapterMeta } from '@/docs/help/registry'
-// 品牌 logo 双态：亮底黑字 / 暗底反白（随主题切换，与暗色插画同一模式）
-import logoDark from '@/assets/logo.png'
-import logoLight from '@/assets/logo-light.png'
+import { useBrandStore } from '@/stores/brand'
 
 const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
+// 品牌 Store：Logo 双态（亮底黑字/暗底反白）、系统名称与副标题按部署环境动态取值，
+// 详见 stores/brand.ts；App.vue 已在应用启动时拉取配置
+const brandStore = useBrandStore()
 
 // 全局键盘快捷键（⌘K / `/` / Ctrl+S / Ctrl+Enter / Esc），注册在布局根组件，全局生效
 useShortcuts()

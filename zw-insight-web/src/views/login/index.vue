@@ -96,7 +96,7 @@
           </el-form-item>
         </el-form>
       </div>
-      <p class="login-copyright">© 2026 中维智营 · 工程项目管理平台</p>
+      <p class="login-copyright">{{ brandStore.copyright }}</p>
     </div>
   </div>
 </template>
@@ -105,6 +105,7 @@
 import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useBrandStore } from '@/stores/brand'
 import { sendSmsCaptcha } from '@/api/captcha'
 import SliderCaptcha from './SliderCaptcha.vue'
 import request from '@/utils/request'
@@ -113,6 +114,8 @@ import type { FormInstance, FormRules } from 'element-plus'
 
 const router = useRouter()
 const userStore = useUserStore()
+// 品牌 Store：底部版权信息按部署环境动态取值（App.vue 已在应用启动时拉取配置）
+const brandStore = useBrandStore()
 const formRef = ref<FormInstance>()
 const smsFormRef = ref<FormInstance>()
 const loading = ref(false)

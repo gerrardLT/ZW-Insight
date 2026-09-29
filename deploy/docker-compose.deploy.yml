@@ -1,132 +1,132 @@
-# ZW-Insight 联调部署编排（独立网络，互不干扰服务器上的其他容器）
-# 仅后端对公网暴露 18080；MySQL/Redis/MinIO/RabbitMQ 仅在内网，不映射公网端口。
-# 各容器设内存硬限制，避免在共享服务器上挤占其他服务。
-name: zwinsight-debug
+# ZW-Insight 生产/多环境部署编排（独立网络，互不干扰服务器上的其他容器）
+# 支持「云镜像仓库直接 Pull（推荐）」与「本地 Dockerfile 构建（兼容兜底）」双模式。
+# 仅前后端映射宿主机端口；MySQL/Redis/MinIO/RabbitMQ 仅在内网通信，不映射公网端口。
+name: ${COMPOSE_PROJECT_NAME:-zwinsight-debug}
 
 services:
   mysql:
     image: mysql:8.0.37
-    container_name: zwi-mysql
+    container_name: ${CONTAINER_PREFIX:-zwi}-mysql
     restart: unless-stopped
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-zw_insight}
       TZ: Asia/Shanghai
     volumes:
       - zwi_mysql:/var/lib/mysql
       - ./db-init:/docker-entrypoint-initdb.d:ro   # 首次启动时自动执行初始化 SQL
-    mem_limit: 900m
+    mem_limit: ${MYSQL_MEM_LIMIT:-900m}
     networks: [zwi-net]
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pzwinsight123"]
+      # 使用容器内自身环境变量 $MYSQL_ROOT_PASSWORD，彻底消除明文硬编码密码
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot --silent"]
       interval: 10s
       timeout: 5s
       retries: 20
 
   redis:
     image: redis:7
-    container_name: zwi-redis
+    container_name: ${CONTAINER_PREFIX:-zwi}-redis
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
       - zwi_redis:/data
-    mem_limit: 256m
+    mem_limit: ${REDIS_MEM_LIMIT:-256m}
     networks: [zwi-net]
 
   minio:
     image: minio/minio
-    container_name: zwi-minio
+    container_name: ${CONTAINER_PREFIX:-zwi}-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - zwi_minio:/data
-    mem_limit: 384m
+    mem_limit: ${MINIO_MEM_LIMIT:-384m}
     networks: [zwi-net]
 
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: zwi-rabbitmq
+    container_name: ${CONTAINER_PREFIX:-zwi}-rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
       - zwi_rabbitmq:/var/lib/rabbitmq
-    mem_limit: 512m
+    mem_limit: ${RABBITMQ_MEM_LIMIT:-512m}
     networks: [zwi-net]
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    image: zwinsight-backend:debug
-    container_name: zwi-backend
+    # 支持通过 BACKEND_IMAGE 与 IMAGE_TAG 指向腾讯云 TCR / 阿里云 ACR 镜像仓库
+    image: ${BACKEND_IMAGE:-zwinsight-backend}:${IMAGE_TAG:-debug}
+    container_name: ${CONTAINER_PREFIX:-zwi}-backend
     restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
     environment:
       TZ: Asia/Shanghai
-      SPRING_PROFILES_ACTIVE: dev
-      # Flowable 流程引擎配置（2026-08-17 P0-01 修复：启用自动建表）
-      SPRING_FLOWABLE_DATABASE_SCHEMA_UPDATE: true  # 自动创建/更新 Flowable 表（act_re_procdef/act_ru_task/act_hi_procinst）
-      SPRING_FLOWABLE_ASYNC_EXECUTOR_ACTIVATE: false  # 暂不启用异步执行器（避免并发问题）
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      # Flowable 流程引擎配置（启用自动建表）
+      SPRING_FLOWABLE_DATABASE_SCHEMA_UPDATE: "true"
+      SPRING_FLOWABLE_ASYNC_EXECUTOR_ACTIVATE: "false"
       # context-path 置空，使后端直接服务于控制器映射的 /api/v1/...，与前端 baseURL(/api)+/v1 对齐
-      # （原 dev 配置 server.servlet.context-path=/api 会与控制器的 /api/v1 叠加成 /api/api/v1）
       SERVER_SERVLET_CONTEXT_PATH: /
-      # 覆盖 dev 配置里的连接地址，指向本编排内的服务名
-      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      # 覆盖连接地址，指向本编排内的服务名
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-zw_insight}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-root}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: "5672"
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
-      # minio.access-key/secret-key 在 dev 配置里已是 minioadmin，与本编排一致，无需覆盖；仅改 endpoint 指向服务名
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-guest}
       MINIO_ENDPOINT: "http://minio:9000"
-      # ── 生产收敛（2026-08-10，tasks.md 2.3.3 豁免条件落地）──
-      # 拦截器体系仅保护 /api/**，API 文档端点（/doc.html、/v3/api-docs、/webjars）
-      # 默认免认证可达，生产必须关闭，避免接口结构暴露公网。
-      # 实证纠正（run 31368061537 断言抓出）：knife4j.enable=false/production=true 只关
-      # 增强功能，doc.html 是 webjar 静态资源仍由资源处理器返回 200；必须用
-      # spring.web.resources.static-locations=[] 清空静态资源位置（业务全走 /api 控制器，无影响）。
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      JWT_SECRET: ${JWT_SECRET:-ZwInsight2024SecretKeyForJwtTokenGeneration}
+      # ── 生产收敛：关闭公网 API 文档暴露 ──
       KNIFE4J_ENABLE: "false"
       KNIFE4J_PRODUCTION: "true"
       SPRINGDOC_API_DOCS_ENABLED: "false"
       SPRING_WEB_RESOURCES_STATIC_LOCATIONS: "[]"
-      # 代码层拦截开关（WebMvcConfig/DocsBlockInterceptor）：配置级关闭实测不彻底，
-      # 拦截器对 /doc.html、/webjars/**、/v3/api-docs/** 等直接返回 404（CI 硬断言验证）
       SECURITY_DOCS_BLOCK_ENABLED: "true"
-      # ── 阿里云短信真实通道（凭证仅存 deploy/.env，不入版本库）──
-      # application-dev.yml 的 sms.* 读取以下环境变量；未配置时 enabled 回落 false（仅日志不发短信）
+      # ── 阿里云短信真实通道（凭证仅存各服务器 deploy/.env，不入版本库）──
       SMS_ENABLED: ${ALIYUN_SMS_ENABLED:-false}
       SMS_ACCESS_KEY_ID: ${ALIYUN_SMS_ACCESS_KEY_ID:-}
       SMS_ACCESS_KEY_SECRET: ${ALIYUN_SMS_ACCESS_KEY_SECRET:-}
       SMS_SIGN_NAME: ${ALIYUN_SMS_SIGN_NAME:-}
       SMS_TEMPLATE_CODE: ${ALIYUN_SMS_TEMPLATE_CODE:-}
     ports:
-      - "18080:8080"   # 仅此端口对公网；前端联调连这里
-    mem_limit: 1200m
+      - "${BACKEND_PORT:-18080}:8080"
+    volumes:
+      - zwi_brand:/usr/share/nginx/html/brand
+    mem_limit: ${BACKEND_MEM_LIMIT:-1200m}
     networks: [zwi-net]
 
   frontend:
     build:
       context: ..          # 项目根目录，使 Dockerfile 可同时访问 zw-insight-web/ 和 deploy/frontend/
       dockerfile: deploy/frontend/Dockerfile
-    image: zwinsight-frontend:debug
-    container_name: zwi-frontend
+    # 支持通过 FRONTEND_IMAGE 与 IMAGE_TAG 指向腾讯云 TCR / 阿里云 ACR 镜像仓库
+    image: ${FRONTEND_IMAGE:-zwinsight-frontend}:${IMAGE_TAG:-debug}
+    container_name: ${CONTAINER_PREFIX:-zwi}-frontend
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "18081:80"         # 前端对公网暴露 18081 端口（避免与宝塔 nginx 80 冲突）
-    mem_limit: 128m
+      - "${FRONTEND_PORT:-18081}:80"
+    volumes:
+      - zwi_brand:/usr/share/nginx/html/brand:ro
+    mem_limit: ${FRONTEND_MEM_LIMIT:-128m}
     networks: [zwi-net]
 
 volumes:
@@ -134,6 +134,7 @@ volumes:
   zwi_redis:
   zwi_minio:
   zwi_rabbitmq:
+  zwi_brand:
 
 networks:
   zwi-net:

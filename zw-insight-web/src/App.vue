@@ -8,11 +8,16 @@
 import { onMounted } from 'vue'
 import ConfirmPasswordDialog from '@/components/ConfirmPasswordDialog.vue'
 import { useAppStore } from '@/stores/app'
+import { useBrandStore } from '@/stores/brand'
 
 const appStore = useAppStore()
+const brandStore = useBrandStore()
 
 onMounted(() => {
   // 确保主题在应用启动时应用到 DOM
   appStore.applyTheme(appStore.theme)
+  // 拉取当前部署环境的品牌配置（系统名称/Logo/版权），驱动浏览器标题与登录页/侧边栏展示；
+  // 免登录可读，未登录状态（如刷新停留在登录页）同样生效
+  brandStore.fetchBrandConfig()
 })
 </script>

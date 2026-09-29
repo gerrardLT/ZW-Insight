@@ -11,6 +11,7 @@
       </template>
 
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+        <el-tab-pane label="品牌设置" name="brand" />
         <el-tab-pane label="安全设置" name="security" />
         <el-tab-pane label="审批设置" name="approval" />
         <el-tab-pane label="文件设置" name="file" />
@@ -31,9 +32,34 @@
             :label="item.configName"
           >
             <div class="config-item-content">
-              <!-- STRING 类型 -->
+              <!-- 图片上传类型 (Logo / Favicon) -->
+              <template v-if="isImageConfig(item.configKey)">
+                <div class="logo-uploader-box">
+                  <div v-if="formModel[item.configKey]" class="logo-preview-wrapper">
+                    <img :src="formModel[item.configKey]" class="logo-preview-img" alt="预览" />
+                  </div>
+                  <el-input
+                    v-model="formModel[item.configKey]"
+                    placeholder="输入相对路径或上传图片"
+                    style="width: 260px"
+                  />
+                  <el-upload
+                    action="#"
+                    :show-file-list="false"
+                    :auto-upload="false"
+                    :on-change="(file: any) => handleUploadImage(file, item.configKey)"
+                    accept="image/*"
+                  >
+                    <el-button type="primary" plain>
+                      <el-icon><Upload /></el-icon>上传图片
+                    </el-button>
+                  </el-upload>
+                </div>
+              </template>
+
+              <!-- 普通 STRING 类型 -->
               <el-input
-                v-if="item.valueType === 'STRING'"
+                v-else-if="item.valueType === 'STRING'"
                 v-model="formModel[item.configKey]"
                 :placeholder="getPlaceholder(item)"
                 style="width: 360px"
@@ -97,6 +123,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Check, Upload } from '@element-plus/icons-vue'
 import type { TabPaneName } from 'element-plus'
 import {
   getConfigByGroup,
@@ -104,15 +131,40 @@ import {
   resetConfigToDefault,
   type SysConfigItem
 } from '@/api/system'
+import { uploadBrandImage } from '@/api/brand'
+import { useBrandStore } from '@/stores/brand'
 
-const activeTab = ref('security')
+const brandStore = useBrandStore()
+const activeTab = ref('brand')
 const loading = ref(false)
 const saveLoading = ref(false)
 const configList = ref<SysConfigItem[]>([])
 const formModel = reactive<Record<string, any>>({})
-
-// 记录原始值，用于判断哪些配置被修改
 const originalValues = ref<Record<string, any>>({})
+
+function isImageConfig(key: string): boolean {
+  return ['brand_logo_url', 'brand_logo_light_url', 'brand_favicon_url'].includes(key)
+}
+
+/** 触发文件上传 */
+async function handleUploadImage(uploadFile: any, configKey: string) {
+  const file = uploadFile.raw
+  if (!file) return
+
+  let logoType: 'logo' | 'logoLight' | 'favicon' = 'logo'
+  if (configKey === 'brand_logo_light_url') logoType = 'logoLight'
+  if (configKey === 'brand_favicon_url') logoType = 'favicon'
+
+  try {
+    const res: any = await uploadBrandImage(file, logoType)
+    if (res?.data) {
+      formModel[configKey] = res.data
+      ElMessage.success('图片上传成功，保存设置后生效')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '图片上传失败')
+  }
+}
 
 /** 加载分组配置 */
 async function loadGroupConfig(group: string) {
@@ -122,10 +174,8 @@ async function loadGroupConfig(group: string) {
     const list: SysConfigItem[] = res.data || []
     configList.value = list
 
-    // 清空旧值
     Object.keys(formModel).forEach((key) => delete formModel[key])
 
-    // 初始化表单模型
     list.forEach((item) => {
       const value = parseConfigValue(item)
       formModel[item.configKey] = value
@@ -136,7 +186,6 @@ async function loadGroupConfig(group: string) {
   }
 }
 
-/** 根据 valueType 解析值 */
 function parseConfigValue(item: SysConfigItem): any {
   const val = item.configValue
   switch (item.valueType) {
@@ -149,39 +198,29 @@ function parseConfigValue(item: SysConfigItem): any {
   }
 }
 
-/** 获取 placeholder */
 function getPlaceholder(item: SysConfigItem): string {
-  if (item.valueType === 'JSON') {
-    return '请输入 JSON 格式内容'
-  }
-  if (item.valueRange) {
-    return `允许范围：${item.valueRange}`
-  }
+  if (item.valueType === 'JSON') return '请输入 JSON 格式内容'
+  if (item.valueRange) return `允许范围：${item.valueRange}`
   return `请输入${item.configName}`
 }
 
-/** 获取 NUMBER 最小值 */
 function getNumberMin(item: SysConfigItem): number | undefined {
   if (!item.valueRange) return undefined
   const match = item.valueRange.match(/^(\d+)/)
   return match ? Number(match[1]) : undefined
 }
 
-/** 获取 NUMBER 最大值 */
 function getNumberMax(item: SysConfigItem): number | undefined {
   if (!item.valueRange) return undefined
   const match = item.valueRange.match(/(\d+)$/)
   return match ? Number(match[1]) : undefined
 }
 
-/** 标签页切换 */
 function handleTabChange(name: TabPaneName) {
   loadGroupConfig(String(name))
 }
 
-/** 保存配置 */
 async function handleSave() {
-  // 收集修改过的配置
   const changedConfigs: { configKey: string; configValue: string }[] = []
 
   configList.value.forEach((item) => {
@@ -191,7 +230,7 @@ async function handleSave() {
     if (currentVal !== originalVal) {
       changedConfigs.push({
         configKey: item.configKey,
-        configValue: String(currentVal)
+        configValue: String(currentVal ?? '')
       })
     }
   })
@@ -205,16 +244,18 @@ async function handleSave() {
   try {
     await batchUpdateConfig(changedConfigs)
     ElMessage.success('保存成功')
-    // 重新加载以刷新原始值
     await loadGroupConfig(activeTab.value)
+    // 如果修改了品牌分组，同步刷新全局品牌 Store
+    if (activeTab.value === 'brand') {
+      brandStore.loaded = false
+      await brandStore.fetchBrandConfig()
+    }
   } catch (error: any) {
-    // 后端校验失败时 request.ts 拦截器已弹 ElMessage.error
   } finally {
     saveLoading.value = false
   }
 }
 
-/** 恢复默认值 */
 async function handleResetDefault(item: SysConfigItem) {
   await ElMessageBox.confirm(
     `确定要将「${item.configName}」恢复为默认值吗？`,
@@ -225,10 +266,12 @@ async function handleResetDefault(item: SysConfigItem) {
   try {
     await resetConfigToDefault(item.configKey)
     ElMessage.success('已恢复默认值')
-    // 刷新当前分组
     await loadGroupConfig(activeTab.value)
+    if (activeTab.value === 'brand') {
+      brandStore.loaded = false
+      await brandStore.fetchBrandConfig()
+    }
   } catch (error: any) {
-    // 错误已由拦截器处理
   }
 }
 
@@ -257,6 +300,30 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--zw-space-sm-md);
+}
+
+.logo-uploader-box {
+  display: flex;
+  align-items: center;
+  gap: var(--zw-space-sm-md);
+}
+
+.logo-preview-wrapper {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--zw-bg-card);
+  border: 1px dashed var(--zw-border-light);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.logo-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .reset-btn {
