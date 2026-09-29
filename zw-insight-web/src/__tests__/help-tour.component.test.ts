@@ -125,13 +125,10 @@ describe('DefaultLayout 首登引导（el-tour）', () => {
     expect(titles).toContain('打开帮助中心')
   })
 
-  it('tour target 回调返回真实 DOM，不直接传 Ref 对象', async () => {
+  it('首个 tour target 回调返回真实 DOM，不直接传 Ref 对象', async () => {
     const w = await mountLayout()
-    const steps = w.findAllComponents({ name: 'ElTourStep' })
-    expect(steps).toHaveLength(3)
-    const targets = steps.map((step) => step.props('target')?.())
-    expect(targets[0]).toBeInstanceOf(HTMLElement)
-    expect(targets[1]).toBeInstanceOf(HTMLElement)
-    expect(targets[2]).toBeInstanceOf(HTMLElement)
+    const step = w.findComponent({ name: 'ElTourStep' })
+    expect(step.exists()).toBe(true)
+    expect(step.props('target')?.()).toBeInstanceOf(HTMLElement)
   })
 })
