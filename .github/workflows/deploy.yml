@@ -33,11 +33,6 @@ on:
         description: '快速部署（日常最小路径，2026-09-16）：跳过后端单测+jacoco+三端前端测试，仅编译打包+部署+冒烟，约 3-5 分钟。仅限本地已完成测试验证的日常推送'
         type: boolean
         default: false
-      image_tag:
-        description: '可选：复用已有 GHCR 镜像标签进行部署或回滚；留空则构建当前提交'
-        required: false
-        type: string
-        default: ''
 
 # 测试套件触发策略（2026-08-13 用户决策：全量套件约 40 分钟，每次部署都跑等待过长）：
 #   - push 默认只跑：Backend Build（L1 单测 + 覆盖率基线对比）→ Deploy → 部署冒烟
@@ -249,88 +244,66 @@ jobs:
           if-no-files-found: error
 
   # ────────────────────────────────────────────────────
-  # 1.8 GitHub Packages (ghcr.io) 镜像构建与推送
-  #     在 Runner 侧使用 GITHUB_TOKEN 一键构建前后端镜像并推送到 ghcr.io，
-  #     零外部配置成本，所有目标服务器只需 docker compose pull 即可秒级拉起，
-  #     实现标准的“构建一次、到处部署”。
+  # 1.8 在 Runner 构建镜像归档
+  #     生产服务器只 docker load，不执行 docker build / npm / Maven。
   # ────────────────────────────────────────────────────
-  docker-publish:
-    name: Build & Push Images (GHCR)
+  image-package:
+    name: Build Transferable Images
     runs-on: ubuntu-latest
     needs: [backend, frontend-test, frontend-build]
-    permissions:
-      contents: read
-      packages: write
     if: |
       always() && needs.backend.result == 'success' &&
       needs.frontend-build.result == 'success' &&
       (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped')
-    outputs:
-      image_tag: ${{ steps.push_images.outputs.image_tag || github.sha }}
-      repo_owner: ${{ steps.push_images.outputs.repo_owner }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Download backend artifact
-        if: inputs.image_tag == ''
         uses: actions/download-artifact@v4
         with:
           name: backend-jar
           path: deploy/
 
       - name: Download frontend dist artifact
-        if: inputs.image_tag == ''
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
           path: _frontend-dist-tmp/
 
-      - name: Build and push images to GitHub Packages (ghcr.io)
-        id: push_images
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SPECIFIED_TAG: ${{ inputs.image_tag }}
+      - name: Place frontend dist
         run: |
           set -euo pipefail
-          TAG="${SPECIFIED_TAG:-${GITHUB_SHA::12}}"
-          echo "image_tag=$TAG" >> "$GITHUB_OUTPUT"
-
-          # 转为小写以兼容 Docker/GHCR 镜像命名规范
-          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "repo_owner=$REPO_OWNER" >> "$GITHUB_OUTPUT"
-
-          if [ -n "$SPECIFIED_TAG" ]; then
-            echo "✅ 指定了已有镜像标签 ($SPECIFIED_TAG)，直接复用 ghcr.io 制品进行部署/回滚"
-            exit 0
-          fi
-
-          # 整理前端 dist 目录结构
           if [ -f _frontend-dist-tmp/index.html ]; then
             SRC=_frontend-dist-tmp
           elif [ -f _frontend-dist-tmp/zw-insight-web/dist/index.html ]; then
             SRC=_frontend-dist-tmp/zw-insight-web/dist
           else
-            echo "无法定位 dist 产物" && exit 1
+            echo "无法定位 dist 产物"; find _frontend-dist-tmp -maxdepth 4 | head -20; exit 1
           fi
           rm -rf zw-insight-web/dist
           cp -r "$SRC" zw-insight-web/dist
-          rm -rf _frontend-dist-tmp
+          test -f deploy/zw-insight-app.jar
+          test -f zw-insight-web/dist/index.html
 
-          echo "🔐 登录 GitHub Packages (ghcr.io)"
-          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build and archive application images
+        run: |
+          set -euo pipefail
+          docker build -t zwinsight-backend:debug -f deploy/Dockerfile deploy/
+          docker build -t zwinsight-frontend:debug -f deploy/frontend/Dockerfile .
+          mkdir -p _images
+          docker save zwinsight-backend:debug zwinsight-frontend:debug | gzip -1 > _images/zwinsight-images.tar.gz
+          test -s _images/zwinsight-images.tar.gz
+          sha256sum _images/zwinsight-images.tar.gz > _images/zwinsight-images.tar.gz.sha256
+          du -sh _images/zwinsight-images.tar.gz
 
-          BACKEND_IMG="ghcr.io/${REPO_OWNER}/zwinsight-backend"
-          FRONTEND_IMG="ghcr.io/${REPO_OWNER}/zwinsight-frontend"
-
-          echo "📦 构建并推送后端镜像: ${BACKEND_IMG}:${TAG}"
-          docker build -t "${BACKEND_IMG}:${TAG}" -t "${BACKEND_IMG}:latest" -f deploy/Dockerfile deploy/
-          docker push "${BACKEND_IMG}:${TAG}"
-          docker push "${BACKEND_IMG}:latest"
-
-          echo "📦 构建并推送前端镜像: ${FRONTEND_IMG}:${TAG}"
-          docker build -t "${FRONTEND_IMG}:${TAG}" -t "${FRONTEND_IMG}:latest" -f deploy/frontend/Dockerfile .
-          docker push "${FRONTEND_IMG}:${TAG}"
-          docker push "${FRONTEND_IMG}:latest"
+      - name: Upload transferable images
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-images
+          path: _images/
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
 
   # ────────────────────────────────────────────────────
   # 2. 部署到目标服务器（双机并行/指定环境）
@@ -338,12 +311,13 @@ jobs:
   deploy:
     name: Deploy to ${{ matrix.server.name }}
     runs-on: ubuntu-latest
-    needs: [backend, frontend-test, frontend-build, docker-publish]
+    # 国内服务器拉 ghcr.io 仅约 77KB/s 且频繁断连；改传 runner 已构建的镜像归档。
+    needs: [backend, frontend-test, frontend-build, image-package]
     if: |
       always() && needs.backend.result == 'success' &&
       needs.frontend-build.result == 'success' &&
       (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped') &&
-      needs.docker-publish.result == 'success'
+      needs.image-package.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -360,6 +334,18 @@ jobs:
           exit 0
 
       - uses: actions/checkout@v4
+
+      - name: Download application image archive
+        uses: actions/download-artifact@v4
+        with:
+          name: application-images
+          path: _images/
+
+      - name: Verify application image archive
+        run: |
+          set -euo pipefail
+          cd _images
+          sha256sum -c zwinsight-images.tar.gz.sha256
 
       - name: Select server credentials
         env:
@@ -419,28 +405,31 @@ jobs:
           fi
           DISK_GUARD
 
-      - name: Sync deployment files to server
+      - name: Sync deployment config and image archive
         run: |
-          echo "🚀 同步 deploy/ 编排与初始化脚本到 ${{ matrix.server.name }}"
-          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" "mkdir -p ${{ env.SERVER_DEPLOY_DIR }}/deploy"
-          rsync -avz --delete \
-            --exclude='.env' \
-            --exclude='zw-insight-app.jar' \
+          echo "🚀 同步部署配置与镜像归档到 ${{ matrix.server.name }}"
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+            "mkdir -p ${{ env.SERVER_DEPLOY_DIR }}/deploy ${{ env.SERVER_DEPLOY_DIR }}/_images"
+          rsync -avz --delete --exclude='.env' \
             -e "ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=30 -o ServerAliveCountMax=20" \
             ./deploy/ "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.SERVER_DEPLOY_DIR }}/deploy/"
+          rsync -avz --partial --append-verify \
+            -e "ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=30 -o ServerAliveCountMax=20" \
+            ./_images/ "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.SERVER_DEPLOY_DIR }}/_images/"
+
+      - name: Assert image archive arrived on server
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+            "cd ${{ env.SERVER_DEPLOY_DIR }}/_images && sha256sum -c zwinsight-images.tar.gz.sha256"
 
       - name: Deploy via SSH
         env:
           DEPLOY_DIR: ${{ env.SERVER_DEPLOY_DIR }}
-          IMAGE_TAG: ${{ needs.docker-publish.outputs.image_tag }}
-          REPO_OWNER: ${{ needs.docker-publish.outputs.repo_owner }}
-          GHCR_USER: ${{ github.actor }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ssh -i ~/.ssh/deploy_key \
             -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
-            "DEPLOY_DIR='$DEPLOY_DIR' IMAGE_TAG='$IMAGE_TAG' REPO_OWNER='$REPO_OWNER' GHCR_USER='$GHCR_USER' GHCR_TOKEN='$GHCR_TOKEN' bash -s" <<'DEPLOY_SCRIPT'
+            "DEPLOY_DIR='$DEPLOY_DIR' bash -s" <<'DEPLOY_SCRIPT'
           set -euo pipefail
           DEPLOY_DIR="${DEPLOY_DIR:-/root/zw-insight}"
           cd "$DEPLOY_DIR/deploy"
@@ -458,7 +447,6 @@ jobs:
           DB_NAME="${MYSQL_DATABASE:-zw_insight}"
 
           echo "=== [1/5] 确保基础设施运行 ==="
-          docker compose -f docker-compose.deploy.yml pull mysql
           docker compose -f docker-compose.deploy.yml up -d mysql redis minio rabbitmq
 
           echo "=== [2/5] 等待 MySQL 就绪 ==="
@@ -474,29 +462,14 @@ jobs:
           echo "=== [3/5] 清理 Flyway 失败记录 ==="
           docker exec "${CT_PREFIX}-mysql" sh -c "MYSQL_PWD=\"\$MYSQL_ROOT_PASSWORD\" mysql -uroot \"$DB_NAME\" -e 'DELETE FROM flyway_schema_history WHERE success = 0;'" 2>/dev/null || true
 
-          echo "=== [4/5] 从 GitHub Packages (ghcr.io) 拉取并启动应用容器 ==="
-          if [ -n "${GHCR_TOKEN:-}" ]; then
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin 2>/dev/null || true
-          fi
-
-          export BACKEND_IMAGE="ghcr.io/${REPO_OWNER}/zwinsight-backend"
-          export FRONTEND_IMAGE="ghcr.io/${REPO_OWNER}/zwinsight-frontend"
-          export IMAGE_TAG="$IMAGE_TAG"
-
-          echo "拉取镜像: ${BACKEND_IMAGE}:${IMAGE_TAG} 与 ${FRONTEND_IMAGE}:${IMAGE_TAG} ..."
-          # ghcr.io 跨境拉取偶发 connection reset / unexpected EOF：已下载层会复用，重试即可续传
-          for attempt in 1 2 3 4 5; do
-            if docker compose -f docker-compose.deploy.yml pull backend frontend; then
-              break
-            fi
-            if [ "$attempt" = "5" ]; then
-              echo "::error::镜像拉取连续 5 次失败"
-              exit 1
-            fi
-            echo "镜像拉取失败，$((attempt * 15))s 后第 $((attempt + 1)) 次重试..."
-            sleep $((attempt * 15))
-          done
-          docker compose -f docker-compose.deploy.yml up -d --no-build backend frontend
+          echo "=== [4/5] 导入 CI 镜像并切换应用容器 ==="
+          unset BACKEND_IMAGE FRONTEND_IMAGE IMAGE_TAG
+          gzip -dc "$DEPLOY_DIR/_images/zwinsight-images.tar.gz" | docker load
+          docker image inspect zwinsight-backend:debug >/dev/null
+          docker image inspect zwinsight-frontend:debug >/dev/null
+          # 镜像已在 runner 构建；生产服务器只 load + recreate，绝不 docker build
+          docker compose -f docker-compose.deploy.yml up -d --no-build --force-recreate backend frontend
+          rm -f "$DEPLOY_DIR/_images/zwinsight-images.tar.gz" "$DEPLOY_DIR/_images/zwinsight-images.tar.gz.sha256"
 
           echo "=== [5/5] 清理 docker 无用资源 ==="
           docker container prune -f || true
@@ -539,7 +512,7 @@ jobs:
       - name: Verify API docs disabled in production
         run: |
           REMOTE_PORT=$(ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
-            "grep -E '^BACKEND_PORT=' ${{ env.DEPLOY_DIR }}/deploy/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'" || true)
+            "grep -E '^BACKEND_PORT=' ${{ env.SERVER_DEPLOY_DIR }}/deploy/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'" || true)
           BACKEND_PORT="${REMOTE_PORT:-18080}"
           PROBE=$(curl -s -o /dev/null -w "%{http_code}" \
             "http://${{ env.SERVER_HOST }}:${BACKEND_PORT}/api/v1/captcha/image" || true)
