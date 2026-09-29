@@ -352,7 +352,6 @@ jobs:
             name: '主服务器1 (中维)'
           - id: server2
             name: '新服务器2 (徽颖)'
-    environment: production
     steps:
       - name: Filter target server
         if: inputs.target_server != 'all' && inputs.target_server != matrix.server.id && github.event_name == 'workflow_dispatch'
