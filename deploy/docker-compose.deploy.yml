@@ -129,6 +129,10 @@ services:
     volumes:
       # CI 构建 dist 经 rsync 落盘；nginx 直接只读服务该目录
       - ../zw-insight-web/dist:/usr/share/nginx/html:ro
+      # 品牌上传与 dist 分离，避免只读父目录下再挂子卷的 OCI 冲突
+      - zwi_brand:/var/www/brand:ro
+      # nginx 配置随 deploy/ 同步，无需重建 runtime 镜像
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     mem_limit: ${FRONTEND_MEM_LIMIT:-128m}
     networks: [zwi-net]
 
