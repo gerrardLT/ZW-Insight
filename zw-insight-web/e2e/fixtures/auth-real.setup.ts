@@ -1,57 +1,58 @@
 /**
- * 真实模式登录 Setup
- *
- * 通过真实登录流程获取 session 并保存 storageState，供后续 e2e-real 测试复用。
- * 流程：导航登录页 → 拦截页面真实验证码响应取 uuid → SSH 读服务器 Redis 取验证码答案
- *      →（备选）/api/v1/test/captcha-code 测试端点 → 填表提交 → 保存 storageState
- *
- * 验证码答案来自真实 Redis（与 keys/verify-base.sh 同一链路），全程无 mock。
- *
- * 环境变量：
- * - E2E_API_BASE:  后端 API 地址（默认 http://129.204.3.200:18080）
- * - E2E_SSH_KEY:   SSH 私钥路径（CI 显式指定 deploy_key；本地默认仓库内 keys/zwinsight.pem，2026-08-14 M6 修复）
- * - E2E_SSH_HOST:  SSH 目标（默认 root@129.204.3.200）
+ * 真实模式登录 Setup：真实 TAC popup + 真实后端天爱挑战/行为轨迹校验。
+ * 测试只经 SSH 读取天爱存于 Redis 的挑战（captcha:{id} → JSON.percentage）；不 mock 浏览器或 API。
  */
 import { test as setup, expect } from '@playwright/test'
-const API_BASE = process.env.E2E_API_BASE || 'http://129.204.3.200:18080'
+import { execFileSync } from 'node:child_process'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const SSH_KEY = process.env.E2E_SSH_KEY || resolve(__dirname, '../../../keys/zwinsight.pem')
+const SSH_HOST = process.env.E2E_SSH_HOST || 'root@129.204.3.200'
+
+/** 读取天爱挑战目标：缺口 X 占背景图宽度的比例（0~1）。 */
+function readSliderPercentage(challengeId: string): number {
+  const out = execFileSync('ssh', [
+    '-i', SSH_KEY, '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=10',
+    SSH_HOST, `docker exec zwi-redis redis-cli GET "captcha:${challengeId}"`,
+  ], { encoding: 'utf-8', timeout: 20_000 })
+  const percentage = Number(JSON.parse(out.trim())?.percentage)
+  if (!Number.isFinite(percentage)) throw new Error(`[auth-real.setup] 无法读取 captcha:${challengeId}`)
+  return percentage
+}
 
 setup('authenticate against real server', async ({ page }) => {
-  const challengeResponse = page.waitForResponse(
-    (resp) => resp.url().includes('/captcha/slider') && !resp.url().includes('/verify') && resp.ok(),
-    { timeout: 15_000 }
-  )
   await page.goto('/login')
   await page.waitForSelector('.login-box', { timeout: 15_000 })
-  const challenge = await (await challengeResponse).json()
-  const gapPct = Number(challenge.data?.gapPct)
-  if (!Number.isFinite(gapPct)) throw new Error(`[auth-real.setup] 滑块挑战异常: ${JSON.stringify(challenge)}`)
 
-  const track = page.locator('.slider-captcha .track')
-  const handle = page.locator('.slider-captcha .handle')
-  const box = await track.boundingBox()
-  if (!box) throw new Error('[auth-real.setup] 无法读取滑块轨道尺寸')
-  const startX = box.x + 23
-  const y = box.y + box.height / 2
-  await handle.hover()
+  const challengeResponse = page.waitForResponse(
+    resp => resp.url().includes('/captcha/slider') && !resp.url().includes('/verify') && resp.ok(),
+    { timeout: 15_000 },
+  )
+  await page.getByRole('button', { name: '点击完成安全验证' }).click()
+  const challenge = (await (await challengeResponse).json()).data
+  const percentage = readSliderPercentage(challenge.id)
+
+  // 天爱校验：(末点X − 首点X) / 背景图显示宽度 ≈ percentage
+  const handle = page.locator('#tianai-captcha-slider-move-btn').first()
+  const bg = page.locator('#tianai-captcha-slider-bg-img').first()
+  await expect(handle).toBeVisible()
+  const handleBox = await handle.boundingBox()
+  const bgBox = await bg.boundingBox()
+  if (!handleBox || !bgBox) throw new Error('[auth-real.setup] 无法读取 TAC 滑块尺寸')
+  const startX = handleBox.x + handleBox.width / 2
+  const y = handleBox.y + handleBox.height / 2
   await page.mouse.move(startX, y)
   await page.mouse.down()
-  await page.mouse.move(box.x + gapPct * box.width, y, { steps: 12 })
+  await page.mouse.move(startX + percentage * bgBox.width, y + 2, { steps: 25 })
   await page.mouse.up()
-  await expect(page.locator('.slider-captcha')).toHaveClass(/ok/)
+  await expect(page.getByRole('button', { name: '安全验证已完成' })).toBeVisible()
 
   await page.fill('input[placeholder="请输入用户名"]', 'admin')
   await page.fill('input[placeholder="请输入密码"]', '123456')
   await page.click('button:has-text("进入系统")')
-
-  // 5. 等待登录成功跳转（离开 /login 页面）
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
-    timeout: 15_000,
-  })
-
-  // 验证已离开登录页
+  await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 15_000 })
   expect(page.url()).not.toContain('/login')
-  console.log(`[auth-real.setup] 登录成功，当前页面: ${page.url()}`)
-
-  // 6. 保存 storageState
   await page.context().storageState({ path: './e2e/.auth/storage-state.json' })
 })

@@ -1,5 +1,9 @@
 package com.zwinsight.security.service;
 
+import cloud.tianai.captcha.application.ImageCaptchaApplication;
+import cloud.tianai.captcha.application.vo.ImageCaptchaVO;
+import cloud.tianai.captcha.common.response.ApiResponse;
+import cloud.tianai.captcha.validator.common.model.dto.ImageCaptchaTrack;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.RedisUtils;
 import com.zwinsight.security.dto.CaptchaVO;
@@ -35,6 +39,9 @@ class CaptchaServiceTest {
 
     @Mock
     private SmsService smsService;
+
+    @Mock
+    private ImageCaptchaApplication imageCaptchaApplication;
 
     @InjectMocks
     private CaptchaService captchaService;
@@ -546,85 +553,69 @@ class CaptchaServiceTest {
     @DisplayName("滑块验证码 - generateSlider / verifySlider / consumeSliderToken")
     class SliderCaptchaTest {
 
-        @Test
-        @DisplayName("generateSlider - 返回真实 PNG 拼图且不泄露目标 x")
-        void generateSlider_returnsImagesWithoutTarget() {
-            var result = captchaService.generateSlider();
-
-            assertThat(result.getChallengeId()).isNotBlank();
-            assertThat(result.getBackgroundImage()).startsWith("data:image/png;base64,");
-            assertThat(result.getPieceImage()).startsWith("data:image/png;base64,");
-            assertThat(result.getImageWidth()).isEqualTo(320);
-            assertThat(result.getImageHeight()).isEqualTo(160);
-            assertThat(result.getPieceWidth()).isEqualTo(52);
-            assertThat(result.getPieceY()).isBetween(25, 83);
-            verify(redisUtils).set(eq("slider:" + result.getChallengeId()), anyString(), eq(120L), eq(TimeUnit.SECONDS));
+        private ImageCaptchaTrack track() {
+            ImageCaptchaTrack t = new ImageCaptchaTrack();
+            t.setTrackList(java.util.List.of(new ImageCaptchaTrack.Track(0F, 0F, 0F, "down"),
+                    new ImageCaptchaTrack.Track(120F, 2F, 640F, "up")));
+            return t;
         }
 
         @Test
-        @DisplayName("verifySlider - 成功签发一次性 sliderToken")
+        @DisplayName("generateSlider - 原样返回天爱挑战")
+        void generateSlider_returnsTianaiChallenge() {
+            ImageCaptchaVO vo = new ImageCaptchaVO("slider-cid", "SLIDER", "data:image/jpeg;base64,bg",
+                    "data:image/png;base64,piece", null, null, 600, 360, 110, 360, null);
+            when(imageCaptchaApplication.generateCaptcha()).thenReturn(ApiResponse.ofSuccess(vo));
+
+            assertThat(captchaService.generateSlider()).isSameAs(vo);
+        }
+
+        @Test
+        @DisplayName("generateSlider - 天爱生成失败抛业务异常")
+        void generateSlider_failure_throws() {
+            when(imageCaptchaApplication.generateCaptcha()).thenReturn(ApiResponse.ofError("boom"));
+
+            assertThatThrownBy(() -> captchaService.generateSlider()).isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("verifySlider - 轨迹校验通过签发一次性 sliderToken")
         void verifySlider_success_returnsToken() {
-            // Given
-            String cid = "ch-slider-success";
-            double pct = 0.60;
-            when(redisUtils.get("slider:" + cid)).thenReturn("192");
+            ImageCaptchaTrack t = track();
+            when(imageCaptchaApplication.matching("cid", t)).thenReturn(ApiResponse.ofSuccess());
 
-            // When
-            String token = captchaService.verifySlider(cid, pct);
+            String token = captchaService.verifySlider("cid", t);
 
-            // Then
-            assertThat(token).isNotNull().isNotBlank();
-            // 校验后删除挑战 key
-            verify(redisUtils).delete("slider:" + cid);
-            // 创建 token key
+            assertThat(token).isNotBlank();
             verify(redisUtils).set(eq("slider:token:" + token), eq("1"), eq(120L), eq(TimeUnit.SECONDS));
         }
 
         @Test
-        @DisplayName("verifySlider - 超过容差范围返回 null")
-        void verifySlider_outOfTolerance_returnsNull() {
-            // Given
-            String cid = "ch-out-of-tolerance";
-            double pct = 0.70;
-            when(redisUtils.get("slider:" + cid)).thenReturn("160");
+        @DisplayName("verifySlider - 天爱判定失败返回 null 且不签发令牌")
+        void verifySlider_rejected_returnsNull() {
+            ImageCaptchaTrack t = track();
+            when(imageCaptchaApplication.matching("cid", t)).thenReturn(ApiResponse.ofCheckError("校验失败"));
 
-            // When
-            String token = captchaService.verifySlider(cid, pct);
-
-            // Then
-            assertThat(token).isNull();
+            assertThat(captchaService.verifySlider("cid", t)).isNull();
+            verify(redisUtils, never()).set(startsWith("slider:token:"), any(), anyLong(), any());
         }
 
         @Test
-        @DisplayName("verifySlider - challengeId 不存在返回 null")
-        void verifySlider_challengeNotFound_returnsNull() {
-            // Given
-            String cid = "ch-not-found";
-            when(redisUtils.get("slider:" + cid)).thenReturn(null);
+        @DisplayName("verifySlider - 畸形轨迹触发天爱异常时按失败处理")
+        void verifySlider_malformedTrack_returnsNull() {
+            ImageCaptchaTrack t = track();
+            when(imageCaptchaApplication.matching("cid", t)).thenThrow(new NullPointerException());
 
-            // When
-            String token = captchaService.verifySlider(cid, 0.50);
-
-            // Then
-            assertThat(token).isNull();
+            assertThat(captchaService.verifySlider("cid", t)).isNull();
         }
 
         @Test
-        @DisplayName("verifySliderX - 边界非法时不消费挑战")
-        void verifySliderX_invalidBoundary_returnsNullWithoutConsumption() {
-            assertThat(captchaService.verifySliderX("cid", -1)).isNull();
-            assertThat(captchaService.verifySliderX("cid", 269)).isNull();
-            assertThat(captchaService.verifySlider("cid", Double.NaN)).isNull();
-            verify(redisUtils, never()).get(anyString());
-        }
-
-        @Test
-        @DisplayName("verifySliderX - 验证失败后挑战不可重放")
-        void verifySliderX_failureConsumesChallenge() {
-            when(redisUtils.get("slider:cid")).thenReturn("180", null);
-            assertThat(captchaService.verifySliderX("cid", 100)).isNull();
-            assertThat(captchaService.verifySliderX("cid", 180)).isNull();
-            verify(redisUtils, times(2)).delete("slider:cid");
+        @DisplayName("verifySlider - 缺 id / 空轨迹不调用天爱")
+        void verifySlider_invalidInput_skipsMatching() {
+            assertThat(captchaService.verifySlider(null, track())).isNull();
+            assertThat(captchaService.verifySlider("cid", null)).isNull();
+            assertThat(captchaService.verifySlider("cid", new ImageCaptchaTrack())).isNull();
+            verifyNoInteractions(imageCaptchaApplication);
         }
 
         @Test

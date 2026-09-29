@@ -120,7 +120,8 @@ class SecurityPropertyTest {
     void property13_smsCodeSendVerifyRoundTrip(@ForAll("validPhone") String phone) {
         InMemoryRedis redis = new InMemoryRedis();
         SmsService smsService = Mockito.mock(SmsService.class);
-        CaptchaService captchaService = new CaptchaService(redis, smsService);
+        CaptchaService captchaService = new CaptchaService(redis, smsService,
+                Mockito.mock(cloud.tianai.captcha.application.ImageCaptchaApplication.class));
 
         // 发送：服务内部随机生成验证码并存入 Redis(sms:{phone})
         captchaService.sendSmsCode(phone);

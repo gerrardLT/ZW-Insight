@@ -60,6 +60,13 @@
             <artifactId>hutool-all</artifactId>
         </dependency>
 
+        <!-- 天爱行为验证码 core；不使用基于 Spring Boot 2 的 starter -->
+        <dependency>
+            <groupId>cloud.tianai.captcha</groupId>
+            <artifactId>tianai-captcha</artifactId>
+            <version>1.5.5</version>
+        </dependency>
+
         <!-- AOP -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

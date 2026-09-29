@@ -1,10 +1,10 @@
 package com.zwinsight.security.controller;
 
-import com.zwinsight.common.exception.BusinessException;
+import cloud.tianai.captcha.application.vo.ImageCaptchaVO;
+import cloud.tianai.captcha.validator.common.model.dto.ImageCaptchaTrack;
 import com.zwinsight.common.result.R;
 import com.zwinsight.security.dto.CaptchaVO;
 import com.zwinsight.security.dto.SmsCaptchaDTO;
-import com.zwinsight.security.dto.SliderCaptchaVO;
 import com.zwinsight.security.service.CaptchaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,7 @@ import java.util.Map;
 
 /**
  * 验证码控制器
- * 提供图形验证码和短信验证码接口
+ * 提供图形验证码、短信验证码与天爱（tianai-captcha）滑块验证码接口
  * <p>权限豁免说明：/captcha/** 为免登录接口，已在 WebMvcConfig EXCLUDE_PATHS
  * 白名单放行（AuthInterceptor 与 PermissionInterceptor 共用），
  * 不加 {@code @RequiresPermission}。</p>
@@ -23,6 +23,9 @@ import java.util.Map;
 @RequestMapping("/api/v1/captcha")
 @RequiredArgsConstructor
 public class CaptchaController {
+
+    /** TAC Web SDK 约定：4001 = 验证未通过（重新拉取），其余非 200 视为系统异常。 */
+    private static final int TAC_VERIFY_FAILED = 4001;
 
     private final CaptchaService captchaService;
 
@@ -47,30 +50,23 @@ public class CaptchaController {
         return R.ok();
     }
 
-    /** 获取拼图滑块挑战；图片为 PNG data URL，不下发目标 x。 */
+    /** 获取天爱滑块挑战（背景图 + 拼图块）；不下发目标位置。 */
     @GetMapping("/slider")
-    public R<SliderCaptchaVO> getSlider() {
+    public R<ImageCaptchaVO> getSlider() {
         return R.ok(captchaService.generateSlider());
     }
 
     /**
-     * 校验滑块位置，成功返回一次性 sliderToken（登录时携带）
+     * 校验滑块行为轨迹（TAC Web SDK 原生载荷 {id, data: track}），
+     * 成功返回一次性 sliderToken（登录时携带并由 AuthService 消费）。
      */
     @PostMapping("/slider/verify")
-    public R<Map<String, String>> verifySlider(@RequestBody Map<String, Object> body) {
-        Object cid = body.get("challengeId");
-        Object x = body.get("x");
-        Object pct = body.get("pct");
-        if (cid == null || (x == null) == (pct == null)) {
-            throw new BusinessException("challengeId 与 x/pct（二选一）为必填参数");
-        }
-        double position;
-        try { position = Double.parseDouble(String.valueOf(x != null ? x : pct)); }
-        catch (NumberFormatException e) { throw new BusinessException("参数非法"); }
-        String token = x != null
-                ? captchaService.verifySliderX(String.valueOf(cid), position)
-                : captchaService.verifySlider(String.valueOf(cid), position);
-        if (token == null) throw new BusinessException("验证失败，请重试");
+    public R<Map<String, String>> verifySlider(@RequestBody SliderVerifyRequest body) {
+        String token = body == null ? null : captchaService.verifySlider(body.id(), body.data());
+        if (token == null) return R.fail(TAC_VERIFY_FAILED, "验证失败，请重试");
         return R.ok(Map.of("sliderToken", token));
     }
+
+    /** TAC Web SDK 校验请求体。 */
+    public record SliderVerifyRequest(String id, ImageCaptchaTrack data) {}
 }

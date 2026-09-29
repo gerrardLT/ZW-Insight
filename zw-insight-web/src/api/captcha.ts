@@ -8,22 +8,34 @@ export function sendSmsCaptcha(phone: string) {
   return request.post('/v1/captcha/sms', { phone })
 }
 
-export interface SliderCaptchaChallenge {
-  challengeId: string
-  backgroundImage: string
-  pieceImage: string
-  pieceY: number
-  imageWidth: number
-  imageHeight: number
-  pieceWidth: number
-}
+export const TAC_ASSET_PATH = '/tac'
+export const TAC_GENERATE_URL = '/api/v1/captcha/slider'
+export const TAC_VERIFY_URL = '/api/v1/captcha/slider/verify'
 
-/** 获取图片拼图挑战；目标 X 仅保存在服务端，响应不得泄漏。 */
-export function getSliderCaptcha() {
-  return request.get<any, { data: SliderCaptchaChallenge }>('/v1/captcha/slider')
-}
+type TacRequest = { method: string; data: unknown }
+type TacResponse = { code?: number; data?: any; captcha?: any; id?: string }
+type TacConfig = { addRequestChain: (chain: object) => void }
 
-/** 校验拼图片左上角 X 坐标，成功返回一次性 sliderToken。 */
-export function verifySliderCaptcha(challengeId: string, x: number) {
-  return request.post<any, { data: { sliderToken: string } }>('/v1/captcha/slider/verify', { challengeId, x })
+/**
+ * TAC Web SDK 请求链适配：校验请求原样透传（{id, data: 行为轨迹}，由后端天爱校验）；
+ * 仅把生成接口的 R 包装 {code, data: ImageCaptchaVO} 映射为 SDK 期望的 {id, captcha}。
+ */
+export function installTacApiAdapter(config: TacConfig) {
+  config.addRequestChain({
+    preRequest(type: string, param: TacRequest) {
+      if (type === 'requestCaptchaData') {
+        param.method = 'GET'
+        param.data = undefined
+      }
+      return true
+    },
+    postRequest(type: string, _param: TacRequest, response: TacResponse) {
+      if (type === 'requestCaptchaData' && response.data) {
+        response.id = response.data.id
+        response.captcha = response.data
+        delete response.data
+      }
+      return true
+    },
+  })
 }

@@ -484,7 +484,18 @@ jobs:
           export IMAGE_TAG="$IMAGE_TAG"
 
           echo "拉取镜像: ${BACKEND_IMAGE}:${IMAGE_TAG} 与 ${FRONTEND_IMAGE}:${IMAGE_TAG} ..."
-          docker compose -f docker-compose.deploy.yml pull backend frontend
+          # ghcr.io 跨境拉取偶发 connection reset / unexpected EOF：已下载层会复用，重试即可续传
+          for attempt in 1 2 3 4 5; do
+            if docker compose -f docker-compose.deploy.yml pull backend frontend; then
+              break
+            fi
+            if [ "$attempt" = "5" ]; then
+              echo "::error::镜像拉取连续 5 次失败"
+              exit 1
+            fi
+            echo "镜像拉取失败，$((attempt * 15))s 后第 $((attempt + 1)) 次重试..."
+            sleep $((attempt * 15))
+          done
           docker compose -f docker-compose.deploy.yml up -d --no-build backend frontend
 
           echo "=== [5/5] 清理 docker 无用资源 ==="

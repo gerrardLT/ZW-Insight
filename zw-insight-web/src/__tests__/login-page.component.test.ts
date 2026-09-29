@@ -2,25 +2,28 @@
  * login/index.vue 登录页组件测试（2026-08-15 P3 收尾批 11）
  * forgot-password 已有既有测试；本文件补登录主流程。
  */
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { createPinia, setActivePinia } from 'pinia'
 
-const { mockPost, mockGetSlider, mockVerifySlider, mockSendSms, mockPush } = vi.hoisted(() => ({
+const { mockPost, mockSendSms, mockPush, mockTacInit, mockTacDestroy, mockInstallAdapter } = vi.hoisted(() => ({
   mockPost: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
-  mockGetSlider: vi.fn(async (): Promise<any> => ({ code: 200, data: { challengeId: 'ch-1', backgroundImage: 'bg', pieceImage: 'piece', pieceY: 40, imageWidth: 320, imageHeight: 180, pieceWidth: 46 } })),
-  mockVerifySlider: vi.fn(async (): Promise<any> => ({ code: 200, data: { sliderToken: 'tok-1' } })),
   mockSendSms: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockPush: vi.fn(),
+  mockTacInit: vi.fn(),
+  mockTacDestroy: vi.fn(),
+  mockInstallAdapter: vi.fn(),
 }))
 
 vi.mock('@/utils/request', () => ({
   default: { post: mockPost, get: vi.fn() },
 }))
 vi.mock('@/api/captcha', () => ({
-  getSliderCaptcha: mockGetSlider,
-  verifySliderCaptcha: mockVerifySlider,
+  TAC_ASSET_PATH: '/tac',
+  TAC_GENERATE_URL: '/api/v1/captcha/slider',
+  TAC_VERIFY_URL: '/api/v1/captcha/slider/verify',
+  installTacApiAdapter: mockInstallAdapter,
   sendSmsCaptcha: mockSendSms,
 }))
 vi.mock('vue-router', async (importOriginal) => {
@@ -43,6 +46,14 @@ import Login from '@/views/login/index.vue'
 import { useUserStore } from '@/stores/user'
 
 let wrapper: any = null
+beforeEach(() => {
+  window.initTAC = vi.fn(async (_path, config: any) => ({
+    config: { addRequestChain: vi.fn() },
+    init: mockTacInit.mockImplementation(() => config.validSuccess({ data: { sliderToken: 'tok-1' } }, null, { destroyWindow: mockTacDestroy, reloadCaptcha: vi.fn() })),
+    destroyWindow: mockTacDestroy,
+    reloadCaptcha: vi.fn(),
+  }))
+})
 afterEach(() => {
   if (wrapper) { try { wrapper.unmount() } catch { /* 忽略 */ } wrapper = null }
   vi.clearAllMocks()
@@ -56,13 +67,19 @@ async function mountPage() {
 }
 
 describe('login/index.vue 登录页', () => {
-  it('点击安全验证后才加载图片挑战', async () => {
+  it('点击后初始化官方 TAC popup，成功回传并关闭', async () => {
     const w = await mountPage()
-    expect(mockGetSlider).not.toHaveBeenCalled()
+    expect(window.initTAC).not.toHaveBeenCalled()
     await w.get('.captcha-trigger').trigger('click')
     await flushPromises()
-    expect(mockGetSlider).toHaveBeenCalledTimes(1)
-    expect(w.find('.captcha-panel').exists()).toBe(true)
+    expect(window.initTAC).toHaveBeenCalledWith('/tac', expect.objectContaining({
+      requestCaptchaDataUrl: '/api/v1/captcha/slider',
+      validCaptchaUrl: '/api/v1/captcha/slider/verify',
+    }), { logoUrl: null })
+    expect(mockInstallAdapter).toHaveBeenCalledTimes(1)
+    expect(mockTacInit).toHaveBeenCalledTimes(1)
+    expect(mockTacDestroy).toHaveBeenCalledTimes(1)
+    expect(w.vm.$.setupState.sliderToken).toBe('tok-1')
   })
 
   it('登录成功：token/userInfo 写入 store 并跳转首页', async () => {

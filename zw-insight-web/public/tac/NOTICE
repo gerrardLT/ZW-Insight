@@ -1,0 +1,8 @@
+﻿Tianai Captcha Web SDK v1.4
+
+Upstream: https://gitee.com/tianai/tianai-captcha-web-sdk
+Release: https://gitee.com/tianai/tianai-captcha-web-sdk/releases/tag/1.4
+Bundled files: css/tac.css, images/icon.png, js/tac.min.js, load.min.js
+License: Mulan PSL v2 (see LICENSE)
+
+These files are distributed locally by this application; no CDN is used at runtime.
