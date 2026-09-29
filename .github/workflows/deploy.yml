@@ -439,50 +439,47 @@ jobs:
           DEPLOY_SCRIPT
 
       - name: Health check
-        continue-on-error: true
         run: |
-          REMOTE_PORT=$(ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
-            "grep -E '^BACKEND_PORT=' ${{ env.SERVER_DEPLOY_DIR }}/deploy/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'" || true)
-          BACKEND_PORT="${REMOTE_PORT:-18080}"
-          echo "等待服务启动（端口: $BACKEND_PORT）..."
-          sleep 30
+          echo "等待服务启动（经 SSH 在服务器本机探测，不要求公网开放后端端口）..."
+          sleep 20
           for i in $(seq 1 15); do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              "http://${{ env.SERVER_HOST }}:${BACKEND_PORT}/api/v1/system/menu/user" || true)
+            HTTP_CODE=$(ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+              "PORT=\$(grep -E '^BACKEND_PORT=' ${{ env.SERVER_DEPLOY_DIR }}/deploy/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'); curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:\${PORT:-18080}/api/v1/system/menu/user" || true)
             if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
               echo "✅ 后端健康检查通过 (HTTP $HTTP_CODE)"
               exit 0
             fi
-            echo "等待中... ($i/15, HTTP $HTTP_CODE)"
+            echo "等待中... ($i/15, HTTP ${HTTP_CODE:-000})"
             sleep 10
           done
-          echo "⚠️ 后端健康检查未通过"
+          echo "❌ 后端健康检查未通过"
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
             "docker logs zwi-backend --tail 30" || true
+          exit 1
 
       # 生产收敛硬断言（2026-08-10）：API 文档端点不得对公网免认证暴露，
       # 对应 docker-compose.deploy.yml 的 KNIFE4J_ENABLE/KNIFE4J_PRODUCTION/SPRINGDOC_API_DOCS_ENABLED；
       # 不静默：任一端点返回 200 则 job 标红
       - name: Verify API docs disabled in production
         run: |
-          REMOTE_PORT=$(ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
-            "grep -E '^BACKEND_PORT=' ${{ env.SERVER_DEPLOY_DIR }}/deploy/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'" || true)
-          BACKEND_PORT="${REMOTE_PORT:-18080}"
-          PROBE=$(curl -s -o /dev/null -w "%{http_code}" \
-            "http://${{ env.SERVER_HOST }}:${BACKEND_PORT}/api/v1/captcha/image" || true)
-          if [ "$PROBE" = "000" ]; then
-            echo "❌ 后端不可达，无法验证文档收敛，拒绝假通过"
+          check_remote() {
+            local path="$1"
+            ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
+              "PORT=\$(grep -E '^BACKEND_PORT=' ${{ env.SERVER_DEPLOY_DIR }}/deploy/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'); curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:\${PORT:-18080}$path" || true
+          }
+          PROBE=$(check_remote /api/v1/captcha/image)
+          if [ -z "$PROBE" ] || [ "$PROBE" = "000" ]; then
+            echo "❌ 后端本机不可达，无法验证文档收敛，拒绝假通过"
             exit 1
           fi
-          echo "后端可达（探针 HTTP $PROBE），开始验证文档端点收敛"
+          echo "后端本机可达（探针 HTTP $PROBE），开始验证文档端点收敛"
           for path in /doc.html /v3/api-docs; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              "http://${{ env.SERVER_HOST }}:${BACKEND_PORT}$path" || true)
+            HTTP_CODE=$(check_remote "$path")
             if [ "$HTTP_CODE" = "200" ]; then
               echo "❌ $path 在生产环境免认证可达 (HTTP 200)，收敛未生效"
               exit 1
             fi
-            echo "✅ $path → HTTP $HTTP_CODE（未暴露）"
+            echo "✅ $path → HTTP ${HTTP_CODE:-000}（未暴露）"
           done
 
   # ────────────────────────────────────────────────────
