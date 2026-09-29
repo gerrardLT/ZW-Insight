@@ -176,30 +176,30 @@ defineExpose({ reset: () => { challenge.value = null; panelOpen.value = false; s
 
 <style scoped>
 .captcha-shell { position: relative; width: 100%; }
-.captcha-trigger { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid var(--zw-border); border-radius: var(--zw-radius-md); background: var(--zw-bg-card); color: var(--zw-text-secondary); font: inherit; cursor: pointer; transition: border-color var(--zw-duration-fast), background var(--zw-duration-fast); }
+.captcha-trigger { width: 100%; min-height: 48px; display: flex; align-items: center; gap: var(--zw-space-sm-md); padding: 0 var(--zw-space-sm-md); border: 1px solid var(--zw-border); border-radius: var(--zw-radius-md); background: var(--zw-bg-card); color: var(--zw-text-secondary); font: inherit; cursor: pointer; transition: border-color var(--zw-duration-fast), background var(--zw-duration-fast); }
 .captcha-trigger:hover { border-color: var(--zw-brand); background: var(--zw-bg-hover); }
 .captcha-trigger.verified { border-color: color-mix(in srgb, var(--zw-success) 55%, var(--zw-border)); color: var(--zw-success); }
 .trigger-icon { width: 24px; height: 24px; color: var(--zw-brand); }
 .trigger-icon svg, .slider-handle svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .trigger-action { margin-inline-start: auto; color: var(--zw-brand); font-weight: var(--zw-font-weight-semibold); }
-.captcha-panel { position: absolute; inset-inline: 0; top: calc(100% + 8px); z-index: var(--zw-z-popover); padding: 14px; border: 1px solid var(--zw-border); border-radius: var(--zw-radius-lg); background: var(--zw-bg-elevated); box-shadow: var(--zw-shadow-overlay); }
-.captcha-panel header, .captcha-panel footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.captcha-panel header { margin-bottom: 12px; }
-.captcha-panel header div { display: flex; flex-direction: column; gap: 2px; }
+.captcha-panel { position: absolute; inset-inline: 0; top: calc(100% + var(--zw-space-sm)); z-index: var(--zw-z-popover); padding: var(--zw-space-md); border: 1px solid var(--zw-border); border-radius: var(--zw-radius-lg); background: var(--zw-bg-elevated); box-shadow: var(--zw-shadow-overlay); }
+.captcha-panel header, .captcha-panel footer { display: flex; align-items: center; justify-content: space-between; gap: var(--zw-space-sm-md); }
+.captcha-panel header { margin-bottom: var(--zw-space-sm-md); }
+.captcha-panel header div { display: flex; flex-direction: column; gap: var(--zw-space-2xs); }
 .captcha-panel header strong { color: var(--zw-text-primary); font-size: var(--zw-font-size-md); }
 .captcha-panel header span, .captcha-panel footer { color: var(--zw-text-tertiary); font-size: var(--zw-font-size-xs); }
 .icon-button, .refresh-button { border: 0; background: transparent; color: var(--zw-text-secondary); cursor: pointer; }
-.icon-button { width: 32px; height: 32px; font-size: 22px; }
+.icon-button { width: var(--zw-space-xl); height: var(--zw-space-xl); font-size: var(--zw-font-size-xl); }
 .refresh-button { color: var(--zw-brand); font-weight: var(--zw-font-weight-semibold); }
 .image-stage { position: relative; width: 100%; min-height: 156px; overflow: hidden; border-radius: var(--zw-radius-md); background: var(--zw-bg-surface-3); }
 .background-image { width: 100%; height: 100%; position: absolute; inset: 0; object-fit: fill; user-select: none; }
-.puzzle-piece { position: absolute; inset-inline-start: 0; filter: drop-shadow(0 3px 5px rgba(0,0,0,.35)); transition: transform 30ms linear; user-select: none; }
-.stage-state { position: absolute; inset: 0; display: grid; place-content: center; gap: 8px; color: var(--zw-text-tertiary); font-size: var(--zw-font-size-sm); text-align: center; }
-.error-state button { border: 1px solid var(--zw-border); background: var(--zw-bg-card); color: var(--zw-brand); padding: 6px 10px; cursor: pointer; }
-.slider-track { position: relative; height: 46px; margin: 12px 0 10px; overflow: hidden; border: 1px solid var(--zw-border); border-radius: var(--zw-radius-md); background: var(--zw-bg-hover); }
+.puzzle-piece { position: absolute; inset-inline-start: 0; filter: drop-shadow(0 3px 5px color-mix(in srgb, var(--zw-bg-sidebar) 35%, transparent)); transition: transform 30ms linear; user-select: none; }
+.stage-state { position: absolute; inset: 0; display: grid; place-content: center; gap: var(--zw-space-sm); color: var(--zw-text-tertiary); font-size: var(--zw-font-size-sm); text-align: center; }
+.error-state button { border: 1px solid var(--zw-border); background: var(--zw-bg-card); color: var(--zw-brand); padding: var(--zw-space-xs) var(--zw-space-sm-md); cursor: pointer; }
+.slider-track { position: relative; height: 46px; margin: var(--zw-space-sm-md) 0 var(--zw-space-sm); overflow: hidden; border: 1px solid var(--zw-border); border-radius: var(--zw-radius-md); background: var(--zw-bg-hover); }
 .slider-fill { position: absolute; inset-block: 0; inset-inline-start: 0; background: color-mix(in srgb, var(--zw-brand) 16%, transparent); }
 .slider-copy { position: absolute; inset: 0; display: grid; place-items: center; color: var(--zw-text-tertiary); font-size: var(--zw-font-size-sm); pointer-events: none; }
-.slider-handle { position: absolute; inset-block-start: -1px; inset-inline-start: -1px; width: 46px; height: 46px; display: grid; place-items: center; padding: 12px; border: 1px solid var(--zw-brand); border-radius: var(--zw-radius-md); background: var(--zw-bg-card); color: var(--zw-brand); cursor: grab; touch-action: none; }
+.slider-handle { position: absolute; inset-block-start: -1px; inset-inline-start: -1px; width: 46px; height: 46px; display: grid; place-items: center; padding: var(--zw-space-sm-md); border: 1px solid var(--zw-brand); border-radius: var(--zw-radius-md); background: var(--zw-bg-card); color: var(--zw-brand); cursor: grab; touch-action: none; }
 .slider-handle:disabled { cursor: wait; opacity: .7; }
 .dragging .slider-handle { cursor: grabbing; }
 .fail { border-color: var(--zw-danger); animation: captcha-shake .3s; }
