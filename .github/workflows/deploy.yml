@@ -3,8 +3,8 @@ name: CI/CD Deploy to BaoTa Server
 on:
   push:
     branches: [main]
-    # 绾枃妗ｆ彁浜よ烦杩囨暣鏉℃祦姘寸嚎锛?026-08-13锛夛細
-    # 浠呭綋涓€娆?push 鐨勫叏閮ㄦ枃浠堕兘鍦ㄧ櫧鍚嶅崟鍐呮墠璺宠繃锛涗换浣曚唬鐮?鑴氭湰/閰嶇疆鏀瑰姩瑙﹀彂 build + deploy銆?
+    # 纯文档提交跳过整条流水线（2026-08-13）：
+    # 仅当一次 push 的全部文件都在白名单内才跳过；任何代码/脚本/配置改动触发 build + deploy。
     paths-ignore:
       - '**.md'
       - '.kiro/**'
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       target_server:
-        description: '閫夋嫨閮ㄧ讲鐩爣鏈嶅姟鍣細all锛堝叏閮ㄩ儴缃诧級銆乻erver1锛堜富鐜 129.204.3.200锛夈€乻erver2锛堝窘棰?43.142.44.145锛?
+        description: '选择部署目标服务器：all（全部部署）、server1（主环境 129.204.3.200）、server2（徽颖 43.142.44.145）'
         required: true
         type: choice
         default: 'all'
@@ -22,7 +22,7 @@ on:
           - 'server1'
           - 'server2'
       run_tests:
-        description: '鏄惁璺戝叏閲忔祴璇曞浠讹紙L3/L4/L5 + k6锛夛紵榛樿鍚︼紝浠?build + deploy + 鍐掔儫'
+        description: '是否跑全量测试套件（L3/L4/L5 + k6）？默认否，仅 build + deploy + 冒烟'
         required: true
         type: choice
         default: 'false'
@@ -30,23 +30,28 @@ on:
           - 'false'
           - 'true'
       fast_deploy:
-        description: '蹇€熼儴缃诧紙鏃ュ父鏈€灏忚矾寰勶紝2026-09-16锛夛細璺宠繃鍚庣鍗曟祴+jacoco+涓夌鍓嶇娴嬭瘯锛屼粎缂栬瘧鎵撳寘+閮ㄧ讲+鍐掔儫锛岀害 3-5 鍒嗛挓銆備粎闄愭湰鍦板凡瀹屾垚娴嬭瘯楠岃瘉鐨勬棩甯告帹閫?
+        description: '快速部署（日常最小路径，2026-09-16）：跳过后端单测+jacoco+三端前端测试，仅编译打包+部署+冒烟，约 3-5 分钟。仅限本地已完成测试验证的日常推送'
         type: boolean
         default: false
+      image_tag:
+        description: '可选：复用已有 GHCR 镜像标签进行部署或回滚；留空则构建当前提交'
+        required: false
+        type: string
+        default: ''
 
-# 娴嬭瘯濂椾欢瑙﹀彂绛栫暐锛?026-08-13 鐢ㄦ埛鍐崇瓥锛氬叏閲忓浠剁害 40 鍒嗛挓锛屾瘡娆￠儴缃查兘璺戠瓑寰呰繃闀匡級锛?
-#   - push 榛樿鍙窇锛欱ackend Build锛圠1 鍗曟祴 + 瑕嗙洊鐜囧熀绾垮姣旓級鈫?Deploy 鈫?閮ㄧ讲鍐掔儫
-#     锛堝仴搴锋鏌?+ API 鏂囨。鏀舵暃纭柇瑷€锛?
-#   - Integration Test锛圠3/L4/L5锛変笌 k6 榛樿涓嶈窇锛屽敮涓€瑙﹀彂鍏ュ彛锛?
-#     鎵嬪姩 workflow_dispatch 閫?run_tests=true
-#     锛坓h workflow run deploy.yml -f run_tests=true锛?
-#   - 搴熷純鏂规澶囧繕锛堝嬁鍐嶅紩鍏ュ悓绫绘満鍒讹級锛?
-#     鈶?commit message 鍏抽敭瀛椻€斺€旀彁浜や俊鎭嚜韬弿杩拌鍏抽敭瀛楁椂浼氳 contains() 鑷尮閰?
-#       璇Е鍙戯紙run 31697219500 瀹炶瘉锛?
-#     鈶?github.event.repository.labels鈥斺€攑ush 浜嬩欢 payload 鐨?repository 瀵硅薄
-#       涓嶆惡甯?labels 瀛楁锛岃〃杈惧紡鎭掍负鍋囷紝涓嶅彲鐢?
+# 测试套件触发策略（2026-08-13 用户决策：全量套件约 40 分钟，每次部署都跑等待过长）：
+#   - push 默认只跑：Backend Build（L1 单测 + 覆盖率基线对比）→ Deploy → 部署冒烟
+#     （健康检查 + API 文档收敛硬断言）
+#   - Integration Test（L3/L4/L5）与 k6 默认不跑，唯一触发入口：
+#     手动 workflow_dispatch 选 run_tests=true
+#     （gh workflow run deploy.yml -f run_tests=true）
+#   - 废弃方案备忘（勿再引入同类机制）：
+#     ① commit message 关键字——提交信息自身描述该关键字时会被 contains() 自匹配
+#       误触发（run 31697219500 实证）
+#     ② github.event.repository.labels——push 事件 payload 的 repository 对象
+#       不携带 labels 字段，表达式恒为假，不可用
 
-# 骞跺彂浜掓枼锛?
+# 并发互斥：
 concurrency:
   group: deploy-production
   cancel-in-progress: true
@@ -57,9 +62,9 @@ env:
   DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/root/zw-insight' }}
 
 jobs:
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-  # 1. 鍚庣鏋勫缓
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  # ────────────────────────────────────────────────────
+  # 1. 后端构建
+  # ────────────────────────────────────────────────────
   backend:
     name: Backend Build
     runs-on: ubuntu-latest
@@ -73,24 +78,24 @@ jobs:
           distribution: 'corretto'
           cache: maven
 
-      # 璐ㄩ噺闂ㄦ锛氭墽琛屽叏閲忓崟鍏冩祴璇?+ JaCoCo 瑕嗙洊鐜囨姤鍛?+ 鍒嗘。瑕嗙洊鐜?check銆?
-      # 2026-08-24锛堟祴璇曟垚鐔熷害鏀硅繘浜嬮」 1-B锛岀敤鎴峰喅绛栵級锛歱ackage 鍒囨崲涓?verify锛?
-      # jacoco check锛堢粦瀹?verify 闃舵锛夌湡瀹炵敓鏁堬紱闂ㄦ鍒嗘。锛氭牴 pom 榛樿 0.80锛?
-      # 鍚勬ā鍧楁寜 tests/coverage-baseline.json 褰撳墠鍩虹嚎瑕嗙洊 jacoco.min.coverage 灞炴€с€?
-      # 鍗囨。娴佺▼锛氭ā鍧楄ˉ娴嬪悗涓婅皟鍏跺睘鎬у€煎苟鍚屾鍩虹嚎 JSON銆?
-      # -T 1C 骞惰鏋勫缓锛?026-08-14 鎻愰€熶紭鍖栵級锛?2 涓嫭绔嬫ā鍧楁寜 CPU 鏍告暟骞惰缂栬瘧/娴嬭瘯锛?
-      # 瀹炴祴涓茶 503s 鈫?骞惰绾?3min锛沯acoco 閫愭ā鍧?agent 浜掍笉骞叉壈锛岃鐩栫巼涓庝覆琛屼竴鑷?
-      # 锛堟湰鍦板鐓ч獙璇侀€氳繃锛夈€?
+      # 质量门槛：执行全量单元测试 + JaCoCo 覆盖率报告 + 分档覆盖率 check。
+      # 2026-08-24（测试成熟度改进事项 1-B，用户决策）：package 切换为 verify，
+      # jacoco check（绑定 verify 阶段）真实生效；门槛分档：根 pom 默认 0.80，
+      # 各模块按 tests/coverage-baseline.json 当前基线覆盖 jacoco.min.coverage 属性。
+      # 升档流程：模块补测后上调其属性值并同步基线 JSON。
+      # -T 1C 并行构建（2026-08-14 提速优化）：22 个独立模块按 CPU 核数并行编译/测试，
+      # 实测串行 503s → 并行约 3min；jacoco 逐模块 agent 互不干扰，覆盖率与串行一致
+      # （本地对照验证通过）。
       #
-      # 2026-09-16 鐢ㄦ埛鍐崇瓥锛歠ast_deploy 蹇€熻矾寰勨€斺€旇烦杩囧崟娴嬩笌 jacoco 闂ㄦ锛屼粎 packge
-      # 浜у嚭 jar锛堢害 2min锛夛紱浠呴檺鏈湴宸插畬鎴愭祴璇曢獙璇佺殑鏃ュ父鎺ㄩ€侊紱push 浜嬩欢涓嶅彈褰卞搷浠嶈蛋 verify銆?
+      # 2026-09-16 用户决策：fast_deploy 快速路径——跳过单测与 jacoco 门槛，仅 packge
+      # 产出 jar（约 2min）；仅限本地已完成测试验证的日常推送；push 事件不受影响仍走 verify。
       - name: Build & Unit Test (with JaCoCo)
         working-directory: zw-insight-server
         run: ${{ inputs.fast_deploy && 'mvn -B -DskipTests clean package' || 'mvn -B -T 1C clean verify' }}
 
-      # 2026-09-16 鐢ㄦ埛鍐崇瓥锛氱Щ闄ゅ悗绔鐩栫巼鍩虹嚎姣斿闂ㄧ锛堝師閫愭ā鍧楁瘮瀵?tests/coverage-baseline.json 姝ラ锛夈€?
-      # 淇濈暀锛氣憼pom 鍐呯疆 jacoco 鍒嗘。 check锛坢vn verify 闃舵浠嶇湡瀹炵敓鏁堬級鈶″熀绾?JSON 鐣欎粨渚涙湰鍦拌嚜鏌ャ€?
-      # 濡傞渶鎭㈠闂ㄧ锛氶噸鏂板姞鍥炲熀绾挎瘮瀵?step锛坓it 鍘嗗彶鍙€冿級銆?
+      # 2026-09-16 用户决策：移除后端覆盖率基线比对门禁（原逐模块比对 tests/coverage-baseline.json 步骤）。
+      # 保留：①pom 内置 jacoco 分档 check（mvn verify 阶段仍真实生效）②基线 JSON 留仓供本地自查。
+      # 如需恢复门禁：重新加回基线比对 step（git 历史可考）。
 
       - name: Upload test reports on failure
         if: failure()
@@ -115,33 +120,33 @@ jobs:
           path: zw-insight-server/deploy/zw-insight-app.jar
           retention-days: 3
 
-      # L2 闆嗘垚娴嬭瘯锛圱estcontainers hermetic 浣撶郴锛寀buntu runner 鑷甫 Docker锛夈€?
-      # 鍙窇 zw-app 鐨?com.zwinsight.integration.*锛園EnabledIfDockerAvailable 鏃?Docker 鑷姩璺宠繃锛夛紱
-      # 鍚勬ā鍧楃洿杩炴湇鍔″櫒 DB 鐨?*IntegrationTest 涓嶅湪 CI 璺戯紙CI 鏃犳硶璁块棶鍐呯綉鏈嶅姟鍣級銆?
-      # 鍖归厤鑼冨洿鐢辨牴 pom integration-test profile 鐨?failsafe includes 闄愬畾鍒?com/zwinsight/integration 鍖咃紱
-      # 涓嶅啀鐢?-Dit.test锛氬疄娴嬭閫氶厤绗﹀湪 failsafe 3.1.2 闆跺尮閰嶏紝瀵艰嚧 L2 闀挎湡绌鸿浆锛?026-08-06 淇锛岃鍙拌处锛夈€?
-      # 2026-08-14 闂ㄦ帶杩佺Щ锛堟彁閫熶紭鍖栵級锛歀2 灞炴祴璇曞浠讹紙瀹炴祴 302s锛夛紝涓?Integration Test
-      # 鍚岀瓥鐣モ€斺€攑ush 榛樿涓嶈窇锛屼粎鎵嬪姩 dispatch run_tests=true 鏃舵墽琛岋紝涓庨棬鎺х瓥鐣ヤ竴鑷淬€?
+      # L2 集成测试（Testcontainers hermetic 体系，ubuntu runner 自带 Docker）。
+      # 只跑 zw-app 的 com.zwinsight.integration.*（@EnabledIfDockerAvailable 无 Docker 自动跳过）；
+      # 各模块直连服务器 DB 的 *IntegrationTest 不在 CI 跑（CI 无法访问内网服务器）。
+      # 匹配范围由根 pom integration-test profile 的 failsafe includes 限定到 com/zwinsight/integration 包；
+      # 不再用 -Dit.test：实测该通配符在 failsafe 3.1.2 零匹配，导致 L2 长期空转（2026-08-06 修复，见台账）。
+      # 2026-08-14 门控迁移（提速优化）：L2 属测试套件（实测 302s），与 Integration Test
+      # 同策略——push 默认不跑，仅手动 dispatch run_tests=true 时执行，与门控策略一致。
       - name: L2 integration test (Testcontainers)
         if: github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true'
         working-directory: zw-insight-server
-        # failsafe 鍦ㄦ棤鍖归厤娴嬭瘯鐨勬ā鍧楋紙鏍硅仛鍚?鍏朵粬妯″潡锛変細鎶ラ敊锛?
-        # 蹇呴』鐢?-Dfailsafe.failIfNoSpecifiedTests=false锛?DfailIfNoTests 浠呭 surefire 鐢熸晥锛夛紱
-        # -Djacoco.skip=true锛歷erify 浼氳Е鍙?jacoco check 闂ㄦ锛堝綋鍓嶈鐩栫巼鏈揪 60%锛夛紝
-        # 瑕嗙洊鐜囧畧鎶ょ敱 Build 姝ラ鐨勫熀绾挎瘮瀵硅礋璐ｏ紝L2 姝ラ涓嶉噸澶嶆鏌?
+        # failsafe 在无匹配测试的模块（根聚合/其他模块）会报错，
+        # 必须用 -Dfailsafe.failIfNoSpecifiedTests=false（-DfailIfNoTests 仅对 surefire 生效）；
+        # -Djacoco.skip=true：verify 会触发 jacoco check 门槛（当前覆盖率未达 60%），
+        # 覆盖率守护由 Build 步骤的基线比对负责，L2 步骤不重复检查
         run: mvn -B verify -pl zw-app -am -Pintegration-test -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -Djacoco.skip=true
 
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-  # 1b. 鍓嶇鍗曞厓娴嬭瘯锛堜笁绔?matrix锛?026-08-14 M2/M3 淇锛歛pp/闂ㄦ埛鎺ュ叆锛?
-  #     涓?backend 骞惰鎵ц锛屼笉澧炲姞鎬昏€楁椂锛涙瘡椤圭洰鐙珛 npm cache銆?
-  #     2026-09-16 鐢ㄦ埛鍐崇瓥锛氳鐩栫巼鍩虹嚎闂ㄧ锛堝彧鍗囦笉闄嶆瘮瀵癸級宸茬Щ闄わ紝浠呬繚鐣欏崟娴?瑕嗙洊鐜囨姤鍛婁笂浼狅紱
-  #     鍩虹嚎 JSON 涓?check 鑴氭湰鐣欎粨渚涙湰鍦拌嚜鏌ャ€?
-  #     娉細app 鐨?@dcloudio 渚濊禆鏇捐鍐欎负涓嶅瓨鍦ㄧ増鏈?3.0.0-4010120240507001锛堢瑪璇紝
-  #     registry 瀹為檯涓?40105 绯诲垪锛夛紝2026-08-14 淇鍚庢墠鑳?npm ci銆?
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  # ────────────────────────────────────────────────────
+  # 1b. 前端单元测试（三端 matrix，2026-08-14 M2/M3 修复：app/门户接入）
+  #     与 backend 并行执行，不增加总耗时；每项目独立 npm cache。
+  #     2026-09-16 用户决策：覆盖率基线门禁（只升不降比对）已移除，仅保留单测+覆盖率报告上传；
+  #     基线 JSON 与 check 脚本留仓供本地自查。
+  #     注：app 的 @dcloudio 依赖曾误写为不存在版本 3.0.0-4010120240507001（笔误，
+  #     registry 实际为 40105 系列），2026-08-14 修正后才能 npm ci。
+  # ────────────────────────────────────────────────────
   frontend-test:
     name: Frontend Unit Test (${{ matrix.project }})
-    # fast_deploy 蹇€熻矾寰勮烦杩囦笁绔墠绔祴璇曪紙2026-09-16锛夛紱push 浜嬩欢 inputs 涓虹┖ 鈫?鎭掕窇
+    # fast_deploy 快速路径跳过三端前端测试（2026-09-16）；push 事件 inputs 为空 → 恒跑
     if: ${{ !inputs.fast_deploy }}
     runs-on: ubuntu-latest
     strategy:
@@ -162,8 +167,8 @@ jobs:
         working-directory: ${{ matrix.project }}
         run: npm ci --no-audit --no-fund
 
-      # Design Tokens 闂ㄧ锛?026-09-15 Phase 1.4锛夛細绂佹柊澧炶８ Hex 涓?rgb()/rgba()锛?
-      # 閫忔槑搴﹀彉浣撶粺涓€ color-mix 娲剧敓锛涜鍒欒 zw-insight-web/.stylelintrc.mjs
+      # Design Tokens 门禁（2026-09-15 Phase 1.4）：禁新增裸 Hex 与 rgb()/rgba()，
+      # 透明度变体统一 color-mix 派生；规则见 zw-insight-web/.stylelintrc.mjs
       - name: Stylelint design-token gate (zw-insight-web only)
         if: matrix.project == 'zw-insight-web'
         working-directory: ${{ matrix.project }}
@@ -173,11 +178,11 @@ jobs:
         working-directory: ${{ matrix.project }}
         run: npm run test:coverage
 
-      # 2026-09-16 鐢ㄦ埛鍐崇瓥锛氱Щ闄ゅ墠绔鐩栫巼鍩虹嚎闂ㄧ锛堝師 check-frontend-coverage.mjs 姝ラ锛夈€?
-      # 鍩虹嚎 JSON 涓庢鏌ヨ剼鏈繚鐣欏湪浠撳簱锛屾湰鍦拌嚜鏌ュ懡浠わ細node tests/check-frontend-coverage.mjs <project>
+      # 2026-09-16 用户决策：移除前端覆盖率基线门禁（原 check-frontend-coverage.mjs 步骤）。
+      # 基线 JSON 与检查脚本保留在仓库，本地自查命令：node tests/check-frontend-coverage.mjs <project>
 
-      # 绉诲姩绔?H5 鏋勫缓闂ㄧ锛?026-08-29 绉诲姩绔瘎浼颁慨澶嶆柊澧烇級锛氬崟娴嬩笉淇濊瘉鍙瀯寤猴紝
-      # build:h5 澶辫触鍗崇孩鐏紱浠?zw-insight-app 鏈夎鑴氭湰锛屽叾浣欓」鐩烦杩囥€?
+      # 移动端 H5 构建门禁（2026-08-29 移动端评估修复新增）：单测不保证可构建，
+      # build:h5 失败即红灯；仅 zw-insight-app 有该脚本，其余项目跳过。
       - name: Build H5 bundle (uni-app)
         if: matrix.project == 'zw-insight-app'
         working-directory: ${{ matrix.project }}
@@ -191,20 +196,20 @@ jobs:
           path: ${{ matrix.project }}/coverage/
           retention-days: 14
 
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-  # 1.5 鍓嶇浜х墿鏋勫缓锛坮unner 渚э級鈥斺€?2026-09-24 鏂板锛屾牴娌荤敓浜ф満璧勬簮浜夋姠
+  # ──────────────────────────────────────────────
+  # 1.5 前端产物构建（runner 侧）—— 2026-09-24 新增，根治生产机资源争抢
   #
-  # 鑳屾櫙锛氬師鏈墠绔湪**鐢熶骇鏈嶅姟鍣ㄤ笂**鍋?`npm ci + vite build`锛坒rontend Dockerfile 鐨?
-  # stage 1锛夛紝瀹炴祴鍚庢灉锛?
-  #   鈶?vite `rendering chunks` 闃舵 5 鍒嗛挓鏃犺緭鍑?鈫?SSH 绌洪棽鏂繛锛坮un 35951954498 / 35955467495
-  #     鍧囨姤 exit 255锛屼絾杩滅 bash 宸茶窇瀹岋紝褰㈡垚銆孋I 鎶ュけ璐ャ€侀儴缃插疄闄呮垚鍔熴€嶇殑璇鐘舵€侊級锛?
-  #   鈶?4 鏍?/ 7.6GB 涓斿彲鐢ㄥ唴瀛樹粎 1.3GB 鐨勭敓浜ф満涓婏紝鏋勫缓涓庡湪璺戠殑鐢熶骇瀹瑰櫒浜夋姠璧勬簮锛?
-  #     2026-09-24 瀹炴祴 load average 鍐插埌 146銆乻shd 鏃犳硶瀹屾垚 banner 浜ゆ崲銆?
-  #     瀹夸富鏈?nginx锛?0锛変笌涓氬姟绔彛搴旂敤灞傚叏閮ㄨ秴鏃讹紝鏁存満涓嶅彲鏈嶅姟绾?40 鍒嗛挓锛屾渶缁堝彧鑳介噸鍚€?
-  # 鏀逛负鍦?runner 涓婃瀯寤恒€佹湇鍔″櫒鍙?COPY 浜х墿锛屾瀯寤鸿€楁椂浠庨儴缃查摼璺腑褰诲簳绉婚櫎銆?
+  # 背景：原本前端在**生产服务器上**做 `npm ci + vite build`（frontend Dockerfile 的
+  # stage 1），实测后果：
+  #   ① vite `rendering chunks` 阶段 5 分钟无输出 → SSH 空闲断连（run 35951954498 / 35955467495
+  #     均报 exit 255，但远端 bash 已跑完，形成「CI 报失败、部署实际成功」的误导状态）；
+  #   ② 4 核 / 7.6GB 且可用内存仅 1.3GB 的生产机上，构建与在跑的生产容器争抢资源，
+  #     2026-09-24 实测 load average 冲到 146、sshd 无法完成 banner 交换、
+  #     宿主机 nginx（80）与业务端口应用层全部超时，整机不可服务约 40 分钟，最终只能重启。
+  # 改为在 runner 上构建、服务器只 COPY 产物，构建耗时从部署链路中彻底移除。
   #
-  # 鏈?job **涓嶅彈 fast_deploy 褰卞搷**锛堟棤 if 鏉′欢锛夛細蹇€熻矾寰勮烦杩囩殑鏄祴璇曪紝鑰?dist 鏄儴缃插繀闇€浜х墿銆?
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  # 本 job **不受 fast_deploy 影响**（无 if 条件）：快速路径跳过的是测试，而 dist 是部署必需产物。
+  # ──────────────────────────────────────────────
   frontend-build:
     name: Build Frontend Dist (runner)
     runs-on: ubuntu-latest
@@ -226,12 +231,12 @@ jobs:
         working-directory: zw-insight-web
         run: npm run build
 
-      # 纭柇瑷€锛氫骇鐗╀笉瀛樺湪灏辩孩鐏紝缁濅笉璁╅儴缃查樁娈垫嬁鍒扮┖鐩綍鎴栭檲鏃т骇鐗?
+      # 硬断言：产物不存在就红灯，绝不让部署阶段拿到空目录或陈旧产物
       - name: Assert dist exists
         working-directory: zw-insight-web
         run: |
-          test -f dist/index.html || { echo "dist/index.html 缂哄け锛屾瀯寤烘湭浜у嚭"; exit 1; }
-          echo "--- dist 浜х墿姒傝 ---"
+          test -f dist/index.html || { echo "dist/index.html 缺失，构建未产出"; exit 1; }
+          echo "--- dist 产物概览 ---"
           du -sh dist
           find dist -maxdepth 2 -type f | head -10
 
@@ -243,12 +248,12 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-  # 1.8 GitHub Packages (ghcr.io) 闀滃儚鏋勫缓涓庢帹閫?
-  #     鍦?Runner 渚т娇鐢?GITHUB_TOKEN 涓€閿瀯寤哄墠鍚庣闀滃儚骞舵帹閫佸埌 ghcr.io锛?
-  #     闆跺閮ㄩ厤缃垚鏈紝鎵€鏈夌洰鏍囨湇鍔″櫒鍙渶 docker compose pull 鍗冲彲绉掔骇鎷夎捣锛?
-  #     瀹炵幇鏍囧噯鐨勨€滄瀯寤轰竴娆°€佸埌澶勯儴缃测€濄€?
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  # ────────────────────────────────────────────────────
+  # 1.8 GitHub Packages (ghcr.io) 镜像构建与推送
+  #     在 Runner 侧使用 GITHUB_TOKEN 一键构建前后端镜像并推送到 ghcr.io，
+  #     零外部配置成本，所有目标服务器只需 docker compose pull 即可秒级拉起，
+  #     实现标准的“构建一次、到处部署”。
+  # ────────────────────────────────────────────────────
   docker-publish:
     name: Build & Push Images (GHCR)
     runs-on: ubuntu-latest
@@ -290,46 +295,46 @@ jobs:
           TAG="${SPECIFIED_TAG:-${GITHUB_SHA::12}}"
           echo "image_tag=$TAG" >> "$GITHUB_OUTPUT"
 
-          # 杞负灏忓啓浠ュ吋瀹?Docker/GHCR 闀滃儚鍛藉悕瑙勮寖
+          # 转为小写以兼容 Docker/GHCR 镜像命名规范
           REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "repo_owner=$REPO_OWNER" >> "$GITHUB_OUTPUT"
 
           if [ -n "$SPECIFIED_TAG" ]; then
-            echo "鉁?鎸囧畾浜嗗凡鏈夐暅鍍忔爣绛?($SPECIFIED_TAG)锛岀洿鎺ュ鐢?ghcr.io 鍒跺搧杩涜閮ㄧ讲/鍥炴粴"
+            echo "✅ 指定了已有镜像标签 ($SPECIFIED_TAG)，直接复用 ghcr.io 制品进行部署/回滚"
             exit 0
           fi
 
-          # 鏁寸悊鍓嶇 dist 鐩綍缁撴瀯
+          # 整理前端 dist 目录结构
           if [ -f _frontend-dist-tmp/index.html ]; then
             SRC=_frontend-dist-tmp
           elif [ -f _frontend-dist-tmp/zw-insight-web/dist/index.html ]; then
             SRC=_frontend-dist-tmp/zw-insight-web/dist
           else
-            echo "鏃犳硶瀹氫綅 dist 浜х墿" && exit 1
+            echo "无法定位 dist 产物" && exit 1
           fi
           rm -rf zw-insight-web/dist
           cp -r "$SRC" zw-insight-web/dist
           rm -rf _frontend-dist-tmp
 
-          echo "馃攼 鐧诲綍 GitHub Packages (ghcr.io)"
+          echo "🔐 登录 GitHub Packages (ghcr.io)"
           echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
           BACKEND_IMG="ghcr.io/${REPO_OWNER}/zwinsight-backend"
           FRONTEND_IMG="ghcr.io/${REPO_OWNER}/zwinsight-frontend"
 
-          echo "馃摝 鏋勫缓骞舵帹閫佸悗绔暅鍍? ${BACKEND_IMG}:${TAG}"
+          echo "📦 构建并推送后端镜像: ${BACKEND_IMG}:${TAG}"
           docker build -t "${BACKEND_IMG}:${TAG}" -t "${BACKEND_IMG}:latest" -f deploy/Dockerfile deploy/
           docker push "${BACKEND_IMG}:${TAG}"
           docker push "${BACKEND_IMG}:latest"
 
-          echo "馃摝 鏋勫缓骞舵帹閫佸墠绔暅鍍? ${FRONTEND_IMG}:${TAG}"
+          echo "📦 构建并推送前端镜像: ${FRONTEND_IMG}:${TAG}"
           docker build -t "${FRONTEND_IMG}:${TAG}" -t "${FRONTEND_IMG}:latest" -f deploy/frontend/Dockerfile .
           docker push "${FRONTEND_IMG}:${TAG}"
           docker push "${FRONTEND_IMG}:latest"
 
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-  # 2. 閮ㄧ讲鍒扮洰鏍囨湇鍔″櫒锛堝弻鏈哄苟琛?鎸囧畾鐜锛?
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  # ────────────────────────────────────────────────────
+  # 2. 部署到目标服务器（双机并行/指定环境）
+  # ────────────────────────────────────────────────────
   deploy:
     name: Deploy to ${{ matrix.server.name }} (${{ env.SERVER_HOST }})
     runs-on: ubuntu-latest
@@ -344,9 +349,9 @@ jobs:
       matrix:
         server:
           - id: server1
-            name: '涓绘湇鍔″櫒1 (涓淮)'
+            name: '主服务器1 (中维)'
           - id: server2
-            name: '鏂版湇鍔″櫒2 (寰介)'
+            name: '新服务器2 (徽颖)'
     environment: production
     env:
       SERVER_HOST: ${{ matrix.server.id == 'server1' && secrets.SERVER_HOST || secrets.SERVER2_HOST }}
@@ -357,7 +362,7 @@ jobs:
       - name: Filter target server
         if: inputs.target_server != 'all' && inputs.target_server != matrix.server.id && github.event_name == 'workflow_dispatch'
         run: |
-          echo "璺宠繃褰撳墠鏈哄櫒锛氭寚瀹氱洰鏍囦负 ${{ inputs.target_server }}锛屽綋鍓嶄负 ${{ matrix.server.id }}"
+          echo "跳过当前机器：指定目标为 ${{ inputs.target_server }}，当前为 ${{ matrix.server.id }}"
           exit 0
 
       - uses: actions/checkout@v4
@@ -369,7 +374,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      # 纾佺洏闃叉姢鈶狅細rsync 鍓嶅厛娓呯悊 docker 鏃犵敤璧勬簮骞舵鏌ュ墿浣欑┖闂?
+      # 磁盘防护①：rsync 前先清理 docker 无用资源并检查剩余空间
       - name: Pre-deploy disk guard & docker cleanup
         run: |
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'DISK_GUARD'
@@ -377,25 +382,25 @@ jobs:
           MIN_FREE_MB=1024
           df_line=$(df -mP / | tail -1)
           avail_mb=$(echo "$df_line" | awk '{print $4}')
-          echo "閮ㄧ讲鍓嶇鐩樺彲鐢ㄧ┖闂? ${avail_mb}MB锛堥槇鍊?${MIN_FREE_MB}MB锛?
+          echo "部署前磁盘可用空间: ${avail_mb}MB（阈值 ${MIN_FREE_MB}MB）"
           if [ "$avail_mb" -lt "$MIN_FREE_MB" ]; then
-            echo "绌洪棿涓嶈冻锛屽厛鑷姩娓呯悊 docker 鏃犵敤璧勬簮..."
+            echo "空间不足，先自动清理 docker 无用资源..."
             docker container prune -f || true
             docker image prune -f || true
             docker network prune -f || true
             docker builder prune -f || true
             avail_mb=$(df -mP / | tail -1 | awk '{print $4}')
-            echo "娓呯悊鍚庡彲鐢ㄧ┖闂? ${avail_mb}MB"
+            echo "清理后可用空间: ${avail_mb}MB"
           fi
           if [ "$avail_mb" -lt "$MIN_FREE_MB" ]; then
-            echo "::error::閮ㄧ讲鐩綍鍙敤绌洪棿涓嶈冻锛屾嫆缁濋儴缃?
+            echo "::error::部署目录可用空间不足，拒绝部署"
             exit 1
           fi
           DISK_GUARD
 
       - name: Sync deployment files to server
         run: |
-          echo "馃殌 鍚屾 deploy/ 缂栨帓涓庡垵濮嬪寲鑴氭湰鍒?${{ matrix.server.name }}"
+          echo "🚀 同步 deploy/ 编排与初始化脚本到 ${{ matrix.server.name }}"
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" "mkdir -p ${{ env.SERVER_DEPLOY_DIR }}/deploy"
           rsync -avz --delete \
             --exclude='.env' \
@@ -419,9 +424,9 @@ jobs:
           DEPLOY_DIR="${DEPLOY_DIR:-/root/zw-insight}"
           cd "$DEPLOY_DIR/deploy"
 
-          # 鑻ラ娆″湪鏂版湇鍔″櫒閮ㄧ讲涓斾笉瀛樺湪 .env锛岃嚜鍔ㄤ粠 .env.example 鐢熸垚鍒濆閰嶇疆
+          # 若首次在新服务器部署且不存在 .env，自动从 .env.example 生成初始配置
           if [ ! -f .env ] && [ -f .env.example ]; then
-            echo "鈿狅笍 妫€娴嬪埌鏂版湇鍔″櫒灏氭湭鍒涘缓 .env锛岃嚜鍔ㄦ牴鎹?.env.example 鍒濆鍖?.."
+            echo "⚠️ 检测到新服务器尚未创建 .env，自动根据 .env.example 初始化..."
             cp .env.example .env
           fi
 
@@ -431,24 +436,24 @@ jobs:
           CT_PREFIX="${CONTAINER_PREFIX:-zwi}"
           DB_NAME="${MYSQL_DATABASE:-zw_insight}"
 
-          echo "=== [1/5] 纭繚鍩虹璁炬柦杩愯 ==="
+          echo "=== [1/5] 确保基础设施运行 ==="
           docker compose -f docker-compose.deploy.yml pull mysql
           docker compose -f docker-compose.deploy.yml up -d mysql redis minio rabbitmq
 
-          echo "=== [2/5] 绛夊緟 MySQL 灏辩华 ==="
+          echo "=== [2/5] 等待 MySQL 就绪 ==="
           for i in $(seq 1 30); do
             if docker exec "${CT_PREFIX}-mysql" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqladmin ping -h 127.0.0.1 -uroot --silent' 2>/dev/null; then
-              echo "MySQL 灏辩华"
+              echo "MySQL 就绪"
               break
             fi
-            echo "绛夊緟 MySQL... ($i/30)"
+            echo "等待 MySQL... ($i/30)"
             sleep 3
           done
 
-          echo "=== [3/5] 娓呯悊 Flyway 澶辫触璁板綍 ==="
+          echo "=== [3/5] 清理 Flyway 失败记录 ==="
           docker exec "${CT_PREFIX}-mysql" sh -c "MYSQL_PWD=\"\$MYSQL_ROOT_PASSWORD\" mysql -uroot \"$DB_NAME\" -e 'DELETE FROM flyway_schema_history WHERE success = 0;'" 2>/dev/null || true
 
-          echo "=== [4/5] 浠?GitHub Packages (ghcr.io) 鎷夊彇骞跺惎鍔ㄥ簲鐢ㄥ鍣?==="
+          echo "=== [4/5] 从 GitHub Packages (ghcr.io) 拉取并启动应用容器 ==="
           if [ -n "${GHCR_TOKEN:-}" ]; then
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin 2>/dev/null || true
           fi
@@ -457,20 +462,20 @@ jobs:
           export FRONTEND_IMAGE="ghcr.io/${REPO_OWNER}/zwinsight-frontend"
           export IMAGE_TAG="$IMAGE_TAG"
 
-          echo "鎷夊彇闀滃儚: ${BACKEND_IMAGE}:${IMAGE_TAG} 涓?${FRONTEND_IMAGE}:${IMAGE_TAG} ..."
+          echo "拉取镜像: ${BACKEND_IMAGE}:${IMAGE_TAG} 与 ${FRONTEND_IMAGE}:${IMAGE_TAG} ..."
           docker compose -f docker-compose.deploy.yml pull backend frontend
           docker compose -f docker-compose.deploy.yml up -d --no-build backend frontend
 
-          echo "=== [5/5] 娓呯悊 docker 鏃犵敤璧勬簮 ==="
+          echo "=== [5/5] 清理 docker 无用资源 ==="
           docker container prune -f || true
           docker image prune -f || true
           docker network prune -f || true
           docker builder prune -f || true
-          echo "--- 娓呯悊鍚庣鐩樹笌 docker 鍗犵敤 ---"
+          echo "--- 清理后磁盘与 docker 占用 ---"
           df -h / | tail -1
 
           echo ""
-          echo "=== 閮ㄧ讲瀹屾垚 ==="
+          echo "=== 部署完成 ==="
           docker compose -f docker-compose.deploy.yml ps
           DEPLOY_SCRIPT
 
@@ -480,25 +485,25 @@ jobs:
           REMOTE_PORT=$(ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
             "grep -E '^BACKEND_PORT=' ${{ env.SERVER_DEPLOY_DIR }}/deploy/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'" || true)
           BACKEND_PORT="${REMOTE_PORT:-18080}"
-          echo "绛夊緟鏈嶅姟鍚姩锛堢鍙? $BACKEND_PORT锛?.."
+          echo "等待服务启动（端口: $BACKEND_PORT）..."
           sleep 30
           for i in $(seq 1 15); do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
               "http://${{ env.SERVER_HOST }}:${BACKEND_PORT}/api/v1/system/menu/user" || true)
             if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
-              echo "鉁?鍚庣鍋ュ悍妫€鏌ラ€氳繃 (HTTP $HTTP_CODE)"
+              echo "✅ 后端健康检查通过 (HTTP $HTTP_CODE)"
               exit 0
             fi
-            echo "绛夊緟涓?.. ($i/15, HTTP $HTTP_CODE)"
+            echo "等待中... ($i/15, HTTP $HTTP_CODE)"
             sleep 10
           done
-          echo "鈿狅笍 鍚庣鍋ュ悍妫€鏌ユ湭閫氳繃"
+          echo "⚠️ 后端健康检查未通过"
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
             "docker logs zwi-backend --tail 30" || true
 
-      # 鐢熶骇鏀舵暃纭柇瑷€锛?026-08-10锛夛細API 鏂囨。绔偣涓嶅緱瀵瑰叕缃戝厤璁よ瘉鏆撮湶锛?
-      # 瀵瑰簲 docker-compose.deploy.yml 鐨?KNIFE4J_ENABLE/KNIFE4J_PRODUCTION/SPRINGDOC_API_DOCS_ENABLED锛?
-      # 涓嶉潤榛橈細浠讳竴绔偣杩斿洖 200 鍒?job 鏍囩孩
+      # 生产收敛硬断言（2026-08-10）：API 文档端点不得对公网免认证暴露，
+      # 对应 docker-compose.deploy.yml 的 KNIFE4J_ENABLE/KNIFE4J_PRODUCTION/SPRINGDOC_API_DOCS_ENABLED；
+      # 不静默：任一端点返回 200 则 job 标红
       - name: Verify API docs disabled in production
         run: |
           REMOTE_PORT=$(ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
@@ -507,32 +512,32 @@ jobs:
           PROBE=$(curl -s -o /dev/null -w "%{http_code}" \
             "http://${{ env.SERVER_HOST }}:${BACKEND_PORT}/api/v1/captcha/image" || true)
           if [ "$PROBE" = "000" ]; then
-            echo "鉂?鍚庣涓嶅彲杈撅紝鏃犳硶楠岃瘉鏂囨。鏀舵暃锛屾嫆缁濆亣閫氳繃"
+            echo "❌ 后端不可达，无法验证文档收敛，拒绝假通过"
             exit 1
           fi
-          echo "鍚庣鍙揪锛堟帰閽?HTTP $PROBE锛夛紝寮€濮嬮獙璇佹枃妗ｇ鐐规敹鏁?
+          echo "后端可达（探针 HTTP $PROBE），开始验证文档端点收敛"
           for path in /doc.html /v3/api-docs; do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
               "http://${{ env.SERVER_HOST }}:${BACKEND_PORT}$path" || true)
             if [ "$HTTP_CODE" = "200" ]; then
-              echo "鉂?$path 鍦ㄧ敓浜х幆澧冨厤璁よ瘉鍙揪 (HTTP 200)锛屾敹鏁涙湭鐢熸晥"
+              echo "❌ $path 在生产环境免认证可达 (HTTP 200)，收敛未生效"
               exit 1
             fi
-            echo "鉁?$path 鈫?HTTP $HTTP_CODE锛堟湭鏆撮湶锛?
+            echo "✅ $path → HTTP $HTTP_CODE（未暴露）"
           done
 
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-  # 3. 闆嗘垚娴嬭瘯锛圠3 API + L4 绔埌绔笟鍔℃祦锛?
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  # ────────────────────────────────────────────────────
+  # 3. 集成测试（L3 API + L4 端到端业务流）
+  # ────────────────────────────────────────────────────
   integration-test:
     name: Integration Test
     runs-on: ubuntu-latest
     needs: deploy
-    # 榛樿涓嶈窇锛?026-08-13 鐢ㄦ埛鍐崇瓥锛屽叏閲忓浠剁害 40 鍒嗛挓锛夈€?
-    # 鍞竴瑙﹀彂鍏ュ彛锛氭墜鍔?dispatch + run_tests=true锛坈ommit message/label
-    # 鏂规鍧囧凡搴熷純锛屽師鍥犺鏂囦欢澶撮儴娉ㄩ噴锛夈€?
-    # 鏄惧紡妫€鏌?needs.deploy.result锛氳嚜瀹氫箟 if 浼氳鐩栭粯璁?success() 璇箟锛?
-    # 涓嶅啓鏄庡垯閮ㄧ讲澶辫触鏃舵湰 job 浠嶄細琚瘎浼?
+    # 默认不跑（2026-08-13 用户决策，全量套件约 40 分钟）。
+    # 唯一触发入口：手动 dispatch + run_tests=true（commit message/label
+    # 方案均已废弃，原因见文件头部注释）。
+    # 显式检查 needs.deploy.result：自定义 if 会覆盖默认 success() 语义，
+    # 不写明则部署失败时本 job 仍会被评估
     if: |
       needs.deploy.result == 'success' &&
       github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true'
@@ -551,27 +556,27 @@ jobs:
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
             "mkdir -p /root/zwi-deploy/test-scripts"
 
-          # 涓婁紶鏍稿績鍩哄骇鑴氭湰
+          # 上传核心基座脚本
           scp -i ~/.ssh/deploy_key keys/verify-base.sh \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/verify-base.sh"
 
-          # 涓婁紶 L4 lifecycle-sim-v2.sh
+          # 上传 L4 lifecycle-sim-v2.sh
           scp -i ~/.ssh/deploy_key keys/lifecycle-sim-v2.sh \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/lifecycle-sim-v2.sh"
 
-          # 涓婁紶 L4 绉熸埛闅旂鍩哄缓鑴氭湰锛堝垵濮嬪寲娴嬭瘯绉熸埛 9999锛? BPMN 閮ㄧ讲鑴氭湰
+          # 上传 L4 租户隔离基建脚本（初始化测试租户 9999）+ BPMN 部署脚本
           scp -i ~/.ssh/deploy_key keys/init-test-tenant.sh \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/init-test-tenant.sh"
           scp -i ~/.ssh/deploy_key keys/deploy-bpmn.sh \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/deploy-bpmn.sh"
 
-          # 涓婁紶鎵€鏈?L3 API 娴嬭瘯鑴氭湰
+          # 上传所有 L3 API 测试脚本
           for script in keys/test-api-*.sh; do
             scp -i ~/.ssh/deploy_key "$script" \
               "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/test-scripts/$(basename $script)"
           done
 
-          # 缁熶竴淇鎹㈣绗﹀苟璧嬩簣鎵ц鏉冮檺
+          # 统一修复换行符并赋予执行权限
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'FIX_SCRIPT'
           cd /root/zwi-deploy/test-scripts
           sed -i 's/\r$//' *.sh
@@ -584,21 +589,21 @@ jobs:
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" bash -s <<'INIT_SCRIPT'
           set -uo pipefail
           cd /root/zwi-deploy/test-scripts
-          # 1) 鍒濆鍖栭殧绂绘祴璇曠鎴?9999 + t9999admin + t9999user锛堜綆鏉冮檺锛屼緵 authz 璐熷悜娴嬭瘯锛?
-          #    + 缂栧彿瑙勫垯锛堝箓绛夛紝鑷寘鍚?docker exec SQL锛?
-          #    2026-08-13 鎻愬墠鑷?L3 涔嬪墠锛歵est-api-authz.sh 渚濊禆 t9999user 绉嶅瓙锛?
-          #    鍘熼『搴忥紙L3 鍏堣窇锛夊鑷?authz 鐧诲綍涓嶅瓨鍦ㄧ敤鎴疯Е鍙?IP 閿佸畾杩為攣浜嬫晠
+          # 1) 初始化隔离测试租户 9999 + t9999admin + t9999user（低权限，供 authz 负向测试）
+          #    + 编号规则（幂等，自包含 docker exec SQL）
+          #    2026-08-13 提前至 L3 之前：test-api-authz.sh 依赖 t9999user 种子，
+          #    原顺序（L3 先跑）导致 authz 登录不存在用户触发 IP 锁定连锁事故
           bash init-test-tenant.sh
-          # 2) 鍑嗗 deploy-bpmn 杩愯鐜锛歷erify-base.sh + 浠?rsync 浠撳簱姹囬泦鍏ㄩ儴 BPMN 鍒?/root/zwi-deploy
+          # 2) 准备 deploy-bpmn 运行环境：verify-base.sh + 从 rsync 仓库汇集全部 BPMN 到 /root/zwi-deploy
           cp -f verify-base.sh /root/zwi-deploy/verify-base.sh
           cp -f deploy-bpmn.sh /root/zwi-deploy/deploy-bpmn.sh
           find "${DEPLOY_DIR:-/root/zw-insight}" -path '*/src/main/resources/processes/*.bpmn20.xml' -exec cp -f {} /root/zwi-deploy/ \; 2>/dev/null || true
-          # 3) 閮ㄧ讲鍏ㄩ儴 BPMN 鍒扮鎴?9999锛堝箓绛夛紱BPMN 鎸佷箙鍖栦簬 ACT_RE_PROCDEF锛岄噸澶嶉儴缃插彧澧炵増鏈級
+          # 3) 部署全部 BPMN 到租户 9999（幂等；BPMN 持久化于 ACT_RE_PROCDEF，重复部署只增版本）
           cd /root/zwi-deploy
           ZWI_USER=t9999admin ZWI_PASS=123456 ZWI_TENANT_ID=9999 bash deploy-bpmn.sh || true
-          # 4) 閮ㄧ讲鍏ㄩ儴 BPMN 鍒扮鎴?1锛?026-08-21 鍙拌处缂哄彛淇锛歜udget_change_approval/
-          #    material_refund_approval/project_close_approval 绛夋祦绋嬪畾涔夋鍓嶄粎瀛樺湪浜庣鎴?9999锛?
-          #    瀵艰嚧 a4 棰勭畻鍙樻洿/b1 鏉愭枡閫€璐?a1 缁撻」瀹℃壒閾惧湪婕旂ず绉熸埛鍙楅樆銆傚箓绛夛紝浠呭叏閲忓浠惰Е鍙戞椂澧炵増鏈級
+          # 4) 部署全部 BPMN 到租户 1（2026-08-21 台账缺口修复：budget_change_approval/
+          #    material_refund_approval/project_close_approval 等流程定义此前仅存在于租户 9999，
+          #    导致 a4 预算变更/b1 材料退货/a1 结项审批链在演示租户受阻。幂等，仅全量套件触发时增版本）
           ZWI_USER=admin ZWI_PASS=123456 ZWI_TENANT_ID=1 bash deploy-bpmn.sh || true
           INIT_SCRIPT
         env:
@@ -619,24 +624,24 @@ jobs:
           for script in test-api-*.sh; do
             [ -f "$script" ] || continue
             echo "=========================================="
-            echo "鎵ц L3 娴嬭瘯: $script"
+            echo "执行 L3 测试: $script"
             echo "=========================================="
             if bash "$script" 2>&1 | tee "/root/zwi-deploy/l3-${script%.sh}.log"; then
               L3_PASS=$((L3_PASS + 1))
-              L3_RESULTS="${L3_RESULTS}鉁?${script}\n"
+              L3_RESULTS="${L3_RESULTS}✅ ${script}\n"
             else
               L3_FAIL=$((L3_FAIL + 1))
-              L3_RESULTS="${L3_RESULTS}鉂?${script}\n"
+              L3_RESULTS="${L3_RESULTS}❌ ${script}\n"
             fi
           done
 
           echo ""
           echo "=========================================="
-          echo "L3 API 娴嬭瘯姹囨€? 閫氳繃=${L3_PASS} 澶辫触=${L3_FAIL}"
+          echo "L3 API 测试汇总: 通过=${L3_PASS} 失败=${L3_FAIL}"
           echo "=========================================="
           printf "%b" "$L3_RESULTS"
 
-          # 鍐欏叆姹囨€诲埌缁撴灉鏂囦欢
+          # 写入汇总到结果文件
           printf "%b" "$L3_RESULTS" > /root/zwi-deploy/l3-summary.log
           echo "L3_PASS=${L3_PASS} L3_FAIL=${L3_FAIL}" >> /root/zwi-deploy/l3-summary.log
 
@@ -653,7 +658,7 @@ jobs:
           export ZWI_WORKDIR=/root/zwi-deploy
 
           echo "=========================================="
-          echo "鎵ц L4 娴嬭瘯: lifecycle-sim-v2.sh"
+          echo "执行 L4 测试: lifecycle-sim-v2.sh"
           echo "=========================================="
           bash lifecycle-sim-v2.sh 2>&1 | tee /root/zwi-deploy/l4-lifecycle-result.log
           L4_SCRIPT
@@ -670,24 +675,24 @@ jobs:
           mkdir -p test-results
           cd zw-insight-web
           npm ci --no-audit --no-fund
-          # 2026-08-15 淇锛坮un 31853153997 瀹炶瘉锛夛細22-budget/31-approval/13b/30-security
-          # 绛?spec 鐨?redis-probe 渚濊禆 SSH锛坘eys/zwinsight.pem 鍦?gitignore锛孋I 涓嶅瓨鍦級锛?
-          # 蹇呴』鎸囧悜 deploy_key锛屽惁鍒?beforeAll 澶辫触鑷?4 鏂囦欢 failed + 71 skipped
+          # 2026-08-15 修复（run 31853153997 实证）：22-budget/31-approval/13b/30-security
+          # 等 spec 的 redis-probe 依赖 SSH（keys/zwinsight.pem 在 gitignore，CI 不存在），
+          # 必须指向 deploy_key，否则 beforeAll 失败致 4 文件 failed + 71 skipped
           export E2E_SSH_KEY="$HOME/.ssh/deploy_key"
-          # bash -e 涓?vitest 闈為浂浼氫腑姝㈡楠わ紝鐢?|| 鎹曡幏閫€鍑虹爜纭繚鏃ュ織鍐欏叆
+          # bash -e 下 vitest 非零会中止步骤，用 || 捕获退出码确保日志写入
           L5_EXIT=0
           npx vitest run --config e2e/api-tests/vitest.config.ts > ../test-results/l5-api-tests.log 2>&1 || L5_EXIT=$?
           echo "L5_EXIT=$L5_EXIT" >> ../test-results/l5-api-tests.log
           tail -8 ../test-results/l5-api-tests.log
           exit $L5_EXIT
 
-      - name: Run L5 UI real tests (playwright e2e-real, 29 cases against deployed frontend :18081锛?026-08-14 瀹炴祴鍙ｅ緞)
+      - name: Run L5 UI real tests (playwright e2e-real, 29 cases against deployed frontend :18081，2026-08-14 实测口径)
         if: always()
         run: |
           cd zw-insight-web
-          # ubuntu-latest 棰勮 Google Chrome锛宲laywright config 鐢?channel: 'chrome'锛?
-          # auth-real.setup.ts 鐪熷疄鐧诲綍 :18081 鐢熸垚 storageState锛坢ock 妯″紡宸插綊妗ｅ垹闄わ級锛?
-          # 鐧诲綍闇€楠岃瘉鐮侊細setup 缁?SSH 璇绘湇鍔″櫒 Redis 鍙栫瓟妗堬紝CI 涓婃寚鍚?deploy_key锛堟湰鍦伴粯璁?Windows 璺緞涓嶅瓨鍦級
+          # ubuntu-latest 预装 Google Chrome，playwright config 用 channel: 'chrome'；
+          # auth-real.setup.ts 真实登录 :18081 生成 storageState（mock 模式已归档删除）；
+          # 登录需验证码：setup 经 SSH 读服务器 Redis 取答案，CI 上指向 deploy_key（本地默认 Windows 路径不存在）
           export E2E_SSH_KEY="$HOME/.ssh/deploy_key"
           UI_REAL_EXIT=0
           npx playwright test --project=e2e-real > ../test-results/l5-ui-real.log 2>&1 || UI_REAL_EXIT=$?
@@ -695,11 +700,11 @@ jobs:
           tail -6 ../test-results/l5-ui-real.log
           exit $UI_REAL_EXIT
 
-      - name: Run L5 consistency audit (playwright, 53 cases frontend-display vs backend-data锛?026-08-14 瀹炴祴鍙ｅ緞)
+      - name: Run L5 consistency audit (playwright, 53 cases frontend-display vs backend-data，2026-08-14 实测口径)
         if: always()
         run: |
           cd zw-insight-web
-          # 澶嶇敤鍚屼竴 storageState 鍓?setup 闇€閲嶇櫥锛岄獙璇佺爜绛旀缁?SSH 璇绘湇鍔″櫒 Redis锛堝悓 UI real 姝ラ锛?
+          # 复用同一 storageState 前 setup 需重登，验证码答案经 SSH 读服务器 Redis（同 UI real 步骤）
           export E2E_SSH_KEY="$HOME/.ssh/deploy_key"
           CONS_EXIT=0
           npx playwright test --project=consistency-real > ../test-results/l5-consistency.log 2>&1 || CONS_EXIT=$?
@@ -712,7 +717,7 @@ jobs:
         run: |
           mkdir -p ./test-results
 
-          # 涓嬭浇 L3 缁撴灉
+          # 下载 L3 结果
           scp -i ~/.ssh/deploy_key \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/l3-summary.log" \
             ./test-results/l3-summary.log || true
@@ -720,12 +725,12 @@ jobs:
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/l3-*.log" \
             ./test-results/ 2>/dev/null || true
 
-          # 涓嬭浇 L4 缁撴灉
+          # 下载 L4 结果
           scp -i ~/.ssh/deploy_key \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/l4-lifecycle-result.log" \
             ./test-results/l4-lifecycle-result.log || true
 
-          # 涓嬭浇 JSON 鎶ュ憡锛堝鏋滃瓨鍦級
+          # 下载 JSON 报告（如果存在）
           scp -i ~/.ssh/deploy_key \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/root/zwi-deploy/tests/reports/lifecycle-sim-report.json" \
             ./test-results/lifecycle-sim-report.json 2>/dev/null || true
@@ -741,96 +746,96 @@ jobs:
       - name: Test summary
         if: always()
         run: |
-          echo "=== 闆嗘垚娴嬭瘯缁撴灉姹囨€?==="
+          echo "=== 集成测试结果汇总 ==="
           HAS_FAILURE=false
   
-          # L3 姹囨€?
+          # L3 汇总
           echo ""
-          echo "--- L3 API 娴嬭瘯 ---"
+          echo "--- L3 API 测试 ---"
           if [ -f test-results/l3-summary.log ]; then
             cat test-results/l3-summary.log
-            if grep -q "鉂? test-results/l3-summary.log; then
+            if grep -q "❌" test-results/l3-summary.log; then
               HAS_FAILURE=true
             fi
           else
-            echo "::warning::鏈壘鍒?L3 娴嬭瘯缁撴灉鏂囦欢"
+            echo "::warning::未找到 L3 测试结果文件"
           fi
   
-          # L4 姹囨€?
+          # L4 汇总
           echo ""
-          echo "--- L4 Lifecycle 娴嬭瘯 ---"
+          echo "--- L4 Lifecycle 测试 ---"
           if [ -f test-results/l4-lifecycle-result.log ]; then
-            echo "鎴愬姛锛?(grep -c '鉁? test-results/l4-lifecycle-result.log || echo 0)"
-            echo "澶辫触锛?(grep -c '鉂? test-results/l4-lifecycle-result.log || echo 0)"
-            if grep -q "鉂? test-results/l4-lifecycle-result.log; then
+            echo "成功：$(grep -c '✅' test-results/l4-lifecycle-result.log || echo 0)"
+            echo "失败：$(grep -c '❌' test-results/l4-lifecycle-result.log || echo 0)"
+            if grep -q "❌" test-results/l4-lifecycle-result.log; then
               HAS_FAILURE=true
             fi
           else
-            echo "::warning::鏈壘鍒?L4 娴嬭瘯缁撴灉鏂囦欢"
+            echo "::warning::未找到 L4 测试结果文件"
           fi
   
-          # L5 姹囨€伙紙api-tests vitest 356 渚嬶紝鐪熷疄鎺ュ彛锛?
+          # L5 汇总（api-tests vitest 356 例，真实接口）
           echo ""
           echo "--- L5 API-Tests (vitest) ---"
           if [ -f test-results/l5-api-tests.log ]; then
             grep -E 'Test Files|Tests ' test-results/l5-api-tests.log || true
             if grep -q "L5_EXIT=0" test-results/l5-api-tests.log; then
-              echo "L5 鍏ㄩ儴閫氳繃"
+              echo "L5 全部通过"
             else
               HAS_FAILURE=true
             fi
           else
-            echo "::warning::鏈壘鍒?L5 娴嬭瘯缁撴灉鏂囦欢"
+            echo "::warning::未找到 L5 测试结果文件"
           fi
   
-          # L5 UI real 姹囨€伙紙playwright e2e-real 29 渚嬶紝鎵撻儴缃插墠绔湡瀹炵櫥褰曪級
+          # L5 UI real 汇总（playwright e2e-real 29 例，打部署前端真实登录）
           echo ""
           echo "--- L5 UI Real (playwright) ---"
           if [ -f test-results/l5-ui-real.log ]; then
             grep -E 'passed|failed|skipped' test-results/l5-ui-real.log | tail -3 || true
             if grep -q "UI_REAL_EXIT=0" test-results/l5-ui-real.log; then
-              echo "L5 UI real 鍏ㄩ儴閫氳繃"
+              echo "L5 UI real 全部通过"
             else
               HAS_FAILURE=true
             fi
           else
-            echo "::warning::鏈壘鍒?L5 UI real 娴嬭瘯缁撴灉鏂囦欢"
+            echo "::warning::未找到 L5 UI real 测试结果文件"
           fi
   
-          # L5 consistency 姹囨€伙紙playwright consistency-real 53 渚嬶紝鍓嶇灞曠ず vs 鍚庣鏁版嵁瀛楁绾ф瘮瀵癸級
+          # L5 consistency 汇总（playwright consistency-real 53 例，前端展示 vs 后端数据字段级比对）
           echo ""
           echo "--- L5 Consistency (playwright) ---"
           if [ -f test-results/l5-consistency.log ]; then
             grep -E 'passed|failed|skipped' test-results/l5-consistency.log | tail -3 || true
             if grep -q "CONS_EXIT=0" test-results/l5-consistency.log; then
-              echo "L5 consistency 鍏ㄩ儴閫氳繃"
+              echo "L5 consistency 全部通过"
             else
               HAS_FAILURE=true
             fi
           else
-            echo "::warning::鏈壘鍒?L5 consistency 娴嬭瘯缁撴灉鏂囦欢"
+            echo "::warning::未找到 L5 consistency 测试结果文件"
           fi
   
-          # 鏈€缁堝垽瀹?
+          # 最终判定
           echo ""
           if [ "$HAS_FAILURE" = "true" ]; then
-            echo "::error::闆嗘垚娴嬭瘯瀛樺湪澶辫触椤癸紝workflow 鏍囪涓哄け璐?
+            echo "::error::集成测试存在失败项，workflow 标记为失败"
             exit 1
           else
-            echo "鉁?鎵€鏈夐泦鎴愭祴璇曢€氳繃"
+            echo "✅ 所有集成测试通过"
           fi
   
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-  # 4. 鎬ц兘鍩哄噯娴嬭瘯 (k6)
-  # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  # ────────────────────────────────────────────────────
+  # 4. 性能基准测试 (k6)
+  # ────────────────────────────────────────────────────
   performance-test:
     name: Performance Baseline (k6)
     runs-on: ubuntu-latest
-    # 蹇呴』涓茶鍦ㄩ泦鎴愭祴璇曚箣鍚庯細k6 login 鍦烘櫙楂橀鐧诲綍浼氫娇鍚岃处鍙锋椿璺冭澶囨暟瓒呰繃
-    # security.max-devices(5)锛屾窐姹版渶鏃╄澶?token锛堟媺榛戯級锛屽鑷村苟鍙戣繍琛岀殑 L3/L4
-    # 鑴氭湰鎸佹湁鐨?admin token 澶辨晥锛坮un 31322829488 瀹炶瘉锛歀3 4/8 鍥?401 澶辫触锛?
+    # 必须串行在集成测试之后：k6 login 场景高频登录会使同账号活跃设备数超过
+    # security.max-devices(5)，淘汰最早设备 token（拉黑），导致并发运行的 L3/L4
+    # 脚本持有的 admin token 失效（run 31322829488 实证：L3 4/8 因 401 失败）
     needs: [deploy, integration-test]
-    # 涓?integration-test 鍚岄棬鎺э紙榛樿涓嶈窇锛夛紱鏄惧紡瑕佹眰涓や釜渚濊禆鍧囨垚鍔?
+    # 与 integration-test 同门控（默认不跑）；显式要求两个依赖均成功
     if: |
       needs.deploy.result == 'success' && needs.integration-test.result == 'success' &&
       github.event_name == 'workflow_dispatch' && inputs.run_tests == 'true'
@@ -847,18 +852,18 @@ jobs:
   
       - name: Run k6 performance tests
         run: |
-          # 涓婁紶浠撳簱鍐呮渶鏂版€ц兘鑴氭湰锛堜笌婧愮爜淇濇寔涓€鑷达紝閬垮厤鏈嶅姟鍣ㄦ畫鐣欐棫鐗堬級
-          # 蹇呴』鍏堟竻绌鸿繙绔?/tmp/zwi-perf锛歴cp -r 瀵瑰凡瀛樺湪鐩綍浼氬祵濂楀鍒?
-          # 锛?tmp/zwi-perf/performance/...锛夛紝鏃х増鑴氭湰娈嬬暀鍦ㄧ洰褰曟牴閮ㄩ伄钄芥柊鐗堬紝
-          # 瀵艰嚧 k6 闈欓粯璺戞棫鑴氭湰锛?026-08-14 瀹炶瘉锛氶檺閫?鍥炴敹淇鏈敓鏁堬紝
-          # 2 鍒嗛挓鍐嶅爢 3939 鏉¤繍琛屼腑浠诲姟锛?
+          # 上传仓库内最新性能脚本（与源码保持一致，避免服务器残留旧版）
+          # 必须先清空远端 /tmp/zwi-perf：scp -r 对已存在目录会嵌套复制
+          # （/tmp/zwi-perf/performance/...），旧版脚本残留在目录根部遮蔽新版，
+          # 导致 k6 静默跑旧脚本（2026-08-14 实证：限速/回收修复未生效，
+          # 2 分钟再堆 3939 条运行中任务）
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
             "rm -rf /tmp/zwi-perf"
           scp -i ~/.ssh/deploy_key -r tests/performance \
             "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/tmp/zwi-perf"
-          # 璋冪敤鐪熷疄鍩哄骇 run-k6.sh锛堝闂寸獥鍙?骞跺彂鈮?0/鏃堕暱鈮?m 涓夐噸纭牎楠?+
-          # 鐪熷疄楠岃瘉鐮佹ˉ鐧诲綍锛涗换涓€鍦烘櫙澶辫触/闃堝€艰秴闄?鈫?exit 5锛宩ob 鏍囩孩锛屼笉闈欓粯鍚為敊锛夈€?
-          # ZWI_K6_FORCE=1锛歱ush 瑙﹀彂鐨勯儴缃叉祦姘寸嚎鏃犳硶閫夋嫨澶滈棿鏃舵锛岃眮鍏嶇獥鍙ｆ牎楠?
+          # 调用真实基座 run-k6.sh（夜间窗口/并发≤20/时长≤5m 三重硬校验 +
+          # 真实验证码桥登录；任一场景失败/阈值超限 → exit 5，job 标红，不静默吞错）。
+          # ZWI_K6_FORCE=1：push 触发的部署流水线无法选择夜间时段，豁免窗口校验
           ssh -i ~/.ssh/deploy_key "${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}" \
             "mkdir -p ${{ env.DEPLOY_DIR }}/tests && rm -rf ${{ env.DEPLOY_DIR }}/tests/performance && \
              cp -r /tmp/zwi-perf ${{ env.DEPLOY_DIR }}/tests/performance && \
