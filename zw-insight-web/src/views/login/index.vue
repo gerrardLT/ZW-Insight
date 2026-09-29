@@ -320,7 +320,6 @@ function goForgotPassword() {
   max-width: 26rem;
   background: var(--zw-bg-card);
   padding: var(--zw-space-xl) var(--zw-space-lg);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 1.75rem), calc(100% - 1.75rem) 100%, 0 100%);
   box-shadow: 0 30px 80px color-mix(in srgb, var(--zw-bg-sidebar) 50%, transparent);
   animation: rise-in .6s .18s cubic-bezier(.22, .61, .36, 1) both;
 }
