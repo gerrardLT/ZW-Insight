@@ -336,7 +336,7 @@ jobs:
   # 2. 部署到目标服务器（双机并行/指定环境）
   # ────────────────────────────────────────────────────
   deploy:
-    name: Deploy to ${{ matrix.server.name }} (${{ env.SERVER_HOST }})
+    name: Deploy to ${{ matrix.server.name }}
     runs-on: ubuntu-latest
     needs: [backend, frontend-test, frontend-build, docker-publish]
     if: |
