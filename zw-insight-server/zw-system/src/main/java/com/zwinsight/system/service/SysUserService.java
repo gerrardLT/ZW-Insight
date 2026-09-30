@@ -119,7 +119,7 @@ public class SysUserService {
         // 检查用户名唯一
         // 与 V2026_76 的 NULL guard 一致：仅活动账号占用全局唯一键。
         if (userMapper.countActiveByUsername(user.getUsername()) > 0) {
-            throw new BusinessException("用户名已存在，请更换用户名");
+            throw new BusinessException(409, "用户名已存在，请更换用户名");
         }
         // 手机号全局唯一（短信登录按 phone 定位用户；DB 层 uk_phone 兜底，此处给出友好报错）
         checkPhoneUnique(user.getPhone(), null);
@@ -163,7 +163,7 @@ public class SysUserService {
                         .eq(SysUser::getPhone, phone)
                         .ne(SysUser::getId, excludeId));
         if (occupied > 0) {
-            throw new BusinessException("该手机号已被其他账号使用，请更换手机号");
+            throw new BusinessException(409, "该手机号已被其他账号使用，请更换手机号");
         }
     }
 
@@ -235,10 +235,10 @@ public class SysUserService {
     public void assignRoles(Long userId, List<Long> roleIds) {
         SysUser user = getById(userId);
         if (user == null) {
-            throw new BusinessException("用户不存在或不属于当前企业");
+            throw new BusinessException(404, "用户不存在或不属于当前企业");
         }
         if (roleIds == null || roleIds.stream().anyMatch(id -> id == null || id <= 0)) {
-            throw new BusinessException("角色列表不能为空，角色ID必须为正整数");
+            throw new BusinessException(400, "角色列表不能为空，角色ID必须为正整数");
         }
         List<Long> distinctRoleIds = roleIds.stream().distinct().toList();
         if (!distinctRoleIds.isEmpty()) {
@@ -246,7 +246,7 @@ public class SysUserService {
                     .in(SysRole::getId, distinctRoleIds));
             if (roles.size() != distinctRoleIds.size()
                     || roles.stream().anyMatch(role -> !Objects.equals(role.getTenantId(), user.getTenantId()))) {
-                throw new BusinessException("角色不存在或不属于当前企业");
+                throw new BusinessException(400, "角色不存在或不属于当前企业");
             }
         }
         // 先删除原有关联
@@ -314,10 +314,10 @@ public class SysUserService {
                 throw new BusinessException("第 " + row + " 行：用户名不能为空");
             }
             if (!usernames.add(user.getUsername())) {
-                throw new BusinessException("第 " + row + " 行：用户名在文件中重复");
+                throw new BusinessException(409, "第 " + row + " 行：用户名在文件中重复");
             }
             if (user.getPhone() != null && !user.getPhone().isBlank() && !phones.add(user.getPhone())) {
-                throw new BusinessException("第 " + row + " 行：手机号在文件中重复");
+                throw new BusinessException(409, "第 " + row + " 行：手机号在文件中重复");
             }
             // 增量导入跳过已有活动账号；删除历史由 NULL guard 释放唯一键。
             if (userMapper.countActiveByUsername(user.getUsername()) > 0) {
@@ -325,7 +325,7 @@ public class SysUserService {
             }
             if (user.getPhone() != null && !user.getPhone().isBlank()
                     && userMapper.countActiveByPhone(user.getPhone()) > 0) {
-                throw new BusinessException("第 " + row + " 行：手机号已被其他账号使用");
+                throw new BusinessException(409, "第 " + row + " 行：手机号已被其他账号使用");
             }
             userMapper.insert(user);
             inserted++;

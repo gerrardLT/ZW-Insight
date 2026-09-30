@@ -168,7 +168,7 @@ class SysUserServiceTest {
 
         assertThatThrownBy(() -> userService.save(user))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("用户名已存在");
+                .hasMessageContaining("用户名已存在").extracting("code").isEqualTo(409);
     }
 
     @Test
@@ -199,7 +199,7 @@ class SysUserServiceTest {
 
         assertThatThrownBy(() -> userService.save(user))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("该手机号已被其他账号使用");
+                .hasMessageContaining("该手机号已被其他账号使用").extracting("code").isEqualTo(409);
         verify(userMapper, never()).insert(any());
     }
 
@@ -217,7 +217,7 @@ class SysUserServiceTest {
 
         assertThatThrownBy(() -> userService.update(update))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("该手机号已被其他账号使用");
+                .hasMessageContaining("该手机号已被其他账号使用").extracting("code").isEqualTo(409);
         verify(userMapper, never()).updateById(any());
     }
 
@@ -332,11 +332,11 @@ class SysUserServiceTest {
     @Test
     void testAssignRoles_invalidInputPreservesGrants() {
         when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(new SysUser());
-        assertThatThrownBy(() -> userService.assignRoles(1L, null)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> userService.assignRoles(1L, null)).isInstanceOf(BusinessException.class).extracting("code").isEqualTo(400);
         assertThatThrownBy(() -> userService.assignRoles(1L, java.util.Arrays.asList(10L, null)))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class).extracting("code").isEqualTo(400);
         assertThatThrownBy(() -> userService.assignRoles(1L, List.of(0L)))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class).extracting("code").isEqualTo(400);
         verifyNoInteractions(userRoleMapper, roleMapper);
     }
 
@@ -347,14 +347,21 @@ class SysUserServiceTest {
         when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(user);
         when(roleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
         assertThatThrownBy(() -> userService.assignRoles(1L, List.of(10L)))
-                .isInstanceOf(BusinessException.class).hasMessageContaining("角色不存在");
+                .isInstanceOf(BusinessException.class).hasMessageContaining("角色不存在").extracting("code").isEqualTo(400);
         var foreignRole = new com.zwinsight.system.domain.SysRole();
         foreignRole.setId(10L);
         foreignRole.setTenantId(8888L);
         when(roleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(foreignRole));
         assertThatThrownBy(() -> userService.assignRoles(1L, List.of(10L)))
-                .isInstanceOf(BusinessException.class).hasMessageContaining("不属于当前企业");
+                .isInstanceOf(BusinessException.class).hasMessageContaining("不属于当前企业").extracting("code").isEqualTo(400);
         verifyNoInteractions(userRoleMapper);
+    }
+
+    @Test
+    void testAssignRoles_missingUserReturns404() {
+        assertThatThrownBy(() -> userService.assignRoles(42L, List.of(10L)))
+                .isInstanceOf(BusinessException.class).extracting("code").isEqualTo(404);
+        verifyNoInteractions(userRoleMapper, roleMapper);
     }
 
     @Test
