@@ -169,6 +169,7 @@ class RiskScanServiceTest {
         void scan_ignoredButEscalated_reopened() {
             BizRiskRegister ignored = existing("PROFIT_LOSS:1:1", "PROFIT_LOSS",
                     BizRiskRegister.SEVERITY_YELLOW, BizRiskRegister.HANDLE_IGNORED);
+            ignored.setHandleNote("已核查，暂不处理");
             when(riskMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(ignored);
             when(riskMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
             RiskFinding f = finding("PROFIT_LOSS", 1L, BizRiskRegister.SEVERITY_RED, "PROJECT", 1L);
@@ -177,7 +178,61 @@ class RiskScanServiceTest {
 
             assertThat(ignored.getHandleStatus()).isEqualTo(BizRiskRegister.HANDLE_OPEN);
             assertThat(ignored.getSeverity()).isEqualTo(BizRiskRegister.SEVERITY_RED);
-            assertThat(ignored.getHandleNote()).contains("风险升级").contains("YELLOW→RED");
+            assertThat(ignored.getHandleNote()).startsWith("已核查，暂不处理").contains("风险升级").contains("YELLOW→RED");
+        }
+
+        @Test
+        @DisplayName("复发重开保留人工与自动处理记录，同 riskCode 幂等且重计入汇总")
+        void scan_resolvedRisk_reopenedWithHistory() {
+            for (String note : List.of("整改完成", "风险条件已消除，扫描自动关闭")) {
+                BizRiskRegister risk = existing("PROFIT_LOSS:1:1", "PROFIT_LOSS",
+                        BizRiskRegister.SEVERITY_RED, BizRiskRegister.HANDLE_RESOLVED);
+                java.time.LocalDateTime handledAt = java.time.LocalDateTime.of(2026, 9, 1, 12, 0);
+                risk.setHandledBy(9L);
+                risk.setHandledAt(handledAt);
+                risk.setHandleNote(note);
+                when(riskMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(risk);
+                when(riskMapper.selectList(any(LambdaQueryWrapper.class))).thenAnswer(invocation ->
+                        BizRiskRegister.HANDLE_OPEN.equals(risk.getHandleStatus()) ? List.of(risk) : List.of());
+                RiskScanService service = serviceWith(new StubRule("PROFIT_LOSS", List.of(
+                        finding("PROFIT_LOSS", 1L, BizRiskRegister.SEVERITY_YELLOW, "PROJECT", 1L)), false));
+                Map<String, Object> result = service.scan();
+                assertThat(risk.getHandleStatus()).isEqualTo(BizRiskRegister.HANDLE_OPEN);
+                assertThat(risk.getId()).isEqualTo(500L);
+                assertThat(risk.getHandleNote()).startsWith(note).contains("风险复发");
+                assertThat(risk.getHandledBy()).isEqualTo(9L);
+                assertThat(risk.getHandledAt()).isEqualTo(handledAt);
+                assertThat(risk.getSeverity()).isEqualTo(BizRiskRegister.SEVERITY_YELLOW);
+                assertThat(risk.getImpactAmount()).isEqualByComparingTo("100000");
+                assertThat(result.get("inserted")).isEqualTo(0);
+                assertThat(result.get("updated")).isEqualTo(1);
+                String reopenedNote = risk.getHandleNote();
+                service.scan();
+                assertThat(risk.getHandleNote()).isEqualTo(reopenedNote);
+                Map<String, Object> summary = service.summary(null);
+                assertThat(summary.get("activeTotal")).isEqualTo(1);
+                assertThat(summary.get("yellowCount")).isEqualTo(1L);
+                assertThat((BigDecimal) summary.get("yellowImpact")).isEqualByComparingTo("100000");
+            }
+            verify(riskMapper, never()).insert(any(BizRiskRegister.class));
+        }
+
+        @Test
+        @DisplayName("备注满500字时仍重开且不丢原处理记录")
+        void scan_fullHandleNote_preservedOnReopen() {
+            for (String status : List.of(BizRiskRegister.HANDLE_RESOLVED, BizRiskRegister.HANDLE_IGNORED)) {
+                BizRiskRegister risk = existing("PROFIT_LOSS:1:1", "PROFIT_LOSS",
+                        BizRiskRegister.SEVERITY_YELLOW, status);
+                String note = "原".repeat(500);
+                risk.setHandleNote(note);
+                when(riskMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(risk);
+                when(riskMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+                serviceWith(new StubRule("PROFIT_LOSS", List.of(
+                        finding("PROFIT_LOSS", 1L, BizRiskRegister.SEVERITY_RED, "PROJECT", 1L)), false)).scan();
+                assertThat(risk.getHandleStatus()).isEqualTo(BizRiskRegister.HANDLE_OPEN);
+                assertThat(risk.getHandleNote()).isEqualTo(note);
+                assertThat(risk.getLastScanAt()).isNotNull();
+            }
         }
 
         @Test

@@ -67,6 +67,7 @@ class ChangeEventServiceTest {
         draft = new BizChangeEvent();
         draft.setId(555L);
         draft.setProjectId(100L);
+        draft.setTenantId(9999L);
         draft.setEventNumber("CHG20260001");
         draft.setSourceType("FIELD_EVENT");
         draft.setTitle("地下室顶板加厚");
@@ -207,6 +208,49 @@ class ChangeEventServiceTest {
         }
     }
 
+    @Test
+    void rejectsInconsistentAmountsAtAssessmentAndApproval() {
+        for (String declared : List.of("0", "2.00")) {
+            draft.setAffectedAccounts(List.of(accountDelta(1001L, "INCREASE", "1.00")));
+            draft.setStatus(ChangeEventStatus.ASSESSING.name());
+            when(changeEventMapper.selectById(555L)).thenReturn(draft);
+            assertThatThrownBy(() -> changeEventService.submitAssessment(555L, assessment(declared, "理由")))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("不一致");
+            draft.setStatus(ChangeEventStatus.APPROVING.name());
+            draft.setCostDelta(new BigDecimal(declared));
+            assertThatThrownBy(() -> changeEventService.approve(555L, null))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("不一致");
+        }
+        verify(changeEventMapper, never()).updateById(any());
+        verify(outboxRecorder, never()).record(anyString(), anyString(), any(), any(), any());
+    }
+
+    @Test
+    void rejectsInvalidPrecisionAndAccountOwnership() {
+        when(changeEventMapper.selectById(555L)).thenReturn(draft);
+        draft.setStatus(ChangeEventStatus.ASSESSING.name());
+        draft.setAffectedAccounts(List.of(accountDelta(1001L, "INCREASE", "0.001")));
+        assertThatThrownBy(() -> changeEventService.submitAssessment(555L, assessment("0.001", "理由")))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("分");
+        draft.setAffectedAccounts(List.of(accountDelta(1001L, "INCREASE", "1.00")));
+        assertThatThrownBy(() -> changeEventService.submitAssessment(555L, assessment("1", "理由")))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("项目/租户");
+        verify(changeEventMapper).countAffectedAccount(1001L, 100L, 9999L);
+        draft.setStatus(ChangeEventStatus.APPROVING.name());
+        draft.setCostDelta(BigDecimal.ONE);
+        assertThatThrownBy(() -> changeEventService.approve(555L, null))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("项目/租户");
+        verify(changeEventMapper, never()).updateById(any());
+    }
+
+    @Test
+    void accountQueryExplicitlyGuardsTenantAndDeletion() throws Exception {
+        String sql = String.join(" ", BizChangeEventMapper.class
+                .getMethod("countAffectedAccount", Long.class, Long.class, Long.class)
+                .getAnnotation(org.apache.ibatis.annotations.Select.class).value());
+        assertThat(sql).contains("project_id = #{projectId}", "tenant_id = #{tenantId}", "deleted = 0");
+    }
+
     @Nested
     @DisplayName("影响评估")
     class Assessment {
@@ -216,6 +260,7 @@ class ChangeEventServiceTest {
         void submitsAssessment() {
             draft.setStatus(ChangeEventStatus.ASSESSING.name());
             draft.setAffectedAccounts(new ArrayList<>(List.of(accountDelta(1001L, "INCREASE", "50000"))));
+            when(changeEventMapper.countAffectedAccount(1001L, 100L, 9999L)).thenReturn(1L);
             when(changeEventMapper.selectById(555L)).thenReturn(draft);
 
             BizChangeEvent result = changeEventService.submitAssessment(
@@ -322,6 +367,8 @@ class ChangeEventServiceTest {
                     accountDelta(1002L, "DECREASE", "10000"))));
             draft.setAffectedWbsIds(new ArrayList<>(List.of(11L, 12L)));
             draft.setCostDelta(new BigDecimal("40000"));
+            when(changeEventMapper.countAffectedAccount(1001L, 100L, 9999L)).thenReturn(1L);
+            when(changeEventMapper.countAffectedAccount(1002L, 100L, 9999L)).thenReturn(1L);
             draft.setRejectionReason("上一次退回的原因，批准后应清除");
             when(changeEventMapper.selectById(555L)).thenReturn(draft);
 

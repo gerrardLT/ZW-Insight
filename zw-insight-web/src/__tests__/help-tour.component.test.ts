@@ -6,6 +6,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import ElementPlus from 'element-plus'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -80,11 +82,17 @@ afterEach(() => {
 })
 
 describe('DefaultLayout 首登引导（el-tour）', () => {
+  it('首登引导不生成阻塞内容区的全屏蒙层', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/layouts/DefaultLayout.vue'), 'utf8')
+    expect(source).toContain('<el-tour v-model="tourVisible" :mask="false"')
+  })
+
   it('无 zw-tour-done 标记时自动弹出三步引导', async () => {
     const w = await mountLayout()
     const tour = w.findComponent({ name: 'ElTour' })
     expect(tour.exists()).toBe(true)
     expect(tour.props('modelValue')).toBe(true)
+    expect(tour.props('mask')).toBe(false)
   })
 
   it('已有 zw-tour-done 标记时不弹出（不打扰老用户）', async () => {

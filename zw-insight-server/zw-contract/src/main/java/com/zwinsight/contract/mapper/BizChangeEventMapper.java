@@ -97,6 +97,13 @@ public interface BizChangeEventMapper extends BaseMapper<BizChangeEvent> {
                 .orderByDesc(BizChangeEvent::getApprovedAt));
     }
 
+    /** 跨模块只读校验；租户及逻辑删除条件显式保留。 */
+    @Select("SELECT COUNT(*) FROM biz_cost_account WHERE id = #{accountId} "
+            + "AND project_id = #{projectId} AND tenant_id = #{tenantId} AND deleted = 0")
+    long countAffectedAccount(@Param("accountId") Long accountId,
+                              @Param("projectId") Long projectId,
+                              @Param("tenantId") Long tenantId);
+
     private static boolean isNotBlank(String s) {
         return s != null && !s.isBlank();
     }

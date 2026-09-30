@@ -136,7 +136,7 @@
          中途关闭或完成均写标记，下次不再打扰）；
          2026-09-16 修复：target 必须返回真实 DOM（.value）——原传 Ref 对象导致 EP 定位
          失败，气泡不渲染只剩全屏遮罩拦截点击，且遮住「跳过/完成」→ 标记永写不上 → 每次登录都弹 -->
-    <el-tour v-model="tourVisible" data-testid="first-login-tour" @finish="markTourDone" @close="markTourDone">
+    <el-tour v-model="tourVisible" :mask="false" data-testid="first-login-tour" @finish="markTourDone" @close="markTourDone">
       <el-tour-step
         :target="() => asideRef ?? undefined"
         title="模块导航"

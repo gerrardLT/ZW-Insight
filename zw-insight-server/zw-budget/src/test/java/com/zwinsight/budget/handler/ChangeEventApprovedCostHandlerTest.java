@@ -39,6 +39,22 @@ class ChangeEventApprovedCostHandlerTest {
     @Mock
     private CostLedgerService costLedgerService;
 
+    @Mock
+    private com.zwinsight.budget.mapper.BizCostAccountMapper costAccountMapper;
+
+    @org.junit.jupiter.api.BeforeEach
+    void accounts() {
+        org.mockito.Mockito.lenient().when(costAccountMapper.selectById(org.mockito.ArgumentMatchers.anyLong()))
+                .thenAnswer(invocation -> {
+                    com.zwinsight.budget.domain.BizCostAccount account = new com.zwinsight.budget.domain.BizCostAccount();
+                    account.setId(invocation.getArgument(0));
+                    account.setProjectId(100L);
+                    account.setTenantId(9999L);
+                    account.setDeleted(0);
+                    return account;
+                });
+    }
+
     @InjectMocks
     private ChangeEventApprovedCostHandler handler;
 
@@ -48,7 +64,7 @@ class ChangeEventApprovedCostHandlerTest {
         e.setEventId(555L);
         e.setEventNumber("CHG20260001");
         e.setProjectId(100L);
-        e.setTenantId(1L);
+        e.setTenantId(9999L);
         e.setCostDelta(costDelta);
         e.setScheduleDelayDays(3);
         e.setAffectedAccounts(accounts);
@@ -75,6 +91,32 @@ class ChangeEventApprovedCostHandlerTest {
         m.setPayload(payload);
         m.setAttempts(1);
         return m;
+    }
+
+    @Test
+    void rejectsForeignDeletedAndMissingAccountsBeforePosting() {
+        for (String defect : List.of("missing", "project", "tenant", "deleted")) {
+            com.zwinsight.budget.domain.BizCostAccount account = new com.zwinsight.budget.domain.BizCostAccount();
+            account.setProjectId("project".equals(defect) ? 101L : 100L);
+            account.setTenantId("tenant".equals(defect) ? 9998L : 9999L);
+            account.setDeleted("deleted".equals(defect) ? 1 : 0);
+            when(costAccountMapper.selectById(1001L)).thenReturn("missing".equals(defect) ? null : account);
+            assertThatThrownBy(() -> handler.handle(message(event(BigDecimal.ONE,
+                    List.of(delta(1001L, "INCREASE", "1"))))))
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("项目/租户");
+        }
+        verify(costLedgerService, never()).postBatch(anyList());
+    }
+
+    @Test
+    void rejectsSubCentAndDuplicateAccountInstructions() {
+        assertThatThrownBy(() -> handler.handle(message(event(new BigDecimal("0.001"),
+                List.of(delta(1001L, "INCREASE", "0.001"))))))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("分");
+        assertThatThrownBy(() -> handler.handle(message(event(new BigDecimal("2"),
+                List.of(delta(1001L, "INCREASE", "1"), delta(1001L, "INCREASE", "1"))))))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("重复");
+        verify(costLedgerService, never()).postBatch(anyList());
     }
 
     @Test
@@ -196,22 +238,15 @@ class ChangeEventApprovedCostHandlerTest {
         }
 
         @Test
-        @DisplayName("明细含 null 或缺 accountId：跳过该项而非抛 NPE（脏数据不应击穿消费）")
-        void toleratesMalformedEntries() {
+        @DisplayName("明细含 null 或缺 accountId：拒绝整批，不静默丢账")
+        void rejectsMalformedEntries() {
             List<ChangeEventApprovedEvent.AccountDelta> deltas = new ArrayList<>();
             deltas.add(null);
             deltas.add(delta(null, "INCREASE", "1000"));
             deltas.add(delta(1003L, "INCREASE", "1000"));
-            when(costLedgerService.postBatch(anyList())).thenReturn(1);
-
-            handler.handle(message(event(new BigDecimal("1000"), deltas)));
-
-            @SuppressWarnings("unchecked")
-            ArgumentCaptor<List<CostLedgerService.PostCommand>> captor =
-                    ArgumentCaptor.forClass(List.class);
-            verify(costLedgerService).postBatch(captor.capture());
-            assertThat(captor.getValue()).hasSize(1);
-            assertThat(captor.getValue().get(0).accountId()).isEqualTo(1003L);
+            assertThatThrownBy(() -> handler.handle(message(event(new BigDecimal("2000"), deltas))))
+                    .isInstanceOf(IllegalStateException.class);
+            verify(costLedgerService, never()).postBatch(anyList());
         }
     }
 
@@ -273,19 +308,14 @@ class ChangeEventApprovedCostHandlerTest {
         }
 
         @Test
-        @DisplayName("评估总额与明细合计不一致：以明细为准继续传导（留告警不阻断业务）")
-        void mismatchFallsBackToDetail() {
-            when(costLedgerService.postBatch(anyList())).thenReturn(1);
-
-            // 声明 50000，明细合计只有 30000
-            handler.handle(message(event(new BigDecimal("50000"),
-                    List.of(delta(1001L, "INCREASE", "30000")))));
-
-            @SuppressWarnings("unchecked")
-            ArgumentCaptor<List<CostLedgerService.PostCommand>> captor =
-                    ArgumentCaptor.forClass(List.class);
-            verify(costLedgerService).postBatch(captor.capture());
-            assertThat(captor.getValue().get(0).deltaAmount()).isEqualByComparingTo("30000");
+        @DisplayName("金额不一致（包括声明零）必须拒绝，禁止入账")
+        void mismatchThrows() {
+            for (String declared : List.of("50000", "0")) {
+                assertThatThrownBy(() -> handler.handle(message(event(new BigDecimal(declared),
+                        List.of(delta(1001L, "INCREASE", "30000"))))))
+                        .isInstanceOf(IllegalStateException.class).hasMessageContaining("不一致");
+            }
+            verify(costLedgerService, never()).postBatch(anyList());
         }
     }
 }

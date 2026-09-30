@@ -4,7 +4,8 @@
       <text>加载中...</text>
     </view>
 
-    <template v-if="!loading">
+    <view v-if="loadError" class="section"><text>{{ loadError }}</text><button @click="loadDetail">重新加载详情</button></view>
+    <template v-if="!loading && loaded">
       <!-- 业务信息 -->
       <view class="section">
         <view class="section-title">审批信息</view>
@@ -36,7 +37,7 @@
       </view>
 
       <!-- 审批意见 -->
-      <view class="section" v-if="detail.status !== 'done'">
+      <view class="section" v-if="canAct">
         <view class="section-title">审批意见</view>
         <view class="textarea-wrap">
           <textarea v-model="comment" placeholder="请输入审批意见" class="textarea" :maxlength="500" />
@@ -44,7 +45,7 @@
       </view>
 
       <!-- 操作按钮 -->
-      <view class="action-bar" v-if="detail.status !== 'done'">
+      <view class="action-bar" v-if="canAct">
         <button class="btn-reject" @click="handleReject" :loading="submitting">退回</button>
         <button class="btn-approve" @click="handleApprove" :loading="submitting">通过</button>
       </view>
@@ -66,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { completeTask, rejectTask } from '@/api/common'
 import request from '@/utils/request'
@@ -77,6 +78,11 @@ const comment = ref('')
 const loading = ref(true)
 const submitting = ref(false)
 let taskId = ''
+let loadVersion = 0
+const loaded = ref(false)
+const loadError = ref('')
+const paymentReady = ref(false)
+const canAct = computed(() => loaded.value && !loading.value && detail.value.status === 'pending' && detail.value.taskId === taskId && (detail.value.businessType !== 'PAYMENT_APPLY' || paymentReady.value))
 
 onLoad((options: any) => {
   taskId = options.taskId || ''
@@ -84,19 +90,39 @@ onLoad((options: any) => {
 })
 
 async function loadDetail() {
-  loading.value = true
+  const version = ++loadVersion
+  loading.value = true; loaded.value = false; paymentReady.value = false; loadError.value = ''; detail.value = {}
   try {
-    const res: any = await request({
-      url: `/v1/workflow/approval/detail/${taskId}`,
-    })
-    detail.value = res.data || {}
-  } catch {} finally {
-    loading.value = false
-  }
+    if (!taskId) throw new Error('missing taskId')
+    const res: any = await request({ url: `/v1/workflow/approval/detail/${encodeURIComponent(taskId)}` })
+    if (version !== loadVersion) return
+    const data = res.data
+    if (!data || data.taskId !== taskId || !['pending', 'done'].includes(data.status) || !data.businessType || !/^[1-9]\d*$/.test(String(data.businessId))) throw new Error('invalid detail')
+    detail.value = data
+    if (data.businessType === 'PAYMENT_APPLY') {
+      const source: any = await request({ url: `/v1/finance/payment-apply/${data.businessId}` })
+      if (version !== loadVersion) return
+      if (!source.data || String(source.data.id) !== String(data.businessId) || (data.status === 'pending' && (source.data.status !== 'SUBMITTED' || !data.processInstanceId || source.data.workflowInstanceId !== data.processInstanceId))) throw new Error('invalid payment source')
+      if (!/^[1-9]\d*$/.test(String(source.data.projectId)) || (typeof source.data.paymentAmount !== 'number' && typeof source.data.paymentAmount !== 'string') || !/^\d+(\.\d+)?$/.test(String(source.data.paymentAmount)) || !Number.isFinite(Number(source.data.paymentAmount)) || Number(source.data.paymentAmount) <= 0) throw new Error('invalid payment amount or project')
+      const amount = (value: unknown) => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? '未提供' : new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(Number(value))
+      detail.value.businessData = {
+        '项目ID': source.data.projectId || '未提供',
+        '付款金额（源单）': amount(source.data.paymentAmount),
+        '收款单位': source.data.supplierName || '未提供',
+        '合同分类 / ID': `${source.data.contractCategory || '未提供'} / ${source.data.contractId || '未提供'}`,
+        '累计结算快照': amount(source.data.cumulativeSettlementSnapshot),
+        '可付快照（非实时余额）': amount(source.data.unpaidAmountSnapshot),
+        '预算校验结果 / 附件': '接口未提供，不代表校验通过',
+      }
+      paymentReady.value = true
+    }
+    loaded.value = true
+  } catch { if (version === loadVersion) loadError.value = '审批详情或付款源单加载失败，操作已阻断，请重新加载。' }
+  finally { if (version === loadVersion) loading.value = false }
 }
 
 async function handleApprove() {
-  if (submitting.value) return
+  if (submitting.value || !canAct.value) return
   // 审批为强一致操作，离线不入队，明确拒绝（不静默）
   if (rejectIfOffline('审批操作需联网进行，请联网后重试')) return
   submitting.value = true
@@ -111,7 +137,7 @@ async function handleApprove() {
 }
 
 async function handleReject() {
-  if (submitting.value) return
+  if (submitting.value || !canAct.value) return
   if (!comment.value.trim()) {
     uni.showToast({ title: '退回需填写意见', icon: 'none' })
     return

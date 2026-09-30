@@ -56,6 +56,15 @@ public class ChangeEventApprovedCostHandler
     private static final String SOURCE_TYPE = CostLedgerService.SRC_CHANGE_EVENT;
 
     private final CostLedgerService costLedgerService;
+    private final com.zwinsight.budget.mapper.BizCostAccountMapper costAccountMapper;
+
+    private static void requireCents(BigDecimal amount) {
+        try {
+            amount.setScale(2, java.math.RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException e) {
+            throw new IllegalStateException("成本金额必须精确到分", e);
+        }
+    }
 
     @Override
     public String supports() {
@@ -92,15 +101,27 @@ public class ChangeEventApprovedCostHandler
         // 交叉校验：明细合计应与评估总额一致，不一致说明评估数据自相矛盾
         BigDecimal detailSum = event.sumAccountDeltas();
         BigDecimal declared = event.getCostDelta() != null ? event.getCostDelta() : BigDecimal.ZERO;
-        if (declared.signum() != 0 && detailSum.compareTo(declared) != 0) {
-            log.warn("变更事件[{}]评估成本影响 {} 与账户明细合计 {} 不一致，以明细为准并留痕",
-                    event.getEventNumber(), declared, detailSum);
+        requireCents(declared);
+        if (detailSum.compareTo(declared) != 0) {
+            throw new IllegalStateException("成本影响金额与账户明细合计不一致：" + event.getEventNumber());
         }
+        java.util.Set<Long> ids = new java.util.HashSet<>();
 
         List<CostLedgerService.PostCommand> commands = new ArrayList<>();
         for (ChangeEventApprovedEvent.AccountDelta delta : event.getAffectedAccounts()) {
-            if (delta == null || delta.getAccountId() == null) {
-                continue;
+            if (delta == null || delta.getAccountId() == null || delta.getDeltaAmount() == null
+                    || !("INCREASE".equalsIgnoreCase(delta.getDeltaType())
+                    || "DECREASE".equalsIgnoreCase(delta.getDeltaType()))
+                    || delta.getDeltaAmount().signum() < 0 || !ids.add(delta.getAccountId())) {
+                throw new IllegalStateException("受影响成本账户明细无效或账户重复");
+            }
+            requireCents(delta.getDeltaAmount());
+            com.zwinsight.budget.domain.BizCostAccount account = costAccountMapper.selectById(delta.getAccountId());
+            if (account == null || event.getProjectId() == null || event.getTenantId() == null
+                    || !event.getProjectId().equals(account.getProjectId())
+                    || !event.getTenantId().equals(account.getTenantId())
+                    || Integer.valueOf(1).equals(account.getDeleted())) {
+                throw new IllegalStateException("受影响成本账户不存在或不属于当前项目/租户：" + delta.getAccountId());
             }
             BigDecimal signed = delta.toSignedAmount();
             if (signed.signum() == 0) {

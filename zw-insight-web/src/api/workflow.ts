@@ -35,6 +35,10 @@ export function getTodoTasks(params: any) {
   return request.get('/v1/workflow/approval/todo', { params })
 }
 
+export function getApprovalDetail(taskId: string) {
+  return request.get(`/v1/workflow/approval/detail/${encodeURIComponent(taskId)}`)
+}
+
 export function getDoneTasks(params: any) {
   return request.get('/v1/workflow/approval/done', { params })
 }

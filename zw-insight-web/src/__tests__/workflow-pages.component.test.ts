@@ -7,7 +7,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
 const {
-  mockTodo, mockDone, mockComplete, mockRejectPrev, mockRejectStart, mockTerminate, mockBatchApprove,
+  mockTodo, mockDone, mockComplete, mockRejectPrev, mockRejectStart, mockTerminate, mockBatchApprove, mockApprovalDetail, mockPaymentDetail,
   mockBtTree, mockBtDetail, mockBtCreate, mockBtUpdate, mockBtDelete,
   mockDeploy, mockProcessList, mockProcessImage, mockProcessVersions,
   mockRollbackLogs, mockConfirmConflict,
@@ -32,6 +32,8 @@ const {
   return {
     mockTodo: page(), mockDone: page(), mockComplete: ok(), mockRejectPrev: ok(), mockRejectStart: ok(),
     mockTerminate: ok(), mockBatchApprove: ok(),
+    mockApprovalDetail: vi.fn(async (taskId: string) => ({ code: 200, data: { taskId, taskName: '审批任务', status: 'pending', businessType: 'OTHER', businessId: '12', processInstanceId: 'p1' } })),
+    mockPaymentDetail: vi.fn(async (_id: number) => ({ code: 200, data: { id: '12', projectId: '21', projectName: '项目甲', paymentAmount: 123, status: 'SUBMITTED', workflowInstanceId: 'p1' } })),
     mockBtTree: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
     mockBtDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
     mockBtCreate: ok(), mockBtUpdate: ok(), mockBtDelete: ok(),
@@ -53,13 +55,14 @@ const {
 vi.mock('@/api/workflow', () => ({
   getTodoTasks: mockTodo, getDoneTasks: mockDone, completeTask: mockComplete,
   rejectToPrevious: mockRejectPrev, rejectToStart: mockRejectStart, terminateProcess: mockTerminate,
-  batchApprove: mockBatchApprove,
+  batchApprove: mockBatchApprove, getApprovalDetail: mockApprovalDetail,
   getBusinessTypeTree: mockBtTree, getBusinessTypeDetail: mockBtDetail,
   createBusinessType: mockBtCreate, updateBusinessType: mockBtUpdate, deleteBusinessType: mockBtDelete,
   deployProcess: mockDeploy, getProcessList: mockProcessList,
   getProcessImage: mockProcessImage, getProcessVersions: mockProcessVersions,
   getRollbackLogs: mockRollbackLogs, confirmRollbackConflict: mockConfirmConflict,
 }))
+vi.mock('@/api/finance', () => ({ getPaymentApplyDetail: mockPaymentDetail }))
 vi.mock('@/api/print-template', () => ({
   getPrintTemplatePage: mockPrintPage, createPrintTemplate: mockPrintCreate,
   updatePrintTemplate: mockPrintUpdate, deletePrintTemplate: mockPrintDelete,
@@ -160,41 +163,33 @@ describe('workflow/approval/index.vue 审批中心', () => {
   it('通过/退回走对话框提交流程、终止直接调 API', async () => {
     await mountPage()
     const st = wrapper.vm.$.setupState
-    // 通过：打开对话框 → submitApprove 调 completeTask
-    st.handleApprove({ taskId: 't1' })
-    expect(st.approveDialogVisible).toBe(true)
-    expect(st.approveForm.taskId).toBe('t1')
-    await st.submitApprove()
-    await flushPromises()
-    expect(mockComplete).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't1' }))
-    // 退回：默认 previous 类型 → submitReject 调 rejectToPrevious
-    st.handleReject({ taskId: 't2' })
-    expect(st.rejectForm.type).toBe('previous')
-    await st.submitReject()
-    await flushPromises()
-    expect(mockRejectPrev).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't2' }))
-    // 退回发起人分支
-    st.rejectForm.type = 'start'
-    st.rejectForm.taskId = 't2b'
-    await st.submitReject()
-    await flushPromises()
-    expect(mockRejectStart).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't2b' }))
-    // 终止直接调 terminateProcess
-    await st.handleTerminate({ taskId: 't3' })
-    await flushPromises()
-    expect(mockTerminate).toHaveBeenCalledWith({ taskId: 't3' })
+    for (const [taskId, action, rejectType, api] of [
+      ['t1', 'approve', 'previous', mockComplete], ['t2', 'reject', 'previous', mockRejectPrev],
+      ['t2b', 'reject', 'start', mockRejectStart], ['t3', 'terminate', 'previous', mockTerminate],
+    ] as const) {
+      await st.openDetail({ taskId })
+      expect(st.drawerVisible).toBe(true)
+      expect(st.detail.taskId).toBe(taskId)
+      st.comment = '核对意见'; st.rejectType = rejectType
+      await st.submitAction(action)
+      expect(api).toHaveBeenCalledWith({ taskId, comment: '核对意见' })
+    }
   })
 
   it('批量通过调 batchApprove（勾选任务 taskId 列表）', async () => {
     await mountPage()
     const st = wrapper.vm.$.setupState
-    st.handleSelectionChange([{ taskId: 'a' }, { taskId: 'b' }])
+    st.selectedRows = [{ taskId: 'a' }, { taskId: 'b' }]
     await st.handleBatchApprove()
+    expect(mockApprovalDetail).toHaveBeenCalledWith('a')
+    expect(mockApprovalDetail).toHaveBeenCalledWith('b')
+    expect(mockBatchApprove).not.toHaveBeenCalled()
+    await st.submitBatch()
     await flushPromises()
     expect(mockBatchApprove).toHaveBeenCalledWith({ taskIds: ['a', 'b'] })
   })
 
-  it('乐观更新（S2.3）：批量通过成功——请求发出前本地已移除选中行（即时反馈）', async () => {
+  it('批量通过成功——请求成功前保留行，成功后刷新权威列表', async () => {
     mockTodo.mockResolvedValue({ code: 200, data: { records: [
       { taskId: 'a', taskName: '任务A' }, { taskId: 'b', taskName: '任务B' }, { taskId: 'c', taskName: '任务C' },
     ], total: 3 } })
@@ -202,24 +197,21 @@ describe('workflow/approval/index.vue 审批中心', () => {
     await flushPromises()
     const st = wrapper.vm.$.setupState
 
-    // 在 batchApprove 被调用的瞬间捕获 tableData（此时乐观移除应已先行发生）
-    let optimisticSnapshot: string[] = []
-    mockBatchApprove.mockImplementationOnce(async () => {
-      optimisticSnapshot = st.tableData.map((r: any) => r.taskId)
-      return { code: 200 } as any
-    })
-
-    st.handleSelectionChange([{ taskId: 'a' }, { taskId: 'b' }])
+    st.selectedRows = [{ taskId: 'a' }, { taskId: 'b' }]
     await st.handleBatchApprove()
-    await flushPromises()
-
+    mockTodo.mockClear()
+    let resolveRequest: (value: any) => void = () => {}
+    mockBatchApprove.mockImplementationOnce(() => new Promise(resolve => { resolveRequest = resolve }))
+    const submission = st.submitBatch()
     expect(mockBatchApprove).toHaveBeenCalledWith({ taskIds: ['a', 'b'] })
-    // 乐观移除先行：请求发出时本地只剩 c
-    expect(optimisticSnapshot).toEqual(['c'])
+    expect(st.tableData.map((row: any) => row.taskId)).toEqual(['a', 'b', 'c'])
+    expect(mockTodo).not.toHaveBeenCalled()
+    resolveRequest({ code: 200 }); await submission
+    expect(mockTodo).toHaveBeenCalledTimes(1)
     expect(st.selectedRows).toEqual([])
   })
 
-  it('乐观更新（S2.3）：batchApprove 失败——还原快照 + warning 提示（不静默丢数据）', async () => {
+  it('batchApprove 失败——保留行与明确错误（不静默丢数据）', async () => {
     mockTodo.mockResolvedValue({ code: 200, data: { records: [
       { taskId: 'a', taskName: '任务A' }, { taskId: 'b', taskName: '任务B' },
     ], total: 2 } })
@@ -228,12 +220,14 @@ describe('workflow/approval/index.vue 审批中心', () => {
     const st = wrapper.vm.$.setupState
 
     mockBatchApprove.mockRejectedValueOnce(new Error('网络异常') as any)
-    st.handleSelectionChange([{ taskId: 'a' }])
+    st.selectedRows = [{ taskId: 'a' }]
     await st.handleBatchApprove()
+    await st.submitBatch()
     await flushPromises()
-
-    // 失败回滚：两条数据完整还原
     expect(st.tableData.map((r: any) => r.taskId)).toEqual(['a', 'b'])
+    expect(st.batchError).toContain('批量操作未完成')
+    expect(st.batchError).toContain('逐条核对')
+    expect(st.batchVisible).toBe(true)
   })
 })
 

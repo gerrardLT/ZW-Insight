@@ -1,395 +1,183 @@
 <template>
   <div class="approval-container">
     <el-card shadow="never">
-      <!-- Tab 切换 -->
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-        <el-tab-pane label="待办任务" name="todo" />
-        <el-tab-pane label="已办任务" name="done" />
+        <el-tab-pane label="待办任务" name="todo" /><el-tab-pane label="已办任务" name="done" />
       </el-tabs>
-
-      <!-- 操作栏 -->
-      <div class="table-toolbar" v-if="activeTab === 'todo'">
-        <el-button type="success" :disabled="selectedRows.length === 0" @click="handleBatchApprove">
-          <el-icon><Check /></el-icon>批量通过
-        </el-button>
-        <ColumnSettingPopover
-          :columns="approvalColumns"
-          :visible="columnVisible"
-          @update:visible="setVisible"
-          @reset="resetColumns"
-        />
+      <div class="table-toolbar">
+        <el-button v-if="activeTab === 'todo'" :disabled="!selectedRows.length || loading || submitLoading" @click="handleBatchApprove">核对批量通过</el-button>
+        <ColumnSettingPopover :columns="approvalColumns" :visible="columnVisible" @update:visible="setVisible" @reset="resetColumns" />
       </div>
-
-      <!-- 首屏骨架屏：loading 期间显示骨架，完成后渲染表格（感知性能优化 S1.4） -->
-      <el-skeleton :loading="loading" :rows="5" animated>
-        <el-table
-          :data="tableData"
-          border
-          @selection-change="handleSelectionChange"
-        >
-            <el-table-column v-if="activeTab === 'todo'" type="selection" width="50" align="center" />
+      <div v-if="listError" role="alert">{{ listError }} <el-button @click="loadData">重新加载列表</el-button></div>
+      <div ref="tableRegion" tabindex="0" aria-label="审批任务表格，方向键导航，空格勾选，Enter查看详情" @keydown="handleTableKeydown">
+        <el-skeleton :loading="loading" :rows="5" animated>
+          <el-table ref="tableRef" :data="tableData" row-key="taskId" border highlight-current-row @selection-change="selectedRows = $event">
+            <el-table-column v-if="activeTab === 'todo'" type="selection" width="50" />
             <el-table-column v-if="columnVisible[0]" prop="taskName" label="任务名称" min-width="150" />
-            <el-table-column v-if="columnVisible[1]" prop="businessType" label="业务类型" width="120" />
+            <el-table-column v-if="columnVisible[1]" prop="businessType" label="业务类型" width="150" />
             <el-table-column v-if="columnVisible[2]" prop="initiator" label="发起人" width="100" />
             <el-table-column v-if="columnVisible[3]" prop="createTime" label="创建时间" width="170" />
-            <el-table-column label="操作" width="220" fixed="right" v-if="activeTab === 'todo'">
-              <template #default="{ row }">
-                <el-button link type="success" @click="handleApprove(row)">通过</el-button>
-                <el-button link type="warning" @click="handleReject(row)">退回</el-button>
-                <el-button link type="danger" @click="handleTerminate(row)">终止</el-button>
-              </template>
-            </el-table-column>
+            <el-table-column label="操作" width="130" fixed="right"><template #default="{ row }"><el-button link type="primary" @click="openDetail(row)">查看详情 / 审批</el-button></template></el-table-column>
           </el-table>
-      </el-skeleton>
-
-      <!-- 分页 -->
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="queryParams.page"
-          v-model:page-size="queryParams.size"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="loadData"
-          @current-change="loadData"
-        />
+        </el-skeleton>
       </div>
+      <div class="pagination-wrap"><el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.size" :page-sizes="[10, 20, 50, 100]" :total="total" layout="total, sizes, prev, pager, next" @size-change="loadData" @current-change="loadData" /></div>
     </el-card>
-
-    <!-- 审批弹窗 -->
-    <el-dialog v-model="approveDialogVisible" title="审批意见" width="500px" destroy-on-close>
-      <el-form :model="approveForm" label-width="80px">
-        <el-form-item label="审批意见">
-          <el-input
-            v-model="approveForm.comment"
-            type="textarea"
-            placeholder="请输入审批意见"
-            :rows="4"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="approveDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="submitApprove">确定</el-button>
+    <el-drawer v-model="drawerVisible" title="审批详情与意见" size="min(640px, 100vw)" @closed="invalidateDetail">
+      <p v-if="detailLoading" role="status">正在核对审批详情及业务源单…</p>
+      <div v-if="detailError" role="alert">{{ detailError }} <el-button @click="retryDetail">重新加载详情</el-button></div>
+      <template v-if="detail">
+        <h2>{{ detail.taskName || detail.processName || '审批详情' }}</h2>
+        <dl class="summary"><dt>业务类型 / ID</dt><dd>{{ detail.businessType }} / {{ detail.businessId }}</dd><dt>任务状态（详情接口）</dt><dd>{{ detail.status }}</dd><dt>申请人</dt><dd>{{ detail.startUserName || '未提供' }}</dd><dt>申请时间</dt><dd>{{ detail.createTime || '未提供' }}</dd></dl>
+        <template v-if="detail.businessType === PAYMENT_TYPE">
+          <h3>付款源单摘要</h3>
+          <dl v-if="payment" class="summary">
+            <dt>项目</dt><dd>{{ projectName || '未提供' }}（ID：{{ payment.projectId || '未提供' }}）</dd>
+            <dt>付款金额</dt><dd>{{ money(payment.paymentAmount) }}</dd><dt>收款单位</dt><dd>{{ payment.supplierName || '未提供' }}</dd>
+            <dt>合同分类 / ID</dt><dd>{{ payment.contractCategory || '未提供' }} / {{ payment.contractId || '未提供' }}</dd>
+            <dt>累计结算快照</dt><dd>{{ money(payment.cumulativeSettlementSnapshot) }}</dd><dt>可付快照（未付金额）</dt><dd>{{ money(payment.unpaidAmountSnapshot) }}</dd>
+            <dt>源单状态</dt><dd>{{ payment.status }}</dd>
+          </dl>
+          <p>预算校验说明：当前接口未提供预算校验结果，不代表已通过预算校验。附件：当前接口未提供。快照不代表实时余额。</p>
+        </template>
+        <p v-else>业务摘要：{{ detail.businessTitle || '未提供' }}。金额合计：未提供（详情未提供可核验源单金额）。</p>
+        <h3>审批历史</h3>
+        <p v-if="!detail.approvalRecords?.length">暂无审批记录</p>
+        <ol v-else class="history"><li v-for="record in detail.approvalRecords" :key="record.id">{{ record.assigneeName || '未提供' }} · {{ record.resultText }} · {{ record.endTime }}<p>{{ record.comment || '未提供意见' }}</p></li></ol>
+        <template v-if="activeTab === 'todo' && detail.status === 'pending'">
+          <p v-if="blocked" role="alert">{{ blocked }}</p>
+          <el-form label-position="top"><el-form-item label="审批意见（退回、终止必填）"><el-input v-model="comment" type="textarea" :rows="4" maxlength="500" show-word-limit /></el-form-item><el-form-item label="退回方式"><el-radio-group v-model="rejectType"><el-radio value="previous">退回上一步</el-radio><el-radio value="start">退回发起人</el-radio></el-radio-group></el-form-item></el-form>
+          <div class="actions"><el-button type="success" :disabled="!!blocked || submitLoading" @click="submitAction('approve')">确认本单通过</el-button><el-button type="warning" :disabled="!!blocked || submitLoading" @click="submitAction('reject')">退回</el-button><el-button type="danger" :disabled="!!blocked || submitLoading" @click="submitAction('terminate')">终止流程</el-button></div>
+          <p class="secondary">操作权限以服务端校验为准；前端核对不构成授权。</p>
+        </template>
       </template>
-    </el-dialog>
-
-    <!-- 退回弹窗 -->
-    <el-dialog v-model="rejectDialogVisible" title="退回任务" width="500px" destroy-on-close>
-      <el-form :model="rejectForm" label-width="80px">
-        <el-form-item label="退回方式">
-          <el-radio-group v-model="rejectForm.type">
-            <el-radio value="previous">退回上一步</el-radio>
-            <el-radio value="start">退回发起人</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="退回原因">
-          <el-input
-            v-model="rejectForm.comment"
-            type="textarea"
-            placeholder="请输入退回原因"
-            :rows="4"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="rejectDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="submitReject">确定</el-button>
-      </template>
+    </el-drawer>
+    <el-dialog v-model="batchVisible" title="批量核对确认" width="min(680px, 95vw)" :close-on-click-modal="false">
+      <p v-if="batchLoading" role="status">正在逐条加载审批详情…</p><p v-if="batchError" role="alert">{{ batchError }}</p>
+      <ul class="history"><li v-for="item in batchDetails" :key="item.taskId">{{ item.taskName }} · {{ item.businessType }} / {{ item.businessId }}<p>{{ item.businessTitle || '未提供摘要' }} · 金额：未提供</p></li></ul>
+      <p>金额合计：未提供。当前同类型详情无可核验源单金额；付款申请禁止批量通过，须逐单确认。</p>
+      <template #footer><el-button :disabled="submitLoading" @click="batchVisible = false">取消</el-button><el-button type="primary" :disabled="batchLoading || !!batchError || !batchDetails.length || submitLoading" @click="submitBatch">确认以上同类型任务通过</el-button></template>
     </el-dialog>
   </div>
 </template>
-
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
-import {
-  getTodoTasks,
-  getDoneTasks,
-  completeTask,
-  rejectToPrevious,
-  rejectToStart,
-  terminateProcess,
-  batchApprove
-} from '@/api/workflow'
-
-// 列显隐配置（S2.1）：按 approval-table 持久化 localStorage
-const approvalColumns = [
-  { key: 'taskName', label: '任务名称' },
-  { key: 'businessType', label: '业务类型' },
-  { key: 'initiator', label: '发起人' },
-  { key: 'createTime', label: '创建时间' },
-]
+import { getTodoTasks, getDoneTasks, getApprovalDetail, completeTask, rejectToPrevious, rejectToStart, terminateProcess, batchApprove } from '@/api/workflow'
+import { getPaymentApplyDetail } from '@/api/finance'
+import { getProjectDetail } from '@/api/project'
+import { approvalBlock, batchBlock, money, validId, PAYMENT_TYPE } from './approval'
+const approvalColumns = [{ key: 'taskName', label: '任务名称' }, { key: 'businessType', label: '业务类型' }, { key: 'initiator', label: '发起人' }, { key: 'createTime', label: '创建时间' }]
 const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('approval-table', approvalColumns)
-
-const loading = ref(false)
-const tableData = ref<any[]>([])
-const total = ref(0)
-const activeTab = ref('todo')
-const selectedRows = ref<any[]>([])
-const approveDialogVisible = ref(false)
-const rejectDialogVisible = ref(false)
-const submitLoading = ref(false)
-const currentRowIndex = ref(-1) // 当前选中行索引
-const tbodyRef = ref<HTMLElement | null>(null) // 表格 tbody 引用
-
-// 后端 /todo /done 收 page/size（ApprovalController SoT），
-// 原传 pageNum/pageSize 致后端永用默认值，翻页/改页大小实际失效（2026-08-17 真实浏览器实测修复）
-const queryParams = ref({
-  page: 1,
-  size: 10
-})
-
-const approveForm = ref({
-  taskId: '',
-  comment: ''
-})
-
-const rejectForm = ref({
-  taskId: '',
-  type: 'previous',
-  comment: ''
-})
-
-// P1 Keyboard Shortcuts：全局快捷键处理
-function handleGlobalKeydown(event: KeyboardEvent) {
-  // 忽略在输入框、文本域中的按键事件
-  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
-    return
-  }
-
-  // Ctrl+Enter 提交审批/驳回表单
-  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-    if (approveDialogVisible.value) {
-      event.preventDefault()
-      submitApprove()
-    } else if (rejectDialogVisible.value) {
-      event.preventDefault()
-      submitReject()
-    }
-    return
-  }
-
-  // 仅当在待办 Tab 时启用行导航
-  if (activeTab.value !== 'todo') return
-
-  // 方向键导航
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    navigateRow(1)
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    navigateRow(-1)
-  } else if (event.key === ' ') {
-    // 空格选择行
-    event.preventDefault()
-    toggleRowSelection()
-  } else if (event.key === 'Enter') {
-    // Enter 快速通过/退回
-    event.preventDefault()
-    quickAction()
-  } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
-    // Ctrl+A 全选
-    event.preventDefault()
-    selectAll()
-  }
-}
-
-function navigateRow(direction: number) {
-  const newIndex = currentRowIndex.value + direction
-  if (newIndex >= 0 && newIndex < tableData.value.length) {
-    currentRowIndex.value = newIndex
-    highlightRow(newIndex)
-  }
-}
-
-function highlightRow(index: number) {
-  // 获取当前页面的所有行元素并高亮选中行
-  nextTick(() => {
-    const rows = document.querySelectorAll('.el-table__body-wrapper tbody tr.el-table__row')
-    rows.forEach((row, i) => {
-      if (i === index) {
-        row.classList.add('keyboard-focused')
-        row.scrollIntoView({ block: 'nearest' })
-      } else {
-        row.classList.remove('keyboard-focused')
-      }
-    })
-  })
-}
-
-function toggleRowSelection() {
-  if (currentRowIndex.value >= 0 && currentRowIndex.value < tableData.value.length) {
-    const row = tableData.value[currentRowIndex.value]
-    const isSelected = selectedRows.value.some(r => r.taskId === row.taskId)
-    if (isSelected) {
-      selectedRows.value = selectedRows.value.filter(r => r.taskId !== row.taskId)
-    } else {
-      selectedRows.value.push(row)
-    }
-  }
-}
-
-function quickAction() {
-  if (currentRowIndex.value >= 0 && currentRowIndex.value < tableData.value.length) {
-    const row = tableData.value[currentRowIndex.value]
-    if (!row) return
-
-    // 如果有行被选中，执行批量操作；否则对当前行执行通过
-    if (selectedRows.value.length > 0) {
-      handleBatchApprove()
-    } else {
-      handleApprove(row)
-    }
-  }
-}
-
-function selectAll() {
-  if (tableData.value.length > 0) {
-    selectedRows.value = [...tableData.value]
-  } else {
-    selectedRows.value = []
-  }
-}
-
+const activeTab = ref('todo'), loading = ref(false), listError = ref(''), tableData = ref<any[]>([]), total = ref(0), selectedRows = ref<any[]>([])
+const queryParams = ref({ page: 1, size: 10 }), tableRef = ref<any>(), tableRegion = ref<HTMLElement>(), currentRowIndex = ref(-1)
+const drawerVisible = ref(false), detailLoading = ref(false), detailError = ref(''), detail = ref<any>(null), payment = ref<any>(null), projectName = ref(''), currentTaskId = ref(''), comment = ref(''), rejectType = ref('previous'), submitLoading = ref(false)
+const batchVisible = ref(false), batchLoading = ref(false), batchError = ref(''), batchDetails = ref<any[]>([])
+let listVersion = 0, detailVersion = 0, batchVersion = 0
+const blocked = computed(() => detailLoading.value ? '详情尚未加载完成' : detailError.value || approvalBlock(detail.value, currentTaskId.value, payment.value))
 async function loadData() {
-  loading.value = true
+  const version = ++listVersion
+  loading.value = true; listError.value = ''; selectedRows.value = []; currentRowIndex.value = -1
   try {
-    const api = activeTab.value === 'todo' ? getTodoTasks : getDoneTasks
-    const res: any = await api(queryParams.value)
-    tableData.value = res.data?.records || []
-    total.value = res.data?.total || 0
-    currentRowIndex.value = -1 // 数据刷新时重置行索引
-  } finally {
-    loading.value = false
-  }
+    const res: any = await (activeTab.value === 'todo' ? getTodoTasks : getDoneTasks)({ ...queryParams.value })
+    if (version !== listVersion) return
+    if (!Array.isArray(res.data?.records) || typeof res.data?.total !== 'number') throw new Error('invalid response')
+    tableData.value = res.data.records; total.value = res.data.total
+  } catch { if (version === listVersion) { tableData.value = []; total.value = 0; listError.value = '审批列表加载失败，请重试。' } }
+  finally { if (version === listVersion) loading.value = false }
 }
-
-function handleTabChange() {
-  queryParams.value.page = 1
-  selectedRows.value = []
-  currentRowIndex.value = -1
-  loadData()
-}
-
-function handleSelectionChange(rows: any[]) {
-  selectedRows.value = rows
-  currentRowIndex.value = -1 // 手动勾选时重置行导航状态
-}
-
-function handleApprove(row: any) {
-  approveForm.value = { taskId: row.taskId, comment: '' }
-  approveDialogVisible.value = true
-  // 对话框打开后聚焦到第一个输入框
-  nextTick(() => {
-    const input = document.querySelector('.el-dialog__input textarea') as HTMLTextAreaElement
-    input?.focus()
-  })
-}
-
-async function submitApprove() {
-  submitLoading.value = true
+function invalidateDetail() { ++detailVersion; detail.value = null; payment.value = null }
+function handleTabChange() { queryParams.value.page = 1; drawerVisible.value = false; invalidateDetail(); batchVisible.value = false; ++batchVersion; loadData() }
+async function openDetail(row: any) {
+  if (submitLoading.value) return
+  const version = ++detailVersion
+  currentTaskId.value = typeof row.taskId === 'string' ? row.taskId : ''; drawerVisible.value = true; detailLoading.value = true; detailError.value = ''; detail.value = null; payment.value = null; projectName.value = ''; comment.value = ''
   try {
-    await completeTask(approveForm.value)
-    ElMessage.success('审批通过')
-    approveDialogVisible.value = false
-    loadData()
-  } finally {
-    submitLoading.value = false
-  }
-}
-
-function handleReject(row: any) {
-  rejectForm.value = { taskId: row.taskId, type: 'previous', comment: '' }
-  rejectDialogVisible.value = true
-  nextTick(() => {
-    const input = document.querySelector('.el-dialog__reject textarea') as HTMLTextAreaElement
-    input?.focus()
-  })
-}
-
-async function submitReject() {
-  submitLoading.value = true
-  try {
-    const data = { taskId: rejectForm.value.taskId, comment: rejectForm.value.comment }
-    if (rejectForm.value.type === 'previous') {
-      await rejectToPrevious(data)
-    } else {
-      await rejectToStart(data)
+    if (!currentTaskId.value) throw new Error('missing task')
+    const res: any = await getApprovalDetail(currentTaskId.value)
+    if (version !== detailVersion) return
+    const data = res.data
+    if (!data || data.taskId !== currentTaskId.value || !['pending', 'done'].includes(data.status) || !validId(data.businessId) || !data.businessType) throw new Error('invalid detail')
+    if ((row.businessType && row.businessType !== data.businessType) || (row.businessId != null && String(row.businessId) !== String(data.businessId))) throw new Error('business mismatch')
+    detail.value = data
+    if (data.businessType === PAYMENT_TYPE) {
+      // API路径保持原有接口；不把雪花ID转为Number，避免精度丢失。
+      const source: any = await getPaymentApplyDetail(data.businessId)
+      if (version !== detailVersion) return
+      if (!source.data || String(source.data.id) !== String(data.businessId)) throw new Error('invalid payment')
+      payment.value = source.data; projectName.value = source.data.projectName || ''
+      if (!validId(source.data.projectId)) throw new Error('invalid projectId')
+      if (!projectName.value) {
+        const project: any = await getProjectDetail(source.data.projectId)
+        if (version !== detailVersion) return
+        if (String(project.data?.id) !== String(source.data.projectId) || !project.data?.projectName?.trim()) throw new Error('invalid project detail')
+        projectName.value = project.data.projectName
+      }
     }
-    ElMessage.success('退回成功')
-    rejectDialogVisible.value = false
-    loadData()
-  } finally {
-    submitLoading.value = false
-  }
+  } catch { if (version === detailVersion) detailError.value = '审批详情或付款源单加载失败，全部审批动作已阻断。请重试。' }
+  finally { if (version === detailVersion) detailLoading.value = false }
 }
-
-async function handleTerminate(row: any) {
-  await ElMessageBox.confirm('确定要终止该流程吗？终止后不可恢复。', '提示', { type: 'warning' })
-  await terminateProcess({ taskId: row.taskId })
-  ElMessage.success('已终止')
-  loadData()
-}
-
-async function handleBatchApprove() {
-  await ElMessageBox.confirm(`确定要批量通过选中的 ${selectedRows.value.length} 条任务吗？`, '提示', { type: 'info' })
-  const taskIds = selectedRows.value.map((row) => row.taskId)
-
-  // 乐观更新试点（S2.3）：先本地移除选中行给即时反馈；失败还原快照，不静默丢数据
-  const snapshot = [...tableData.value]
-  const approvedIds = new Set(taskIds)
-  tableData.value = tableData.value.filter((row) => !approvedIds.has(row.taskId))
-  selectedRows.value = []
-  currentRowIndex.value = -1
-
+function retryDetail() { openDetail({ taskId: currentTaskId.value }) }
+async function submitAction(action: 'approve' | 'reject' | 'terminate') {
+  if (submitLoading.value || blocked.value || activeTab.value !== 'todo') return
+  if (action !== 'approve' && !comment.value.trim()) { ElMessage.warning('请填写退回或终止原因'); return }
+  const taskId = currentTaskId.value, version = detailVersion
+  submitLoading.value = true
   try {
-    await batchApprove({ taskIds })
-    ElMessage.success(`批量审批成功（${taskIds.length} 条）`)
-    // 与服务端对齐：静默刷新拿回权威分页数据（页码/总数校正），失败仅告警不阻断
-    await loadData()
-  } catch {
-    // 失败还原快照（拦截器已弹具体错误提示，此处补充数据已恢复的说明）
-    tableData.value = snapshot
-    ElMessage.warning('批量审批未完成，列表数据已恢复')
-  }
+    if (action === 'terminate') await ElMessageBox.confirm('确定终止此流程？终止后不可恢复。', '终止确认', { type: 'warning' })
+    else if (action === 'approve') await ElMessageBox.confirm(`确认通过本单 ${detail.value.businessType} / ${detail.value.businessId}？${payment.value ? '付款金额：' + money(payment.value.paymentAmount) : ''}`, '逐单确认', { type: 'warning' })
+    if (version !== detailVersion || blocked.value) return
+    const payload = { taskId, comment: comment.value.trim() }
+    if (action === 'approve') await completeTask(payload)
+    else if (action === 'terminate') await terminateProcess(payload)
+    else await (rejectType.value === 'previous' ? rejectToPrevious : rejectToStart)(payload)
+    ElMessage.success('操作成功'); drawerVisible.value = false; invalidateDetail(); await loadData()
+  } catch (error) { if (error !== 'cancel' && error !== 'close') ElMessage.error('操作未完成，请刷新详情核对状态后重试') }
+  finally { submitLoading.value = false }
 }
-
-onMounted(() => {
-  document.addEventListener('keydown', handleGlobalKeydown)
-  loadData()
-})
-
-// 卸载时移除全局键盘监听（防内存泄漏与跨页残留操作，S2.2 修复）
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', handleGlobalKeydown)
-})
+async function handleBatchApprove() {
+  if (submitLoading.value || loading.value) return
+  const rows = [...selectedRows.value], version = ++batchVersion
+  batchVisible.value = true; batchLoading.value = true; batchError.value = ''; batchDetails.value = []
+  try {
+    const results = await Promise.all(rows.map(async row => {
+      if (!row.taskId) throw new Error('missing task')
+      const res: any = await getApprovalDetail(row.taskId)
+      if (approvalBlock(res.data, row.taskId) || (row.businessType && row.businessType !== res.data.businessType)) throw new Error('invalid detail or payment requires individual confirmation')
+      return res.data
+    }))
+    if (version !== batchVersion) return
+    batchDetails.value = results; batchError.value = batchBlock(results)
+  } catch { if (version === batchVersion) batchError.value = '有详情加载失败、状态不一致或付款任务。批量操作已阻断；付款申请请逐单确认。' }
+  finally { if (version === batchVersion) batchLoading.value = false }
+}
+async function submitBatch() {
+  if (!batchVisible.value || batchLoading.value || batchError.value || submitLoading.value || batchBlock(batchDetails.value) || batchDetails.value.some(d => approvalBlock(d, d.taskId))) return
+  submitLoading.value = true
+  try { await batchApprove({ taskIds: batchDetails.value.map(d => d.taskId) }); ElMessage.success('批量审批成功'); batchVisible.value = false; await loadData() }
+  catch { batchError.value = '批量操作未完成，可能已有部分任务改变状态。请刷新列表逐条核对。'; await loadData() }
+  finally { submitLoading.value = false }
+}
+function handleTableKeydown(event: KeyboardEvent) {
+  if (event.target !== tableRegion.value || loading.value || drawerVisible.value || batchVisible.value || activeTab.value !== 'todo') return
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault(); currentRowIndex.value = Math.max(0, Math.min(tableData.value.length - 1, currentRowIndex.value + (event.key === 'ArrowDown' ? 1 : -1))); tableRef.value?.setCurrentRow(tableData.value[currentRowIndex.value])
+  } else if (event.key === ' ' && currentRowIndex.value >= 0) { event.preventDefault(); tableRef.value?.toggleRowSelection(tableData.value[currentRowIndex.value]) }
+  else if (event.key === 'Enter' && currentRowIndex.value >= 0) { event.preventDefault(); openDetail(tableData.value[currentRowIndex.value]) }
+}
+onMounted(loadData)
+onBeforeUnmount(() => { ++listVersion; ++detailVersion; ++batchVersion })
 </script>
-
 <style scoped>
-.approval-container {
-  padding: var(--zw-space-md);
-}
-.table-toolbar {
-  margin-bottom: var(--zw-space-md);
-}
-.pagination-wrap {
-  margin-top: var(--zw-space-md);
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* P1 Keyboard Navigation Styles */
-.el-table__row.keyboard-focused {
-  background-color: var(--zw-info-light) !important;
-  outline: 2px solid var(--el-color-primary) !important;
-  outline-offset: -2px;
-}
-
-/* Focus visible for accessibility */
-.el-table__body-wrapper:focus-within .el-table__row.el-table__row--focus-visible {
-  background-color: var(--zw-info-light);
-}
+.approval-container { padding: var(--zw-space-md); }
+.table-toolbar, .actions { display: flex; flex-wrap: wrap; gap: var(--zw-space-sm); margin-bottom: var(--zw-space-md); }
+.pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; overflow-x: auto; }
+.summary { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(0, 2fr); gap: var(--zw-space-sm); }
+.summary dt, .secondary { color: var(--el-text-color-secondary); }
+.summary dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.history { padding-inline-start: var(--zw-space-lg); overflow-wrap: anywhere; }
+[tabindex]:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: 2px; }
+@media (max-width: 600px) { .approval-container { padding: var(--zw-space-sm); } .summary { grid-template-columns: 1fr; } .summary dd { margin-bottom: var(--zw-space-sm); } }
 </style>

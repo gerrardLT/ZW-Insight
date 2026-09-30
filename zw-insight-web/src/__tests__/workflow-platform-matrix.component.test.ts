@@ -200,16 +200,26 @@ describe('workflow/process/index.vue 流程定义（D-30）', () => {
 })
 
 describe('workflow/approval/index.vue 审批中心补盲（D-32）', () => {
-  it('D-32-7 批量通过空选守卫：按钮 disabled + confirm 拒绝时零调用', async () => {
+  it('D-32-7 批量空选双层守卫与取消确认均零调用', async () => {
     wrapper = mount(Approval, { global: { plugins: [ElementPlus] } })
     await flushPromises()
-    const s = src('views/workflow/approval/index.vue')
-    expect(s).toMatch(/:disabled="selectedRows\.length === 0"/)
+    const button = wrapper.findAll('button').find((item: any) => item.text().includes('核对批量通过'))
+    expect(button).toBeDefined()
+    expect(button.attributes('disabled')).toBeDefined()
     const st = wrapper.vm.$.setupState
     st.selectedRows = []
-    mockConfirm.mockRejectedValueOnce('cancel')
-    await expect(st.handleBatchApprove()).rejects.toBeDefined()
+    await st.handleBatchApprove()
+    await st.submitBatch()
+    expect(st.batchDetails).toEqual([])
+    expect(st.batchError).toBeTruthy()
     expect(mockBatchApprove).not.toHaveBeenCalled()
+    // 新确认抽屉的取消不依赖 MessageBox 异常；关闭后函数级守卫仍拒绝提交。
+    st.batchDetails = [{ taskId: 't1', status: 'pending', businessType: 'OTHER', businessId: '12' }]
+    st.batchError = ''
+    st.batchVisible = false
+    await st.submitBatch()
+    expect(mockBatchApprove).not.toHaveBeenCalled()
+    expect(mockConfirm).not.toHaveBeenCalled()
   })
 
   it('D-32-10/11 差距钉住：无委托/转办/撤回 UI，api 无 withdraw（delegateTask/transferTask 存在但页面不消费）', () => {

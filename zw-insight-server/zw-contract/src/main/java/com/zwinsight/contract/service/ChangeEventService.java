@@ -284,6 +284,7 @@ public class ChangeEventService {
             throw new BusinessException("评估理由长度不得超过 2000 字符");
         }
 
+        validateCostDetails(existing, assessment.getCostDelta());
         existing.setImpactAssessment(assessment);
         // 冗余到列上：列表排序/统计走索引，避免每次解析 JSON
         existing.setCostDelta(assessment.getCostDelta());
@@ -292,12 +293,6 @@ public class ChangeEventService {
         existing.setAssessedBy(currentUserId());
         existing.setAssessedAt(LocalDateTime.now());
         existing.setStatus(ChangeEventStatus.APPROVING.name());
-
-        // 评估阶段必须指明影响哪些成本账户，否则批准后无法传导（断链）
-        if (assessment.getCostDelta().signum() != 0 && existing.resolveAffectedAccounts().isEmpty()) {
-            throw new BusinessException("成本影响不为 0 时必须指定受影响的成本账户，"
-                    + "否则批准后无法传导到 CBS 当前预算");
-        }
 
         changeEventMapper.updateById(existing);
 
@@ -323,6 +318,7 @@ public class ChangeEventService {
         ChangeEventStatus current = ChangeEventStatus.fromCode(event.getStatus());
         ChangeEventStatus.assertTransition(current, ChangeEventStatus.APPROVED, event.getEventNumber());
 
+        validateCostDetails(event, event.resolveCostDelta());
         event.setStatus(ChangeEventStatus.APPROVED.name());
         event.setApprovedBy(currentUserId());
         event.setApprovedAt(LocalDateTime.now());
@@ -486,6 +482,44 @@ public class ChangeEventService {
         }
         payload.setAffectedAccounts(deltas);
         return payload;
+    }
+
+    private void validateCostDetails(BizChangeEvent event, BigDecimal declared) {
+        requireCents(declared);
+        List<BizChangeEvent.AffectedAccount> details = event.resolveAffectedAccounts();
+        if (declared.signum() != 0 && details.isEmpty()) {
+            throw new BusinessException("成本影响不为 0 时必须指定受影响的成本账户");
+        }
+        java.util.Set<Long> ids = new java.util.HashSet<>();
+        BigDecimal sum = BigDecimal.ZERO;
+        for (BizChangeEvent.AffectedAccount detail : details) {
+            if (detail == null || detail.getAccountId() == null || detail.getDeltaAmount() == null
+                    || !("INCREASE".equalsIgnoreCase(detail.getDeltaType())
+                    || "DECREASE".equalsIgnoreCase(detail.getDeltaType()))
+                    || detail.getDeltaAmount().signum() < 0 || !ids.add(detail.getAccountId())) {
+                throw new BusinessException("受影响成本账户明细无效或账户重复");
+            }
+            requireCents(detail.getDeltaAmount());
+            sum = sum.add("DECREASE".equalsIgnoreCase(detail.getDeltaType())
+                    ? detail.getDeltaAmount().negate() : detail.getDeltaAmount());
+        }
+        if (sum.compareTo(declared) != 0) {
+            throw new BusinessException("成本影响金额与账户明细合计不一致");
+        }
+        for (Long accountId : ids) {
+            if (event.getProjectId() == null || event.getTenantId() == null
+                    || changeEventMapper.countAffectedAccount(accountId, event.getProjectId(), event.getTenantId()) != 1) {
+                throw new BusinessException("受影响成本账户不存在或不属于当前项目/租户：" + accountId);
+            }
+        }
+    }
+
+    private static void requireCents(BigDecimal amount) {
+        try {
+            amount.setScale(2, java.math.RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException e) {
+            throw new BusinessException("成本金额必须精确到分");
+        }
     }
 
     private Long currentUserId() {

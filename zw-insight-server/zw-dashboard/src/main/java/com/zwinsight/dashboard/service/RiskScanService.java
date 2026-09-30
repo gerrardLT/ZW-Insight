@@ -253,11 +253,21 @@ public class RiskScanService {
             riskMapper.updateById(existing);
             return false;
         }
-        if (ignored) {
-            // 判级升高强制重开（重大风险不允许被永久忽略），留痕原处理信息
+        if (ignored || BizRiskRegister.HANDLE_RESOLVED.equals(existing.getHandleStatus())) {
+            // 复发或忽略后升级均复用原台账，保留原处理人、时间与备注。
+            String reason = ignored
+                    ? "原被忽略，因风险升级(" + existing.getSeverity() + "→" + finding.severity() + ")自动重开"
+                    : "风险复发，扫描再次命中自动重开";
+            String previousNote = existing.getHandleNote();
             existing.setHandleStatus(BizRiskRegister.HANDLE_OPEN);
-            existing.setHandleNote("原被忽略，因风险升级(" + existing.getSeverity() + "→"
-                    + finding.severity() + ")自动重开");
+            String reopenedNote = (previousNote == null || previousNote.isBlank() ? "" : previousNote + "\n")
+                    + now + " " + reason;
+            // ponytail: handle_note 上限500字符；满额保留原文，完整历史需升级独立审计表。
+            if (reopenedNote.codePointCount(0, reopenedNote.length()) <= 500) {
+                existing.setHandleNote(reopenedNote);
+            }
+            log.info("风险自动重开, riskId={}, riskCode={}, reason={}, scanAt={}",
+                    existing.getId(), existing.getRiskCode(), reason, now);
         }
         existing.setSeverity(finding.severity());
         existing.setTitle(finding.title());
