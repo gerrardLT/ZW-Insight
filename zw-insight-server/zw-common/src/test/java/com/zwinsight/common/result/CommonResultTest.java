@@ -9,6 +9,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.util.List;
 
@@ -153,6 +155,26 @@ class CommonResultTest {
 
             assertThat(r.getCode()).isNotEqualTo(200);
             assertThat(r.getMessage()).isNotBlank();
+        }
+
+        @Test
+        @DisplayName("请求体格式错误返回 400 友好提示")
+        void handleHttpMessageNotReadable() {
+            when(request.getRequestURI()).thenReturn("/api/v1/test");
+            R<Void> r = handler.handleHttpMessageNotReadableException(
+                    new HttpMessageNotReadableException("JSON parse error"), request);
+            assertThat(r.getCode()).isEqualTo(400);
+            assertThat(r.getMessage()).contains("请求数据格式错误");
+        }
+
+        @Test
+        @DisplayName("唯一键冲突返回 409 友好提示")
+        void handleDataIntegrityViolation() {
+            when(request.getRequestURI()).thenReturn("/api/v1/test");
+            R<Void> r = handler.handleDataIntegrityViolationException(
+                    new DuplicateKeyException("Duplicate entry"), request);
+            assertThat(r.getCode()).isEqualTo(409);
+            assertThat(r.getMessage()).contains("数据已存在");
         }
 
         @Test

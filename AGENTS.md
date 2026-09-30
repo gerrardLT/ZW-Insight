@@ -1,4 +1,4 @@
-﻿# AGENTS.md - AI 代理人工作约定
+# AGENTS.md - AI 代理人工作约定
 
 本项目采用 **Kiro**（AI 开发代理）进行 Spec 驱动开发，覆盖需求分析、设计、任务拆解、代码实现与联调验证全流程。
 
@@ -40,7 +40,21 @@
 bash keys/verify-base.sh
 ```
 
-验证基座会依次调用核心 API 端点，确认 HTTP 状态码和响应结构正确。凭证文件 `keys/zwinsight.pem` 已纳入 `.gitignore`。
+验证基座会依次调用核心 API 端点，确认 HTTP 状态码和响应结构正确。凭证文件已纳入 `.gitignore`，严禁提交仓库。
+
+### 部署服务器登记
+
+| 环境 | 地址 | SSH 用户 | 部署目录 | 本地私钥 |
+|---|---|---|---|---|
+| 主环境 | `129.204.3.200` | `root` | `/root/zw-insight`（以 CI Secret 为准） | `keys/zwinsight.pem` |
+| 安徽徽颍建设 | `43.142.44.145` | `root` | `/root/zw-insight`（以 CI Secret 为准） | `keys/ahhy.pem` |
+
+- GitHub Actions 中徽颍环境标识为 `server2`，配置见 `.github/workflows/deploy.yml`；`SERVER2_*` Secrets 优先于表中默认值。`main` 分支普通 push 默认展开 `server1 + server2` 双机 matrix，构建门禁通过后并行部署两台服务器。
+- 两台服务器均可能存在 `tenant_id=1`，但它们是两个独立数据库实例。操作前必须同时核对主机 IP、容器名、数据库名及企业/机构数据，禁止仅凭 `tenant_id` 判断目标环境。
+- 对远程数据库执行写操作前，须先只读探查并备份目标表；初始化 SQL 必须幂等，不得覆盖现有机构、岗位、角色或授权。
+- 私钥只保存在本地 `keys/`，不得输出私钥内容、上传服务器或写入文档。
+- **逻辑删除与唯一键**：MyBatis-Plus `deleted` 不会释放 UNIQUE 值。允许删除后重建的实体，必须采用可无限保留删除历史的唯一键 guard，或恢复已删除的单例/关联记录；禁止只把布尔 `deleted` 加入唯一键（第二次删除仍会冲突）。关联/配置表优先 restore/upsert；账本/幂等流水禁止删除。
+- **接口错误语义**：JSON 请求结构错误返回 400；数据库完整性冲突统一兜底为 409，已知唯一键冲突仍须在 Service 转换成具体业务提示；禁止让可预期的输入/约束错误落入“系统内部错误，请稍后重试”。
 
 ## L4 全生命周期测试（隔离租户 9999）
 

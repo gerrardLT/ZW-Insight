@@ -39,6 +39,7 @@ class SysUserServiceTest {
     @Mock private SysUserMapper userMapper;
     @Mock private SysUserRoleMapper userRoleMapper;
     @Mock private SysOrgMapper orgMapper;
+    @Mock private com.zwinsight.system.mapper.SysRoleMapper roleMapper;
     @Mock private BCryptPasswordEncoder passwordEncoder;
 
     @InjectMocks
@@ -51,6 +52,7 @@ class SysUserServiceTest {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysUser.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysUserRole.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysOrg.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), com.zwinsight.system.domain.SysRole.class);
     }
 
     @Test
@@ -162,7 +164,7 @@ class SysUserServiceTest {
         SysUser user = new SysUser();
         user.setUsername("admin");
         user.setPassword("123456");
-        when(userMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+        when(userMapper.countActiveByUsername("admin")).thenReturn(1L);
 
         assertThatThrownBy(() -> userService.save(user))
                 .isInstanceOf(BusinessException.class)
@@ -175,7 +177,7 @@ class SysUserServiceTest {
         SysUser user = new SysUser();
         user.setUsername("newuser");
         user.setPassword("123456");
-        when(userMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(userMapper.countActiveByUsername("newuser")).thenReturn(0L);
         when(passwordEncoder.encode("123456")).thenReturn("$2a$encoded");
 
         userService.save(user);
@@ -185,14 +187,15 @@ class SysUserServiceTest {
     }
 
     @Test
-    @DisplayName("新增用户：手机号已被占用抛异常（短信登录 phone 全局唯一）")
-    void testSave_duplicatePhone() {
+    @DisplayName("新增用户：手机号被活动账号占用时拒绝保存")
+    void testSave_duplicateActivePhone() {
         SysUser user = new SysUser();
         user.setUsername("newuser");
         user.setPassword("123456");
         user.setPhone("13800000000");
-        // 第一次 selectCount=用户名存在0，第二次 selectCount=手机号被占1
-        when(userMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L, 1L);
+        when(userMapper.countActiveByUsername("newuser")).thenReturn(0L);
+        // 原生 SQL 显式过滤 deleted=0，与 NULL guard 唯一键一致。
+        when(userMapper.countActiveByPhone("13800000000")).thenReturn(1L);
 
         assertThatThrownBy(() -> userService.save(user))
                 .isInstanceOf(BusinessException.class)
@@ -248,18 +251,29 @@ class SysUserServiceTest {
     }
 
     @Test
-    @DisplayName("删除用户：同时删除角色关联")
+    @DisplayName("删除用户：归档并释放登录凭据，同时删除角色关联")
     void testDelete() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(new SysUser());
+        when(userMapper.archiveForDelete(1L)).thenReturn(1);
+
         userService.delete(1L);
 
-        verify(userMapper).deleteById(1L);
+        verify(userMapper).archiveForDelete(1L);
         verify(userRoleMapper).delete(any(LambdaQueryWrapper.class));
     }
 
     @Test
     @DisplayName("分配角色：先删后插")
     void testAssignRoles() {
-        userService.assignRoles(1L, List.of(10L, 20L));
+        SysUser existing = new SysUser();
+        existing.setId(1L);
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+        var first = new com.zwinsight.system.domain.SysRole();
+        first.setId(10L);
+        var second = new com.zwinsight.system.domain.SysRole();
+        second.setId(20L);
+        when(roleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(first, second));
+        userService.assignRoles(1L, List.of(10L, 20L, 10L));
 
         verify(userRoleMapper).delete(any(LambdaQueryWrapper.class));
         verify(userRoleMapper, times(2)).insert(any());
@@ -293,17 +307,74 @@ class SysUserServiceTest {
     @Test
     @DisplayName("删除用户：管理员（ADMIN/SUPER_ADMIN）不可删除（P1 管理员保护）")
     void testDelete_adminProtected() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(new SysUser());
         when(userMapper.selectRoleCodesByUserId(1L)).thenReturn(List.of("SUPER_ADMIN"));
         assertThatThrownBy(() -> userService.delete(1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("管理员账号不可删除");
-        verify(userMapper, never()).deleteById(anyLong());
+        verify(userMapper, never()).archiveForDelete(anyLong());
 
         when(userMapper.selectRoleCodesByUserId(2L)).thenReturn(List.of("ADMIN"));
         assertThatThrownBy(() -> userService.batchDelete(List.of(2L)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("管理员账号不可删除");
-        verify(userMapper, never()).deleteBatchIds(any());
+        verify(userMapper, never()).archiveForDelete(anyLong());
+    }
+
+    @Test
+    void testDelete_foreignOrMissingTargetCannotArchive() {
+        assertThatThrownBy(() -> userService.delete(42L)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> userService.batchDelete(List.of(42L))).isInstanceOf(BusinessException.class);
+        verify(userMapper, never()).archiveForDelete(anyLong());
+        verifyNoInteractions(userRoleMapper);
+    }
+
+    @Test
+    void testAssignRoles_invalidInputPreservesGrants() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(new SysUser());
+        assertThatThrownBy(() -> userService.assignRoles(1L, null)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> userService.assignRoles(1L, java.util.Arrays.asList(10L, null)))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> userService.assignRoles(1L, List.of(0L)))
+                .isInstanceOf(BusinessException.class);
+        verifyNoInteractions(userRoleMapper, roleMapper);
+    }
+
+    @Test
+    void testAssignRoles_missingOrForeignRolePreservesGrants() {
+        SysUser user = new SysUser();
+        user.setTenantId(9999L);
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(user);
+        when(roleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        assertThatThrownBy(() -> userService.assignRoles(1L, List.of(10L)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("角色不存在");
+        var foreignRole = new com.zwinsight.system.domain.SysRole();
+        foreignRole.setId(10L);
+        foreignRole.setTenantId(8888L);
+        when(roleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(foreignRole));
+        assertThatThrownBy(() -> userService.assignRoles(1L, List.of(10L)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("不属于当前企业");
+        verifyNoInteractions(userRoleMapper);
+    }
+
+    @Test
+    void testAssignRoles_emptyListClearsRoles() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(new SysUser());
+        userService.assignRoles(1L, List.of());
+        verify(userRoleMapper).delete(any(LambdaQueryWrapper.class));
+        verify(userRoleMapper, never()).insert(any());
+        verifyNoInteractions(roleMapper);
+    }
+
+    @Test
+    void testMapperSql_preservesDeletedCredentialsAndFiltersActiveRows() throws Exception {
+        String archiveSql = String.join(" ", SysUserMapper.class.getMethod("archiveForDelete", Long.class)
+                .getAnnotation(org.apache.ibatis.annotations.Update.class).value());
+        assertThat(archiveSql).doesNotContain("CONCAT", "username =", "phone =").contains("deleted = 1");
+        for (String method : List.of("countActiveByUsername", "countActiveByPhone")) {
+            assertThat(String.join(" ", SysUserMapper.class.getMethod(method, String.class)
+                    .getAnnotation(org.apache.ibatis.annotations.Select.class).value())).contains("deleted = 0");
+        }
     }
 
     // ==================== 安全测试场景 ====================
@@ -314,7 +385,7 @@ class SysUserServiceTest {
         SysUser user = new SysUser();
         user.setUsername("weakuser");
         user.setPassword("123456");  // 弱密码
-        when(userMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(userMapper.countActiveByUsername("weakuser")).thenReturn(0L);
         when(passwordEncoder.encode("123456")).thenReturn("$2a$encoded");
 
         userService.save(user);
@@ -328,7 +399,7 @@ class SysUserServiceTest {
         SysUser user = new SysUser();
         user.setUsername("stronguser");
         user.setPassword("Str0ng!Pass#2024");  // 强密码
-        when(userMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(userMapper.countActiveByUsername("stronguser")).thenReturn(0L);
         when(passwordEncoder.encode("Str0ng!Pass#2024")).thenReturn("$2a$encoded");
 
         userService.save(user);
@@ -342,17 +413,20 @@ class SysUserServiceTest {
     void testBatchDelete_emptyList_noException() {
         userService.batchDelete(List.of());
 
-        // 当前实现未对空列表短路，直接透传 mapper
-        verify(userMapper).deleteBatchIds(List.of());
+        verify(userMapper, never()).archiveForDelete(anyLong());
     }
 
     @Test
     @DisplayName("批量删除：多个 ID 正确删除")
     void testBatchDelete_multipleIds() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(new SysUser());
         List<Long> ids = List.of(1L, 2L, 3L, 4L, 5L);
+        when(userMapper.archiveForDelete(anyLong())).thenReturn(1);
         userService.batchDelete(ids);
 
-        verify(userMapper).deleteBatchIds(ids);
+        for (Long id : ids) {
+            verify(userMapper).archiveForDelete(id);
+        }
         // IN 子句值经参数绑定，不直接出现在 SQL 片段中，需校验参数映射
         verify(userRoleMapper).delete(argThat(wrapper -> {
             LambdaQueryWrapper<SysUserRole> w = (LambdaQueryWrapper<SysUserRole>) wrapper;
@@ -393,6 +467,28 @@ class SysUserServiceTest {
     }
 
     // ==================== 导入导出测试 ====================
+
+    @Test
+    void testImportUsers_skipsActiveUsernameWithoutUnusedPhoneStub() {
+        var existing = new com.zwinsight.system.dto.SysUserExcelDTO();
+        existing.setUsername("existing");
+        existing.setPhone("13800000000");
+        var fresh = new com.zwinsight.system.dto.SysUserExcelDTO();
+        fresh.setUsername("fresh");
+        fresh.setPhone("13900000000");
+        var bytes = new java.io.ByteArrayOutputStream();
+        com.alibaba.excel.EasyExcel.write(bytes, com.zwinsight.system.dto.SysUserExcelDTO.class)
+                .sheet("users").doWrite(List.of(existing, fresh));
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "users.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes.toByteArray());
+        when(userMapper.countActiveByUsername("existing")).thenReturn(1L);
+        when(userMapper.countActiveByUsername("fresh")).thenReturn(0L);
+        when(userMapper.countActiveByPhone("13900000000")).thenReturn(0L);
+        when(passwordEncoder.encode("123456")).thenReturn("encoded");
+        assertThat(userService.importUsers(file)).isEqualTo(1);
+        verify(userMapper, never()).countActiveByPhone("13800000000");
+        verify(userMapper).insert(argThat((SysUser user) -> "fresh".equals(user.getUsername())));
+    }
 
     @Test
     @DisplayName("导入用户：文件读取失败抛出业务异常")

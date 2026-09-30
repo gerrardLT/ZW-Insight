@@ -12,6 +12,8 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.system.domain.SysOrg;
+import com.zwinsight.system.domain.SysRole;
+import com.zwinsight.system.mapper.SysRoleMapper;
 import com.zwinsight.system.domain.SysUserRole;
 import com.zwinsight.system.dto.SysUserExcelDTO;
 import com.zwinsight.system.mapper.SysOrgMapper;
@@ -27,6 +29,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,6 +46,7 @@ public class SysUserService {
     private final SysUserMapper userMapper;
     private final SysUserRoleMapper userRoleMapper;
     private final SysOrgMapper orgMapper;
+    private final SysRoleMapper roleMapper;
     private final BCryptPasswordEncoder passwordEncoder;
 
     /**
@@ -113,10 +117,9 @@ public class SysUserService {
     @Transactional(rollbackFor = Exception.class)
     public void save(SysUser user) {
         // 检查用户名唯一
-        long count = userMapper.selectCount(
-                new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, user.getUsername()));
-        if (count > 0) {
-            throw new BusinessException("用户名已存在");
+        // 与 V2026_76 的 NULL guard 一致：仅活动账号占用全局唯一键。
+        if (userMapper.countActiveByUsername(user.getUsername()) > 0) {
+            throw new BusinessException("用户名已存在，请更换用户名");
         }
         // 手机号全局唯一（短信登录按 phone 定位用户；DB 层 uk_phone 兜底，此处给出友好报错）
         checkPhoneUnique(user.getPhone(), null);
@@ -138,7 +141,8 @@ public class SysUserService {
         if (user.getPhone() != null && !user.getPhone().isBlank()) {
             checkPhoneUnique(user.getPhone(), user.getId());
         }
-        // 不允许通过此接口修改密码
+        // 用户名和密码均不允许通过资料编辑接口修改，避免绕过专用账号/密码流程及唯一性校验。
+        user.setUsername(null);
         user.setPassword(null);
         userMapper.updateById(user);
     }
@@ -153,11 +157,13 @@ public class SysUserService {
         if (phone == null || phone.isBlank()) {
             return;
         }
-        long occupied = userMapper.selectCount(new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getPhone, phone)
-                .ne(excludeId != null, SysUser::getId, excludeId));
+        long occupied = excludeId == null
+                ? userMapper.countActiveByPhone(phone)
+                : userMapper.selectCount(new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getPhone, phone)
+                        .ne(SysUser::getId, excludeId));
         if (occupied > 0) {
-            throw new BusinessException("该手机号已被其他账号使用");
+            throw new BusinessException("该手机号已被其他账号使用，请更换手机号");
         }
     }
 
@@ -171,7 +177,9 @@ public class SysUserService {
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         assertNotAdmin(id);
-        userMapper.deleteById(id);
+        if (userMapper.archiveForDelete(id) == 0) {
+            throw new BusinessException("用户不存在或已删除");
+        }
         // 删除用户角色关联
         userRoleMapper.delete(
                 new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, id));
@@ -182,10 +190,17 @@ public class SysUserService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void batchDelete(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
         for (Long id : ids) {
             assertNotAdmin(id);
         }
-        userMapper.deleteBatchIds(ids);
+        for (Long id : ids) {
+            if (userMapper.archiveForDelete(id) == 0) {
+                throw new BusinessException("用户不存在或已删除: " + id);
+            }
+        }
         userRoleMapper.delete(
                 new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getUserId, ids));
     }
@@ -194,6 +209,9 @@ public class SysUserService {
      * 管理员保护：拥有 ADMIN/SUPER_ADMIN 角色的用户不可被删除
      */
     private void assertNotAdmin(Long userId) {
+        if (getById(userId) == null) {
+            throw new BusinessException("用户不存在或不属于当前企业");
+        }
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(userId);
         if (roleCodes != null && (roleCodes.contains("ADMIN") || roleCodes.contains("SUPER_ADMIN"))) {
             throw new BusinessException("管理员账号不可删除");
@@ -215,12 +233,28 @@ public class SysUserService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void assignRoles(Long userId, List<Long> roleIds) {
+        SysUser user = getById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在或不属于当前企业");
+        }
+        if (roleIds == null || roleIds.stream().anyMatch(id -> id == null || id <= 0)) {
+            throw new BusinessException("角色列表不能为空，角色ID必须为正整数");
+        }
+        List<Long> distinctRoleIds = roleIds.stream().distinct().toList();
+        if (!distinctRoleIds.isEmpty()) {
+            List<SysRole> roles = roleMapper.selectList(new LambdaQueryWrapper<SysRole>()
+                    .in(SysRole::getId, distinctRoleIds));
+            if (roles.size() != distinctRoleIds.size()
+                    || roles.stream().anyMatch(role -> !Objects.equals(role.getTenantId(), user.getTenantId()))) {
+                throw new BusinessException("角色不存在或不属于当前企业");
+            }
+        }
         // 先删除原有关联
         userRoleMapper.delete(
                 new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
         // 再批量插入新关联
-        if (roleIds != null && !roleIds.isEmpty()) {
-            for (Long roleId : roleIds) {
+        if (!distinctRoleIds.isEmpty()) {
+            for (Long roleId : distinctRoleIds) {
                 SysUserRole userRole = new SysUserRole();
                 userRole.setUserId(userId);
                 userRole.setRoleId(roleId);
@@ -271,14 +305,30 @@ public class SysUserService {
         }
 
         int inserted = 0;
-        for (SysUser user : users) {
-            // 跳过已存在的用户名（增量导入语义）
-            long count = userMapper.selectCount(
-                    new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, user.getUsername()));
-            if (count == 0) {
-                userMapper.insert(user);
-                inserted++;
+        Set<String> usernames = new HashSet<>();
+        Set<String> phones = new HashSet<>();
+        for (int i = 0; i < users.size(); i++) {
+            SysUser user = users.get(i);
+            int row = i + 2; // Excel 第 1 行为表头
+            if (user.getUsername() == null || user.getUsername().isBlank()) {
+                throw new BusinessException("第 " + row + " 行：用户名不能为空");
             }
+            if (!usernames.add(user.getUsername())) {
+                throw new BusinessException("第 " + row + " 行：用户名在文件中重复");
+            }
+            if (user.getPhone() != null && !user.getPhone().isBlank() && !phones.add(user.getPhone())) {
+                throw new BusinessException("第 " + row + " 行：手机号在文件中重复");
+            }
+            // 增量导入跳过已有活动账号；删除历史由 NULL guard 释放唯一键。
+            if (userMapper.countActiveByUsername(user.getUsername()) > 0) {
+                continue;
+            }
+            if (user.getPhone() != null && !user.getPhone().isBlank()
+                    && userMapper.countActiveByPhone(user.getPhone()) > 0) {
+                throw new BusinessException("第 " + row + " 行：手机号已被其他账号使用");
+            }
+            userMapper.insert(user);
+            inserted++;
         }
         // P2 修复：返回实际插入条数（原实现含被跳过的重复用户名，计数失真）
         return inserted;

@@ -5,6 +5,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.system.dto.AssignRolesRequest;
 import com.zwinsight.system.service.SysUserService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -110,8 +111,8 @@ public class SysUserController {
 
     @PutMapping("/{id}/roles")
     @RequiresPermission("system:user:assign-role")
-    public R<Void> assignRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
-        userService.assignRoles(id, roleIds);
+    public R<Void> assignRoles(@PathVariable Long id, @jakarta.validation.Valid @RequestBody AssignRolesRequest request) {
+        userService.assignRoles(id, request.getRoleIds());
         return R.ok();
     }
 

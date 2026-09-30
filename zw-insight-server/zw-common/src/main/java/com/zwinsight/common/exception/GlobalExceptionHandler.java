@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -135,6 +137,29 @@ public class GlobalExceptionHandler {
     public R<Void> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e, HttpServletRequest request) {
         log.warn("文件上传超限 [{}]: {}", request.getRequestURI(), e.getMessage());
         return R.fail(413, "文件大小超过上限（最大 100MB），请压缩后重试");
+    }
+
+    /**
+     * 请求体 JSON 结构或字段类型错误。不应落入 500；调用方应修正请求格式。
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public R<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException e,
+                                                           HttpServletRequest request) {
+        log.warn("请求体格式错误 [{}]: {}", request.getRequestURI(), e.getMessage());
+        return R.fail(400, "请求数据格式错误，请检查字段类型和请求结构");
+    }
+
+    /**
+     * 数据库唯一键/外键等完整性约束冲突。具体写接口仍应优先做业务预检，
+     * 此处仅作并发写入与遗漏场景的统一兜底，避免向用户返回无意义的系统 500。
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public R<Void> handleDataIntegrityViolationException(DataIntegrityViolationException e,
+                                                           HttpServletRequest request) {
+        log.warn("数据完整性冲突 [{}]: {}", request.getRequestURI(), e.getMostSpecificCause().getMessage());
+        return R.fail(409, "数据已存在或仍被其他数据引用，请检查后重试");
     }
 
     /**
