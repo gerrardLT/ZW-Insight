@@ -286,7 +286,9 @@ describe('approval/index.vue 审批列表页', () => {
 describe('approval/detail.vue 审批详情页', () => {
   it('onLoad 加载详情；通过提交 completeTask 对齐后端 DTO（taskId/comment）并延迟返回', async () => {
     vi.useFakeTimers()
-    vi.mocked(request).mockResolvedValue({ code: 200, data: { title: '付款审批', applicant: '张三' } })
+    vi.mocked(request)
+      .mockResolvedValueOnce({ code: 200, data: { taskId: 'T1', status: 'pending', businessType: 'PAYMENT_APPLY', businessId: '12', processInstanceId: 'PI-9', processName: '付款审批', startUserName: '张三' } })
+      .mockResolvedValueOnce({ code: 200, data: { id: '12', projectId: '21', paymentAmount: 123, status: 'SUBMITTED', workflowInstanceId: 'PI-9' } })
     vi.mocked(completeTask).mockResolvedValue({ code: 200 })
 
     const wrapper = mount(ApprovalDetail)
@@ -294,7 +296,8 @@ describe('approval/detail.vue 审批详情页', () => {
     await flushPromises()
 
     expect(vi.mocked(request)).toHaveBeenCalledWith(expect.objectContaining({ url: '/v1/workflow/approval/detail/T1' }))
-    expect(wrapper.vm.detail.title).toBe('付款审批')
+    expect(wrapper.vm.detail.processName).toBe('付款审批')
+    expect(vi.mocked(request)).toHaveBeenNthCalledWith(2, expect.objectContaining({ url: '/v1/finance/payment-apply/12' }))
 
     wrapper.vm.comment = '同意'
     await wrapper.vm.handleApprove()
@@ -309,7 +312,7 @@ describe('approval/detail.vue 审批详情页', () => {
   })
 
   it('退回未填意见拦截；填意见后 rejectTask', async () => {
-    vi.mocked(request).mockResolvedValue({ code: 200, data: {} })
+    vi.mocked(request).mockResolvedValue({ code: 200, data: { taskId: 'T2', status: 'pending', businessType: 'OTHER', businessId: '22', processInstanceId: 'PI-2', processName: '其他审批' } })
     vi.mocked(rejectTask).mockResolvedValue({ code: 200 })
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
