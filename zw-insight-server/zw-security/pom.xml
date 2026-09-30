@@ -85,10 +85,14 @@
             <artifactId>ip2region</artifactId>
         </dependency>
 
-        <!-- 阿里云短信服务 SDK（真实发送短信验证码） -->
+        <!-- 短信 Provider SDK：按 sms.provider 选择 aliyun / tencent -->
         <dependency>
             <groupId>com.aliyun</groupId>
             <artifactId>dysmsapi20170525</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.tencentcloudapi</groupId>
+            <artifactId>tencentcloud-sdk-java-sms</artifactId>
         </dependency>
 
         <!-- jqwik 属性测试框架（版本由父 POM dependencyManagement 统一管理）。

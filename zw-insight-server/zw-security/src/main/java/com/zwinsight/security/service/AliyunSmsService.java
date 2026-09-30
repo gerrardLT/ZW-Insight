@@ -7,6 +7,7 @@ import com.aliyun.teaopenapi.models.Config;
 import com.zwinsight.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "sms.provider", havingValue = "aliyun", matchIfMissing = true)
 public class AliyunSmsService implements SmsService {
 
     /** 短信服务接入点（华东1·杭州公共 Endpoint） */

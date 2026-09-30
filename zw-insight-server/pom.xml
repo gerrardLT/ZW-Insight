@@ -66,6 +66,7 @@
         <jqwik.version>1.9.1</jqwik.version>
         <ip2region.version>2.7.0</ip2region.version>
         <aliyun-dysmsapi.version>3.0.0</aliyun-dysmsapi.version>
+        <tencentcloud-sms.version>3.2.18</tencentcloud-sms.version>
         <!-- easyexcel-core 3.3.4 运行时需�?commons-io 2.12+（AbstractStreamBuilder），
              �?spring-boot 3.2 BOM 管理�?2.11.0，不显式钉住会导�?Excel 导出 NoClassDefFoundError -->
         <commons-io.version>2.16.1</commons-io.version>
@@ -347,6 +348,11 @@
                 <artifactId>dysmsapi20170525</artifactId>
                 <version>${aliyun-dysmsapi.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.tencentcloudapi</groupId>
+                <artifactId>tencentcloud-sdk-java-sms</artifactId>
+                <version>${tencentcloud-sms.version}</version>
+            </dependency>
 
             <!-- 钉住 commons-io 版本：覆�?spring-boot BOM �?2.11.0，满�?easyexcel-core 3.3.4 运行时需�?-->
             <dependency>
@@ -595,4 +601,4 @@
         </profile>
     </profiles>
 
-</project>
+</project>
