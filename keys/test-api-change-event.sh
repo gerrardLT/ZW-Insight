@@ -165,7 +165,8 @@ if [ -n "$EVENT_ID" ]; then
   call GET "/api/v1/contract/change-event/$EVENT_ID"
   assert_http 2 "变更事件详情 HTTP 2xx"
   assert_body_code 200 "变更事件详情业务码 200"
-  assert_jq ".data.id==$EVENT_ID and .data.status==\"DRAFT\"" "详情数据 ID 与状态匹配"
+  # 后端把 Long 序列化为字符串（防 JS 精度丢失），ID 比较必须按字符串
+  assert_jq ".data.id==\"$EVENT_ID\" and .data.status==\"DRAFT\"" "详情数据 ID 与状态匹配"
 
   # 6. 更新草稿信息（保留 affectedAccounts，评估校验要求与 costDelta 签名合计一致）
   UPDATE_BODY=$(cat <<EOF

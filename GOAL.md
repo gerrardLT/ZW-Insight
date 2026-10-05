@@ -66,10 +66,19 @@
 1. **部署 P0 修复**：修复在后端代码，需 CI fast_deploy（约 3-5 分钟，重启生产容器、服务短暂中断）后重跑 change-event L3 收全绿。合同约定生产容器重启须用户批准。解除命令：`gh workflow run deploy.yml -f fast_deploy=true`，部署完成后 `ssh` 服务器 `cd /root/zwi-deploy && bash test-api-change-event.sh`（脚本已对齐现行契约并同步服务器）
 2. **垃圾数据 --execute**：dry-run 350 行（分支仅命中今天的 1 条 API测试项目；其余为历史任务产物堆积：rolling forecast 198/monthly_analysis 43/risk_register 40 等；守卫全过、累计值回滚正确跳过；存活项目仅剩 4 演示种子）。解除命令：服务器 `bash /root/zwi-deploy/cleanup-garbage-data.sh --execute`
 
-### 最终验收状态（本轮停止点）
-- 验收 1/3/4/5/6：✅ 全部有证据（L1 22/22；L4 26/26+清理四项；审计 PASS=67 FAIL=0 WARN=0×2 轮；资金不变量三层证据；报告落盘）
-- 验收 2：🟡 27/28 全绿，change-event 24/32 待 P0 部署后复测（可解除 blocker，非技术障碍）
-- 无进展轮数未触及；按合同「真 blocker → 停止」条款终止本轮，等待用户对上述两项的决策
+### R3（2026-10-05 15:15–15:40）— 用户批准部署：双机上线 + 端到端复测 + 垃圾清理，合同全部验收达成
+- **部署方式确认**（读 .github/workflows/deploy.yml 核实）：push 到 main 即触发完整流水线（后端全量单测+jacoco → 前端三端 → deploy job 双机矩阵 server1 中维 129.204.3.200 + server2 徽颍 43.142.44.145 并行部署+冒烟）；workflow_dispatch 另有 target_server(all/server1/server2) 与 fast_deploy 快速路径（适用于不推新代码的重部署；带新提交时叠加 dispatch 会与 push 触发的 run 形成双部署，故走普通 push）
+- **提交与流水线**：3 个 commit（ca48c3b 后端 P0 修复 + 回归测试 / b75994b 8 个 L3 基座脚本 / bbb2b5b GOAL 台账）push main → CI run 37277038819 全绿（前端三端测试+dist、Backend Build 全量单测、双机 Deploy 全 success）
+- **双机验证**：server1 zwi-backend Up 3min health 200；server2 Up 1min actuator/health UP（db/rabbit/redis/disk 全 UP）
+- **P0 端到端复测**：change-event L3 初跑 31/32（评估→批准全通，P0 确认修复），余 1 失败为最后一个脚本断言缺陷（后端将 Long 序列化为字符串防 JS 精度丢失，脚本裸插值成数字字面量）→ 修引号后 **32/32 exit=0**
+- **垃圾清理**：用户批准 --execute，删除 355 行，备份 zw_insight_pre_cleanup_20261005T073524Z.sql，存活项目仅剩 4 演示种子，累计值守卫全部正确跳过
+- **终验审计**：PASS=67 FAIL=0 WARN=0 INFO=39（部署+复测+清理后基线完好）
+- **最终验收**：1✅ 2✅（28/28） 3✅ 4✅ 5✅ 6✅ —— 合同全部达成
+- 备注：脚本断言修引号的 commit 留在本地未 push（避免为一行脚本改动再触发双机生产重启），随下次 push 自然上线
+
+## 历史轮次摘要（R1-R2 见上方详细记录）
+- R1：全景 baseline（L1 22/22、审计基线一致、L4 26/26、L3 19+基座缺陷定位）
+- R2：P0 修复本地验证（374 tests）+ 6 类基座缺陷修复复测 + 残留清理 + 基线恢复
 
 ## 备注（目标外发现）
 - 滚动预测分页返回历史月快照（生成时点值）；消费方若取「第一条」而非「当月」可能读到历史值——产品设计问题，只记录
