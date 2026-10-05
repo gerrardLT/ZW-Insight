@@ -132,6 +132,9 @@
     <!-- 全局命令面板（Phase 1.1，模块级单例控制开合） -->
     <CommandPalette :commands="paletteCommands" />
 
+    <!-- 核心链路速览抽屉：顶栏「?」与首页引导条经 guide store 唤起，全局单例 -->
+    <GuideQuickDrawer />
+
     <!-- 首登三步引导（Phase 1.3：localStorage zw-tour-done 标记，仅首次进入展示；
          中途关闭或完成均写标记，下次不再打扰）；
          2026-09-16 修复：target 必须返回真实 DOM（.value）——原传 Ref 对象导致 EP 定位
@@ -150,7 +153,7 @@
       <el-tour-step
         :target="() => helpBtnRef ?? undefined"
         title="帮助中心"
-        description="业务术语、键盘快捷键与错误码速查都在这里。点击此按钮，或按 Ctrl+K 搜索「帮助」。"
+        description="点这里随时打开「核心链路一册通」速览（项目全景图/资金双线/红线速查）；速览里可再进完整帮助文档。"
       />
     </el-tour>
   </div>
@@ -166,7 +169,9 @@ import { buildNavigation, type NavItem } from '@/utils/navigation'
 import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
+import GuideQuickDrawer from '@/components/GuideQuickDrawer.vue'
 import NavLink from '@/components/NavLink.vue'
+import { useGuideStore } from '@/stores/guide'
 import { useShortcuts, ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
 import { useCommandPalette, type PaletteCommand } from '@/composables/useCommandPalette'
 import { Expand, Fold, Moon, Sunny, ArrowDown, Bell, Search, SwitchButton } from '@/components/icons/registry'
@@ -181,6 +186,7 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const appStore = useAppStore()
+const guideStore = useGuideStore()
 // 品牌 Store：Logo 双态（亮底黑字/暗底反白）、系统名称与副标题按部署环境动态取值，
 // 详见 stores/brand.ts；App.vue 已在应用启动时拉取配置
 const brandStore = useBrandStore()
@@ -322,7 +328,8 @@ function goDevices() {
 }
 
 function goHelp() {
-  router.push('/help')
+  // 顶栏「?」直达核心链路速览抽屉（原为跳 /help 落地页；抽屉内可再进完整文档）
+  guideStore.openQuick()
 }
 
 /* ================= 首登引导（Phase 1.3） ================= */

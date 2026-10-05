@@ -35,6 +35,8 @@ export interface GuideChapterMeta {
 
 /** 章节展示顺序（业务逻辑顺序，非文件名序）；新增章节须在此登记 */
 const ORDER: string[] = [
+  // 核心链路全景速览置顶：新用户第一入口（顶栏「?」抽屉与首页引导条均直达本章）
+  'core-chains',
   'quickstart',
   'workflow-approval',
   'main-flow',

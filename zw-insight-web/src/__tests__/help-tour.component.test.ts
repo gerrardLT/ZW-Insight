@@ -116,12 +116,15 @@ describe('DefaultLayout 首登引导（el-tour）', () => {
     expect(localStorage.getItem(TOUR_KEY)).toBe('1')
   })
 
-  it('顶栏帮助按钮存在并可点击跳转 /help', async () => {
+  it('顶栏帮助按钮存在；点击唤起核心链路速览抽屉（不再整页跳转 /help）', async () => {
     const w = await mountLayout()
     const btn = w.find('[aria-label="打开帮助中心"]')
     expect(btn.exists()).toBe(true)
     await btn.trigger('click')
-    expect(mockRouter.push).toHaveBeenCalledWith('/help')
+    // 2026-10-05 行为变更：? 直达速览抽屉（core-chains 章），完整文档从抽屉内进入
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    const drawer = w.findComponent({ name: 'GuideQuickDrawer' })
+    expect(drawer.exists()).toBe(true)
   })
 
   it('命令面板命令表包含「打开帮助中心」', async () => {

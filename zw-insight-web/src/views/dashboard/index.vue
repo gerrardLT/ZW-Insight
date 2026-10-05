@@ -1,5 +1,20 @@
 <template>
   <div class="dashboard-container">
+    <!-- 核心链路引导条（可关闭，localStorage 记忆；唤起与顶栏「?」同源的速览抽屉） -->
+    <div v-if="guideBannerVisible" class="guide-banner" data-testid="guide-banner">
+      <span class="guide-banner-text">
+        📖 新手必读：10 分钟看懂项目全链路与资金双线
+      </span>
+      <div class="guide-banner-actions">
+        <el-button size="small" type="primary" data-testid="guide-banner-open" @click="guideStore.openQuick()">
+          打开指南
+        </el-button>
+        <el-button size="small" text data-testid="guide-banner-dismiss" @click="dismissGuideBanner">
+          不再显示
+        </el-button>
+      </div>
+    </div>
+
     <!-- 欢迎区（石墨铭牌，去渐变） -->
     <div class="welcome-banner">
       <div class="welcome-text">
@@ -95,6 +110,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { IconArrowRight } from '@tabler/icons-vue'
+import { useGuideStore } from '@/stores/guide'
 import { getCompanyOverview } from '@/api/dashboard'
 import { getOverdueRetention } from '@/api/finance'
 import type { RetentionMoney } from '@/types/finance'
@@ -106,6 +122,17 @@ import { usePermission } from '@/composables/usePermission'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
+const guideStore = useGuideStore()
+
+/* ================= 核心链路引导条（可关闭） ================= */
+const GUIDE_BANNER_KEY = 'zw-guide-banner-dismissed'
+const guideBannerVisible = ref(localStorage.getItem(GUIDE_BANNER_KEY) !== '1')
+
+function dismissGuideBanner() {
+  localStorage.setItem(GUIDE_BANNER_KEY, '1')
+  guideBannerVisible.value = false
+}
+
 // 逾期卡数据源 /overdue 受 finance:view 类级权限保护：无权限角色不渲染卡片、不发请求，
 // 避免全员首页对非财务角色必然 403 报错（超管 *:*:* 由 store 绕过）
 const { hasPermission } = usePermission()
@@ -352,6 +379,31 @@ onBeforeUnmount(() => {
 }
 
 /* 欢迎区：石墨铭牌（无渐变无光斑，左侧橙定位条） */
+/* 核心链路引导条：紧凑一行，视觉弱于欢迎区（信息条而非内容卡） */
+.guide-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--zw-space-md);
+  flex-wrap: wrap;
+  padding: var(--zw-space-xs) var(--zw-space-md);
+  margin-bottom: var(--zw-space-sm);
+  border-radius: var(--zw-radius-sm);
+  border: 1px dashed var(--zw-brand);
+  background: color-mix(in srgb, var(--zw-brand) 6%, transparent);
+}
+
+.guide-banner-text {
+  font-size: var(--zw-font-size-sm);
+  color: var(--zw-text-secondary);
+}
+
+.guide-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--zw-space-xs);
+}
+
 .welcome-banner {
   display: flex;
   align-items: center;
