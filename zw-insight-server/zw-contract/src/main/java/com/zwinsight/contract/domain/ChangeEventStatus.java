@@ -1,5 +1,7 @@
 package com.zwinsight.contract.domain;
 
+import com.zwinsight.common.exception.BusinessException;
+
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
@@ -21,8 +23,8 @@ import java.util.Set;
  *     └── cancel ──▶ CANCELLED                               └── reAssess ──▶ ASSESSING
  * </pre>
  *
- * <p>非法流转一律抛 {@link IllegalStateException}，由服务层转成业务异常，
- * 避免出现「已批准的变更被改回草稿」这类静默数据损坏。</p>
+ * <p>非法流转抛 {@link com.zwinsight.common.exception.BusinessException}（可预期的业务约束，
+ * 不得落入「系统内部错误」兜底），避免出现「已批准的变更被改回草稿」这类静默数据损坏。</p>
  */
 public enum ChangeEventStatus {
 
@@ -77,7 +79,7 @@ public enum ChangeEventStatus {
      */
     public static void assertTransition(ChangeEventStatus from, ChangeEventStatus to, String eventNumber) {
         if (!canTransition(from, to)) {
-            throw new IllegalStateException(String.format(
+            throw new BusinessException(String.format(
                     "变更事件[%s]不允许从 %s 流转到 %s",
                     eventNumber,
                     from != null ? from.name() : "null",

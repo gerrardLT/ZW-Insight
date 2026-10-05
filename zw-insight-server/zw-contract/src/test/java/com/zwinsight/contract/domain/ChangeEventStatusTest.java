@@ -96,11 +96,11 @@ class ChangeEventStatusTest {
         }
 
         @Test
-        @DisplayName("assertTransition 非法流转抛异常且带事件编号上下文")
+        @DisplayName("assertTransition 非法流转抛业务异常且带事件编号上下文")
         void assertTransitionThrowsWithContext() {
             assertThatThrownBy(() -> ChangeEventStatus.assertTransition(
                     ChangeEventStatus.APPROVED, ChangeEventStatus.DRAFT, "CHG20260001"))
-                    .isInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
                     .hasMessageContaining("CHG20260001")
                     .hasMessageContaining("APPROVED")
                     .hasMessageContaining("DRAFT");

@@ -3,6 +3,8 @@ package com.zwinsight.contract.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -155,6 +157,36 @@ public class BizChangeEvent extends BaseEntity {
     }
 
     // ==================== 便捷方法 ====================
+
+    /** JSON 列归一化用（MyBatis-Plus JacksonTypeHandler 丢泛型的兜底转换） */
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    /**
+     * MyBatis-Plus 的 {@link JacksonTypeHandler} 按字段的裸类型（List）反序列化 JSON 列，
+     * 丢失元素泛型：{@code List<AffectedAccount>} 读回后元素实为 LinkedHashMap，
+     * 任何按声明类型的遍历/强转都会 ClassCastException（2026-10-05 线上实测：带成本明细的
+     * 变更事件提交评估必 500）。在 setter 单点归一化，所有读路径（校验/审批/Outbox payload）
+     * 随之治愈；Spring 请求体路径元素本就是目标类型，convertValue 等价重建、无副作用。
+     */
+    public void setAffectedAccounts(List<AffectedAccount> affectedAccounts) {
+        this.affectedAccounts = normalizeList(affectedAccounts, new TypeReference<List<AffectedAccount>>() {});
+    }
+
+    public void setSupportingDocs(List<SupportingDoc> supportingDocs) {
+        this.supportingDocs = normalizeList(supportingDocs, new TypeReference<List<SupportingDoc>>() {});
+    }
+
+    /** List&lt;Long&gt; 同样受害：Jackson 把小整数解析为 Integer，赋值靠泛型擦除混入 */
+    public void setAffectedWbsIds(List<Long> affectedWbsIds) {
+        this.affectedWbsIds = normalizeList(affectedWbsIds, new TypeReference<List<Long>>() {});
+    }
+
+    private static <T> List<T> normalizeList(List<T> raw, TypeReference<List<T>> type) {
+        if (raw == null || raw.isEmpty()) {
+            return raw;
+        }
+        return JSON.convertValue(raw, type);
+    }
 
     /** 取成本影响（优先冗余列，回落到评估对象，永不为 null） */
     public BigDecimal resolveCostDelta() {

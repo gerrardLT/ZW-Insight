@@ -335,7 +335,7 @@ class ChangeEventServiceTest {
 
             assertThatThrownBy(() -> changeEventService.submitAssessment(
                     555L, assessment("1000", "理由")))
-                    .isInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("DRAFT");
         }
 
@@ -401,7 +401,7 @@ class ChangeEventServiceTest {
             when(changeEventMapper.selectById(555L)).thenReturn(draft);
 
             assertThatThrownBy(() -> changeEventService.approve(555L, null))
-                    .isInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("APPROVED");
 
             verify(outboxRecorder, never()).record(anyString(), anyString(), anyLong(), any(), any());
@@ -413,7 +413,7 @@ class ChangeEventServiceTest {
             when(changeEventMapper.selectById(555L)).thenReturn(draft);
 
             assertThatThrownBy(() -> changeEventService.approve(555L, null))
-                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("DRAFT");
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("DRAFT");
         }
 
         @Test
@@ -453,7 +453,7 @@ class ChangeEventServiceTest {
 
             // 状态机层面 APPROVED 无出边，assertTransition 先行拦截
             assertThatThrownBy(() -> changeEventService.cancel(555L, "想作废"))
-                    .isInstanceOf(IllegalStateException.class);
+                    .isInstanceOf(BusinessException.class);
         }
 
         @Test
