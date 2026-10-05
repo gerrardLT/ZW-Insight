@@ -24,6 +24,10 @@ spring:
     table: flyway_schema_history
     encoding: UTF-8
     validate-on-migrate: true
+    # 2026-10-05 V2026_78 打印模板种子的 Thymeleaf 内容含 ${applyNo} 等 SpringEL 占位，
+    # Flyway 默认把 ${...} 当自己的 placeholder 替换 → 「No value provided for placeholder」
+    # 拒绝启动（双机实测）。项目迁移从不依赖 Flyway 变量替换，直接关闭。
+    placeholder-replacement: false
     # 2026-09-21 迁移归位治理开启：一批历史迁移（V2026_22/23/26/34~37 与 41+ 时代脚本）
     # 此前只存在于 deploy/db-init（仅空库 initdb 执行），运行库 Flyway 历史停在 2026.40；
     # 归位入 classpath 后存在低于已应用最高版本的待补迁移，out-of-order=false 会直接拒绝启动。
