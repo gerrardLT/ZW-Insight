@@ -4,32 +4,35 @@
 -- ============================================================
 
 -- 一级目录
-INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
-(1,  '首页',       'MENU', 0, '/dashboard',    'views/dashboard/index',    'HomeFilled',     1,  1, 0),
-(2,  '系统管理',   'DIR',  0, '/system',       NULL,                       'Setting',        99, 1, 0),
-(3,  '项目管理',   'DIR',  0, '/project',      NULL,                       'Briefcase',      2,  1, 0),
-(4,  '合同管理',   'DIR',  0, '/contract',     NULL,                       'Notebook',       3,  1, 0),
-(5,  '财务管理',   'DIR',  0, '/finance',      NULL,                       'Money',          4,  1, 0),
-(6,  '预算管理',   'DIR',  0, '/budget',       NULL,                       'Coin',           5,  1, 0),
-(7,  '采购管理',   'DIR',  0, '/purchase',     NULL,                       'ShoppingCart',   6,  1, 0),
-(8,  '劳务管理',   'DIR',  0, '/labor',        NULL,                       'Avatar',         7,  1, 0),
-(9,  '材料库存',   'DIR',  0, '/material',     NULL,                       'Box',            8,  1, 0),
-(10, '机械管理',   'DIR',  0, '/machine',      NULL,                       'Van',            9,  1, 0),
-(11, '分包管理',   'DIR',  0, '/subcontract',  NULL,                       'Connection',     10, 1, 0),
-(12, '现场管理',   'DIR',  0, '/site',         NULL,                       'Place',          11, 1, 0),
-(13, '投标管理',   'DIR',  0, '/tender',       NULL,                       'Trophy',         12, 1, 0),
-(14, '行政人事',   'DIR',  0, '/hr',           NULL,                       'School',         13, 1, 0),
-(15, '档案管理',   'DIR',  0, '/archive',      NULL,                       'FolderOpened',   14, 1, 0),
-(16, '工作流管理', 'DIR',  0, '/workflow',     NULL,                       'Share',          15, 1, 0),
-(17, '消息管理',   'DIR',  0, '/message',      NULL,                       'Bell',           16, 1, 0),
-(18, '基础数据',   'DIR',  0, '/basedata',     NULL,                       'Grid',           17, 1, 0);
+-- permission 列必须带上（码表与 V2026_45_2 第 1 节一致）：本种子在 initdb 字典序中
+-- 晚于所有编号迁移执行，任何「UPDATE 菜单补码」型迁移都会先于此扑空且 Flyway 不重放
+-- （2026-10-05 43 服务器 wangting 403 事故根因，详见 V2026_77 迁移头注释）
+INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden, permission) VALUES
+(1,  '首页',       'MENU', 0, '/dashboard',    'views/dashboard/index',    'HomeFilled',     1,  1, 0, 'dashboard:view'),
+(2,  '系统管理',   'DIR',  0, '/system',       NULL,                       'Setting',        99, 1, 0, 'system:view'),
+(3,  '项目管理',   'DIR',  0, '/project',      NULL,                       'Briefcase',      2,  1, 0, 'project:view'),
+(4,  '合同管理',   'DIR',  0, '/contract',     NULL,                       'Notebook',        3,  1, 0, 'contract:view'),
+(5,  '财务管理',   'DIR',  0, '/finance',      NULL,                       'Money',           4,  1, 0, 'finance:view'),
+(6,  '预算管理',   'DIR',  0, '/budget',       NULL,                       'Coin',            5,  1, 0, 'budget:view'),
+(7,  '采购管理',   'DIR',  0, '/purchase',     NULL,                       'ShoppingCart',   6,  1, 0, 'purchase:view'),
+(8,  '劳务管理',   'DIR',  0, '/labor',        NULL,                       'Avatar',          7,  1, 0, 'labor:view'),
+(9,  '材料库存',   'DIR',  0, '/material',     NULL,                       'Box',             8,  1, 0, 'material:view'),
+(10, '机械管理',   'DIR',  0, '/machine',      NULL,                       'Van',             9,  1, 0, 'machine:view'),
+(11, '分包管理',   'DIR',  0, '/subcontract',  NULL,                       'Connection',      10, 1, 0, 'subcontract:view'),
+(12, '现场管理',   'DIR',  0, '/site',         NULL,                       'Place',           11, 1, 0, 'site:view'),
+(13, '投标管理',   'DIR',  0, '/tender',       NULL,                       'Trophy',          12, 1, 0, 'tender:view'),
+(14, '行政人事',   'DIR',  0, '/hr',           NULL,                       'School',          13, 1, 0, 'hr:view'),
+(15, '档案管理',   'DIR',  0, '/archive',      NULL,                       'FolderOpened',    14, 1, 0, 'archive:view'),
+(16, '工作流管理', 'DIR',  0, '/workflow',     NULL,                       'Share',           15, 1, 0, 'workflow:view'),
+(17, '消息管理',   'DIR',  0, '/message',      NULL,                       'Bell',            16, 1, 0, 'message:view'),
+(18, '基础数据',   'DIR',  0, '/basedata',     NULL,                       'Grid',            17, 1, 0, 'basedata:view');
 
 -- ============================================================
 -- 一级菜单：项目看板（独立项目维度数据看板，P2 新增）
 -- 路由 children 挂载于根布局，path 为 /project-dashboard
 -- ============================================================
-INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
-(19, '项目看板', 'MENU', 0, '/project-dashboard', 'views/dashboard/project-dashboard', 'DataAnalysis', 2, 1, 0);
+INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden, permission) VALUES
+(19, '项目看板', 'MENU', 0, '/project-dashboard', 'views/dashboard/project-dashboard', 'DataAnalysis', 2, 1, 0, 'project-dashboard:view');
 
 -- ============================================================
 -- 二级菜单：系统管理 (parent_id=2)
