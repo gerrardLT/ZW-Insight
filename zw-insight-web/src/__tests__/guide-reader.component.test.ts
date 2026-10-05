@@ -51,11 +51,11 @@ afterEach(() => {
 })
 
 describe('guide.vue 三栏阅读器', () => {
-  it('默认打开首章（快速上手），左栏渲染 22 个导航项', async () => {
+  it('默认打开首章（core-chains 全景速览，2026-10-05 起置顶），左栏渲染 23 个导航项', async () => {
     const w = await mountGuide()
-    expect(w.find('.doc-title').text()).toContain('快速上手')
-    expect(w.findAll('.nav-item')).toHaveLength(22)
-    expect(w.find('.nav-item.active').text()).toContain('快速上手')
+    expect(w.find('.doc-title').text()).toContain('核心链路')
+    expect(w.findAll('.nav-item')).toHaveLength(23)
+    expect(w.find('.nav-item.active').text()).toContain('核心链路')
   })
 
   it('点击导航切章：正文更换且路由 hash 同步', async () => {

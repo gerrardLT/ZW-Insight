@@ -53,6 +53,10 @@ vi.mock('@/api/finance', () => ({
 vi.mock('@/stores/user', () => ({
   useUserStore: () => ({ userInfo: { realName: '测试管理员' } }),
 }))
+// 引导条唤起的速览抽屉走 guide store（本用例不挂真抽屉，按同模式 mock 掉）
+vi.mock('@/stores/guide', () => ({
+  useGuideStore: () => ({ quickVisible: false, openQuick: vi.fn(), closeQuick: vi.fn() }),
+}))
 // reactive 状态：主题切换重绘用例需在挂载后翻转 isDark
 vi.mock('@/stores/app', async () => {
   const { reactive } = await import('vue')

@@ -74,6 +74,9 @@ vi.mock('@/api/dashboard', () => ({
 vi.mock('@/stores/user', () => ({
   useUserStore: () => ({ userInfo: { realName: '测试管理员' } }),
 }))
+vi.mock('@/stores/guide', () => ({
+  useGuideStore: () => ({ quickVisible: false, openQuick: vi.fn(), closeQuick: vi.fn() }),
+}))
 vi.mock('@/stores/app', () => ({
   useAppStore: () => ({ isDark: false }),
 }))
