@@ -96,14 +96,25 @@ report_summary() {
 
 log "========== L3 变更事件模块 API 测试开始 =========="
 
-# 1. 动态获取真实项目ID
-call GET "/api/v1/project/page?page=1&size=1"
-PROJECT_ID=$(jq -r '.data.records[0].id // empty' /tmp/zwi_body 2>/dev/null)
+# 1. 挑选「有 CBS 成本账户」的真实项目（分页首位可能是无账户的测试残留项目，
+#    而变更成本明细校验要求受影响账户真实存在且属于当前项目/租户）
+PROJECT_ID=""
+ACCOUNT_ID=""
+call GET "/api/v1/project/page?page=1&size=5"
+# 注意：verify-base 的 call 会覆写 /tmp/zwi_body，分页结果必须先存变量再逐个探测
+PAGE_JSON=$(cat /tmp/zwi_body 2>/dev/null)
+for _i in 0 1 2 3 4; do
+  _pid=$(printf '%s' "$PAGE_JSON" | jq -r ".data.records[$_i].id // empty" 2>/dev/null)
+  [ -z "$_pid" ] && break
+  call GET "/api/v1/dashboard/project/$_pid/cost-control" >/dev/null 2>&1
+  _acct=$(jq -r '.data.accounts[0].accountId // empty' /tmp/zwi_body 2>/dev/null)
+  if [ -n "$_acct" ]; then PROJECT_ID=$_pid; ACCOUNT_ID=$_acct; break; fi
+done
 TOTAL_COUNT=$((TOTAL_COUNT + 1))
-if [ -n "$PROJECT_ID" ]; then
-  PASS_COUNT=$((PASS_COUNT + 1)); log "  PASS [$TOTAL_COUNT] 取到真实项目ID: $PROJECT_ID"
+if [ -n "$PROJECT_ID" ] && [ -n "$ACCOUNT_ID" ]; then
+  PASS_COUNT=$((PASS_COUNT + 1)); log "  PASS [$TOTAL_COUNT] 取到 CBS 项目与成本账户: project=$PROJECT_ID account=$ACCOUNT_ID"
 else
-  FAIL_COUNT=$((FAIL_COUNT + 1)); log "  FAIL [$TOTAL_COUNT] 无法取到项目ID（种子数据缺失），测试终止"
+  FAIL_COUNT=$((FAIL_COUNT + 1)); log "  FAIL [$TOTAL_COUNT] 前 5 个项目均无 CBS 成本账户（种子数据缺失），测试终止"
   report_summary
   exit 1
 fi
@@ -124,14 +135,22 @@ assert_http 2 "累计已批准成本影响 HTTP 2xx"
 assert_body_code 200 "累计已批准成本影响业务码 200"
 
 # 4. 登记变更事件（草稿态 DRAFT）
+# affectedAccounts 在创建/更新时挂到事件上（校验：签名合计必须等于评估的 costDelta）
 CREATE_BODY=$(cat <<EOF
 {
   "projectId": $PROJECT_ID,
-  "sourceType": "SITE_DISCOVERY",
+  "sourceType": "FIELD_EVENT",
   "title": "测试变更事件-基坑支护局部加固",
   "description": "现场开挖遇溶洞地质异常，需局部增加注浆与预应力锚索",
-  "category": "DESIGN",
-  "priority": "HIGH"
+  "category": "COST_IMPACT",
+  "priority": "HIGH",
+  "affectedAccounts": [
+    {
+      "accountId": $ACCOUNT_ID,
+      "deltaType": "INCREASE",
+      "deltaAmount": 35000.00
+    }
+  ]
 }
 EOF
 )
@@ -148,15 +167,22 @@ if [ -n "$EVENT_ID" ]; then
   assert_body_code 200 "变更事件详情业务码 200"
   assert_jq ".data.id==$EVENT_ID and .data.status==\"DRAFT\"" "详情数据 ID 与状态匹配"
 
-  # 6. 更新草稿信息
+  # 6. 更新草稿信息（保留 affectedAccounts，评估校验要求与 costDelta 签名合计一致）
   UPDATE_BODY=$(cat <<EOF
 {
   "projectId": $PROJECT_ID,
-  "sourceType": "SITE_DISCOVERY",
+  "sourceType": "FIELD_EVENT",
   "title": "测试变更事件-基坑支护局部加固(已核实)",
   "description": "现场开挖遇溶洞地质异常，设计院确认需局部增加注浆与预应力锚索",
-  "category": "DESIGN",
-  "priority": "HIGH"
+  "category": "COST_IMPACT",
+  "priority": "HIGH",
+  "affectedAccounts": [
+    {
+      "accountId": $ACCOUNT_ID,
+      "deltaType": "INCREASE",
+      "deltaAmount": 35000.00
+    }
+  ]
 }
 EOF
   )
@@ -171,29 +197,23 @@ EOF
   assert_body_code 200 "转入评估业务码 200"
   assert_jq '.data.status=="ASSESSING"' "状态流转为 ASSESSING"
 
-  # 8. 提交影响评估 (ASSESSING -> PENDING_APPROVAL)
+  # 8. 提交影响评估 (ASSESSING -> APPROVING)
   ASSESSMENT_BODY=$(cat <<EOF
 {
-  "estimatedCostDelta": 35000.00,
-  "estimatedScheduleDelta": 5,
-  "assessmentReason": "增加注浆材料与施工机械工时消耗测算",
-  "affectedAccounts": [
-    {
-      "costCategory": "MATERIAL",
-      "estimatedDelta": 35000.00,
-      "impactReason": "增加注浆料"
-    }
-  ]
+  "costDelta": 35000.00,
+  "scheduleDelayDays": 5,
+  "rationale": "增加注浆材料与施工机械工时消耗测算"
 }
 EOF
   )
   call POST "/api/v1/contract/change-event/$EVENT_ID/assessment" "$ASSESSMENT_BODY"
   assert_http 2 "提交评估 HTTP 2xx"
   assert_body_code 200 "提交评估业务码 200"
-  assert_jq '.data.status=="PENDING_APPROVAL"' "状态流转为 PENDING_APPROVAL"
+  assert_jq '.data.status=="APPROVING"' "状态流转为 APPROVING"
 
-  # 9. 批准变更事件 (PENDING_APPROVAL -> APPROVED)
-  call POST "/api/v1/contract/change-event/$EVENT_ID/approve?comment=同意按专家评审加固方案实施"
+  # 9. 批准变更事件 (APPROVING -> APPROVED)
+  # query 参数不得带未编码中文（Tomcat RFC7230 会直接 400 HTML），用 ASCII 注释
+  call POST "/api/v1/contract/change-event/$EVENT_ID/approve?comment=approved-by-l3-change-event-test"
   assert_http 2 "批准变更事件 HTTP 2xx"
   assert_body_code 200 "批准变更事件业务码 200"
   assert_jq '.data.status=="APPROVED"' "状态流转为 APPROVED"

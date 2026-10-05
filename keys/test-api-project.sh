@@ -156,7 +156,17 @@ cleanup() {
   fi
   if [ -n "$CREATED_PROJECT_ID" ]; then
     call DELETE "/api/v1/project/$CREATED_PROJECT_ID" 2>/dev/null
-    log "  已清理项目 ID=$CREATED_PROJECT_ID"
+    # 核验删除是否真实生效：非草稿状态后端拒绝删除（仅草稿状态可删除），
+    # 历史版本在此谎报"已清理"，导致每次运行都在租户 1 沉淀一条 API测试项目 残留
+    call GET "/api/v1/project/$CREATED_PROJECT_ID" >/dev/null 2>&1
+    local _code
+    _code=$(jq -r '.code // empty' /tmp/zwi_body 2>/dev/null)
+    if [ "$_code" = "200" ]; then
+      log "  ⚠️ 现状记录：项目 $CREATED_PROJECT_ID 删除未生效（仅草稿状态可删除，本脚本业务流已推进状态）"
+      log "  ⚠️ 残留项目需用 keys/cleanup-garbage-data.sh 清理（'API测试项目%' 判定分支），本警告不判 FAIL"
+    else
+      log "  已清理项目 ID=$CREATED_PROJECT_ID"
+    fi
   fi
   log "--- 清理完成 ---"
 }

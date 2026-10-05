@@ -111,6 +111,8 @@ cleanup() {
 trap cleanup EXIT
 
 echo "== L0 登录（租户 9999 / $ZWI_USER） =="
+# 强制清新登录：get_token 只校验缓存文件非空，过期缓存会让 L0 假 PASS、后续全 401
+rm -f "$ZWI_WORKDIR/.zwi_token"
 get_token >/dev/null || { echo "[FAIL] L0 登录失败"; trap - EXIT; exit 1; }
 result PASS "L0 登录获取 token" ""
 

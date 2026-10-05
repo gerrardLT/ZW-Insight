@@ -106,9 +106,11 @@ assert_http 2 "项目成本控制看板 HTTP 2xx"
 assert_body_code 200 "项目成本控制看板业务码 200"
 assert_jq '.code==200 and (.data|type=="object")' "响应数据为对象"
 assert_jq '.data.projectId!=null' "包含 projectId 字段"
-assert_jq '.data.metrics!=null and (.data.metrics|type=="object")' "包含 metrics 核心指标对象"
+# 与 ProjectDashboardController/{projectId}/cost-control 现行契约对齐（ProjectCostControlDTO）：
+# totals 是核心指标汇总（baseline/current/commitment/actual/forecast），类别汇总是 categorySummaries
+assert_jq '.data.totals!=null and (.data.totals|type=="object")' "包含 totals 核心指标对象"
 assert_jq '.data.accounts!=null and (.data.accounts|type=="array")' "包含 accounts 账户明细列表"
-assert_jq '.data.categories!=null and (.data.categories|type=="array")' "包含 categories 类别汇总列表"
+assert_jq '.data.categorySummaries!=null and (.data.categorySummaries|type=="array")' "包含 categorySummaries 类别汇总列表"
 
 # 3. 负向测试：项目不存在校验 (checkProjectExists 应该返回 404 或非 200 错误)
 call GET "/api/v1/dashboard/project/999999999/cost-control"

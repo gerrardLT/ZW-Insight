@@ -159,8 +159,10 @@ assert_jq ".code==200 and (([.data.records[] | select(.forecastMonth==\"$FORECAS
 # 构成项校验：expectedPayments 必须 >= overdueUnpaid（包含关系，不是相加关系）
 assert_jq ".code==200 and ([.data.records[] | select(.forecastMonth==\"$FORECAST_MONTH\")][0] | (.expectedPayments | tonumber) >= (.overdueUnpaid | tonumber))" \
   "滚动预测-逾期为预计付款的构成项（expectedPayments ≥ overdueUnpaid）"
-# 后续月份不得重复摊入同一笔逾期款
-assert_jq ".code==200 and ([.data.records[] | select(.forecastMonth != \"$FORECAST_MONTH\") | select((.overdueUnpaid | tonumber) != 0)] | length == 0)" \
+# 后续月份不得重复摊入同一笔逾期款。
+# 注意只断言「后续月份」：早于当月的历史快照（如上月生成的当期快照）按 FundPlanService
+# 覆盖式写入语义保留为生成时点留存，其 overdueUnpaid 反映生成当时的真实逾期，不在本不变量范围。
+assert_jq ".code==200 and ([.data.records[] | select(.forecastMonth > \"$FORECAST_MONTH\") | select((.overdueUnpaid | tonumber) != 0)] | length == 0)" \
   "滚动预测-逾期仅计入当月（不向后续月份摊开）"
 # 风险等级不得因漏计而误判：当月有巨额逾期时缺口必为正（付款>收款）
 assert_jq ".code==200 and (([.data.records[] | select(.forecastMonth==\"$FORECAST_MONTH\")][0].netGap | tonumber) > 0)" \
