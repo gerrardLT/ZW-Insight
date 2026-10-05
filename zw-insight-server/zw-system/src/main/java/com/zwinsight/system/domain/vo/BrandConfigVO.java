@@ -37,4 +37,10 @@ public class BrandConfigVO {
      * 登录页底部版权信息
      */
     private String copyright;
+
+    /**
+     * 品牌主色（#RRGGBB；空 = 内置主题色）。
+     * 前端读取后覆盖 --zw-brand* CSS 变量家族，实现按部署环境换肤。
+     */
+    private String brandColor;
 }

@@ -45,10 +45,9 @@
             <h2>常用</h2>
             <NavLink v-for="item in favoriteItems" :key="item.path" :item="item" :active="$route.path === item.path" :favorite="true" @navigate="handleMenuClick" @favorite="toggleFavorite" />
           </section>
-          <section v-if="recentItems.length" class="nav-section">
-            <h2>最近访问</h2>
-            <NavLink v-for="item in recentItems" :key="item.path" :item="item" :active="$route.path === item.path" :favorite="favoritePaths.includes(item.path)" @navigate="handleMenuClick" @favorite="toggleFavorite" />
-          </section>
+          <!-- 最近访问已移至顶栏「历史」下拉（方案A）：跨域时间线与域结构目录是两种心智模型，
+               全局最近入口混在域面板顶部会把本域功能组挤出首屏、且与首组重复；
+               面板回归纯结构目录，常用（用户主动收藏）保留在顶部 -->
           <section v-for="section in activeDomain?.sections || []" :key="section.title" class="nav-section">
             <h2>{{ section.title }}</h2>
             <NavLink v-for="item in section.items" :key="item.path" :item="item" :active="$route.path === item.path" :favorite="favoritePaths.includes(item.path)" @navigate="handleMenuClick" @favorite="toggleFavorite" />
@@ -68,6 +67,33 @@
           <AppBreadcrumb />
         </div>
         <div class="header-right">
+          <!-- 最近访问（方案A）：全局任务恢复入口，与域无关，收进顶栏 -->
+          <el-dropdown
+            trigger="click"
+            popper-class="nav-history-popper"
+            :teleported="true"
+            @command="goRecent"
+          >
+            <el-tooltip content="最近访问" placement="bottom">
+              <div class="header-action" role="button" aria-label="最近访问" data-testid="nav-history-btn">
+                <el-icon><IconClock /></el-icon>
+              </div>
+            </el-tooltip>
+            <template #dropdown>
+              <el-dropdown-menu data-testid="nav-history-menu">
+                <div v-if="!historyItems.length" class="nav-history-empty">暂无访问记录，去任意页面看看吧</div>
+                <el-dropdown-item
+                  v-for="item in historyItems"
+                  :key="item.path"
+                  :command="item.path"
+                  data-testid="nav-history-item"
+                >
+                  <span class="nav-history-title">{{ item.title }}</span>
+                  <span class="nav-history-domain">{{ domainTitle(item.domain) }}</span>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <!-- 命令面板触发（⌘K / Ctrl+K） -->
           <el-tooltip content="命令面板 (Ctrl+K)" placement="bottom">
             <div ref="paletteBtnRef" class="header-action" role="button" aria-label="打开命令面板" @click="togglePalette">
@@ -165,7 +191,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import { getUserMenus, type AuthorizedMenuDto } from '@/api/system'
-import { buildNavigation, type NavItem } from '@/utils/navigation'
+import { buildNavigation, NAV_DOMAINS, type NavItem, type NavDomain } from '@/utils/navigation'
 import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
@@ -176,7 +202,7 @@ import { useShortcuts, ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
 import { useCommandPalette, type PaletteCommand } from '@/composables/useCommandPalette'
 import { Expand, Fold, Moon, Sunny, ArrowDown, Bell, Search, SwitchButton } from '@/components/icons/registry'
 import { resolveMenuIcon } from '@/components/icons/registry'
-import { IconHelp } from '@tabler/icons-vue'
+import { IconHelp, IconClock } from '@tabler/icons-vue'
 // 使用文档元数据：仅类型导入（编译擦除）；正文 chunk 由命令面板首次挂载时动态 import，
 // 避免 19 章 Markdown 正文进入主包（CodeReview Major-2）
 import type { GuideChapterMeta } from '@/docs/help/registry'
@@ -256,7 +282,26 @@ const favoriteStorageKey = computed(() => `zw-nav-favorites:${storageUserKey.val
 const recentStorageKey = computed(() => `zw-nav-recent:${storageUserKey.value}`)
 const itemByPath = computed(() => new Map(navigation.value.items.map((item) => [item.path, item])))
 const favoriteItems = computed(() => favoritePaths.value.map((path) => itemByPath.value.get(path)).filter((item): item is NavItem => Boolean(item)))
-const recentItems = computed(() => recentPaths.value.map((path) => itemByPath.value.get(path)).filter((item): item is NavItem => Boolean(item)).slice(0, 5))
+/* ================= 最近访问（顶栏历史下拉，方案A） ================= */
+/** 首页属常驻入口（品牌位/面包屑均可达），进最近列表只有噪音 */
+const TRIVIAL_RECENT_PATHS = new Set(['/dashboard'])
+
+/** 顶栏历史下拉数据：全局最近（跨域），排除常驻入口，最多 10 条 */
+const historyItems = computed(() =>
+  recentPaths.value
+    .map((path) => itemByPath.value.get(path))
+    .filter((item): item is NavItem => Boolean(item) && !TRIVIAL_RECENT_PATHS.has(item.path))
+    .slice(0, 10)
+)
+
+const DOMAIN_TITLE_BY_KEY = new Map<string, string>(NAV_DOMAINS.map((d: NavDomain) => [d.key, d.title]))
+function domainTitle(key: string): string {
+  return DOMAIN_TITLE_BY_KEY.get(key) || ''
+}
+
+function goRecent(path: string) {
+  router.push(path)
+}
 
 function loadPersonalNavigation() {
   try {
@@ -296,7 +341,7 @@ function toggleFavorite(path: string) {
 }
 
 function recordRecent(path: string) {
-  if (!itemByPath.value.has(path)) return
+  if (!itemByPath.value.has(path) || TRIVIAL_RECENT_PATHS.has(path)) return
   recentPaths.value = [path, ...recentPaths.value.filter((item) => item !== path)].slice(0, 10)
   localStorage.setItem(recentStorageKey.value, JSON.stringify(recentPaths.value))
 }
@@ -623,6 +668,8 @@ onBeforeUnmount(() => {
   color: var(--zw-brand);
 }
 
+/* ===== 顶栏最近访问下拉（popper 为 teleport 元素，样式走全局块） ===== */
+
 .user-info {
   display: flex;
   align-items: center;
@@ -713,6 +760,51 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-  .layout-header .header-action:nth-of-type(n + 3) { display: none; }
+  /* 窄屏只保留高频动作（最近访问/命令面板/帮助），主题与消息收纳进用户菜单场景 */
+  .layout-header .header-action[aria-label="切换主题"],
+  .layout-header .header-action[aria-label="消息通知"] { display: none; }
+}
+</style>
+
+<style>
+/* 顶栏最近访问下拉：popper 挂 body（teleported），须走全局样式 */
+.nav-history-popper .nav-history-title {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-history-popper .nav-history-domain {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 16px;
+  font-size: var(--zw-font-size-xs);
+  color: var(--zw-text-quaternary);
+}
+
+.nav-history-popper .nav-history-domain::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+  background: var(--zw-brand);
+  opacity: 0.55;
+}
+
+.nav-history-popper .nav-history-empty {
+  padding: var(--zw-space-md) var(--zw-space-lg);
+  color: var(--zw-text-quaternary);
+  font-size: var(--zw-font-size-sm);
+  text-align: center;
+}
+
+.nav-history-popper .el-dropdown-menu__item {
+  display: flex;
+  align-items: center;
+  min-width: 260px;
 }
 </style>

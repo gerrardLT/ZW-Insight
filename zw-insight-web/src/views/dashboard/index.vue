@@ -32,9 +32,10 @@
       </div>
     </div>
 
-    <!-- 统计卡片 -->
-    <div class="stat-grid">
-      <div class="stat-card card-corner-marked" v-for="item in statCards" :key="item.key">
+    <!-- 统计卡片（加载态：骨架屏；落定后逐卡错峰入场） -->
+    <ZwSkeleton v-if="!statsLoaded" variant="cards" :count="4" />
+    <div v-else class="stat-grid">
+      <div class="stat-card card-corner-marked kpi-enter" v-for="(item, idx) in statCards" :key="item.key" :style="{ '--kpi-i': idx }">
         <div class="stat-icon-wrap" :style="{ background: item.bg, color: item.color }">
           <el-icon><component :is="item.icon" /></el-icon>
         </div>
@@ -111,6 +112,7 @@ import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { IconArrowRight } from '@tabler/icons-vue'
 import { useGuideStore } from '@/stores/guide'
+import ZwSkeleton from '@/components/ZwSkeleton.vue'
 import { getCompanyOverview } from '@/api/dashboard'
 import { getOverdueRetention } from '@/api/finance'
 import type { RetentionMoney } from '@/types/finance'
@@ -138,6 +140,8 @@ function dismissGuideBanner() {
 const { hasPermission } = usePermission()
 const canViewFinance = computed(() => hasPermission('finance:view'))
 const stats = ref<any>({})
+/** 统计卡是否完成首载：加载中走 ZwSkeleton 骨架（替代裸白块），落定后卡片带入场动效 */
+const statsLoaded = ref(false)
 const pieChartRef = ref<HTMLElement>()
 const barChartRef = ref<HTMLElement>()
 let pieChart: echarts.ECharts | null = null
@@ -238,6 +242,8 @@ async function loadStats() {
     // 不静默处理：显式提示错误，同时置空避免页面卡死
     stats.value = {}
     ElMessage.error('加载统计数据失败：' + (e?.message || '接口异常'))
+  } finally {
+    statsLoaded.value = true
   }
 }
 
@@ -470,6 +476,30 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(4, 1fr);
   gap: var(--zw-space-md);
   margin-bottom: var(--zw-space-md);
+}
+
+/* KPI 卡入场动效：骨架落定后逐卡错峰上浮（--kpi-i 由模板注入） */
+.kpi-enter {
+  animation: kpi-enter-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--kpi-i, 0) * 70ms);
+}
+
+@keyframes kpi-enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-enter {
+    animation: none;
+  }
 }
 
 .stat-card {

@@ -2,8 +2,10 @@
   <div class="fund-center-container">
     <!-- 四卡（§9.1）：账户资金 / 应收未收 / 应付未付 / 90天缺口
          2026-09-24 修正：第三卡原误用「已批未付」顶替文档要求的「应付未付」（口径被换窄，
-         漏掉已结算但尚未提交付款申请的义务），现已改为应付未付，已批未付降为 sub 行 -->
-    <div v-loading="cardLoading" class="fund-grid">
+         漏掉已结算但尚未提交付款申请的义务），现已改为应付未付，已批未付降为 sub 行
+         加载态走 ZwSkeleton 骨架（替代裸 v-loading 白块），数值走 ZwCountUp 翻牌 -->
+    <ZwSkeleton v-if="cardLoading" variant="cards" :count="4" class="fund-grid" />
+    <div v-else class="fund-grid">
       <el-card v-for="card in fundCards" :key="card.label" shadow="never" class="fund-card"
         :class="{ 'fund-alert': card.alert }">
         <div class="fund-label">
@@ -12,7 +14,9 @@
             <el-icon class="fund-help"><QuestionFilled /></el-icon>
           </el-tooltip>
         </div>
-        <div class="fund-value" :class="card.valueClass">{{ card.value }}</div>
+        <div class="fund-value" :class="card.valueClass">
+          <ZwCountUp :value="card.num" :format="(n: number) => formatWan(n)" />
+        </div>
         <div class="fund-sub">{{ card.sub }}</div>
       </el-card>
     </div>
@@ -230,6 +234,8 @@ import {
 } from '@/api/fund-plan'
 import { getReceivableAging, type ReceivableAging, type AgingBucket } from '@/api/receivable'
 import { formatWan } from '@/utils/chart-format'
+import ZwCountUp from '@/components/ZwCountUp.vue'
+import ZwSkeleton from '@/components/ZwSkeleton.vue'
 
 const bucketDefs: { key: AgingBucket; label: string }[] = [
   { key: 'NOT_DUE', label: '未到期' },
@@ -340,14 +346,14 @@ const fundCards = computed(() => {
   const balance = Number(o?.accountBalance) || 0
   return [
     {
-      label: '账户资金', value: formatWan(o?.accountBalance),
+      label: '账户资金', num: balance,
       // 余额未登记时必须如实告知：否则「可用资金」会静默地只剩预计回款，用户无从得知
       sub: balance > 0 ? '各账户最新余额快照合计' : '⚠ 未登记余额快照（可用资金仅含预计回款）',
       tooltip: '来源为网银对账单手工登记的余额快照（biz_bank_balance，与资金日报头寸同源），非流水推导；未登记时为 0，不伪造估算值',
       valueClass: '', alert: balance <= 0
     },
     {
-      label: '应收未收', value: formatWan(aging.value.totalOpen),
+      label: '应收未收', num: Number(aging.value.totalOpen) || 0,
       sub: `其中逾期 ${formatWan(aging.value.totalOverdue)}`,
       tooltip: '应收台账 OPEN 余额合计（结算审批生成，回款 FIFO 核销）',
       valueClass: '', alert: Number(aging.value.totalOverdue) > 0
@@ -355,14 +361,14 @@ const fundCards = computed(() => {
     {
       // UI §9.1 第三卡为「应付未付」（已确认付款义务），不是「已批未付」；
       // 后者降为 sub 行呈现（两者语义不同，已批未付仅是应付未付的子集）
-      label: '应付未付', value: formatWan(o?.payableOutstanding),
+      label: '应付未付', num: Number(o?.payableOutstanding) || 0,
       sub: `其中已进入付款流程 ${formatWan(o?.approvedUnpaid)}`,
       tooltip: '应付未付 = Σ支出合同（累计结算 − 累计已付），含尚未提交付款申请的义务；'
         + '「已进入付款流程」= 已审批未付申请的剩余未付额（部分支付只计未付部分）',
       valueClass: '', alert: Number(o?.payableOutstanding) > 0
     },
     {
-      label: '90天资金缺口', value: formatWan(gap),
+      label: '90天资金缺口', num: gap,
       sub: gap > 0
         ? `🔴 需安排资金（可用资金 ${formatWan(o?.availableFund)}）`
         : `🟢 可用资金 ${formatWan(o?.availableFund)} 可覆盖`,

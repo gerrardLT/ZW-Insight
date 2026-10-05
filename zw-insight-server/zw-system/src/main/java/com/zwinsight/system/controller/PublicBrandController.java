@@ -33,6 +33,7 @@ public class PublicBrandController {
         vo.setLogoLightUrl(safeGet("brand_logo_light_url", ""));
         vo.setFaviconUrl(safeGet("brand_favicon_url", ""));
         vo.setCopyright(safeGet("brand_copyright", DEFAULT_COPYRIGHT));
+        vo.setBrandColor(safeGet("brand_color", ""));
         return R.ok(vo);
     }
 

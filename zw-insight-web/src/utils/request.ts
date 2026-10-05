@@ -3,6 +3,7 @@ import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { useUserStore } from '@/stores/user'
 import { requestSecondaryConfirm } from '@/utils/secondaryConfirm'
+import { humanizeApiError } from '@/constants/error-messages'
 
 /** HTTP 449：后端 @SecondaryConfirm 拦截器要求二次确认 */
 const HTTP_SECONDARY_CONFIRM = 449
@@ -90,11 +91,14 @@ service.interceptors.response.use(
     }
     if (res.code !== 200) {
       if (res.code === 401) {
-        if (handleUnauthorized()) ElMessage.error(res.message || '登录已过期，请重新登录')
-        return Promise.reject(markHandled(new Error(res.message || '登录已过期，请重新登录')))
+        // 错误话术资产：具体业务提示透出，泛化文案（含缺失）按码表兜底
+        const tip = humanizeApiError(401, res.message)
+        if (handleUnauthorized()) ElMessage.error(tip)
+        return Promise.reject(markHandled(new Error(tip)))
       }
-      ElMessage.error(res.message || '请求失败')
-      return Promise.reject(markHandled(new Error(res.message || '请求失败')))
+      const tip = humanizeApiError(res.code, res.message)
+      ElMessage.error(tip)
+      return Promise.reject(markHandled(new Error(tip)))
     }
     // 重置失败计数（成功请求后清空状态）
     localStorage.removeItem('request-failure-count')
@@ -161,9 +165,9 @@ service.interceptors.response.use(
       }
     }
 
-    const message = responseData?.message || error.message || '网络异常'
+    const message = humanizeApiError(response?.status, responseData?.message || error.message, '网络异常，请检查网络后重试')
     if (response?.status === 401) {
-      if (handleUnauthorized()) ElMessage.error(message || '登录已过期，请重新登录')
+      if (handleUnauthorized()) ElMessage.error(message)
       return Promise.reject(markHandled(error))
     }
     ElMessage.error(message)

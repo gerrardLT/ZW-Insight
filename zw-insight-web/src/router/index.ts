@@ -1001,6 +1001,13 @@ const constantRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/error/403.vue'),
     meta: { title: '无权限', hidden: true }
   },
+  // 组件画廊（纯内部页：令牌/图标/组件/资产可视化目录，hidden 不入菜单，URL 直达）
+  {
+    path: '/dev/gallery',
+    name: 'DevGallery',
+    component: () => import('@/views/dev/gallery.vue'),
+    meta: { title: '组件画廊', hidden: true }
+  },
   {
     path: '/404',
     name: 'NotFound',
