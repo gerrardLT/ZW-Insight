@@ -185,6 +185,8 @@ public class ProjectStateMachine {
         logRow.setEvent(event.name());
         logRow.setRemark(remark);
         logRow.setOperatorId(operatorId);
+        logRow.setTenantId(project.getTenantId() != null ? project.getTenantId() : 1L);
+        logRow.setCreatedAt(java.time.LocalDateTime.now());
         statusLogMapper.insert(logRow);
         return project;
     }

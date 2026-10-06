@@ -247,6 +247,8 @@ public class ProjectService {
                     row.setOldValue(oldVal == null ? null : String.valueOf(oldVal));
                     row.setNewValue(String.valueOf(newVal));
                     row.setOperatorId(operatorId);
+                    row.setTenantId(existing.getTenantId() != null ? existing.getTenantId() : 1L);
+                    row.setCreatedAt(java.time.LocalDateTime.now());
                     logs.add(row);
                 }
             }

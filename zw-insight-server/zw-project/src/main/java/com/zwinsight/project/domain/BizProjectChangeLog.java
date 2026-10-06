@@ -1,22 +1,29 @@
 package com.zwinsight.project.domain;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
- * 项目关键字段变更台账（V2026_81，不变量 I4）。
+ * 项目关键字段变更台账（V2026_81，不变量 I4，append-only 流水表）。
  * <p>
- * 立项（FILED 及之后）状态下修改关键字段（业主/签约方/金额/计划周期/项目名称）
- * 必须落此台账：who/when/old/new 全留痕。字段名用驼峰属性名。
+ * 立项（FILED 及之后）状态下修改关键字段必须落此台账：who/when/old/new 全留痕。
+ * 不继承 BaseEntity，与 biz_project_change_log 表物理列严格对齐。
  * </p>
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
 @TableName(value = "biz_project_change_log", autoResultMap = true)
-public class BizProjectChangeLog extends BaseEntity {
+public class BizProjectChangeLog implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    @TableId(type = IdType.AUTO)
+    private Long id;
 
     @TableField("project_id")
     private Long projectId;
@@ -32,4 +39,10 @@ public class BizProjectChangeLog extends BaseEntity {
 
     @TableField("operator_id")
     private Long operatorId;
+
+    @TableField("tenant_id")
+    private Long tenantId;
+
+    @TableField("created_at")
+    private LocalDateTime createdAt;
 }
