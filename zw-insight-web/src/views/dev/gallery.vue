@@ -46,9 +46,15 @@
     <section class="gallery-section">
       <h2>4. 通用组件</h2>
 
-      <h3>4.1 空状态 ZwEmptyState</h3>
+      <h3>4.1 空状态 ZwEmptyState + 状态插画 ZwStateIllustration（v2 九态）</h3>
       <div class="demo-panel">
-        <ZwEmptyState description="暂无结算单，审批通过后自动生成" />
+        <ZwEmptyState type="settlement" description="暂无结算单，审批通过后自动生成" />
+      </div>
+      <div class="demo-panel illus-grid">
+        <figure v-for="t in illusTypes" :key="t" class="illus-cell">
+          <ZwStateIllustration :type="t" size="140px" />
+          <figcaption>{{ t }}</figcaption>
+        </figure>
       </div>
 
       <h3>4.2 数字翻牌 ZwCountUp</h3>
@@ -107,9 +113,10 @@
  * 组件画廊（内部 /dev/gallery，hidden 不入菜单）。
  * 目的：令牌/图标/组件/资产一页可视化，杜绝样式漂移；数据取运行时真实值。
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import * as icons from '@/components/icons/registry'
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
+import ZwStateIllustration from '@/components/visual/ZwStateIllustration.vue'
 import ZwCountUp from '@/components/ZwCountUp.vue'
 import ZwSkeleton from '@/components/ZwSkeleton.vue'
 import emptyBlueprint from '@/assets/empty-blueprint.png'
@@ -142,8 +149,14 @@ const typeSamples = [
 
 const iconNames = Object.keys(icons).filter((k) => /^[A-Z]/.test(k)).sort()
 
+/** 状态插画 v2 九态（与 ZwStateIllustration 的 type 联合类型同源） */
+const illusTypes = [
+  'data', 'search', 'error', 'offline', 'permission',
+  'settlement', 'fund', 'approval', 'blueprint',
+] as const
+
 const countUpValue = ref(4520.5)
-const wan = (n: number) => (n / 1).toFixed(1)
+const wan = (n: number) => n.toFixed(1)
 
 const assets = [
   { src: emptyBlueprint, name: 'empty-blueprint（AI 空白图纸空态）' },
@@ -152,9 +165,6 @@ const assets = [
   { src: logo, name: 'logo' },
 ]
 
-onMounted(() => {
-  void ref(0)
-})
 </script>
 
 <style scoped>
@@ -311,6 +321,25 @@ onMounted(() => {
   font-weight: 600;
   color: var(--zw-text-primary);
   font-variant-numeric: tabular-nums;
+}
+
+.illus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--zw-space-md);
+}
+
+.illus-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--zw-space-xs);
+  margin: 0;
+}
+
+.illus-cell figcaption {
+  font-size: var(--zw-font-size-xs);
+  color: var(--zw-text-quaternary);
 }
 
 .asset-grid {

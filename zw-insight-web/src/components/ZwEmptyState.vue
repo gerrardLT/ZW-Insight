@@ -10,7 +10,7 @@
     <!-- 图标区（契约 class .empty-icon 保留：既有单测依赖）；#image slot 可覆盖为 bespoke 插图 -->
     <div class="empty-icon">
       <slot name="image">
-        <ZwStateIllustration :type="type" :aria-label="ariaLabel" size="64px" />
+        <ZwStateIllustration :type="type" :aria-label="ariaLabel" />
       </slot>
     </div>
 
@@ -35,7 +35,8 @@ import ZwStateIllustration from '@/components/visual/ZwStateIllustration.vue'
 
 const props = withDefaults(
   defineProps<{
-    type?: 'data' | 'error' | 'offline' | 'permission'
+    /** 状态/场景类型：前 4 态给方向性默认文案；后 5 个业务场景（2026-10-05 插画 v2 扩展）需自传 description */
+    type?: 'data' | 'error' | 'offline' | 'permission' | 'search' | 'settlement' | 'fund' | 'approval' | 'blueprint'
     /** 描述文案（未传时按类型给方向性默认，"给方向不道歉"） */
     description?: string
     /** 可选标题（强叙事场景，如错误码/无权限原因） */

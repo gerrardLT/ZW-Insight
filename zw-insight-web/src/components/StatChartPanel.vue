@@ -26,11 +26,12 @@
           </template>
         </ZwEmptyState>
       </div>
-      <!-- 空态：接口成功但无可绘制数据（bespoke 插画：空白图纸+圆规——「等待绘制」隐喻，经 #image slot 注入） -->
+      <!-- 空态：接口成功但无可绘制数据（blueprint 插画：空白图纸+绘笔——「等待绘制」隐喻，
+           主题自适应 SVG 替代旧 PNG 双版切换，2026-10-05 插画资产统一） -->
       <div v-else-if="isEmpty" class="panel-state" data-testid="stat-panel-empty">
         <ZwEmptyState type="data" :description="emptyText">
           <template #image>
-            <img :src="emptyImg" class="zw-empty-img" alt="空白图纸与圆规插图" />
+            <ZwStateIllustration type="blueprint" aria-label="空白图纸与绘笔插图" />
           </template>
         </ZwEmptyState>
       </div>
@@ -85,12 +86,10 @@ import * as echarts from 'echarts'
 import { Refresh } from '@/components/icons/registry'
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { useAppStore } from '@/stores/app'
-import emptyLight from '@/assets/empty-blueprint.png'
-import emptyDark from '@/assets/empty-blueprint-dark.png'
+import ZwStateIllustration from '@/components/visual/ZwStateIllustration.vue'
 import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
 
 const appStore = useAppStore()
-const emptyImg = computed(() => (appStore.isDark ? emptyDark : emptyLight))
 
 const props = withDefaults(defineProps<{
   /** 面板标题 */

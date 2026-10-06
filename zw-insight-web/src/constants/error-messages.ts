@@ -15,7 +15,6 @@ const GENERIC_MESSAGES = new Set([
   '系统内部错误，请稍后重试',
   '请求失败',
   '操作失败',
-  '操作成功失败',
   'Internal Server Error',
   'Bad Request',
   'error',

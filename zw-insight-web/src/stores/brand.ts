@@ -27,7 +27,7 @@ function deriveBrandFamily(base: string, isDark: boolean) {
   const hex = (r2: number, g2: number, b2: number) =>
     `#${[r2, g2, b2].map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('')}`
   const lift = (ratio: number) => hex(channel(r, 255, ratio), channel(g, 255, ratio), channel(b, 255, ratio))
-  const sink = (ratio: number) => hex(channel(r, 0, ratio), channel(g, 0, ratio), channel(b, ratio))
+  const sink = (ratio: number) => hex(channel(r, 0, ratio), channel(g, 0, ratio), channel(b, 0, ratio))
   return {
     brand: base,
     hover: lift(0.12),

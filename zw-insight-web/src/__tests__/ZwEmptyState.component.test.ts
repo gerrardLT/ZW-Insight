@@ -19,8 +19,8 @@ describe('ZwEmptyState', () => {
     for (const type of ['data', 'error', 'offline', 'permission'] as const) {
       const wrapper = mount(ZwEmptyState, { props: { type } })
       expect(wrapper.find('.empty-icon .zw-illust').exists(), `${type} 应有内联 SVG`).toBe(true)
-      // 共用蓝图底板虚线框
-      expect(wrapper.find('.zw-illust .ill-frame').exists()).toBe(true)
+      // 共用制图角标（v2：替代 v1 整幅虚线底板）
+      expect(wrapper.find('.zw-illust .ill-mark').exists()).toBe(true)
     }
   })
 
@@ -31,7 +31,7 @@ describe('ZwEmptyState', () => {
     expect(wrapper.classes()).toContain('type-error')
     expect(wrapper.find('.empty-icon').exists()).toBe(true)
     // error 专属：警示三角（path）+ 橙感叹号（ill-accent-s）
-    expect(wrapper.find('.zw-illust path.ill-line').exists()).toBe(true)
+    expect(wrapper.find('.zw-illust path.ill-line-strong').exists(), '警示三角主形体').toBe(true)
     expect(wrapper.find('.zw-illust .ill-accent-s').exists()).toBe(true)
   })
 
@@ -39,7 +39,7 @@ describe('ZwEmptyState', () => {
     const wrapper = mount(ZwEmptyState, { props: { type: 'permission' } })
     expect(wrapper.classes()).toContain('type-permission')
     // 挂锁：锁体 rect + 锁梁 path
-    expect(wrapper.findAll('.zw-illust rect.ill-line').length).toBeGreaterThan(0)
+    expect(wrapper.findAll('.zw-illust rect.ill-line-strong').length, '锁体主形体').toBeGreaterThan(0)
   })
 
   it('offline type renders cloud-off glyph', () => {

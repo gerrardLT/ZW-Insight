@@ -11,7 +11,7 @@
  *   保证测试/无障碍场景下的确定性渲染（挂载即终值，不依赖帧时钟）；
  * - 值变化时从当前显示值续动到新值，避免重置跳变。
  */
-import { ref, watch } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -82,6 +82,11 @@ if (props.duration > 0 && !prefersReducedMotion() && props.value !== 0) {
   render(0)
   requestAnimationFrame(() => animate(props.value))
 }
+
+/** 卸载取消进行中的帧回调，避免对已卸载组件的 ref 写值 */
+onBeforeUnmount(() => {
+  cancelAnimationFrame(rafId)
+})
 </script>
 
 <style scoped>

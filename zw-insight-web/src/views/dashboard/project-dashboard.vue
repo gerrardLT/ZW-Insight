@@ -33,7 +33,7 @@
 
       <div v-loading="wallLoading" class="wall-grid-wrap">
         <div v-if="!wallLoading && !wallProjects.length" class="wall-empty">
-          <img :src="emptyImg" class="zw-empty-img" alt="" />
+          <ZwStateIllustration type="blueprint" />
           <p class="wall-empty-text">
             {{ keyword || statusFilter ? '没有匹配的项目，试试调整筛选条件' : '暂无项目' }}
           </p>
@@ -161,7 +161,7 @@
               />
               <el-empty v-else-if="!budget.loading && isEmpty(budget.data)" description="暂无数据">
                 <template #image>
-                  <img :src="emptyImg" class="zw-empty-img" alt="" />
+                  <ZwStateIllustration type="blueprint" />
                 </template>
               </el-empty>
               <!-- 图表占位容器（task 8.3 渲染 ECharts） -->
@@ -186,7 +186,7 @@
               />
               <el-empty v-else-if="!progress.loading && isEmpty(progress.data)" description="暂无数据">
                 <template #image>
-                  <img :src="emptyImg" class="zw-empty-img" alt="" />
+                  <ZwStateIllustration type="blueprint" />
                 </template>
               </el-empty>
               <div v-show="!progress.error && !isEmpty(progress.data)" ref="progressChartRef" class="chart-box"></div>
@@ -212,7 +212,7 @@
               />
               <el-empty v-else-if="!contract.loading && isEmpty(contract.data)" description="暂无数据">
                 <template #image>
-                  <img :src="emptyImg" class="zw-empty-img" alt="" />
+                  <ZwStateIllustration type="blueprint" />
                 </template>
               </el-empty>
               <div v-show="!contract.error && !isEmpty(contract.data)" ref="contractChartRef" class="chart-box"></div>
@@ -236,7 +236,7 @@
               />
               <el-empty v-else-if="!output.loading && isEmpty(output.data)" description="暂无数据">
                 <template #image>
-                  <img :src="emptyImg" class="zw-empty-img" alt="" />
+                  <ZwStateIllustration type="blueprint" />
                 </template>
               </el-empty>
               <div v-show="!output.error && !isEmpty(output.data)" ref="outputChartRef" class="chart-box"></div>
@@ -268,12 +268,10 @@ import {
 } from '@/api/dashboard'
 import { toAmount2, toWan, clampPercent, nonNegativeRemaining, formatWan } from '@/utils/chart-format'
 import { useAppStore } from '@/stores/app'
-import emptyLight from '@/assets/empty-blueprint.png'
-import emptyDark from '@/assets/empty-blueprint-dark.png'
+import ZwStateIllustration from '@/components/visual/ZwStateIllustration.vue'
 import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
 
 const appStore = useAppStore()
-const emptyImg = computed(() => (appStore.isDark ? emptyDark : emptyLight))
 
 // 当前选中的项目 ID：后端雪花 ID 超出 JS 安全整数，真实序列化为 string，
 // 故此处为 number | string（与 ProjectSelector/卡片回传原生类型一致，不做强转）

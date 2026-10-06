@@ -90,4 +90,21 @@ describe('品牌主色换肤', () => {
     s.applyBrandTheme()
     expect(document.documentElement.style.getPropertyValue('--zw-brand')).toBe('')
   })
+
+  it('深色模式下派生色全部为合法 hex（回归：sink() 曾漏传 target=0 致蓝色通道 NaN）', () => {
+    setActivePinia(createPinia())
+    document.documentElement.dataset.theme = 'dark'
+    try {
+      const s = useBrandStore()
+      s.brandColor = '#ff6b00'
+      s.applyBrandTheme()
+      const keys = ['--zw-brand', '--zw-brand-hover', '--zw-brand-active', '--zw-brand-light', '--zw-brand-lighter', '--zw-brand-gradient', '--zw-brand-gradient-hover']
+      for (const k of keys) {
+        const v = document.documentElement.style.getPropertyValue(k)
+        expect(v, `${k} 应为合法 hex`).toMatch(/^#[0-9a-f]{6}$/)
+      }
+    } finally {
+      delete document.documentElement.dataset.theme
+    }
+  })
 })

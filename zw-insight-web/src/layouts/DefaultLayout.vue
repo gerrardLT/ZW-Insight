@@ -91,6 +91,15 @@
                   <span class="nav-history-title">{{ item.title }}</span>
                   <span class="nav-history-domain">{{ domainTitle(item.domain) }}</span>
                 </el-dropdown-item>
+                <el-dropdown-item
+                  v-if="historyItems.length"
+                  divided
+                  command="__clear__"
+                  class="nav-history-clear"
+                  data-testid="nav-history-clear"
+                >
+                  清空访问记录
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -300,6 +309,12 @@ function domainTitle(key: string): string {
 }
 
 function goRecent(path: string) {
+  if (path === '__clear__') {
+    // 清空访问记录（保留常用收藏）：本地隐私数据，用户应可主动清除
+    recentPaths.value = []
+    localStorage.setItem(recentStorageKey.value, '[]')
+    return
+  }
   router.push(path)
 }
 
