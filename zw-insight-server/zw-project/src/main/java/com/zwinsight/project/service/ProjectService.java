@@ -599,42 +599,42 @@ public class ProjectService {
         // 条件1：项目状态必须为 COMPLETED
         boolean statusOk = "COMPLETED".equals(project.getStatus());
         addCondition(conditions, failedReasons, "项目已竣工验收", statusOk,
-                statusOk ? "当前状态: COMPLETED" : "当前状态: " + project.getStatus() + "，需先完成竣工验收");
+                statusOk ? "当前状态: COMPLETED" : "当前状态: " + project.getStatus() + "，需先完成竣工验收", true);
 
         // 条件2（A6 实口径 I5-1）：应收台账余额已清（receivable_amount = OPEN 应收余额，V2026_57 维护）
         BigDecimal receivableOpen = project.getReceivableAmount() != null ? project.getReceivableAmount() : BigDecimal.ZERO;
         boolean paymentOk = receivableOpen.compareTo(BigDecimal.valueOf(100)) <= 0;
         addCondition(conditions, failedReasons, "应收账款已结清", paymentOk,
-                paymentOk ? "应收余额: " + receivableOpen : "应收台账仍有余额: " + receivableOpen);
+                paymentOk ? "应收余额: " + receivableOpen : "应收台账仍有余额: " + receivableOpen, true);
 
         // 条件2b（I5-2）：五类支出合同应付未付清零
         BigDecimal payable = nvl(projectMapper.sumPayableOutstanding(id));
         boolean payableOk = payable.compareTo(BigDecimal.valueOf(100)) <= 0;
         addCondition(conditions, failedReasons, "应付款项已结清", payableOk,
-                payableOk ? "应付未付: " + payable : "仍有应付未付: " + payable);
+                payableOk ? "应付未付: " + payable : "仍有应付未付: " + payable, false);
 
         // 条件2c（I5-3）：质保金全退
         BigDecimal retention = nvl(projectMapper.sumUnreturnedRetention(id));
         boolean retentionOk = retention.compareTo(BigDecimal.ZERO) <= 0;
         addCondition(conditions, failedReasons, "质保金已退还", retentionOk,
-                retentionOk ? "无未退质保金" : "仍有未退质保金: " + retention);
+                retentionOk ? "无未退质保金" : "仍有未退质保金: " + retention, false);
 
         // 条件2d（I5-4）：保证金与备用金全退
         BigDecimal bond = nvl(projectMapper.sumUnreturnedSecurityBond(id));
         BigDecimal reserve = nvl(projectMapper.sumUnreturnedReserveFund(id));
         boolean bondOk = bond.add(reserve).compareTo(BigDecimal.ZERO) <= 0;
         addCondition(conditions, failedReasons, "保证金/备用金已结清", bondOk,
-                bondOk ? "无未退保证金/备用金" : "仍有未退保证金 " + bond + " / 备用金 " + reserve);
+                bondOk ? "无未退保证金/备用金" : "仍有未退保证金 " + bond + " / 备用金 " + reserve, false);
 
         // 条件3：项目状态非 DRAFT/FILED（基本有效性）
         boolean notDraft = !"DRAFT".equals(project.getStatus()) && !"FILED".equals(project.getStatus());
         addCondition(conditions, failedReasons, "项目已进入施工阶段", notDraft,
-                notDraft ? "已通过" : "项目尚未进入施工阶段");
+                notDraft ? "已通过" : "项目尚未进入施工阶段", true);
 
         // 条件4：存在已审批的最终结算单（项目关闭的唯一通道前置）
         boolean settlementOk = projectMapper.countApprovedSettlement(id) > 0;
         addCondition(conditions, failedReasons, "最终结算已审批", settlementOk,
-                settlementOk ? "已通过" : "项目最终结算单尚未审批通过，需先完成最终结算");
+                settlementOk ? "已通过" : "项目最终结算单尚未审批通过，需先完成最终结算", true);
 
         result.put("conditions", conditions);
         result.put("failedReasons", failedReasons);
@@ -648,13 +648,14 @@ public class ProjectService {
     }
 
     private void addCondition(List<Map<String, Object>> conditions, List<String> failedReasons,
-                              String name, boolean passed, String message) {
+                              String name, boolean passed, String message, boolean blocking) {
         Map<String, Object> condition = new java.util.HashMap<>();
         condition.put("name", name);
         condition.put("passed", passed);
         condition.put("message", message);
+        condition.put("blocking", blocking);
         conditions.add(condition);
-        if (!passed) {
+        if (!passed && blocking) {
             failedReasons.add(name + ": " + message);
         }
     }
