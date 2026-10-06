@@ -48,7 +48,7 @@ beforeEach(() => {
 })
 
 describe('mine/index.vue 我的页', () => {
-  it('展示用户姓名/角色与头像后两字，未登录显示默认文案', async () => {
+  it('展示用户姓名/角色；头像：默认图正常渲染不叠字，图片加载失败回落哈希取色末两字', async () => {
     const wrapper = mount(MineIndex)
     expect(wrapper.text()).toContain('未登录')
 
@@ -56,6 +56,11 @@ describe('mine/index.vue 我的页', () => {
     await nextTick()
     expect(wrapper.text()).toContain('张三丰')
     expect(wrapper.text()).toContain('项目经理')
+    // 默认路径：PNG 正常展示，.avatar-text 不渲染（v-if=avatarFallback，2026-10-06 头像资产改造）
+    expect(wrapper.find('.avatar-text').exists()).toBe(false)
+    // 图片加载失败 → 回落纯色底 + 末两字（与 PC ZwAvatar 同源哈希取色）
+    await wrapper.find('.avatar-img').trigger('error')
+    await nextTick()
     expect(wrapper.find('.avatar-text').text()).toBe('三丰')
     wrapper.unmount()
   })
