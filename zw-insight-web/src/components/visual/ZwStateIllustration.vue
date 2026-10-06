@@ -159,6 +159,10 @@ withDefaults(
 .zw-illust {
   display: block;
   height: auto;
+  /* 块级 SVG 不吃父容器的 text-align: center（旧 PNG 靠 .zw-empty-img 的 margin auto
+     居中，v2 替换后裸插场景如项目墙 .wall-empty 会靠左）——组件自居中，任何容器通用；
+     在 ZwEmptyState 的 flex 容器内 margin auto 无副作用 */
+  margin-inline: auto;
 }
 
 /* 颜色经 CSS 类注入（presentation attribute 不支持 var()）：线条恒中性，单一橙点缀 */

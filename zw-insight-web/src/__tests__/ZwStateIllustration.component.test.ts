@@ -6,7 +6,12 @@
  */
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import ZwStateIllustration from '@/components/visual/ZwStateIllustration.vue'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const ALL_TYPES = [
   'data', 'search', 'error', 'offline', 'permission',
@@ -60,5 +65,11 @@ describe('ZwStateIllustration 品牌化状态插图 v2', () => {
     const html = mount(ZwStateIllustration, { props: { type: 'blueprint' } }).html()
     expect(html).not.toMatch(/#[0-9a-fA-F]{6}/)
     expect(html).not.toMatch(/(stroke|fill)="#/)
+  })
+
+  it('组件自带水平自居中（回归：2026-10-06 项目墙 .wall-empty 场景块级 SVG 靠左）', () => {
+    // happy-dom 不算 scoped CSS，改以 SFC 源码钉住规则存在
+    const src = readFileSync(resolve(__dirname, '../components/visual/ZwStateIllustration.vue'), 'utf-8')
+    expect(src).toMatch(/\.zw-illust\s*\{[^}]*margin-inline:\s*auto/s)
   })
 })
