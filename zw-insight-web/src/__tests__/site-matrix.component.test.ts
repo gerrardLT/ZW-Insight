@@ -147,7 +147,8 @@ describe('site/schedule.vue 进度计划（C15）', () => {
     await flushPromises()
     expect(mocks.mockPlanTree).toHaveBeenCalledWith(9)
     expect(st.ganttHasData).toBe(false)
-    expect(scheduleSrc).toContain('<el-empty v-else-if="ganttProjectId && !ganttHasData" description="暂无进度计划数据" />')
+    expect(scheduleSrc).toContain('v-else-if="ganttProjectId && !ganttHasData"')
+    expect(scheduleSrc).toContain('description="暂无进度计划数据"')
   })
 
   it('@matrix C-15-9 树接口失败 → ganttHasData=false（甘特区空状态，不崩溃）', async () => {
@@ -391,7 +392,8 @@ describe('site/inspection/detail.vue 检查详情（C19）', () => {
   it('@matrix C-19-2 明细三态 PASS/FAIL/其他（合格/不合格/未检查）+ C-19-4 空明细 el-empty 源码钉住', () => {
     expect(inspDetailSrc).toContain("v-if=\"row.result === 'PASS'\"")
     expect(inspDetailSrc).toContain("v-else-if=\"row.result === 'FAIL'\"")
-    expect(inspDetailSrc).toContain('<el-empty v-if="detailItems.length === 0" description="暂无检查明细" />')
+    expect(inspDetailSrc).toContain('v-if="detailItems.length === 0"')
+    expect(inspDetailSrc).toContain('description="暂无检查明细"')
   })
 
   it('@matrix C-19-3 schemeName 从快照解析（JSON 字符串快照）；无快照回退 schemeName 字段', async () => {

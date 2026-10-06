@@ -34,7 +34,7 @@
                 </el-tag>
               </div>
             </div>
-            <el-empty v-if="!filteredRoles.length" description="暂无角色" />
+            <ZwEmptyState type="data" v-if="!filteredRoles.length" description="暂无角色" />
           </div>
         </el-card>
       </el-col>
@@ -73,7 +73,7 @@
               @check="handleMenuCheck"
             />
           </template>
-          <el-empty v-else description="请从左侧选择角色配置权限" />
+          <ZwEmptyState type="permission" v-else description="请从左侧选择角色配置权限" />
         </el-card>
       </el-col>
     </el-row>
@@ -126,6 +126,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, CheckboxValueType } from 'element-plus'

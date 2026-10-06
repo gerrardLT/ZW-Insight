@@ -74,7 +74,7 @@
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty :image-size="60"
+          <ZwEmptyState type="data" :image-size="60"
             :description="quickFilter === 'ALL' ? '暂无在算项目' : `无符合「${quickFilterLabel}」的项目`" />
         </template>
       </el-table>
@@ -177,7 +177,7 @@
                   @click="openCategoryDrill(e.code, e.name)">穿透</el-button>
               </div>
             </div>
-            <el-empty v-else description="无成本账户数据" :image-size="50" />
+            <ZwEmptyState type="data" v-else description="无成本账户数据" :image-size="50" />
           </el-card>
         </el-col>
       </el-row>
@@ -207,7 +207,7 @@
                 <span class="d-over">+{{ formatWan(d.amount) }} 万</span>
               </div>
             </div>
-            <el-empty v-else description="无超支账户（实际与预测均未超当前预算）" :image-size="50" />
+            <ZwEmptyState type="data" v-else description="无超支账户（实际与预测均未超当前预算）" :image-size="50" />
           </el-card>
         </el-col>
       </el-row>
@@ -221,7 +221,7 @@
             </el-button>
           </div>
         </template>
-        <el-empty v-if="!risks.length" description="该项目当前无待处理风险" :image-size="50" />
+        <ZwEmptyState type="data" v-if="!risks.length" description="该项目当前无待处理风险" :image-size="50" />
         <div v-for="r in risks" :key="r.id" class="risk-item">
           <span>{{ r.severity === 'RED' ? '🔴' : r.severity === 'YELLOW' ? '🟡' : '⚪' }}</span>
           <span class="r-title">{{ r.title }}</span>
@@ -232,7 +232,7 @@
         </div>
       </el-card>
     </template>
-    <el-empty v-else description="点击上表任意项目查看单项目经营详情（§6）" :image-size="70" />
+    <ZwEmptyState type="data" v-else description="点击上表任意项目查看单项目经营详情（§6）" :image-size="70" />
 
     <!-- 单据穿透链（§13，P2-4） -->
     <DrillDownBreadcrumb v-model="drillVisible" :entry="drillEntry" />
@@ -240,6 +240,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh, QuestionFilled } from '@element-plus/icons-vue'

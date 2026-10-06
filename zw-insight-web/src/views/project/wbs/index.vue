@@ -48,7 +48,7 @@
 
       <!-- WBS 树 -->
       <div v-loading="loading" class="tree-wrap">
-        <el-empty v-if="!loading && !treeData.length" :description="queryParams.projectId ? '该项目暂无 WBS 节点' : '请先选择项目'" />
+        <ZwEmptyState type="data" v-if="!loading && !treeData.length" :description="queryParams.projectId ? '该项目暂无 WBS 节点' : '请先选择项目'" />
         <el-tree
           v-else
           ref="treeRef"
@@ -128,6 +128,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'

@@ -13,11 +13,11 @@
     </el-card>
 
     <!-- 未选择项目时的引导提示（2026-09-16 插画：空白图纸+圆规——「等待绘制」隐喻） -->
-    <el-empty v-if="!selectedProjectId" description="请先选择一个项目以查看成本控制看板数据">
+    <ZwEmptyState type="data" v-if="!selectedProjectId" description="请先选择一个项目以查看成本控制看板数据">
       <template #image>
         <img :src="emptyImg" class="zw-empty-img" alt="" />
       </template>
-    </el-empty>
+    </ZwEmptyState>
 
     <!-- KPI 指标卡片区域 -->
     <template v-else>
@@ -113,7 +113,7 @@
                 <div v-for="(t, i) in bizHealth.topRisks" :key="i" class="biz-risk-item">{{ t }}</div>
               </div>
             </template>
-            <el-empty v-else-if="!bizLoading"
+            <ZwEmptyState type="data" v-else-if="!bizLoading"
               description="无经营快照（项目状态不在预计利润计算范围，或成本/合同数据未建立）"
               :image-size="50" />
           </el-card>
@@ -138,7 +138,7 @@
                 <span class="d-over">+{{ formatAmount(item.overAmount) }}</span>
               </div>
             </div>
-            <el-empty v-else description="无超支账户（实际与预测均未超当前预算）" :image-size="50" />
+            <ZwEmptyState type="data" v-else description="无超支账户（实际与预测均未超当前预算）" :image-size="50" />
           </el-card>
         </el-col>
       </el-row>
@@ -330,11 +330,11 @@
                   </template>
                 </el-table-column>
               </el-table>
-              <el-empty v-else description="暂无成本账户数据">
+              <ZwEmptyState type="data" v-else description="暂无成本账户数据">
                 <template #image>
                   <img :src="emptyImg" class="zw-empty-img" alt="" />
                 </template>
-              </el-empty>
+              </ZwEmptyState>
             </div>
           </el-card>
         </el-col>
@@ -344,6 +344,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

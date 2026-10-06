@@ -123,11 +123,11 @@ describe('user/devices.vue 负向/边界缺口（@matrix D-3-2/4/5/7）', () => 
     expect(revokeBtns[0].classes()).toContain('is-disabled')
   })
 
-  it('D-3-7 空列表：el-empty 占位「暂无登录设备记录」', async () => {
+  it('D-3-7 空列表：ZwEmptyState 占位「暂无登录设备记录」（2026-10-06 空态资产统一）', async () => {
     await mountDevices([])
     const src = norm('views/user/devices.vue')
     expect(src).toContain('暂无登录设备记录')
-    expect(wrapper.find('.el-empty').exists(), '空数据应渲染 el-empty').toBe(true)
+    expect(wrapper.find('.zw-empty-state').exists(), '空数据应渲染 ZwEmptyState').toBe(true)
     expect(wrapper.text()).toContain('暂无登录设备记录')
   })
 })

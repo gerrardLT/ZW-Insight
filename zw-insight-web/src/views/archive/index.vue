@@ -30,7 +30,7 @@
         </el-form-item>
       </el-form>
 
-      <el-empty v-if="!selectedProjectId" description="请先选择一个项目以查看其档案" />
+      <ZwEmptyState type="data" v-if="!selectedProjectId" description="请先选择一个项目以查看其档案" />
 
       <div v-else v-loading="loading">
         <!-- 项目基本信息 -->
@@ -130,6 +130,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getProjectList } from '@/api/project'

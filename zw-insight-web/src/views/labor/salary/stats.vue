@@ -156,7 +156,7 @@
       </el-table>
 
       <!-- 空数据状态 -->
-      <el-empty
+      <ZwEmptyState type="data"
         v-if="!loading && searched && (!statsData || filteredTeamList.length === 0)"
         description="该月份暂无已审批的薪资数据"
       />
@@ -165,6 +165,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download } from '@/components/icons/registry'

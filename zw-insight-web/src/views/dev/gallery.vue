@@ -57,7 +57,21 @@
         </figure>
       </div>
 
-      <h3>4.2 数字翻牌 ZwCountUp</h3>
+      <h3>4.2 用户头像 ZwAvatar（姓名哈希取色 / @error 回落）</h3>
+      <div class="demo-panel demo-row">
+        <ZwAvatar v-for="n in ['王婷', '李明', '张建国', '赵六']" :key="n" :name="n" size="md" />
+        <ZwAvatar name="无姓名兜底" size="md" />
+        <ZwAvatar name="图片回落" src="https://invalid.example/broken.png" size="md" />
+        <span class="demo-hint">同名恒同色；末位为裂图回落演示</span>
+      </div>
+
+      <h3>4.3 文件类型图标 ZwFileIcon（按扩展名识别）</h3>
+      <div class="demo-panel demo-row">
+        <ZwFileIcon v-for="f in ['结算单.pdf', '合同.docx', '预算.xlsx', '现场照片.jpg', '资料.zip', '备注.txt']" :key="f" :file="f" size="36px" />
+        <span class="demo-hint">PDF / DOC / XLS / IMG / ZIP / FILE</span>
+      </div>
+
+      <h3>4.4 数字翻牌 ZwCountUp</h3>
       <div class="demo-panel demo-countup">
         <div class="demo-kpi">
           <span class="demo-kpi-label">合同总额(万)</span>
@@ -70,7 +84,7 @@
         <el-button @click="countUpValue = countUpValue >= 9000 ? 1234 : countUpValue + 2345">变化数值</el-button>
       </div>
 
-      <h3>4.3 骨架屏 ZwSkeleton（四形态）</h3>
+      <h3>4.5 骨架屏 ZwSkeleton（四形态）</h3>
       <div class="demo-panel">
         <h4>cards</h4>
         <ZwSkeleton variant="cards" :count="4" />
@@ -82,7 +96,7 @@
         <ZwSkeleton variant="detail" :rows="6" />
       </div>
 
-      <h3>4.4 按钮与反馈</h3>
+      <h3>4.6 按钮与反馈</h3>
       <div class="demo-panel demo-row">
         <el-button type="primary">主要操作</el-button>
         <el-button>常规</el-button>
@@ -117,6 +131,8 @@ import { ref, computed } from 'vue'
 import * as icons from '@/components/icons/registry'
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import ZwStateIllustration from '@/components/visual/ZwStateIllustration.vue'
+import ZwAvatar from '@/components/ZwAvatar.vue'
+import ZwFileIcon from '@/components/visual/ZwFileIcon.vue'
 import ZwCountUp from '@/components/ZwCountUp.vue'
 import ZwSkeleton from '@/components/ZwSkeleton.vue'
 import emptyBlueprint from '@/assets/empty-blueprint.png'
@@ -294,6 +310,11 @@ const assets = [
   border-radius: var(--zw-radius-sm);
   padding: var(--zw-space-lg);
   background: var(--zw-bg-page);
+}
+
+.demo-hint {
+  font-size: var(--zw-font-size-xs);
+  color: var(--zw-text-quaternary);
 }
 
 .demo-row {

@@ -81,7 +81,7 @@
           <el-tag v-else type="success" size="small">无异常</el-tag>
         </div>
       </template>
-      <el-empty v-if="!anomalies.length && !loading"
+      <ZwEmptyState type="data" v-if="!anomalies.length && !loading"
         description="无命中预警项（无事由/无对象/无审批/票据缺失/拆单/高频/超限均为 0）"
         :image-size="60" />
       <div v-for="a in anomalies" :key="a.name" class="anomaly-item">
@@ -166,7 +166,7 @@
           <template #default="{ row }">{{ formatMoney(avgPerRow(row)) }}</template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无招待费报销记录（或所选范围内无数据）" :image-size="50" />
+          <ZwEmptyState type="data" description="暂无招待费报销记录（或所选范围内无数据）" :image-size="50" />
         </template>
       </el-table>
     </el-card>
@@ -174,6 +174,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'

@@ -10,7 +10,13 @@
     >
       <nav class="domain-rail" aria-label="业务域">
         <div class="rail-brand">
-          <img class="logo-icon" :src="brandStore.resolveLogo(appStore.isDark)" :alt="brandStore.systemName" />
+          <!-- logo 加载失败回落内置默认图（裂图纪律）：配置 URL 404 时不露破图 -->
+          <img
+            class="logo-icon"
+            :src="logoFailed ? builtinLogo : brandStore.resolveLogo(appStore.isDark)"
+            :alt="brandStore.systemName"
+            @error="logoFailed = true"
+          />
         </div>
         <button
           v-for="domain in navigation.domains"
@@ -130,10 +136,12 @@
           <!-- 用户 -->
           <el-dropdown>
             <div class="user-info" role="button" aria-label="用户菜单">
-              <div class="user-avatar">
-                <img :src="userAvatarImg" alt="" class="user-avatar-img" />
-                <span class="user-avatar-fallback">{{ avatarText }}</span>
-              </div>
+              <ZwAvatar
+                :name="userName"
+                :src="userStore.userInfo?.avatar || ''"
+                :alt="`${userName} 的头像`"
+                data-testid="layout-avatar"
+              />
               <span class="user-name">{{ userName }}</span>
               <el-icon class="user-arrow"><ArrowDown /></el-icon>
             </div>
@@ -205,6 +213,7 @@ import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import GuideQuickDrawer from '@/components/GuideQuickDrawer.vue'
+import ZwAvatar from '@/components/ZwAvatar.vue'
 import NavLink from '@/components/NavLink.vue'
 import { useGuideStore } from '@/stores/guide'
 import { useShortcuts, ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
@@ -212,6 +221,7 @@ import { useCommandPalette, type PaletteCommand } from '@/composables/useCommand
 import { Expand, Fold, Moon, Sunny, ArrowDown, Bell, Search, SwitchButton } from '@/components/icons/registry'
 import { resolveMenuIcon } from '@/components/icons/registry'
 import { IconHelp, IconClock } from '@tabler/icons-vue'
+import defaultLogoLight from '@/assets/logo-light.png'
 // 使用文档元数据：仅类型导入（编译擦除）；正文 chunk 由命令面板首次挂载时动态 import，
 // 避免 19 章 Markdown 正文进入主包（CodeReview Major-2）
 import type { GuideChapterMeta } from '@/docs/help/registry'
@@ -270,11 +280,9 @@ const userName = computed(
   () => userStore.userInfo?.realName || userStore.userInfo?.name || '管理员'
 )
 
-const avatarText = computed(() => userName.value.charAt(0).toUpperCase())
-
-// 头像：用户设置的真实头像 → 默认品牌插画（2026-09-16 安全帽工人剪影，AI 生成）
-import defaultAvatar from '@/assets/default-avatar.png'
-const userAvatarImg = computed(() => userStore.userInfo?.avatar || defaultAvatar)
+// 头像：ZwAvatar 按姓名派生（首字+稳定配色），有自定义头像 URL 时展示图片（@error 自动回落）
+const logoFailed = ref(false)
+const builtinLogo = defaultLogoLight
 
 type MenuStatus = 'loading' | 'ready' | 'error'
 const menuStatus = ref<MenuStatus>('loading')
@@ -699,32 +707,12 @@ onBeforeUnmount(() => {
   background-color: var(--zw-bg-hover);
 }
 
-/* 头像：默认品牌插画（安全帽工人剪影），备用首字叠加在图片下方防加载失败 */
-.user-avatar {
-  position: relative;
+/* 头像由 ZwAvatar 组件自绘（首字+稳定配色），此处仅微调与用户名的间距 */
+.user-info .zw-avatar {
   width: 30px;
   height: 30px;
-  border-radius: var(--zw-radius-xs);
-  overflow: hidden;
-  background: var(--zw-bg-surface-3);
-}
-.user-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.user-avatar-fallback {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--zw-text-primary);
   font-size: var(--zw-font-size-sm);
-  font-weight: var(--zw-font-weight-semibold);
-}/* 图片加载成功后隐藏备用首字 */
-.user-avatar img[src]:not([src='']) ~ .user-avatar-fallback { display: none; }
+}
 
 .user-name {
   font-size: var(--zw-font-size-sm);

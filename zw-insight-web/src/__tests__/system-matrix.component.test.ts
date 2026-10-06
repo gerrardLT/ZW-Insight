@@ -507,10 +507,10 @@ describe('system/log 批删差距（@matrix D-13-7）', () => {
 })
 
 describe('system/monitor 占位与闲置 API（@matrix D-17-1/3）', () => {
-  it('D-17-1 占位页渲染 el-empty「待实现（任务 10.3）」', async () => {
+  it('D-17-1 占位页渲染 ZwEmptyState「待实现（任务 10.3）」（2026-10-06 空态资产统一）', async () => {
     wrapper = mount(Monitor, { global: { plugins: [ElementPlus] } })
     await flushPromises()
-    expect(wrapper.find('.el-empty').exists()).toBe(true)
+    expect(wrapper.find('.zw-empty-state').exists()).toBe(true)
     expect(wrapper.text()).toContain('待实现（任务 10.3）')
   })
 

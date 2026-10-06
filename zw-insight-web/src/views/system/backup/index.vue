@@ -71,7 +71,7 @@
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无备份记录" />
+          <ZwEmptyState type="data" description="暂无备份记录" />
         </template>
       </el-table>
 
@@ -91,6 +91,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { FolderAdd } from '@/components/icons/registry'

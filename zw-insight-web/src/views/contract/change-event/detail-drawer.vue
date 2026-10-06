@@ -84,7 +84,7 @@
               </el-descriptions-item>
             </el-descriptions>
           </template>
-          <el-empty v-else description="尚未评估（商务/造价测算后回填）" :image-size="60" />
+          <ZwEmptyState type="data" v-else description="尚未评估（商务/造价测算后回填）" :image-size="60" />
         </el-card>
 
         <!-- 受影响的成本账户：批准后据此调整 CBS 当前预算 -->
@@ -119,12 +119,12 @@
           </div>
         </el-card>
 
-        <!-- 佐证材料 -->
+        <!-- 佐证材料（文件类型图标按扩展名识别，2026-10-06 文件图标资产） -->
         <el-card v-if="eventData.supportingDocs?.length" shadow="never" class="info-card">
           <template #header><span class="card-title">佐证材料</span></template>
           <div class="docs-list">
             <div v-for="(doc, i) in eventData.supportingDocs" :key="i" class="doc-item">
-              <el-icon><Document /></el-icon>
+              <ZwFileIcon :file="doc.name || doc.type || ''" size="30px" />
               <span class="doc-name">{{ doc.name || doc.type || `附件${i + 1}` }}</span>
               <el-button v-if="doc.url" type="primary" link size="small" @click="openDoc(doc)">
                 查看
@@ -192,9 +192,10 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document } from '@element-plus/icons-vue'
+import ZwFileIcon from '@/components/visual/ZwFileIcon.vue'
 import {
   getChangeEvent, approveChangeEvent, rejectChangeEvent, cancelChangeEvent,
   startChangeEventAssessment, reAssessChangeEvent, deleteChangeEvent,

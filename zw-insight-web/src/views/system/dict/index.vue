@@ -65,7 +65,7 @@
               </el-table-column>
             </el-table>
           </template>
-          <el-empty v-else description="请从左侧选择字典" />
+          <ZwEmptyState type="data" v-else description="请从左侧选择字典" />
         </el-card>
       </el-col>
     </el-row>
@@ -111,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'

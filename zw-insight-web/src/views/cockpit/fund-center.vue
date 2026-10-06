@@ -65,7 +65,7 @@
             </el-table-column>
             <el-table-column prop="snapshotDate" label="快照日" width="110" align="center" />
           </el-table>
-          <el-empty v-if="!forecastLoading && !forecastData.length"
+          <ZwEmptyState type="data" v-if="!forecastLoading && !forecastData.length"
             description="暂无预测快照（每日 01:15 自动生成，或到资金计划页手动触发）" :image-size="60" />
         </el-card>
       </el-col>
@@ -100,7 +100,7 @@
             </el-table-column>
             <el-table-column prop="count" label="笔数" width="70" align="center" />
           </el-table>
-          <el-empty v-if="!topLoading && !topExpenses.length"
+          <ZwEmptyState type="data" v-if="!topLoading && !topExpenses.length"
             description="无已批未付的付款申请（含已逾期）" :image-size="60" />
         </el-card>
       </el-col>
@@ -169,7 +169,7 @@
             </el-table-column>
             <el-table-column prop="count" label="笔数" width="70" align="center" />
           </el-table>
-          <el-empty v-if="!attrLoading && !attribution?.byPayee?.length"
+          <ZwEmptyState type="data" v-if="!attrLoading && !attribution?.byPayee?.length"
             description="窗口内无待付款单据" :image-size="60" />
         </el-card>
       </el-col>
@@ -215,13 +215,14 @@
           <template #default="{ row }">{{ formatWan(row.buckets?.[b.key]) }}</template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!agingLoading && !aging.projects.length"
+      <ZwEmptyState type="data" v-if="!agingLoading && !aging.projects.length"
         description="暂无未结清应收（结算审批通过后自动生成台账）" :image-size="60" />
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'

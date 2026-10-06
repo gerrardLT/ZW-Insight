@@ -91,7 +91,7 @@
         </el-table-column>
       </el-table>
 
-      <el-empty v-if="detailItems.length === 0" description="暂无检查明细" />
+      <ZwEmptyState type="data" v-if="detailItems.length === 0" description="暂无检查明细" />
     </el-card>
 
     <!-- 整改闭环区：仅有问题的检查记录展示（附工程警示条纹） -->
@@ -127,12 +127,13 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!rectLoading && rectifications.length === 0" description="暂无整改记录" />
+      <ZwEmptyState type="data" v-if="!rectLoading && rectifications.length === 0" description="暂无整改记录" />
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'

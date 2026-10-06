@@ -70,7 +70,7 @@
             </template>
           </el-table-column>
           <template #empty>
-            <el-empty :description="current.emptyText || '无成本分类数据'" :image-size="50" />
+            <ZwEmptyState type="data" :description="current.emptyText || '无成本分类数据'" :image-size="50" />
           </template>
         </el-table>
 
@@ -95,7 +95,7 @@
             </template>
           </el-table-column>
           <template #empty>
-            <el-empty description="该类别下无合同（间接费/其他类的报销支出请走「成本流水」查看）"
+            <ZwEmptyState type="data" description="该类别下无合同（间接费/其他类的报销支出请走「成本流水」查看）"
               :image-size="50" />
           </template>
         </el-table>
@@ -133,7 +133,7 @@
           </el-table-column>
           <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
           <template #empty>
-            <el-empty description="该类别账户无实际成本流水（账户余额未经记账变动）" :image-size="50" />
+            <ZwEmptyState type="data" description="该类别账户无实际成本流水（账户余额未经记账变动）" :image-size="50" />
           </template>
         </el-table>
 
@@ -169,7 +169,7 @@
             </template>
           </el-table-column>
           <template #empty>
-            <el-empty description="该供应商在此类别下无合同" :image-size="50" />
+            <ZwEmptyState type="data" description="该供应商在此类别下无合同" :image-size="50" />
           </template>
         </el-table>
 
@@ -229,7 +229,7 @@
             </template>
           </el-table-column>
           <template #empty>
-            <el-empty description="该合同暂无构成单据（未发生结算/付款/收票）" :image-size="50" />
+            <ZwEmptyState type="data" description="该合同暂无构成单据（未发生结算/付款/收票）" :image-size="50" />
           </template>
         </el-table>
       </div>
@@ -272,7 +272,7 @@
               <div v-if="r.comment" class="trace-comment">{{ r.comment }}</div>
             </el-timeline-item>
           </el-timeline>
-          <el-empty v-else-if="!trace.approvalRecords?.length && !trace.note"
+          <ZwEmptyState type="data" v-else-if="!trace.approvalRecords?.length && !trace.note"
             description="无审批操作记录" :image-size="50" />
         </template>
       </div>
@@ -281,6 +281,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { InfoFilled, QuestionFilled } from '@element-plus/icons-vue'

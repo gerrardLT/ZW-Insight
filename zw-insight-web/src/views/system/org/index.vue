@@ -64,7 +64,7 @@
             <el-descriptions-item label="排序号">{{ currentOrg.sortOrder }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ currentOrg.createdAt }}</el-descriptions-item>
           </el-descriptions>
-          <el-empty v-else description="请从左侧选择机构查看详情" />
+          <ZwEmptyState type="data" v-else description="请从左侧选择机构查看详情" />
         </el-card>
       </el-col>
     </el-row>
@@ -108,6 +108,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'

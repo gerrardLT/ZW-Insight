@@ -149,7 +149,7 @@
             </div>
           </template>
           <div class="health-list">
-            <el-empty v-if="!healthData.length"
+            <ZwEmptyState type="data" v-if="!healthData.length"
               :description="quickFilter === 'ALL' ? '暂无在算项目' : `无符合「${quickFilterLabel}」的项目`"
               :image-size="60" />
             <div v-for="item in healthData" :key="item.projectId" class="health-item"
@@ -212,7 +212,7 @@
           </div>
         </div>
       </template>
-      <el-empty v-if="!topRisks.length" description="当前无待处理风险" :image-size="60" />
+      <ZwEmptyState type="data" v-if="!topRisks.length" description="当前无待处理风险" :image-size="60" />
       <div v-for="risk in topRisks" :key="risk.id" class="risk-item" @click="$router.push('/cockpit/risk-center')">
         <span class="risk-severity" :class="`sev-${risk.severity.toLowerCase()}`">
           {{ risk.severity === 'RED' ? '🔴' : risk.severity === 'YELLOW' ? '🟡' : '⚪' }}
@@ -256,7 +256,7 @@
           </el-table>
           <div class="attr-note">口径：成本上升对利润的影响为负值；类别取自 CBS 成本账户完工预测。</div>
         </template>
-        <el-empty v-else-if="!attributionLoading" description="未获取到归因数据" :image-size="60" />
+        <ZwEmptyState type="data" v-else-if="!attributionLoading" description="未获取到归因数据" :image-size="60" />
       </div>
     </el-dialog>
 
@@ -287,7 +287,7 @@
             </template>
           </el-table-column>
           <template #empty>
-            <el-empty description="筛选范围内无项目" :image-size="50" />
+            <ZwEmptyState type="data" description="筛选范围内无项目" :image-size="50" />
           </template>
         </el-table>
         <div v-if="!drillIsRate && drillTotal != null" class="drill-total">
@@ -308,6 +308,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

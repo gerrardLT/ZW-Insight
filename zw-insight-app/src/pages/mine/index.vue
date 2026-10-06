@@ -5,9 +5,17 @@
     <view class="user-header">
       <view class="hazard-divider header-hazard"></view>
       <view class="user-header-inner">
-        <view class="avatar">
-          <image class="avatar-img" :src="userStore.userInfo?.avatar || '/static/brand/default-avatar.png'" mode="aspectFill" />
-          <text class="avatar-text">{{ avatarText }}</text>
+        <!-- 头像：无自定义时按姓名稳定哈希取色（与 PC ZwAvatar 同源算法，2026-10-06）；
+             image @error 回落纯色首字底，不再叠默认 PNG（避免裂图与文字重叠） -->
+        <view class="avatar" :style="avatarFallback ? 'background:' + avatarPalette.bg + ';border-color:' + avatarPalette.bg : ''">
+          <image
+            v-if="!avatarFallback"
+            class="avatar-img"
+            :src="userStore.userInfo?.avatar || '/static/brand/default-avatar.png'"
+            mode="aspectFill"
+            @error="avatarFallback = true"
+          />
+          <text v-if="avatarFallback" class="avatar-text" :style="'color:' + avatarPalette.fg">{{ avatarText }}</text>
         </view>
         <view class="user-info">
           <text class="user-name">{{ userStore.userInfo?.realName || userStore.userInfo?.username || '未登录' }}</text>
@@ -94,6 +102,33 @@ onMounted(() => {
   if (isOutdoorMode.value) {
     applyOutdoorTheme(true)
   }
+})
+
+/* 头像派生（与 PC ZwAvatar 同源）：djb2 哈希 → 8 色调色板索引，同名恒同色 */
+const AVATAR_PALETTE = [
+  { bg: '#2b6cb0', fg: '#ffffff' },
+  { bg: '#2f855a', fg: '#ffffff' },
+  { bg: '#b7791f', fg: '#ffffff' },
+  { bg: '#6b46c1', fg: '#ffffff' },
+  { bg: '#c05621', fg: '#ffffff' },
+  { bg: '#3178a8', fg: '#ffffff' },
+  { bg: '#86459a', fg: '#ffffff' },
+  { bg: '#5a6b7b', fg: '#ffffff' },
+] as const
+
+function hashName(s: string): number {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0
+  }
+  return Math.abs(h)
+}
+
+const avatarFallback = ref(false)
+
+const avatarPalette = computed(() => {
+  const name = userStore.userInfo?.realName || userStore.userInfo?.username || ''
+  return AVATAR_PALETTE[name ? hashName(name) % AVATAR_PALETTE.length : 7]
 })
 
 const avatarText = computed(() => {

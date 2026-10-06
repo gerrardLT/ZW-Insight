@@ -65,8 +65,8 @@
           :editable="true"
           @task-updated="handleGanttTaskUpdated"
         />
-        <el-empty v-else-if="ganttProjectId && !ganttHasData" description="暂无进度计划数据" />
-        <el-empty v-else description="请先选择项目以查看甘特图" />
+        <ZwEmptyState type="data" v-else-if="ganttProjectId && !ganttHasData" description="暂无进度计划数据" />
+        <ZwEmptyState type="data" v-else description="请先选择项目以查看甘特图" />
       </el-card>
     </el-card>
 
@@ -88,6 +88,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'

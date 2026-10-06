@@ -17,7 +17,7 @@
       </div>
     </el-card>
 
-    <el-empty v-if="!selectedProjectId" description="请先选择项目以查看月度经营分析表" :image-size="80" />
+    <ZwEmptyState type="data" v-if="!selectedProjectId" description="请先选择项目以查看月度经营分析表" :image-size="80" />
 
     <template v-else>
       <!-- 口径说明（后端下发，必须展示；把「为空」的原因讲清楚，避免被误读为 0） -->
@@ -105,7 +105,7 @@
             </template>
           </el-table-column>
           <template #empty>
-            <el-empty :image-size="60"
+            <ZwEmptyState type="data" :image-size="60"
               description="该月尚未生成分析表，点击「生成/重算本月」按真实 CBS 账户与合同数据生成" />
           </template>
         </el-table>
@@ -115,6 +115,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, QuestionFilled } from '@element-plus/icons-vue'

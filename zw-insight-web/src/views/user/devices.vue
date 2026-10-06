@@ -58,7 +58,7 @@
               </template>
             </el-table-column>
             <template #empty>
-              <el-empty description="暂无登录设备记录" />
+              <ZwEmptyState type="data" description="暂无登录设备记录" />
             </template>
           </el-table>
         </el-tab-pane>
@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Monitor, Refresh } from '@/components/icons/registry'

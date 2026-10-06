@@ -14,7 +14,7 @@
       </div>
     </el-card>
 
-    <el-empty v-if="!selectedProjectId" description="请先选择项目" :image-size="80" />
+    <ZwEmptyState type="data" v-if="!selectedProjectId" description="请先选择项目" :image-size="80" />
 
     <template v-else>
       <!-- §7.1 总览四要素 -->
@@ -78,7 +78,7 @@
                 </el-tooltip>
               </div>
             </div>
-            <el-empty v-else description="无成本账户数据" :image-size="50" />
+            <ZwEmptyState type="data" v-else description="无成本账户数据" :image-size="50" />
           </el-card>
         </el-col>
 
@@ -109,7 +109,7 @@
               <span class="a-name">{{ a.name }}</span>
               <span class="a-count">{{ a.count }} {{ a.name.includes('经办人') ? '人' : '笔' }}</span>
             </div>
-            <el-empty v-if="!entAnomalies.length && !entLoading" description="无命中预警项（正常费用隐藏）"
+            <ZwEmptyState type="data" v-if="!entAnomalies.length && !entLoading" description="无命中预警项（正常费用隐藏）"
               :image-size="40" />
           </el-card>
         </el-col>
@@ -135,7 +135,7 @@
             <span class="b-flag">{{ b.over ? '🔴' : b.near ? '🟡' : '' }}</span>
           </div>
         </div>
-        <el-empty v-else
+        <ZwEmptyState type="data" v-else
           description="无商务及管理费用类 CBS 账户（招待费/差旅费/车辆费/会议费/办公费等）"
           :image-size="50" />
       </el-card>
@@ -147,6 +147,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh, QuestionFilled } from '@element-plus/icons-vue'

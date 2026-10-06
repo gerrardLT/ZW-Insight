@@ -31,7 +31,7 @@
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无版本记录" />
+          <ZwEmptyState type="data" description="暂无版本记录" />
         </template>
       </el-table>
     </el-card>
@@ -77,6 +77,7 @@
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'

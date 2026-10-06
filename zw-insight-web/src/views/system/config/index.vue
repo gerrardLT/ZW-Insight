@@ -114,13 +114,14 @@
           </el-form-item>
         </el-form>
 
-        <el-empty v-else-if="!loading" description="暂无配置项" />
+        <ZwEmptyState type="data" v-else-if="!loading" description="暂无配置项" />
       </div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Upload } from '@element-plus/icons-vue'

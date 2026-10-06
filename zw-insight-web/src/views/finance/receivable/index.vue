@@ -201,13 +201,14 @@
             </el-form-item>
           </el-form>
         </template>
-        <el-empty v-else-if="!drillLoading" description="未获取到下钻数据" :image-size="60" />
+        <ZwEmptyState type="data" v-else-if="!drillLoading" description="未获取到下钻数据" :image-size="60" />
       </div>
     </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
+import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
