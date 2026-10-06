@@ -5,6 +5,9 @@ import com.zwinsight.common.event.project.ProjectDeletedEvent;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.project.domain.BizProject;
+import com.zwinsight.project.domain.BizProjectStatusLog;
+import com.zwinsight.project.domain.BizProjectChangeLog;
+import java.util.List;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.mapper.BizProjectMemberMapper;
 import com.zwinsight.project.mapper.BizProjectWbsNodeMapper;
@@ -644,5 +647,147 @@ class ProjectServiceTest {
         assertThat(vo.getTotalProjectCount()).isZero();
         assertThat(vo.getTotalContractAmount()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(vo.getStatusList()).isEmpty();
+    }
+
+    // =====================================================================
+    // P1-M1 新增状态与事件方法覆盖
+    // =====================================================================
+
+    @Test
+    @DisplayName("撤回立项：FILED -> DRAFT")
+    void testWithdraw_success() {
+        sampleProject.setStatus("FILED");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
+
+        projectService.withdraw(1L);
+
+        verify(projectMapper).updateById(argThat(p -> "DRAFT".equals(p.getStatus())));
+    }
+
+    @Test
+    @DisplayName("落标归档：TENDERING -> LOST（带原因）")
+    void testLoseBid_success() {
+        sampleProject.setStatus("TENDERING");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
+
+        projectService.loseBid(1L, "价格过高");
+
+        verify(projectMapper).updateById(argThat(p -> "LOST".equals(p.getStatus())));
+    }
+
+    @Test
+    @DisplayName("落标归档：空原因拒绝")
+    void testLoseBid_emptyReasonRejected() {
+        assertThatThrownBy(() -> projectService.loseBid(1L, "  "))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("落标原因不能为空");
+    }
+
+    @Test
+    @DisplayName("暂停与复工：CONSTRUCTION -> PAUSED -> CONSTRUCTION")
+    void testPauseAndResume_success() {
+        sampleProject.setStatus("CONSTRUCTION");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
+
+        projectService.pause(1L, "停水停电");
+        verify(projectMapper).updateById(argThat(p -> "PAUSED".equals(p.getStatus())));
+
+        sampleProject.setStatus("PAUSED");
+        projectService.resume(1L);
+        verify(projectMapper, times(2)).updateById(any());
+    }
+
+    @Test
+    @DisplayName("暂停：空原因拒绝")
+    void testPause_emptyReasonRejected() {
+        assertThatThrownBy(() -> projectService.pause(1L, "  "))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("暂停原因不能为空");
+    }
+
+    @Test
+    @DisplayName("进入投标：FILED -> TENDERING")
+    void testGoTender_success() {
+        sampleProject.setStatus("FILED");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
+
+        projectService.goTender(1L);
+        verify(projectMapper).updateById(argThat(p -> "TENDERING".equals(p.getStatus())));
+    }
+
+    @Test
+    @DisplayName("开工：WON -> CONSTRUCTION")
+    void testStartConstruction_success() {
+        sampleProject.setStatus("WON");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
+        when(projectMapper.countEffectiveConstructionContracts(1L)).thenReturn(1L);
+
+        projectService.startConstruction(1L);
+        verify(projectMapper).updateById(argThat(p -> "CONSTRUCTION".equals(p.getStatus())));
+    }
+
+    @Test
+    @DisplayName("竣工：CONSTRUCTION -> COMPLETED")
+    void testComplete_success() {
+        sampleProject.setStatus("CONSTRUCTION");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
+
+        projectService.complete(1L);
+        verify(projectMapper).updateById(argThat(p -> "COMPLETED".equals(p.getStatus())));
+    }
+
+    @Test
+    @DisplayName("终止审批发起与在途单据拦截")
+    void testTerminate_flowAndInFlightGuard() {
+        sampleProject.setStatus("CONSTRUCTION");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
+        when(projectMapper.countInFlightPayments(1L)).thenReturn(1L);
+
+        // 在途付款拦截
+        assertThatThrownBy(() -> projectService.terminate(1L, "资金链断裂"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("在途");
+
+        // 在途清零后放行并启动审批
+        when(projectMapper.countInFlightPayments(1L)).thenReturn(0L);
+        when(projectMapper.countInFlightSettlements(1L)).thenReturn(0L);
+        when(approvalService.startProcess(eq("PROJECT_TERMINATE"), eq(1L), eq("project_close_approval"), anyMap()))
+                .thenReturn("proc-term");
+
+        projectService.terminate(1L, "资金链断裂");
+        verify(approvalService).startProcess(eq("PROJECT_TERMINATE"), eq(1L), eq("project_close_approval"), anyMap());
+        verify(projectMapper).updateById(argThat(p -> "TERMINATING".equals(p.getStatus())));
+    }
+
+    @Test
+    @DisplayName("终止审批回调：通过置 TERMINATED，驳回从日志回退")
+    void testTerminateCallbacks() {
+        sampleProject.setStatus("TERMINATING");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
+
+        projectService.onTerminateApproved(1L);
+        verify(projectMapper).updateById(argThat(p -> "TERMINATED".equals(p.getStatus())));
+
+        sampleProject.setStatus("TERMINATING");
+        projectService.onTerminateRejected(1L);
+        verify(projectMapper, atLeastOnce()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("大事记与变更台账查询")
+    void testStatusTimelineAndChangeLogs() {
+        when(statusLogMapper.selectList(any())).thenReturn(List.of(new BizProjectStatusLog()));
+        when(changeLogMapper.selectList(any())).thenReturn(List.of(new BizProjectChangeLog()));
+
+        assertThat(projectService.statusTimeline(1L)).hasSize(1);
+        assertThat(projectService.changeLogs(1L)).hasSize(1);
     }
 }
