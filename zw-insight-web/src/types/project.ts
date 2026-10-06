@@ -19,6 +19,13 @@ export interface Project {
   contactName?: string
   contactPhone?: string
   needTender?: number
+  plannedStartDate?: string
+  plannedEndDate?: string
+  actualStartDate?: string
+  actualEndDate?: string
+  pauseReason?: string
+  terminateReason?: string
+  lostReason?: string
   status: string
   budgetAmount: number
   contractAmount: number
@@ -47,7 +54,32 @@ export interface ProjectCreateRequest {
   contactName?: string
   contactPhone?: string
   needTender?: number
+  plannedStartDate?: string
+  plannedEndDate?: string
   budgetAmount?: number
+}
+
+/** 项目状态流转大事记 */
+export interface ProjectStatusLog {
+  id: ID
+  projectId: ID
+  fromStatus?: string
+  toStatus: string
+  event: string
+  remark?: string
+  operatorId?: ID
+  createdAt: string
+}
+
+/** 项目关键字段变更台账 */
+export interface ProjectChangeLog {
+  id: ID
+  projectId: ID
+  fieldName: string
+  oldValue?: string
+  newValue?: string
+  operatorId?: ID
+  createdAt: string
 }
 
 /** 项目分页查询参数 */

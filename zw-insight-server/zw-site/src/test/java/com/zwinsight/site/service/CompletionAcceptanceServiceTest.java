@@ -49,6 +49,9 @@ class CompletionAcceptanceServiceTest {
     private BizProjectMapper projectMapper;
 
     @Mock
+    private com.zwinsight.project.service.ProjectService projectService;
+
+    @Mock
     private ApprovalService approvalService;
 
     @InjectMocks
@@ -115,7 +118,7 @@ class CompletionAcceptanceServiceTest {
         verify(approvalService).startProcess(eq("COMPLETION_ACCEPTANCE"), eq(1L),
                 eq("completion_acceptance_approval"), anyMap());
         // 未审批不得置项目 COMPLETED
-        verify(projectMapper, org.mockito.Mockito.never()).updateById(any(BizProject.class));
+        verify(projectService, org.mockito.Mockito.never()).complete(anyLong());
     }
 
     @Test
@@ -129,14 +132,10 @@ class CompletionAcceptanceServiceTest {
         BizProject project = new BizProject();
         project.setId(10L);
         project.setStatus("CONSTRUCTION");
-        when(projectMapper.selectById(10L)).thenReturn(project);
-
         completionAcceptanceService.onApproved(1L);
 
         assertThat(acceptance.getStatus()).isEqualTo("APPROVED");
-        ArgumentCaptor<BizProject> captor = ArgumentCaptor.forClass(BizProject.class);
-        verify(projectMapper).updateById(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo("COMPLETED");
+        verify(projectService).complete(10L);
     }
 
     @Test
@@ -147,8 +146,6 @@ class CompletionAcceptanceServiceTest {
         acceptance.setProjectId(10L);
         acceptance.setStatus("SUBMITTED");
         when(acceptanceMapper.selectById(1L)).thenReturn(acceptance);
-        when(projectMapper.selectById(10L)).thenReturn(null);
-
         completionAcceptanceService.onApproved(1L);
 
         assertThat(acceptance.getStatus()).isEqualTo("APPROVED");

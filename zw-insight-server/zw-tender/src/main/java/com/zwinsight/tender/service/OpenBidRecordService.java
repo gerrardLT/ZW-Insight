@@ -22,6 +22,7 @@ public class OpenBidRecordService {
     private final BizOpenBidRecordMapper openBidRecordMapper;
     private final BizTenderRegisterMapper registerMapper;
     private final BizProjectMapper projectMapper;
+    private final com.zwinsight.project.service.ProjectService projectService;
 
     /**
      * 新增开标记录（中标→更新项目status=WON + 更新register status）
@@ -54,15 +55,19 @@ public class OpenBidRecordService {
             register.setStatus("WON");
             registerMapper.updateById(register);
 
-            // 更新项目状态为WON
+            // P1-M1：项目状态走状态机（WIN_BID，留大事记+守卫）
             if (project != null) {
-                project.setStatus("WON");
-                projectMapper.updateById(project);
+                projectService.winBid(project.getId());
             }
         } else {
             // 未中标
             register.setStatus("LOST");
             registerMapper.updateById(register);
+            // P1-M1：项目落标归档（LOST 终态，留原因）
+            if (project != null) {
+                projectService.loseBid(project.getId(),
+                        "开标未中标");
+            }
         }
     }
 

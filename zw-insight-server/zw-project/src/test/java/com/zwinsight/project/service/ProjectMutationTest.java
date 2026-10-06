@@ -69,6 +69,10 @@ class ProjectMutationTest {
     private BizProjectWbsNodeMapper wbsNodeMapper;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private com.zwinsight.project.mapper.BizProjectStatusLogMapper statusLogMapper;
+    @Mock
+    private com.zwinsight.project.mapper.BizProjectChangeLogMapper changeLogMapper;
 
     private static final Long TENANT_ID = 9999L;
 
@@ -86,7 +90,8 @@ class ProjectMutationTest {
     private ProjectService projectService() {
         // 参数顺序必须与 ProjectService 的 @RequiredArgsConstructor 字段声明顺序一致
         return new ProjectService(projectMapper, serialNumberService, memberService, approvalService,
-                memberMapper, wbsNodeMapper, userProjectMapper, eventPublisher);
+                memberMapper, wbsNodeMapper, userProjectMapper, eventPublisher,
+                new ProjectStateMachine(projectMapper, statusLogMapper), statusLogMapper, changeLogMapper);
     }
 
     private BizProject project(String status, String totalIncome, String output) {
@@ -115,15 +120,17 @@ class ProjectMutationTest {
         List<String> conditions = (List<String>) result.get("conditions");
         @SuppressWarnings("unchecked")
         List<String> failedReasons = (List<String>) result.get("failedReasons");
-        assertThat(conditions).hasSize(4);
+        assertThat(conditions).hasSize(7);
         assertThat(failedReasons).isEmpty();
     }
 
     @Test
     @DisplayName("结项条件检查：三种失败原因逐项给出（未竣工/欠款超容差/无已批结算单）")
     void checkCloseConditions_failures_listedPerCondition() {
-        // 状态 CONSTRUCTION：条件1失败；未收 500 > 100：条件2失败；无已批结算单：条件4失败
-        when(projectMapper.selectById(1L)).thenReturn(project("CONSTRUCTION", "1000000", "1000500"));
+        // 状态 CONSTRUCTION：条件1失败；应收台账未结清 500 > 100：条件2失败；无已批结算单：条件4失败
+        BizProject pObj = project("CONSTRUCTION", "1000000", "1000500");
+        pObj.setReceivableAmount(new BigDecimal("500"));
+        when(projectMapper.selectById(1L)).thenReturn(pObj);
         when(projectMapper.countApprovedSettlement(1L)).thenReturn(0L);
 
         Map<String, Object> result = projectService().checkCloseConditions(1L);
@@ -134,7 +141,7 @@ class ProjectMutationTest {
         assertThat(failedReasons).hasSize(3);
         assertThat(String.join("；", failedReasons))
                 .contains("竣工验收")
-                .contains("未收款")
+                .contains("款")
                 .contains("结算");
     }
 
@@ -164,6 +171,7 @@ class ProjectMutationTest {
         // 条件满足 → 发起审批 + 状态 CLOSING + 记录流程实例
         when(projectMapper.selectById(2L)).thenReturn(project("COMPLETED", "1000000", "1000000"));
         when(projectMapper.countApprovedSettlement(2L)).thenReturn(1L);
+        when(projectMapper.updateById(any())).thenReturn(1);
         when(approvalService.startProcess(eq("PROJECT_CLOSE"), eq(2L), eq("project_close_approval"), anyMap()))
                 .thenReturn("wf-close-001");
 
@@ -182,14 +190,18 @@ class ProjectMutationTest {
     void statusGuards() {
         ProjectService service = projectService();
 
+        // P1-M1 A5：FILED 活跃态允许编辑关键字段；终态 CLOSED 拒绝编辑
+        BizProject closed = project("CLOSED", null, null);
+        when(projectMapper.selectById(1L)).thenReturn(closed);
+        assertThatThrownBy(() -> service.update(closed))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不可编辑");
+
         BizProject submitted = project("FILED", null, null);
         when(projectMapper.selectById(1L)).thenReturn(submitted);
-        assertThatThrownBy(() -> service.update(submitted))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅草稿状态可编辑");
         assertThatThrownBy(() -> service.submit(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅草稿状态可提交");
+                .hasMessageContaining("不允许由事件[SUBMIT]");
 
         when(projectMapper.selectById(99L)).thenReturn(null);
         assertThatThrownBy(() -> service.onCloseRejected(99L))
@@ -198,6 +210,7 @@ class ProjectMutationTest {
 
         BizProject closing = project("CLOSING", null, null);
         when(projectMapper.selectById(2L)).thenReturn(closing);
+        when(projectMapper.updateById(any())).thenReturn(1);
         service.onCloseRejected(2L);
         ArgumentCaptor<BizProject> captor = ArgumentCaptor.forClass(BizProject.class);
         verify(projectMapper).updateById(captor.capture());
@@ -304,6 +317,7 @@ class ProjectMutationTest {
         assertThat(result.get("allPassed")).isEqualTo(true);
 
         // 实际 closeProject 调用应发起审批
+        when(projectMapper.updateById(any())).thenReturn(1);
         when(approvalService.startProcess(eq("PROJECT_CLOSE"), eq(1L), eq("project_close_approval"), anyMap()))
                 .thenReturn("wf-close-null-test");
         projectService().closeProject(1L);

@@ -27,6 +27,7 @@ class OpenBidRecordServiceTest {
     @Mock private BizOpenBidRecordMapper openBidRecordMapper;
     @Mock private BizTenderRegisterMapper registerMapper;
     @Mock private BizProjectMapper projectMapper;
+    @Mock private com.zwinsight.project.service.ProjectService projectService;
 
     @InjectMocks
     private OpenBidRecordService openBidRecordService;
@@ -54,7 +55,7 @@ class OpenBidRecordServiceTest {
         openBidRecordService.save(record);
 
         verify(registerMapper).updateById(argThat(r -> "WON".equals(r.getStatus())));
-        verify(projectMapper).updateById(argThat(p -> "WON".equals(p.getStatus())));
+        verify(projectService).winBid(100L);
     }
 
     @Test

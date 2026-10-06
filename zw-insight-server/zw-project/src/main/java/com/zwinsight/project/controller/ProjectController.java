@@ -99,6 +99,60 @@ public class ProjectController {
         return R.ok();
     }
 
+    // ================= P1-M1 深度优化端点（V2026_81） =================
+
+    /** 撤回立项（FILED→DRAFT） */
+    @PostMapping("/{id}/withdraw")
+    @OperLog(module = "项目管理", operType = "UPDATE", description = "撤回立项")
+    public R<Void> withdraw(@PathVariable Long id) {
+        projectService.withdraw(id);
+        return R.ok();
+    }
+
+    /** 落标归档（TENDERING→LOST，须带原因） */
+    @PostMapping("/{id}/lose-bid")
+    @OperLog(module = "项目管理", operType = "UPDATE", description = "落标归档")
+    public R<Void> loseBid(@PathVariable Long id, @RequestParam String reason) {
+        projectService.loseBid(id, reason);
+        return R.ok();
+    }
+
+    /** 暂停（CONSTRUCTION→PAUSED，须带原因） */
+    @PostMapping("/{id}/pause")
+    @OperLog(module = "项目管理", operType = "UPDATE", description = "项目暂停")
+    public R<Void> pause(@PathVariable Long id, @RequestParam String reason) {
+        projectService.pause(id, reason);
+        return R.ok();
+    }
+
+    /** 复工（PAUSED→CONSTRUCTION） */
+    @PostMapping("/{id}/resume")
+    @OperLog(module = "项目管理", operType = "UPDATE", description = "项目复工")
+    public R<Void> resume(@PathVariable Long id) {
+        projectService.resume(id);
+        return R.ok();
+    }
+
+    /** 发起终止审批（非终态→TERMINATING，须带原因；在途财务单据须先清） */
+    @PostMapping("/{id}/terminate")
+    @OperLog(module = "项目管理", operType = "UPDATE", description = "发起项目终止")
+    public R<Void> terminate(@PathVariable Long id, @RequestParam String reason) {
+        projectService.terminate(id, reason);
+        return R.ok();
+    }
+
+    /** 项目大事记（流转时间线） */
+    @GetMapping("/{id}/status-log")
+    public R<List<com.zwinsight.project.domain.BizProjectStatusLog>> statusLog(@PathVariable Long id) {
+        return R.ok(projectService.statusTimeline(id));
+    }
+
+    /** 关键字段变更台账 */
+    @GetMapping("/{id}/change-log")
+    public R<List<com.zwinsight.project.domain.BizProjectChangeLog>> changeLog(@PathVariable Long id) {
+        return R.ok(projectService.changeLogs(id));
+    }
+
     /**
      * 项目结项/关闭（校验所有条件后状态变更为 CLOSED）
      */

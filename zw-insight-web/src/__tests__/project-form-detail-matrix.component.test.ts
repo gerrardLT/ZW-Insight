@@ -156,11 +156,10 @@ describe('project/detail.vue 账本补测（@matrix A3）', () => {
     return wrapper
   }
 
-  it('@matrix A3-02 CLOSING 状态标签缺失 → 回退显示原始枚举串（源码实证缺陷钉住）', async () => {
+  it('@matrix A3-02 CLOSING 状态展示中文标签「结项审批中」（P1-M1 状态机补齐）', async () => {
     const w = await mountDetail({ id: 2, projectName: 'P2', status: 'CLOSING' })
-    // detail.vue statusMap 仅 7 态无 CLOSING（index.vue 有 8 态）——getStatusLabel 回退原始串
     const tag = w.find('.el-descriptions .el-tag')
-    expect(tag.text()).toBe('CLOSING')
+    expect(tag.text()).toBe('结项审批中')
   })
 
   it('@matrix A3-03 URL ?tab=team 初始激活项目团队 tab', async () => {

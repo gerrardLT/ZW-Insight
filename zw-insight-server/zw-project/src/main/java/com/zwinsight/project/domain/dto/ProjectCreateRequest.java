@@ -23,12 +23,14 @@ public class ProjectCreateRequest {
      * 项目性质
      */
     @Size(max = 50, message = "项目性质不能超过50个字符")
+    @NotBlank(message = "项目性质不能为空")
     private String projectNature;
 
     /**
      * 项目类型
      */
     @Size(max = 50, message = "项目类型不能超过50个字符")
+    @NotBlank(message = "项目类型不能为空")
     private String projectType;
 
     /**
@@ -40,6 +42,7 @@ public class ProjectCreateRequest {
      * 业主单位名称
      */
     @Size(max = 200, message = "业主单位名称不能超过200个字符")
+    @NotBlank(message = "业主单位不能为空")
     private String ownerCompanyName;
 
     /**
@@ -68,18 +71,26 @@ public class ProjectCreateRequest {
      * 联系人
      */
     @Size(max = 50, message = "联系人不能超过50个字符")
+    @NotBlank(message = "联系人不能为空")
     private String contactName;
 
     /**
      * 联系电话
      */
     @Size(max = 20, message = "联系电话不能超过20个字符")
+    @NotBlank(message = "联系电话不能为空")
     private String contactPhone;
 
     /**
      * 是否需要招标（1-是 0-否）
      */
     private Integer needTender;
+
+    /** 计划开工日期（V2026_81 周期字段链） */
+    private java.time.LocalDate plannedStartDate;
+
+    /** 计划竣工日期 */
+    private java.time.LocalDate plannedEndDate;
 
     /**
      * 预算金额

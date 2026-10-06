@@ -42,8 +42,45 @@ export function batchDeleteProjects(ids: number[]) {
   return request.delete<R<void>>('/v1/project/batch', { data: ids })
 }
 
-export function submitProject(id: number) {
+export function submitProject(id: number | string) {
   return request.post<R<void>>(`/v1/project/${id}/submit`)
+}
+
+// ======================== P1-M1 状态机事件端点 ========================
+
+/** 撤回立项（FILED → DRAFT） */
+export function withdrawProject(id: number | string) {
+  return request.post<R<void>>(`/v1/project/${id}/withdraw`)
+}
+
+/** 落标归档（TENDERING → LOST，须附原因） */
+export function loseBidProject(id: number | string, reason: string) {
+  return request.post<R<void>>(`/v1/project/${id}/lose-bid`, null, { params: { reason } })
+}
+
+/** 暂停施工（CONSTRUCTION → PAUSED，须附原因） */
+export function pauseProject(id: number | string, reason: string) {
+  return request.post<R<void>>(`/v1/project/${id}/pause`, null, { params: { reason } })
+}
+
+/** 恢复施工（PAUSED → CONSTRUCTION） */
+export function resumeProject(id: number | string) {
+  return request.post<R<void>>(`/v1/project/${id}/resume`)
+}
+
+/** 发起终止审批（非终态 → TERMINATING） */
+export function terminateProject(id: number | string, reason: string) {
+  return request.post<R<void>>(`/v1/project/${id}/terminate`, null, { params: { reason } })
+}
+
+/** 查询项目流转大事记 */
+export function getProjectStatusLog(id: number | string) {
+  return request.get<R<import('@/types/project').ProjectStatusLog[]>>(`/v1/project/${id}/status-log`)
+}
+
+/** 查询项目关键字段变更台账 */
+export function getProjectChangeLog(id: number | string) {
+  return request.get<R<import('@/types/project').ProjectChangeLog[]>>(`/v1/project/${id}/change-log`)
 }
 
 // 结项条件预检（发起结项前调用，提示哪些条件未满足）
@@ -57,12 +94,12 @@ export interface CloseCheckResult {
   conditions: CloseCheckCondition[]
   failedReasons: string[]
 }
-export function getProjectCloseCheck(id: number) {
+export function getProjectCloseCheck(id: number | string) {
   return request.get<R<CloseCheckResult>>(`/v1/project/${id}/close-check`)
 }
 
 // 发起项目结项审批（校验通过后状态置 CLOSING，审批通过后置 CLOSED）
-export function closeProject(id: number) {
+export function closeProject(id: number | string) {
   return request.post<R<void>>(`/v1/project/${id}/close`)
 }
 

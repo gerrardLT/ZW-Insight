@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * 项目实体
@@ -80,8 +81,29 @@ public class BizProject extends BaseEntity {
      */
     private Integer needTender;
 
+    /** 计划开工日期（V2026_81 周期字段链，蓝图 A2） */
+    private LocalDate plannedStartDate;
+
+    /** 计划竣工日期 */
+    private LocalDate plannedEndDate;
+
+    /** 实际开工日期（START_CONSTRUCTION 事件首次回写） */
+    private LocalDate actualStartDate;
+
+    /** 实际竣工日期（COMPLETE 事件回写） */
+    private LocalDate actualEndDate;
+
+    /** 暂停原因（PAUSED 态留痕，V2026_81 A4） */
+    private String pauseReason;
+
+    /** 终止原因（TERMINATED 态，走审批，V2026_81 A4） */
+    private String terminateReason;
+
+    /** 落标原因（LOST 态，V2026_81 A3） */
+    private String lostReason;
+
     /**
-     * 项目状态（DRAFT/FILED/TENDERING/WON/CONSTRUCTION/COMPLETED/CLOSING/CLOSED）
+     * 项目状态（DRAFT/FILED/TENDERING/WON/LOST/CONSTRUCTION/PAUSED/COMPLETED/CLOSING/CLOSED/TERMINATED）
      */
     private String status;
 

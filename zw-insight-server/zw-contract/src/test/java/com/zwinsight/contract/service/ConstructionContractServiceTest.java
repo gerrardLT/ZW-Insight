@@ -50,6 +50,8 @@ class ConstructionContractServiceTest {
 
     @Mock
     private BizProjectMapper projectMapper;
+    @Mock
+    private com.zwinsight.project.service.ProjectService projectService;
 
     @InjectMocks
     private ConstructionContractService contractService;
@@ -384,16 +386,13 @@ class ConstructionContractServiceTest {
             project.setStatus("WON");
 
             when(contractMapper.selectById(contractId)).thenReturn(existing);
-            when(projectMapper.selectById(1L)).thenReturn(project);
 
             contractService.onApproved(contractId);
 
             assertThat(existing.getStatus()).isEqualTo("EFFECTIVE");
             verify(projectMapper).addContractAmount(1L, new BigDecimal("1130000"));
             // WON → CONSTRUCTION
-            ArgumentCaptor<BizProject> projectCaptor = ArgumentCaptor.forClass(BizProject.class);
-            verify(projectMapper).updateById(projectCaptor.capture());
-            assertThat(projectCaptor.getValue().getStatus()).isEqualTo("CONSTRUCTION");
+            verify(projectService).startConstruction(1L);
         }
 
         @Test
@@ -411,13 +410,10 @@ class ConstructionContractServiceTest {
             project.setStatus("FILED");
 
             when(contractMapper.selectById(contractId)).thenReturn(existing);
-            when(projectMapper.selectById(1L)).thenReturn(project);
 
             contractService.onApproved(contractId);
 
-            ArgumentCaptor<BizProject> projectCaptor = ArgumentCaptor.forClass(BizProject.class);
-            verify(projectMapper).updateById(projectCaptor.capture());
-            assertThat(projectCaptor.getValue().getStatus()).isEqualTo("CONSTRUCTION");
+            verify(projectService).startConstruction(1L);
         }
 
         @Test
@@ -435,12 +431,10 @@ class ConstructionContractServiceTest {
             project.setStatus("COMPLETED");
 
             when(contractMapper.selectById(contractId)).thenReturn(existing);
-            when(projectMapper.selectById(1L)).thenReturn(project);
 
             contractService.onApproved(contractId);
 
-            // COMPLETED 不流转，不调用 updateById（或状态不变）
-            assertThat(project.getStatus()).isEqualTo("COMPLETED");
+            verify(projectService).startConstruction(1L);
         }
 
         @Test

@@ -102,4 +102,64 @@ public interface BizProjectMapper extends BaseMapper<BizProject> {
     @Update("UPDATE biz_project SET contract_amount = COALESCE(contract_amount, 0) + #{amount} " +
             "WHERE id = #{projectId} AND deleted = 0")
     int addContractAmount(@Param("projectId") Long projectId, @Param("amount") BigDecimal amount);
+
+    // ================= P1-M1 深度优化新增（V2026_81，蓝图 01-project.md） =================
+
+    /**
+     * 统计项目 EFFECTIVE 施工合同数（开工准入守卫 I2；跨表只读避免循环依赖，惯例同上）
+     */
+    @Select("SELECT COUNT(*) FROM biz_construction_contract " +
+            "WHERE project_id = #{projectId} AND status = 'EFFECTIVE' AND deleted = 0")
+    long countEffectiveConstructionContracts(@Param("projectId") Long projectId);
+
+    /**
+     * 项目应付未付余额 = Σ五类支出合同（累计结算 − 累计已付） + 其他付款未付部分。
+     * 结项实口径条件 I5-2（替换原产值−收入简化式）。
+     */
+    @Select("SELECT COALESCE(SUM(payable), 0) FROM (" +
+            " SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0) AS payable FROM biz_purchase_contract WHERE project_id = #{projectId} AND deleted = 0" +
+            " UNION ALL SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0) FROM biz_labor_contract WHERE project_id = #{projectId} AND deleted = 0" +
+            " UNION ALL SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0) FROM biz_machine_contract WHERE project_id = #{projectId} AND deleted = 0" +
+            " UNION ALL SELECT COALESCE(cumulative_settlement,0) - COALESCE(cumulative_paid,0) FROM biz_subcontract WHERE project_id = #{projectId} AND deleted = 0" +
+            ") t")
+    BigDecimal sumPayableOutstanding(@Param("projectId") Long projectId);
+
+    /**
+     * 未退质保金合计（结项条件 I5-3：RETENTION 类资金单据未到 REFUNDED/终态的余额）
+     */
+    @Select("SELECT COALESCE(SUM(retention_amount - COALESCE(returned_amount, 0)), 0) FROM biz_retention_money " +
+            "WHERE project_id = #{projectId} AND status <> 'REFUNDED' AND deleted = 0")
+    BigDecimal sumUnreturnedRetention(@Param("projectId") Long projectId);
+
+    /**
+     * 未退保证金合计（结项条件 I5-4；表=biz_security_bond：amount − refund_amount，
+     * 仅统计 refund_status ≠ REFUNDED 的有效记录）
+     */
+    @Select("SELECT COALESCE(SUM(amount - COALESCE(refund_amount, 0)), 0) FROM biz_security_bond " +
+            "WHERE project_id = #{projectId} AND refund_status <> 'REFUNDED' AND deleted = 0")
+    BigDecimal sumUnreturnedSecurityBond(@Param("projectId") Long projectId);
+
+    /**
+     * 未退备用金/押金合计（结项条件 I5-4b；表=biz_reserve_fund_apply：申请 − 已退 − 已抵扣，
+     * 仅统计 APPROVED 记录）
+     */
+    @Select("SELECT COALESCE(SUM(apply_amount - COALESCE(returned_amount, 0) - COALESCE(offset_amount, 0)), 0) FROM biz_reserve_fund_apply " +
+            "WHERE project_id = #{projectId} AND status = 'APPROVED' AND deleted = 0")
+    BigDecimal sumUnreturnedReserveFund(@Param("projectId") Long projectId);
+
+    /**
+     * 读取 sys_config 布尔开关（跨表只读；未配置/异常一律回退默认值，绝不阻断主流程）
+     */
+    @Select("SELECT config_value FROM sys_config WHERE config_key = #{key} AND deleted = 0 LIMIT 1")
+    String selectConfigValue(@Param("key") String key);
+
+    /** 在途付款申请数（终止守卫：审批中单据须清零才可终止） */
+    @Select("SELECT COUNT(*) FROM biz_payment_apply WHERE project_id = #{projectId} " +
+            "AND status IN ('SUBMITTED', 'PENDING_APPROVAL') AND deleted = 0")
+    long countInFlightPayments(@Param("projectId") Long projectId);
+
+    /** 在途项目结算单数（终止守卫） */
+    @Select("SELECT COUNT(*) FROM biz_project_settlement WHERE project_id = #{projectId} " +
+            "AND status IN ('SUBMITTED', 'PENDING_APPROVAL') AND deleted = 0")
+    long countInFlightSettlements(@Param("projectId") Long projectId);
 }

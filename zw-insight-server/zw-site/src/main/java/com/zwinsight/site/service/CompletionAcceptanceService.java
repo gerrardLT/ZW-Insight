@@ -27,6 +27,7 @@ public class CompletionAcceptanceService {
 
     private final BizCompletionAcceptanceMapper acceptanceMapper;
     private final BizProjectMapper projectMapper;
+    private final com.zwinsight.project.service.ProjectService projectService;
     private final ApprovalService approvalService;
 
     /**
@@ -94,13 +95,12 @@ public class CompletionAcceptanceService {
         acceptance.setStatus("APPROVED");
         acceptanceMapper.updateById(acceptance);
 
-        // 更新项目状态为COMPLETED
-        BizProject project = projectMapper.selectById(acceptance.getProjectId());
-        if (project != null) {
-            project.setStatus("COMPLETED");
-            projectMapper.updateById(project);
-        } else {
-            log.warn("竣工验收审批通过：项目不存在, projectId={}", acceptance.getProjectId());
+        // P1-M1：竣工走项目状态机（COMPLETE 事件：实际竣工日回写 + 大事记）
+        try {
+            projectService.complete(acceptance.getProjectId());
+        } catch (com.zwinsight.common.exception.BusinessException e) {
+            log.warn("竣工验收后项目竣工流转被状态机拒绝, projectId={}, reason={}",
+                    acceptance.getProjectId(), e.getMessage());
         }
         log.info("竣工验收审批通过，项目已竣工: acceptanceId={}, projectId={}", id, acceptance.getProjectId());
     }

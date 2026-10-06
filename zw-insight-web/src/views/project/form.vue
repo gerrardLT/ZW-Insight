@@ -127,6 +127,32 @@
               </el-form-item>
             </el-col>
           </el-row>
+
+          <!-- 计划周期（P1-M1 A2） -->
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="计划开工日期" prop="plannedStartDate">
+                <el-date-picker
+                  v-model="formData.plannedStartDate"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="请选择计划开工日期"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="计划竣工日期" prop="plannedEndDate">
+                <el-date-picker
+                  v-model="formData.plannedEndDate"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="请选择计划竣工日期"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
         </div>
       </el-form>
 
@@ -172,7 +198,9 @@ const formData = ref({
   contactName: '',
   contactPhone: '',
   budgetAmount: 0,
-  needTender: 0
+  needTender: 0,
+  plannedStartDate: '',
+  plannedEndDate: ''
 })
 
 const formRules = {
@@ -226,6 +254,10 @@ async function loadDetail() {
 
 async function handleSubmit() {
   await formRef.value?.validate()
+  if (formData.value.plannedStartDate && formData.value.plannedEndDate && formData.value.plannedEndDate < formData.value.plannedStartDate) {
+    ElMessage.error('计划竣工日期不得早于计划开工日期')
+    return
+  }
   submitLoading.value = true
   try {
     if (formData.value.id) {

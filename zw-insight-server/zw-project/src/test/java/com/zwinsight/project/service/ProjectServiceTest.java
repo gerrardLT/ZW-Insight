@@ -9,6 +9,8 @@ import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.mapper.BizProjectMemberMapper;
 import com.zwinsight.project.mapper.BizProjectWbsNodeMapper;
 import com.zwinsight.project.mapper.SysUserProjectMapper;
+import com.zwinsight.project.mapper.BizProjectStatusLogMapper;
+import com.zwinsight.project.mapper.BizProjectChangeLogMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,8 +44,10 @@ class ProjectServiceTest {
     @Mock private BizProjectWbsNodeMapper wbsNodeMapper;
     @Mock private SysUserProjectMapper userProjectMapper;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private BizProjectStatusLogMapper statusLogMapper;
+    @Mock private BizProjectChangeLogMapper changeLogMapper;
 
-    @InjectMocks
+    // P1-M1：真实状态机（依赖同批 mock），显式构造注入——测试走到的是真实转移边表/守卫
     private ProjectService projectService;
 
     private BizProject sampleProject;
@@ -54,6 +58,10 @@ class ProjectServiceTest {
         sampleProject.setId(1L);
         sampleProject.setProjectName("测试项目");
         sampleProject.setStatus("DRAFT");
+        ProjectStateMachine stateMachine = new ProjectStateMachine(projectMapper, statusLogMapper);
+        projectService = new ProjectService(projectMapper, serialNumberService, memberService,
+                approvalService, projectMemberMapper, wbsNodeMapper, userProjectMapper,
+                eventPublisher, stateMachine, statusLogMapper, changeLogMapper);
     }
 
     // =====================================================================
@@ -176,17 +184,41 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("更新：非 DRAFT 拒绝")
+    @DisplayName("更新：终态（CLOSED/LOST/TERMINATED）与审批中间态只读（P1-M1 A5 编辑矩阵）")
     void testUpdate_nonDraftRejected() {
+        for (String readonly : new String[]{"CLOSED", "LOST", "TERMINATED", "CLOSING", "TERMINATING"}) {
+            sampleProject.setStatus(readonly);
+            when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+
+            BizProject update = new BizProject();
+            update.setId(1L);
+            update.setProjectOverview("try edit");
+
+            assertThatThrownBy(() -> projectService.update(update))
+                    .as("状态 %s 应拒绝编辑", readonly)
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("不可编辑");
+        }
+    }
+
+    @Test
+    @DisplayName("更新：FILED 活跃态可编辑且关键字段变更落台账（P1-M1 A5/I4）")
+    void testUpdate_filedKeyFieldChangeLogged() {
         sampleProject.setStatus("FILED");
+        sampleProject.setOwnerCompanyName("旧业主");
         when(projectMapper.selectById(1L)).thenReturn(sampleProject);
 
         BizProject update = new BizProject();
         update.setId(1L);
+        update.setOwnerCompanyName("新业主");
 
-        assertThatThrownBy(() -> projectService.update(update))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅草稿状态可编辑");
+        projectService.update(update);
+
+        verify(projectMapper).updateById(argThat(p -> "新业主".equals(p.getOwnerCompanyName())));
+        verify(changeLogMapper).insert(argThat(log ->
+                "ownerCompanyName".equals(log.getFieldName())
+                        && "旧业主".equals(log.getOldValue())
+                        && "新业主".equals(log.getNewValue())));
     }
 
     // =====================================================================
@@ -362,6 +394,7 @@ class ProjectServiceTest {
     @DisplayName("提交：DRAFT→FILED")
     void testSubmit_draftToFiled() {
         when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
 
         projectService.submit(1L);
 
@@ -376,7 +409,7 @@ class ProjectServiceTest {
 
         assertThatThrownBy(() -> projectService.submit(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅草稿状态可提交");
+                .hasMessageContaining("不允许由事件[SUBMIT]");
     }
 
     // =====================================================================
@@ -386,18 +419,22 @@ class ProjectServiceTest {
     @Test
     @DisplayName("更新状态：正常更新")
     void testUpdateStatus_success() {
+        // P1-M1：兼容通道按事件边流转——FILED→TENDERING 对应 GO_TENDER 合法边
+        sampleProject.setStatus("FILED");
         when(projectMapper.selectById(1L)).thenReturn(sampleProject);
         when(projectMapper.updateById(any())).thenReturn(1);
 
-        projectService.updateStatus(1L, "COMPLETED");
+        projectService.updateStatus(1L, "TENDERING");
 
-        verify(projectMapper).updateById(argThat(p -> "COMPLETED".equals(p.getStatus())));
+        verify(projectMapper).updateById(argThat(p -> "TENDERING".equals(p.getStatus())));
     }
 
     @Test
     @DisplayName("更新状态：乐观锁返回0行（并发修改）时抛错不丢失更新（待决策#4B）")
     void testUpdateStatus_concurrentConflict_throws() {
+        sampleProject.setStatus("FILED");
         when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.countEffectiveConstructionContracts(1L)).thenReturn(1L);
         when(projectMapper.updateById(any())).thenReturn(0);
 
         assertThatThrownBy(() -> projectService.updateStatus(1L, "CONSTRUCTION"))
@@ -426,7 +463,7 @@ class ProjectServiceTest {
 
             assertThatThrownBy(() -> projectService.updateStatus(2L, "TENDERING"))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("不可变更状态");
+                    .hasMessageContaining("不允许的状态变更");
         }
         verify(projectMapper, never()).updateById(any());
     }
@@ -441,7 +478,7 @@ class ProjectServiceTest {
 
         assertThatThrownBy(() -> projectService.updateStatus(3L, "CONSTRUCTION"))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("结项审批中");
+                .hasMessageContaining("不允许的状态变更");
 
         verify(projectMapper, never()).updateById(any());
     }
@@ -456,10 +493,10 @@ class ProjectServiceTest {
 
         assertThatThrownBy(() -> projectService.updateStatus(4L, "HACKED_STATUS"))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("非法的项目状态");
+                .hasMessageContaining("不允许的状态变更");
         assertThatThrownBy(() -> projectService.updateStatus(4L, null))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("非法的项目状态");
+                .hasMessageContaining("不允许的状态变更");
 
         verify(projectMapper, never()).updateById(any());
     }
@@ -514,6 +551,7 @@ class ProjectServiceTest {
         when(projectMapper.selectById(1L)).thenReturn(sampleProject);
         // 条件4：存在已审批的最终结算单
         when(projectMapper.countApprovedSettlement(1L)).thenReturn(1L);
+        when(projectMapper.updateById(any())).thenReturn(1);
         when(approvalService.startProcess(eq("PROJECT_CLOSE"), eq(1L), eq("project_close_approval"), anyMap()))
                 .thenReturn("proc-1");
 
@@ -533,6 +571,7 @@ class ProjectServiceTest {
     void testOnCloseApproved_toClosed() {
         sampleProject.setStatus("CLOSING");
         when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
 
         projectService.onCloseApproved(1L);
 
@@ -544,6 +583,7 @@ class ProjectServiceTest {
     void testOnCloseRejected_backToCompleted() {
         sampleProject.setStatus("CLOSING");
         when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
 
         projectService.onCloseRejected(1L);
 

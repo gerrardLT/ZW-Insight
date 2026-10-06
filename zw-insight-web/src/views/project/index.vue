@@ -12,10 +12,14 @@
             <el-option label="已报备" value="FILED" />
             <el-option label="招标中" value="TENDERING" />
             <el-option label="已中标" value="WON" />
+            <el-option label="已落标" value="LOST" />
             <el-option label="施工中" value="CONSTRUCTION" />
+            <el-option label="已暂停" value="PAUSED" />
             <el-option label="已竣工" value="COMPLETED" />
             <el-option label="结项审批中" value="CLOSING" />
             <el-option label="已关闭" value="CLOSED" />
+            <el-option label="终止审批中" value="TERMINATING" />
+            <el-option label="已终止" value="TERMINATED" />
           </el-select>
         </el-form-item>
         <el-form-item label="项目类型">
@@ -77,11 +81,12 @@
               </template>
             </el-table-column>
             <el-table-column v-if="columnVisible[7]" prop="createdAt" label="创建时间" width="170" />
-            <el-table-column label="操作" width="220" fixed="right">
+            <el-table-column label="操作" width="240" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" @click="handleView(row)">查看</el-button>
                 <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
                 <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交</el-button>
+                <el-button v-if="row.status === 'FILED'" link type="warning" @click="handleWithdraw(row)">撤回</el-button>
                 <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
                 <el-button v-if="row.status === 'COMPLETED'" link type="warning" @click="handleClose(row)">结项</el-button>
               </template>
@@ -111,7 +116,7 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getProjectPage, deleteProject, batchDeleteProjects, submitProject, closeProject, getProjectCloseCheck, getProjectPortfolio } from '@/api/project'
+import { getProjectPage, deleteProject, batchDeleteProjects, submitProject, withdrawProject, closeProject, getProjectCloseCheck, getProjectPortfolio } from '@/api/project'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
@@ -151,10 +156,14 @@ const statusMap: Record<string, { label: string; type: string }> = {
   FILED: { label: '已报备', type: 'primary' },
   TENDERING: { label: '招标中', type: 'warning' },
   WON: { label: '已中标', type: 'success' },
+  LOST: { label: '已落标', type: 'info' },
   CONSTRUCTION: { label: '施工中', type: '' },
+  PAUSED: { label: '已暂停', type: 'warning' },
   COMPLETED: { label: '已竣工', type: 'success' },
   CLOSING: { label: '结项审批中', type: 'warning' },
-  CLOSED: { label: '已关闭', type: 'danger' }
+  CLOSED: { label: '已关闭', type: 'danger' },
+  TERMINATING: { label: '终止审批中', type: 'warning' },
+  TERMINATED: { label: '已终止', type: 'danger' }
 }
 
 function getStatusLabel(status: string) {
@@ -261,6 +270,18 @@ async function handleDelete(row: any) {
 
 function handleSelectionChange(rows: any[]) {
   selectedRows.value = rows
+}
+
+/** 活跃态（非终态、非审批中间态）允许编辑，修改关键字段落台账（A5） */
+function isEditable(status: string) {
+  return !['CLOSED', 'LOST', 'TERMINATED', 'CLOSING', 'TERMINATING'].includes(status)
+}
+
+async function handleWithdraw(row: any) {
+  await ElMessageBox.confirm('确定撤回立项吗？项目将回退为草稿供编辑。', '撤回立项', { type: 'warning' })
+  await withdrawProject(row.id)
+  ElMessage.success('撤回成功')
+  loadData()
 }
 
 /** 仅草稿状态的行可勾选（与后端“仅 DRAFT 可删”校验对齐） */

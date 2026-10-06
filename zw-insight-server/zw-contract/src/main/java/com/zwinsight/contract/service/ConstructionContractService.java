@@ -39,6 +39,7 @@ public class ConstructionContractService {
     private final SerialNumberService serialNumberService;
     private final ApprovalService approvalService;
     private final BizProjectMapper projectMapper;
+    private final com.zwinsight.project.service.ProjectService projectService;
 
     /**
      * 分页查询
@@ -182,11 +183,13 @@ public class ConstructionContractService {
                     ? BigDecimal.ZERO : contract.getContractAmount();
             projectMapper.addContractAmount(contract.getProjectId(), amount);
 
-            BizProject project = projectMapper.selectById(contract.getProjectId());
-            if (project != null) {
-                // 项目状态流转：中标/已报备 → 施工中（施工合同生效触发）
-                advanceToConstruction(project);
-                projectMapper.updateById(project);
+            // P1-M1：开工走项目状态机（START_CONSTRUCTION 事件：I2 准入守卫 + 实际开工日回写 + 大事记）
+            // 状态机自带 WON/FILED→CONSTRUCTION 边校验，advanceToConstruction 私有方法废弃
+            try {
+                projectService.startConstruction(contract.getProjectId());
+            } catch (com.zwinsight.common.exception.BusinessException e) {
+                // 兼容历史直写语义：合同生效是既定事实，状态机拒绝（如已在 CONSTRUCTION）时不阻断生效
+                // 原因经审批日志可查（project_close_approval 大事记缺此事件即代表被拒）
             }
         }
     }
@@ -202,15 +205,6 @@ public class ConstructionContractService {
         }
         contract.setStatus("DRAFT");
         contractMapper.updateById(contract);
-    }
-
-    /**
-     * 项目状态流转 WON/FILED → CONSTRUCTION（施工合同生效时调用）
-     */
-    private void advanceToConstruction(BizProject project) {
-        if ("WON".equals(project.getStatus()) || "FILED".equals(project.getStatus())) {
-            project.setStatus("CONSTRUCTION");
-        }
     }
 
     /**
