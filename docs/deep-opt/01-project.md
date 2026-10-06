@@ -122,5 +122,5 @@ DRAFT ──submit(可配审批)──▶ FILED ──tender.needTender=1──�
 
 ## 8. 确认记录
 
-- 门 A（待确认）：____
-- 门 B（未到）：____
+- 门 A（2026-10-06）：用户确认「1 全做、2 B也全做、3 同意回填只读流程，确认开始」。状态变更为「已确认执行」。
+- 门 B（2026-10-06）：A档6项+B档5项全部落地、L1(1788 tests)+JaCoCo(74.75%)+前端(1288 tests)+L3(33/33)+L4(26/26全绿)+R7(PASS=67 FAIL=0)全量验证通过，双机持续部署已上线（commit e26e230 / 741f259 / 64a7d4d）。详细证据见 audit-reports/p1-m1-project-deep-opt-gate-b-report.md。待用户确认收尾。
