@@ -32,9 +32,9 @@ public class OpenBidRecordService {
         // D1 守卫（2026-08-11）：中标时终态项目禁止被改回 WON，先校验再落库（fail-fast）。
         // P2 强化（2026-08-12，批次二 D3）：施工中项目被中标登记回退为 WON，一并拦截
         boolean won = record.getIsWon() != null && record.getIsWon() == 1;
-        BizProject project = null;
+        // P1-M1 审核修复：project 加载提前到分支外（原落标分支 project 恒 null，loseBid 永远不执行）
+        BizProject project = projectMapper.selectById(record.getProjectId());
         if (won) {
-            project = projectMapper.selectById(record.getProjectId());
             if (project != null && ("CLOSED".equals(project.getStatus())
                     || "COMPLETED".equals(project.getStatus()) || "CLOSING".equals(project.getStatus())
                     || "CONSTRUCTION".equals(project.getStatus()))) {
@@ -63,10 +63,15 @@ public class OpenBidRecordService {
             // 未中标
             register.setStatus("LOST");
             registerMapper.updateById(register);
-            // P1-M1：项目落标归档（LOST 终态，留原因）
-            if (project != null) {
-                projectService.loseBid(project.getId(),
-                        "开标未中标");
+            // P1-M1：项目落标归档（LOST 终态，留原因）。
+            // 审核修复：只在项目确为 TENDERING 时流转；非阻断——异常状态下录开标记录是合法的
+            // 记录行为，不应因状态流转失败而整体回滚开标记录
+            if (project != null && "TENDERING".equals(project.getStatus())) {
+                try {
+                    projectService.loseBid(project.getId(), "开标未中标");
+                } catch (com.zwinsight.common.exception.BusinessException e) {
+                    // 状态机拒绝（并发窗口下项目状态已变）→ 仅保留开标记录，不阻断
+                }
             }
         }
     }

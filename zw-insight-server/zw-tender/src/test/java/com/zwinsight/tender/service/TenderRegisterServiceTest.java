@@ -35,6 +35,7 @@ class TenderRegisterServiceTest {
 
     @Mock private BizTenderRegisterMapper registerMapper;
     @Mock private BizProjectMapper projectMapper;
+    @Mock private com.zwinsight.project.service.ProjectService projectService;
 
     @InjectMocks
     private TenderRegisterService tenderRegisterService;
@@ -118,7 +119,7 @@ class TenderRegisterServiceTest {
 
             assertThat(register.getStatus()).isEqualTo("REGISTERED");
             verify(registerMapper).insert(register);
-            verify(projectMapper).updateById(argThat(p -> "TENDERING".equals(p.getStatus())));
+            verify(projectService).goTender(100L);
         }
 
         @Test

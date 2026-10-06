@@ -21,6 +21,7 @@ public class TenderRegisterService {
 
     private final BizTenderRegisterMapper registerMapper;
     private final BizProjectMapper projectMapper;
+    private final com.zwinsight.project.service.ProjectService projectService;
 
     /**
      * 分页查询
@@ -54,10 +55,10 @@ public class TenderRegisterService {
         register.setStatus("REGISTERED");
         registerMapper.insert(register);
 
-        // 更新项目状态为TENDERING
-        if (project != null) {
-            project.setStatus("TENDERING");
-            projectMapper.updateById(project);
+        // P1-M1 审核修复：走状态机 GO_TENDER（FILED→TENDERING，留大事记+边校验），
+        // 替代原 setStatus 直写旁路。项目已在 TENDERING（重复登记）→ 幂等跳过不流转
+        if (project != null && "FILED".equals(project.getStatus())) {
+            projectService.goTender(project.getId());
         }
     }
 
