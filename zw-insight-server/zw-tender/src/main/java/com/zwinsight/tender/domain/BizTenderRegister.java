@@ -42,4 +42,7 @@ public class BizTenderRegister extends BaseEntity {
 
     /** 状态（REGISTERED/WON/LOST） */
     private String status;
+
+    /** 落标原因分类（V2026_82 B4） */
+    private String lostReasonCategory;
 }

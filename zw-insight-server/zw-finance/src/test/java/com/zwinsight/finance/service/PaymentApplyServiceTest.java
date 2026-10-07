@@ -54,6 +54,7 @@ class PaymentApplyServiceTest {
     @Mock private FundCategoryService fundCategoryService;
     @Mock private FundPlanService fundPlanService;
     @Mock private AmountTierService amountTierService;
+    @Mock private com.zwinsight.budget.service.BudgetControlConfigService budgetControlConfigService;
 
     @InjectMocks
     private PaymentApplyService paymentApplyService;
@@ -61,6 +62,56 @@ class PaymentApplyServiceTest {
     @Nested
     @DisplayName("submit() 提交付款申请")
     class SubmitTests {
+
+        @Test
+        @DisplayName("预算控制 BLOCK — 拦截提交不发流程（P2-M4 A2：PURCHASE 合同映射 MATERIAL 科目）")
+        void submit_budgetBlock_throwsWithoutStartingProcess() {
+            Long id = 90L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setProjectId(10L);
+            apply.setContractCategory("PURCHASE");
+            apply.setPaymentAmount(new BigDecimal("30000.00"));
+            apply.setStatus("DRAFT");
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(budgetControlConfigService.checkBudget(10L, "MATERIAL", apply.getPaymentAmount()))
+                    .thenReturn(com.zwinsight.budget.dto.BudgetCheckResult.block("科目[MATERIAL]预算执行率120.00%，已超预算"));
+
+            assertThatThrownBy(() -> paymentApplyService.submit(id))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("已超预算");
+            verify(approvalService, never()).startProcess(any(), any(), any(), anyMap());
+            assertThat(apply.getStatus()).isEqualTo("DRAFT");
+        }
+
+        @Test
+        @DisplayName("预算控制 WARN — 放行提交并写入线程上下文供响应头透传")
+        void submit_budgetWarn_passesWithWarningContext() {
+            Long id = 91L;
+            Long contractId = 910L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setProjectId(10L);
+            apply.setContractCategory("MACHINE");
+            apply.setPaymentAmount(new BigDecimal("30000.00"));
+            apply.setStatus("DRAFT");
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(budgetControlConfigService.checkBudget(10L, "MACHINE", apply.getPaymentAmount()))
+                    .thenReturn(com.zwinsight.budget.dto.BudgetCheckResult.warn("科目[MACHINE]执行率85%"));
+            when(contractPayableMapper.machinePayable(contractId))
+                    .thenReturn(new ContractPayableInfo(new BigDecimal("100000.00"), new BigDecimal("0.00")));
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+            when(approvalService.startProcess(eq("PAYMENT_APPLY"), eq(id), eq("payment_apply_approval"), anyMap()))
+                    .thenReturn("proc-91");
+
+            paymentApplyService.submit(id);
+
+            assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+            assertThat(com.zwinsight.budget.context.BudgetWarningContext.getWarning())
+                    .contains("MACHINE").contains("85%");
+            com.zwinsight.budget.context.BudgetWarningContext.clear();
+        }
 
         @Test
         @DisplayName("正常路径 — 校验通过后状态置 SUBMITTED，不回写合同/项目")

@@ -20,21 +20,25 @@ export function getContractDetail(id: number | string) {
 }
 
 export function createContract(data: ContractCreateRequest) {
-  return request.post<R<void>>('/v1/contract', data)
+  return request.post<R<number | string>>('/v1/contract', data)
 }
 
 export function updateContract(data: ContractCreateRequest & { id: number }) {
   return request.put<R<void>>(`/v1/contract/${data.id}`, data)
 }
 
-export function deleteContract(id: number) {
+export function deleteContract(id: number | string) {
   return request.delete<R<void>>(`/v1/contract/${id}`)
 }
 
-export function submitContract(id: number) {
+export function submitContract(id: number | string) {
   // 后端 ContractController 为 @PostMapping("/{id}/submit")（Controller 为 SoT），
   // 2026-08-17 真实浏览器实测发现前端误用 PUT 导致 405，修正为 POST
   return request.post<R<void>>(`/v1/contract/${id}/submit`)
+}
+
+export function withdrawContract(id: number | string) {
+  return request.post<R<void>>(`/v1/contract/${id}/withdraw`)
 }
 
 // ======================== 合同明细 ========================

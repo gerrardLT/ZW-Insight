@@ -15,6 +15,7 @@ import com.zwinsight.budget.mapper.BudgetOccupiedMapper;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.budget.mapper.BizCostAccountMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.workflow.service.ApprovalService;
@@ -47,6 +48,9 @@ public class BudgetChangeService {
     private final BudgetOccupiedMapper budgetOccupiedMapper;
     private final ApprovalService approvalService;
     private final BizProjectMapper projectMapper;
+    private final CostLedgerService costLedgerService;
+    private final BizCostAccountMapper costAccountMapper;
+    private final com.zwinsight.file.service.SerialNumberService serialNumberService;
 
     /**
      * 分页查询变更记录
@@ -94,8 +98,10 @@ public class BudgetChangeService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BudgetChangeDTO dto) {
-        // 创建变更主表
+        // 创建变更主表（P2-M4 B3：生成变更单编号）
         BizBudgetChange change = new BizBudgetChange();
+        String code = serialNumberService.generate("BUDGET_CHANGE");
+        change.setChangeCode(code);
         change.setProjectId(dto.getProjectId());
         change.setBudgetId(dto.getBudgetId());
         change.setChangeReason(dto.getChangeReason());
@@ -335,10 +341,34 @@ public class BudgetChangeService {
         change.setStatus("APPROVED");
         budgetChangeMapper.updateById(change);
 
-        // 遍历变更明细，逐科目回写预算明细金额
+        // 遍历变更明细，逐科目回写预算明细金额并同步传导 CBS current 维度（P2-M4 B3 / BI-5）
         List<BizBudgetChangeDetail> details = getDetailsByChangeId(changeId);
+        List<com.zwinsight.budget.domain.BizCostAccount> projectAccounts =
+                costAccountMapper.selectByProject(change.getProjectId());
+
         for (BizBudgetChangeDetail detail : details) {
             budgetDetailMapper.addBudgetTotalPrice(detail.getBudgetDetailId(), detail.getAdjustAmount());
+
+            // 查找对应类别的 CBS 账户进行 current 传导
+            if (detail.getCostCategory() != null && detail.getAdjustAmount() != null
+                    && detail.getAdjustAmount().compareTo(BigDecimal.ZERO) != 0) {
+                com.zwinsight.budget.domain.BizCostAccount match = projectAccounts.stream()
+                        .filter(a -> detail.getCostCategory().equals(a.getCostCategory()))
+                        .findFirst().orElse(null);
+                if (match != null) {
+                    CostLedgerService.PostCommand cmd = new CostLedgerService.PostCommand(
+                            match.getId(),
+                            CostLedgerService.AMT_CURRENT,
+                            detail.getAdjustAmount(),
+                            CostLedgerService.SRC_CHANGE_EVENT,
+                            "BUDGET_CHANGE:" + changeId + ":" + detail.getId(),
+                            match.getAccountCode(),
+                            java.time.LocalDateTime.now(),
+                            "目标成本变更传导（单号：" + (change.getChangeCode() != null ? change.getChangeCode() : changeId) + "）"
+                    );
+                    costLedgerService.postPostCommandSafely(cmd);
+                }
+            }
         }
 
         // 汇总该预算下所有明细的预算合计金额

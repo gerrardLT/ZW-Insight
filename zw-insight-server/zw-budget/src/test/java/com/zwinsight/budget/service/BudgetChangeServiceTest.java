@@ -59,6 +59,15 @@ class BudgetChangeServiceTest {
     @Mock
     private BizProjectMapper projectMapper;
 
+    @Mock
+    private CostLedgerService costLedgerService;
+
+    @Mock
+    private com.zwinsight.budget.mapper.BizCostAccountMapper costAccountMapper;
+
+    @Mock
+    private com.zwinsight.file.service.SerialNumberService serialNumberService;
+
     @InjectMocks
     private BudgetChangeService budgetChangeService;
 
@@ -181,6 +190,43 @@ class BudgetChangeServiceTest {
         // then: 汇总预算总额回写至项目
         verify(budgetDetailMapper).sumBudgetTotalPriceByBudgetId(200L);
         verify(projectMapper).updateBudgetAmount(100L, newTotal);
+    }
+
+    @Test
+    @DisplayName("审批通过传导 CBS current（P2-M4 B3/BI-5）：按科目匹配账户经台账落 CURRENT 流水")
+    void testOnApproved_conductsCbsCurrentViaLedger() {
+        sampleChange.setStatus("SUBMITTED");
+        when(budgetChangeMapper.selectById(1L)).thenReturn(sampleChange);
+
+        BizBudgetChangeDetail detail = new BizBudgetChangeDetail();
+        detail.setId(10L);
+        detail.setChangeId(1L);
+        detail.setBudgetDetailId(301L);
+        detail.setCostCategory("MATERIAL");
+        detail.setAdjustAmount(new BigDecimal("30000"));
+        when(budgetChangeDetailMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.singletonList(detail));
+        when(budgetDetailMapper.sumBudgetTotalPriceByBudgetId(200L))
+                .thenReturn(new BigDecimal("530000"));
+
+        com.zwinsight.budget.domain.BizCostAccount matAccount =
+                new com.zwinsight.budget.domain.BizCostAccount();
+        matAccount.setId(1001L);
+        matAccount.setAccountCode("01");
+        matAccount.setCostCategory("MATERIAL");
+        when(costAccountMapper.selectByProject(100L))
+                .thenReturn(Collections.singletonList(matAccount));
+        when(costLedgerService.postPostCommandSafely(any()))
+                .thenReturn(CostLedgerService.PostResult.POSTED);
+
+        budgetChangeService.onApproved(1L);
+
+        // CURRENT 维度经台账落账，幂等键携带变更单与明细标识
+        verify(costLedgerService).postPostCommandSafely(argThat(cmd ->
+                cmd.accountId() == 1001L
+                        && CostLedgerService.AMT_CURRENT.equals(cmd.amountType())
+                        && cmd.deltaAmount().compareTo(new BigDecimal("30000")) == 0
+                        && cmd.sourceId().equals("BUDGET_CHANGE:1:10")));
     }
 
     @Test

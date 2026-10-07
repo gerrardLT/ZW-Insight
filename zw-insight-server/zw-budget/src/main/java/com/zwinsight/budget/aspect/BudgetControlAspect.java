@@ -1,5 +1,6 @@
 package com.zwinsight.budget.aspect;
 
+import cn.hutool.core.util.StrUtil;
 import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.budget.context.BudgetWarningContext;
 import com.zwinsight.budget.dto.BudgetCheckResult;
@@ -42,6 +43,18 @@ public class BudgetControlAspect {
         String costCategory = budgetCheck.category();
         BigDecimal amount = extractAmount(joinPoint);
 
+        // P2-M4 A2 修复：若 category 为空字符串，且存在对象参数尝试自动提取科目（如 contractCategory/category）
+        if (StrUtil.isBlank(costCategory)) {
+            costCategory = extractCategory(joinPoint);
+        }
+
+        // 若依然无法提取科目或提取为 OTHER/INDIRECT 等暂无预算科目的其他付款，视配置豁免而非误杀
+        if (StrUtil.isBlank(costCategory)) {
+            log.debug("BudgetControlAspect: 未能识别具体成本科目，跳过预算硬拦截。method={}",
+                    joinPoint.getSignature().toShortString());
+            return;
+        }
+
         if (projectId == null) {
             log.warn("BudgetControlAspect: 无法从方法参数中提取 projectId，跳过预算校验。method={}",
                     joinPoint.getSignature().toShortString());
@@ -65,6 +78,28 @@ public class BudgetControlAspect {
             case PASS:
                 break;
         }
+    }
+
+    /**
+     * 从方法参数中自动识别成本科目
+     */
+    private String extractCategory(JoinPoint joinPoint) {
+        Object[] args = joinPoint.getArgs();
+        String[] methodNames = {"getContractCategory", "getCostCategory", "getCategory"};
+        for (Object arg : args) {
+            if (arg == null) continue;
+            for (String mName : methodNames) {
+                try {
+                    Method method = arg.getClass().getMethod(mName);
+                    Object val = method.invoke(arg);
+                    if (val instanceof String s && StrUtil.isNotBlank(s)) {
+                        return s;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return null;
     }
 
     /**

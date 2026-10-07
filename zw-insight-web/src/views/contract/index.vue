@@ -37,6 +37,12 @@
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="合同编号">
+          <el-input v-model="queryParams.contractCode" placeholder="合同编号" clearable style="width: 160px" />
+        </el-form-item>
+        <el-form-item label="甲方">
+          <el-input v-model="queryParams.partyAName" placeholder="甲方单位" clearable style="width: 160px" />
+        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 140px">
             <el-option label="草稿" value="DRAFT" />
@@ -76,19 +82,30 @@
                 <span class="stat-number text-secondary">{{ row.signingDate }}</span>
               </template>
             </el-table-column>
-            <el-table-column v-if="columnVisible[5]" label="状态" width="90" align="center">
+            <el-table-column v-if="columnVisible[5]" label="状态" width="130" align="center">
               <template #default="{ row }">
                 <el-tag :type="getStatusType(row.status)" size="small">
                   {{ getStatusLabel(row.status) }}
                 </el-tag>
+                <el-tag
+                  v-if="row.status === 'EFFECTIVE' && checkExpiryTag(row.endDate)"
+                  :type="checkExpiryTag(row.endDate)!.type as any"
+                  size="small"
+                  class="ml-1"
+                >
+                  {{ checkExpiryTag(row.endDate)!.label }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="260" fixed="right">
+            <el-table-column label="操作" width="320" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" @click="handleView(row)">查看</el-button>
+                <el-button link type="primary" @click="handleOpenDrawer(row)">全景视窗</el-button>
                 <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
                 <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitContract(row)">提交</el-button>
+                <el-button v-if="row.status === 'SUBMITTED'" link type="warning" @click="handleWithdrawContract(row)">撤回</el-button>
                 <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
+                <el-button v-if="row.status === 'EFFECTIVE'" link type="info" @click="handleGoBoq(row)">清单</el-button>
                 <PrintButton
                   link
                   :show-icon="false"
@@ -137,6 +154,13 @@
       module-code="CONTRACT"
       :params="queryParams.projectId ? { projectId: queryParams.projectId } : undefined"
     />
+
+    <!-- 合同履约全景综合抽屉 (P1-M3 A1) -->
+    <ContractDetailDrawer
+      v-model="drawerVisible"
+      :contract="currentContract"
+      @refresh="loadData"
+    />
   </div>
 </template>
 
@@ -144,7 +168,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getContractPage, deleteContract, submitContract, getContractAmountSummary } from '@/api/contract'
+import { getContractPage, deleteContract, submitContract, withdrawContract, getContractAmountSummary } from '@/api/contract'
 import { getProjectList } from '@/api/project'
 import { toWan } from '@/utils/chart-format'
 import { pickChartTheme, chartTooltipStyle } from '@/constants/chart-theme'
@@ -155,6 +179,7 @@ import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
+import ContractDetailDrawer from './components/ContractDetailDrawer.vue'
 
 // 列显隐配置（S2.1）：按 contract-table 持久化 localStorage
 const contractColumns = [
@@ -175,11 +200,33 @@ const projectList = ref<any[]>([])
 const importVisible = ref(false)
 const exportVisible = ref(false)
 
+// 详情抽屉控制 (P1-M3 A1)
+const drawerVisible = ref(false)
+const currentContract = ref<any>(null)
+
+function handleOpenDrawer(row: any) {
+  currentContract.value = row
+  drawerVisible.value = true
+}
+
+function handleGoBoq(row: any) {
+  router.push(`/contract/boq/${row.id}`)
+}
+
+async function handleWithdrawContract(row: any) {
+  await ElMessageBox.confirm('确定要撤回该合同审批申请吗？', '提示', { type: 'warning' })
+  await withdrawContract(row.id)
+  ElMessage.success('已撤回至草稿状态')
+  loadData()
+}
+
 const queryParams = ref({
   page: 1,
   size: 10,
   projectId: undefined as number | undefined,
-  status: ''
+  status: '',
+  contractCode: '',
+  partyAName: ''
 })
 
 const statusMap: Record<string, { label: string; type: string }> = {
@@ -201,6 +248,17 @@ function getStatusType(status: string) {
 function formatMoney(val: number) {
   if (!val && val !== 0) return '-'
   return val.toLocaleString('zh-CN', { minimumFractionDigits: 2 })
+}
+
+/** 履行期到期预警判断（B4）：比较 endDate 与当前日期天数差 */
+function checkExpiryTag(endDate?: string) {
+  if (!endDate) return null
+  const end = new Date(endDate).getTime()
+  const now = new Date().getTime()
+  const days = Math.ceil((end - now) / (1000 * 3600 * 24))
+  if (days < 0) return { label: '已到期', type: 'danger' }
+  if (days <= 30) return { label: `剩${days}天`, type: 'warning' }
+  return null
 }
 
 async function searchProject(query: string) {
@@ -226,7 +284,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { page: 1, size: 10, projectId: undefined, status: '' }
+  queryParams.value = { page: 1, size: 10, projectId: undefined, status: '', contractCode: '', partyAName: '' }
   loadData()
   summaryPanelRef.value?.reload()
 }

@@ -29,9 +29,15 @@ public class ContractController {
     public R<PageResult<BizConstructionContract>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Integer pageNum,
+            @RequestParam(required = false) Integer pageSize,
             @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) String status) {
-        return R.ok(contractService.page(page, size, projectId, status));
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String contractCode,
+            @RequestParam(required = false) String partyAName) {
+        int actualPage = pageNum != null ? pageNum : page;
+        int actualSize = pageSize != null ? pageSize : size;
+        return R.ok(contractService.page(actualPage, actualSize, projectId, status, contractCode, partyAName));
     }
 
     @GetMapping("/{id}")
@@ -42,9 +48,9 @@ public class ContractController {
     @PostMapping
     @RequiresPermission("contract:contract:add")
     @OperLog(module = "施工合同", operType = "INSERT", description = "新增施工合同")
-    public R<Void> save(@Valid @RequestBody ContractCreateRequest request) {
-        contractService.saveFromRequest(request);
-        return R.ok();
+    public R<Long> save(@Valid @RequestBody ContractCreateRequest request) {
+        Long id = contractService.saveFromRequest(request);
+        return R.ok(id);
     }
 
     @PutMapping("/{id}")
@@ -59,6 +65,14 @@ public class ContractController {
     @OperLog(module = "施工合同", operType = "UPDATE", description = "提交施工合同审批")
     public R<Void> submit(@PathVariable Long id) {
         contractService.submit(id);
+        return R.ok();
+    }
+
+    @PostMapping("/{id}/withdraw")
+    @RequiresPermission("contract:contract:submit")
+    @OperLog(module = "施工合同", operType = "UPDATE", description = "撤回施工合同审批")
+    public R<Void> withdraw(@PathVariable Long id) {
+        contractService.withdraw(id);
         return R.ok();
     }
 

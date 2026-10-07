@@ -61,6 +61,7 @@ class CostAccountServiceTest {
     private static final String STATUS_CLOSED = "CLOSED";
 
     @Mock private BizCostAccountMapper costAccountMapper;
+    @Mock private CostLedgerService costLedgerService;
 
     @InjectMocks
     private CostAccountService service;
@@ -647,30 +648,38 @@ class CostAccountServiceTest {
         }
 
         @Test
-        @DisplayName("源单据同步：承诺与实际同时增量，基于原值累加")
+        @DisplayName("源单据同步（P2-M4 A1 台账化）：承诺与实际各落一笔流水，不直接改余额")
         void syncFromSource_bothDeltas_accumulate() {
             BizCostAccount existing = account(10L, null, "CB-010", "LABOR", STATUS_ACTIVE);
             existing.setCommitmentAmount(new BigDecimal("100"));
             existing.setActualAmount(new BigDecimal("50"));
             when(costAccountMapper.selectById(10L)).thenReturn(existing);
+            when(costLedgerService.postPostCommandSafely(any()))
+                    .thenReturn(CostLedgerService.PostResult.POSTED);
 
             service.syncFromSource(10L, new BigDecimal("30"), new BigDecimal("20"));
 
-            assertThat(existing.getCommitmentAmount()).isEqualByComparingTo("130");
-            assertThat(existing.getActualAmount()).isEqualByComparingTo("70");
-            verify(costAccountMapper).updateById(existing);
+            verify(costLedgerService).postPostCommandSafely(org.mockito.ArgumentMatchers.argThat(
+                    c -> CostLedgerService.AMT_COMMITMENT.equals(c.amountType())
+                            && c.deltaAmount().compareTo(new BigDecimal("30")) == 0));
+            verify(costLedgerService).postPostCommandSafely(org.mockito.ArgumentMatchers.argThat(
+                    c -> CostLedgerService.AMT_ACTUAL.equals(c.amountType())
+                            && c.deltaAmount().compareTo(new BigDecimal("20")) == 0));
+            // 台账化后不再直接 updateById（BI-1：金额变动唯一入口是台账）
+            verify(costAccountMapper, never()).updateById(any(BizCostAccount.class));
         }
 
         @Test
-        @DisplayName("源单据同步：金额字段为 null 时按 0 起算，不抛 NPE")
+        @DisplayName("源单据同步：金额字段为 null 时仅落增量流水（基值由台账余额承载）")
         void syncFromSource_nullAmounts_treatedAsZero() {
             BizCostAccount existing = account(10L, null, "CB-010", "LABOR", STATUS_ACTIVE);
             when(costAccountMapper.selectById(10L)).thenReturn(existing);
+            when(costLedgerService.postPostCommandSafely(any()))
+                    .thenReturn(CostLedgerService.PostResult.POSTED);
 
             service.syncFromSource(10L, new BigDecimal("30"), new BigDecimal("20"));
 
-            assertThat(existing.getCommitmentAmount()).isEqualByComparingTo("30");
-            assertThat(existing.getActualAmount()).isEqualByComparingTo("20");
+            verify(costLedgerService, times(2)).postPostCommandSafely(any());
         }
 
         @Test
@@ -682,90 +691,75 @@ class CostAccountServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("成本账户不存在");
 
-            verify(costAccountMapper, never()).updateById(any(BizCostAccount.class));
+            verify(costLedgerService, never()).postPostCommandSafely(any());
         }
 
         @Test
-        @DisplayName("源单据同步：承诺金额扣成负数拒绝，且不落库")
-        void syncFromSource_negativeCommitment_throws() {
+        @DisplayName("源单据同步（台账化）：负 delta 冲回交由台账守卫非负余额，服务层不再拦截")
+        void syncFromSource_negativeDelta_delegatesToLedgerGuard() {
             BizCostAccount existing = account(10L, null, "CB-010", "LABOR", STATUS_ACTIVE);
             existing.setCommitmentAmount(new BigDecimal("10"));
             when(costAccountMapper.selectById(10L)).thenReturn(existing);
+            when(costLedgerService.postPostCommandSafely(any()))
+                    .thenReturn(CostLedgerService.PostResult.POSTED);
 
-            assertThatThrownBy(() -> service.syncFromSource(10L, new BigDecimal("-11"), null))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("承诺金额不能为负");
+            // 余额非负守卫已下沉至 CostLedgerService.applyDelta（其测试覆盖「调整后将为负数」）
+            service.syncFromSource(10L, new BigDecimal("-11"), null);
 
-            verify(costAccountMapper, never()).updateById(any(BizCostAccount.class));
+            verify(costLedgerService).postPostCommandSafely(org.mockito.ArgumentMatchers.argThat(
+                    c -> c.deltaAmount().compareTo(new BigDecimal("-11")) == 0));
         }
 
         @Test
-        @DisplayName("源单据同步：实际金额扣成负数拒绝，且不落库")
-        void syncFromSource_negativeActual_throws() {
-            BizCostAccount existing = account(10L, null, "CB-010", "LABOR", STATUS_ACTIVE);
-            existing.setActualAmount(new BigDecimal("10"));
-            when(costAccountMapper.selectById(10L)).thenReturn(existing);
-
-            assertThatThrownBy(() -> service.syncFromSource(10L, null, new BigDecimal("-15")))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("实际金额不能为负");
-
-            verify(costAccountMapper, never()).updateById(any(BizCostAccount.class));
-        }
-
-        @Test
-        @DisplayName("源单据同步：扣到恰好 0 放行（0 不是负数）")
+        @DisplayName("源单据同步：扣到恰好 0 也经台账落流水（0 结果由台账校验放行）")
         void syncFromSource_exactlyZero_allowed() {
             BizCostAccount existing = account(10L, null, "CB-010", "LABOR", STATUS_ACTIVE);
             existing.setCommitmentAmount(new BigDecimal("10"));
             existing.setActualAmount(new BigDecimal("10"));
             when(costAccountMapper.selectById(10L)).thenReturn(existing);
+            when(costLedgerService.postPostCommandSafely(any()))
+                    .thenReturn(CostLedgerService.PostResult.POSTED);
 
             service.syncFromSource(10L, new BigDecimal("-10"), new BigDecimal("-10"));
 
-            assertThat(existing.getCommitmentAmount()).isEqualByComparingTo(BigDecimal.ZERO);
-            assertThat(existing.getActualAmount()).isEqualByComparingTo(BigDecimal.ZERO);
-            verify(costAccountMapper).updateById(existing);
+            verify(costLedgerService, times(2)).postPostCommandSafely(any());
         }
 
         @Test
-        @DisplayName("源单据同步：delta 为 0 时跳过该维度计算，原值不变")
+        @DisplayName("源单据同步：delta 为 0 时跳过该维度，不落流水")
         void syncFromSource_zeroDelta_skipsThatDimension() {
             BizCostAccount existing = account(10L, null, "CB-010", "LABOR", STATUS_ACTIVE);
-            existing.setCommitmentAmount(new BigDecimal("100"));
-            existing.setActualAmount(new BigDecimal("50"));
             when(costAccountMapper.selectById(10L)).thenReturn(existing);
 
             service.syncFromSource(10L, BigDecimal.ZERO, BigDecimal.ZERO);
 
-            assertThat(existing.getCommitmentAmount()).isEqualByComparingTo("100");
-            assertThat(existing.getActualAmount()).isEqualByComparingTo("50");
+            verify(costLedgerService, never()).postPostCommandSafely(any());
         }
 
         @Test
-        @DisplayName("源单据同步：只给 commitmentDelta 时 actual 不受影响")
+        @DisplayName("源单据同步：只给 commitmentDelta 时 actual 维度不落流水")
         void syncFromSource_onlyCommitmentDelta_leavesActualUntouched() {
             BizCostAccount existing = account(10L, null, "CB-010", "LABOR", STATUS_ACTIVE);
-            existing.setCommitmentAmount(new BigDecimal("100"));
-            existing.setActualAmount(new BigDecimal("50"));
             when(costAccountMapper.selectById(10L)).thenReturn(existing);
+            when(costLedgerService.postPostCommandSafely(any()))
+                    .thenReturn(CostLedgerService.PostResult.POSTED);
 
             service.syncFromSource(10L, new BigDecimal("25"), null);
 
-            assertThat(existing.getCommitmentAmount()).isEqualByComparingTo("125");
-            assertThat(existing.getActualAmount()).isEqualByComparingTo("50");
+            verify(costLedgerService, times(1)).postPostCommandSafely(org.mockito.ArgumentMatchers.argThat(
+                    c -> CostLedgerService.AMT_COMMITMENT.equals(c.amountType())));
         }
 
         @Test
-        @DisplayName("钉住缺陷：两个 delta 都为 null 时仍执行一次无效 updateById")
-        void syncFromSource_bothDeltasNull_stillWritesOnce() {
+        @DisplayName("源单据同步（P2-M4 修复）：两个 delta 都为 null 时零写库（旧实现有一次无效 updateById）")
+        void syncFromSource_bothDeltasNull_noWriteAtAll() {
             BizCostAccount existing = account(10L, null, "CB-010", "LABOR", STATUS_ACTIVE);
             when(costAccountMapper.selectById(10L)).thenReturn(existing);
 
             service.syncFromSource(10L, null, null);
 
-            // 无任何字段变化却仍写库一次。行为稳定但属无效写，钉住以便后续优化时可见。
-            verify(costAccountMapper, times(1)).updateById(existing);
+            verify(costLedgerService, never()).postPostCommandSafely(any());
+            verify(costAccountMapper, never()).updateById(any(BizCostAccount.class));
         }
     }
 }

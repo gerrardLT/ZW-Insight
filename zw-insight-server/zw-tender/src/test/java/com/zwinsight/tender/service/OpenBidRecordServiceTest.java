@@ -28,6 +28,7 @@ class OpenBidRecordServiceTest {
     @Mock private BizTenderRegisterMapper registerMapper;
     @Mock private BizProjectMapper projectMapper;
     @Mock private com.zwinsight.project.service.ProjectService projectService;
+    @Mock private com.zwinsight.tender.service.TenderPersonBindingService personBindingService;
 
     @InjectMocks
     private OpenBidRecordService openBidRecordService;
@@ -87,6 +88,7 @@ class OpenBidRecordServiceTest {
         record.setRegisterId(10L);
         record.setProjectId(100L);
         record.setIsWon(0);
+        record.setLostReasonCategory("PRICE_OVER");
 
         BizTenderRegister register = new BizTenderRegister();
         register.setId(10L);
@@ -105,6 +107,7 @@ class OpenBidRecordServiceTest {
     void testSave_registerNotFound_throws() {
         BizOpenBidRecord record = new BizOpenBidRecord();
         record.setRegisterId(999L);
+        record.setIsWon(1);
 
         when(openBidRecordMapper.insert(any(BizOpenBidRecord.class))).thenReturn(1);
         when(registerMapper.selectById(999L)).thenReturn(null);

@@ -27,9 +27,16 @@ public class TenderRegisterService {
      * 分页查询
      */
     public PageResult<BizTenderRegister> page(int page, int size, Long projectId) {
+        return page(page, size, projectId, null);
+    }
+
+    /** P1-M2 B4：支持按落标原因分类筛选 */
+    public PageResult<BizTenderRegister> page(int page, int size, Long projectId, String lostReasonCategory) {
         Page<BizTenderRegister> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizTenderRegister> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizTenderRegister::getProjectId, projectId)
+                .eq(lostReasonCategory != null && !lostReasonCategory.isBlank(),
+                        BizTenderRegister::getLostReasonCategory, lostReasonCategory)
                 .orderByDesc(BizTenderRegister::getCreatedAt);
         Page<BizTenderRegister> result = registerMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);

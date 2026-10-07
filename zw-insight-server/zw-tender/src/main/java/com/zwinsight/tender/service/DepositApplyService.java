@@ -24,14 +24,20 @@ public class DepositApplyService {
 
     private final BizDepositApplyMapper depositApplyMapper;
     private final ApprovalService approvalService;
+    private final com.zwinsight.project.mapper.BizProjectMapper projectMapper;
 
     /**
-     * 分页查询
+     * 分页查询（支持按 projectId 与 registerId 组合检索）
      */
     public PageResult<BizDepositApply> page(int page, int size, Long projectId) {
+        return page(page, size, projectId, null);
+    }
+
+    public PageResult<BizDepositApply> page(int page, int size, Long projectId, Long registerId) {
         Page<BizDepositApply> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizDepositApply> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizDepositApply::getProjectId, projectId)
+                .eq(registerId != null, BizDepositApply::getRegisterId, registerId)
                 .orderByDesc(BizDepositApply::getCreatedAt);
         Page<BizDepositApply> result = depositApplyMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);
@@ -41,6 +47,20 @@ public class DepositApplyService {
      * 新增保证金申请
      */
     public void save(BizDepositApply apply) {
+        // TI-1 法定保证金上限守卫（P1-M2 V2026_82）：不得超过项目预算金额的 2%
+        if (apply.getProjectId() != null && apply.getDepositAmount() != null) {
+            com.zwinsight.project.domain.BizProject project = projectMapper.selectById(apply.getProjectId());
+            if (project != null && project.getBudgetAmount() != null
+                    && project.getBudgetAmount().signum() > 0) {
+                java.math.BigDecimal cap = project.getBudgetAmount()
+                        .multiply(new java.math.BigDecimal("0.02"));
+                if (apply.getDepositAmount().compareTo(cap) > 0) {
+                    throw new com.zwinsight.common.exception.BusinessException(String.format(
+                            "投标保证金（%s）超过项目预算金额 2%% 法定上限（%s），请调整",
+                            apply.getDepositAmount().toPlainString(), cap.toPlainString()));
+                }
+            }
+        }
         apply.setStatus("DRAFT");
         depositApplyMapper.insert(apply);
     }

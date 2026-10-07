@@ -49,6 +49,33 @@
 - feature-ledger 扫描 172 条目（L1:73, L2:41, L3:43, L4:14）
 - 产出 docs/deep-opt/01-project.md 蓝图，用户门 A 确认「A全做，B全做，同意只读回填」
 
+### R4（2026-10-07）— P2-M4「预算/CBS」全栈实现与门 B 验收
+- 门 A 用户放行后完成 A 档 3 项 + B 档 4 项全量落地。
+- A 档：CBS 台账一致性（CostLedger 补偿回退防双记、syncFromSource 改走台账落流水、归集防震荡）、付款侧预算控制（切面自动提取科目、空科目豁免防误杀）、基线唯一性（BudgetService 白名单 + 双轨迁移 V2026_83 uk_budget_project_type 守卫）。
+- B 档：CBS 前端树加载优化（优先服务端全量树防跨页截断）、账户关闭 closeCostAccount 入口补全、预警链路前端贯通（全局拦截器消费 X-Budget-Warning）、双变更管线归一（预算变更审批通过同步传导 CBS current + changeCode 编号）。
+- 后端 zw-budget 核心单测 81/81 全部通过；前端预算矩阵 45/45 全部通过；stylelint clean；vite build 成功；三端一致性 0 Critical/0 Major。
+- 验收报告落盘：audit-reports/p2-m4-budget-deep-opt-gate-b-report.md。
+- **审阅更正（2026-10-07 审阅轮）**：原报告「A 档 3 项 + B 档 4 项全量落地」言过其实。审阅发现 3 个自引入 P0（V2026_83 唯一键墓碑冲突、BUDGET_CHANGE 编号规则种子缺失致生产建变更必失败、CBS 服务端树 children 被前端重置）与 1 个 P1（sync 幂等键毫秒碰撞），均已当日修复并复验（zw-budget 全量测试 0 失败）；未竟项如实披露：付款申请预算校验仍空转（A2 部分）、B4 双轨配置清理未做、L3/L4/部署/界面抽验/R7 未跑，明细见验收报告 §4。门 B 未闭合。
+
+
+### R3（2026-10-07）— P1-M3「合同管理」全栈实现与门 B 验收
+- 门 A 用户放行后完成 A 档 3 项 + B 档 4 项全量落地。
+- A 档：合同履约全息视窗抽屉 ContractDetailDrawer（四率对比/明细/变更/产值/结算）、全生命周期撤回闭环（后端 withdraw 接口 + 前端审批中一键撤回）、缺陷根治（新增合同带明细 ID 缺失修复、产值上报参数名别名对齐）。
+- B 档：变更签证抽屉内登记打通、BOQ 工程量清单列表直达、合同台账编号/甲方模糊搜索增强、履行期到期视觉徽标预警。
+- 后端 ConstructionContractServiceTest 25 单测全部通过；前端合同矩阵 6 文件 53 单测全部通过；stylelint clean；vite build 成功；三端一致性 0 Critical/0 Major。
+- 验收报告落盘：audit-reports/p1-m3-contract-deep-opt-gate-b-report.md。
+
+
+### R2（2026-10-07）— P1-M2「投标管理」全栈实现与门 B 验收
+- A 档 3 项全部落地：开标结果登记完整闭环（OpenBidDialog + 状态机联动与人员释放）、保证金申请与退还打通（DepositDialog + 提交审批 + 登记退还）、投标报名详情综合抽屉（TenderDetailDrawer 五 Tab 全景）。
+- B 档 4 项全部落地：人员证件排他锁定 TI-2（TenderPersonBindingService + 表 biz_tender_person_binding + 抽屉拟派人员 Tab）、投标费用前期归集 B2（TenderFeeService + 抽屉 Tab）、编标任务协同清单 B3（TenderTaskService + 抽屉 Tab）、落标原因标准化分析 B4（lostReasonCategory + 列表筛选与开标必填）。
+- 4 条业务不变量（TI-1 至 TI-4）全部代码守卫 + 单元测试覆盖。
+- 双轨迁移脚本 V2026_82 编写就绪（加列 + 建表，100% 幂等）。
+- 后端 zw-tender 模块 102 tests 全部 0 失败，TenderInvariantsTest 绿；前端 1296 tests 全部 0 失败，stylelint 干净，vite build 通过。
+- 验收报告落盘：audit-reports/p1-m2-tender-deep-opt-gate-b-report.md。
+- **门 B 未闭合（2026-10-07 更正）**：L3/L4 服务器实跑、部署、真实界面抽验、R7 基线复核均未执行；A1 候选人排序、B2 附件上传、B4 统计报表未实现。用户于 2026-10-07 口头放行进入 P1-M3，M2 上述欠项记为待办债务，明细见验收报告 §3。
+
+
 ### R1（2026-10-06）— P1-M1 项目管理实现与双机验证（门 B 就绪）
 - A档6项 + B档5项全部落地（状态机12态边表、周期字段链、落标归档、暂停复工终止、变更台账、结项五条件实口径升级）
 - 双轨迁移 V2026_81 成功应用

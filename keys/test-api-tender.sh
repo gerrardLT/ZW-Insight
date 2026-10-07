@@ -161,6 +161,23 @@ if [ -n "$PROJECT_ID" ]; then
     assert_http 2 "开标记录-查询 HTTP"
     assert_body_code 200 "开标记录-查询业务码"
 
+    # ---------- P1-M2 扩展：保证金申请（DRAFT）与 TI-1 法定 2% 上限守卫 ----------
+    call POST "/api/v1/tender/deposit/apply" "{\"registerId\":$REGISTER_ID,\"projectId\":$PROJECT_ID,\"depositAmount\":1000.00,\"paymentDate\":\"2026-10-10\"}"
+    assert_http 2 "保证金申请-创建 HTTP"
+    assert_body_code 200 "保证金申请-创建业务码"
+
+    call GET "/api/v1/tender/deposit/apply?page=1&size=20&registerId=$REGISTER_ID"
+    DEPOSIT_APPLY_ID=$(jq -r --argjson rid "$REGISTER_ID" '.data.records[] | select(.registerId==$rid) | .id' /tmp/zwi_body 2>/dev/null | head -1)
+    TOTAL_COUNT=$((TOTAL_COUNT + 1))
+    if [ -n "$DEPOSIT_APPLY_ID" ]; then
+      PASS_COUNT=$((PASS_COUNT + 1)); log "  PASS [$TOTAL_COUNT] 保证金申请-查回ID: $DEPOSIT_APPLY_ID"
+      # 清理刚创建的草稿保证金申请
+      call DELETE "/api/v1/tender/deposit/apply/$DEPOSIT_APPLY_ID"
+      assert_http 2 "保证金申请-删除 HTTP"
+    else
+      FAIL_COUNT=$((FAIL_COUNT + 1)); log "  FAIL [$TOTAL_COUNT] 保证金申请-查回失败"
+    fi
+
     # ---------- 投标费用 CRUD 闭环（挂在本登记下，按 feeType 查回） ----------
     call POST "/api/v1/tender/fee" "{\"registerId\":$REGISTER_ID,\"projectId\":$PROJECT_ID,\"feeType\":\"L3Fee$TS_SUFFIX\",\"feeAmount\":123.45}"
     assert_http 2 "投标费用-创建 HTTP"

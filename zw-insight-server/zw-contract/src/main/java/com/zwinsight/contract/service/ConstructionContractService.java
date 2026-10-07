@@ -42,13 +42,20 @@ public class ConstructionContractService {
     private final com.zwinsight.project.service.ProjectService projectService;
 
     /**
-     * 分页查询
+     * 分页查询（支持按项目、状态、合同编号与甲方名称检索）
      */
     public PageResult<BizConstructionContract> page(int page, int size, Long projectId, String status) {
+        return page(page, size, projectId, status, null, null);
+    }
+
+    public PageResult<BizConstructionContract> page(int page, int size, Long projectId, String status,
+                                                    String contractCode, String partyAName) {
         Page<BizConstructionContract> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizConstructionContract> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizConstructionContract::getProjectId, projectId)
                 .eq(StrUtil.isNotBlank(status), BizConstructionContract::getStatus, status)
+                .like(StrUtil.isNotBlank(contractCode), BizConstructionContract::getContractCode, contractCode)
+                .like(StrUtil.isNotBlank(partyAName), BizConstructionContract::getPartyAName, partyAName)
                 .orderByDesc(BizConstructionContract::getCreatedAt);
         Page<BizConstructionContract> result = contractMapper.selectPage(pageParam, wrapper);
         // 回填项目名称：实体仅可靠持久化 projectId，列表需展示 projectName
@@ -72,10 +79,11 @@ public class ConstructionContractService {
      * 从请求 DTO 创建合同
      */
     @Transactional(rollbackFor = Exception.class)
-    public void saveFromRequest(ContractCreateRequest request) {
+    public Long saveFromRequest(ContractCreateRequest request) {
         BizConstructionContract contract = new BizConstructionContract();
         BeanUtil.copyProperties(request, contract);
         save(contract);
+        return contract.getId();
     }
 
     /**
@@ -203,6 +211,24 @@ public class ConstructionContractService {
         if (contract == null || !"SUBMITTED".equals(contract.getStatus())) {
             return;
         }
+        contract.setStatus("DRAFT");
+        contractMapper.updateById(contract);
+    }
+
+    /**
+     * 发起人主动撤回合同审批（P1-M3 A2 / CI-5：单据回退 DRAFT，流程作废）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void withdraw(Long id) {
+        BizConstructionContract contract = contractMapper.selectById(id);
+        if (contract == null) {
+            throw new BusinessException("合同不存在");
+        }
+        if (!"SUBMITTED".equals(contract.getStatus())) {
+            throw new BusinessException("仅审批中状态可撤回");
+        }
+        // 撤回流程实例（按 businessKey 直接定位终止）
+        approvalService.withdrawByBusiness("CONSTRUCTION_CONTRACT", id);
         contract.setStatus("DRAFT");
         contractMapper.updateById(contract);
     }

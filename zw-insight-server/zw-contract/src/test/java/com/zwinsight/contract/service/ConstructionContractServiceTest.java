@@ -464,6 +464,36 @@ class ConstructionContractServiceTest {
 
             assertThat(existing.getStatus()).isEqualTo("DRAFT");
         }
+
+        @Test
+        @DisplayName("发起人主动撤回：SUBMITTED回退DRAFT并作废流程实例 (CI-5)")
+        void withdraw_submitted_success() {
+            Long contractId = 100L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("SUBMITTED");
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+
+            contractService.withdraw(contractId);
+
+            verify(approvalService).withdrawByBusiness("CONSTRUCTION_CONTRACT", contractId);
+            assertThat(existing.getStatus()).isEqualTo("DRAFT");
+            verify(contractMapper).updateById(existing);
+        }
+
+        @Test
+        @DisplayName("非SUBMITTED状态不可撤回")
+        void withdraw_nonSubmitted_shouldThrow() {
+            Long contractId = 100L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("EFFECTIVE");
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+
+            assertThatThrownBy(() -> contractService.withdraw(contractId))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("仅审批中状态可撤回");
+        }
     }
 
     // ============ getById() 测试 ============

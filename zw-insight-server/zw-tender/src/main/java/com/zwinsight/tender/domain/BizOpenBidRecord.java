@@ -22,8 +22,14 @@ public class BizOpenBidRecord extends BaseEntity {
     /** 是否中标（0-未中标 1-中标） */
     private Integer isWon;
 
+    /** 开标金额（中标价或最低报价，V2026_82） */
+    private java.math.BigDecimal bidAmount;
+
     /** 中标信息 */
     private String winInfo;
+
+    /** 落标原因分类（PRICE_OVER/TECH_WEAK/BIZ_DEVIATION/CREDIT_LACK/OTHER，V2026_82 B4） */
+    private String lostReasonCategory;
 
     /** 状态 */
     private String status;

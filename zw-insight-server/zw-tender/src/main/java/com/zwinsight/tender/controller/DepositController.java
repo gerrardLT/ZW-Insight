@@ -33,8 +33,9 @@ public class DepositController {
     public R<PageResult<BizDepositApply>> applyPage(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(applyService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) Long registerId) {
+        return R.ok(applyService.page(page, size, projectId, registerId));
     }
 
     @PostMapping("/apply")

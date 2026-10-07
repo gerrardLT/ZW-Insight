@@ -158,7 +158,7 @@
             <el-tag size="small" :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="210" fixed="right" align="center">
+        <el-table-column label="操作" width="250" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="openLedger(row)">流水</el-button>
             <el-button type="primary" link size="small" @click="handleAdd(row)">加子账户</el-button>
@@ -167,6 +167,10 @@
               v-if="row.status === 'ACTIVE'"
               type="warning" link size="small" @click="handleLock(row)"
             >锁定</el-button>
+            <el-button
+              v-if="row.status === 'ACTIVE' || row.status === 'LOCKED'"
+              type="info" link size="small" @click="handleClose(row)"
+            >关闭</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -369,8 +373,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import {
-  getCostAccountPage, createCostAccount, updateCostAccount,
-  deleteCostAccount, lockCostAccount, getCostAccountLedger,
+  getCostAccountPage, getCostAccountTree, createCostAccount, updateCostAccount,
+  deleteCostAccount, lockCostAccount, closeCostAccount, getCostAccountLedger,
   costRollUp, bindCostAccountLink,
   type CostAccount, type CostAccountTxn, type RollupReport, type UnmappedDoc
 } from '@/api/cost-account'
@@ -585,21 +589,43 @@ async function loadPage() {
   }
   loading.value = true
   try {
-    const res: any = await getCostAccountPage({
-      page: pagination.page,
-      size: pagination.size,
-      projectId: queryParams.projectId,
-      costCategory: queryParams.costCategory || undefined,
-      status: queryParams.status || undefined
-    })
-    rows.value = res.data?.records || []
-    pagination.total = res.data?.total || 0
+    // P2-M4 B1：无多维度筛选时优先调服务端全量树接口，保证父子结构不因分页截断。
+    // 服务端返回「根节点嵌套 children」结构，须拉平后存入 rows，
+    // 否则 assembleTree 会把 children 重置为空（树只剩根），totals 也只汇总根节点。
+    if (!queryParams.costCategory && !queryParams.status) {
+      const res: any = await getCostAccountTree(queryParams.projectId)
+      rows.value = flattenTree(res.data || [])
+      pagination.total = rows.value.length
+    } else {
+      const res: any = await getCostAccountPage({
+        page: pagination.page,
+        size: pagination.size,
+        projectId: queryParams.projectId,
+        costCategory: queryParams.costCategory || undefined,
+        status: queryParams.status || undefined
+      })
+      rows.value = res.data?.records || []
+      pagination.total = res.data?.total || 0
+    }
   } catch (e: any) {
     rows.value = []
     ElMessage.error(e?.message || '加载成本账户失败')
   } finally {
     loading.value = false
   }
+}
+
+/** 服务端树 → 扁平列表（保留全部节点供 assembleTree 重装与 totals 汇总） */
+function flattenTree(roots: CostAccount[]): CostAccount[] {
+  const out: CostAccount[] = []
+  const walk = (nodes: CostAccount[]) => {
+    for (const n of nodes) {
+      out.push(n)
+      if (n.children?.length) walk(n.children)
+    }
+  }
+  walk(roots)
+  return out
 }
 
 function handleSearch() {
@@ -709,6 +735,25 @@ async function handleLock(row: CostAccount) {
     await loadPage()
   } catch (e: any) {
     ElMessage.error(e?.message || '锁定失败')
+  }
+}
+
+async function handleClose(row: CostAccount) {
+  try {
+    await ElMessageBox.confirm(
+      `关闭后账户「${row.accountName}」将成为终态，不再接受任何金额归集或调整。确认关闭？`,
+      '关闭确认',
+      { type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await closeCostAccount(row.id!)
+    ElMessage.success('已关闭')
+    await loadPage()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '关闭失败')
   }
 }
 
@@ -873,7 +918,7 @@ function formatMoney(value: unknown): string {
 onMounted(async () => {
   await searchProject('')
   // 承接外部跳转携带的项目上下文（如成本主线看板"详情"入口：/budget/cost-account?projectId=xx）
-  const projectIdFromQuery = Number(route.query.projectId)
+  const projectIdFromQuery = Number(route?.query?.projectId)
   if (Number.isFinite(projectIdFromQuery) && projectIdFromQuery > 0) {
     queryParams.projectId = projectIdFromQuery
     await Promise.all([loadPage(), loadWbsOptions()])

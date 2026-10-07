@@ -35,6 +35,7 @@ public class CostAccountService {
     private static final String STATUS_CLOSED = "CLOSED";
 
     private final BizCostAccountMapper costAccountMapper;
+    private final CostLedgerService costLedgerService;
 
     // ==================== 查询 ====================
 
@@ -231,6 +232,7 @@ public class CostAccountService {
 
     /**
      * 从源模块同步金额（合同承诺/采购/材料结算等）
+     * <p>P2-M4 A1 修复：改走台账系统（CostLedgerService）落流水记账，杜绝绕过台账与流水丢失（BI-1）</p>
      *
      * @param accountId        成本账户 ID
      * @param commitmentDelta  承诺金额变更值
@@ -239,26 +241,37 @@ public class CostAccountService {
     @Transactional(rollbackFor = Exception.class)
     public void syncFromSource(Long accountId, BigDecimal commitmentDelta, BigDecimal actualDelta) {
         BizCostAccount account = getById(accountId);
+        // 幂等键后缀用 UUID：同一毫秒内两次手工同步若用时间戳会同键，
+        // 第二笔 delta 被当 DUPLICATE 静默丢弃
+        String uid = java.util.UUID.randomUUID().toString().substring(0, 8);
 
         if (commitmentDelta != null && commitmentDelta.compareTo(BigDecimal.ZERO) != 0) {
-            BigDecimal newCommitment = nvl(account.getCommitmentAmount()).add(commitmentDelta);
-            if (newCommitment.signum() < 0) {
-                throw new BusinessException("承诺金额不能为负");
-            }
-            account.setCommitmentAmount(newCommitment);
-            log.info("同步承诺金额，accountId={}, delta={}, new={}", accountId, commitmentDelta, newCommitment);
+            CostLedgerService.PostCommand cmd = new CostLedgerService.PostCommand(
+                    accountId,
+                    CostLedgerService.AMT_COMMITMENT,
+                    commitmentDelta,
+                    CostLedgerService.SRC_MANUAL,
+                    "SYNC_COMMIT:" + accountId + ":" + uid,
+                    account.getAccountCode(),
+                    java.time.LocalDateTime.now(),
+                    "手动/源模块同步承诺金额"
+            );
+            costLedgerService.postPostCommandSafely(cmd);
         }
 
         if (actualDelta != null && actualDelta.compareTo(BigDecimal.ZERO) != 0) {
-            BigDecimal newActual = nvl(account.getActualAmount()).add(actualDelta);
-            if (newActual.signum() < 0) {
-                throw new BusinessException("实际金额不能为负");
-            }
-            account.setActualAmount(newActual);
-            log.info("同步实际金额，accountId={}, delta={}, new={}", accountId, actualDelta, newActual);
+            CostLedgerService.PostCommand cmd = new CostLedgerService.PostCommand(
+                    accountId,
+                    CostLedgerService.AMT_ACTUAL,
+                    actualDelta,
+                    CostLedgerService.SRC_MANUAL,
+                    "SYNC_ACTUAL:" + accountId + ":" + uid,
+                    account.getAccountCode(),
+                    java.time.LocalDateTime.now(),
+                    "手动/源模块同步实际支出"
+            );
+            costLedgerService.postPostCommandSafely(cmd);
         }
-
-        costAccountMapper.updateById(account);
     }
 
     private static BigDecimal nvl(BigDecimal v) {

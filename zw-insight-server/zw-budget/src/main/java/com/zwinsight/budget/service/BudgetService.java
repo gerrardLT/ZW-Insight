@@ -1,6 +1,7 @@
 package com.zwinsight.budget.service;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.budget.domain.BizBudget;
@@ -152,19 +153,22 @@ public class BudgetService {
     }
 
     /**
-     * 保存预算（校验每项目仅1条ORIGINAL）
+     * 保存预算（校验每项目仅1条ORIGINAL，BI-2）
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizBudget budget) {
+        // 白名单守卫：新增预算强制为 ORIGINAL，防通过传参 CHANGE 绕过唯一性校验（BI-2）
+        if (StrUtil.isBlank(budget.getBudgetType()) || !"ORIGINAL".equals(budget.getBudgetType())) {
+            budget.setBudgetType("ORIGINAL");
+        }
+
         // 校验：每项目仅允许1条ORIGINAL预算
-        if ("ORIGINAL".equals(budget.getBudgetType())) {
-            LambdaQueryWrapper<BizBudget> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(BizBudget::getProjectId, budget.getProjectId())
-                    .eq(BizBudget::getBudgetType, "ORIGINAL");
-            Long count = budgetMapper.selectCount(wrapper);
-            if (count > 0) {
-                throw new BusinessException("该项目已存在原始预算，不可重复创建");
-            }
+        LambdaQueryWrapper<BizBudget> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BizBudget::getProjectId, budget.getProjectId())
+                .eq(BizBudget::getBudgetType, "ORIGINAL");
+        Long count = budgetMapper.selectCount(wrapper);
+        if (count > 0) {
+            throw new BusinessException("该项目已存在原始预算，不可重复创建");
         }
 
         budget.setChangeSeq(0);

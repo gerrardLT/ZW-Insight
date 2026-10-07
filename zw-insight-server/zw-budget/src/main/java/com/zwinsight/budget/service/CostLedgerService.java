@@ -185,7 +185,9 @@ public class CostLedgerService {
             // 并发下另一实例已抢先记账：回滚本次余额调整，按幂等语义返回 DUPLICATE
             log.info("成本流水并发幂等命中，回滚本次调整，source={}:{}, accountId={}",
                     cmd.sourceType(), cmd.sourceId(), cmd.accountId());
-            throw new RollbackDuplicateException();
+            // 补偿回退余额，确保与已存在的流水保持一致
+            applyDelta(cmd.accountId(), cmd.amountType(), cmd.deltaAmount().negate());
+            return PostResult.DUPLICATE;
         }
 
         log.info("成本流水已记账，accountId={}, amountType={}, delta={}, source={}:{}, balanceAfter={}",

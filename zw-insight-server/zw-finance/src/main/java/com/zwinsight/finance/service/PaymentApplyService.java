@@ -3,7 +3,9 @@ package com.zwinsight.finance.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import cn.hutool.core.util.StrUtil;
-import com.zwinsight.budget.annotation.BudgetCheck;
+import com.zwinsight.budget.context.BudgetWarningContext;
+import com.zwinsight.budget.dto.BudgetCheckResult;
+import com.zwinsight.budget.service.BudgetControlConfigService;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.config.SecurityContextHolder;
@@ -58,6 +60,7 @@ public class PaymentApplyService {
     private final FundCategoryService fundCategoryService;
     private final FundPlanService fundPlanService;
     private final AmountTierService amountTierService;
+    private final BudgetControlConfigService budgetControlConfigService;
 
     /** 走各模块合同表（biz_purchase_contract 等）的合同类型；其余（OTHER_EXPENSE/OTHER_INCOME/空）走 biz_other_contract */
     private static final java.util.Set<String> MODULE_CATEGORIES =
@@ -155,8 +158,10 @@ public class PaymentApplyService {
 
     /**
      * 提交付款申请（校验paymentAmount≤累计结算-已付后启动流程，状态置 SUBMITTED，不回写累计数据）
+     * <p>P2-M4 A2 补全：提交即程序化预算校验（原 @BudgetCheck 挂本方法但参数为裸 Long，
+     * 切面既取不到项目也取不到科目，校验完全空转——已移除死注解改为此处显式调用；
+     * 合同分类 PURCHASE 映射成本科目 MATERIAL，其余同名）。</p>
      */
-    @BudgetCheck(category = "")
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizPaymentApply paymentApply = paymentApplyMapper.selectById(id);
@@ -166,6 +171,9 @@ public class PaymentApplyService {
         if (!"DRAFT".equals(paymentApply.getStatus()) && !"REJECTED".equals(paymentApply.getStatus())) {
             throw new BusinessException("仅草稿或已驳回状态可提交");
         }
+
+        // 预算控制：BLOCK 拦截提交，WARN 经 BudgetWarningContext 透传 X-Budget-Warning 响应头
+        enforceBudgetControl(paymentApply);
 
         // 校验付款金额（按合同类型路由到对应合同表）
         ContractPayableInfo payable = resolvePayable(paymentApply);
@@ -454,6 +462,43 @@ public class PaymentApplyService {
         if (paymentAmount.compareTo(maxPayment) > 0) {
             throw new BusinessException("付款金额不能超过（累计结算含奖惩）减已付金额，最大可付金额：" + maxPayment);
         }
+    }
+
+    /**
+     * 程序化预算控制（P2-M4 A2）：按合同分类映射成本科目后调用预算校验。
+     * BLOCK 抛业务异常拦截提交；WARN 写入线程上下文由响应 Advice 透出响应头；PASS 放行。
+     * 信息不全（科目无法映射/项目缺失）不硬拦，仅日志——四类合法性已在 save 把关。
+     */
+    private void enforceBudgetControl(BizPaymentApply paymentApply) {
+        String costCategory = mapToCostCategory(paymentApply.getContractCategory());
+        if (costCategory == null || paymentApply.getProjectId() == null
+                || paymentApply.getPaymentAmount() == null) {
+            log.debug("付款申请预算校验信息不全，跳过, id={}, contractCategory={}",
+                    paymentApply.getId(), paymentApply.getContractCategory());
+            return;
+        }
+        BudgetCheckResult result = budgetControlConfigService.checkBudget(
+                paymentApply.getProjectId(), costCategory, paymentApply.getPaymentAmount());
+        if (result == null) {
+            return;
+        }
+        switch (result.getStatus()) {
+            case BLOCK -> throw new BusinessException(result.getMessage());
+            case WARN -> BudgetWarningContext.setWarning(result.getMessage());
+            case PASS -> { }
+        }
+    }
+
+    /** 合同分类 → 预算成本科目：采购合同消耗材料费科目，其余同名 */
+    private static String mapToCostCategory(String contractCategory) {
+        if (contractCategory == null) {
+            return null;
+        }
+        return switch (contractCategory) {
+            case "PURCHASE" -> "MATERIAL";
+            case "LABOR", "MACHINE", "SUBCONTRACT" -> contractCategory;
+            default -> null;
+        };
     }
 
     /**

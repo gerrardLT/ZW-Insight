@@ -89,6 +89,17 @@ service.interceptors.response.use(
       && typeof res.data.total === 'string' && /^\d+$/.test(res.data.total)) {
       res.data.total = Number(res.data.total)
     }
+    // P2-M4 B2：预算控制预警头（X-Budget-Warning）前端消费与提示
+    const budgetWarning = response.headers?.['x-budget-warning']
+    if (budgetWarning) {
+      try {
+        const decodedWarning = decodeURIComponent(budgetWarning)
+        ElMessage.warning(`【预算预警】${decodedWarning}`)
+      } catch {
+        ElMessage.warning(`【预算预警】${budgetWarning}`)
+      }
+    }
+
     if (res.code !== 200) {
       if (res.code === 401) {
         // 错误话术资产：具体业务提示透出，泛化文案（含缺失）按码表兜底
