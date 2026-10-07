@@ -329,4 +329,28 @@ class PurchaseSettlementServiceTest {
         assertThat(s.getStatus()).isEqualTo("APPROVED");
         verify(contractMapper).addSettlement(20L, new BigDecimal("3000"));
     }
+
+    @Test
+    @DisplayName("onApproved - 已 APPROVED 幂等跳过累计回写")
+    void onApproved_approvedIdempotent() {
+        BizPurchaseSettlement s = settlement("APPROVED", "3000");
+        when(settlementMapper.selectById(1L)).thenReturn(s);
+
+        service.onApproved(1L);
+
+        verify(contractMapper, never()).addSettlement(anyLong(), any());
+        verify(settlementMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onRejected - SUBMITTED 回退 DRAFT")
+    void onRejected_submittedToDraft() {
+        BizPurchaseSettlement s = settlement("SUBMITTED", "3000");
+        when(settlementMapper.selectById(1L)).thenReturn(s);
+
+        service.onRejected(1L);
+
+        assertThat(s.getStatus()).isEqualTo("DRAFT");
+        verify(settlementMapper).updateById(s);
+    }
 }

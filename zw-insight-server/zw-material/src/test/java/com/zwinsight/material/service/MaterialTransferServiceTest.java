@@ -113,14 +113,16 @@ class MaterialTransferServiceTest {
         when(transferDetailMapper.selectList(any())).thenReturn(List.of(detail));
     
         BizProjectMaterialStock fromStock = new BizProjectMaterialStock();
+        fromStock.setId(99L);
         fromStock.setStockQuantity(new BigDecimal("50"));
         fromStock.setTotalTransferOut(BigDecimal.ZERO);
         when(stockMapper.selectOne(any())).thenReturn(fromStock).thenReturn(null);
-    
+        when(stockMapper.transferOut(99L, new BigDecimal("10"))).thenReturn(1);
+
         materialTransferService.onApproved(1L);
-    
+
         assertThat(transfer.getStatus()).isEqualTo("APPROVED");
-        assertThat(fromStock.getStockQuantity()).isEqualByComparingTo(new BigDecimal("40"));
+        verify(stockMapper).transferOut(99L, new BigDecimal("10"));
         verify(stockMapper).insert(any());
     }
     

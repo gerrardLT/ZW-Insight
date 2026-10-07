@@ -7,12 +7,16 @@ import ElementPlus from 'element-plus'
 
 const {
   mockGetPage,
+  mockGetDetail,
+  mockGetStockPage,
   mockCreate,
   mockUpdate,
   mockDelete,
   mockSubmit
 } = vi.hoisted(() => ({
   mockGetPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockGetDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: { details: [] } })),
+  mockGetStockPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockCreate: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockUpdate: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockDelete: vi.fn(async (): Promise<any> => ({ code: 200 })),
@@ -21,6 +25,8 @@ const {
 
 vi.mock('@/api/material', () => ({
   getMaterialCheckPage: mockGetPage,
+  getMaterialCheckDetail: mockGetDetail,
+  getMaterialStockPage: mockGetStockPage,
   createMaterialCheck: mockCreate,
   updateMaterialCheck: mockUpdate,
   deleteMaterialCheck: mockDelete,
@@ -84,6 +90,32 @@ describe('views/material/inventory.vue 材料盘点', () => {
     await flushPromises()
 
     expect(mockSubmit).toHaveBeenCalledWith(1)
+  })
+
+  it('新建盘点从项目库存载入并组装 adjustments 契约', async () => {
+    mockGetStockPage.mockResolvedValue({
+      code: 200,
+      data: {
+        records: [
+          { id: 88, materialName: '钢筋', specification: 'HRB400', unit: '吨', stockQuantity: 12.5 }
+        ],
+        total: 1
+      }
+    })
+    wrapper = mount(MaterialInventory, { global: { plugins: [ElementPlus] } })
+    await flushPromises()
+
+    const vm = wrapper.vm as any
+    vm.formData.projectId = 90001
+    await vm.loadStockRows()
+    vm.formData.details[0].actualQuantity = 11
+    await vm.handleSaveForm()
+    await flushPromises()
+
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: 90001,
+      adjustments: { '88': 11 }
+    }))
   })
 
   it('DRAFT 状态行支持删除', async () => {

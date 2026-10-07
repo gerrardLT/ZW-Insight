@@ -8,6 +8,7 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,4 +31,8 @@ public class BizMaterialInventory extends BaseEntity {
     /** 盘点调整（库存ID->盘点数量，随主表提交，非表字段） */
     @TableField(exist = false)
     private Map<Long, BigDecimal> adjustments;
+
+    /** 盘点明细（详情回显，非表字段） */
+    @TableField(exist = false)
+    private List<BizMaterialInventoryDetail> details;
 }

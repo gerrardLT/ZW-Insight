@@ -99,7 +99,6 @@ class CostRollUpServiceTest {
         when(rollUpMapper.listLaborSettlements(anyLong())).thenReturn(List.of());
         when(rollUpMapper.listMachineSettlements(anyLong())).thenReturn(List.of());
         when(rollUpMapper.listSubcontractSettlements(anyLong())).thenReturn(List.of());
-        when(rollUpMapper.listMaterialOutbounds(anyLong())).thenReturn(List.of());
         when(linkMapper.selectByProject(anyLong())).thenReturn(List.of());
     }
 

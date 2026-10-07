@@ -41,8 +41,14 @@ public class OutboundController {
     }
 
     @PostMapping
-    public R<Long> save(@RequestBody BizMaterialOutbound outbound) {
-        outboundService.save(outbound, outbound.getDetails() != null ? outbound.getDetails() : List.of());
+    public R<Long> save(@RequestBody BizMaterialOutbound outbound,
+                        @RequestParam(defaultValue = "false") boolean autoSubmit) {
+        List<com.zwinsight.material.domain.BizMaterialOutboundDetail> details =
+                outbound.getDetails() != null ? outbound.getDetails() : List.of();
+        if (autoSubmit) {
+            return R.ok(outboundService.saveAndSubmit(outbound, details));
+        }
+        outboundService.save(outbound, details);
         return R.ok(outbound.getId());
     }
 

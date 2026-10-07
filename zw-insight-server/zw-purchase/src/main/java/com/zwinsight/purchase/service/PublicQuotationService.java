@@ -8,6 +8,7 @@ import com.zwinsight.purchase.domain.BizInquiry;
 import com.zwinsight.purchase.domain.BizQuotation;
 import com.zwinsight.purchase.mapper.BizInquiryMapper;
 import com.zwinsight.purchase.mapper.BizQuotationMapper;
+import com.zwinsight.purchase.portal.service.SupplierSmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class PublicQuotationService {
 
     private final BizInquiryMapper inquiryMapper;
     private final BizQuotationMapper quotationMapper;
+    private final SupplierSmsService supplierSmsService;
 
     /**
      * 查询公开询价列表
@@ -136,11 +138,16 @@ public class PublicQuotationService {
         }
 
         String phone = (String) request.get("phone");
+        String smsCode = (String) request.get("smsCode");
         String supplierName = (String) request.get("supplierName");
         Object totalAmountObj = request.get("totalAmount");
 
         if (phone == null || phone.isBlank()) {
             throw new BusinessException("手机号不能为空");
+        }
+        if (smsCode == null || smsCode.isBlank()
+                || !supplierSmsService.verifyCode(phone, smsCode)) {
+            throw new BusinessException("短信验证码无效或已过期");
         }
         if (supplierName == null || supplierName.isBlank()) {
             throw new BusinessException("供应商名称不能为空");
@@ -169,11 +176,15 @@ public class PublicQuotationService {
     }
 
     /**
-     * 查询自己的报价记录（通过手机号）
+     * 查询自己的报价记录（手机号 + 一次性验证码验证身份）
      */
-    public Map<String, Object> getMyQuotation(Long inquiryId, String phone) {
+    public Map<String, Object> getMyQuotation(Long inquiryId, String phone, String smsCode) {
         if (phone == null || phone.isBlank()) {
             throw new BusinessException("手机号不能为空");
+        }
+        if (smsCode == null || smsCode.isBlank()
+                || !supplierSmsService.verifyCode(phone, smsCode)) {
+            throw new BusinessException("短信验证码无效或已过期");
         }
 
         BizQuotation quotation = quotationMapper.selectOne(

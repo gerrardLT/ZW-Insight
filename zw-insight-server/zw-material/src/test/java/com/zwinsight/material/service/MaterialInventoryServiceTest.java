@@ -259,15 +259,13 @@ class MaterialInventoryServiceTest {
             detail.setDiffQuantity(new BigDecimal("-5.00"));
             when(detailMapper.selectList(any())).thenReturn(List.of(detail));
             when(stockMapper.selectById(10L)).thenReturn(sampleStock);
-            when(stockMapper.updateById(any(BizProjectMaterialStock.class))).thenReturn(1);
+            when(stockMapper.setInventoryQuantity(10L, new BigDecimal("45.00"))).thenReturn(1);
             when(inventoryMapper.updateById(any(BizMaterialInventory.class))).thenReturn(1);
 
             inventoryService.submit(1L);
 
-            // 库存被调为实盘数量
-            verify(stockMapper).updateById(argThat(stock ->
-                    stock.getStockQuantity().compareTo(new BigDecimal("45.00")) == 0
-            ));
+            // 库存经原子 SQL 覆写为实盘数量
+            verify(stockMapper).setInventoryQuantity(10L, new BigDecimal("45.00"));
             // 状态置 APPROVED
             verify(inventoryMapper).updateById(argThat(inv -> "APPROVED".equals(inv.getStatus())));
         }
@@ -369,7 +367,10 @@ class MaterialInventoryServiceTest {
 
             inventoryService.update(update);
 
-            verify(inventoryMapper).updateById(update);
+            // PI-5 白名单：更新既有实体，仅变更盘点日期，status 保持 DRAFT
+            verify(inventoryMapper).updateById(argThat(i ->
+                    LocalDate.of(2026, 7, 5).equals(i.getInventoryDate())
+                            && "DRAFT".equals(i.getStatus())));
         }
 
         @Test

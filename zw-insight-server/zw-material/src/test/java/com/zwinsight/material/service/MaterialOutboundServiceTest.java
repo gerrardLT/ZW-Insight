@@ -49,15 +49,16 @@ class MaterialOutboundServiceTest {
         detail.setQuantity(new BigDecimal("5"));
 
         BizProjectMaterialStock stock = new BizProjectMaterialStock();
+        stock.setId(99L);
         stock.setStockQuantity(new BigDecimal("20"));
         stock.setTotalOutbound(BigDecimal.ZERO);
         when(stockMapper.selectOne(any())).thenReturn(stock);
+        when(stockMapper.deductStock(99L, new BigDecimal("5"), true)).thenReturn(1);
 
         materialOutboundService.save(outbound, List.of(detail));
 
         assertThat(outbound.getStatus()).isEqualTo("DRAFT");
-        assertThat(stock.getStockQuantity()).isEqualTo(new BigDecimal("15"));
-        assertThat(stock.getTotalOutbound()).isEqualTo(new BigDecimal("5"));
+        verify(stockMapper).deductStock(99L, new BigDecimal("5"), true);
     }
 
     @Test
@@ -73,8 +74,10 @@ class MaterialOutboundServiceTest {
         detail.setQuantity(new BigDecimal("50"));
 
         BizProjectMaterialStock stock = new BizProjectMaterialStock();
+        stock.setId(99L);
         stock.setStockQuantity(new BigDecimal("10"));
         when(stockMapper.selectOne(any())).thenReturn(stock);
+        when(stockMapper.deductStock(99L, new BigDecimal("50"), true)).thenReturn(0);
 
         assertThatThrownBy(() -> materialOutboundService.save(outbound, List.of(detail)))
                 .isInstanceOf(BusinessException.class)
@@ -154,14 +157,15 @@ class MaterialOutboundServiceTest {
         when(outboundDetailMapper.selectList(any())).thenReturn(java.util.List.of(detail));
 
         BizProjectMaterialStock stock = new BizProjectMaterialStock();
+        stock.setId(88L);
         stock.setStockQuantity(new java.math.BigDecimal("5"));
         stock.setTotalOutbound(new java.math.BigDecimal("5"));
         when(stockMapper.selectOne(any())).thenReturn(stock);
 
         materialOutboundService.delete(2L);
 
-        // save 时扣的库存删单后回填
-        assertThat(stock.getStockQuantity()).isEqualByComparingTo("10");
+        // save 时扣的库存删单后经原子 SQL 回填
+        verify(stockMapper).revertOutbound(88L, new java.math.BigDecimal("5"), true);
         verify(outboundMapper).deleteById(2L);
     }
 
@@ -195,6 +199,7 @@ class MaterialOutboundServiceTest {
                 .thenReturn(java.util.List.of(detail));
 
         BizProjectMaterialStock stock = new BizProjectMaterialStock();
+        stock.setId(77L);
         stock.setProjectId(100L);
         stock.setStockQuantity(new java.math.BigDecimal("80"));
         stock.setTotalOutbound(new java.math.BigDecimal("120"));
@@ -206,10 +211,7 @@ class MaterialOutboundServiceTest {
 
         verify(outboundMapper).deleteById(1L);
         verify(outboundDetailMapper).deleteById(11L);
-        // 库存 80 + 20 = 100，累计出库 120 - 20 = 100
-        verify(stockMapper).updateById(argThat(s ->
-                s.getStockQuantity().compareTo(new java.math.BigDecimal("100")) == 0
-                        && s.getTotalOutbound().compareTo(new java.math.BigDecimal("100")) == 0));
+        verify(stockMapper).revertOutbound(77L, new java.math.BigDecimal("20"), true);
     }
 
     @Test

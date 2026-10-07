@@ -114,26 +114,23 @@ public class MaterialInboundService {
                         .eq(BizProjectMaterialStock::getMaterialName, detail.getMaterialName())
                         .eq(BizProjectMaterialStock::getSpecification, detail.getSpecification());
                 BizProjectMaterialStock stock = stockMapper.selectOne(stockWrapper);
-                if (stock != null) {
-                    BigDecimal qty = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
-                    stock.setStockQuantity(stock.getStockQuantity().subtract(qty));
-                    if (stock.getTotalInbound() != null) {
-                        stock.setTotalInbound(stock.getTotalInbound().subtract(qty));
-                    }
-                    stockMapper.updateById(stock);
+                if (stock == null) {
+                    throw new BusinessException("删除入库单时未找到材料库存记录：" + detail.getMaterialName());
+                }
+                BigDecimal qty = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
+                if (stockMapper.revertInbound(stock.getId(), qty) == 0) {
+                    throw new BusinessException("删除入库单将导致库存或累计入库为负，已拒绝：" + detail.getMaterialName());
                 }
             }
-            if (existing.getContractId() != null) {
-                BizPurchaseContract contract = purchaseContractMapper.selectById(existing.getContractId());
-                if (contract != null) {
-                    BigDecimal cumulative = contract.getCumulativeInbound() != null ? contract.getCumulativeInbound() : BigDecimal.ZERO;
-                    BigDecimal inboundAmount = existing.getTotalAmount() != null ? existing.getTotalAmount() : BigDecimal.ZERO;
-                    BigDecimal target = cumulative.subtract(inboundAmount);
-                    if (target.compareTo(BigDecimal.ZERO) < 0) {
-                        throw new BusinessException("删除入库单导致合同累计入库金额为负，拒绝操作");
-                    }
-                    contract.setCumulativeInbound(target);
-                    purchaseContractMapper.updateById(contract);
+            if (existing.getContractId() != null
+                    && existing.getTotalAmount() != null
+                    && existing.getTotalAmount().signum() != 0) {
+                // PI-2 原子负向冲销；SQL 侧 COALESCE 累减后可能为负——以行读复核守卫
+                purchaseContractMapper.addInbound(existing.getContractId(), existing.getTotalAmount().negate());
+                BizPurchaseContract after = purchaseContractMapper.selectById(existing.getContractId());
+                if (after != null && after.getCumulativeInbound() != null
+                        && after.getCumulativeInbound().signum() < 0) {
+                    throw new BusinessException("删除入库单导致合同累计入库金额为负，拒绝操作");
                 }
             }
         }
@@ -171,6 +168,16 @@ public class MaterialInboundService {
     }
 
     /**
+     * 移动端复合动作：保存并立即提交生效（同一事务，任一步失败整体回滚，P3-M5 B6）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Long saveAndSubmit(BizMaterialInbound inbound, List<BizMaterialInboundDetail> details) {
+        save(inbound, details);
+        submit(inbound.getId());
+        return inbound.getId();
+    }
+
+    /**
      * 提交入库（更新库存、合同累计入库；直接出库则生成出库单）
      */
     @Transactional(rollbackFor = Exception.class)
@@ -195,14 +202,11 @@ public class MaterialInboundService {
             updateStock(inbound.getProjectId(), detail, true);
         }
 
-        // 更新采购合同累计入库金额
-        if (inbound.getContractId() != null) {
-            BizPurchaseContract contract = purchaseContractMapper.selectById(inbound.getContractId());
-            if (contract != null) {
-                BigDecimal cumulative = contract.getCumulativeInbound() != null ? contract.getCumulativeInbound() : BigDecimal.ZERO;
-                contract.setCumulativeInbound(cumulative.add(inbound.getTotalAmount() != null ? inbound.getTotalAmount() : BigDecimal.ZERO));
-                purchaseContractMapper.updateById(contract);
-            }
+        // 更新采购合同累计入库金额（PI-2 原子累加）
+        if (inbound.getContractId() != null
+                && inbound.getTotalAmount() != null
+                && inbound.getTotalAmount().signum() != 0) {
+            purchaseContractMapper.addInbound(inbound.getContractId(), inbound.getTotalAmount());
         }
 
         // 直接出库
@@ -259,20 +263,15 @@ public class MaterialInboundService {
             stockMapper.insert(stock);
         } else {
             if (isInbound) {
-                // 加权平均单价
-                BigDecimal oldTotal = stock.getStockQuantity().multiply(stock.getAvgUnitPrice() != null ? stock.getAvgUnitPrice() : BigDecimal.ZERO);
-                BigDecimal newTotal = oldTotal.add(qty.multiply(price));
-                BigDecimal newQty = stock.getStockQuantity().add(qty);
-                if (newQty.compareTo(BigDecimal.ZERO) > 0) {
-                    stock.setAvgUnitPrice(newTotal.divide(newQty, 4, RoundingMode.HALF_UP));
+                if (stockMapper.addInbound(stock.getId(), qty, price) == 0) {
+                    throw new BusinessException("材料入库原子更新失败：" + detail.getMaterialName());
                 }
-                stock.setStockQuantity(newQty);
-                stock.setTotalInbound(stock.getTotalInbound().add(qty));
             } else {
-                stock.setStockQuantity(stock.getStockQuantity().subtract(qty));
-                stock.setTotalOutbound(stock.getTotalOutbound().add(qty));
+                // 直接出库分支同样走原子非负扣减
+                if (stockMapper.deductStock(stock.getId(), qty, true) == 0) {
+                    throw new BusinessException("材料[" + detail.getMaterialName() + "]库存不足，无法直接出库");
+                }
             }
-            stockMapper.updateById(stock);
         }
     }
 }

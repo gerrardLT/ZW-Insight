@@ -107,24 +107,6 @@ public interface CostRollUpMapper {
     List<SourceDoc> listMachineSettlements(@Param("projectId") Long projectId);
 
     /**
-     * 材料出库消耗（实际）。
-     * <p>
-     * 按出库单聚合明细金额（quantity × unit_price）；退货单（RETURN）金额为负，
-     * 自然冲减成本，无需特判。
-     * </p>
-     */
-    @Select("SELECT o.id AS sourceId, "
-            + "CAST(o.id AS CHAR) AS sourceNumber, "
-            + "COALESCE(SUM(d.quantity * d.unit_price), 0) AS amount, "
-            + "o.created_at AS occurredAt "
-            + "FROM biz_material_outbound o "
-            + "JOIN biz_material_outbound_detail d ON d.outbound_id = o.id AND d.deleted = 0 "
-            + "WHERE o.project_id = #{projectId} AND o.deleted = 0 AND o.status = 'APPROVED' "
-            + "GROUP BY o.id, o.created_at "
-            + "ORDER BY o.id")
-    List<SourceDoc> listMaterialOutbounds(@Param("projectId") Long projectId);
-
-    /**
      * 源单据投影对象。
      * <p>统一承诺/实际两类源单据的形状，归集逻辑得以复用同一套分配算法。</p>
      */

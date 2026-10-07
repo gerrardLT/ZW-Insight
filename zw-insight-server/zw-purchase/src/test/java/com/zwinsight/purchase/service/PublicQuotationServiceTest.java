@@ -37,6 +37,9 @@ class PublicQuotationServiceTest {
     @Mock
     private BizQuotationMapper quotationMapper;
 
+    @Mock
+    private com.zwinsight.purchase.portal.service.SupplierSmsService supplierSmsService;
+
     @InjectMocks
     private PublicQuotationService service;
 
@@ -119,13 +122,23 @@ class PublicQuotationServiceTest {
         assertThatThrownBy(() -> service.submitPublicQuotation(1L, noPhone))
                 .hasMessageContaining("手机号不能为空");
 
+        Map<String, Object> badCode = new HashMap<>();
+        badCode.put("phone", "13800138000");
+        badCode.put("smsCode", "000000");
+        when(supplierSmsService.verifyCode("13800138000", "000000")).thenReturn(false);
+        assertThatThrownBy(() -> service.submitPublicQuotation(1L, badCode))
+                .hasMessageContaining("验证码无效");
+
         Map<String, Object> noName = new HashMap<>();
         noName.put("phone", "13800138000");
+        noName.put("smsCode", "123456");
+        when(supplierSmsService.verifyCode("13800138000", "123456")).thenReturn(true);
         assertThatThrownBy(() -> service.submitPublicQuotation(1L, noName))
                 .hasMessageContaining("供应商名称不能为空");
 
         Map<String, Object> ok = new HashMap<>();
         ok.put("phone", "13800138000");
+        ok.put("smsCode", "123456");
         ok.put("supplierName", "供应商");
         when(quotationMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
         assertThatThrownBy(() -> service.submitPublicQuotation(1L, ok))
@@ -137,9 +150,11 @@ class PublicQuotationServiceTest {
     void submitPublicQuotation_success() {
         when(inquiryMapper.selectById(1L)).thenReturn(inquiry("PUBLIC", "PUBLISHED"));
         when(quotationMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(supplierSmsService.verifyCode("13800138000", "123456")).thenReturn(true);
 
         Map<String, Object> req = new HashMap<>();
         req.put("phone", "13800138000");
+        req.put("smsCode", "123456");
         req.put("supplierName", "公开供应商");
         req.put("totalAmount", "12345.67");
         service.submitPublicQuotation(1L, req);
@@ -152,13 +167,18 @@ class PublicQuotationServiceTest {
     }
 
     @Test
-    @DisplayName("getMyQuotation - 手机号为空抛异常；无记录返回空 Map；有记录返回报价信息")
+    @DisplayName("getMyQuotation - 手机号/验证码守卫；验证通过后按手机号查回报价")
     void getMyQuotation_variants() {
-        assertThatThrownBy(() -> service.getMyQuotation(1L, ""))
+        assertThatThrownBy(() -> service.getMyQuotation(1L, "", "123456"))
                 .hasMessageContaining("手机号不能为空");
 
+        when(supplierSmsService.verifyCode("13800138000", "000000")).thenReturn(false);
+        assertThatThrownBy(() -> service.getMyQuotation(1L, "13800138000", "000000"))
+                .hasMessageContaining("验证码无效");
+
+        when(supplierSmsService.verifyCode("13800138000", "123456")).thenReturn(true);
         when(quotationMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
-        assertThat(service.getMyQuotation(1L, "13800138000")).isEmpty();
+        assertThat(service.getMyQuotation(1L, "13800138000", "123456")).isEmpty();
 
         BizQuotation q = new BizQuotation();
         q.setId(9L);
@@ -166,7 +186,7 @@ class PublicQuotationServiceTest {
         q.setTotalAmount(new BigDecimal("100"));
         q.setStatus("SUBMITTED");
         when(quotationMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(q);
-        Map<String, Object> result = service.getMyQuotation(1L, "13800138000");
+        Map<String, Object> result = service.getMyQuotation(1L, "13800138000", "123456");
         assertThat(result.get("id")).isEqualTo(9L);
         assertThat(result.get("totalAmount")).isEqualTo(new BigDecimal("100"));
     }

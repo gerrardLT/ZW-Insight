@@ -47,8 +47,8 @@ class MaterialInboundServiceTest {
         materialInboundService.save(inbound, List.of(detail));
 
         assertThat(inbound.getStatus()).isEqualTo("DRAFT");
-        assertThat(detail.getTotalPrice()).isEqualTo(new BigDecimal("1000"));
-        assertThat(inbound.getTotalAmount()).isEqualTo(new BigDecimal("1000"));
+        assertThat(detail.getTotalPrice()).isEqualByComparingTo("1000.00");
+        assertThat(inbound.getTotalAmount()).isEqualByComparingTo("1000.00");
         verify(inboundMapper).insert(any()); // first insert
         verify(inboundMapper).updateById(any()); // then update amount
     }
@@ -155,15 +155,16 @@ class MaterialInboundServiceTest {
         when(inboundDetailMapper.selectList(any())).thenReturn(List.of(detail));
 
         BizProjectMaterialStock stock = new BizProjectMaterialStock();
+        stock.setId(77L);
         stock.setStockQuantity(new BigDecimal("10"));
         stock.setTotalInbound(new BigDecimal("10"));
         when(stockMapper.selectOne(any())).thenReturn(stock);
+        when(stockMapper.revertInbound(77L, new BigDecimal("10"))).thenReturn(1);
 
         materialInboundService.delete(2L);
 
-        // 库存对称回滚：submit 加的库存删单后减回
-        assertThat(stock.getStockQuantity()).isEqualByComparingTo("0");
-        verify(stockMapper).updateById(stock);
+        // 库存对称回滚：submit 加的库存删单后经原子 SQL 减回
+        verify(stockMapper).revertInbound(77L, new BigDecimal("10"));
         verify(inboundDetailMapper).deleteById(20L);
         verify(inboundMapper).deleteById(2L);
     }
@@ -233,9 +234,11 @@ class MaterialInboundServiceTest {
 
         verify(inboundDetailMapper).delete(any());
         verify(inboundDetailMapper, times(2)).insert(any());
-        assertThat(d1.getTotalPrice()).isEqualTo(new BigDecimal("300"));
-        assertThat(inbound.getTotalAmount()).isEqualTo(new BigDecimal("500"));
-        verify(inboundMapper).updateById(inbound);
+        assertThat(d1.getTotalPrice()).isEqualByComparingTo("300.00");
+        verify(inboundMapper).updateById(argThat(saved ->
+                saved == existing
+                        && saved.getTotalAmount().compareTo(new BigDecimal("500.00")) == 0
+                        && "DRAFT".equals(saved.getStatus())));
     }
 
     @Test
@@ -254,7 +257,8 @@ class MaterialInboundServiceTest {
 
         verify(inboundDetailMapper, never()).delete(any());
         verify(inboundDetailMapper, never()).insert(any());
-        verify(inboundMapper).updateById(inbound);
+        verify(inboundMapper).updateById(argThat(saved ->
+                saved == existing && "DRAFT".equals(saved.getStatus())));
     }
 
     @Test

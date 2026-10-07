@@ -81,6 +81,7 @@ class MaterialServiceTest {
             when(inboundDetailMapper.selectList(any())).thenReturn(List.of(detail));
 
             BizProjectMaterialStock existingStock = new BizProjectMaterialStock();
+            existingStock.setId(101L);
             existingStock.setProjectId(10L);
             existingStock.setMaterialName("水泥");
             existingStock.setSpecification("P.O42.5");
@@ -89,15 +90,14 @@ class MaterialServiceTest {
             existingStock.setTotalInbound(new BigDecimal("100"));
             existingStock.setTotalOutbound(BigDecimal.ZERO);
             when(stockMapper.selectOne(any())).thenReturn(existingStock);
+            when(stockMapper.addInbound(101L, new BigDecimal("50"), new BigDecimal("100"))).thenReturn(1);
 
             // When
             inboundService.submit(1L);
 
             // Then
             assertThat(inbound.getStatus()).isEqualTo("APPROVED");
-            assertThat(existingStock.getStockQuantity()).isEqualByComparingTo(new BigDecimal("150"));
-            assertThat(existingStock.getTotalInbound()).isEqualByComparingTo(new BigDecimal("150"));
-            verify(stockMapper).updateById(existingStock);
+            verify(stockMapper).addInbound(101L, new BigDecimal("50"), new BigDecimal("100"));
         }
 
         @Test
@@ -120,6 +120,7 @@ class MaterialServiceTest {
             when(inboundDetailMapper.selectList(any())).thenReturn(List.of(detail));
 
             BizProjectMaterialStock existingStock = new BizProjectMaterialStock();
+            existingStock.setId(102L);
             existingStock.setProjectId(10L);
             existingStock.setMaterialName("钢管");
             existingStock.setSpecification("DN50");
@@ -128,13 +129,13 @@ class MaterialServiceTest {
             existingStock.setTotalInbound(new BigDecimal("100"));
             existingStock.setTotalOutbound(BigDecimal.ZERO);
             when(stockMapper.selectOne(any())).thenReturn(existingStock);
+            when(stockMapper.addInbound(102L, new BigDecimal("50"), new BigDecimal("120"))).thenReturn(1);
 
             // When
             inboundService.submit(2L);
 
-            // Then: 加权平均 = (100×90 + 50×120) / 150 = 15000/150 = 100.0000
-            assertThat(existingStock.getAvgUnitPrice()).isEqualByComparingTo(new BigDecimal("100.0000"));
-            assertThat(existingStock.getStockQuantity()).isEqualByComparingTo(new BigDecimal("150"));
+            // 加权平均与数量在 Mapper 原子 SQL 中一并计算
+            verify(stockMapper).addInbound(102L, new BigDecimal("50"), new BigDecimal("120"));
         }
     }
 
@@ -170,17 +171,17 @@ class MaterialServiceTest {
             detail.setQuantity(new BigDecimal("30"));
 
             BizProjectMaterialStock stock = new BizProjectMaterialStock();
+            stock.setId(201L);
             stock.setStockQuantity(new BigDecimal("100"));
             stock.setTotalOutbound(new BigDecimal("20"));
             when(stockMapper.selectOne(any())).thenReturn(stock);
+            when(stockMapper.deductStock(201L, new BigDecimal("30"), true)).thenReturn(1);
 
             // When
             outboundService.save(outbound, List.of(detail));
 
             // Then
-            assertThat(stock.getStockQuantity()).isEqualByComparingTo(new BigDecimal("70"));
-            assertThat(stock.getTotalOutbound()).isEqualByComparingTo(new BigDecimal("50"));
-            verify(stockMapper).updateById(stock);
+            verify(stockMapper).deductStock(201L, new BigDecimal("30"), true);
         }
 
         @Test
@@ -197,16 +198,17 @@ class MaterialServiceTest {
             detail.setQuantity(new BigDecimal("10"));
 
             BizProjectMaterialStock stock = new BizProjectMaterialStock();
+            stock.setId(202L);
             stock.setStockQuantity(new BigDecimal("50"));
             stock.setTotalReturn(BigDecimal.ZERO);
             when(stockMapper.selectOne(any())).thenReturn(stock);
+            when(stockMapper.deductStock(202L, new BigDecimal("10"), false)).thenReturn(1);
 
             // When
             outboundService.save(outbound, List.of(detail));
 
             // Then
-            assertThat(stock.getStockQuantity()).isEqualByComparingTo(new BigDecimal("40"));
-            assertThat(stock.getTotalReturn()).isEqualByComparingTo(new BigDecimal("10"));
+            verify(stockMapper).deductStock(202L, new BigDecimal("10"), false);
         }
     }
 

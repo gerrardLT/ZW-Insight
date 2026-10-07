@@ -104,8 +104,12 @@ public class MaterialInventoryService {
             if (stock == null) {
                 continue;
             }
-            stock.setStockQuantity(detail.getActualQuantity());
-            stockMapper.updateById(stock);
+            if (detail.getActualQuantity() == null || detail.getActualQuantity().signum() < 0) {
+                throw new BusinessException("材料[" + detail.getMaterialName() + "]实盘数量不可为负数");
+            }
+            if (stockMapper.setInventoryQuantity(stock.getId(), detail.getActualQuantity()) == 0) {
+                throw new BusinessException("盘点库存更新失败：" + detail.getMaterialName());
+            }
         }
 
         inventory.setStatus("APPROVED");
@@ -115,6 +119,10 @@ public class MaterialInventoryService {
     public BizMaterialInventory getById(Long id) {
         BizMaterialInventory inventory = inventoryMapper.selectById(id);
         if (inventory == null) throw new BusinessException("盘点单不存在");
+        inventory.setDetails(detailMapper.selectList(
+                new LambdaQueryWrapper<BizMaterialInventoryDetail>()
+                        .eq(BizMaterialInventoryDetail::getInventoryId, id)
+                        .orderByAsc(BizMaterialInventoryDetail::getId)));
         return inventory;
     }
 

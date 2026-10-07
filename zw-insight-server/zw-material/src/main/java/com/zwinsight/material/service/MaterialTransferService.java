@@ -135,12 +135,9 @@ public class MaterialTransferService {
                 .eq(BizProjectMaterialStock::getMaterialName, detail.getMaterialName())
                 .eq(BizProjectMaterialStock::getSpecification, detail.getSpecification());
         BizProjectMaterialStock fromStock = stockMapper.selectOne(fromWrapper);
-        if (fromStock == null || fromStock.getStockQuantity().compareTo(qty) < 0) {
+        if (fromStock == null || stockMapper.transferOut(fromStock.getId(), qty) == 0) {
             throw new BusinessException("调出项目材料[" + detail.getMaterialName() + "]库存不足");
         }
-        fromStock.setStockQuantity(fromStock.getStockQuantity().subtract(qty));
-        fromStock.setTotalTransferOut(fromStock.getTotalTransferOut().add(qty));
-        stockMapper.updateById(fromStock);
 
         // 调入方库存增加
         LambdaQueryWrapper<BizProjectMaterialStock> toWrapper = new LambdaQueryWrapper<>();
@@ -162,10 +159,8 @@ public class MaterialTransferService {
             toStock.setTotalTransferIn(qty);
             toStock.setTotalTransferOut(BigDecimal.ZERO);
             stockMapper.insert(toStock);
-        } else {
-            toStock.setStockQuantity(toStock.getStockQuantity().add(qty));
-            toStock.setTotalTransferIn(toStock.getTotalTransferIn().add(qty));
-            stockMapper.updateById(toStock);
+        } else if (stockMapper.transferIn(toStock.getId(), qty) == 0) {
+            throw new BusinessException("调入项目材料库存更新失败：" + detail.getMaterialName());
         }
     }
 

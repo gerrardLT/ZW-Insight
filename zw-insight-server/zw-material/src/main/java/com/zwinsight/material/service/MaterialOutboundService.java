@@ -130,6 +130,16 @@ public class MaterialOutboundService {
         eventPublisher.publishEvent(event);
     }
 
+    /**
+     * 移动端复合动作：保存并立即提交生效（同一事务，任一步失败整体回滚，P3-M5 B6）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Long saveAndSubmit(BizMaterialOutbound outbound, List<BizMaterialOutboundDetail> details) {
+        save(outbound, details);
+        submit(outbound.getId());
+        return outbound.getId();
+    }
+
     public BizMaterialOutbound getById(Long id) {
         BizMaterialOutbound outbound = outboundMapper.selectById(id);
         if (outbound == null) throw new BusinessException("出库单不存在");

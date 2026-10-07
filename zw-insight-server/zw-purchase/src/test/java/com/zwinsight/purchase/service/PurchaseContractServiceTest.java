@@ -409,6 +409,41 @@ class PurchaseContractServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("采购合同不存在");
         }
+
+        @Test
+        @DisplayName("审批通过回调：SUBMITTED → EFFECTIVE")
+        void onApproved_submittedToEffective() {
+            sampleContract.setStatus("SUBMITTED");
+            when(purchaseContractMapper.selectById(1L)).thenReturn(sampleContract);
+
+            purchaseContractService.onApproved(1L);
+
+            assertThat(sampleContract.getStatus()).isEqualTo("EFFECTIVE");
+            verify(purchaseContractMapper).updateById(sampleContract);
+        }
+
+        @Test
+        @DisplayName("审批通过回调幂等：已 EFFECTIVE 不重复写")
+        void onApproved_effectiveIdempotent() {
+            sampleContract.setStatus("EFFECTIVE");
+            when(purchaseContractMapper.selectById(1L)).thenReturn(sampleContract);
+
+            purchaseContractService.onApproved(1L);
+
+            verify(purchaseContractMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("审批驳回回调：SUBMITTED → DRAFT")
+        void onRejected_submittedToDraft() {
+            sampleContract.setStatus("SUBMITTED");
+            when(purchaseContractMapper.selectById(1L)).thenReturn(sampleContract);
+
+            purchaseContractService.onRejected(1L);
+
+            assertThat(sampleContract.getStatus()).isEqualTo("DRAFT");
+            verify(purchaseContractMapper).updateById(sampleContract);
+        }
     }
 
     // =====================================================================

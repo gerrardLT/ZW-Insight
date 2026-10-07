@@ -125,7 +125,6 @@
 import { ref, onMounted, computed } from 'vue'
 import {
   saveMaterialInbound,
-  submitMaterialInbound,
   getMaterialByCode,
   getPurchaseContractPage,
   getPurchaseContractDetails
@@ -322,16 +321,11 @@ async function handleSubmit() {
         quantity: details[0]?.quantity,
         unitPrice: details[0]?.unitPrice
       }
-      const { queued, result } = await submitOrQueue(() => saveMaterialInbound(payload), {
-        endpoint: '/v1/material/inbound',
+      const { queued } = await submitOrQueue(() => saveMaterialInbound(payload, true), {
+        endpoint: '/v1/material/inbound?autoSubmit=true',
         payload
       })
       if (!queued) {
-        // P3-M5 B6: 保存成功后自动触发 submit 使入库单生效，驱动库存与合同累计入库
-        const inboundId = result?.data?.id || result?.data
-        if (inboundId) {
-          try { await submitMaterialInbound(inboundId) } catch {}
-        }
         uni.showToast({ title: '入库成功', icon: 'success' })
       }
       formSession.clear() // 提交成功清除会话快照（S3.3）
@@ -366,16 +360,11 @@ async function handleSubmit() {
         unitPrice: price
       }]
     }
-    const { queued, result } = await submitOrQueue(() => saveMaterialInbound(payload), {
-      endpoint: '/v1/material/inbound',
+    const { queued } = await submitOrQueue(() => saveMaterialInbound(payload, true), {
+      endpoint: '/v1/material/inbound?autoSubmit=true',
       payload
     })
     if (!queued) {
-      // P3-M5 B6: 零星入库保存后自动触发 submit 生效
-      const inboundId = result?.data?.id || result?.data
-      if (inboundId) {
-        try { await submitMaterialInbound(inboundId) } catch {}
-      }
       uni.showToast({ title: '入库成功', icon: 'success' })
     }
     formSession.clear() // 提交成功清除会话快照（S3.3）

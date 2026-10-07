@@ -83,6 +83,10 @@ export function getMaterialCheckPage(params: any) {
   return request.get('/v1/material/inventory/page', { params })
 }
 
+export function getMaterialCheckDetail(id: number | string) {
+  return request.get(`/v1/material/inventory/${id}`)
+}
+
 export function createMaterialCheck(data: any) {
   return request.post('/v1/material/inventory', data)
 }

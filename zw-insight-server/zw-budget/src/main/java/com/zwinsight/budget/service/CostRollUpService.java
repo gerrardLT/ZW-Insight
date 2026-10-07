@@ -72,7 +72,6 @@ public class CostRollUpService {
     // ==================== 来源类型（写入流水的 source_type，与 CostLedgerService.SRC_* 对齐） ====================
     private static final String SRC_CONTRACT = CostLedgerService.SRC_CONTRACT;
     private static final String SRC_SETTLEMENT = CostLedgerService.SRC_SETTLEMENT;
-    private static final String SRC_MATERIAL = CostLedgerService.SRC_MATERIAL;
 
     /** 归集专用幂等键前缀，与单据级记账的键空间隔离 */
     private static final String ROLLUP_KEY_PREFIX = "ROLLUP";

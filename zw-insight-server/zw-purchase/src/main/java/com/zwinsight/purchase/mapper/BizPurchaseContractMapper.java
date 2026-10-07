@@ -20,4 +20,8 @@ public interface BizPurchaseContractMapper extends BaseMapper<BizPurchaseContrac
      */
     @Update("UPDATE biz_purchase_contract SET cumulative_settlement = COALESCE(cumulative_settlement, 0) + #{amount} WHERE id = #{id} AND deleted = 0")
     int addSettlement(@Param("id") Long id, @Param("amount") java.math.BigDecimal amount);
+
+    /** 原子累加合同累计入库金额（PI-2，支持负数冲销用于删除入库单对称回滚） */
+    @Update("UPDATE biz_purchase_contract SET cumulative_inbound = COALESCE(cumulative_inbound, 0) + #{amount} WHERE id = #{id} AND deleted = 0")
+    int addInbound(@Param("id") Long id, @Param("amount") java.math.BigDecimal amount);
 }

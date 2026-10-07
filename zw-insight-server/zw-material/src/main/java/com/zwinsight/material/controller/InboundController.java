@@ -40,9 +40,20 @@ public class InboundController {
     }
 
     @PostMapping
-    public R<Long> save(@RequestBody BizMaterialInbound inbound) {
-        inboundService.save(inbound, inbound.getDetails() != null ? inbound.getDetails() : List.of());
-        return R.ok(inbound.getId());
+    public R<Long> save(@RequestBody BizMaterialInbound inbound,
+                        @RequestParam(defaultValue = "false") boolean autoSubmit) {
+        List<com.zwinsight.material.domain.BizMaterialInboundDetail> details =
+                inbound.getDetails() != null ? inbound.getDetails() : List.of();
+        Long id = autoSubmit
+                ? inboundService.saveAndSubmit(inbound, details)
+                : saveDraft(inbound, details);
+        return R.ok(id);
+    }
+
+    private Long saveDraft(BizMaterialInbound inbound,
+                           List<com.zwinsight.material.domain.BizMaterialInboundDetail> details) {
+        inboundService.save(inbound, details);
+        return inbound.getId();
     }
 
     @PutMapping("/{id}")

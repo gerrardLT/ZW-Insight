@@ -270,6 +270,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
@@ -299,6 +300,7 @@ import FieldHelpLabel from '@/components/FieldHelpLabel.vue'
 import { positiveAmount } from '@/utils/form-rules'
 import { toWan } from '@/utils/chart-format'
 
+const route = useRoute()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -631,9 +633,26 @@ function handleSaveShortcut() {
   if (dialogVisible.value) handleFormSubmit()
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadData()
-  searchProject('')
+  await searchProject('')
+  // P3-M5 B3：从采购结算页跳转时预填项目、采购合同与结算金额，并打开新增弹窗
+  const routeQuery = route?.query || {}
+  const pid = Number(routeQuery.projectId)
+  const contractId = Number(routeQuery.contractId)
+  const amount = Number(routeQuery.applyAmount)
+  const category = String(routeQuery.contractCategory || '')
+  if (Number.isFinite(pid) && pid > 0 && Number.isFinite(contractId) && contractId > 0 && category) {
+    formData.value.projectId = pid
+    formData.value.contractCategory = category
+    await loadContracts()
+    formData.value.contractId = contractId
+    formData.value.paymentAmount = Number.isFinite(amount) && amount > 0 ? amount : 0
+    const selected = contractOptions.value.find((item: any) => String(item.id) === String(contractId))
+    formData.value.supplierId = selected?.partyBId || selected?.supplierId
+    formData.value.supplierName = selected?.partyBName || selected?.supplierName || ''
+    dialogVisible.value = true
+  }
   window.addEventListener(ZW_SHORTCUT_EVENTS.save, handleSaveShortcut)
   document.addEventListener('keydown', handleRowNavigationKeydown)
 })

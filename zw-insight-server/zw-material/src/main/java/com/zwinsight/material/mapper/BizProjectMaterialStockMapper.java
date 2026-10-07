@@ -43,4 +43,40 @@ public interface BizProjectMaterialStockMapper extends BaseMapper<BizProjectMate
             + "WHERE id = #{id} AND deleted = 0"
             + "</script>")
     int revertOutbound(@Param("id") Long id, @Param("qty") BigDecimal qty, @Param("isPick") boolean isPick);
+
+    /** 入库原子累加（数量、累计入库与加权平均价在同一 SQL 内更新） */
+    @Update("UPDATE biz_project_material_stock "
+            + "SET avg_unit_price = ROUND((COALESCE(stock_quantity,0) * COALESCE(avg_unit_price,0) "
+            + "+ #{qty} * #{price}) / NULLIF(COALESCE(stock_quantity,0) + #{qty},0), 4), "
+            + "stock_quantity = COALESCE(stock_quantity,0) + #{qty}, "
+            + "total_inbound = COALESCE(total_inbound,0) + #{qty} "
+            + "WHERE id = #{id} AND deleted = 0")
+    int addInbound(@Param("id") Long id, @Param("qty") BigDecimal qty, @Param("price") BigDecimal price);
+
+    /** 删除已审批入库时原子回冲；库存与累计入库不足则拒绝 */
+    @Update("UPDATE biz_project_material_stock "
+            + "SET stock_quantity = stock_quantity - #{qty}, "
+            + "total_inbound = total_inbound - #{qty} "
+            + "WHERE id = #{id} AND deleted = 0 "
+            + "AND stock_quantity >= #{qty} AND COALESCE(total_inbound,0) >= #{qty}")
+    int revertInbound(@Param("id") Long id, @Param("qty") BigDecimal qty);
+
+    /** 调拨调出原子扣减 */
+    @Update("UPDATE biz_project_material_stock "
+            + "SET stock_quantity = stock_quantity - #{qty}, "
+            + "total_transfer_out = COALESCE(total_transfer_out,0) + #{qty} "
+            + "WHERE id = #{id} AND deleted = 0 AND stock_quantity >= #{qty}")
+    int transferOut(@Param("id") Long id, @Param("qty") BigDecimal qty);
+
+    /** 调拨调入原子累加 */
+    @Update("UPDATE biz_project_material_stock "
+            + "SET stock_quantity = COALESCE(stock_quantity,0) + #{qty}, "
+            + "total_transfer_in = COALESCE(total_transfer_in,0) + #{qty} "
+            + "WHERE id = #{id} AND deleted = 0")
+    int transferIn(@Param("id") Long id, @Param("qty") BigDecimal qty);
+
+    /** 盘点确认原子覆写库存（实盘数量已由服务校验非负） */
+    @Update("UPDATE biz_project_material_stock SET stock_quantity = #{actualQty} "
+            + "WHERE id = #{id} AND deleted = 0 AND #{actualQty} >= 0")
+    int setInventoryQuantity(@Param("id") Long id, @Param("actualQty") BigDecimal actualQty);
 }

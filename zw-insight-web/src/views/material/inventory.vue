@@ -69,27 +69,21 @@
         </el-form-item>
         <el-divider content-position="left">盘点明细</el-divider>
         <div class="mb-2">
-          <el-button type="primary" plain size="small" @click="addDetailRow">添加材料</el-button>
+          <el-button v-if="!isEdit" type="primary" plain size="small" :disabled="!formData.projectId" @click="loadStockRows">
+            从项目库存载入
+          </el-button>
         </div>
         <el-table :data="formData.details" border size="small" max-height="260">
           <el-table-column label="材料名称" min-width="140">
             <template #default="{ row }">
-              <el-input v-model="row.materialName" placeholder="材料名称" />
+              <span>{{ row.materialName }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="规格型号" width="110">
-            <template #default="{ row }">
-              <el-input v-model="row.specification" placeholder="规格" />
-            </template>
-          </el-table-column>
-          <el-table-column label="单位" width="70">
-            <template #default="{ row }">
-              <el-input v-model="row.unit" placeholder="单位" />
-            </template>
-          </el-table-column>
+          <el-table-column prop="specification" label="规格型号" width="110" />
+          <el-table-column prop="unit" label="单位" width="70" />
           <el-table-column label="账面数量" width="100">
             <template #default="{ row }">
-              <el-input-number v-model="row.bookQuantity" :min="0" :precision="2" controls-position="right" style="width: 100%" />
+              <span>{{ Number(row.bookQuantity || 0).toLocaleString() }}</span>
             </template>
           </el-table-column>
           <el-table-column label="实盘数量" width="100">
@@ -97,7 +91,7 @@
               <el-input-number v-model="row.actualQuantity" :min="0" :precision="2" controls-position="right" style="width: 100%" />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="60" align="center">
+          <el-table-column v-if="!isEdit" label="操作" width="60" align="center">
             <template #default="{ $index }">
               <el-button link type="danger" @click="removeDetailRow($index)">删</el-button>
             </template>
@@ -117,10 +111,12 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import {
   getMaterialCheckPage,
+  getMaterialCheckDetail,
   createMaterialCheck,
   updateMaterialCheck,
   deleteMaterialCheck,
-  submitMaterialCheck
+  submitMaterialCheck,
+  getMaterialStockPage
 } from '@/api/material'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 
@@ -190,36 +186,34 @@ function handleAdd() {
   dialogVisible.value = true
 }
 
-function handleView(row: any) {
+async function handleView(row: any) {
   isEdit.value = true
+  const res: any = await getMaterialCheckDetail(row.id)
   formData.value = {
     id: row.id,
     projectId: row.projectId,
     inventoryDate: row.inventoryDate,
-    details: row.details || []
+    details: res.data?.details || []
   }
   dialogVisible.value = true
 }
 
-function handleEdit(row: any) {
-  isEdit.value = true
-  formData.value = {
-    id: row.id,
-    projectId: row.projectId,
-    inventoryDate: row.inventoryDate,
-    details: row.details || []
-  }
-  dialogVisible.value = true
+async function handleEdit(row: any) {
+  // 后端 update 仅允许修改日期；明细是登记时的不可变盘点快照
+  await handleView(row)
 }
 
-function addDetailRow() {
-  formData.value.details.push({
-    materialName: '',
-    specification: '',
-    unit: '吨',
-    bookQuantity: 0,
-    actualQuantity: 0
-  })
+async function loadStockRows() {
+  if (!formData.value.projectId) return
+  const res: any = await getMaterialStockPage({ page: 1, size: 1000, projectId: formData.value.projectId })
+  formData.value.details = (res.data?.records || []).map((stock: any) => ({
+    stockId: stock.id,
+    materialName: stock.materialName,
+    specification: stock.specification,
+    unit: stock.unit,
+    bookQuantity: Number(stock.stockQuantity || 0),
+    actualQuantity: Number(stock.stockQuantity || 0)
+  }))
 }
 
 function removeDetailRow(index: number) {
@@ -231,10 +225,25 @@ async function handleSaveForm() {
   submitLoading.value = true
   try {
     if (isEdit.value && formData.value.id) {
-      await updateMaterialCheck(formData.value)
+      await updateMaterialCheck({
+        id: formData.value.id,
+        inventoryDate: formData.value.inventoryDate
+      })
       ElMessage.success('更新成功')
     } else {
-      await createMaterialCheck(formData.value)
+      if (!formData.value.details.length) {
+        ElMessage.warning('请先从项目库存载入至少一条盘点明细')
+        return
+      }
+      const adjustments: Record<string, number> = {}
+      for (const detail of formData.value.details) {
+        adjustments[String(detail.stockId)] = Number(detail.actualQuantity || 0)
+      }
+      await createMaterialCheck({
+        projectId: formData.value.projectId,
+        inventoryDate: formData.value.inventoryDate,
+        adjustments
+      })
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false

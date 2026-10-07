@@ -100,7 +100,8 @@ public class PublicQuotationController {
     @GetMapping("/inquiries/{inquiryId}/my-quote")
     public R<Map<String, Object>> getMyQuotation(
             @PathVariable Long inquiryId,
-            @RequestParam String phone) {
-        return R.ok(publicQuotationService.getMyQuotation(inquiryId, phone));
+            @RequestParam String phone,
+            @RequestParam String smsCode) {
+        return R.ok(publicQuotationService.getMyQuotation(inquiryId, phone, smsCode));
     }
 }
