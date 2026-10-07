@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -172,5 +173,86 @@ class BudgetControlAspectTest {
                 .doesNotThrowAnyException();
 
         assertThat(BudgetWarningContext.getWarning()).isNull();
+    }
+
+    // ==================== P2-M4 A2：空 category 自动提取与豁免 ====================
+
+    /** 携带合同分类通道的业务参数（付款申请形态） */
+    public static class ContractCategoryArg {
+        public Long getProjectId() { return 100L; }
+        public String getContractCategory() { return "PURCHASE"; }
+        public BigDecimal getPaymentAmount() { return new BigDecimal("500"); }
+    }
+
+    /** 携带成本科目通道的业务参数 */
+    public static class CostCategoryArg {
+        public Long getProjectId() { return 101L; }
+        public String getCostCategory() { return "LABOR"; }
+        public BigDecimal getContractAmount() { return new BigDecimal("800"); }
+    }
+
+    /** 携带泛化 category 通道的业务参数 */
+    public static class NameCategoryArg {
+        public Long getProjectId() { return 102L; }
+        public String getCategory() { return "MACHINE"; }
+        public BigDecimal getTotalAmount() { return new BigDecimal("900"); }
+    }
+
+    /** 无任何科目通道的业务参数（其他付款形态） */
+    public static class PlainAmountArg {
+        public Long getProjectId() { return 103L; }
+        public BigDecimal getPaymentAmount() { return new BigDecimal("700"); }
+    }
+
+    private BudgetCheck blankCategoryCheck() {
+        BudgetCheck check = mock(BudgetCheck.class);
+        when(check.category()).thenReturn("");
+        return check;
+    }
+
+    @Test
+    @DisplayName("空 category 经 getContractCategory 自动提取并按提取科目校验（P2-M4 A2）")
+    void blankCategory_extractsFromContractCategory() {
+        when(configService.checkBudget(100L, "PURCHASE", new BigDecimal("500")))
+                .thenReturn(BudgetCheckResult.pass());
+
+        aspect.checkBudget(joinPoint(new ContractCategoryArg()), blankCategoryCheck());
+
+        verify(configService).checkBudget(100L, "PURCHASE", new BigDecimal("500"));
+    }
+
+    @Test
+    @DisplayName("空 category 经 getCostCategory 与 getCategory 通道同样可提取")
+    void blankCategory_extractsFromOtherChannels() {
+        when(configService.checkBudget(anyLong(), anyString(), any(BigDecimal.class)))
+                .thenReturn(BudgetCheckResult.pass());
+
+        aspect.checkBudget(joinPoint(new CostCategoryArg()), blankCategoryCheck());
+        aspect.checkBudget(joinPoint(new NameCategoryArg()), blankCategoryCheck());
+
+        verify(configService).checkBudget(101L, "LABOR", new BigDecimal("800"));
+        verify(configService).checkBudget(102L, "MACHINE", new BigDecimal("900"));
+    }
+
+    @Test
+    @DisplayName("无科目通道的实体豁免校验——不再按空科目查预算误杀（A2 核心修复）")
+    void blankCategory_noChannel_skipsCheck() {
+        aspect.checkBudget(joinPoint(new PlainAmountArg()), blankCategoryCheck());
+
+        verifyNoInteractions(configService);
+    }
+
+    @Test
+    @DisplayName("空 category 且科目通道返回空白串同样豁免")
+    void blankCategory_blankChannelValue_skipsCheck() {
+        Object blankArg = new Object() {
+            public Long getProjectId() { return 104L; }
+            public String getCostCategory() { return "  "; }
+            public BigDecimal getPaymentAmount() { return new BigDecimal("100"); }
+        };
+
+        aspect.checkBudget(joinPoint(blankArg), blankCategoryCheck());
+
+        verifyNoInteractions(configService);
     }
 }
