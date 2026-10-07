@@ -304,35 +304,29 @@ class PurchaseSettlementServiceTest {
     }
 
     @Test
-    @DisplayName("submit - 正常提交：发起审批、置 APPROVED、回写合同累计结算")
+    @DisplayName("submit - 提交审批：发起流程并置 SUBMITTED，回写改在审批通过回调")
     void submit_success_writesBackContract() {
         BizPurchaseSettlement s = settlement("DRAFT", "3000");
         when(settlementMapper.selectById(1L)).thenReturn(s);
         when(approvalService.startProcess(eq("PURCHASE_SETTLEMENT"), eq(1L),
                 eq("purchase_settlement_approval"), anyMap())).thenReturn("proc-1");
-        BizPurchaseContract contract = new BizPurchaseContract();
-        contract.setCumulativeSettlement(new BigDecimal("7000"));
-        when(contractMapper.selectById(20L)).thenReturn(contract);
 
         service.submit(1L);
 
-        assertThat(s.getStatus()).isEqualTo("APPROVED");
+        assertThat(s.getStatus()).isEqualTo("SUBMITTED");
         assertThat(s.getWorkflowInstanceId()).isEqualTo("proc-1");
-        verify(contractMapper).updateById(argThat(c ->
-                c.getCumulativeSettlement().compareTo(new BigDecimal("10000")) == 0));
     }
 
     @Test
-    @DisplayName("submit - 合同不存在时不回写但不报错")
-    void submit_contractMissing_skipsWriteBack() {
-        BizPurchaseSettlement s = settlement("DRAFT", "3000");
+    @DisplayName("onApproved - 审批通过回调：置 APPROVED 并原子累加合同累计结算 (PI-2/PI-3)")
+    void onApproved_accumulatesContractSettlement() {
+        BizPurchaseSettlement s = settlement("SUBMITTED", "3000");
+        s.setContractId(20L);
         when(settlementMapper.selectById(1L)).thenReturn(s);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-1");
-        when(contractMapper.selectById(20L)).thenReturn(null);
 
-        service.submit(1L);
+        service.onApproved(1L);
 
         assertThat(s.getStatus()).isEqualTo("APPROVED");
-        verify(contractMapper, never()).updateById(any());
+        verify(contractMapper).addSettlement(20L, new BigDecimal("3000"));
     }
 }

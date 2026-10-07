@@ -260,8 +260,10 @@ class PurchaseContractServiceTest {
             // when
             purchaseContractService.update(updateContract);
 
-            // then
-            verify(purchaseContractMapper).updateById(updateContract);
+            // then: PI-5 白名单安全拷贝后更新
+            verify(purchaseContractMapper).updateById(argThat(c ->
+                    "更新后的名称".equals(c.getContractName()) &&
+                    "DRAFT".equals(c.getStatus())));
         }
 
         @Test
@@ -376,7 +378,7 @@ class PurchaseContractServiceTest {
                             vars.containsKey("projectId")
                     ));
             verify(purchaseContractMapper).updateById(argThat(contract ->
-                    "EFFECTIVE".equals(contract.getStatus()) &&
+                    "SUBMITTED".equals(contract.getStatus()) &&
                     "process-instance-001".equals(contract.getWorkflowInstanceId())
             ));
         }

@@ -20,6 +20,8 @@ export default defineConfig({
       'src/**/*.test.ts',
       'src/**/*.property.test.ts',
     ],
+    // 隔离 teardown 期间的异步控制台 rpc 冲突，防止 worker 关闭时偶发 EnvironmentTeardownError
+    teardownTimeout: 10000,
     // 覆盖率采集（2026-08-14 M3：前端覆盖率度量，基线见 tests/frontend-coverage-baseline.json）
     // 增加 lcov reporter 供 Codecov/GHA 上传
     coverage: {
