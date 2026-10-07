@@ -135,10 +135,12 @@ export function getPurchaseContractDetails(contractId: number) {
   return request({ url: `/v1/purchase/contract/${contractId}/details` })
 }
 export function saveMaterialInbound(data: MaterialInboundPayload, autoSubmit = false) {
-  return request({ url: `/v1/material/inbound?autoSubmit=${autoSubmit}`, method: 'POST', data })
+  const url = autoSubmit ? '/v1/material/inbound?autoSubmit=true' : '/v1/material/inbound'
+  return request({ url, method: 'POST', data })
 }
 export function saveMaterialOutbound(data: MaterialOutboundPayload, autoSubmit = false) {
-  return request({ url: `/v1/material/outbound?autoSubmit=${autoSubmit}`, method: 'POST', data })
+  const url = autoSubmit ? '/v1/material/outbound?autoSubmit=true' : '/v1/material/outbound'
+  return request({ url, method: 'POST', data })
 }
 // 材料退货退款记录查询（MaterialRefundController，只读）
 export function getMaterialRefundList(params?: PageParams) {

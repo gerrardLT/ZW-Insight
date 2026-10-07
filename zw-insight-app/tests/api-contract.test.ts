@@ -96,7 +96,9 @@ describe('common.ts 契约（易错路径钉住）', () => {
   it('材料入/出库与现场三单均 POST 各自端点', async () => {
     const cases: Array<[() => Promise<any>, string]> = [
       [() => commonApi.saveMaterialInbound({ id: 1 }), '/v1/material/inbound'],
+      [() => commonApi.saveMaterialInbound({ id: 1 }, true), '/v1/material/inbound?autoSubmit=true'],
       [() => commonApi.saveMaterialOutbound({ id: 1 }), '/v1/material/outbound'],
+      [() => commonApi.saveMaterialOutbound({ id: 1 }, true), '/v1/material/outbound?autoSubmit=true'],
       [() => commonApi.saveConstructionLog({ id: 1 }), '/v1/site/construction-log'],
       [() => commonApi.saveProgressFeedback({ id: 1 }), '/v1/site/schedule/feedback'],
       [() => commonApi.saveInspection({ id: 1 }), '/v1/site/inspection'],

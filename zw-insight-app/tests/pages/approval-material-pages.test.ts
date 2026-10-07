@@ -372,7 +372,7 @@ describe('material/inbound.vue 材料入库页', () => {
       inboundDate: '2026-08-16',
       totalAmount: 3205,
       details: [{ materialName: '水泥', specification: 'P.O42.5', unit: '吨', quantity: 10, unitPrice: 320.5 }],
-    })
+    }, true)
     vi.advanceTimersByTime(1500)
     expect((getUni() as any).navigateBack).toHaveBeenCalled()
     wrapper.unmount()
@@ -484,7 +484,7 @@ describe('material/inbound.vue 材料入库页', () => {
           totalPrice: 114000
         }
       ]
-    }))
+    }), true)
     wrapper.unmount()
   })
 })
@@ -512,7 +512,7 @@ describe('material/outbound.vue 材料出库页', () => {
       outboundDate: '2026-08-16',
       operatorName: '李四',
       details: [{ materialName: '木方', specification: '5x10', unit: '根', quantity: 3 }],
-    })
+    }, true)
     wrapper.unmount()
   })
 })

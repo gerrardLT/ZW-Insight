@@ -289,7 +289,7 @@ describe('material/return.vue 材料退货页（退货出库 RETURN 契约）', 
       returnType: 'RETURN_ONLY',
       contractId: null,
       details: [{ materialName: '钢筋', specification: 'HRB400', unit: '吨', quantity: 2, unitPrice: 4000 }],
-    })
+    }, true)
     wrapper.unmount()
   })
 
@@ -309,7 +309,7 @@ describe('material/return.vue 材料退货页（退货出库 RETURN 契约）', 
     expect(vi.mocked(saveMaterialOutbound)).toHaveBeenCalledWith(expect.objectContaining({
       outboundType: 'RETURN', returnType: 'RETURN_REFUND', contractId: 555,
       details: [{ materialName: '钢筋', specification: '', unit: '', quantity: 1, unitPrice: 4000 }],
-    }))
+    }), true)
     wrapper.unmount()
   })
 })

@@ -137,8 +137,8 @@ async function handleSubmit() {
         unitPrice: price
       }]
     }
-    const { queued } = await submitOrQueue(() => saveMaterialOutbound(payload), {
-      endpoint: '/v1/material/outbound',
+    const { queued } = await submitOrQueue(() => saveMaterialOutbound(payload, true), {
+      endpoint: '/v1/material/outbound?autoSubmit=true',
       payload
     })
     if (!queued) {

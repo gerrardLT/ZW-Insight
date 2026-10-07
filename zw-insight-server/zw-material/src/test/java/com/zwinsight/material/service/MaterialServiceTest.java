@@ -271,7 +271,7 @@ class MaterialServiceTest {
             // When & Then
             assertThatThrownBy(() -> outboundService.save(outbound, List.of(detail)))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("库存不足");
+                    .hasMessageContaining("暂无库存记录");
         }
 
         @Test
