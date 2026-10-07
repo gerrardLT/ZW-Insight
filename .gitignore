@@ -167,3 +167,33 @@ zw-insight-web/src/components.d.ts
 zw-insight-web/e2e/.auth/
 zw-insight-web/.tk.txt
 logo-candidates/
+
+# ========================
+# 临时产物与环境杂项（2026-10-07 治理：仓库根不再堆积未跟踪文件）
+# ========================
+# 根目录 `_` 前缀 SQL/诊断输出（AGENTS.md §9 命名约定的 SQL/OUT 变体）
+_*.sql
+_*.out
+_*.log
+zw-insight-server/_*.out
+
+# 一次性一致性审计产物（audit-report-<ts>.* 每次运行生成；门B等专项报告仍入库）
+audit-reports/audit-report-*.json
+audit-reports/audit-report-*.md
+audit-reports/data-audit-round7-*
+audit-reports/audit-round7-*
+audit-reports/server2-*
+audit-reports/_*
+
+# 本地开发环境配置（生产凭证经 CI Secret/环境变量注入，配置文件不入库）
+zw-insight-server/zw-app/src/main/resources/application-prod.yml
+
+# pnpm 实验残留（本项目锁文件以 npm package-lock.json 为准）
+zw-insight-web/pnpm-lock.yaml
+zw-insight-web/pnpm-workspace.yaml
+
+# 员工信息收集模板（含个人信息，严禁入库）
+安徽徽颍建设员工信息收集模板.xlsx
+
+# AI 评审缓存（impeccable 工具本地产物）
+.impeccable/

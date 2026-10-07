@@ -84,9 +84,13 @@ jobs:
       #
       # 2026-09-16 用户决策：fast_deploy 快速路径——跳过单测与 jacoco 门槛，仅 packge
       # 产出 jar（约 2min）；仅限本地已完成测试验证的日常推送；push 事件不受影响仍走 verify。
-      - name: Build & Unit Test (with JaCoCo)
+      #
+      # 2026-10-07 用户决策：push 部署默认跳过 JaCoCo 覆盖率门禁（-Djacoco.skip=true），
+      # 单测照跑；增量业务改造期不再因覆盖率零点几百分点之差阻断部署。
+      # 全量验证（workflow_dispatch run_tests=true）时门禁保留（补覆盖率仍以加测试为正道）。
+      - name: Build & Unit Test
         working-directory: zw-insight-server
-        run: ${{ inputs.fast_deploy && 'mvn -B -DskipTests clean package' || 'mvn -B -T 1C clean verify' }}
+        run: ${{ inputs.fast_deploy && 'mvn -B -DskipTests clean package' || (inputs.run_tests && 'mvn -B -T 1C clean verify' || 'mvn -B -T 1C clean verify -Djacoco.skip=true') }}
 
       # 2026-09-16 用户决策：移除后端覆盖率基线比对门禁（原逐模块比对 tests/coverage-baseline.json 步骤）。
       # 保留：①pom 内置 jacoco 分档 check（mvn verify 阶段仍真实生效）②基线 JSON 留仓供本地自查。

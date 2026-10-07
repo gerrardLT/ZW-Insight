@@ -63,7 +63,7 @@ class ContractControllerTest {
 
         PageResult<BizConstructionContract> pageResult = new PageResult<>(
                 List.of(contract), 1, 1, 10, 1);
-        when(contractService.page(anyInt(), anyInt(), any(), any())).thenReturn(pageResult);
+        when(contractService.page(anyInt(), anyInt(), any(), any(), any(), any())).thenReturn(pageResult);
 
         mockMvc.perform(get("/api/v1/contract/page")
                         .param("page", "1")
