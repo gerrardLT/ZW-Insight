@@ -166,8 +166,9 @@ if [ -n "$PROJECT_ID" ]; then
     assert_http 2 "保证金申请-创建 HTTP"
     assert_body_code 200 "保证金申请-创建业务码"
 
+    # 查回：服务端雪花 ID 经 Jackson 序列化为字符串，registerId 须按字符串比对（--argjson 数字恒不命中）
     call GET "/api/v1/tender/deposit/apply?page=1&size=20&registerId=$REGISTER_ID"
-    DEPOSIT_APPLY_ID=$(jq -r --argjson rid "$REGISTER_ID" '.data.records[] | select(.registerId==$rid) | .id' /tmp/zwi_body 2>/dev/null | head -1)
+    DEPOSIT_APPLY_ID=$(jq -r --arg rid "$REGISTER_ID" '.data.records[] | select(.registerId==$rid) | .id' /tmp/zwi_body 2>/dev/null | head -1)
     TOTAL_COUNT=$((TOTAL_COUNT + 1))
     if [ -n "$DEPOSIT_APPLY_ID" ]; then
       PASS_COUNT=$((PASS_COUNT + 1)); log "  PASS [$TOTAL_COUNT] 保证金申请-查回ID: $DEPOSIT_APPLY_ID"
