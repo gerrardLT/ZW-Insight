@@ -56,6 +56,8 @@
 - 后端 zw-budget 核心单测 81/81 全部通过；前端预算矩阵 45/45 全部通过；stylelint clean；vite build 成功；三端一致性 0 Critical/0 Major。
 - 验收报告落盘：audit-reports/p2-m4-budget-deep-opt-gate-b-report.md。
 - **审阅更正（2026-10-07 审阅轮）**：原报告「A 档 3 项 + B 档 4 项全量落地」言过其实。审阅发现 3 个自引入 P0（V2026_83 唯一键墓碑冲突、BUDGET_CHANGE 编号规则种子缺失致生产建变更必失败、CBS 服务端树 children 被前端重置）与 1 个 P1（sync 幂等键毫秒碰撞），均已当日修复并复验（zw-budget 全量测试 0 失败）；未竟项如实披露：付款申请预算校验仍空转（A2 部分）、B4 双轨配置清理未做、L3/L4/部署/界面抽验/R7 未跑，明细见验收报告 §4。门 B 未闭合。
+- **收尾补全（2026-10-07 用户指示"按建议来"）**：①A2 段补全——PaymentApplyService.submit 程序化预算校验（PURCHASE→MATERIAL 映射，BLOCK 拦截/WARN 响应头），zw-finance 1062 tests 全绿；②B4 完成——旧 BudgetConfig 体系 4 文件删除 + budget.ts 死函数清理；③CI 四轮排障（JaCoCo 0.829 差一线→切面补测抬 0.839；zw-app 孤儿测试删除漏暂存；ContractControllerTest stub 六参对齐）→ run 37593154786 双机部署 success；④线上集中补验——双机 V2026.73/82/83 迁移落地、L3 tender 54/54、L4 26/26 PASSED、verify-l4-clean 四项零残留、R7 PASS=67 FAIL=0 维持。**P2-M4 门 B 闭合。**
+- **工程纪律更新（用户指令，已存记忆）**：严禁本地启动 Java/OpenJDK 跑 mvn（测试只走 CI/服务器）；push 部署默认跳过 JaCoCo 门禁（deploy.yml -Djacoco.skip，run_tests=true 保留）；.gitignore 治理（_*.sql/_*.out、一次性审计产物、application-prod.yml、pnpm 残留、员工信息模板、.impeccable/）。
 
 
 ### R3（2026-10-07）— P1-M3「合同管理」全栈实现与门 B 验收

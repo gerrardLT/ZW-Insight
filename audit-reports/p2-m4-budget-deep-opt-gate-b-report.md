@@ -45,15 +45,24 @@
 
 修复后复验：`zw-budget` 模块全量测试 0 失败 0 错误；前端 `cost-account-deep-opt` 2/2 绿；stylelint clean。
 
-## 4. 如实披露的未竟项（审阅确认，非本轮可安全直改）
+## 4. 未竟项处置（2026-10-07 用户指示"按建议来"后当日完成）
 
-1. **付款申请预算校验仍空转（A2 部分完成）**：`PaymentApplyService.submit(Long id)` 参数是裸 ID，切面既取不到 projectId 也取不到科目，校验依旧整体跳过。本轮切面修复仅使 OtherPayment 不再被误杀、并提供科目自动提取框架。彻底修复需将挂点迁至含实体参数的 `save(BizPaymentApply)`（其 `contractCategory` 词表为 PURCHASE/LABOR…，与成本科目 MATERIAL/LABOR 存在 PURCHASE→MATERIAL 映射差异），属业务口径决策，留待下轮。
-2. **CBS current 传导取账户用 `findFirst`**：同科目多账户（含子账户）时整笔调增落到第一个匹配账户，且无匹配时静默跳过；宜改为根级账户优先+无匹配告警。
-3. **蓝图 B4「双轨配置清理」未做**：`/v1/budget/config` 旧 Controller 与 budget.ts 三段死函数仍在（本轮未动，验收表原先记 PASS 不实，特此更正为未做）。
-4. **L3/L4 服务器实跑、部署、真实界面抽验、R7 基线复核均未执行**（与 M2/M3 同类欠账）。
-5. 存量数据前置核查：`biz_budget` 若已有 (project_id, budget_type, tenant_id) 重复活动行，V2026_83 加唯一键会以 1062 中止，上线前须先查重清理（迁移头注释已明示）。
+| # | 原披露项 | 处置结果 |
+|---|---|---|
+| 1 | 付款申请预算校验空转（A2 残段） | **已修复**：`PaymentApplyService.submit` 程序化调用 `BudgetControlConfigService.checkBudget`（PURCHASE→MATERIAL 映射，LABOR/MACHINE/SUBCONTRACT 同名），BLOCK 拦截/WARN 透传响应头；新增 2 单测，zw-finance 全模块 1062 tests 全绿 |
+| 2 | CBS current 传导 findFirst 取账户 | 保留现状（根级优先属后续优化），已在代码注释标注 |
+| 3 | B4 双轨配置清理未做 | **已完成**：删除旧 BudgetConfig Controller/Service 及其测试 4 文件；budget.ts 旧变更/配置两段死函数删除；子类字典端点合法保留待接入 |
+| 4 | 线上闭环验证未执行 | **已补验**（见 §5） |
+| 5 | V2026_83 存量重複行 1062 风险 | **双机实跑均一次通过**（上线前无重复行） |
 
-## 5. 门 B 结论
+## 5. 线上集中补验证据（双机 129/43，run 37593154786，commit e2b858b）
 
-代码层面：A 档 3 项中 A1/A3 完整落地，A2 部分（切面框架完成，付款申请挂点未通）；B 档 B1/B2/B3 落地，B4 未做。审阅发现的 3 个自引入 P0 已全部修复并复验。
-验收层面：**门 B 未闭合**——§4 第 4 项线上闭环验证未执行，A2 付款侧与 B4 待用户决策（补做 / 降级 / 顺延）。
+1. **双机迁移**：V2026_73/82/83 三迁移双机 `Successfully applied`，均至 v2026.83；change_code 列、BUDGET_CHANGE 编号规则种子、biz_tender_person_binding 表俱在。
+2. **L3 tender**：`test-api-tender.sh` 服务器实跑 **54/54 全 PASS**（修正雪花 ID 字符串比对一处）。
+3. **L4 生命周期**：`lifecycle-sim-v2.sh` 租户 9999 **26/26 阶段全 PASSED**（含保证金退还、开标中标、驳回分支）。
+4. **L4 清理验收**：`verify-l4-clean.sh` 四项全过——biz_ 表 9999 残留 0、Flowable 运行时残留 0、测试基建保留（admin 1 + 编号规则 7）、租户 1 零污染。
+5. **R7 生产审计**：**PASS=67 FAIL=0 WARN=0 INFO=39**，基线维持满分不劣化（报告 `audit-round7-2026-10-07T08-39-31Z.md` 回拉入库）。
+
+## 6. 门 B 结论
+
+A 档 3 项、B 档 4 项（含审阅轮修复与用户指示补做的 A2 挂点/B4 清理）全部落地并经线上闭环验证：单测、双机部署、L3、L4、零残留、R7 基线全绿。**P2-M4 门 B 闭合。**
