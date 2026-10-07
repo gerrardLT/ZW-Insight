@@ -35,14 +35,14 @@
           <template #default="{ row }">{{ formatAmount(row.settlementAmount) }}</template>
         </el-table-column>
         <el-table-column prop="settlementDate" label="结算日期" width="110" />
-        <el-table-column label="状态" width="90" align="center">
+        <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'APPROVED' ? 'success' : 'warning'" size="small">
-              {{ row.status === 'APPROVED' ? '已审批' : '草稿' }}
+            <el-tag :type="row.status === 'APPROVED' ? 'success' : row.status === 'SUBMITTED' ? 'warning' : 'info'" size="small">
+              {{ row.status === 'APPROVED' ? '已审批' : row.status === 'SUBMITTED' ? '审批中' : '草稿' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <template v-if="row.status === 'DRAFT'">
               <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
@@ -50,6 +50,7 @@
               <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
             </template>
             <span v-else style="color: var(--zw-text-tertiary)">已审批</span>
+            <el-button v-if="row.status === 'APPROVED'" link type="primary" class="ml-2" @click="handleApplyPayment(row)">发起付款</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -97,6 +98,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import {
@@ -210,6 +212,20 @@ async function handleDelete(row: any) {
   await deletePurchaseSettlement(row.id)
   ElMessage.success('删除成功')
   loadData()
+}
+
+const router = useRouter()
+
+function handleApplyPayment(row: any) {
+  router.push({
+    path: '/finance/payment-apply',
+    query: {
+      projectId: row.projectId,
+      contractId: row.contractId,
+      contractCategory: 'PURCHASE',
+      applyAmount: row.settlementAmount
+    }
+  })
 }
 
 onMounted(() => { loadContracts(); loadData() })

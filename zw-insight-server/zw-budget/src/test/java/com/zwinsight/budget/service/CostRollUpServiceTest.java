@@ -238,15 +238,13 @@ class CostRollUpServiceTest {
         }
 
         @Test
-        @DisplayName("材料实际 = 采购结算 + 出库消耗，两者累加到同一账户")
-        void materialActualCombinesSettlementAndOutbound() {
+        @DisplayName("材料实际成本：已审批采购结算驱动（PI-4 权威口径），不双计出库消耗")
+        void actualCostAccumulatesFromSettlements() {
             BizCostAccount mat = account(1001L, "01", "材料", "MATERIAL", "0", "0");
             when(costAccountMapper.selectByProject(PROJECT_ID)).thenReturn(List.of(mat));
             when(linkMapper.selectByProject(PROJECT_ID)).thenReturn(List.of());
             when(rollUpMapper.listPurchaseSettlements(PROJECT_ID))
-                    .thenReturn(List.of(doc(700L, "PS-001", "30000")));
-            when(rollUpMapper.listMaterialOutbounds(PROJECT_ID))
-                    .thenReturn(List.of(doc(888L, "OUT-001", "20000")));
+                    .thenReturn(List.of(doc(700L, "PS-001", "30000"), doc(701L, "PS-002", "20000")));
             when(costLedgerService.post(any())).thenReturn(CostLedgerService.PostResult.POSTED);
 
             rollUpService.rollup(PROJECT_ID);
@@ -284,26 +282,6 @@ class CostRollUpServiceTest {
 
             assertThat(commitmentCmd.deltaAmount()).isEqualByComparingTo("200000");
             assertThat(actualCmd.deltaAmount()).isEqualByComparingTo("80000");
-        }
-
-        @Test
-        @DisplayName("材料退货（负金额出库）自然冲减实际成本，无需特判")
-        void negativeOutboundOffsetsActual() {
-            BizCostAccount mat = account(1001L, "01", "材料", "MATERIAL", "0", "50000");
-            when(costAccountMapper.selectByProject(PROJECT_ID)).thenReturn(List.of(mat));
-            when(linkMapper.selectByProject(PROJECT_ID)).thenReturn(List.of());
-            when(rollUpMapper.listMaterialOutbounds(PROJECT_ID)).thenReturn(List.of(
-                    doc(888L, "OUT-001", "50000"),
-                    doc(889L, "RET-001", "-8000")));   // 退货单
-            when(costLedgerService.post(any())).thenReturn(CostLedgerService.PostResult.POSTED);
-
-            rollUpService.rollup(PROJECT_ID);
-
-            ArgumentCaptor<CostLedgerService.PostCommand> captor =
-                    ArgumentCaptor.forClass(CostLedgerService.PostCommand.class);
-            verify(costLedgerService).post(captor.capture());
-            // target = 50000 - 8000 = 42000，current = 50000 → delta = -8000
-            assertThat(captor.getValue().deltaAmount()).isEqualByComparingTo("-8000");
         }
     }
 

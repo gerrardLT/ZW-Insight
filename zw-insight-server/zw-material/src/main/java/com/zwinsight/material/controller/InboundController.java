@@ -40,9 +40,9 @@ public class InboundController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody BizMaterialInbound inbound) {
+    public R<Long> save(@RequestBody BizMaterialInbound inbound) {
         inboundService.save(inbound, inbound.getDetails() != null ? inbound.getDetails() : List.of());
-        return R.ok();
+        return R.ok(inbound.getId());
     }
 
     @PutMapping("/{id}")

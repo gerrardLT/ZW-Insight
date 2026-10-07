@@ -77,14 +77,18 @@ public class MaterialInboundService {
                 detail.setId(null);
                 detail.setInboundId(inbound.getId());
                 if (detail.getTotalPrice() == null && detail.getUnitPrice() != null && detail.getQuantity() != null) {
-                    detail.setTotalPrice(detail.getUnitPrice().multiply(detail.getQuantity()));
+                    detail.setTotalPrice(detail.getUnitPrice().multiply(detail.getQuantity()).setScale(2, RoundingMode.HALF_UP));
                 }
                 totalAmount = totalAmount.add(detail.getTotalPrice() != null ? detail.getTotalPrice() : BigDecimal.ZERO);
                 inboundDetailMapper.insert(detail);
             }
-            inbound.setTotalAmount(totalAmount);
+            existing.setTotalAmount(totalAmount);
         }
-        inboundMapper.updateById(inbound);
+        // PI-5: 白名单防篡改：状态保持 DRAFT
+        existing.setInboundDate(inbound.getInboundDate());
+        existing.setContractId(inbound.getContractId());
+        existing.setDirectOutbound(inbound.getDirectOutbound());
+        inboundMapper.updateById(existing);
     }
 
     /**
@@ -124,7 +128,11 @@ public class MaterialInboundService {
                 if (contract != null) {
                     BigDecimal cumulative = contract.getCumulativeInbound() != null ? contract.getCumulativeInbound() : BigDecimal.ZERO;
                     BigDecimal inboundAmount = existing.getTotalAmount() != null ? existing.getTotalAmount() : BigDecimal.ZERO;
-                    contract.setCumulativeInbound(cumulative.subtract(inboundAmount).max(BigDecimal.ZERO));
+                    BigDecimal target = cumulative.subtract(inboundAmount);
+                    if (target.compareTo(BigDecimal.ZERO) < 0) {
+                        throw new BusinessException("删除入库单导致合同累计入库金额为负，拒绝操作");
+                    }
+                    contract.setCumulativeInbound(target);
                     purchaseContractMapper.updateById(contract);
                 }
             }
@@ -152,7 +160,7 @@ public class MaterialInboundService {
         for (BizMaterialInboundDetail detail : details) {
             detail.setInboundId(inbound.getId());
             if (detail.getTotalPrice() == null && detail.getUnitPrice() != null && detail.getQuantity() != null) {
-                detail.setTotalPrice(detail.getUnitPrice().multiply(detail.getQuantity()));
+                detail.setTotalPrice(detail.getUnitPrice().multiply(detail.getQuantity()).setScale(2, RoundingMode.HALF_UP));
             }
             totalAmount = totalAmount.add(detail.getTotalPrice() != null ? detail.getTotalPrice() : BigDecimal.ZERO);
             inboundDetailMapper.insert(detail);

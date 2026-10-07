@@ -36,3 +36,9 @@
 ## 3. 门 B 结论
 
 P1-M3「合同管理」A 档 3 项、B 档 4 项及 CI-1 至 CI-5 不变量代码与页面实现全部就绪，测试门禁均已通过。
+
+---
+
+## 4. 更正（2026-10-07 P3-M5 复审连带发现）
+
+§1 表 A3 行中「②修复产值上报参数名错位（pageNum/pageSize→page/size）」**为假阳性**：`utils/request.ts` 全局拦截器早已统一映射 pageNum→page（request.ts:60-70），output-report.vue 翻页从未失效。当时为对齐该"缺陷"给 `ContractController.page` 增加的 pageNum/pageSize 别名参数属无害冗余，非必要修复。A3 真正生效的修复仅为①（save 返回 ID 根治明细 /undefined/details）。本行证据同源自 P3-M5 前端考古子代理，P3-M5 复审时亲验拦截器后推翻。

@@ -602,6 +602,12 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '库存查询', icon: 'Search' }
       },
       {
+        path: 'inventory',
+        name: 'MaterialInventory',
+        component: () => import('@/views/material/inventory.vue'),
+        meta: { title: '材料盘点', icon: 'DocumentChecked' }
+      },
+      {
         path: 'refund',
         name: 'MaterialRefund',
         component: () => import('@/views/material/refund.vue'),

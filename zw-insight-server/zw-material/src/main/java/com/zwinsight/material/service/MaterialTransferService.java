@@ -186,7 +186,11 @@ public class MaterialTransferService {
         Long from = transfer.getFromProjectId() != null ? transfer.getFromProjectId() : existing.getFromProjectId();
         Long to = transfer.getToProjectId() != null ? transfer.getToProjectId() : existing.getToProjectId();
         validateDistinctProject(from, to);
-        transferMapper.updateById(transfer);
+        // PI-5: 白名单防篡改：状态保持 DRAFT
+        existing.setFromProjectId(from);
+        existing.setToProjectId(to);
+        existing.setTransferDate(transfer.getTransferDate());
+        transferMapper.updateById(existing);
     }
 
     /** 调出与调入项目不得相同（盲点 11a 后端守卫） */

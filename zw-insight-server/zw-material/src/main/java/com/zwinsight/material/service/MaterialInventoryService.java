@@ -122,7 +122,9 @@ public class MaterialInventoryService {
         BizMaterialInventory existing = inventoryMapper.selectById(inventory.getId());
         if (existing == null) throw new BusinessException("盘点单不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
-        inventoryMapper.updateById(inventory);
+        // PI-5: 白名单防篡改：状态保持 DRAFT
+        existing.setInventoryDate(inventory.getInventoryDate());
+        inventoryMapper.updateById(existing);
     }
 
     public void delete(Long id) {

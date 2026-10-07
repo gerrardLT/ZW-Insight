@@ -112,8 +112,11 @@ public class BidRankingService {
         bidResult.setIsWinner(1);
         bidResultMapper.updateById(bidResult);
 
-        // 更新询价单状态为 AWARDED
+        // P3-M5 B4: 回填询价主表中标方全量信息，闭环定标与公示数据源
         inquiry.setStatus("AWARDED");
+        inquiry.setWinnerName(bidResult.getSupplierName());
+        inquiry.setWinnerAmount(bidResult.getTotalAmount());
+        inquiry.setAwardDate(java.time.LocalDate.now());
         inquiryMapper.updateById(inquiry);
     }
 

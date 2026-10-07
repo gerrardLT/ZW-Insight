@@ -83,21 +83,15 @@ public class MaterialOutboundService {
                 throw new BusinessException("材料[" + detail.getMaterialName() + "]出库数量必须大于0");
             }
 
-            if ("PICK".equals(outbound.getOutboundType())) {
-                if (stock == null || stock.getStockQuantity().compareTo(qty) < 0) {
-                    throw new BusinessException("材料[" + detail.getMaterialName() + "]库存不足");
-                }
-                stock.setStockQuantity(stock.getStockQuantity().subtract(qty));
-                stock.setTotalOutbound(stock.getTotalOutbound().add(qty));
-            } else {
-                // 退货
-                if (stock == null || stock.getStockQuantity().compareTo(qty) < 0) {
-                    throw new BusinessException("材料[" + detail.getMaterialName() + "]库存不足，无法退货");
-                }
-                stock.setStockQuantity(stock.getStockQuantity().subtract(qty));
-                stock.setTotalReturn(stock.getTotalReturn().add(qty));
+            // PI-1: 原子扣减库存，带 stock_quantity >= qty 数据库排他下限守卫
+            if (stock == null) {
+                throw new BusinessException("材料[" + detail.getMaterialName() + "]暂无库存记录");
             }
-            stockMapper.updateById(stock);
+            boolean isPick = "PICK".equals(outbound.getOutboundType());
+            int affected = stockMapper.deductStock(stock.getId(), qty, isPick);
+            if (affected == 0) {
+                throw new BusinessException("材料[" + detail.getMaterialName() + "]库存不足（当前库存可能已被其他出库占用）");
+            }
         }
 
         // 退货出库且关联了采购合同时，发布退货事件以触发退款申请生成
@@ -149,7 +143,12 @@ public class MaterialOutboundService {
         BizMaterialOutbound existing = outboundMapper.selectById(outbound.getId());
         if (existing == null) throw new BusinessException("出库单不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
-        outboundMapper.updateById(outbound);
+        // PI-5: 白名单防篡改：状态保持 DRAFT
+        existing.setOutboundDate(outbound.getOutboundDate());
+        existing.setOutboundType(outbound.getOutboundType());
+        existing.setReturnType(outbound.getReturnType());
+        existing.setContractId(outbound.getContractId());
+        outboundMapper.updateById(existing);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -176,13 +175,9 @@ public class MaterialOutboundService {
                 continue;
             }
             BigDecimal qty = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
-            stock.setStockQuantity(stock.getStockQuantity().add(qty));
-            if ("PICK".equals(existing.getOutboundType())) {
-                stock.setTotalOutbound(stock.getTotalOutbound().subtract(qty));
-            } else {
-                stock.setTotalReturn(stock.getTotalReturn().subtract(qty));
-            }
-            stockMapper.updateById(stock);
+            // PI-1: 原子回填库存
+            boolean isPick = "PICK".equals(existing.getOutboundType());
+            stockMapper.revertOutbound(stock.getId(), qty, isPick);
             outboundDetailMapper.deleteById(detail.getId());
         }
 

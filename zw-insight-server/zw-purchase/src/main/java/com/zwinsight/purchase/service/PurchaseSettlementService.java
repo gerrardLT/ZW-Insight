@@ -211,17 +211,59 @@ public class PurchaseSettlementService {
                 "PURCHASE_SETTLEMENT", id, "purchase_settlement_approval", variables);
 
         settlement.setWorkflowInstanceId(processInstanceId);
+        // PI-3: 提交仅进入审批中状态（SUBMITTED），审批通过后再置 APPROVED 并原子累加合同累计结算
+        settlement.setStatus("SUBMITTED");
+        settlementMapper.updateById(settlement);
+    }
+
+    /**
+     * 审批通过回调（幂等：仅 SUBMITTED 态可生效，原子累加合同累计结算，PI-2/PI-3）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onApproved(Long id) {
+        BizPurchaseSettlement settlement = settlementMapper.selectById(id);
+        if (settlement == null) {
+            log.warn("采购结算审批通过回调：单据不存在, id={}", id);
+            return;
+        }
+        if ("APPROVED".equals(settlement.getStatus())) {
+            log.info("采购结算已生效，跳过重复回调, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(settlement.getStatus())) {
+            log.warn("采购结算当前状态非 SUBMITTED，忽略生效回调: id={}, status={}", id, settlement.getStatus());
+            return;
+        }
+
         settlement.setStatus("APPROVED");
         settlementMapper.updateById(settlement);
 
-        // 回写合同累计结算金额
-        BizPurchaseContract contract = contractMapper.selectById(settlement.getContractId());
-        if (contract != null) {
-            BigDecimal current = contract.getCumulativeSettlement() != null
-                    ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
-            contract.setCumulativeSettlement(current.add(settlement.getSettlementAmount()));
-            contractMapper.updateById(contract);
+        // PI-2: 改用原子 addSettlement SQL 累加，杜绝读改写并发丢失
+        if (settlement.getContractId() != null && settlement.getSettlementAmount() != null) {
+            contractMapper.addSettlement(settlement.getContractId(), settlement.getSettlementAmount());
+            log.info("采购结算审批通过并原子回写合同结算额: settlementId={}, contractId={}, amount={}",
+                    id, settlement.getContractId(), settlement.getSettlementAmount());
         }
+    }
+
+    /**
+     * 审批驳回/撤回回调（仅 SUBMITTED 可回退 DRAFT）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onRejected(Long id) {
+        BizPurchaseSettlement settlement = settlementMapper.selectById(id);
+        if (settlement == null) {
+            log.warn("采购结算审批驳回回调：单据不存在, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(settlement.getStatus())) {
+            log.warn("采购结算当前状态非 SUBMITTED，忽略驳回回调: id={}, status={}", id, settlement.getStatus());
+            return;
+        }
+
+        settlement.setStatus("DRAFT");
+        settlementMapper.updateById(settlement);
+        log.info("采购结算审批驳回回退草稿: id={}", id);
     }
 
     // ===== 私有方法 =====

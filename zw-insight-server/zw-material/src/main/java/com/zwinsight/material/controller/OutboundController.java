@@ -41,9 +41,9 @@ public class OutboundController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody BizMaterialOutbound outbound) {
+    public R<Long> save(@RequestBody BizMaterialOutbound outbound) {
         outboundService.save(outbound, outbound.getDetails() != null ? outbound.getDetails() : List.of());
-        return R.ok();
+        return R.ok(outbound.getId());
     }
 
     @PutMapping("/{id}")

@@ -136,11 +136,9 @@ public class CostRollUpService {
         allocate(projectId, CAT_SUBCONTRACT, SRC_CONTRACT, "SUBCONTRACT_CONTRACT",
                 rollUpMapper.listSubcontracts(projectId), accounts, bindingIndex, targets, report, 0);
 
-        // ---- 实际成本：已审批结算 + 材料出库消耗 ----
+        // ---- 实际成本：五类支出合同的已审批结算（PI-4 / AGENTS.md 权威口径：剔除材料出库消耗双计项） ----
         allocate(projectId, CAT_MATERIAL, SRC_SETTLEMENT, "PURCHASE_SETTLEMENT",
                 rollUpMapper.listPurchaseSettlements(projectId), accounts, bindingIndex, targets, report, 1);
-        allocate(projectId, CAT_MATERIAL, SRC_MATERIAL, "MATERIAL_OUTBOUND",
-                rollUpMapper.listMaterialOutbounds(projectId), accounts, bindingIndex, targets, report, 1);
         allocate(projectId, CAT_LABOR, SRC_SETTLEMENT, "LABOR_SETTLEMENT",
                 rollUpMapper.listLaborSettlements(projectId), accounts, bindingIndex, targets, report, 1);
         allocate(projectId, CAT_MACHINE, SRC_SETTLEMENT, "MACHINE_WORK_SETTLEMENT",

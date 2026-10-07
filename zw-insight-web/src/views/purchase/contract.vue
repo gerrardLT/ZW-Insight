@@ -11,7 +11,8 @@
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
             <el-option label="草稿" value="DRAFT" />
-            <el-option label="生效" value="EFFECTIVE" />
+            <el-option label="审批中" value="SUBMITTED" />
+            <el-option label="已生效" value="EFFECTIVE" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -32,10 +33,10 @@
           <template #default="{ row }">{{ row.contractAmount?.toLocaleString() }}</template>
         </el-table-column>
         <el-table-column prop="signingDate" label="签订日期" width="110" />
-        <el-table-column label="状态" width="90" align="center">
+        <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'EFFECTIVE' ? 'success' : 'info'" size="small">
-              {{ row.status === 'EFFECTIVE' ? '生效' : '草稿' }}
+            <el-tag :type="row.status === 'EFFECTIVE' ? 'success' : row.status === 'SUBMITTED' ? 'warning' : 'info'" size="small">
+              {{ row.status === 'EFFECTIVE' ? '已生效' : row.status === 'SUBMITTED' ? '审批中' : '草稿' }}
             </el-tag>
           </template>
         </el-table-column>

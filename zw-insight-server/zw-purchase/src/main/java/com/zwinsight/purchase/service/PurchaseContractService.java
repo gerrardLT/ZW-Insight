@@ -15,6 +15,7 @@ import com.zwinsight.purchase.mapper.BizPurchaseContractDetailMapper;
 import com.zwinsight.purchase.mapper.BizPurchaseContractMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ import java.util.Map;
 /**
  * 采购合同服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PurchaseContractService {
@@ -102,7 +104,16 @@ public class PurchaseContractService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
-        purchaseContractMapper.updateById(contract);
+        // PI-5: 白名单防篡改：只允许更新业务描述字段，状态与累计字段由业务生命周期强管控
+        existing.setContractName(contract.getContractName());
+        existing.setPartyBId(contract.getPartyBId());
+        existing.setPartyBName(contract.getPartyBName());
+        existing.setSupplierName(contract.getSupplierName());
+        existing.setSigningDate(contract.getSigningDate());
+        existing.setBudgetId(contract.getBudgetId());
+        existing.setContractAmount(contract.getContractAmount());
+        existing.setPaymentTerms(contract.getPaymentTerms());
+        purchaseContractMapper.updateById(existing);
     }
 
     /**
@@ -127,8 +138,53 @@ public class PurchaseContractService {
                 "PURCHASE_CONTRACT", id, "purchase_contract_approval", variables);
 
         contract.setWorkflowInstanceId(processInstanceId);
+        // PI-3: 提交仅进入审批中状态（SUBMITTED），审批通过后再由监听器置为 EFFECTIVE
+        contract.setStatus("SUBMITTED");
+        purchaseContractMapper.updateById(contract);
+    }
+
+    /**
+     * 审批通过回调（幂等：仅处于 SUBMITTED 态可置为 EFFECTIVE）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onApproved(Long id) {
+        BizPurchaseContract contract = purchaseContractMapper.selectById(id);
+        if (contract == null) {
+            log.warn("采购合同审批通过回调：单据不存在, id={}", id);
+            return;
+        }
+        if ("EFFECTIVE".equals(contract.getStatus())) {
+            log.info("采购合同已生效，跳过重复回调, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(contract.getStatus())) {
+            log.warn("采购合同当前状态非 SUBMITTED，忽略生效回调: id={}, status={}", id, contract.getStatus());
+            return;
+        }
+
         contract.setStatus("EFFECTIVE");
         purchaseContractMapper.updateById(contract);
+        log.info("采购合同审批通过生效: id={}, contractCode={}", id, contract.getContractCode());
+    }
+
+    /**
+     * 审批驳回/撤回回调（仅 SUBMITTED 可回退 DRAFT）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onRejected(Long id) {
+        BizPurchaseContract contract = purchaseContractMapper.selectById(id);
+        if (contract == null) {
+            log.warn("采购合同审批驳回回调：单据不存在, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(contract.getStatus())) {
+            log.warn("采购合同当前状态非 SUBMITTED，忽略驳回回调: id={}, status={}", id, contract.getStatus());
+            return;
+        }
+
+        contract.setStatus("DRAFT");
+        purchaseContractMapper.updateById(contract);
+        log.info("采购合同审批驳回回退草稿: id={}", id);
     }
 
     /**
