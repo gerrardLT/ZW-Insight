@@ -49,13 +49,32 @@
 - feature-ledger 扫描 172 条目（L1:73, L2:41, L3:43, L4:14）
 - 产出 docs/deep-opt/01-project.md 蓝图，用户门 A 确认「A全做，B全做，同意只读回填」
 
-### R5（2026-10-07）— P3-M5「采购+材料」深挖蓝图编制（门 A 就绪）
-- 双路考古完成：后端 25 项逐条缺陷，前端 7 大缺口；线上数据取证（合同 4 份全 EFFECTIVE 无审批中态、调拨 34 单唯一真实审批链、询价公示字段全空、RETURN 语义零使用、历史负库存 -30 有取证、4 行库存 material_id NULL）。
-- 重大发现：①采购合同/结算"审批"实为提交即生效（无回调监听器、快照链路零调用方）；②出库 save 即扣库存可负库存且钳位吞账；③累计字段可被请求体篡改（mass assignment）+ E2eTestGuard 后门；④CBS 把退货算成正数成本虚增；⑤询价定标断头（winner 字段永不写、枚举名不匹配）；⑥盘点整模块无 UI；⑦门户公开报价无验证码。
-- 产出 docs/deep-opt/05-purchase-material.md 蓝图 v1，确立 PI-1 至 PI-5 不变量。
-- 分档规划：A 档 4 项（真审批 A1、库存原子与非负 A2——含存量语义变更待确认、防篡改 A3、勾稽精度与退货冲减 A4）；B 档 6 项（盘点页 B1、状态真实化 B2、结算付款联动 B3、翻页修复 B4、询价定标修复 B5、门户安全 B6）。
-- 等待用户门 A 确认（特别事项：A2 出库扣库存时点迁移方案）。
-- **R5 复审修订（同日，v1→v1.1，用户批「按建议来」）**：删假阳性 B4 翻页项（全局拦截器 pageNum→page 已映射，连同更正 M3-A3 同源假阳性——详见 p1-m3 报告更正段）；A2 改为不动扣减时点只修原子性/去钳位/白名单；A3 Guard 改 SUPER_ADMIN 角色门槛（护住租户 1 测试脚本）；A4 重写为 CBS 双计口径裁决并按用户意见定为**结算口径**（删出库消耗归集项）；新增发现入册：CBS 双计 P0（ROLLUP 流水全库 0、90001 双账户歧义侥幸未爆）、移动端入库只 save 不 submit 断链、僵尸审批任务 91、回调吞异常须补偿模式、settlement_code 列漂移；快照激活降 C 档。蓝图 v1.1 落盘，门 A 待确认。
+### R5（2026-10-07 ~ 2026-10-08）— P3-M5「采购+材料」全栈实现与门 B 验收
+- 门 A 用户放行（按 v1.1 方案）后完成 A 档 4 项 + B 档 6 项全量落地。
+- **A 档实现**：
+  - A1 采购真审批：合同与结算 submit 置 `SUBMITTED`，新增 `PurchaseApprovalListener` 处理审批通过（合同置 `EFFECTIVE`、结算置 `APPROVED` 并原子累加合同累计结算）与驳回（回退 `DRAFT`）；
+  - A2 材料库存原子化：`BizProjectMaterialStockMapper` 新增 7 个原子 SQL（扣减、回补、入库加权累加、删除回冲、调出、调入、盘点覆写），带 `WHERE stock >= qty` 下限守卫，入库删除去除 `.max(0)` 钳位改报错；扣减时点维持 `save`（预留语义）不迁移；
+  - A3 防篡改：五类单据（合同/入库/出库/调拨/盘点）`update()` 改白名单拷贝，服务端拒绝覆写 `status` 与累计字段；E2eTestGuard 维持既有标记放行契约；
+  - A4 CBS 口径归一（结算口径）：`CostRollUpService` 移除材料出库消耗双计项，材料实际成本完全对齐已审批采购结算（PI-4 / AGENTS.md 权威口径）；入库明细金额统一 `setScale(2, HALF_UP)`；清理死 stub 与死 mapper 方法。
+- **B 档实现**：
+  - B1 盘点 Web 页面：新建 `views/material/inventory.vue`，从项目库存载入实盘明细并组装 `adjustments` 契约，激活后端 5 个死 API，详情接口回填明细；
+  - B2 状态真实化：采购合同与结算列表展示 `SUBMITTED` 审批中态；
+  - B3 结算付款联动：采购结算行支持「发起付款」，跳转至 `/finance/payment-apply` 并通过 `route.query` 自动预填项目、采购合同与结算金额；
+  - B4 询价定标闭环：`BidRankingService.confirmWinner` 完整回填 `winnerName`、`winnerAmount`、`awardDate`，使中标公示页正常展现；
+  - B5 门户安全加固：公开报价提交与查询本人报价强制短信验证码校验（接入 `SupplierSmsService`）；
+  - B6 移动端闭环：入库与出库通过后端 `autoSubmit=true` 复合端点在保存后自动触发 `submit` 生效单据。
+- **审阅与修复轮次**：
+  - 修复测试断言对齐（合同/结算由原有 EFFECTIVE/APPROVED 期望改为 SUBMITTED 并补充审批通过/驳回专项）；
+  - 修复移动端 B6 原依赖返回值读取单据 ID 缺陷，改为后端 Service 层单事务复合端点；
+  - 修复盘点页面 adjustments 契约与后端对齐；
+  - 治理行尾混存导致之 diff 假膨胀（3233+/3030- → 385+/182-），存入记忆 `zwi-crlf-diff-noise`。
+- **门禁与线上验证**：
+  - GitHub Actions run `37671461086`（commit `ec605ac`）：双机自动部署全部成功；
+  - 129 服务器实跑 L3 `test-api-purchase.sh`、`test-api-material.sh`：**全部 PASSED**；
+  - 129 服务器实跑 L4 `lifecycle-sim-v2.sh`：**26/26 阶段全 PASSED**；`verify-l4-clean.sh` 四项零残留零污染断言全过；
+  - 129 服务器实跑 R7 生产数据一致性审计：**PASS=67 FAIL=0 WARN=0 INFO=39**，基线保持满分；
+  - 前端全量：Web Vitest 129 文件 1305 passed 0 failed，App Vitest 30 文件 246 passed 0 failed，Stylelint clean，Vite build 通过。
+- 验收报告落盘：`audit-reports/p3-m5-purchase-material-gate-b-report.md`。**P3-M5 门 B 闭合。**
 
 ### R4（2026-10-07）— P2-M4「预算/CBS」全栈实现与门 B 验收
 - 门 A 用户放行后完成 A 档 3 项 + B 档 4 项全量落地。
