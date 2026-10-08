@@ -209,8 +209,21 @@ class FinalSettlementServiceTest {
         assertThatThrownBy(() -> service.onApproved(1L)).hasMessageContaining("无法生效");
 
         when(contractMapper.selectById(20L)).thenReturn(effectiveContract());
+        when(contractMapper.updateById(any(BizConstructionContract.class))).thenReturn(1);
         when(projectMapper.addSettlementAmount(10L, new BigDecimal("50000"))).thenReturn(0);
         assertThatThrownBy(() -> service.onApproved(1L)).hasMessageContaining("项目不存在");
+    }
+
+    @Test
+    @DisplayName("onApproved - 合同乐观锁冲突（updateById 返回 0）时抛异常，不继续累加项目结算额")
+    void onApproved_contractOptimisticLock_throws() {
+        when(settlementMapper.selectById(1L)).thenReturn(settlement("SUBMITTED"));
+        when(settlementMapper.update(isNull(), any())).thenReturn(1);
+        when(contractMapper.selectById(20L)).thenReturn(effectiveContract());
+        when(contractMapper.updateById(any(BizConstructionContract.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> service.onApproved(1L)).hasMessageContaining("已被他人修改");
+        verify(projectMapper, never()).addSettlementAmount(anyLong(), any());
     }
 
     @Test
