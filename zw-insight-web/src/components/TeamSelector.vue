@@ -23,6 +23,7 @@ import { getLaborTeamPage } from '@/api/labor'
 
 const props = withDefaults(defineProps<{
   modelValue?: number
+  projectId?: number
   width?: string
 }>(), {
   width: '100%'
@@ -41,10 +42,14 @@ watch(() => props.modelValue, (val) => {
   modelValue.value = val
 })
 
+watch(() => props.projectId, () => {
+  loadData()
+})
+
 async function loadData() {
   loading.value = true
   try {
-    const res: any = await getLaborTeamPage({ page: 1, size: 100 })
+    const res: any = await getLaborTeamPage({ page: 1, size: 100, projectId: props.projectId })
     options.value = res.data?.records || res.data || []
   } finally {
     loading.value = false

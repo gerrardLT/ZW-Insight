@@ -96,13 +96,13 @@ class LaborRosterServiceTest {
     }
 
     @Test
-    @DisplayName("save - 状态置 1 后插入")
+    @DisplayName("save - 状态默认置 0（未进场）后插入")
     void save_setsActiveStatus() {
         BizLaborRoster r = roster(null, 10L, "工人丙");
 
         service.save(r);
 
-        assertThat(r.getStatus()).isEqualTo(1);
+        assertThat(r.getStatus()).isEqualTo(0);
         verify(rosterMapper).insert(r);
     }
 

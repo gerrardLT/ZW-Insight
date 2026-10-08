@@ -36,6 +36,12 @@ class LaborContractServiceTest {
     @Mock
     private BizLaborContractMapper laborContractMapper;
 
+    @Mock
+    private com.zwinsight.file.service.SerialNumberService serialNumberService;
+
+    @Mock
+    private com.zwinsight.workflow.service.ApprovalService approvalService;
+
     @InjectMocks
     private LaborContractService laborContractService;
 
@@ -341,10 +347,12 @@ class LaborContractServiceTest {
     class SubmitTests {
 
         @Test
-        @DisplayName("提交 DRAFT 合同 - 状态变更为 EFFECTIVE")
+        @DisplayName("提交 DRAFT 合同 - 状态变更为 SUBMITTED 并发起审批流程")
         void submit_draftContract_becomesEffective() {
             // given
             when(laborContractMapper.selectById(1L)).thenReturn(sampleContract);
+            when(approvalService.startProcess(eq("LABOR_CONTRACT"), eq(1L), eq("labor_contract_approval"), any()))
+                    .thenReturn("proc-inst-123");
             when(laborContractMapper.updateById(any(BizLaborContract.class))).thenReturn(1);
 
             // when
@@ -352,7 +360,7 @@ class LaborContractServiceTest {
 
             // then
             verify(laborContractMapper).updateById(argThat(c ->
-                    "EFFECTIVE".equals(c.getStatus())
+                    "SUBMITTED".equals(c.getStatus()) && "proc-inst-123".equals(c.getWorkflowInstanceId())
             ));
         }
 

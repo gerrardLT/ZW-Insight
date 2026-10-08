@@ -99,7 +99,9 @@ public class SalaryStatisticsServiceImpl implements SalaryStatisticsService {
             BigDecimal teamPayable = sumField(teamPayrolls, BizLaborPayroll::getTotalSettlement);
             BigDecimal teamPaid = sumField(teamPayrolls, BizLaborPayroll::getTotalPaid);
             BigDecimal teamDeduction = teamPayable.subtract(teamPaid.add(sumField(teamPayrolls, BizLaborPayroll::getUnpaid)));
-            BigDecimal teamActual = teamPayable.subtract(teamDeduction);
+            // A5（2026-10-08 P3-M6）：实发=ΣtotalPaid 真实支付口径——未付金额由 unpaid 单独表达，
+            // 不得把未付推导为实发（M9 工资支付链接入前 totalPaid 仅为工资支付链驱动的真实值）
+            BigDecimal teamActual = teamPaid;
 
             // 统计班组人数（去重工人）
             List<BizWorkOrder> teamOrders = ordersByTeam.getOrDefault(teamId, Collections.emptyList());

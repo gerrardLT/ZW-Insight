@@ -71,7 +71,7 @@ public interface SettlementDataMapper {
      * <p>奖励增加应付支出、处罚从应付中扣减，用于最终结算支出汇总。</p>
      */
     @Select("SELECT COALESCE(SUM(CASE WHEN rp_type = 'REWARD' THEN amount ELSE -amount END), 0) FROM (" +
-            "SELECT rp_type, amount FROM biz_labor_reward_punish WHERE project_id = #{projectId} AND deleted = 0 " +
+            "SELECT rp_type, amount FROM biz_labor_reward_punish WHERE project_id = #{projectId} AND deleted = 0 AND status = 'APPROVED' " +
             "UNION ALL " +
             "SELECT rp_type, amount FROM biz_subcontract_reward_punish WHERE project_id = #{projectId} AND deleted = 0" +
             ") t")
@@ -81,7 +81,7 @@ public interface SettlementDataMapper {
      * 查询合同净奖惩金额（奖励为正、处罚为负；用于付款可付额度计算）
      */
     @Select("SELECT COALESCE(SUM(CASE WHEN rp_type = 'REWARD' THEN amount ELSE -amount END), 0) FROM (" +
-            "SELECT rp_type, amount FROM biz_labor_reward_punish WHERE contract_id = #{contractId} AND deleted = 0 " +
+            "SELECT rp_type, amount FROM biz_labor_reward_punish WHERE contract_id = #{contractId} AND deleted = 0 AND status = 'APPROVED' " +
             "UNION ALL " +
             "SELECT rp_type, amount FROM biz_subcontract_reward_punish WHERE contract_id = #{contractId} AND deleted = 0" +
             ") t")

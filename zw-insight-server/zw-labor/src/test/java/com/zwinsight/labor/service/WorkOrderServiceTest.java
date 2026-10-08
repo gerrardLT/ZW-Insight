@@ -26,6 +26,9 @@ class WorkOrderServiceTest {
     @Mock
     private BizWorkOrderMapper workOrderMapper;
 
+    @Mock
+    private com.zwinsight.labor.mapper.BizLaborRosterMapper rosterMapper;
+
     @InjectMocks
     private WorkOrderService workOrderService;
 

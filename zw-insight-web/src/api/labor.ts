@@ -43,6 +43,10 @@ export function deleteLaborOutput(id: number) {
   return request.delete(`/v1/labor/output-report/${id}`)
 }
 
+export function submitLaborOutput(id: number) {
+  return request.post(`/v1/labor/output-report/${id}/submit`)
+}
+
 // ======================== 劳务结算 ========================
 export function getLaborSettlementPage(params: any) {
   return request.get('/v1/labor/settlement/page', { params })
@@ -74,8 +78,16 @@ export function createLaborReward(data: any) {
   return request.post('/v1/labor/reward-punish', data)
 }
 
+export function updateLaborReward(data: any) {
+  return request.put(`/v1/labor/reward-punish/${data.id}`, data)
+}
+
 export function deleteLaborReward(id: number) {
   return request.delete(`/v1/labor/reward-punish/${id}`)
+}
+
+export function submitLaborReward(id: number) {
+  return request.post(`/v1/labor/reward-punish/${id}/submit`)
 }
 
 // ======================== 班组管理 ========================
@@ -164,6 +176,10 @@ export function deletePayroll(id: number) {
 export function submitPayroll(id: number) {
   // 后端仅注册 POST（PUT 405 实证，P2 方法探针）
   return request.post(`/v1/labor/payroll/${id}/submit`)
+}
+
+export function getPayrollDetailList(id: number) {
+  return request.get(`/v1/labor/payroll/${id}/details`)
 }
 
 // ======================== 薪资统计 ========================

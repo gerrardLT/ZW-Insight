@@ -48,8 +48,9 @@
             <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
+            <el-button link type="primary" @click="handleViewDetail(row)">工单明细</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitPayroll(row)">提交</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -96,6 +97,22 @@
         <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">生成</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="detailVisible" title="工资单包含工单明细快照（LI-3）" width="750px" destroy-on-close>
+      <el-table :data="detailList" border v-loading="detailLoading" max-height="400">
+        <el-table-column prop="workerName" label="工人姓名" width="120" />
+        <el-table-column prop="workDate" label="工作日期" width="120" />
+        <el-table-column prop="orderType" label="用工类型" width="100" align="center">
+          <template #default="{ row }">{{ row.orderType === 'FIXED' ? '固定' : '临时' }}</template>
+        </el-table-column>
+        <el-table-column prop="amount" label="工单应发(元)" align="right">
+          <template #default="{ row }">{{ Number(row.amount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 }) }}</template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -103,7 +120,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getPayrollPage, createPayroll, deletePayroll, submitPayroll, getLaborTeamPage, getPayrollTrend } from '@/api/labor'
+import { getPayrollPage, createPayroll, deletePayroll, submitPayroll, getLaborTeamPage, getPayrollTrend, getPayrollDetailList } from '@/api/labor'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
@@ -117,6 +134,20 @@ const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const teamOptions = ref<any[]>([])
 const importVisible = ref(false)
+const detailVisible = ref(false)
+const detailLoading = ref(false)
+const detailList = ref<any[]>([])
+
+async function handleViewDetail(row: any) {
+  detailVisible.value = true
+  detailLoading.value = true
+  try {
+    const res: any = await getPayrollDetailList(row.id)
+    detailList.value = res.data || []
+  } finally {
+    detailLoading.value = false
+  }
+}
 
 const queryParams = ref({ page: 1, size: 10, projectId: undefined as number | undefined, teamName: '', status: '' })
 const formData = ref({ teamId: undefined as number | undefined, projectId: undefined as number | undefined, orderType: 'FIXED', period: [] as string[] })

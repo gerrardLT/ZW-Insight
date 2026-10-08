@@ -27,6 +27,9 @@ class LaborRewardPunishServiceTest {
     @Mock
     private BizLaborRewardPunishMapper rewardPunishMapper;
 
+    @Mock
+    private com.zwinsight.workflow.service.ApprovalService approvalService;
+
     @InjectMocks
     private LaborRewardPunishService service;
 
@@ -48,15 +51,56 @@ class LaborRewardPunishServiceTest {
     @DisplayName("save - 委托插入")
     void save_delegates() {
         BizLaborRewardPunish rp = new BizLaborRewardPunish();
+        rp.setAmount(new java.math.BigDecimal("1000"));
+        rp.setRpType("REWARD");
 
         service.save(rp);
 
         verify(rewardPunishMapper).insert(rp);
+        assertThat(rp.getStatus()).isEqualTo("DRAFT");
+    }
+
+    @Test
+    @DisplayName("submit - 提交审批")
+    void submit_delegates() {
+        BizLaborRewardPunish rp = new BizLaborRewardPunish();
+        rp.setId(1L);
+        rp.setAmount(new java.math.BigDecimal("1000"));
+        rp.setRpType("REWARD");
+        rp.setStatus("DRAFT");
+        when(rewardPunishMapper.selectById(1L)).thenReturn(rp);
+        when(approvalService.startProcess(eq("LABOR_REWARD_PUNISH"), eq(1L), eq("labor_reward_punish_approval"), any()))
+                .thenReturn("proc-rp-123");
+
+        service.submit(1L);
+
+        assertThat(rp.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(rp.getWorkflowInstanceId()).isEqualTo("proc-rp-123");
+        verify(rewardPunishMapper).updateById(rp);
+    }
+
+    @Test
+    @DisplayName("onApproved - 审批通过生效")
+    void onApproved_delegates() {
+        BizLaborRewardPunish rp = new BizLaborRewardPunish();
+        rp.setId(1L);
+        rp.setStatus("SUBMITTED");
+        when(rewardPunishMapper.selectById(1L)).thenReturn(rp);
+
+        service.onApproved(1L);
+
+        assertThat(rp.getStatus()).isEqualTo("APPROVED");
+        verify(rewardPunishMapper).updateById(rp);
     }
 
     @Test
     @DisplayName("delete - 委托删除")
     void delete_delegates() {
+        BizLaborRewardPunish rp = new BizLaborRewardPunish();
+        rp.setId(1L);
+        rp.setStatus("DRAFT");
+        when(rewardPunishMapper.selectById(1L)).thenReturn(rp);
+
         service.delete(1L);
 
         verify(rewardPunishMapper).deleteById(1L);

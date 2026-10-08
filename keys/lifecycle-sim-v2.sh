@@ -733,7 +733,7 @@ stage_6_subcontracts() {
   approve "同意采购合同"
   assert_status "/api/v1/purchase/contract/$PURCHASE_CONTRACT_ID" "status" "EFFECTIVE" "采购合同状态"
 
-  # 6B: 劳务合同（无工作流，submit 直接 EFFECTIVE）
+  # 6B: 劳务合同（labor_contract_approval 流程，P3-M6 起提交走 BPMN 两级审批）
   log "  -- 6B: 劳务合同 --"
   api_call POST "/api/v1/labor/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"泥水木工劳务合同\",\"partyBName\":\"恒通劳务公司\",\"teamName\":\"恒通施工队\",\"signingDate\":\"2026-08-01\",\"startDate\":\"2026-08-01\",\"endDate\":\"2027-01-31\",\"contractAmount\":1200000.00}"
   strict_assert "创建劳务合同"
@@ -744,8 +744,9 @@ stage_6_subcontracts() {
   success "劳务合同 ID: $LABOR_CONTRACT_ID"
   track_resource "DELETE" "/api/v1/labor/contract/$LABOR_CONTRACT_ID"
   api_call POST "/api/v1/labor/contract/$LABOR_CONTRACT_ID/submit"
-  strict_assert "提交劳务合同"
-  sleep 1
+  strict_assert "提交劳务合同审批"
+  sleep 2
+  approve "同意劳务合同" 1
   assert_status "/api/v1/labor/contract/$LABOR_CONTRACT_ID" "status" "EFFECTIVE" "劳务合同状态"
 
   # 6C: 机械合同（rentalType=台班，contractAmount 作为台班单价—代码取 contractAmount 为单价）
@@ -1047,13 +1048,29 @@ stage_7c_machine_exec() {
 }
 
 # ===========================================================================
-# 阶段 7D: 劳务执行（劳务结算直接给金额，后端 submit 直接 APPROVED）
+# 阶段 7D: 劳务执行（产值审批 → 结算审批，P3-M6 起均走 BPMN）
 # ===========================================================================
 stage_7d_labor_exec() {
   phase "7D" "劳务执行与结算"
   CURRENT_STAGE="7D:劳务执行"
 
-  # 劳务结算 5 万（LaborSettlement 只要 projectId/contractId/settlementAmount，不依赖工单）
+  # 劳务产值 6 万（先报产值再结算，满足 LI-5 结算≤累计已确认产值）
+  api_call POST "/api/v1/labor/output-report" "{\"projectId\":$PROJECT_ID,\"contractId\":$LABOR_CONTRACT_ID,\"currentOutput\":60000.00}"
+  strict_assert "创建劳务产值单"
+  sleep 1
+  api_call GET "/api/v1/labor/output-report/page?page=1&size=1&projectId=$PROJECT_ID"
+  local l_output_id=$(extract_first_record_id)
+  require_id "$l_output_id" "劳务产值单 ID"
+  success "劳务产值单 ID: $l_output_id"
+  track_resource "DELETE" "/api/v1/labor/output-report/$l_output_id"
+  api_call POST "/api/v1/labor/output-report/$l_output_id/submit"
+  strict_assert "提交劳务产值审批"
+  sleep 2
+  approve "劳务产值确认" 1
+  assert_status "/api/v1/labor/output-report/$l_output_id" "status" "APPROVED" "劳务产值状态"
+  assert_amount "/api/v1/labor/contract/$LABOR_CONTRACT_ID" "cumulativeOutput" "60000" "劳务合同累计产值"
+
+  # 劳务结算 5 万（≤已确认产值 6 万，labor_settlement_approval 两级审批）
   api_call POST "/api/v1/labor/settlement" "{\"projectId\":$PROJECT_ID,\"contractId\":$LABOR_CONTRACT_ID,\"settlementAmount\":50000.00}"
   strict_assert "创建劳务结算单"
   sleep 1
@@ -1063,9 +1080,9 @@ stage_7d_labor_exec() {
   success "劳务结算单 ID: $l_settle_id"
   track_resource "DELETE" "/api/v1/labor/settlement/$l_settle_id"
   api_call POST "/api/v1/labor/settlement/$l_settle_id/submit"
-  strict_assert "提交劳务结算"
-  sleep 1
-  # 无工作流，submit 直接 APPROVED + 回写劳务合同累计结算=50000
+  strict_assert "提交劳务结算审批"
+  sleep 2
+  approve "劳务结算确认" 1
   assert_status "/api/v1/labor/settlement/$l_settle_id" "status" "APPROVED" "劳务结算状态"
   assert_amount "/api/v1/labor/contract/$LABOR_CONTRACT_ID" "cumulativeSettlement" "50000" "劳务合同累计结算"
 

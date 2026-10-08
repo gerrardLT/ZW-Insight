@@ -567,6 +567,24 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'LaborSalaryStats',
         component: () => import('@/views/labor/salary/stats.vue'),
         meta: { title: '薪资统计', icon: 'DataAnalysis' }
+      },
+      {
+        path: 'output',
+        name: 'LaborOutput',
+        component: () => import('@/views/labor/output.vue'),
+        meta: { title: '产值上报', icon: 'TrendCharts' }
+      },
+      {
+        path: 'settlement',
+        name: 'LaborSettlement',
+        component: () => import('@/views/labor/settlement.vue'),
+        meta: { title: '劳务结算', icon: 'Files' }
+      },
+      {
+        path: 'reward-punish',
+        name: 'LaborRewardPunish',
+        component: () => import('@/views/labor/reward-punish.vue'),
+        meta: { title: '劳务奖惩', icon: 'Scale' }
       }
     ]
   },

@@ -19,6 +19,9 @@ public class BizLaborContract extends BaseEntity {
     /** 项目ID */
     private Long projectId;
 
+    /** 关联班组ID */
+    private Long teamId;
+
     /** 合同编号 */
     private String contractCode;
 

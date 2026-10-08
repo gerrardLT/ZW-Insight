@@ -16,6 +16,7 @@ vi.mock('@dcloudio/uni-app', () => ({
 vi.mock('@/api/common', () => ({
   getProjectList: vi.fn(),
   getLaborTeamPage: vi.fn(),
+  getLaborRosterPage: vi.fn(async () => ({ code: 200, data: { records: [{ id: 701, workerName: '张小强', workType: '钢筋工' }] } })),
   getWorkOrderPage: vi.fn(),
   saveWorkOrder: vi.fn(),
 }))
@@ -109,7 +110,7 @@ describe('labor/work-order/create.vue 点工工时签认填报', () => {
 
     wrapper.vm.selectProject({ id: 1, projectName: '测试示范项目' })
     wrapper.vm.selectTeam({ id: 5, teamName: '钢筋一班' })
-    wrapper.vm.form.workerName = '张小强'
+    wrapper.vm.selectWorker({ id: 701, workerName: '张小强' })
     wrapper.vm.form.hours = '9'
     wrapper.vm.form.hourlyRate = '40'
     wrapper.vm.form.overtime = '2'
@@ -125,6 +126,7 @@ describe('labor/work-order/create.vue 点工工时签认填报', () => {
       expect.objectContaining({
         projectId: 1,
         teamId: 5,
+        workerId: 701,
         workerName: '张小强',
         hours: 9,
         hourlyRate: 40,

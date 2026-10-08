@@ -18,6 +18,10 @@ vi.mock('@/api/labor', () => ({
   deleteLaborRoster: mockDelete,
   entryLaborRoster: vi.fn(async (): Promise<any> => ({ code: 200 })),
   exitLaborRoster: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  getLaborTeamPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+}))
+vi.mock('@/api/project', () => ({
+  getProjectList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
 }))
 vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()

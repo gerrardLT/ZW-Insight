@@ -28,7 +28,15 @@
     </view>
 
     <view class="form-card">
-      <ZwiField label="工人姓名" v-model="form.workerName" placeholder="请输入工人姓名" />
+      <!-- A1 实名制：选班组后从在场花名册选择实名工人；无班组时保留手输姓名兜底 -->
+      <ZwiPickerField
+        v-if="form.teamId"
+        label="实名工人"
+        :displayValue="form.workerName"
+        placeholder="请选择在场实名工人"
+        @open="openWorkerPicker"
+      />
+      <ZwiField v-else label="工人姓名" v-model="form.workerName" placeholder="请输入工人姓名" />
       <!-- 用工类型 radio-group 保留原结构 -->
       <view class="form-item radio-item-row">
         <text class="form-label">用工类型</text>
@@ -69,12 +77,29 @@
         </scroll-view>
       </view>
     </view>
+
+    <!-- 实名工人选择弹窗 -->
+    <view class="picker-mask" v-if="showWorkerPicker" @click="showWorkerPicker = false">
+      <view class="picker-content" @click.stop>
+        <view class="picker-header">
+          <text @click="showWorkerPicker = false">取消</text>
+          <text class="picker-title">选择在场实名工人</text>
+          <text></text>
+        </view>
+        <scroll-view scroll-y class="picker-list">
+          <view class="picker-item" v-for="w in workers" :key="w.id" @click="selectWorker(w)">
+            <text>{{ w.workerName }}{{ w.workType ? ' (' + w.workType + ')' : '' }}</text>
+          </view>
+          <view class="empty" v-if="!workers.length"><text>该班组暂无在场实名工人，请先在花名册登记进场</text></view>
+        </scroll-view>
+      </view>
+    </view>
   </ZwiFormPage>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { saveWorkOrder, getLaborTeamPage } from '@/api/common'
+import { saveWorkOrder, getLaborTeamPage, getLaborRosterPage } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 import { useFormSession } from '@/composables/useFormSession'
@@ -87,8 +112,10 @@ import ZwiPickerField from '@/components/zwi/ZwiPickerField.vue'
 const submitting = ref(false)
 const showProjectPicker = ref(false)
 const showTeamPicker = ref(false)
+const showWorkerPicker = ref(false)
 const projects = ref<any[]>([])
 const teams = ref<any[]>([])
+const workers = ref<any[]>([])
 const projectEmptyTip = ref('暂无项目')
 
 const form = ref({
@@ -96,6 +123,7 @@ const form = ref({
   projectName: '',
   teamId: null as number | null,
   teamName: '',
+  workerId: null as number | null,
   workerName: '',
   orderType: 'TEMPORARY',
   workDate: '',
@@ -166,7 +194,37 @@ function openTeamPicker() {
 function selectTeam(t: any) {
   form.value.teamId = t.id
   form.value.teamName = t.teamName || ('班组 #' + t.id)
+  form.value.workerId = null
+  form.value.workerName = ''
   showTeamPicker.value = false
+  loadWorkers()
+}
+
+// A1 实名制：班组确定后加载在场实名工人（status=1）
+async function loadWorkers() {
+  workers.value = []
+  if (!form.value.projectId || !form.value.teamId) return
+  try {
+    const res: any = await getLaborRosterPage({
+      projectId: form.value.projectId,
+      teamId: form.value.teamId,
+      entryStatus: 'ON_SITE',
+      size: 200
+    })
+    workers.value = res?.data?.records || []
+  } catch {
+    workers.value = []
+  }
+}
+
+function openWorkerPicker() {
+  showWorkerPicker.value = true
+}
+
+function selectWorker(w: any) {
+  form.value.workerId = w.id
+  form.value.workerName = w.workerName
+  showWorkerPicker.value = false
 }
 
 async function handleSubmit() {
@@ -174,7 +232,7 @@ async function handleSubmit() {
     uni.showToast({ title: '请选择项目', icon: 'none' }); return
   }
   if (!form.value.workerName.trim()) {
-    uni.showToast({ title: '请输入工人姓名', icon: 'none' }); return
+    uni.showToast({ title: form.value.teamId ? '请选择实名工人' : '请输入工人姓名', icon: 'none' }); return
   }
   const h = Number(form.value.hours)
   if (!form.value.hours || !Number.isFinite(h) || h <= 0 || h > 24) {
@@ -194,6 +252,7 @@ async function handleSubmit() {
     const payload = {
       projectId: form.value.projectId,
       teamId: form.value.teamId || undefined,
+      workerId: form.value.workerId || undefined,
       workerName: form.value.workerName.trim(),
       workDate: form.value.workDate,
       hours: h,

@@ -32,8 +32,10 @@ import static org.mockito.Mockito.*;
 class LaborPayrollServiceTest {
 
     @Mock private BizLaborPayrollMapper payrollMapper;
+    @Mock private com.zwinsight.labor.mapper.BizLaborPayrollDetailMapper payrollDetailMapper;
     @Mock private BizWorkOrderMapper workOrderMapper;
     @Mock private BizTeamMapper teamMapper;
+    @Mock private com.zwinsight.workflow.service.ApprovalService approvalService;
 
     @InjectMocks
     private LaborPayrollService laborPayrollService;
@@ -199,11 +201,26 @@ class LaborPayrollServiceTest {
     // ==================== 提交 ====================
 
     @Test
-    @DisplayName("提交工资单：DRAFT → APPROVED")
+    @DisplayName("提交工资单：DRAFT 发起审批流 → SUBMITTED")
     void testSubmit_draftToApproved() {
         when(payrollMapper.selectById(1L)).thenReturn(samplePayroll);
+        when(approvalService.startProcess(eq("LABOR_PAYROLL"), eq(1L), eq("labor_payroll_approval"), any()))
+                .thenReturn("proc-pay-123");
 
         laborPayrollService.submit(1L);
+
+        verify(payrollMapper).updateById(argThat(p ->
+                "SUBMITTED".equals(p.getStatus()) && "proc-pay-123".equals(p.getWorkflowInstanceId())
+        ));
+    }
+
+    @Test
+    @DisplayName("审批通过：SUBMITTED → APPROVED")
+    void testOnApproved_submittedToApproved() {
+        samplePayroll.setStatus("SUBMITTED");
+        when(payrollMapper.selectById(1L)).thenReturn(samplePayroll);
+
+        laborPayrollService.onApproved(1L);
 
         verify(payrollMapper).updateById(argThat(p -> "APPROVED".equals(p.getStatus())));
     }

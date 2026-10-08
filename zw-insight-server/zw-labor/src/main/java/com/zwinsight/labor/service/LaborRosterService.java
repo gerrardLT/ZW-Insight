@@ -93,7 +93,9 @@ public class LaborRosterService {
      * 保存
      */
     public void save(BizLaborRoster roster) {
-        roster.setStatus(1);
+        if (roster.getStatus() == null) {
+            roster.setStatus(0); // 默认未进场，须经 entry 进场登记
+        }
         rosterMapper.insert(roster);
     }
 
@@ -105,7 +107,19 @@ public class LaborRosterService {
         if (existing == null) {
             throw new BusinessException("花名册记录不存在");
         }
-        rosterMapper.updateById(roster);
+        // 白名单防篡改：状态与进退场日期走 entry/exit 端点
+        existing.setWorkerName(roster.getWorkerName());
+        existing.setIdCard(roster.getIdCard());
+        existing.setPhone(roster.getPhone());
+        existing.setWorkerType(roster.getWorkerType());
+        existing.setWorkType(roster.getWorkType());
+        if (roster.getProjectId() != null) {
+            existing.setProjectId(roster.getProjectId());
+        }
+        if (roster.getTeamId() != null) {
+            existing.setTeamId(roster.getTeamId());
+        }
+        rosterMapper.updateById(existing);
     }
 
     /**

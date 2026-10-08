@@ -129,10 +129,10 @@ class SalaryStatisticsServiceImplTest {
         }
 
         @Test
-        @DisplayName("正常汇总 - 两班组分类统计、扣款=应发-已付-未付、人数按工单去重")
+        @DisplayName("正常汇总 - 两班组分类统计、扣款=应发-已付-未付、实发=Σ已付（A5 真实支付口径）")
         void success_aggregatesByTeam() {
-            // 班组1 FIXED：应发 10000，已付 8000，未付 1000 → 扣款 1000
-            // 班组2 TEMPORARY：应发 5000，已付 5000，未付 0 → 扣款 0
+            // 班组1 FIXED：应发 10000，已付 8000，未付 1000 → 扣款 1000，实发 8000
+            // 班组2 TEMPORARY：应发 5000，已付 5000，未付 0 → 扣款 0，实发 5000
             when(payrollMapper.selectList(any(LambdaQueryWrapper.class)))
                     .thenReturn(Arrays.asList(
                             payroll(10L, "FIXED", "10000", "8000", "1000"),
@@ -152,7 +152,8 @@ class SalaryStatisticsServiceImplTest {
             assertThat(summary.getTotalHeadCount()).isEqualTo(2);
             assertThat(summary.getTotalPayable()).isEqualByComparingTo("15000.00");
             assertThat(summary.getTotalDeduction()).isEqualByComparingTo("1000.00");
-            assertThat(summary.getTotalActual()).isEqualByComparingTo("14000.00");
+            // A5：实发只含真实支付（8000+5000），未付 1000 不得计入实发
+            assertThat(summary.getTotalActual()).isEqualByComparingTo("13000.00");
             assertThat(summary.getFixedPayable()).isEqualByComparingTo("10000.00");
             assertThat(summary.getTemporaryPayable()).isEqualByComparingTo("5000.00");
 

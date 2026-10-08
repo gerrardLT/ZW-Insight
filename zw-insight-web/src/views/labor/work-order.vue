@@ -59,9 +59,20 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑派工单' : '新增派工单'" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
-        <el-form-item label="项目" prop="projectId"><ProjectSelector v-model="formData.projectId" /></el-form-item>
-        <el-form-item label="班组" prop="teamId"><TeamSelector v-model="formData.teamId" /></el-form-item>
-        <el-form-item label="工人姓名" prop="workerName"><el-input v-model="formData.workerName" /></el-form-item>
+        <el-form-item label="项目" prop="projectId">
+          <ProjectSelector v-model="formData.projectId" style="width: 100%" @change="onProjectChange" />
+        </el-form-item>
+        <el-form-item label="班组" prop="teamId">
+          <TeamSelector v-model="formData.teamId" :project-id="formData.projectId" style="width: 100%" @change="onTeamChange" />
+        </el-form-item>
+        <el-form-item label="实名工人" prop="workerName">
+          <el-select v-model="formData.workerId" placeholder="请选择在场实名工人" filterable style="width: 100%" :loading="workerLoading" @change="onWorkerChange">
+            <el-option v-for="wk in workerOptions" :key="wk.id" :label="`${wk.workerName}${wk.workType ? '（' + wk.workType + '）' : ''}`" :value="wk.id" />
+          </el-select>
+          <div v-if="formData.projectId && formData.teamId && !workerLoading && workerOptions.length === 0" class="worker-empty-tip">
+            该班组暂无在场实名工人，请先在花名册登记并进场
+          </div>
+        </el-form-item>
         <el-form-item label="用工类型" prop="orderType">
           <el-select v-model="formData.orderType" style="width: 100%">
             <el-option label="固定" value="FIXED" />
@@ -90,7 +101,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getWorkOrderPage, createWorkOrder, updateWorkOrder, deleteWorkOrder, submitWorkOrder } from '@/api/labor'
+import { getWorkOrderPage, createWorkOrder, updateWorkOrder, deleteWorkOrder, submitWorkOrder, getLaborRosterPage } from '@/api/labor'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import TeamSelector from '@/components/TeamSelector.vue'
 
@@ -101,16 +112,51 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
+const workerOptions = ref<any[]>([])
+const workerLoading = ref(false)
 
 const queryParams = ref({ page: 1, size: 10, projectId: undefined as number | undefined, teamId: undefined as number | undefined, status: '' })
-const defaultForm = () => ({ id: undefined as number | undefined, projectId: undefined as number | undefined, teamId: undefined as number | undefined, workerName: '', orderType: 'TEMPORARY', workDate: '', hours: 0, hourlyRate: 0, overtime: 0, overtimeRate: 0 })
+const defaultForm = () => ({ id: undefined as number | undefined, projectId: undefined as number | undefined, teamId: undefined as number | undefined, workerId: undefined as number | undefined, workerName: '', orderType: 'TEMPORARY', workDate: '', hours: 0, hourlyRate: 0, overtime: 0, overtimeRate: 0 })
 const formData = ref(defaultForm())
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   teamId: [{ required: true, message: '请选择班组', trigger: 'change' }],
-  workerName: [{ required: true, message: '请输入工人姓名', trigger: 'blur' }],
+  workerName: [{ required: true, message: '请选择工人', trigger: 'change' }],
   orderType: [{ required: true, message: '请选择用工类型', trigger: 'change' }],
   workDate: [{ required: true, message: '请选择工作日期', trigger: 'change' }]
+}
+
+/** A1 实名制：按项目+班组加载在场工人（status=1） */
+async function loadWorkers(projectId?: number, teamId?: number) {
+  workerOptions.value = []
+  if (!projectId || !teamId) return
+  workerLoading.value = true
+  try {
+    const res: any = await getLaborRosterPage({ page: 1, size: 200, projectId, teamId, entryStatus: 'ON_SITE' })
+    workerOptions.value = res.data?.records || []
+  } catch {
+    workerOptions.value = []
+  } finally {
+    workerLoading.value = false
+  }
+}
+
+function onProjectChange() {
+  formData.value.teamId = undefined
+  formData.value.workerId = undefined
+  formData.value.workerName = ''
+  workerOptions.value = []
+}
+
+function onTeamChange() {
+  formData.value.workerId = undefined
+  formData.value.workerName = ''
+  loadWorkers(formData.value.projectId, formData.value.teamId)
+}
+
+function onWorkerChange(workerId?: number) {
+  const wk = workerOptions.value.find(w => w.id === workerId)
+  formData.value.workerName = wk?.workerName || ''
 }
 
 const totalPreview = computed(() => (formData.value.hours || 0) * (formData.value.hourlyRate || 0) + (formData.value.overtime || 0) * (formData.value.overtimeRate || 0))
@@ -118,8 +164,8 @@ const totalPreview = computed(() => (formData.value.hours || 0) * (formData.valu
 async function loadData() { loading.value = true; try { const res: any = await getWorkOrderPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.page = 1; loadData() }
 function handleReset() { queryParams.value = { page: 1, size: 10, projectId: undefined, teamId: undefined, status: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = defaultForm(); dialogVisible.value = true }
-function handleEdit(row: any) { isEdit.value = true; formData.value = { ...defaultForm(), ...row }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = defaultForm(); workerOptions.value = []; dialogVisible.value = true }
+function handleEdit(row: any) { isEdit.value = true; formData.value = { ...defaultForm(), ...row }; loadWorkers(row.projectId, row.teamId); dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateWorkOrder(formData.value) : await createWorkOrder(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleSubmit(row: any) { await ElMessageBox.confirm('确定要提交吗？', '提示', { type: 'warning' }); await submitWorkOrder(row.id); ElMessage.success('提交成功'); loadData() }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteWorkOrder(row.id); ElMessage.success('删除成功'); loadData() }
@@ -130,4 +176,5 @@ onMounted(() => { loadData() })
 .work-order-container { padding: var(--zw-space-md); }
 .table-toolbar { margin-bottom: var(--zw-space-md); }
 .pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
+.worker-empty-tip { color: var(--zw-text-tertiary); font-size: var(--zw-font-size-xs); margin-top: var(--zw-space-sm); }
 </style>

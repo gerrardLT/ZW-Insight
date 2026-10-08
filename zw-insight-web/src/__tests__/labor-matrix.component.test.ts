@@ -256,12 +256,12 @@ describe('labor/work-order.vue B17 矩阵', () => {
     return wrapper
   }
 
-  it('B-17-1 formRules 必填 5 条：projectId/teamId/workerName/orderType/workDate', async () => {
+  it('B-17-1 formRules 必填 5 条：projectId/teamId/workerName/orderType/workDate（A1 实名选择）', async () => {
     const w = await mountWorkOrder()
     const rules = w.vm.$.setupState.formRules
     expect((rules.projectId as any[])[0]).toMatchObject({ required: true, message: '请选择项目' })
     expect((rules.teamId as any[])[0]).toMatchObject({ required: true, message: '请选择班组' })
-    expect((rules.workerName as any[])[0]).toMatchObject({ required: true, message: '请输入工人姓名' })
+    expect((rules.workerName as any[])[0]).toMatchObject({ required: true, message: '请选择工人' })
     expect((rules.orderType as any[])[0]).toMatchObject({ required: true, message: '请选择用工类型' })
     expect((rules.workDate as any[])[0]).toMatchObject({ required: true, message: '请选择工作日期' })
     expect(Object.keys(rules)).toHaveLength(5)

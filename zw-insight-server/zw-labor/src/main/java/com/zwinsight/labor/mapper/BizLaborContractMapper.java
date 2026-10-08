@@ -15,6 +15,13 @@ import org.apache.ibatis.annotations.Update;
 public interface BizLaborContractMapper extends BaseMapper<BizLaborContract> {
 
     /**
+     * 原子累加合同累计产值。
+     * <p>支持负数冲销（用于删除 APPROVED 产值单时的对称回滚）。</p>
+     */
+    @Update("UPDATE biz_labor_contract SET cumulative_output = COALESCE(cumulative_output, 0) + #{amount} WHERE id = #{id} AND deleted = 0")
+    int addOutput(@Param("id") Long id, @Param("amount") java.math.BigDecimal amount);
+
+    /**
      * 原子累加合同累计结算金额。
      * <p>支持负数冲销（用于删除 APPROVED 结算单时的对称回滚）。</p>
      */

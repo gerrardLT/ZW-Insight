@@ -162,11 +162,14 @@ export function saveMachineWorkLog(data: { projectId: number; machineId: number;
 export function getLaborTeamPage(params?: { page?: number; size?: number; projectId?: number; teamName?: string; workType?: string }) {
   return request({ url: '/v1/labor/team/page', data: params })
 }
+export function getLaborRosterPage(params?: { page?: number; size?: number; projectId?: number; teamId?: number; entryStatus?: string }) {
+  return request({ url: '/v1/labor/roster/page', data: params })
+}
 export function getWorkOrderPage(params?: { page?: number; size?: number; projectId?: number; teamId?: number; status?: string }) {
   return request({ url: '/v1/labor/work-order/page', data: params })
 }
-export function saveWorkOrder(data: { projectId: number; teamId?: number; workerName: string; workDate: string; hours: number; hourlyRate: number; overtime?: number; overtimeRate?: number; totalAmount: number; orderType?: string; status?: string }) {
-  return request({ url: '/v1/labor/work-order', method: 'POST', data })
+export function saveWorkOrder(data: { projectId: number; teamId?: number; workerId?: number; workerName: string; workDate: string; hours: number; hourlyRate: number; overtime?: number; overtimeRate?: number; totalAmount: number; orderType?: string; status?: string }) {
+  return request({ url: '/v1/labor/work-order?autoSubmit=true', method: 'POST', data })
 }
 
 // 现场

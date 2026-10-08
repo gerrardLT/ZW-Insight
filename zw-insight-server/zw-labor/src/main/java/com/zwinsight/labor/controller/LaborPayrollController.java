@@ -38,6 +38,11 @@ public class LaborPayrollController {
         return R.ok(payrollService.getById(id));
     }
 
+    @GetMapping("/{id}/details")
+    public R<java.util.List<com.zwinsight.labor.domain.BizLaborPayrollDetail>> getDetails(@PathVariable Long id) {
+        return R.ok(payrollService.listDetails(id));
+    }
+
     @PostMapping
     public R<Void> save(@RequestBody BizLaborPayroll payroll) {
         payrollService.save(payroll);

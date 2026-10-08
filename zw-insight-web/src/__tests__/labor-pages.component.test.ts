@@ -26,8 +26,9 @@ vi.mock('@/api/labor', () => ({
   deleteLaborContract: mockContractDelete, submitLaborContract: mockContractSubmit,
   getWorkOrderPage: mockWorkOrderPage, createWorkOrder: mockWorkOrderCreate, updateWorkOrder: mockWorkOrderUpdate,
   deleteWorkOrder: mockWorkOrderDelete, submitWorkOrder: mockWorkOrderSubmit,
-  // work-order 内嵌 TeamSelector 子组件使用，mock 防真实请求
+  // work-order 内嵌 TeamSelector/实名工人选择使用，mock 防真实请求
   getLaborTeamPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  getLaborRosterPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
 }))
 // 内嵌 ProjectSelector 子组件使用
 vi.mock('@/api/project', () => ({

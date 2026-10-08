@@ -29,4 +29,10 @@ public class BizLaborRewardPunish extends BaseEntity {
 
     /** 原因 */
     private String reason;
+
+    /** 状态（DRAFT-草稿/SUBMITTED-审批中/APPROVED-已审批/REJECTED-已驳回） */
+    private String status;
+
+    /** 流程实例ID */
+    private String workflowInstanceId;
 }

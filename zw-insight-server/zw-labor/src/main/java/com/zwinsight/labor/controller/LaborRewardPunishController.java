@@ -37,9 +37,22 @@ public class LaborRewardPunishController {
         return R.ok();
     }
 
+    @PutMapping("/{id}")
+    public R<Void> update(@PathVariable Long id, @RequestBody BizLaborRewardPunish rewardPunish) {
+        rewardPunish.setId(id);
+        rewardPunishService.update(rewardPunish);
+        return R.ok();
+    }
+
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         rewardPunishService.delete(id);
+        return R.ok();
+    }
+
+    @RequestMapping(value = "/{id}/submit", method = {RequestMethod.POST, RequestMethod.PUT})
+    public R<Void> submit(@PathVariable Long id) {
+        rewardPunishService.submit(id);
         return R.ok();
     }
 }

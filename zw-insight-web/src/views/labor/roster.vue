@@ -70,10 +70,15 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑人员' : '新增人员'" width="550px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
+        <el-form-item label="所属项目" prop="projectId">
+          <ProjectSelector v-model="formData.projectId" style="width: 100%" @change="onDialogProjectChange" />
+        </el-form-item>
+        <el-form-item label="所属班组" prop="teamId">
+          <TeamSelector v-model="formData.teamId" :project-id="formData.projectId" style="width: 100%" />
+        </el-form-item>
         <el-form-item label="姓名" prop="workerName"><el-input v-model="formData.workerName" /></el-form-item>
         <el-form-item label="身份证号" prop="idCard"><el-input v-model="formData.idCard" /></el-form-item>
         <el-form-item label="联系电话"><el-input v-model="formData.phone" /></el-form-item>
-        <el-form-item label="所属班组"><el-input v-model="formData.teamName" /></el-form-item>
         <el-form-item label="工种"><el-input v-model="formData.workType" /></el-form-item>
         <el-form-item label="进场日期"><el-date-picker v-model="formData.entryDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
       </el-form>
@@ -93,6 +98,8 @@ import { getLaborRosterPage, createLaborRoster, updateLaborRoster, deleteLaborRo
 import { getProjectList } from '@/api/project'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
+import ProjectSelector from '@/components/ProjectSelector.vue'
+import TeamSelector from '@/components/TeamSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -115,8 +122,15 @@ const exportParams = computed(() => {
 })
 
 const queryParams = ref({ page: 1, size: 10, projectId: undefined as number | undefined, teamId: undefined as number | undefined, workerName: '', workType: '', entryStatus: '' })
-const formData = ref({ id: undefined as number | undefined, workerName: '', idCard: '', phone: '', teamName: '', workType: '', entryDate: '' })
-const formRules = { workerName: [{ required: true, message: '请输入姓名', trigger: 'blur' }], idCard: [{ required: true, message: '请输入身份证号', trigger: 'blur' }] }
+const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, teamId: undefined as number | undefined, workerName: '', idCard: '', phone: '', workType: '', entryDate: '' })
+const formRules = {
+  workerName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  idCard: [{ required: true, message: '请输入身份证号', trigger: 'blur' }]
+}
+
+function onDialogProjectChange() {
+  formData.value.teamId = undefined
+}
 
 async function loadData() { loading.value = true; try { const res: any = await getLaborRosterPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 async function loadProjects() { try { const res: any = await getProjectList(); projectList.value = res.data || [] } catch (e: any) { ElMessage.error(e?.response?.data?.message || '项目列表加载失败') } }
@@ -132,7 +146,7 @@ function handleOpenImport() {
   if (!queryParams.value.projectId) { ElMessage.warning('请先选择项目后再进行批量导入'); return }
   importVisible.value = true
 }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, workerName: '', idCard: '', phone: '', teamName: '', workType: '', entryDate: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: queryParams.value.projectId, teamId: queryParams.value.teamId, workerName: '', idCard: '', phone: '', workType: '', entryDate: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateLaborRoster(formData.value) : await createLaborRoster(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteLaborRoster(row.id); ElMessage.success('删除成功'); loadData() }

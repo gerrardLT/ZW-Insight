@@ -116,7 +116,8 @@
                 <el-table-column label="扣款金额" width="110" align="right">
                   <template #default="{ row: detail }">¥{{ formatAmount(detail.deduction) }}</template>
                 </el-table-column>
-                <el-table-column label="实发金额" width="120" align="right">
+                <!-- A5：无支付分摊前展示核定工资口径（字段 actual 为核定值，非实付流水） -->
+                <el-table-column label="核定工资" width="120" align="right">
                   <template #default="{ row: detail }">¥{{ formatAmount(detail.actual) }}</template>
                 </el-table-column>
               </el-table>

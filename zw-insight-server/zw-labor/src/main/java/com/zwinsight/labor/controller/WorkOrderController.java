@@ -35,9 +35,14 @@ public class WorkOrderController {
     }
 
     @PostMapping
-    public R<Void> save(@RequestBody BizWorkOrder workOrder) {
+    public R<Long> save(@RequestBody BizWorkOrder workOrder,
+                        @RequestParam(defaultValue = "false") boolean autoSubmit) {
+        if (autoSubmit) {
+            Long id = workOrderService.saveAndSubmit(workOrder);
+            return R.ok(id);
+        }
         workOrderService.save(workOrder);
-        return R.ok();
+        return R.ok(workOrder.getId());
     }
 
     @PostMapping("/batch")

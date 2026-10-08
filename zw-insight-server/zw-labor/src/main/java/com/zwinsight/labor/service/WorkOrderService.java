@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.labor.domain.BizLaborRoster;
 import com.zwinsight.labor.domain.BizWorkOrder;
+import com.zwinsight.labor.mapper.BizLaborRosterMapper;
 import com.zwinsight.labor.mapper.BizWorkOrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import java.util.List;
 public class WorkOrderService {
 
     private final BizWorkOrderMapper workOrderMapper;
+    private final BizLaborRosterMapper rosterMapper;
 
     /**
      * 分页查询
@@ -41,10 +44,21 @@ public class WorkOrderService {
      * 保存工单
      */
     public void save(BizWorkOrder workOrder) {
+        validateWorker(workOrder);
         validateAmounts(workOrder);
         calculateTotalAmount(workOrder);
         workOrder.setStatus("DRAFT");
         workOrderMapper.insert(workOrder);
+    }
+
+    /**
+     * 保存并提交工单（供移动端等自动生效端点调用）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Long saveAndSubmit(BizWorkOrder workOrder) {
+        save(workOrder);
+        submit(workOrder.getId());
+        return workOrder.getId();
     }
 
     /**
@@ -53,6 +67,7 @@ public class WorkOrderService {
     @Transactional(rollbackFor = Exception.class)
     public void batchSave(List<BizWorkOrder> workOrders) {
         for (BizWorkOrder workOrder : workOrders) {
+            validateWorker(workOrder);
             validateAmounts(workOrder);
             calculateTotalAmount(workOrder);
             workOrder.setStatus("DRAFT");
@@ -61,8 +76,33 @@ public class WorkOrderService {
     }
 
     /**
-     * P2 修复（2026-08-12，批次二 D7-②）：工时/单价非负校验，
-     * 负值会使 totalAmount 为负并在工资核算中反向扣减
+     * 校验实名工人归属与在岗状态（LI-1）
+     */
+    private void validateWorker(BizWorkOrder workOrder) {
+        if (workOrder.getWorkerId() != null && rosterMapper != null) {
+            BizLaborRoster roster = rosterMapper.selectById(workOrder.getWorkerId());
+            if (roster == null) {
+                throw new BusinessException("绑定的劳务工人不存在");
+            }
+            if (workOrder.getProjectId() != null && roster.getProjectId() != null
+                    && !workOrder.getProjectId().equals(roster.getProjectId())) {
+                throw new BusinessException("工人不属于该项目");
+            }
+            if (workOrder.getTeamId() != null && roster.getTeamId() != null
+                    && !workOrder.getTeamId().equals(roster.getTeamId())) {
+                throw new BusinessException("工人不属于该班组");
+            }
+            if (roster.getStatus() != null && roster.getStatus() == 0) {
+                throw new BusinessException("该工人已离岗，不可派工");
+            }
+            if (workOrder.getWorkerName() == null || workOrder.getWorkerName().isBlank()) {
+                workOrder.setWorkerName(roster.getWorkerName());
+            }
+        }
+    }
+
+    /**
+     * 工时/单价非负校验
      */
     private void validateAmounts(BizWorkOrder workOrder) {
         BigDecimal[] values = {workOrder.getHours(), workOrder.getHourlyRate(),
@@ -85,8 +125,8 @@ public class WorkOrderService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
-        // P1 修复（2026-08-12，批次二取证枚举）：防 PUT 体携带 status 直接落库绕过 submit
         workOrder.setStatus(null);
+        validateWorker(workOrder);
         validateAmounts(workOrder);
         calculateTotalAmount(workOrder);
         workOrderMapper.updateById(workOrder);

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.zwinsight.com/labor"
+             xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL http://www.omg.org/spec/BPMN/20100524/MODEL/BPMN20.xsd">
+
+    <process id="labor_settlement_approval" name="劳务结算审批" isExecutable="true">
+        <startEvent id="startEvent" name="提交劳务结算"/>
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="pmApproval"/>
+        <userTask id="pmApproval" name="项目经理审核" flowable:assignee="${initiator}">
+            <documentation>劳务结算 - 确认累计完成工程量与结算金额</documentation>
+        </userTask>
+        <sequenceFlow id="flow2" sourceRef="pmApproval" targetRef="financeApproval"/>
+        <userTask id="financeApproval" name="财务审核" flowable:assignee="${initiator}">
+            <documentation>劳务结算 - 核实扣款项与最终结算金额</documentation>
+        </userTask>
+        <sequenceFlow id="flow3" sourceRef="financeApproval" targetRef="endEvent"/>
+        <endEvent id="endEvent" name="审批完成"/>
+    </process>
+
+</definitions>

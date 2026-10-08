@@ -27,6 +27,7 @@ class LaborSettlementServiceTest {
 
     @Mock private BizLaborSettlementMapper settlementMapper;
     @Mock private BizLaborContractMapper laborContractMapper;
+    @Mock private com.zwinsight.workflow.service.ApprovalService approvalService;
 
     @InjectMocks
     private LaborSettlementService laborSettlementService;
@@ -47,6 +48,7 @@ class LaborSettlementServiceTest {
     @DisplayName("保存结算：状态初始化为 DRAFT")
     void testSave_draftInitialized() {
         BizLaborSettlement settlement = new BizLaborSettlement();
+        settlement.setSettlementAmount(new BigDecimal("50000"));
         when(settlementMapper.insert(any(BizLaborSettlement.class))).thenReturn(1);
 
         laborSettlementService.save(settlement);
@@ -56,7 +58,19 @@ class LaborSettlementServiceTest {
     }
 
     @Test
-    @DisplayName("更新：DRAFT 可编辑")
+    @DisplayName("保存结算：金额为空/非正数拒绝")
+    void testSave_nonPositiveAmount_rejected() {
+        BizLaborSettlement settlement = new BizLaborSettlement();
+
+        assertThatThrownBy(() -> laborSettlementService.save(settlement))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("结算金额必须大于0");
+
+        verify(settlementMapper, never()).insert(any(BizLaborSettlement.class));
+    }
+
+    @Test
+    @DisplayName("更新：DRAFT 可编辑（白名单拷贝到既有实体）")
     void testUpdate_draftAllowed() {
         when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
 
@@ -65,7 +79,8 @@ class LaborSettlementServiceTest {
         update.setSettlementAmount(new BigDecimal("60000"));
         laborSettlementService.update(update);
 
-        verify(settlementMapper).updateById(update);
+        verify(settlementMapper).updateById(argThat(s ->
+                s.getSettlementAmount().compareTo(new BigDecimal("60000")) == 0));
     }
 
     @Test
@@ -121,7 +136,7 @@ class LaborSettlementServiceTest {
     }
 
     @Test
-    @DisplayName("提交：状态变更 + 回写合同累计结算金额")
+    @DisplayName("提交：发起审批流并将状态置为 SUBMITTED")
     void testSubmit_statusAndCumulativeUpdate() {
         BizLaborContract contract = new BizLaborContract();
         contract.setId(10L);
@@ -129,14 +144,27 @@ class LaborSettlementServiceTest {
         contract.setCumulativeSettlement(new BigDecimal("100000"));
         when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
         when(laborContractMapper.selectById(10L)).thenReturn(contract);
+        when(approvalService.startProcess(eq("LABOR_SETTLEMENT"), eq(1L), eq("labor_settlement_approval"), any()))
+                .thenReturn("proc-settle-123");
 
         laborSettlementService.submit(1L);
 
+        assertThat(sampleSettlement.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(sampleSettlement.getWorkflowInstanceId()).isEqualTo("proc-settle-123");
+        verify(settlementMapper).updateById(sampleSettlement);
+    }
+
+    @Test
+    @DisplayName("审批通过：状态变更为 APPROVED 并原子累加合同累计结算金额")
+    void testOnApproved_atomicAddSettlement() {
+        sampleSettlement.setStatus("SUBMITTED");
+        when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
+
+        laborSettlementService.onApproved(1L);
+
         assertThat(sampleSettlement.getStatus()).isEqualTo("APPROVED");
         verify(settlementMapper).updateById(sampleSettlement);
-        // 100000 + 50000 = 150000
-        verify(laborContractMapper).updateById(argThat(c ->
-                c.getCumulativeSettlement().compareTo(new BigDecimal("150000")) == 0));
+        verify(laborContractMapper).addSettlement(10L, new BigDecimal("50000"));
     }
 
     @Test
@@ -160,30 +188,34 @@ class LaborSettlementServiceTest {
     @Test
     @DisplayName("提交：累计结算恰好等于合同金额允许（边界）")
     void testSubmit_equalsContractAmount_allowed() {
-        // 合同额 150000，已累计 100000，本次 50000 → 恰好等于上限放行
+        // 合同额 150000，已累计 100000，本次 50000 → 恰好等于上限放行（进入 SUBMITTED 审批）
         BizLaborContract contract = new BizLaborContract();
         contract.setId(10L);
         contract.setContractAmount(new BigDecimal("150000"));
         contract.setCumulativeSettlement(new BigDecimal("100000"));
         when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
         when(laborContractMapper.selectById(10L)).thenReturn(contract);
+        when(approvalService.startProcess(eq("LABOR_SETTLEMENT"), eq(1L), eq("labor_settlement_approval"), any()))
+                .thenReturn("proc-settle-eq");
 
         laborSettlementService.submit(1L);
 
-        assertThat(sampleSettlement.getStatus()).isEqualTo("APPROVED");
+        assertThat(sampleSettlement.getStatus()).isEqualTo("SUBMITTED");
     }
 
     @Test
-    @DisplayName("提交：合同不存在时跳过回写")
+    @DisplayName("提交：合同不存在时跳过守卫直接发起审批")
     void testSubmit_contractNotFound_skipsWriteback() {
         sampleSettlement.setContractId(999L);
         when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
         when(laborContractMapper.selectById(999L)).thenReturn(null);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), any()))
+                .thenReturn("proc-settle-noc");
 
         laborSettlementService.submit(1L);
 
         verify(settlementMapper).updateById(sampleSettlement);
-        verify(laborContractMapper, never()).updateById(any());
+        assertThat(sampleSettlement.getStatus()).isEqualTo("SUBMITTED");
     }
 
     @Test

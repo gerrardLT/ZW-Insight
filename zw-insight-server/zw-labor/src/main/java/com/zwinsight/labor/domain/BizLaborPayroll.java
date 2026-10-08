@@ -41,8 +41,11 @@ public class BizLaborPayroll extends BaseEntity {
     /** 用工类型（FIXED-固定/TEMPORARY-临时） */
     private String orderType;
 
-    /** 状态（DRAFT-草稿/APPROVED-已审批/SETTLED-已结算） */
+    /** 状态（DRAFT-草稿/SUBMITTED-审批中/APPROVED-已审批/SETTLED-已结算/REJECTED-已驳回） */
     private String status;
+
+    /** 流程实例ID */
+    private String workflowInstanceId;
 
     /** 所属班组名称（非本表字段，从 biz_team 回填） */
     @TableField(exist = false)

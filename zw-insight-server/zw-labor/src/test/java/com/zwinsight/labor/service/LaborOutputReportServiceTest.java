@@ -29,6 +29,7 @@ class LaborOutputReportServiceTest {
 
     @Mock private BizLaborOutputReportMapper outputReportMapper;
     @Mock private BizLaborContractMapper laborContractMapper;
+    @Mock private com.zwinsight.workflow.service.ApprovalService approvalService;
 
     @InjectMocks
     private LaborOutputReportService laborOutputReportService;
@@ -52,6 +53,7 @@ class LaborOutputReportServiceTest {
         @DisplayName("保存：状态初始化为 DRAFT")
         void save_draftInitialized() {
             BizLaborOutputReport report = new BizLaborOutputReport();
+            report.setCurrentOutput(new BigDecimal("20000"));
             when(outputReportMapper.insert(any(BizLaborOutputReport.class))).thenReturn(1);
 
             laborOutputReportService.save(report);
@@ -59,56 +61,53 @@ class LaborOutputReportServiceTest {
             assertThat(report.getStatus()).isEqualTo("DRAFT");
             verify(outputReportMapper).insert(report);
         }
+
+        @Test
+        @DisplayName("保存：产值金额为空/非正数拒绝")
+        void save_nonPositiveOutput_rejected() {
+            BizLaborOutputReport report = new BizLaborOutputReport();
+
+            assertThatThrownBy(() -> laborOutputReportService.save(report))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("本期产值金额必须大于0");
+
+            verify(outputReportMapper, never()).insert(any(BizLaborOutputReport.class));
+        }
     }
 
     @Nested
     @DisplayName("提交回写")
     class SubmitTests {
         @Test
-        @DisplayName("提交：回写的是 cumulativeOutput 而非 cumulativeSettlement")
-        void submit_writesBackCumulativeOutput_notSettlement() {
+        @DisplayName("提交：发起审批流并将状态置为 SUBMITTED")
+        void submit_launchesApprovalAndSetsSubmitted() {
             BizLaborContract contract = new BizLaborContract();
             contract.setId(10L);
+            contract.setContractAmount(new BigDecimal("100000"));
             contract.setCumulativeOutput(new BigDecimal("50000"));
-            contract.setCumulativeSettlement(new BigDecimal("80000"));
             when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
             when(laborContractMapper.selectById(10L)).thenReturn(contract);
+            when(approvalService.startProcess(eq("LABOR_OUTPUT"), eq(1L), eq("labor_output_approval"), any()))
+                    .thenReturn("proc-out-123");
 
             laborOutputReportService.submit(1L);
+
+            assertThat(sampleReport.getStatus()).isEqualTo("SUBMITTED");
+            assertThat(sampleReport.getWorkflowInstanceId()).isEqualTo("proc-out-123");
+            verify(outputReportMapper).updateById(sampleReport);
+        }
+
+        @Test
+        @DisplayName("审批通过：状态变更为 APPROVED 并原子累加合同累计产值")
+        void onApproved_atomicAddOutput() {
+            sampleReport.setStatus("SUBMITTED");
+            when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
+
+            laborOutputReportService.onApproved(1L);
 
             assertThat(sampleReport.getStatus()).isEqualTo("APPROVED");
             verify(outputReportMapper).updateById(sampleReport);
-            // cumulativeOutput: 50000 + 20000 = 70000；cumulativeSettlement 保持 80000 不变
-            verify(laborContractMapper).updateById(argThat(c ->
-                    c.getCumulativeOutput().compareTo(new BigDecimal("70000")) == 0
-                            && c.getCumulativeSettlement().compareTo(new BigDecimal("80000")) == 0));
-        }
-
-        @Test
-        @DisplayName("提交：合同累计产值为 null 时从零累加")
-        void submit_cumulativeNull_initFromZero() {
-            BizLaborContract contract = new BizLaborContract();
-            contract.setId(10L);
-            contract.setCumulativeOutput(null);
-            when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
-            when(laborContractMapper.selectById(10L)).thenReturn(contract);
-
-            laborOutputReportService.submit(1L);
-
-            verify(laborContractMapper).updateById(argThat(c ->
-                    c.getCumulativeOutput().compareTo(new BigDecimal("20000")) == 0));
-        }
-
-        @Test
-        @DisplayName("提交：合同不存在时跳过回写")
-        void submit_contractNotFound_skipWriteback() {
-            when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
-            when(laborContractMapper.selectById(10L)).thenReturn(null);
-
-            laborOutputReportService.submit(1L);
-
-            verify(outputReportMapper).updateById(sampleReport);
-            verify(laborContractMapper, never()).updateById(any());
+            verify(laborContractMapper).addOutput(10L, new BigDecimal("20000"));
         }
 
         @Test
