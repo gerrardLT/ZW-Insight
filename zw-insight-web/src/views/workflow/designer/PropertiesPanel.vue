@@ -41,6 +41,10 @@
       <p>点击画布中的<strong>用户任务</strong>节点，可编辑节点名称与审批人等属性。</p>
       <ul>
         <li>
+          <strong>基本操作</strong>：点节点 → 拖出右侧小箭头连到下一节点；节点旁扳手图标可更改类型；
+          选中后按 <code>Delete</code> 删除；左侧工具板拖出新节点；滚轮缩放，抓手工具拖动画布。
+        </li>
+        <li>
           <strong>process id 语义</strong>：&lt;process id&gt; 须与「业务类型」关联流程的
           processKey 一致，部署后才会被对应业务单据引用生效。
         </li>

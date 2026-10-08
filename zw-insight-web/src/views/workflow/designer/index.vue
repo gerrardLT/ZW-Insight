@@ -44,6 +44,7 @@ import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css'
 import { deployProcess } from '@/api/workflow'
 import { flowableDescriptor } from './flowable-moddle'
 import PropertiesPanel from './PropertiesPanel.vue'
+import { translateModule } from './translate'
 
 const canvasRef = ref<HTMLDivElement>()
 let modeler: InstanceType<typeof BpmnModeler> | null = null
@@ -106,6 +107,7 @@ onBeforeUnmount(() => {
 async function initModeler() {
   modeler = new BpmnModeler({
     container: canvasRef.value,
+    additionalModules: [translateModule],
     // Flowable 扩展属性（assignee/candidateUsers/candidateGroups）命名空间支持
     moddleExtensions: { flowable: flowableDescriptor }
   })
