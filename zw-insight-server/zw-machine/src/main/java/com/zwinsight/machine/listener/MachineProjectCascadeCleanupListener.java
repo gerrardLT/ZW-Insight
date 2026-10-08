@@ -50,14 +50,23 @@ public class MachineProjectCascadeCleanupListener {
     @EventListener
     public void onProjectDeleted(ProjectDeletedEvent event) {
         Long projectId = event.getProjectId();
-        Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
-        if (tenantId == null) throw new com.zwinsight.common.exception.BusinessException("级联清理缺少租户上下文");
-        var workSettlementIds = machineWorkSettlementMapper.selectList(
-                new QueryWrapper<BizMachineWorkSettlement>().eq("project_id", projectId).eq("tenant_id", tenantId))
-                .stream().map(BizMachineWorkSettlement::getId).toList();
-        if (!workSettlementIds.isEmpty()) detailMapper.delete(
-                new QueryWrapper<com.zwinsight.machine.domain.BizMachineWorkSettlementDetail>()
-                        .eq("tenant_id", tenantId).in("settlement_id", workSettlementIds));
+        Long tenantId = event.getTenantId() != null ? event.getTenantId() : com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        if (detailMapper != null && machineWorkSettlementMapper != null) {
+            QueryWrapper<BizMachineWorkSettlement> qw = new QueryWrapper<BizMachineWorkSettlement>().eq("project_id", projectId);
+            if (tenantId != null) {
+                qw.eq("tenant_id", tenantId);
+            }
+            var list = machineWorkSettlementMapper.selectList(qw);
+            if (list != null && !list.isEmpty()) {
+                var workSettlementIds = list.stream().map(BizMachineWorkSettlement::getId).toList();
+                QueryWrapper<com.zwinsight.machine.domain.BizMachineWorkSettlementDetail> dqw =
+                        new QueryWrapper<com.zwinsight.machine.domain.BizMachineWorkSettlementDetail>().in("settlement_id", workSettlementIds);
+                if (tenantId != null) {
+                    dqw.eq("tenant_id", tenantId);
+                }
+                detailMapper.delete(dqw);
+            }
+        }
         int contracts = machineContractMapper.delete(
                 new QueryWrapper<BizMachineContract>().eq("project_id", projectId));
         int entries = machineEntryMapper.delete(

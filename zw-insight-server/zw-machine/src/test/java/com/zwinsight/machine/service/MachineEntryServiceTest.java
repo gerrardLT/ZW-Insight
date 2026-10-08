@@ -107,7 +107,7 @@ class MachineEntryServiceTest {
         when(ledgerMapper.lockById(eq(1L), eq(1L))).thenReturn(ledger);
         // 无未结算工作量
         when(workLogMapper.selectCount(any())).thenReturn(0L);
-        when(ledgerMapper.update(any(), any())).thenReturn(1);
+        when(ledgerMapper.updateById(any())).thenReturn(1);
 
         machineEntryService.entryOut(entry);
 

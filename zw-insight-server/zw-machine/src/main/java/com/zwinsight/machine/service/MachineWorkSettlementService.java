@@ -126,7 +126,7 @@ public class MachineWorkSettlementService {
             }
         }
 
-        Map<Long, List<BizMachineWorkLog>> logsByMachine = new TreeMap<>();
+        Map<Long, List<BizMachineWorkLog>> logsByMachine = new LinkedHashMap<>();
         Map<Long, BizMachineContract> machineContractMap = new HashMap<>();
 
         for (BizMachineWorkLog candidate : workLogs.stream().sorted(Comparator.comparing(BizMachineWorkLog::getId)).toList()) {
@@ -345,13 +345,11 @@ public class MachineWorkSettlementService {
             }
         }
 
+        Long project = settlement.getProjectId();
         for (var increment : increments.entrySet()) {
-            BizMachineContract contract = contractMapper.selectById(increment.getKey());
-            if (contract != null) {
-                BigDecimal cumulative = contract.getCumulativeSettlement() != null
-                        ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
-                contract.setCumulativeSettlement(cumulative.add(increment.getValue()));
-                contractMapper.updateById(contract);
+            int updated = contractMapper.addSettlement(increment.getKey(), increment.getValue(), tenant != null ? tenant : settlement.getTenantId(), project);
+            if (updated <= 0) {
+                throw new BusinessException("累计结算超出合同总额或合同不存在/非生效，审批已回滚");
             }
         }
 

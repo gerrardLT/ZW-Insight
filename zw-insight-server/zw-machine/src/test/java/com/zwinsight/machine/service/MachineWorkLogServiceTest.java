@@ -51,7 +51,14 @@ class MachineWorkLogServiceTest {
 
     @Mock private com.zwinsight.machine.mapper.BizMachineContractMapper contractMapper;
 
-    @org.junit.jupiter.api.BeforeEach void tenant() { com.zwinsight.common.config.SecurityContextHolder.setTenantId(9999L); }
+    @org.junit.jupiter.api.BeforeEach void tenant() {
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(9999L);
+        var c = new com.zwinsight.machine.domain.BizMachineContract();
+        c.setId(30L); c.setTenantId(9999L); c.setProjectId(20L); c.setStatus("EFFECTIVE");
+        c.setStartDate(java.time.LocalDate.of(2026, 1, 1)); c.setEndDate(java.time.LocalDate.of(2026, 12, 31));
+        org.mockito.Mockito.lenient().when(contractMapper.selectById(30L)).thenReturn(c);
+        org.mockito.Mockito.lenient().when(ledgerMapper.lockById(10L, 9999L)).thenReturn(ledger("IN_FIELD"));
+    }
     @org.junit.jupiter.api.AfterEach void clear() { com.zwinsight.common.config.SecurityContextHolder.clear(); }
 
     @InjectMocks
@@ -82,11 +89,6 @@ class MachineWorkLogServiceTest {
         workLog.setTenantId(9999L); workLog.setProjectId(20L); workLog.setContractId(30L);
         workLog.setWorkDate(java.time.LocalDate.of(2026, 7, 1));
         workLog.setSettlementStatus("UNSETTLED");
-        var c = new com.zwinsight.machine.domain.BizMachineContract();
-        c.setId(30L); c.setTenantId(9999L); c.setProjectId(20L); c.setStatus("EFFECTIVE");
-        c.setStartDate(java.time.LocalDate.of(2026, 1, 1)); c.setEndDate(java.time.LocalDate.of(2026, 12, 31));
-        org.mockito.Mockito.lenient().when(contractMapper.selectById(30L)).thenReturn(c);
-        org.mockito.Mockito.lenient().when(ledgerMapper.lockById(10L, 9999L)).thenReturn(ledger("IN_FIELD"));
         return workLog;
     }
 
