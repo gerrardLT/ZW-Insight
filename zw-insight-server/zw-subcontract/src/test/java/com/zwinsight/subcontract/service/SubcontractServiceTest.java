@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 /**
@@ -636,10 +637,14 @@ class SubcontractServiceTest {
         class SubmitTests {
 
             @Test
-            @DisplayName("提交DRAFT报告 - 状态变为APPROVED")
+            @DisplayName("提交DRAFT报告 - 状态变为APPROVED，并原子累加合同累计产值")
             void submit_draftReport_becomesApproved() {
                 // given
+                BizSubcontract contract = new BizSubcontract();
+                contract.setId(10L);
                 when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
+                when(subcontractMapper.selectById(10L)).thenReturn(contract);
+                when(subcontractMapper.addOutput(10L, new BigDecimal("80000.00"))).thenReturn(1);
                 when(outputReportMapper.updateById(any(BizSubcontractOutputReport.class))).thenReturn(1);
 
                 // when
@@ -649,6 +654,24 @@ class SubcontractServiceTest {
                 verify(outputReportMapper).updateById(argThat(r ->
                         "APPROVED".equals(r.getStatus())
                 ));
+                verify(subcontractMapper).addOutput(10L, new BigDecimal("80000.00"));
+            }
+
+            @Test
+            @DisplayName("提交报告 - 未关联合同或合同不存在时拒绝，不批准悬空产值")
+            void submit_withoutSupportingContract_rejected() {
+                sampleReport.setContractId(null);
+                when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
+                assertThatThrownBy(() -> outputService.submit(1L))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("未关联分包合同");
+
+                sampleReport.setContractId(10L);
+                when(subcontractMapper.selectById(10L)).thenReturn(null);
+                assertThatThrownBy(() -> outputService.submit(1L))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("分包合同不存在");
+                verify(outputReportMapper, never()).updateById(any(BizSubcontractOutputReport.class));
             }
 
             @Test
@@ -1008,21 +1031,16 @@ class SubcontractServiceTest {
                 // given: 合同500000, 累计已结算100000, 本次150000 => 250000 < 500000
                 when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
                 when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
-
-                when(settlementMapper.updateById(any(BizSubcontractSettlement.class))).thenReturn(1);
-                when(subcontractMapper.updateById(any(BizSubcontract.class))).thenReturn(1);
+                when(subcontractMapper.addSettlementWithinLimit(10L, new BigDecimal("150000.00"))).thenReturn(1);
+                when(settlementMapper.update(isNull(), any())).thenReturn(1);
 
                 // when
                 settlementService.submit(1L);
 
-                // then: 状态变 APPROVED
-                verify(settlementMapper).updateById(argThat(s ->
-                        "APPROVED".equals(s.getStatus())
-                ));
-                // 合同累计结算 = 100000 + 150000 = 250000
-                verify(subcontractMapper).updateById(argThat(c ->
-                        new BigDecimal("250000.00").compareTo(c.getCumulativeSettlement()) == 0
-                ));
+                // then: 状态变 APPROVED（CAS）；累计结算走带上限的原子累加，不再读后覆盖整行
+                assertThat(sampleSettlement.getStatus()).isEqualTo("APPROVED");
+                verify(subcontractMapper).addSettlementWithinLimit(10L, new BigDecimal("150000.00"));
+                verify(subcontractMapper, never()).updateById(any(BizSubcontract.class));
                 // 统一付款口径后：结算不再回写项目 totalExpense（改造②）
                 verify(projectMapper, never()).updateById(any());
             }
@@ -1076,16 +1094,14 @@ class SubcontractServiceTest {
                 sampleSettlement.setSettlementAmount(new BigDecimal("50000.00"));
                 when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
                 when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
-                when(settlementMapper.updateById(any(BizSubcontractSettlement.class))).thenReturn(1);
-                when(subcontractMapper.updateById(any(BizSubcontract.class))).thenReturn(1);
+                when(subcontractMapper.addSettlementWithinLimit(10L, new BigDecimal("50000.00"))).thenReturn(1);
+                when(settlementMapper.update(isNull(), any())).thenReturn(1);
 
                 // when
                 settlementService.submit(1L);
 
                 // then: 结算状态更新，且完全不触碰 projectMapper（totalExpense 由付款申请口径维护）
-                verify(settlementMapper).updateById(argThat(s ->
-                        "APPROVED".equals(s.getStatus())
-                ));
+                assertThat(sampleSettlement.getStatus()).isEqualTo("APPROVED");
                 verify(projectMapper, never()).selectById(anyLong());
                 verify(projectMapper, never()).updateById(any());
             }
@@ -1099,17 +1115,42 @@ class SubcontractServiceTest {
 
                 when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
                 when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
-
-                when(settlementMapper.updateById(any(BizSubcontractSettlement.class))).thenReturn(1);
-                when(subcontractMapper.updateById(any(BizSubcontract.class))).thenReturn(1);
+                when(subcontractMapper.addSettlementWithinLimit(10L, new BigDecimal("100000.00"))).thenReturn(1);
+                when(settlementMapper.update(isNull(), any())).thenReturn(1);
 
                 // when
                 settlementService.submit(1L);
 
-                // then: 0 + 100000 = 100000 <= 500000
-                verify(subcontractMapper).updateById(argThat(c ->
-                        new BigDecimal("100000.00").compareTo(c.getCumulativeSettlement()) == 0
-                ));
+                // then: 0 + 100000 <= 500000，放行并走原子累加
+                verify(subcontractMapper).addSettlementWithinLimit(10L, new BigDecimal("100000.00"));
+            }
+
+            @Test
+            @DisplayName("提交结算 - 并发越限：原子累加返回 0 行时拒绝且不置 APPROVED")
+            void submit_concurrentOverLimit_rejectedByAtomicUpdate() {
+                // 读后判断通过（100000+150000 < 500000），但另一单已先入账，条件 UPDATE 命中 0 行
+                when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
+                when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
+                when(subcontractMapper.addSettlementWithinLimit(10L, new BigDecimal("150000.00"))).thenReturn(0);
+
+                assertThatThrownBy(() -> settlementService.submit(1L))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("超出合同金额限制");
+                verify(settlementMapper, never()).update(any(), any());
+                assertThat(sampleSettlement.getStatus()).isEqualTo("DRAFT");
+            }
+
+            @Test
+            @DisplayName("提交结算 - 状态 CAS 失败（并发重复提交）时拒绝")
+            void submit_statusCasLost_rejected() {
+                when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
+                when(subcontractMapper.selectById(10L)).thenReturn(sampleContract);
+                when(subcontractMapper.addSettlementWithinLimit(10L, new BigDecimal("150000.00"))).thenReturn(1);
+                when(settlementMapper.update(isNull(), any())).thenReturn(0);
+
+                assertThatThrownBy(() -> settlementService.submit(1L))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("状态已变更");
             }
         }
 

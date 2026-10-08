@@ -31,6 +31,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -212,12 +213,13 @@ class SubcontractMutationTest {
         contract.setContractAmount(new BigDecimal("10000"));
         contract.setCumulativeSettlement(new BigDecimal("6000")); // 6000+4000=10000 恰好
         when(subcontractMapper.selectById(30L)).thenReturn(contract);
+        when(subcontractMapper.addSettlementWithinLimit(30L, new BigDecimal("4000"))).thenReturn(1);
+        when(settlementMapper.update(isNull(), any())).thenReturn(1);
 
         settlementService.submit(3L);
 
-        ArgumentCaptor<BizSubcontractSettlement> captor = ArgumentCaptor.forClass(BizSubcontractSettlement.class);
-        verify(settlementMapper).updateById(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo("APPROVED");
+        assertThat(draft.getStatus()).isEqualTo("APPROVED");
+        verify(subcontractMapper).addSettlementWithinLimit(30L, new BigDecimal("4000"));
 
         // 超出 → 拒绝并给出最大可结算金额
         BizSubcontractSettlement draftOver = new BizSubcontractSettlement();
@@ -316,8 +318,9 @@ class SubcontractMutationTest {
         draft.setCurrentOutput(new BigDecimal("5000"));
         when(outputReportMapper.selectById(4L)).thenReturn(draft);
         BizSubcontract contract = new BizSubcontract();
-        contract.setCumulativeOutput(null); // null → 从 0 累加
+        contract.setCumulativeOutput(null); // null → 由 SQL COALESCE 兜底为 0
         when(subcontractMapper.selectById(40L)).thenReturn(contract);
+        when(subcontractMapper.addOutput(40L, new BigDecimal("5000"))).thenReturn(1);
 
         outputService.submit(4L);
 
@@ -325,10 +328,9 @@ class SubcontractMutationTest {
                 ArgumentCaptor.forClass(BizSubcontractOutputReport.class);
         verify(outputReportMapper).updateById(reportCaptor.capture());
         assertThat(reportCaptor.getValue().getStatus()).isEqualTo("APPROVED");
-
-        ArgumentCaptor<BizSubcontract> contractCaptor = ArgumentCaptor.forClass(BizSubcontract.class);
-        verify(subcontractMapper).updateById(contractCaptor.capture());
-        assertThat(contractCaptor.getValue().getCumulativeOutput()).isEqualByComparingTo("5000");
+        // 累计产值走原子累加，不再读后覆盖整行
+        verify(subcontractMapper).addOutput(40L, new BigDecimal("5000"));
+        verify(subcontractMapper, never()).updateById(any(BizSubcontract.class));
     }
 
     // ==================== SubcontractSettlementService.updateSettlement null 兜底 ====================

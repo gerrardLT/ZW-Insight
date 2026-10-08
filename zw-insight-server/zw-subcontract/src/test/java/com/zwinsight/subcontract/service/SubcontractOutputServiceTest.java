@@ -72,55 +72,55 @@ class SubcontractOutputServiceTest {
             contract.setCumulativeOutput(new BigDecimal("100000"));
             when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
             when(subcontractMapper.selectById(10L)).thenReturn(contract);
+            when(subcontractMapper.addOutput(10L, new BigDecimal("30000"))).thenReturn(1);
 
             subcontractOutputService.submit(1L);
 
             assertThat(sampleReport.getStatus()).isEqualTo("APPROVED");
             verify(outputReportMapper).updateById(sampleReport);
-            // 100000 + 30000 = 130000
-            verify(subcontractMapper).updateById(argThat(c ->
-                    c.getCumulativeOutput().compareTo(new BigDecimal("130000")) == 0));
+            // 累计产值走原子累加（SQL 侧 COALESCE 兜底 null），不再读后覆盖整行
+            verify(subcontractMapper).addOutput(10L, new BigDecimal("30000"));
+            verify(subcontractMapper, never()).updateById(any(BizSubcontract.class));
         }
 
         @Test
-        @DisplayName("提交：合同累计产值为 null 时从零累加")
-        void submit_cumulativeNull_initFromZero() {
+        @DisplayName("提交：原子累加未命中（合同已删除/并发变更）时拒绝")
+        void submit_atomicWritebackMiss_throws() {
             BizSubcontract contract = new BizSubcontract();
             contract.setId(10L);
-            contract.setCumulativeOutput(null);
             when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
             when(subcontractMapper.selectById(10L)).thenReturn(contract);
+            when(subcontractMapper.addOutput(10L, new BigDecimal("30000"))).thenReturn(0);
 
-            subcontractOutputService.submit(1L);
-
-            verify(subcontractMapper).updateById(argThat(c ->
-                    c.getCumulativeOutput().compareTo(new BigDecimal("30000")) == 0));
+            assertThatThrownBy(() -> subcontractOutputService.submit(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("回写合同累计产值失败");
         }
 
         @Test
-        @DisplayName("提交：contractId 为 null 时不回写合同")
-        void submit_contractIdNull_skipWriteback() {
+        @DisplayName("提交：contractId 为 null 时拒绝（不批准无合同支撑的悬空产值）")
+        void submit_contractIdNull_rejected() {
             sampleReport.setContractId(null);
             when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
 
-            subcontractOutputService.submit(1L);
-
-            assertThat(sampleReport.getStatus()).isEqualTo("APPROVED");
-            verify(outputReportMapper).updateById(sampleReport);
-            verify(subcontractMapper, never()).selectById(any());
-            verify(subcontractMapper, never()).updateById(any());
+            assertThatThrownBy(() -> subcontractOutputService.submit(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("未关联分包合同");
+            assertThat(sampleReport.getStatus()).isEqualTo("DRAFT");
+            verify(outputReportMapper, never()).updateById(any(BizSubcontractOutputReport.class));
+            verify(subcontractMapper, never()).addOutput(any(), any());
         }
 
         @Test
-        @DisplayName("提交：合同不存在时跳过回写")
-        void submit_contractNotFound_skipWriteback() {
+        @DisplayName("提交：合同不存在时拒绝")
+        void submit_contractNotFound_rejected() {
             when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
             when(subcontractMapper.selectById(10L)).thenReturn(null);
 
-            subcontractOutputService.submit(1L);
-
-            verify(outputReportMapper).updateById(sampleReport);
-            verify(subcontractMapper, never()).updateById(any());
+            assertThatThrownBy(() -> subcontractOutputService.submit(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("分包合同不存在");
+            verify(outputReportMapper, never()).updateById(any(BizSubcontractOutputReport.class));
         }
 
         @Test

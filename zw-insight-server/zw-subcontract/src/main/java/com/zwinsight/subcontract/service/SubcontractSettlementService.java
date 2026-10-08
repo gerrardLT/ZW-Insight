@@ -230,12 +230,20 @@ public class SubcontractSettlementService {
             throw new BusinessException("结算金额超出合同金额限制，当前最大可结算金额：" + maxSettlement);
         }
 
+        // 原子入账（真正的越限守卫）：上面是读后判断，只负责给出友好提示；
+        // 并发时以带条件的 UPDATE 为准，后到的结算单拿到 0 行即拒绝，事务回滚。
+        if (subcontractMapper.addSettlementWithinLimit(settlement.getContractId(), settlement.getSettlementAmount()) != 1) {
+            throw new BusinessException("结算金额超出合同金额限制或合同状态已变更，请刷新后重试");
+        }
+        // 状态 CAS：同一结算单被重复提交时只有一次生效，重复提交整体回滚（含上一步入账）
+        int moved = settlementMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizSubcontractSettlement>()
+                .eq(BizSubcontractSettlement::getId, settlement.getId())
+                .eq(BizSubcontractSettlement::getStatus, "DRAFT")
+                .set(BizSubcontractSettlement::getStatus, "APPROVED"));
+        if (moved != 1) {
+            throw new BusinessException("结算单状态已变更，请刷新后重试");
+        }
         settlement.setStatus("APPROVED");
-        settlementMapper.updateById(settlement);
-
-        // 回写合同累计结算
-        contract.setCumulativeSettlement(newCumulative);
-        subcontractMapper.updateById(contract);
 
         // 注：不在结算时回写项目 totalExpense。
         // totalExpense 统一为“付款口径”（实际现金流出），仅由付款申请审批通过

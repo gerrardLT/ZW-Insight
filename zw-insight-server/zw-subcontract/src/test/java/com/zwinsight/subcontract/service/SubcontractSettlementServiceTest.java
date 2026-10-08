@@ -86,12 +86,15 @@ class SubcontractSettlementServiceTest {
         contract.setContractAmount(new BigDecimal("500000")); // 合同金额需大于累计结算
         contract.setCumulativeSettlement(new BigDecimal("30000"));
         when(subcontractMapper.selectById(anyLong())).thenReturn(contract);
+        when(subcontractMapper.addSettlementWithinLimit(100L, new BigDecimal("50000"))).thenReturn(1);
+        when(settlementMapper.update(isNull(), any())).thenReturn(1);
 
         subSettlementService.submit(1L);
 
         assertThat(settlement.getStatus()).isEqualTo("APPROVED");
-        assertThat(contract.getCumulativeSettlement()).isEqualTo(new BigDecimal("80000"));
-        verify(subcontractMapper).updateById(contract);
+        // 累计结算由 SQL 原子累加，内存里的合同对象不再被改写
+        verify(subcontractMapper).addSettlementWithinLimit(100L, new BigDecimal("50000"));
+        verify(subcontractMapper, never()).updateById(any(BizSubcontract.class));
     }
 
     @Test
@@ -109,13 +112,14 @@ class SubcontractSettlementServiceTest {
         contract.setContractAmount(new BigDecimal("500000")); // 合同金额需大于累计结算
         contract.setCumulativeSettlement(new BigDecimal("10000"));
         when(subcontractMapper.selectById(anyLong())).thenReturn(contract);
+        when(subcontractMapper.addSettlementWithinLimit(100L, new BigDecimal("20000"))).thenReturn(1);
+        when(settlementMapper.update(isNull(), any())).thenReturn(1);
 
         // 不再依赖 projectMapper：结算只回写合同累计，不触碰项目 totalExpense
         subSettlementService.submit(1L);
 
         assertThat(settlement.getStatus()).isEqualTo("APPROVED");
-        assertThat(contract.getCumulativeSettlement()).isEqualTo(new BigDecimal("30000"));
-        verify(subcontractMapper).updateById(contract);
+        verify(subcontractMapper).addSettlementWithinLimit(100L, new BigDecimal("20000"));
     }
 
     @Test

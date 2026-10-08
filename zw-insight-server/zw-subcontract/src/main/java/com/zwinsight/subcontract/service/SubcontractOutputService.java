@@ -67,20 +67,22 @@ public class SubcontractOutputService {
         if (report == null) throw new BusinessException("产值报告不存在");
         if (!"DRAFT".equals(report.getStatus())) throw new BusinessException("仅草稿状态可提交");
 
+        // 产值必须挂在存在的分包合同上，否则会出现"已批准但无支撑"的悬空产值（SI-1）
+        if (report.getContractId() == null) {
+            throw new BusinessException("产值报告未关联分包合同，不可提交");
+        }
+        BizSubcontract contract = subcontractMapper.selectById(report.getContractId());
+        if (contract == null) {
+            throw new BusinessException("关联的分包合同不存在，不可提交");
+        }
+
         report.setStatus("APPROVED");
         outputReportMapper.updateById(report);
 
-        // 回写分包合同累计产值（与累计结算分离，避免与结算回写重复累加）
-        if (report.getContractId() != null) {
-            BizSubcontract contract = subcontractMapper.selectById(report.getContractId());
-            if (contract != null) {
-                BigDecimal cumulative = contract.getCumulativeOutput() == null
-                        ? BigDecimal.ZERO : contract.getCumulativeOutput();
-                BigDecimal current = report.getCurrentOutput() == null
-                        ? BigDecimal.ZERO : report.getCurrentOutput();
-                contract.setCumulativeOutput(cumulative.add(current));
-                subcontractMapper.updateById(contract);
-            }
+        // 回写分包合同累计产值（与累计结算分离）：原子累加，避免读后覆盖丢增量
+        BigDecimal current = report.getCurrentOutput() == null ? BigDecimal.ZERO : report.getCurrentOutput();
+        if (subcontractMapper.addOutput(report.getContractId(), current) != 1) {
+            throw new BusinessException("回写合同累计产值失败，请刷新后重试");
         }
     }
 }
