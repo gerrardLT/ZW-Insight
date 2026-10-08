@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.system.domain.SysPost;
 import com.zwinsight.system.mapper.SysPostMapper;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,31 @@ import java.util.List;
 public class SysPostService {
 
     private final SysPostMapper postMapper;
+    private final SysUserMapper userMapper;
+
+    /** 岗位属于其他租户时按不存在处理（sys_* 免拦截器过滤，必须显式校验） */
+    private SysPost requireOwned(Long id) {
+        SysPost post = postMapper.selectById(id);
+        Long tenantId = SecurityContextHolder.getTenantId();
+        if (post == null || (tenantId != null && post.getTenantId() != null && !tenantId.equals(post.getTenantId()))) {
+            throw new BusinessException("岗位不存在");
+        }
+        return post;
+    }
+
+    private static void assertValidStatus(Integer status) {
+        if (status == null || (status != 0 && status != 1)) {
+            throw new BusinessException("状态值无效，仅支持 0（停用）或 1（启用）");
+        }
+    }
+
+    /** 被人员引用的岗位不得删除，否则这些人员的岗位成为悬空引用 */
+    private void assertNotReferenced(SysPost post) {
+        long users = userMapper.selectCount(new LambdaQueryWrapper<SysUser>().eq(SysUser::getPostId, post.getId()));
+        if (users > 0) {
+            throw new BusinessException("岗位「" + post.getPostName() + "」下存在 " + users + " 名人员，无法删除");
+        }
+    }
 
     /**
      * 分页查询
@@ -61,17 +88,24 @@ public class SysPostService {
      * 更新
      */
     public void update(SysPost post) {
-        SysPost existing = postMapper.selectById(post.getId());
-        if (existing == null) {
-            throw new BusinessException("岗位不存在");
+        SysPost existing = requireOwned(post.getId());
+        // 白名单拷贝：tenantId/deleted/version 等系统字段不接受请求体
+        if (post.getPostName() != null) existing.setPostName(post.getPostName());
+        if (post.getPostCode() != null) existing.setPostCode(post.getPostCode());
+        if (post.getSortOrder() != null) existing.setSortOrder(post.getSortOrder());
+        if (post.getStatus() != null) {
+            assertValidStatus(post.getStatus());
+            existing.setStatus(post.getStatus());
         }
-        postMapper.updateById(post);
+        postMapper.updateById(existing);
     }
 
     /**
      * 删除
      */
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
+        assertNotReferenced(requireOwned(id));
         postMapper.deleteById(id);
     }
 
@@ -80,6 +114,13 @@ public class SysPostService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void batchDelete(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("岗位ID列表不能为空");
+        }
+        // 逐个校验归属与引用，任一不满足整体回滚，避免部分删除的半成品
+        for (Long id : ids) {
+            assertNotReferenced(requireOwned(id));
+        }
         postMapper.deleteBatchIds(ids);
     }
 
@@ -87,10 +128,8 @@ public class SysPostService {
      * 岗位启用/停用
      */
     public void updateStatus(Long id, Integer status) {
-        SysPost post = postMapper.selectById(id);
-        if (post == null) {
-            throw new BusinessException("岗位不存在");
-        }
+        SysPost post = requireOwned(id);
+        assertValidStatus(status);
         post.setStatus(status);
         postMapper.updateById(post);
     }
