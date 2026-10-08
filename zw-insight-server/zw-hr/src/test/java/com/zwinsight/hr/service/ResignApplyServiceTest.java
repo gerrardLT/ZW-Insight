@@ -129,6 +129,7 @@ class ResignApplyServiceTest {
         user.setId(10L);
         user.setStatus(1);
         when(userMapper.selectById(10L)).thenReturn(user);
+        when(resignApplyMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
 
         resignApplyService.onApproved(1L);
 
@@ -138,8 +139,8 @@ class ResignApplyServiceTest {
     }
 
     @Test
-    @DisplayName("审批通过回调：关联用户不存在时仅告警不抛异常；幂等（非 SUBMITTED 跳过）")
-    void onApproved_userNotFoundAndIdempotent() {
+    @DisplayName("审批通过回调：账号不存在抛异常（回滚，不静默置 APPROVED）；非 SUBMITTED 幂等跳过")
+    void onApproved_userNotFoundThrows_andIdempotent() {
         BizResignApply apply = new BizResignApply();
         apply.setId(1L);
         apply.setUserId(10L);
@@ -147,14 +148,47 @@ class ResignApplyServiceTest {
         when(resignApplyMapper.selectById(1L)).thenReturn(apply);
         when(userMapper.selectById(10L)).thenReturn(null);
 
-        resignApplyService.onApproved(1L);
-
-        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        assertThatThrownBy(() -> resignApplyService.onApproved(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("账号不存在");
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
         verify(userMapper, never()).updateById(any(SysUser.class));
+        verify(resignApplyMapper, never()).update(any(), any());
 
-        // 幂等：重复事件不重复置状态
+        // 幂等：非 SUBMITTED 直接跳过
+        apply.setStatus("APPROVED");
         resignApplyService.onApproved(1L);
-        verify(resignApplyMapper, org.mockito.Mockito.times(1)).updateById(any());
+        verify(userMapper, org.mockito.Mockito.times(1)).selectById(10L);
+    }
+
+    @Test
+    @DisplayName("审批通过回调：账号属于其他租户拒绝；并发回调 CAS 落空不重复停用")
+    void onApproved_crossTenantAndCasLost() {
+        BizResignApply apply = new BizResignApply();
+        apply.setId(1L);
+        apply.setUserId(10L);
+        apply.setTenantId(1L);
+        apply.setStatus("SUBMITTED");
+        when(resignApplyMapper.selectById(1L)).thenReturn(apply);
+        SysUser foreign = new SysUser();
+        foreign.setId(10L);
+        foreign.setTenantId(2L);
+        foreign.setStatus(1);
+        when(userMapper.selectById(10L)).thenReturn(foreign);
+
+        assertThatThrownBy(() -> resignApplyService.onApproved(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("不属于申请所在租户");
+        assertThat(foreign.getStatus()).isEqualTo(1);
+
+        SysUser mine = new SysUser();
+        mine.setId(10L);
+        mine.setTenantId(1L);
+        mine.setStatus(1);
+        when(userMapper.selectById(10L)).thenReturn(mine);
+        when(resignApplyMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(0);
+        resignApplyService.onApproved(1L);
+        assertThat(mine.getStatus()).isEqualTo(1);
+        verify(userMapper, never()).updateById(any(SysUser.class));
     }
 
     @Test

@@ -124,8 +124,16 @@ public class EntryApplyService {
             log.info("入职审批通过回调：非待审批状态跳过, id={}, status={}", id, apply.getStatus());
             return;
         }
+        // 状态 CAS：并发重复回调只有一次落状态并建账号，输家直接返回，避免重复创建账号
+        int moved = entryApplyMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizEntryApply>()
+                .eq(BizEntryApply::getId, id)
+                .eq(BizEntryApply::getStatus, "SUBMITTED")
+                .set(BizEntryApply::getStatus, "APPROVED"));
+        if (moved != 1) {
+            log.info("入职审批通过回调：并发回调已处理, id={}", id);
+            return;
+        }
         apply.setStatus("APPROVED");
-        entryApplyMapper.updateById(apply);
 
         // 自动创建系统账号（字段从申请单带入；失败抛异常回滚申请状态，不静默）
         SysUser user = new SysUser();

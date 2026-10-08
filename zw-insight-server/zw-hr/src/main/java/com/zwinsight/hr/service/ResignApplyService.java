@@ -89,17 +89,29 @@ public class ResignApplyService {
             log.info("离职审批通过回调：非待审批状态跳过, id={}, status={}", id, apply.getStatus());
             return;
         }
-        apply.setStatus("APPROVED");
-        resignApplyMapper.updateById(apply);
-
-        // 停用账号（用户不存在时仅告警：离职员工可能已被其他链路清理）
+        // 先校验账号再落状态：账号不存在必须失败回滚，不能记个 warn 就把申请置 APPROVED
+        // （原实现会出现"离职已批准但账号仍可登录"的静默失效）
         SysUser user = userMapper.selectById(apply.getUserId());
-        if (user != null) {
-            user.setStatus(0);
-            userMapper.updateById(user);
-        } else {
-            log.warn("离职审批通过：员工账号不存在, userId={}", apply.getUserId());
+        if (user == null) {
+            throw new BusinessException("离职员工账号不存在，离职申请无法生效");
         }
+        if (apply.getTenantId() != null && user.getTenantId() != null
+                && !apply.getTenantId().equals(user.getTenantId())) {
+            throw new BusinessException("员工账号不属于申请所在租户，离职申请无法生效");
+        }
+        // 状态 CAS：并发重复回调只有一次生效
+        int moved = resignApplyMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizResignApply>()
+                .eq(BizResignApply::getId, id)
+                .eq(BizResignApply::getStatus, "SUBMITTED")
+                .set(BizResignApply::getStatus, "APPROVED"));
+        if (moved != 1) {
+            log.info("离职审批通过回调：并发回调已处理, id={}", id);
+            return;
+        }
+        apply.setStatus("APPROVED");
+
+        user.setStatus(0);
+        userMapper.updateById(user);
         log.info("离职审批通过，账号已停用: applyId={}, userId={}", id, apply.getUserId());
     }
 

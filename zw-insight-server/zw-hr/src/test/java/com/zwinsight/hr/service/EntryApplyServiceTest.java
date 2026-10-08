@@ -184,6 +184,7 @@ class EntryApplyServiceTest {
         apply.setPostId(200L);
         apply.setStatus("SUBMITTED");
         when(entryApplyMapper.selectById(1L)).thenReturn(apply);
+        when(entryApplyMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
 
         entryApplyService.onApproved(1L);
 
@@ -196,6 +197,22 @@ class EntryApplyServiceTest {
         assertThat(created.getOrgId()).isEqualTo(100L);
         assertThat(created.getPostId()).isEqualTo(200L);
         assertThat(created.getStatus()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("审批通过回调：并发回调状态 CAS 落空时不重复建账号")
+    void onApproved_casLost_noDuplicateAccount() {
+        BizEntryApply apply = new BizEntryApply();
+        apply.setId(1L);
+        apply.setUsername("zhangsan");
+        apply.setStatus("SUBMITTED");
+        when(entryApplyMapper.selectById(1L)).thenReturn(apply);
+        when(entryApplyMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(0);
+
+        entryApplyService.onApproved(1L);
+
+        verify(sysUserService, never()).save(any(SysUser.class));
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
     }
 
     @Test
@@ -220,6 +237,7 @@ class EntryApplyServiceTest {
         apply.setUsername("zhangsan");
         apply.setStatus("SUBMITTED");
         when(entryApplyMapper.selectById(1L)).thenReturn(apply);
+        when(entryApplyMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
         doThrow(new com.zwinsight.common.exception.BusinessException("用户名已存在"))
                 .when(sysUserService).save(any(SysUser.class));
 

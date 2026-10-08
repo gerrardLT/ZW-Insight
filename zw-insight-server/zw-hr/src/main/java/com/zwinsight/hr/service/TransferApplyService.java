@@ -114,18 +114,29 @@ public class TransferApplyService {
             log.info("调动审批通过回调：非待审批状态跳过, id={}, status={}", id, apply.getStatus());
             return;
         }
+        // 先校验账号再落状态：账号不存在必须失败回滚，不能只记 warn 就置 APPROVED
+        SysUser user = userMapper.selectById(apply.getUserId());
+        if (user == null) {
+            throw new BusinessException("调动员工账号不存在，调动申请无法生效");
+        }
+        if (apply.getTenantId() != null && user.getTenantId() != null
+                && !apply.getTenantId().equals(user.getTenantId())) {
+            throw new BusinessException("员工账号不属于申请所在租户，调动申请无法生效");
+        }
+        int moved = transferApplyMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizTransferApply>()
+                .eq(BizTransferApply::getId, id)
+                .eq(BizTransferApply::getStatus, "SUBMITTED")
+                .set(BizTransferApply::getStatus, "APPROVED"));
+        if (moved != 1) {
+            log.info("调动审批通过回调：并发回调已处理, id={}", id);
+            return;
+        }
         apply.setStatus("APPROVED");
-        transferApplyMapper.updateById(apply);
 
         // 更新员工部门和岗位
-        SysUser user = userMapper.selectById(apply.getUserId());
-        if (user != null) {
-            user.setOrgId(apply.getToOrgId());
-            user.setPostId(apply.getToPostId());
-            userMapper.updateById(user);
-        } else {
-            log.warn("调动审批通过：员工账号不存在, userId={}", apply.getUserId());
-        }
+        user.setOrgId(apply.getToOrgId());
+        user.setPostId(apply.getToPostId());
+        userMapper.updateById(user);
         log.info("调动审批通过，员工部门/岗位已更新: applyId={}, userId={}", id, apply.getUserId());
     }
 

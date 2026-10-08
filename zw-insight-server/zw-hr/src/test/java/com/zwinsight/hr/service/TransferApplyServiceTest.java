@@ -190,6 +190,7 @@ class TransferApplyServiceTest {
         user.setOrgId(10L);
         user.setPostId(20L);
         when(userMapper.selectById(100L)).thenReturn(user);
+        when(transferApplyMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
 
         transferApplyService.onApproved(1L);
 
@@ -202,8 +203,8 @@ class TransferApplyServiceTest {
     }
 
     @Test
-    @DisplayName("审批通过回调：员工不存在时仅告警不回写；幂等（非 SUBMITTED 跳过）")
-    void onApproved_userNotFoundAndIdempotent() {
+    @DisplayName("审批通过回调：员工不存在抛异常（回滚，不静默置 APPROVED）；非 SUBMITTED 幂等跳过")
+    void onApproved_userNotFoundThrows_andIdempotent() {
         BizTransferApply apply = new BizTransferApply();
         apply.setId(1L);
         apply.setUserId(100L);
@@ -211,14 +212,48 @@ class TransferApplyServiceTest {
         when(transferApplyMapper.selectById(1L)).thenReturn(apply);
         when(userMapper.selectById(100L)).thenReturn(null);
 
-        transferApplyService.onApproved(1L);
-
-        assertThat(apply.getStatus()).isEqualTo("APPROVED");
+        assertThatThrownBy(() -> transferApplyService.onApproved(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("账号不存在");
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
         verify(userMapper, org.mockito.Mockito.never()).updateById(any(SysUser.class));
 
-        // 幂等：非 SUBMITTED 跳过
+        // 幂等：非 SUBMITTED 直接跳过
+        apply.setStatus("APPROVED");
         transferApplyService.onApproved(1L);
-        verify(transferApplyMapper, org.mockito.Mockito.times(1)).updateById(any());
+        verify(userMapper, org.mockito.Mockito.times(1)).selectById(100L);
+    }
+
+    @Test
+    @DisplayName("审批通过回调：账号属于其他租户拒绝；并发回调 CAS 落空不重复调动")
+    void onApproved_crossTenantAndCasLost() {
+        BizTransferApply apply = new BizTransferApply();
+        apply.setId(1L);
+        apply.setUserId(100L);
+        apply.setTenantId(1L);
+        apply.setToOrgId(200L);
+        apply.setToPostId(300L);
+        apply.setStatus("SUBMITTED");
+        when(transferApplyMapper.selectById(1L)).thenReturn(apply);
+        SysUser foreign = new SysUser();
+        foreign.setId(100L);
+        foreign.setTenantId(2L);
+        foreign.setOrgId(10L);
+        when(userMapper.selectById(100L)).thenReturn(foreign);
+
+        assertThatThrownBy(() -> transferApplyService.onApproved(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("不属于申请所在租户");
+        assertThat(foreign.getOrgId()).isEqualTo(10L);
+
+        SysUser mine = new SysUser();
+        mine.setId(100L);
+        mine.setTenantId(1L);
+        mine.setOrgId(10L);
+        when(userMapper.selectById(100L)).thenReturn(mine);
+        when(transferApplyMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(0);
+        transferApplyService.onApproved(1L);
+        assertThat(mine.getOrgId()).isEqualTo(10L);
+        verify(userMapper, org.mockito.Mockito.never()).updateById(any(SysUser.class));
     }
 
     @Test
