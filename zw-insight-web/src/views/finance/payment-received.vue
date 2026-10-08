@@ -327,7 +327,7 @@ function buildCollectionRateOption(data: any) {
 }
 .form-hint {
   width: 100%;
-  font-size: 12px;
+  font-size: var(--zw-font-size-xs);
   color: var(--el-text-color-secondary);
   line-height: 1.5;
 }
