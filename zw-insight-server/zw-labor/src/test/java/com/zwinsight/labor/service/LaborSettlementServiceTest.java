@@ -273,7 +273,7 @@ class LaborSettlementServiceTest {
     }
 
     @Test
-    @DisplayName("更新：PUT 体携带 status 被置 null 不落库（防绕过 submit 守卫）")
+    @DisplayName("更新：PUT 体携带 status 不会落库（白名单拷贝到既有实体，防绕过 submit 守卫）")
     void testUpdate_statusStripped() {
         when(settlementMapper.selectById(1L)).thenReturn(sampleSettlement);
 
@@ -282,7 +282,8 @@ class LaborSettlementServiceTest {
         body.setStatus("APPROVED");
         laborSettlementService.update(body);
 
-        assertThat(body.getStatus()).as("status 应被服务端置 null 防落库").isNull();
-        verify(settlementMapper).updateById(body);
+        // 落库对象是既有实体（仍为 DRAFT），客户端传入的 APPROVED 不进入落库对象
+        verify(settlementMapper).updateById(argThat((BizLaborSettlement s) ->
+                s == sampleSettlement && "DRAFT".equals(s.getStatus())));
     }
 }
