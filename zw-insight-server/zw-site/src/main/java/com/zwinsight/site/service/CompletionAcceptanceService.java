@@ -95,13 +95,10 @@ public class CompletionAcceptanceService {
         acceptance.setStatus("APPROVED");
         acceptanceMapper.updateById(acceptance);
 
-        // P1-M1：竣工走项目状态机（COMPLETE 事件：实际竣工日回写 + 大事记）
-        try {
-            projectService.complete(acceptance.getProjectId());
-        } catch (com.zwinsight.common.exception.BusinessException e) {
-            log.warn("竣工验收后项目竣工流转被状态机拒绝, projectId={}, reason={}",
-                    acceptance.getProjectId(), e.getMessage());
-        }
+        // P1-M1：竣工走项目状态机（COMPLETE 事件：实际竣工日回写 + 大事记）。
+        // 状态机拒绝（如项目已暂停/已终止）必须向上抛出，让审批事务整体回滚：
+        // 原实现只记 warn，会出现「验收单 APPROVED 但项目未竣工」的半成品。
+        projectService.complete(acceptance.getProjectId());
         log.info("竣工验收审批通过，项目已竣工: acceptanceId={}, projectId={}", id, acceptance.getProjectId());
     }
 

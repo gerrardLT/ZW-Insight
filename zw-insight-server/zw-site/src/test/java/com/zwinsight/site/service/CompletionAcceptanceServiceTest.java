@@ -157,6 +157,22 @@ class CompletionAcceptanceServiceTest {
     }
 
     @Test
+    @DisplayName("审批通过回调：项目竣工被状态机拒绝时异常向上传播（不吞错，由审批事务回滚）")
+    void onApproved_projectCompleteRejected_propagates() {
+        BizCompletionAcceptance acceptance = new BizCompletionAcceptance();
+        acceptance.setId(1L);
+        acceptance.setProjectId(10L);
+        acceptance.setStatus("SUBMITTED");
+        when(acceptanceMapper.selectById(1L)).thenReturn(acceptance);
+        org.mockito.Mockito.doThrow(new BusinessException("项目当前状态不允许竣工"))
+                .when(projectService).complete(10L);
+
+        assertThatThrownBy(() -> completionAcceptanceService.onApproved(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不允许竣工");
+    }
+
+    @Test
     @DisplayName("审批驳回回调：SUBMITTED→DRAFT")
     void onRejected_backToDraft() {
         BizCompletionAcceptance acceptance = new BizCompletionAcceptance();

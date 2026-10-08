@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 /**
@@ -96,52 +97,129 @@ class FinalSettlementServiceTest {
         assertThatThrownBy(() -> service.submit(2L)).hasMessageContaining("仅草稿状态可提交");
     }
 
+    private BizConstructionContract effectiveContract() {
+        BizConstructionContract contract = new BizConstructionContract();
+        contract.setId(20L);
+        contract.setProjectId(10L);
+        contract.setStatus("EFFECTIVE");
+        return contract;
+    }
+
     @Test
-    @DisplayName("submit - 正常：APPROVED + 合同 SETTLED + 项目结算金额累加")
-    void submit_success_fullWriteBack() {
+    @DisplayName("submit - 正常：只置 SUBMITTED 并启动流程，不提前回写合同与项目")
+    void submit_success_onlySubmitted() {
         BizFinalSettlement s = settlement("DRAFT");
         when(settlementMapper.selectById(1L)).thenReturn(s);
         when(approvalService.startProcess(eq("FINAL_SETTLEMENT"), eq(1L),
                 eq("final_settlement_approval"), anyMap())).thenReturn("proc-1");
-        BizConstructionContract contract = new BizConstructionContract();
-        contract.setStatus("EFFECTIVE");
-        when(contractMapper.selectById(20L)).thenReturn(contract);
-        BizProject project = new BizProject();
-        project.setSettlementAmount(new BigDecimal("10000"));
-        when(projectMapper.selectById(10L)).thenReturn(project);
+        when(contractMapper.selectById(20L)).thenReturn(effectiveContract());
+        when(projectMapper.selectById(10L)).thenReturn(new BizProject());
 
         service.submit(1L);
 
-        assertThat(s.getStatus()).isEqualTo("APPROVED");
+        assertThat(s.getStatus()).isEqualTo("SUBMITTED");
         assertThat(s.getWorkflowInstanceId()).isEqualTo("proc-1");
-        verify(contractMapper).updateById(argThat(c -> "SETTLED".equals(c.getStatus())));
-        verify(projectMapper).updateById(argThat(p ->
-                p.getSettlementAmount().compareTo(new BigDecimal("60000")) == 0));
+        verify(contractMapper, never()).updateById(any());
+        verify(projectMapper, never()).addSettlementAmount(anyLong(), any());
     }
 
     @Test
-    @DisplayName("submit - 合同/项目不存在时跳过对应回写但不报错")
-    void submit_missingRefs_skipsWriteBack() {
+    @DisplayName("submit - 合同/项目引用缺失或不属于该项目一律拒绝，不启动流程")
+    void submit_missingOrMismatchedRefs_rejected() {
         BizFinalSettlement s = settlement("DRAFT");
         when(settlementMapper.selectById(1L)).thenReturn(s);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-1");
+
         when(contractMapper.selectById(20L)).thenReturn(null);
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("施工合同不存在");
+
+        BizConstructionContract other = effectiveContract();
+        other.setProjectId(99L);
+        when(contractMapper.selectById(20L)).thenReturn(other);
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("不属于该项目");
+
+        when(contractMapper.selectById(20L)).thenReturn(effectiveContract());
         when(projectMapper.selectById(10L)).thenReturn(null);
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("关联项目不存在");
 
-        service.submit(1L);
-
-        assertThat(s.getStatus()).isEqualTo("APPROVED");
-        verify(contractMapper, never()).updateById(any());
-        verify(projectMapper, never()).updateById(any());
+        verify(approvalService, never()).startProcess(anyString(), anyLong(), anyString(), anyMap());
     }
 
     @Test
-    @DisplayName("submit - 合同非生效状态拒绝置已结算（D2：DRAFT/SUBMITTED 合同不可竣工结算）")
+    @DisplayName("submit - 结算金额 null/零/负拒绝（取代原 null 按 0 累加）")
+    void submit_nonPositiveAmount_rejected() {
+        BizFinalSettlement s = settlement("DRAFT");
+        s.setSettlementAmount(null);
+        when(settlementMapper.selectById(1L)).thenReturn(s);
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("必须大于0");
+
+        s.setSettlementAmount(BigDecimal.ZERO);
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("必须大于0");
+        verify(approvalService, never()).startProcess(anyString(), anyLong(), anyString(), anyMap());
+    }
+
+    @Test
+    @DisplayName("onApproved - SUBMITTED→APPROVED，合同置 SETTLED，项目结算额原子累加")
+    void onApproved_success_writesBack() {
+        BizFinalSettlement s = settlement("SUBMITTED");
+        when(settlementMapper.selectById(1L)).thenReturn(s);
+        when(settlementMapper.update(isNull(), any())).thenReturn(1);
+        BizConstructionContract contract = effectiveContract();
+        when(contractMapper.selectById(20L)).thenReturn(contract);
+        when(projectMapper.addSettlementAmount(10L, new BigDecimal("50000"))).thenReturn(1);
+
+        service.onApproved(1L);
+
+        assertThat(contract.getStatus()).isEqualTo("SETTLED");
+        verify(contractMapper).updateById(contract);
+        verify(projectMapper).addSettlementAmount(10L, new BigDecimal("50000"));
+    }
+
+    @Test
+    @DisplayName("onApproved - 已 APPROVED 幂等；并发回调 CAS 落空不重复回写")
+    void onApproved_idempotentAndCas() {
+        when(settlementMapper.selectById(1L)).thenReturn(settlement("APPROVED"));
+        service.onApproved(1L);
+        verify(projectMapper, never()).addSettlementAmount(anyLong(), any());
+
+        when(settlementMapper.selectById(2L)).thenReturn(settlement("SUBMITTED"));
+        when(settlementMapper.update(isNull(), any())).thenReturn(0);
+        service.onApproved(2L);
+        verify(projectMapper, never()).addSettlementAmount(anyLong(), any());
+        verify(contractMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onApproved - 合同已失效或项目缺失抛异常（由审批事务整体回滚），不静默跳过")
+    void onApproved_invalidRefs_throw() {
+        when(settlementMapper.selectById(1L)).thenReturn(settlement("SUBMITTED"));
+        when(settlementMapper.update(isNull(), any())).thenReturn(1);
+
+        BizConstructionContract terminated = effectiveContract();
+        terminated.setStatus("TERMINATED");
+        when(contractMapper.selectById(20L)).thenReturn(terminated);
+        assertThatThrownBy(() -> service.onApproved(1L)).hasMessageContaining("无法生效");
+
+        when(contractMapper.selectById(20L)).thenReturn(effectiveContract());
+        when(projectMapper.addSettlementAmount(10L, new BigDecimal("50000"))).thenReturn(0);
+        assertThatThrownBy(() -> service.onApproved(1L)).hasMessageContaining("项目不存在");
+    }
+
+    @Test
+    @DisplayName("onApproved - 状态异常（DRAFT）拒绝；onRejected 仅 SUBMITTED 回退草稿")
+    void onApproved_wrongState_and_onRejected() {
+        when(settlementMapper.selectById(1L)).thenReturn(settlement("DRAFT"));
+        assertThatThrownBy(() -> service.onApproved(1L)).hasMessageContaining("状态异常");
+
+        service.onRejected(1L);
+        verify(settlementMapper).update(isNull(), any());
+    }
+
+    @Test
+    @DisplayName("submit - 合同非生效状态拒绝提交（D2：DRAFT/SUBMITTED 合同不可竣工结算），不启动流程")
     void submit_contractNotEffective_rejected() {
         BizFinalSettlement s = settlement("DRAFT");
         when(settlementMapper.selectById(1L)).thenReturn(s);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-1");
-        BizConstructionContract contract = new BizConstructionContract();
+        BizConstructionContract contract = effectiveContract();
         contract.setStatus("DRAFT");
         when(contractMapper.selectById(20L)).thenReturn(contract);
 
@@ -149,27 +227,7 @@ class FinalSettlementServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("仅生效状态的合同");
 
+        verify(approvalService, never()).startProcess(anyString(), anyLong(), anyString(), anyMap());
         verify(contractMapper, never()).updateById(any());
-    }
-
-    @Test
-    @DisplayName("submit - 结算金额 null 不抛 NPE 按 0 累加（P0 SET-06）")
-    void submit_nullSettlementAmount_noNpe() {
-        BizFinalSettlement s = settlement("DRAFT");
-        s.setSettlementAmount(null);
-        when(settlementMapper.selectById(1L)).thenReturn(s);
-        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-1");
-        BizConstructionContract contract = new BizConstructionContract();
-        contract.setStatus("EFFECTIVE");
-        when(contractMapper.selectById(20L)).thenReturn(contract);
-        BizProject project = new BizProject();
-        project.setSettlementAmount(new BigDecimal("100"));
-        when(projectMapper.selectById(10L)).thenReturn(project);
-
-        service.submit(1L);
-
-        // 项目结算额 100 + 0 = 100，无 NPE
-        verify(projectMapper).updateById(argThat(p ->
-                p.getSettlementAmount().compareTo(new BigDecimal("100")) == 0));
     }
 }
