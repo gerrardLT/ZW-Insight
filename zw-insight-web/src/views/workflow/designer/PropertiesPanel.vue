@@ -11,24 +11,85 @@
             @change="(v: string) => commit('name', v)"
           />
         </el-form-item>
+
+        <!-- 审批人：手填/表达式 + 发起人快捷键 + 用户快捷下拉 -->
         <el-form-item label="审批人 flowable:assignee">
           <el-input
             :model-value="form.assignee"
-            placeholder="如：${initiator}"
+            placeholder="如：${initiator} 或具体账号"
             @change="(v: string) => commit('flowable:assignee', v)"
           />
+          <div class="quick-assignee-bar">
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click="setInitiator"
+            >
+              + 填入发起人 ${initiator}
+            </el-button>
+          </div>
+          <el-select
+            v-model="quickUser"
+            placeholder="从系统用户中快捷选择"
+            clearable
+            filterable
+            style="width: 100%; margin-top: 4px"
+            @change="handleSelectQuickUser"
+          >
+            <el-option
+              v-for="u in userOptions"
+              :key="u.username"
+              :label="`${u.realName} (${u.username})`"
+              :value="u.username"
+            />
+          </el-select>
         </el-form-item>
+
+        <!-- 候选组：多选下拉 + 文本框双向同步 -->
         <el-form-item label="候选组 flowable:candidateGroups">
+          <el-select
+            v-model="selectedRoleCodes"
+            multiple
+            filterable
+            placeholder="点击选择角色（自动填充）"
+            style="width: 100%; margin-bottom: 4px"
+            @change="handleRoleSelectChange"
+          >
+            <el-option
+              v-for="r in roleOptions"
+              :key="r.roleCode"
+              :label="`${r.roleName} (${r.roleCode})`"
+              :value="r.roleCode"
+            />
+          </el-select>
           <el-input
             :model-value="form.candidateGroups"
-            placeholder="多个用英文逗号分隔"
+            placeholder="多个角色编码用英文逗号分隔"
             @change="(v: string) => commit('flowable:candidateGroups', v)"
           />
         </el-form-item>
+
+        <!-- 候选人：多选下拉 + 文本框双向同步 -->
         <el-form-item label="候选人 flowable:candidateUsers">
+          <el-select
+            v-model="selectedUsernames"
+            multiple
+            filterable
+            placeholder="点击选择候选人（自动填充）"
+            style="width: 100%; margin-bottom: 4px"
+            @change="handleUserSelectChange"
+          >
+            <el-option
+              v-for="u in userOptions"
+              :key="u.username"
+              :label="`${u.realName} (${u.username})`"
+              :value="u.username"
+            />
+          </el-select>
           <el-input
             :model-value="form.candidateUsers"
-            placeholder="多个用英文逗号分隔"
+            placeholder="多个账号用英文逗号分隔"
             @change="(v: string) => commit('flowable:candidateUsers', v)"
           />
         </el-form-item>
@@ -50,9 +111,9 @@
         </li>
         <li>
           <strong>审批人常用值</strong>：<code>${initiator}</code> 表示流程发起人；
-          也可填写具体用户名或表达式。
+          也可从下拉菜单中直接选择用户，或填写自定义表达式。
         </li>
-        <li><strong>候选组 / 候选人</strong>：与审批人三选一配置即可，多值用英文逗号分隔。</li>
+        <li><strong>候选组 / 候选人</strong>：与审批人三选一配置即可，支持下拉直接勾选角色或人员。</li>
       </ul>
     </div>
   </div>
@@ -60,6 +121,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { getRoleList, getUserPage } from '@/api/system'
 
 const props = defineProps<{
   modeler: any
@@ -73,7 +135,41 @@ const form = reactive({
   candidateUsers: ''
 })
 
+const roleOptions = ref<Array<{ roleCode: string; roleName: string }>>([])
+const userOptions = ref<Array<{ username: string; realName: string }>>([])
+const selectedRoleCodes = ref<string[]>([])
+const selectedUsernames = ref<string[]>([])
+const quickUser = ref<string>('')
+
 const isUserTask = computed(() => selected.value?.type === 'bpmn:UserTask')
+
+/** 加载系统角色与用户选项，方便直接下拉勾选 */
+async function loadOptions() {
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
+    return
+  }
+  try {
+    const roleRes: any = await getRoleList()
+    const rList = Array.isArray(roleRes?.data) ? roleRes.data : (roleRes?.data?.records || [])
+    roleOptions.value = rList.map((r: any) => ({
+      roleCode: r.roleCode,
+      roleName: r.roleName
+    }))
+  } catch {
+    // 忽略加载异常
+  }
+
+  try {
+    const userRes: any = await getUserPage({ page: 1, size: 200 })
+    const uList = Array.isArray(userRes?.data) ? userRes.data : (userRes?.data?.records || [])
+    userOptions.value = uList.map((u: any) => ({
+      username: u.username,
+      realName: u.realName || u.username
+    }))
+  } catch {
+    // 忽略加载异常
+  }
+}
 
 /** 从当前选中刷新面板状态（仅单选 UserTask 显示表单） */
 function refreshFromSelection() {
@@ -86,6 +182,14 @@ function refreshFromSelection() {
   form.assignee = bo.get('flowable:assignee') || ''
   form.candidateGroups = bo.get('flowable:candidateGroups') || ''
   form.candidateUsers = bo.get('flowable:candidateUsers') || ''
+
+  quickUser.value = ''
+  selectedRoleCodes.value = form.candidateGroups
+    ? form.candidateGroups.split(',').map((s: string) => s.trim()).filter(Boolean)
+    : []
+  selectedUsernames.value = form.candidateUsers
+    ? form.candidateUsers.split(',').map((s: string) => s.trim()).filter(Boolean)
+    : []
 }
 
 /** 回写属性：空串写 undefined 以移除属性 */
@@ -95,11 +199,38 @@ function commit(key: string, value: string) {
   modeling.updateProperties(selected.value, { [key]: value === '' ? undefined : value })
   if (key === 'name') form.name = value
   else if (key === 'flowable:assignee') form.assignee = value
-  else if (key === 'flowable:candidateGroups') form.candidateGroups = value
-  else if (key === 'flowable:candidateUsers') form.candidateUsers = value
+  else if (key === 'flowable:candidateGroups') {
+    form.candidateGroups = value
+    selectedRoleCodes.value = value ? value.split(',').map(s => s.trim()).filter(Boolean) : []
+  }
+  else if (key === 'flowable:candidateUsers') {
+    form.candidateUsers = value
+    selectedUsernames.value = value ? value.split(',').map(s => s.trim()).filter(Boolean) : []
+  }
+}
+
+function setInitiator() {
+  commit('flowable:assignee', '${initiator}')
+}
+
+function handleSelectQuickUser(val: string) {
+  if (val) {
+    commit('flowable:assignee', val)
+  }
+}
+
+function handleRoleSelectChange(vals: string[]) {
+  const joined = (vals || []).join(',')
+  commit('flowable:candidateGroups', joined)
+}
+
+function handleUserSelectChange(vals: string[]) {
+  const joined = (vals || []).join(',')
+  commit('flowable:candidateUsers', joined)
 }
 
 onMounted(() => {
+  loadOptions()
   props.modeler?.on?.('selection.changed', refreshFromSelection)
   props.modeler?.on?.('import.done', refreshFromSelection)
   refreshFromSelection()
@@ -120,6 +251,12 @@ onMounted(() => {
   font-size: var(--zw-font-size-base);
   font-weight: 600;
   margin-bottom: var(--zw-space-sm-md);
+}
+
+.quick-assignee-bar {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .panel-hint {

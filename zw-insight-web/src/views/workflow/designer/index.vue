@@ -2,27 +2,49 @@
   <div class="designer-container">
     <!-- 工具栏 -->
     <div class="designer-toolbar">
-      <el-button type="primary" @click="handleSave">
-        <el-icon><Download /></el-icon>保存 XML
-      </el-button>
-      <el-button type="success" @click="handleDeploy">
-        <el-icon><Upload /></el-icon>部署到服务器
-      </el-button>
-      <el-upload
-        :auto-upload="false"
-        :show-file-list="false"
-        accept=".bpmn,.xml"
-        :on-change="handleImport"
-      >
-        <template #trigger>
-          <el-button>
-            <el-icon><FolderOpened /></el-icon>导入文件
-          </el-button>
-        </template>
-      </el-upload>
-      <el-button @click="handleNewProcess">
-        <el-icon><Plus /></el-icon>新建流程
-      </el-button>
+      <div class="toolbar-left">
+        <el-button type="primary" @click="handleSave">
+          <el-icon><Download /></el-icon>保存 XML
+        </el-button>
+        <el-button type="success" :loading="deploying" @click="handleDeploy">
+          <el-icon><Upload /></el-icon>部署到服务器
+        </el-button>
+        <el-upload
+          :auto-upload="false"
+          :show-file-list="false"
+          accept=".bpmn,.xml"
+          :on-change="handleImport"
+        >
+          <template #trigger>
+            <el-button>
+              <el-icon><FolderOpened /></el-icon>导入文件
+            </el-button>
+          </template>
+        </el-upload>
+        <el-button @click="handleNewProcess">
+          <el-icon><Plus /></el-icon>新建流程
+        </el-button>
+      </div>
+
+      <!-- 流程基础信息：标识与名称实时配置 -->
+      <div class="toolbar-right">
+        <el-input
+          v-model="processMeta.key"
+          placeholder="流程标识（如 labor_contract_approval）"
+          style="width: 260px"
+          @change="syncProcessMetaToXml"
+        >
+          <template #prepend>流程Key</template>
+        </el-input>
+        <el-input
+          v-model="processMeta.name"
+          placeholder="流程名称（如 劳务合同审批）"
+          style="width: 240px"
+          @change="syncProcessMetaToXml"
+        >
+          <template #prepend>流程名称</template>
+        </el-input>
+      </div>
     </div>
 
     <!-- BPMN 画布 + 右侧属性面板 -->
@@ -34,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, shallowRef, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import BpmnModeler from 'bpmn-js/lib/Modeler'
@@ -48,8 +70,13 @@ import { translateModule } from './translate'
 
 const canvasRef = ref<HTMLDivElement>()
 let modeler: InstanceType<typeof BpmnModeler> | null = null
-// 传给属性面板的响应式引用（shallowRef 避免深度代理 bpmn 内部对象）
 const modelerInstance = shallowRef<InstanceType<typeof BpmnModeler> | null>(null)
+
+const deploying = ref(false)
+const processMeta = reactive({
+  key: 'Process_1',
+  name: '新流程'
+})
 
 // 默认空白流程模板
 const DEFAULT_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -108,13 +135,13 @@ async function initModeler() {
   modeler = new BpmnModeler({
     container: canvasRef.value,
     additionalModules: [translateModule],
-    // Flowable 扩展属性（assignee/candidateUsers/candidateGroups）命名空间支持
     moddleExtensions: { flowable: flowableDescriptor }
   })
   modelerInstance.value = modeler
   try {
     await modeler.importXML(DEFAULT_XML)
-    const canvas = modeler.get('canvas')
+    readProcessMetaFromXml()
+    const canvas: any = modeler.get('canvas')
     canvas.zoom('fit-viewport')
   } catch (err) {
     console.error('加载流程图失败', err)
@@ -122,15 +149,53 @@ async function initModeler() {
   }
 }
 
+/** 从画布中读取 <process id="..." name="..."> 同步到顶部输入框 */
+function readProcessMetaFromXml() {
+  if (!modeler) return
+  try {
+    const elementRegistry: any = modeler.get?.('elementRegistry')
+    if (!elementRegistry || typeof elementRegistry.filter !== 'function') return
+    const processes = elementRegistry.filter((e: any) => e.type === 'bpmn:Process')
+    if (processes && processes.length > 0) {
+      const p = processes[0].businessObject
+      processMeta.key = p.get('id') || 'Process_1'
+      processMeta.name = p.get('name') || '新流程'
+    }
+  } catch {
+    // 忽略
+  }
+}
+
+/** 将用户修改的流程标识与名称写回 BPMN 模型 */
+function syncProcessMetaToXml() {
+  if (!modeler) return
+  try {
+    const elementRegistry: any = modeler.get?.('elementRegistry')
+    const modeling: any = modeler.get?.('modeling')
+    if (!elementRegistry || typeof elementRegistry.filter !== 'function' || !modeling) return
+    const processes = elementRegistry.filter((e: any) => e.type === 'bpmn:Process')
+    if (processes && processes.length > 0) {
+      modeling.updateProperties(processes[0], {
+        id: processMeta.key || 'Process_1',
+        name: processMeta.name || '新流程'
+      })
+    }
+  } catch {
+    // 忽略
+  }
+}
+
 async function handleSave() {
   if (!modeler) return
   try {
+    syncProcessMetaToXml()
     const { xml } = await modeler.saveXML({ format: true })
+    const filename = `${processMeta.key || 'process'}.bpmn`
     const blob = new Blob([xml], { type: 'application/xml' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'process.bpmn'
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
     ElMessage.success('已保存为 process.bpmn')
@@ -139,18 +204,26 @@ async function handleSave() {
   }
 }
 
+/** 点击顶部“部署到服务器”：提取流程元数据并直接提交 */
 async function handleDeploy() {
   if (!modeler) return
+  readProcessMetaFromXml()
+  syncProcessMetaToXml()
+  deploying.value = true
   try {
     const { xml } = await modeler.saveXML({ format: true })
-    const file = new File([xml], 'process.bpmn', { type: 'application/xml' })
+    const filename = `${processMeta.key ? processMeta.key.trim() : 'process'}.bpmn20.xml`
+    const file = new File([xml], filename, { type: 'application/xml' })
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('name', '流程部署')
+    formData.append('name', processMeta.name ? processMeta.name.trim() : '流程部署')
+
     await deployProcess(formData)
-    ElMessage.success('部署成功')
+    ElMessage.success(`流程【${processMeta.name || '流程'}】部署成功（标识：${processMeta.key}）`)
   } catch (err) {
     ElMessage.error('部署失败')
+  } finally {
+    deploying.value = false
   }
 }
 
@@ -162,7 +235,8 @@ async function handleImport(file: UploadFile) {
     if (xml && modeler) {
       try {
         await modeler.importXML(xml)
-        const canvas = modeler.get('canvas')
+        readProcessMetaFromXml()
+        const canvas: any = modeler.get('canvas')
         canvas.zoom('fit-viewport')
         ElMessage.success('导入成功')
       } catch (err) {
@@ -177,7 +251,8 @@ async function handleNewProcess() {
   if (!modeler) return
   try {
     await modeler.importXML(DEFAULT_XML)
-    const canvas = modeler.get('canvas')
+    readProcessMetaFromXml()
+    const canvas: any = modeler.get('canvas')
     canvas.zoom('fit-viewport')
     ElMessage.success('已创建新流程')
   } catch (err) {
@@ -195,10 +270,24 @@ async function handleNewProcess() {
 
 .designer-toolbar {
   display: flex;
-  gap: var(--zw-space-sm-md);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--zw-space-md);
   padding: var(--zw-space-sm-md) var(--zw-space-md);
   border-bottom: 1px solid var(--zw-border-light);
   background: var(--zw-bg-card);
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--zw-space-sm-md);
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--zw-space-sm-md);
 }
 
 .designer-body {
@@ -210,5 +299,14 @@ async function handleNewProcess() {
 .designer-canvas {
   flex: 1;
   overflow: hidden;
+}
+
+.deploy-hint {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--zw-text-secondary);
 }
 </style>
