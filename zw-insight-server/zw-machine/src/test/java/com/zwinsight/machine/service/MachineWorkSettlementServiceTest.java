@@ -567,10 +567,12 @@ class MachineWorkSettlementServiceTest {
     private BizMachineContract buildContract(Long projectId, String machineName, String rentalType,
                                              BigDecimal contractAmount, String status) {
         BizMachineContract contract = new BizMachineContract();
+        contract.setId(System.identityHashCode(machineName) & 0x7fffffffL);
         contract.setProjectId(projectId);
         contract.setMachineName(machineName);
         contract.setRentalType(rentalType);
         contract.setContractAmount(contractAmount);
+        contract.setUnitPrice(contractAmount);
         contract.setStatus(status);
         contract.setCumulativeSettlement(BigDecimal.ZERO);
         contract.setCumulativePaid(BigDecimal.ZERO);

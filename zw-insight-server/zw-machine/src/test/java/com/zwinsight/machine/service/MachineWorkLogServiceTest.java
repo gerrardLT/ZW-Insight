@@ -172,7 +172,7 @@ class MachineWorkLogServiceTest {
 
         assertThatThrownBy(() -> machineWorkLogService.update(workLog))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("不可修改");
+                .hasMessageContaining("仅草稿或已确认状态可操作");
     }
 
     @Test
@@ -203,7 +203,7 @@ class MachineWorkLogServiceTest {
 
         assertThatThrownBy(() -> machineWorkLogService.delete(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("不可修改");
+                .hasMessageContaining("仅草稿或已确认状态可操作");
     }
 
     @Test

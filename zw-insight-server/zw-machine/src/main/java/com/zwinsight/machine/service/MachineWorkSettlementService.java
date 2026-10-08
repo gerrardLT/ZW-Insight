@@ -152,7 +152,9 @@ public class MachineWorkSettlementService {
                 }
             }
 
-            Long groupKey = contract != null ? contract.getId() : (locked.getMachineId() != null ? locked.getMachineId() : locked.getId());
+            Long groupKey = (contract != null && contract.getId() != null)
+                    ? contract.getId()
+                    : (locked.getMachineId() != null ? locked.getMachineId() : locked.getId());
             if (contract != null) {
                 machineContractMap.put(groupKey, contract);
             }

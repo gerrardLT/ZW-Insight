@@ -39,12 +39,13 @@ class MachineWorkSettlementOnApprovedTest {
         var s = new BizMachineWorkSettlement(); s.setId(1L); s.setTenantId(9999L); s.setProjectId(10L);
         s.setStatus(1); s.setTotalAmount(BigDecimal.TEN);
         when(settlementMapper.selectById(1L)).thenReturn(s);
-        when(settlementMapper.update(isNull(), any())).thenReturn(1);
+        lenient().when(settlementMapper.updateById(any())).thenReturn(1);
+        lenient().when(settlementMapper.update(isNull(), any())).thenReturn(1);
         var d = new BizMachineWorkSettlementDetail(); d.setContractId(20L); d.setSubtotal(BigDecimal.TEN); d.setWorkLogIds(List.of(30L));
         when(detailMapper.selectList(any())).thenReturn(List.of(d));
         var l = new BizMachineWorkLog(); l.setId(30L); l.setProjectId(10L); l.setContractId(20L); l.setStatus("CONFIRMED"); l.setSettlementStatus("UNSETTLED");
-        when(workLogMapper.lockById(30L, 9999L)).thenReturn(l);
-        when(workLogMapper.updateById(l)).thenReturn(1);
+        lenient().when(workLogMapper.lockById(30L, 9999L)).thenReturn(l);
+        lenient().when(workLogMapper.updateById(l)).thenReturn(1);
     }
     @Test void approved_atomicContractIncrement() {
         fixture(); when(contractMapper.addSettlement(20L, BigDecimal.TEN, 9999L, 10L)).thenReturn(1);
