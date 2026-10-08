@@ -71,6 +71,22 @@ class UrgeNotifyEventListenerTest {
     }
 
     @Test
+    @DisplayName("WebSocket 推送体是合法 JSON：标题/内容含引号、换行、反斜杠时被正确转义")
+    void pushPayloadIsValidJsonWhenTextHasSpecialChars() throws Exception {
+        UrgeNotifyEvent tricky = new UrgeNotifyEvent(this, 777L, "标题\"带引号\"", "第一行\n第二行\\路径",
+                "pi-1", "task-1", 5L);
+        try (MockedStatic<SecurityContextHolder> sc = mockStatic(SecurityContextHolder.class)) {
+            listener.onUrgeNotify(tricky);
+        }
+        org.mockito.ArgumentCaptor<String> captor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(webSocketHandler).sendToUser(eq("777"), captor.capture());
+        com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(captor.getValue());
+        org.assertj.core.api.Assertions.assertThat(node.get("title").asText()).isEqualTo("标题\"带引号\"");
+        org.assertj.core.api.Assertions.assertThat(node.get("content").asText()).isEqualTo("第一行\n第二行\\路径");
+        org.assertj.core.api.Assertions.assertThat(node.get("taskId").asText()).isEqualTo("task-1");
+    }
+
+    @Test
     @DisplayName("落库抛异常：不影响 finally 清理上下文（防线程池复用污染）")
     void persistenceFailure_stillClearsContext() {
         doThrow(new RuntimeException("db down")).when(messageService)

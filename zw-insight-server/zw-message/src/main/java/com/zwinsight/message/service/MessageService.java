@@ -55,7 +55,10 @@ public class MessageService {
                 .eq(MsgMessage::getUserId, userId)
                 .set(MsgMessage::getIsRead, 1)
                 .set(MsgMessage::getReadTime, LocalDateTime.now());
-        messageMapper.update(null, wrapper);
+        // 零行命中 = 消息不存在或不属于本人：明确失败，不再让前端误以为已读成功
+        if (messageMapper.update(null, wrapper) < 1) {
+            throw new com.zwinsight.common.exception.BusinessException("消息不存在");
+        }
     }
 
     /**

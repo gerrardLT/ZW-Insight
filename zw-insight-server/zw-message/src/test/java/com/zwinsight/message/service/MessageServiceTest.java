@@ -56,6 +56,8 @@ class MessageServiceTest {
     @Test
     @DisplayName("标记已读：更新isRead和readTime，且带 userId 归属条件（防 IDOR）")
     void testMarkAsRead() {
+        when(messageMapper.update(isNull(), any(LambdaUpdateWrapper.class))).thenReturn(1);
+
         messageService.markAsRead(1L, 100L);
 
         verify(messageMapper).update(isNull(), argThat((LambdaUpdateWrapper<MsgMessage> w) -> {
@@ -63,6 +65,16 @@ class MessageServiceTest {
             String sql = w.getSqlSegment();
             return sql.contains("id") && sql.contains("user_id");
         }));
+    }
+
+    @Test
+    @DisplayName("标记已读：消息不存在或不属于本人（零行命中）时明确失败，而不是假成功")
+    void testMarkAsRead_zeroRowsFails() {
+        when(messageMapper.update(isNull(), any(LambdaUpdateWrapper.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> messageService.markAsRead(1L, 100L))
+                .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                .hasMessageContaining("消息不存在");
     }
 
     @Test

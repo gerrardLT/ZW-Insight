@@ -24,6 +24,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class UrgeNotifyEventListener {
 
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
     private final MessageService messageService;
     private final MessageWebSocketHandler webSocketHandler;
     private final WeChatWorkService weChatWorkService;
@@ -51,16 +53,21 @@ public class UrgeNotifyEventListener {
             );
 
             // 2. WebSocket 实时推送
-            String pushMessage = "{\"type\":\"URGE\",\"title\":\"" + event.getTitle()
-                    + "\",\"content\":\"" + event.getContent()
-                    + "\",\"taskId\":\"" + event.getTaskId()
-                    + "\",\"processInstanceId\":\"" + event.getProcessInstanceId() + "\"}";
-            webSocketHandler.sendToUser(String.valueOf(event.getTargetUserId()), pushMessage);
+            // 用 Jackson 序列化：标题/内容含引号、换行或反斜杠时，原字符串拼接会产生非法 JSON，前端静默丢弃推送
+            java.util.Map<String, Object> push = new java.util.LinkedHashMap<>();
+            push.put("type", "URGE");
+            push.put("title", event.getTitle());
+            push.put("content", event.getContent());
+            push.put("taskId", event.getTaskId());
+            push.put("processInstanceId", event.getProcessInstanceId());
+            webSocketHandler.sendToUser(String.valueOf(event.getTargetUserId()), JSON.writeValueAsString(push));
 
-            // 3. 企微群机器人推送（配置 wework.robot.enabled=true 时生效）
-            weChatWorkService.sendText("【催办提醒】" + event.getTitle() + "\n" + event.getContent());
+            // 3. 企微群机器人推送（配置 wework.robot.enabled=true 时生效）。
+            // 站内消息已落库即视为通知成功；企微是尽力渠道，未启用/失败只记录，不撤销站内消息
+            boolean weworkSent = weChatWorkService.sendText("【催办提醒】" + event.getTitle() + "\n" + event.getContent());
 
-            log.info("催办通知已推送, userId={}, taskId={}", event.getTargetUserId(), event.getTaskId());
+            log.info("催办通知已推送, userId={}, taskId={}, weworkSent={}",
+                    event.getTargetUserId(), event.getTaskId(), weworkSent);
         } catch (Exception e) {
             log.error("催办通知推送失败, userId={}, taskId={}", event.getTargetUserId(), event.getTaskId(), e);
         } finally {
