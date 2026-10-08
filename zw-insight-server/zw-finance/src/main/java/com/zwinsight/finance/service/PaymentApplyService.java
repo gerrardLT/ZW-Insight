@@ -116,7 +116,16 @@ public class PaymentApplyService {
             return;
         }
         String period = java.time.YearMonth.from(bizDate).toString();
-        if ("LOCKED".equals(financeLockService.getStatus(period))) {
+        String status;
+        try {
+            status = financeLockService.getStatus(period);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            // 与 FinanceLockAspect 一致：封账状态无法确认时拒绝，不静默放行
+            throw new BusinessException(503, "系统暂时无法校验封账状态，请稍后重试", e);
+        }
+        if ("LOCKED".equals(status)) {
             throw new BusinessException(403, "期间" + period + "已封账，禁止" + operation);
         }
     }
@@ -153,6 +162,8 @@ public class PaymentApplyService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
+        // 切面只校验请求体里的新日期；草稿原本落在已封账期间时，也不得通过改日期绕出去
+        assertPeriodOpen(existing.getPaymentDate(), "编辑付款申请");
         // 与 save 同源的金额/科目/计划校验，原实现 update 完全绕过
         if (paymentApply.getPaymentAmount() != null && paymentApply.getPaymentAmount().signum() <= 0) {
             throw new BusinessException("付款金额必须大于0");
