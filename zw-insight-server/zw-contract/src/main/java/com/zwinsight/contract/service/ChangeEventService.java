@@ -324,7 +324,7 @@ public class ChangeEventService {
         event.setApprovedAt(LocalDateTime.now());
         // 批准不得携带驳回原因，避免历史噪声误导后续查阅
         event.setRejectionReason(null);
-        changeEventMapper.updateById(event);
+        requireUpdated(changeEventMapper.updateById(event), event);
 
         // 批准是变更主链的关键跃迁，必须投递事件驱动下游传导
         outboxRecorder.record(ChangeEventEvents.TYPE_APPROVED, ChangeEventEvents.AGGREGATE_TYPE,
@@ -351,7 +351,7 @@ public class ChangeEventService {
         event.setStatus(ChangeEventStatus.REJECTED.name());
         event.setApprovedBy(currentUserId());
         event.setApprovedAt(LocalDateTime.now());
-        changeEventMapper.updateById(event);
+        requireUpdated(changeEventMapper.updateById(event), event);
 
         outboxRecorder.record(ChangeEventEvents.TYPE_REJECTED, AGGREGATE_TYPE,
                 event.getId(), event.getVersion(), event);
@@ -373,7 +373,7 @@ public class ChangeEventService {
         if (StrUtil.isNotBlank(reason)) {
             event.setRejectionReason(StrUtil.maxLength(reason, 480));
         }
-        changeEventMapper.updateById(event);
+        requireUpdated(changeEventMapper.updateById(event), event);
 
         outboxRecorder.record(ChangeEventEvents.TYPE_REASSESS, ChangeEventEvents.AGGREGATE_TYPE,
                 event.getId(), event.getVersion(), event);
@@ -398,7 +398,7 @@ public class ChangeEventService {
         if (StrUtil.isNotBlank(reason)) {
             event.setRejectionReason(StrUtil.maxLength(reason, 480));
         }
-        changeEventMapper.updateById(event);
+        requireUpdated(changeEventMapper.updateById(event), event);
 
         outboxRecorder.record(ChangeEventEvents.TYPE_CANCELLED, ChangeEventEvents.AGGREGATE_TYPE,
                 event.getId(), event.getVersion(), event);
@@ -421,6 +421,16 @@ public class ChangeEventService {
         log.info("变更事件已删除，id={}, eventNumber={}", id, event.getEventNumber());
     }
 
+    /**
+     * 状态更新必须命中一行：乐观锁（version）冲突时 updateById 返回 0，
+     * 此时若继续投递 Outbox，会在状态未变的情况下触发下游传导（如重复批准入账）。
+     */
+    private void requireUpdated(int rows, BizChangeEvent event) {
+        if (rows != 1) {
+            throw new BusinessException("变更事件已被他人修改，请刷新后重试：" + event.getEventNumber());
+        }
+    }
+
     // ==================== 内部工具 ====================
 
     /**
@@ -436,7 +446,7 @@ public class ChangeEventService {
         ChangeEventStatus.assertTransition(current, target, event.getEventNumber());
 
         event.setStatus(target.name());
-        changeEventMapper.updateById(event);
+        requireUpdated(changeEventMapper.updateById(event), event);
 
         outboxRecorder.record(eventType, ChangeEventEvents.AGGREGATE_TYPE,
                 event.getId(), event.getVersion(), event);

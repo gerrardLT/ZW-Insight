@@ -73,6 +73,22 @@ class ChangeEventServiceTest {
         draft.setTitle("地下室顶板加厚");
         draft.setStatus(ChangeEventStatus.DRAFT.name());
         draft.setVersion(0);
+        // 状态流转要求 updateById 命中 1 行（乐观锁冲突返回 0 时拒绝）；默认放行，冲突用例单独覆盖
+        org.mockito.Mockito.lenient().when(changeEventMapper.updateById(any(BizChangeEvent.class))).thenReturn(1);
+    }
+
+    @Test
+    @DisplayName("乐观锁冲突：updateById 命中 0 行时批准失败，且不投递 Outbox（防止状态未变却触发下游入账）")
+    void approveFailsOnOptimisticLockConflict() {
+        draft.setStatus(ChangeEventStatus.APPROVING.name());
+        draft.setCostDelta(BigDecimal.ZERO);
+        when(changeEventMapper.selectById(555L)).thenReturn(draft);
+        when(changeEventMapper.updateById(any(BizChangeEvent.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> changeEventService.approve(555L, "同意"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已被他人修改");
+        verify(outboxRecorder, never()).record(anyString(), anyString(), anyLong(), any(), any());
     }
 
     private BizChangeEvent.ImpactAssessment assessment(String costDelta, String rationale) {
