@@ -140,8 +140,11 @@ SELECT 90091, 1, 807 WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu WHERE role_id
 INSERT INTO sys_role_menu (id, role_id, menu_id)
 SELECT 90092, 1, 808 WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu WHERE role_id = 1 AND menu_id = 808);
 INSERT INTO sys_role_menu (id, role_id, menu_id)
-SELECT 90093, 90061, 806 WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu WHERE role_id = 90061 AND menu_id = 806);
+SELECT 90093, 90061, 806 WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu WHERE role_id = 90061 AND menu_id = 806)
+  AND EXISTS (SELECT 1 FROM sys_role WHERE id = 90061);
 INSERT INTO sys_role_menu (id, role_id, menu_id)
-SELECT 90094, 90061, 807 WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu WHERE role_id = 90061 AND menu_id = 807);
+SELECT 90094, 90061, 807 WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu WHERE role_id = 90061 AND menu_id = 807)
+  AND EXISTS (SELECT 1 FROM sys_role WHERE id = 90061);
 INSERT INTO sys_role_menu (id, role_id, menu_id)
-SELECT 90095, 90061, 808 WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu WHERE role_id = 90061 AND menu_id = 808);
+SELECT 90095, 90061, 808 WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu WHERE role_id = 90061 AND menu_id = 808)
+  AND EXISTS (SELECT 1 FROM sys_role WHERE id = 90061);
