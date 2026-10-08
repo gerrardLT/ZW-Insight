@@ -229,7 +229,7 @@ class FinalSettlementServiceTest {
     @Test
     @DisplayName("onApproved - 状态异常（DRAFT）拒绝；onRejected 仅 SUBMITTED 回退草稿")
     void onApproved_wrongState_and_onRejected() {
-        when(settlementMapper.selectById(1L)).thenReturn(settlement("DRAFT"));
+        when(settlementMapper.selectById(1L)).thenReturn(settlement("CANCELLED"));
         assertThatThrownBy(() -> service.onApproved(1L)).hasMessageContaining("状态异常");
 
         service.onRejected(1L);

@@ -263,7 +263,7 @@ class OutputReportServiceTest {
         void onApproved_nonSubmitted_ignored() {
             BizOutputReport report = new BizOutputReport();
             report.setId(9L);
-            report.setStatus("REJECTED");
+            report.setStatus("DRAFT");
             when(outputReportMapper.selectById(9L)).thenReturn(report);
 
             outputReportService.onApproved(9L);

@@ -134,9 +134,10 @@ public class OutputReportService {
             log.info("产值报告已生效，跳过重复回调, id={}", id);
             return;
         }
-        // 仅 SUBMITTED 可生效：DRAFT/REJECTED 收到陈旧回调不得入账
-        if (!"SUBMITTED".equals(report.getStatus())) {
-            log.warn("产值报告审批通过回调：状态非 SUBMITTED，忽略, id={}, status={}", id, report.getStatus());
+        // 仅 SUBMITTED 或"被退回但流程仍在走"(REJECTED) 可生效：reject-start 不终止流程，只置 REJECTED，
+        // 重审通过时回调进来的就是 REJECTED。DRAFT 等其余状态是陈旧回调，不得入账。
+        if (!"SUBMITTED".equals(report.getStatus()) && !"REJECTED".equals(report.getStatus())) {
+            log.warn("产值报告审批通过回调：状态非 SUBMITTED/REJECTED，忽略, id={}, status={}", id, report.getStatus());
             return;
         }
 
@@ -183,7 +184,7 @@ public class OutputReportService {
         // 状态 CAS：并发重复回调只有一次生效，输家抛出使上面的累加随事务回滚
         int moved = outputReportMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizOutputReport>()
                 .eq(BizOutputReport::getId, id)
-                .eq(BizOutputReport::getStatus, "SUBMITTED")
+                .in(BizOutputReport::getStatus, "SUBMITTED", "REJECTED")
                 .set(BizOutputReport::getStatus, "APPROVED")
                 .set(BizOutputReport::getCumulativeOutput, newCumulativeOutput));
         if (moved != 1) {

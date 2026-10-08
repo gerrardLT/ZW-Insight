@@ -326,9 +326,11 @@ public class PaymentApplyService {
             log.info("付款申请已生效，跳过重复回调, id={}", id);
             return;
         }
-        // 仅 SUBMITTED 可生效：DRAFT/REJECTED 收到陈旧回调时不得回写累计（原实现不限状态）
-        if (!"SUBMITTED".equals(paymentApply.getStatus())) {
-            log.warn("付款申请审批通过回调：状态非 SUBMITTED，忽略, id={}, status={}", id, paymentApply.getStatus());
+        // 仅 SUBMITTED 或"被退回但流程仍在走"(REJECTED) 可生效：
+        // "退回至发起人"(reject-start) 不终止流程，只把单据置 REJECTED，随后重审通过时回调进来的就是 REJECTED。
+        // DRAFT 等其余状态才是陈旧回调(流程已被撤回/终止)，不得回写累计。终止后重提会起新流程，不会走到这里。
+        if (!"SUBMITTED".equals(paymentApply.getStatus()) && !"REJECTED".equals(paymentApply.getStatus())) {
+            log.warn("付款申请审批通过回调：状态非 SUBMITTED/REJECTED，忽略, id={}, status={}", id, paymentApply.getStatus());
             return;
         }
 

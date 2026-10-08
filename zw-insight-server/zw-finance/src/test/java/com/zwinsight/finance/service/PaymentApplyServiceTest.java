@@ -782,6 +782,27 @@ class PaymentApplyServiceTest {
         }
 
         @Test
+        @DisplayName("退回至发起人(reject-start)后重审通过：单据为 REJECTED 但流程仍在走，回调必须生效（L4 9E-A 回归）")
+        void onApproved_afterRejectToStart_stillTakesEffect() {
+            BizPaymentApply a = apply(31L, "REJECTED");
+            a.setContractId(310L);
+            a.setPaymentAmount(new BigDecimal("10000.00"));
+            BizOtherContract contract = new BizOtherContract();
+            contract.setId(310L);
+            contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+            contract.setCumulativePaid(BigDecimal.ZERO);
+            when(paymentApplyMapper.selectById(31L)).thenReturn(a);
+            when(otherContractMapper.selectById(310L)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(310L)).thenReturn(BigDecimal.ZERO);
+
+            paymentApplyService.onApproved(31L);
+
+            assertThat(a.getStatus()).isEqualTo("APPROVED");
+            verify(otherContractMapper).addCumulativePaid(310L, new BigDecimal("10000.00"));
+            verify(projectMapper).addTotalExpense(10L, new BigDecimal("10000.00"));
+        }
+
+        @Test
         @DisplayName("delete 封账期间拒绝：付款日期所在月已 LOCKED 时不删除")
         void delete_lockedPeriod_rejected() {
             BizPaymentApply a = apply(40L, "DRAFT");

@@ -110,12 +110,14 @@ public class FinalSettlementService {
         if ("APPROVED".equals(settlement.getStatus())) {
             return; // 重复回调幂等
         }
-        if (!"SUBMITTED".equals(settlement.getStatus())) {
+        // 允许 SUBMITTED，以及"被退回但流程仍在走"的 DRAFT：reject-start 不终止流程，只触发驳回回调把单据
+        // 退回 DRAFT，随后重审通过时回调进来的就是 DRAFT。撤回/终止会删除流程实例，不会再有完成回调。
+        if (!"SUBMITTED".equals(settlement.getStatus()) && !"DRAFT".equals(settlement.getStatus())) {
             throw new BusinessException("竣工结算状态异常，无法生效：" + settlement.getStatus());
         }
         int moved = settlementMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizFinalSettlement>()
                 .eq(BizFinalSettlement::getId, id)
-                .eq(BizFinalSettlement::getStatus, "SUBMITTED")
+                .in(BizFinalSettlement::getStatus, "SUBMITTED", "DRAFT")
                 .set(BizFinalSettlement::getStatus, "APPROVED"));
         if (moved != 1) {
             return; // 并发回调已处理
