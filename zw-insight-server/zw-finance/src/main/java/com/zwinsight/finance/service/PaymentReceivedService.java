@@ -78,7 +78,8 @@ public class PaymentReceivedService {
                         ? BigDecimal.ZERO : contract.getCumulativeReceivedAmount();
                 BigDecimal maxReceivable = invoiced.subtract(received);
                 if (receiveAmount.compareTo(maxReceivable) > 0) {
-                    throw new BusinessException("回款金额不能超过已开票未收金额，最大可回款金额：" + maxReceivable);
+                    throw new BusinessException("回款金额不能超过已开票未收金额，最大可回款金额：" + maxReceivable
+                            + "。请先完成开票申请审批；若为预收款，请清空「关联合同」后登记");
                 }
             }
         }
@@ -182,7 +183,8 @@ public class PaymentReceivedService {
                         ? BigDecimal.ZERO : contract.getCumulativeReceivedAmount();
                 BigDecimal maxReceivable = invoiced.subtract(received);
                 if (diff.compareTo(maxReceivable) > 0) {
-                    throw new BusinessException("回款金额不能超过已开票未收金额，最大可回款金额：" + maxReceivable);
+                    throw new BusinessException("回款金额不能超过已开票未收金额，最大可回款金额：" + maxReceivable
+                            + "。请先完成开票申请审批；若为预收款，请清空「关联合同」后登记");
                 }
             }
         }
