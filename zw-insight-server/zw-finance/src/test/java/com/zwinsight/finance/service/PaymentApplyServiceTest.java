@@ -716,6 +716,34 @@ class PaymentApplyServiceTest {
         }
 
         @Test
+        @DisplayName("update 草稿原付款日期落在已封账月份时拒绝，不能靠改日期绕出封账")
+        void update_originalPeriodLocked_rejected() {
+            BizPaymentApply existing = apply(1L, "DRAFT");
+            existing.setPaymentDate(java.time.LocalDate.of(2026, 8, 10));
+            when(paymentApplyMapper.selectById(1L)).thenReturn(existing);
+            when(financeLockService.getStatus("2026-08")).thenReturn("LOCKED");
+
+            BizPaymentApply body = apply(1L, "DRAFT");
+            body.setPaymentDate(java.time.LocalDate.of(2026, 10, 10));
+            assertThatThrownBy(() -> paymentApplyService.update(body))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("已封账");
+            verify(paymentApplyMapper, never()).updateById(any(BizPaymentApply.class));
+        }
+
+        @Test
+        @DisplayName("封账状态查询异常按 503 拒绝，不静默放行")
+        void periodLockLookupFailure_rejectedWith503() {
+            BizPaymentApply a = apply(42L, "DRAFT");
+            a.setPaymentDate(java.time.LocalDate.of(2026, 9, 15));
+            when(paymentApplyMapper.selectById(42L)).thenReturn(a);
+            when(financeLockService.getStatus("2026-09")).thenThrow(new RuntimeException("redis down"));
+
+            assertThatThrownBy(() -> paymentApplyService.delete(42L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("无法校验封账状态");
+            verify(paymentApplyMapper, never()).deleteById(anyLong());
+        }
+
+        @Test
         @DisplayName("update 金额 <=0 拒绝，与 save 同源校验")
         void update_nonPositiveAmount_throws() {
             when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "DRAFT"));
