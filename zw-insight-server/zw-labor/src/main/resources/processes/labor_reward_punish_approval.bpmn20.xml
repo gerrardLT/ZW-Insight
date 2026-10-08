@@ -8,7 +8,7 @@
     <process id="labor_reward_punish_approval" name="劳务奖惩审批" isExecutable="true">
         <startEvent id="startEvent" name="提交劳务奖惩"/>
         <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="pmApproval"/>
-        <userTask id="pmApproval" name="项目经理审核" flowable:assignee="${initiator}">
+        <userTask id="pmApproval" name="项目经理审核" flowable:candidateGroups="PROJECT_MANAGER">
             <documentation>劳务奖惩 - 核实奖惩事由与责任归属</documentation>
         </userTask>
         <sequenceFlow id="flow2" sourceRef="pmApproval" targetRef="endEvent"/>

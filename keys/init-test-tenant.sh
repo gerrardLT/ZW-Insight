@@ -64,6 +64,17 @@ VALUES
 -- 3. 绑定全局 SUPER_ADMIN 角色（id=1，tenant_id=NULL 全局角色）
 INSERT IGNORE INTO sys_user_role (id, user_id, role_id) VALUES (9999001, 9999001, 1);
 
+-- 3a. 独立审批人 t9999approver（同为 SUPER_ADMIN）：防自审门禁（ApprovalService）禁止发起人审批自己的
+--     单据，L4 的 approve/reject-start/terminate 须由非发起人执行
+INSERT IGNORE INTO sys_user
+  (id, username, password, real_name, phone, email, avatar, status,
+   org_id, post_id, tenant_id, created_by, created_at, updated_at, deleted, version)
+VALUES
+  (9999003, 't9999approver', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi',
+   'T9999 Approver', '13900009997', NULL, NULL, 1,
+   NULL, NULL, 9999, 1, NOW(), NOW(), 0, 0);
+INSERT IGNORE INTO sys_user_role (id, user_id, role_id) VALUES (9999003, 9999003, 1);
+
 -- 3b. 补齐 37 号迁移（该库未执行过）：超管数据范围应为 ALL，
 --     否则行级数据权限按 SELF 过滤，审批人看不到他人单据
 UPDATE sys_role SET data_scope = 'ALL' WHERE role_code = 'SUPER_ADMIN';

@@ -8,7 +8,7 @@
     <process id="labor_output_approval" name="劳务产值上报审批" isExecutable="true">
         <startEvent id="startEvent" name="上报劳务产值"/>
         <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="pmApproval"/>
-        <userTask id="pmApproval" name="项目经理审核" flowable:assignee="${initiator}">
+        <userTask id="pmApproval" name="项目经理审核" flowable:candidateGroups="PROJECT_MANAGER">
             <documentation>劳务产值 - 核实当期实际完成工程量与进度</documentation>
         </userTask>
         <sequenceFlow id="flow2" sourceRef="pmApproval" targetRef="endEvent"/>

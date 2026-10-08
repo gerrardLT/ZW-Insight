@@ -159,7 +159,12 @@ strict_assert() {
 # ===========================================================================
 api_call() {
   local method="$1" path="$2" body="${3:-}" token code
-  token=$(get_token_local) || { fail "无可用 token"; return 1; }
+  # 防自审门禁：complete/reject-start/terminate 须由非发起人（t9999approver）执行
+  if [[ "$path" =~ ^/api/v1/workflow/approval/(complete|reject-start|terminate)$ ]]; then
+    token=$(get_approver_token) || { fail "无可用审批人 token"; return 1; }
+  else
+    token=$(get_token_local) || { fail "无可用 token"; return 1; }
+  fi
   if [ -n "$body" ]; then
     code=$(curl -s -m 15 -o /tmp/zwi_body -w '%{http_code}' -X "$method" "$BASE$path" \
           -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d "$body")
@@ -188,16 +193,17 @@ get_captcha_local() {
 }
 
 do_login_local() {
+  local user="${1:-$USERNAME}" tokfile="${2:-$TOKEN_FILE}"
   local cap uuid code resp token
   cap=$(get_captcha_local) || return 1
   uuid="${cap%% *}"; code="${cap##* }"
   resp=$(curl -s -m 10 -X POST "$BASE/api/v1/auth/login" \
         -H 'Content-Type: application/json' \
-        -d "{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"captchaUuid\":\"$uuid\",\"captchaCode\":\"$code\"}")
+        -d "{\"username\":\"$user\",\"password\":\"$PASSWORD\",\"captchaUuid\":\"$uuid\",\"captchaCode\":\"$code\"}")
   token=$(echo "$resp" | grep -oE '"(accessToken|token)"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*:[[:space:]]*"//;s/"$//')
   if [ -z "$token" ]; then return 1; fi
-  printf '%s' "$token" > "$TOKEN_FILE"
-  chmod 600 "$TOKEN_FILE"
+  printf '%s' "$token" > "$tokfile"
+  chmod 600 "$tokfile"
   return 0
 }
 
@@ -209,6 +215,18 @@ login_local() {
   done
   fail "登录在 $MAX_RETRY 次重试内仍失败"
   return 1
+}
+
+APPROVER_USER="${ZWI_APPROVER_USER:-t9999approver}"
+APPROVER_TOKEN_FILE="$WORKDIR/.zwi_token_approver"
+get_approver_token() {
+  if [ ! -s "$APPROVER_TOKEN_FILE" ]; then
+    local i
+    for ((i=1; i<=MAX_RETRY; i++)); do
+      do_login_local "$APPROVER_USER" "$APPROVER_TOKEN_FILE" && break
+    done
+  fi
+  [ -s "$APPROVER_TOKEN_FILE" ] && cat "$APPROVER_TOKEN_FILE"
 }
 
 get_token_local() {

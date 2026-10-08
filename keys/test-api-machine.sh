@@ -158,7 +158,7 @@ trap cleanup EXIT
 
 test_contract_create() {
   log "▶ 测试：创建机械合同"
-  call POST "/api/v1/machine/contract" '{"projectId":1,"contractName":"测试机械租赁合同-自动化","contractNo":"MC-AUTO-001","supplierName":"测试机械供应商","contractAmount":50000.00,"startDate":"2025-07-01","endDate":"2025-12-31","remark":"L3接口自动化测试"}'
+  call POST "/api/v1/machine/contract" '{"projectId":1,"contractName":"测试机械租赁合同-自动化","contractNo":"MC-AUTO-001","supplierName":"测试机械供应商","contractAmount":50000.00,"unitPrice":500.00,"rentalType":"SHIFT","startDate":"2025-07-01","endDate":"2025-12-31","remark":"L3接口自动化测试"}'
   assert_http 2 "POST /api/v1/machine/contract 状态码"
   assert_body_code 200 "POST /api/v1/machine/contract 业务码"
 }
@@ -201,7 +201,7 @@ test_contract_update() {
   if [ -z "$CREATED_CONTRACT_ID" ]; then
     log "  SKIP: 无合同ID"; return 0
   fi
-  call PUT "/api/v1/machine/contract/$CREATED_CONTRACT_ID" '{"projectId":1,"contractName":"测试机械租赁合同-已修改","contractNo":"MC-AUTO-001","supplierName":"测试机械供应商-修改","contractAmount":60000.00,"startDate":"2025-07-01","endDate":"2025-12-31","remark":"修改后的机械合同"}'
+  call PUT "/api/v1/machine/contract/$CREATED_CONTRACT_ID" '{"projectId":1,"contractName":"测试机械租赁合同-已修改","contractNo":"MC-AUTO-001","supplierName":"测试机械供应商-修改","contractAmount":60000.00,"unitPrice":500.00,"rentalType":"SHIFT","startDate":"2025-07-01","endDate":"2025-12-31","remark":"修改后的机械合同"}'
   assert_http 2 "PUT /api/v1/machine/contract/{id} 状态码"
   assert_body_code 200 "PUT /api/v1/machine/contract/{id} 业务码"
 }
@@ -310,7 +310,7 @@ test_contract_nonexistent() {
 test_contract_delete() {
   log "▶ 测试：删除机械合同（仅草稿可删除）"
   # 方案B：新建草稿再删（分页无 status 过滤，按 createdAt 降序取最新一条即刚建草稿）
-  call POST "/api/v1/machine/contract" '{"projectId":1,"contractName":"删除测试机械合同","contractNo":"MC-DEL-001","supplierName":"删除测试供应商","contractAmount":1000.00,"startDate":"2025-07-01","endDate":"2025-12-31","remark":"删除测试"}'
+  call POST "/api/v1/machine/contract" '{"projectId":1,"contractName":"删除测试机械合同","contractNo":"MC-DEL-001","supplierName":"删除测试供应商","contractAmount":1000.00,"unitPrice":500.00,"rentalType":"SHIFT","startDate":"2025-07-01","endDate":"2025-12-31","remark":"删除测试"}'
   assert_body_code 200 "POST /api/v1/machine/contract 创建删除用草稿"
   sleep 1
   # 机械合同分页接口不支持 status 过滤；created_at 秒级精度下主流程刚提交的 EFFECTIVE

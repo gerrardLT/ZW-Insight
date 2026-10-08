@@ -8,11 +8,11 @@
     <process id="labor_payroll_approval" name="劳务工资单审批" isExecutable="true">
         <startEvent id="startEvent" name="提交劳务工资单"/>
         <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="pmApproval"/>
-        <userTask id="pmApproval" name="项目经理审核" flowable:assignee="${initiator}">
+        <userTask id="pmApproval" name="项目经理审核" flowable:candidateGroups="PROJECT_MANAGER">
             <documentation>劳务工资单 - 核实工人出勤工日与计件核定金额</documentation>
         </userTask>
         <sequenceFlow id="flow2" sourceRef="pmApproval" targetRef="financeApproval"/>
-        <userTask id="financeApproval" name="财务复核" flowable:assignee="${initiator}">
+        <userTask id="financeApproval" name="财务复核" flowable:candidateGroups="FINANCE_STAFF">
             <documentation>劳务工资单 - 复核工资款项与代发专户额度</documentation>
         </userTask>
         <sequenceFlow id="flow3" sourceRef="financeApproval" targetRef="endEvent"/>

@@ -8,11 +8,11 @@
     <process id="labor_settlement_approval" name="劳务结算审批" isExecutable="true">
         <startEvent id="startEvent" name="提交劳务结算"/>
         <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="pmApproval"/>
-        <userTask id="pmApproval" name="项目经理审核" flowable:assignee="${initiator}">
+        <userTask id="pmApproval" name="项目经理审核" flowable:candidateGroups="PROJECT_MANAGER">
             <documentation>劳务结算 - 确认累计完成工程量与结算金额</documentation>
         </userTask>
         <sequenceFlow id="flow2" sourceRef="pmApproval" targetRef="financeApproval"/>
-        <userTask id="financeApproval" name="财务审核" flowable:assignee="${initiator}">
+        <userTask id="financeApproval" name="财务审核" flowable:candidateGroups="FINANCE_STAFF">
             <documentation>劳务结算 - 核实扣款项与最终结算金额</documentation>
         </userTask>
         <sequenceFlow id="flow3" sourceRef="financeApproval" targetRef="endEvent"/>

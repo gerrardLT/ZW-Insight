@@ -8,11 +8,11 @@
     <process id="labor_contract_approval" name="劳务合同审批" isExecutable="true">
         <startEvent id="startEvent" name="提交劳务合同"/>
         <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="pmApproval"/>
-        <userTask id="pmApproval" name="项目经理审批" flowable:assignee="${initiator}">
+        <userTask id="pmApproval" name="项目经理审批" flowable:candidateGroups="PROJECT_MANAGER">
             <documentation>劳务合同 - 审核施工范围与单价条款</documentation>
         </userTask>
         <sequenceFlow id="flow2" sourceRef="pmApproval" targetRef="commerceApproval"/>
-        <userTask id="commerceApproval" name="商务法务复核" flowable:assignee="${initiator}">
+        <userTask id="commerceApproval" name="商务法务复核" flowable:candidateGroups="FINANCE_STAFF">
             <documentation>劳务合同 - 合同文本合规性审核</documentation>
         </userTask>
         <sequenceFlow id="flow3" sourceRef="commerceApproval" targetRef="endEvent"/>
