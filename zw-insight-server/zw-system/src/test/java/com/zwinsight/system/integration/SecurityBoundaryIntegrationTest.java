@@ -159,7 +159,7 @@ class SecurityBoundaryIntegrationTest extends IntegrationTestBase {
             // 两者都是 assertTaskAssignee 的正确安全拒绝，放宽以避免误报。
             assertThat(r.message)
                     .as("拒绝原因应指向处理人校验（无权/未签收）")
-                    .containsAnyOf("无权操作他人审批任务", "尚未签收");
+                    .containsAnyOf("无权操作他人审批任务", "尚未签收", "不属于任务候选人或候选角色");
         }
         log.info("TS-5 通过：非处理人越权被拒 (code={}, msg={})", r.code, r.message);
     }

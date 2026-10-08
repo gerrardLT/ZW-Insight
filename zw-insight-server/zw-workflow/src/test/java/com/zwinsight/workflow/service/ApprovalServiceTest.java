@@ -211,6 +211,50 @@ class ApprovalServiceTest {
     }
 
     @Test
+    @DisplayName("办理通过：金额分档路由变量 approvalTier/tierName 不可被审批人改写")
+    void testComplete_approvalTierNotOverridable() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
+            when(taskQuery.singleResult()).thenReturn(mockTask);
+
+            Map<String, Object> vars = new HashMap<>();
+            vars.put("approvalTier", 0);
+            vars.put("tierName", "最低档");
+            vars.put("approved", true);
+            approvalService.complete("task-001", null, vars);
+
+            verify(taskService).complete("task-001", Map.of("approved", true));
+        }
+    }
+
+    @Test
+    @DisplayName("我的待办：租户上下文缺失时只查本人已签收任务，不带候选组（候选组编码不带租户）")
+    void testGetMyTodoTasks_noTenantContext_assigneeOnly() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(null);
+            when(sysUserMapper.selectRoleCodesByUserId(100L)).thenReturn(List.of("PROJECT_MANAGER"));
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskAssignee("100")).thenReturn(taskQuery);
+            when(taskQuery.count()).thenReturn(0L);
+            when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
+            when(taskQuery.orderByTaskCreateTime()).thenReturn(taskQuery);
+            when(taskQuery.desc()).thenReturn(taskQuery);
+            when(taskQuery.listPage(0, 10)).thenReturn(List.of());
+
+            approvalService.getMyTodoTasks(100L, 1, 10);
+
+            verify(taskQuery, never()).taskCandidateGroupIn(anyList());
+            verify(taskQuery, never()).taskTenantId(anyString());
+        }
+    }
+
+    @Test
     @DisplayName("办理通过：只传协议变量时等同无变量 complete")
     void testComplete_onlyProtocolVariables() {
         try (var sc = mockStatic(SecurityContextHolder.class)) {

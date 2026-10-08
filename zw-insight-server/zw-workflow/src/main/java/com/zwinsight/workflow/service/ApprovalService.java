@@ -62,7 +62,9 @@ public class ApprovalService {
             "LABOR_CONTRACT", "LABOR_OUTPUT", "LABOR_SETTLEMENT", "LABOR_PAYROLL", "LABOR_REWARD_PUNISH");
 
     /** 办理时客户端不得写入的流程协议变量，防止篡改 initiator/businessId 绕过防自审或回调定位 */
-    private static final Set<String> PROTECTED_VARIABLES = Set.of("businessType", "businessId", "initiator");
+    private static final Set<String> PROTECTED_VARIABLES = Set.of("businessType", "businessId", "initiator",
+            // 金额分档路由变量：BPMN 排他网关按 approvalTier 选择后续审批节点，审批人不得在办理时改写
+            "approvalTier", "tierName");
 
     /**
      * 发起流程
@@ -686,9 +688,11 @@ public class ApprovalService {
         Long tenantId = SecurityContextHolder.getTenantId();
         List<String> roles = sysUserMapper.selectRoleCodesByUserId(userId);
         TaskQuery query = taskService.createTaskQuery();
-        if (tenantId != null) {
-            query = query.taskTenantId(String.valueOf(tenantId));
+        // 租户上下文缺失时只查本人已签收任务：候选组编码不带租户，无租户限定会跨租户可见
+        if (tenantId == null) {
+            return query.taskAssignee(uid);
         }
+        query = query.taskTenantId(String.valueOf(tenantId));
         if (roles == null || roles.isEmpty()) {
             return query.taskAssignee(uid);
         }
@@ -801,7 +805,8 @@ public class ApprovalService {
     private void claimOrConflict(String taskId, Long userId) {
         try {
             taskService.claim(taskId, String.valueOf(userId));
-        } catch (org.flowable.common.engine.api.FlowableTaskAlreadyClaimedException e) {
+        } catch (org.flowable.common.engine.api.FlowableTaskAlreadyClaimedException
+                 | org.flowable.common.engine.api.FlowableOptimisticLockingException e) {
             throw new BusinessException(409, "任务已被他人签收");
         }
     }
