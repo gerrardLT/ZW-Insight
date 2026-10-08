@@ -1,6 +1,7 @@
 package com.zwinsight.workflow.config;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.workflow.domain.WfProcessDef;
 import com.zwinsight.workflow.mapper.WfProcessDefMapper;
 import com.zwinsight.workflow.service.ProcessDefinitionService;
@@ -30,6 +31,10 @@ public class WorkflowBootstrapRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        // 启动线程无租户上下文：不设置时 wf_process_def 查询被注入 tenant_id=0，
+        // 且插入被 MetaObjectHandler 拒绝，整笔部署事务回滚，租户 1 一条流程定义都落不下来
+        SecurityContextHolder.setTenantId(DEFAULT_TENANT_ID);
+        SecurityContextHolder.markSystemTask();
         try {
             ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
             Resource[] resources = resolver.getResources("classpath*:processes/*.bpmn20.xml");
@@ -57,7 +62,8 @@ public class WorkflowBootstrapRunner implements ApplicationRunner {
                         deployedCount++;
                         log.info("【工作流自检】默认租户(1)预设缺失流程成功: {}", processKey);
                     } catch (Exception ex) {
-                        log.warn("【工作流自检】部署流程 {} 失败: {}", processKey, ex.getMessage());
+                        // 带异常对象：getMessage() 为 null 时旧日志只剩“失败: null”，无法定位根因
+                        log.warn("【工作流自检】部署流程 {} 失败: {}", processKey, ex.toString(), ex);
                     }
                 }
             }
@@ -67,6 +73,8 @@ public class WorkflowBootstrapRunner implements ApplicationRunner {
             }
         } catch (Exception e) {
             log.error("【工作流自检】扫描预设流程发生异常", e);
+        } finally {
+            SecurityContextHolder.clear();
         }
     }
 }

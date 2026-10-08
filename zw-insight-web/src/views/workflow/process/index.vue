@@ -28,8 +28,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="deploymentTime" label="部署时间" width="170" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
+            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button link type="primary" @click="handleViewImage(row)">查看流程图</el-button>
             <el-button link type="info" @click="handleViewVersions(row)">历史版本</el-button>
           </template>
@@ -87,6 +88,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import BpmnViewer from 'bpmn-js/lib/Viewer'
@@ -94,6 +96,7 @@ import 'bpmn-js/dist/assets/diagram-js.css'
 import 'bpmn-js/dist/assets/bpmn-js.css'
 import { getProcessList, deployProcess, getProcessImage, getProcessVersions, getProcessXml } from '@/api/workflow'
 
+const router = useRouter()
 const uploadRef = ref()
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -143,6 +146,11 @@ async function handleFileChange(file: UploadFile) {
   } catch {
     ElMessage.error('部署失败')
   }
+}
+
+/** 编辑 = 在设计器中载入该流程；改完「部署到服务器」会以同一标识生成新版本，在途实例仍走旧版 */
+function handleEdit(row: any) {
+  router.push({ path: '/workflow/designer', query: { id: String(row.id) } })
 }
 
 function handleViewImage(row: any) {

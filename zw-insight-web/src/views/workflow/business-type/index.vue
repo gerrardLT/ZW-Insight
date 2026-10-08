@@ -26,7 +26,6 @@
             <template #default="{ data }">
               <div class="tree-node">
                 <span>{{ data.typeName }}</span>
-                <el-tag v-if="data.status === 0" type="danger" size="small">停用</el-tag>
               </div>
             </template>
           </el-tree>
@@ -50,14 +49,7 @@
           <el-descriptions v-if="currentNode" :column="2" border>
             <el-descriptions-item label="类型名称">{{ currentNode.typeName }}</el-descriptions-item>
             <el-descriptions-item label="类型编码">{{ currentNode.typeCode }}</el-descriptions-item>
-            <el-descriptions-item label="关联流程">{{ currentNode.processKey || '未关联' }}</el-descriptions-item>
-            <el-descriptions-item label="状态">
-              <el-tag :type="currentNode.status === 1 ? 'success' : 'danger'">
-                {{ currentNode.status === 1 ? '启用' : '停用' }}
-              </el-tag>
-            </el-descriptions-item>
             <el-descriptions-item label="排序号">{{ currentNode.sortOrder }}</el-descriptions-item>
-            <el-descriptions-item label="备注">{{ currentNode.remark || '-' }}</el-descriptions-item>
           </el-descriptions>
           <ZwEmptyState type="data" v-else description="请从左侧选择业务类型查看详情" />
         </el-card>
@@ -84,14 +76,8 @@
         <el-form-item label="类型编码" prop="typeCode">
           <el-input v-model="formData.typeCode" placeholder="请输入类型编码" />
         </el-form-item>
-        <el-form-item label="关联流程">
-          <el-input v-model="formData.processKey" placeholder="请输入流程标识（可选）" />
-        </el-form-item>
         <el-form-item label="排序号">
           <el-input-number v-model="formData.sortOrder" :min="0" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="formData.remark" type="textarea" placeholder="请输入备注" :rows="3" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -130,9 +116,7 @@ const formData = ref({
   parentId: 0,
   typeName: '',
   typeCode: '',
-  processKey: '',
-  sortOrder: 0,
-  remark: ''
+  sortOrder: 0
 })
 
 const formRules = {
@@ -170,9 +154,7 @@ function handleAdd(parentId: number) {
     parentId,
     typeName: '',
     typeCode: '',
-    processKey: '',
-    sortOrder: 0,
-    remark: ''
+    sortOrder: 0
   }
   dialogVisible.value = true
 }

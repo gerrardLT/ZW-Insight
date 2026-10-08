@@ -189,14 +189,18 @@ async function handleFormSubmit(autoSubmit = false) {
   submitLoading.value = true
   try {
     const res: any = await createProjectReimbursement(formData.value)
-    if (autoSubmit && res?.data) {
-      await submitProjectReimbursement(res.data)
-      ElMessage.success('保存并提交审批成功')
-    } else {
-      ElMessage.success('保存草稿成功')
-    }
+    // 草稿已落库即关窗并刷新：后续提交失败时，避免用户留在弹窗里重复点击而建出多张草稿
     dialogVisible.value = false
-    loadData()
+    try {
+      if (autoSubmit && res?.data) {
+        await submitProjectReimbursement(res.data)
+        ElMessage.success('保存并提交审批成功')
+      } else {
+        ElMessage.success('保存草稿成功')
+      }
+    } finally {
+      loadData()
+    }
   } finally {
     submitLoading.value = false
   }

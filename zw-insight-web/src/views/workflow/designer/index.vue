@@ -57,17 +57,19 @@
 
 <script setup lang="ts">
 import { ref, reactive, shallowRef, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import BpmnModeler from 'bpmn-js/lib/Modeler'
 import 'bpmn-js/dist/assets/diagram-js.css'
 import 'bpmn-js/dist/assets/bpmn-js.css'
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css'
-import { deployProcess } from '@/api/workflow'
+import { deployProcess, getProcessXml } from '@/api/workflow'
 import { flowableDescriptor } from './flowable-moddle'
 import PropertiesPanel from './PropertiesPanel.vue'
 import { translateModule } from './translate'
 
+const route = useRoute()
 const canvasRef = ref<HTMLDivElement>()
 let modeler: InstanceType<typeof BpmnModeler> | null = null
 const modelerInstance = shallowRef<InstanceType<typeof BpmnModeler> | null>(null)
@@ -146,6 +148,27 @@ async function initModeler() {
   } catch (err) {
     console.error('加载流程图失败', err)
     ElMessage.error('加载流程图失败，请刷新页面重试')
+    return
+  }
+  const editId = route?.query?.id
+  if (editId) await loadDeployedProcess(String(editId))
+}
+
+/** 从流程定义页「编辑」进入：载入已部署流程；失败时保留空白模板，不覆盖用户可用画布 */
+async function loadDeployedProcess(id: string) {
+  if (!modeler) return
+  try {
+    const res: any = await getProcessXml(id)
+    const xml = typeof res === 'string' ? res : (res?.data || '')
+    if (!xml) throw new Error('BPMN XML为空')
+    await modeler.importXML(xml)
+    readProcessMetaFromXml()
+    const canvas: any = modeler.get('canvas')
+    canvas.zoom('fit-viewport')
+    ElMessage.success(`已载入流程【${processMeta.name || processMeta.key}】，修改后点「部署到服务器」将生成新版本`)
+  } catch (err) {
+    console.error('载入已部署流程失败', err)
+    ElMessage.error('载入流程失败，已保留空白画布')
   }
 }
 

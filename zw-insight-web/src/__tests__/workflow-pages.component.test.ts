@@ -15,6 +15,7 @@ const {
   mockBatchTemplateList, mockBatchCreate, mockBatchUpdate, mockBatchDelete,
   mockSaveXML, mockImportXML,
   mockUpdateProperties, modelerConstructorOptions, mockModelerGet,
+  mockProcessXml, mockRouterPush, mockRouteQuery,
 } = vi.hoisted(() => {
   const page = () => vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } }))
   const ok = () => vi.fn(async (): Promise<any> => ({ code: 200 }))
@@ -49,6 +50,9 @@ const {
     mockSaveXML: vi.fn(async () => ({ xml: '<xml/>' })),
     mockImportXML: vi.fn(async () => undefined),
     mockUpdateProperties, modelerConstructorOptions, mockModelerGet,
+    mockProcessXml: vi.fn(async (): Promise<any> => ({ code: 200, data: '<definitions/>' })),
+    mockRouterPush: vi.fn(),
+    mockRouteQuery: { value: {} as Record<string, string> },
   }
 })
 
@@ -59,7 +63,7 @@ vi.mock('@/api/workflow', () => ({
   getBusinessTypeTree: mockBtTree, getBusinessTypeDetail: mockBtDetail,
   createBusinessType: mockBtCreate, updateBusinessType: mockBtUpdate, deleteBusinessType: mockBtDelete,
   deployProcess: mockDeploy, getProcessList: mockProcessList,
-  getProcessImage: mockProcessImage, getProcessVersions: mockProcessVersions,
+  getProcessImage: mockProcessImage, getProcessVersions: mockProcessVersions, getProcessXml: mockProcessXml,
   getRollbackLogs: mockRollbackLogs, confirmRollbackConflict: mockConfirmConflict,
 }))
 vi.mock('@/api/finance', () => ({ getPaymentApplyDetail: mockPaymentDetail }))
@@ -94,8 +98,8 @@ vi.mock('vue-router', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
     ...actual,
-    useRouter: () => ({ push: vi.fn() }),
-    useRoute: () => ({ query: {}, params: { id: '1' } }),
+    useRouter: () => ({ push: mockRouterPush }),
+    useRoute: () => ({ query: mockRouteQuery.value, params: { id: '1' } }),
   }
 })
 vi.mock('element-plus', async (importOriginal) => {
@@ -244,6 +248,18 @@ describe('workflow/business-type/index.vue 业务类型配置', () => {
     expect(mockBtTree).toHaveBeenCalled()
   })
 
+  it('详情不再展示后端不存在的字段（状态/关联流程/备注），避免恒显「停用」', async () => {
+    await mountPage()
+    const st = wrapper.vm.$.setupState
+    mockBtDetail.mockResolvedValue({ code: 200, data: { id: 1, typeName: '合同审批', typeCode: 'CONTRACT', sortOrder: 1 } })
+    await st.handleNodeClick({ id: 1 })
+    await flushPromises()
+    const text = wrapper.text()
+    expect(text).toContain('合同审批')
+    expect(text).not.toContain('停用')
+    expect(text).not.toContain('未关联')
+  })
+
   it('新增走 create；选中节点后编辑走 update；删除调 delete', async () => {
     await mountPage()
     const st = wrapper.vm.$.setupState
@@ -278,6 +294,36 @@ describe('workflow/designer/index.vue 流程设计器', () => {
     await flushPromises()
     expect(mockSaveXML).toHaveBeenCalled()
     expect(mockDeploy).toHaveBeenCalled()
+  })
+
+  it('带 ?id= 进入：拉取已部署流程 XML 并导入画布（编辑入口）', async () => {
+    mockRouteQuery.value = { id: 'p7' }
+    mockProcessXml.mockResolvedValueOnce({ code: 200, data: '<definitions id="deployed"/>' })
+    try {
+      wrapper = mount(Designer, { global: { plugins: [ElementPlus] } })
+      await flushPromises()
+      expect(mockProcessXml).toHaveBeenCalledWith('p7')
+      expect(mockImportXML).toHaveBeenLastCalledWith('<definitions id="deployed"/>')
+    } finally {
+      mockRouteQuery.value = {}
+    }
+  })
+
+  it('无 ?id= 进入：不请求已部署流程，仅载入空白模板', async () => {
+    wrapper = mount(Designer, { global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    expect(mockProcessXml).not.toHaveBeenCalled()
+  })
+
+  it('载入已部署流程失败：提示错误，不抛出', async () => {
+    mockRouteQuery.value = { id: 'bad' }
+    mockProcessXml.mockRejectedValueOnce(new Error('boom'))
+    try {
+      wrapper = mount(Designer, { global: { plugins: [ElementPlus] } })
+      await expect(flushPromises()).resolves.not.toThrow()
+    } finally {
+      mockRouteQuery.value = {}
+    }
   })
 
   it('Modeler 创建参数含 moddleExtensions.flowable（Flowable 命名空间）', async () => {
@@ -365,6 +411,12 @@ describe('workflow/process/index.vue 流程管理', () => {
   it('挂载加载流程列表', async () => {
     await mountPage()
     expect(mockProcessList).toHaveBeenCalled()
+  })
+
+  it('编辑：跳转设计器并携带流程 id', async () => {
+    await mountPage()
+    wrapper.vm.$.setupState.handleEdit({ id: 'p1' })
+    expect(mockRouterPush).toHaveBeenCalledWith({ path: '/workflow/designer', query: { id: 'p1' } })
   })
 
   it('查看版本拉取版本列表', async () => {
