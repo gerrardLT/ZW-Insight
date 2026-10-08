@@ -54,6 +54,7 @@ class PaymentApplyServiceTest {
     @Mock private FundCategoryService fundCategoryService;
     @Mock private FundPlanService fundPlanService;
     @Mock private AmountTierService amountTierService;
+    @Mock private FinanceLockService financeLockService;
     @Mock private com.zwinsight.budget.service.BudgetControlConfigService budgetControlConfigService;
 
     @InjectMocks
@@ -366,6 +367,41 @@ class PaymentApplyServiceTest {
         }
 
         @Test
+        @DisplayName("并发超付兜底：累加后复核发现已超可付额度 — 反冲本笔、置 REJECTED、不计项目支出")
+        void onApproved_concurrentOverpay_reversedAndRejected() {
+            Long id = 40L;
+            Long contractId = 400L;
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(id);
+            apply.setContractId(contractId);
+            apply.setProjectId(10L);
+            apply.setPaymentAmount(new BigDecimal("30000.00"));
+            apply.setStatus("SUBMITTED");
+
+            // 校验时点：已付 50000，可付 50000 ≥ 30000，放行
+            BizOtherContract before = new BizOtherContract();
+            before.setId(contractId);
+            before.setCumulativeSettlement(new BigDecimal("100000.00"));
+            before.setCumulativePaid(new BigDecimal("50000.00"));
+            // 原子累加后读回：另一单已并发生效，已付变为 120000（含本笔 30000）> 结算 100000
+            BizOtherContract after = new BizOtherContract();
+            after.setId(contractId);
+            after.setCumulativeSettlement(new BigDecimal("100000.00"));
+            after.setCumulativePaid(new BigDecimal("120000.00"));
+
+            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(otherContractMapper.selectById(contractId)).thenReturn(before, after);
+            when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+
+            paymentApplyService.onApproved(id);
+
+            assertThat(apply.getStatus()).isEqualTo("REJECTED");
+            verify(otherContractMapper).addCumulativePaid(contractId, new BigDecimal("30000.00"));
+            verify(otherContractMapper).addCumulativePaid(contractId, new BigDecimal("-30000.00"));
+            verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+        }
+
+        @Test
         @DisplayName("审批驳回 — SUBMITTED 置 REJECTED，不回写")
         void onRejected_setsRejected() {
             Long id = 1L;
@@ -639,10 +675,11 @@ class PaymentApplyServiceTest {
         @Test
         @DisplayName("update 仅 DRAFT 可编辑（FIN-PAY-02/08）")
         void update_draftOnly() {
-            when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "DRAFT"));
+            BizPaymentApply existing = apply(1L, "DRAFT");
+            when(paymentApplyMapper.selectById(1L)).thenReturn(existing);
             BizPaymentApply updated = apply(1L, "DRAFT");
             paymentApplyService.update(updated);
-            verify(paymentApplyMapper).updateById(updated);
+            verify(paymentApplyMapper).updateById(existing);
 
             when(paymentApplyMapper.selectById(2L)).thenReturn(apply(2L, "SUBMITTED"));
             assertThatThrownBy(() -> paymentApplyService.update(apply(2L, "DRAFT")))
@@ -651,6 +688,94 @@ class PaymentApplyServiceTest {
             when(paymentApplyMapper.selectById(99L)).thenReturn(null);
             assertThatThrownBy(() -> paymentApplyService.update(apply(99L, "DRAFT")))
                     .isInstanceOf(BusinessException.class).hasMessageContaining("付款申请不存在");
+        }
+
+        @Test
+        @DisplayName("update 白名单：请求体里的 status/payStatus/快照/流程实例不落库，只改业务录入字段")
+        void update_ignoresSystemManagedFields() {
+            BizPaymentApply existing = apply(1L, "DRAFT");
+            existing.setPayStatus("UNPAID");
+            existing.setWorkflowInstanceId("keep-me");
+            when(paymentApplyMapper.selectById(1L)).thenReturn(existing);
+
+            BizPaymentApply body = apply(1L, "APPROVED");
+            body.setPayStatus("PAID");
+            body.setWorkflowInstanceId("forged");
+            body.setCumulativeSettlementSnapshot(new BigDecimal("999999"));
+            body.setPaymentAmount(new BigDecimal("2500"));
+            body.setSupplierName("新供应商");
+            paymentApplyService.update(body);
+
+            assertThat(existing.getStatus()).isEqualTo("DRAFT");
+            assertThat(existing.getPayStatus()).isEqualTo("UNPAID");
+            assertThat(existing.getWorkflowInstanceId()).isEqualTo("keep-me");
+            assertThat(existing.getCumulativeSettlementSnapshot()).isNull();
+            assertThat(existing.getPaymentAmount()).isEqualByComparingTo("2500");
+            assertThat(existing.getSupplierName()).isEqualTo("新供应商");
+            verify(paymentApplyMapper).updateById(existing);
+        }
+
+        @Test
+        @DisplayName("update 金额 <=0 拒绝，与 save 同源校验")
+        void update_nonPositiveAmount_throws() {
+            when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "DRAFT"));
+            BizPaymentApply body = apply(1L, "DRAFT");
+            body.setPaymentAmount(new BigDecimal("-5"));
+            assertThatThrownBy(() -> paymentApplyService.update(body))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("付款金额必须大于0");
+            verify(paymentApplyMapper, never()).updateById(any(BizPaymentApply.class));
+        }
+
+        @Test
+        @DisplayName("save 丢弃请求体里的 payStatus/快照/流程实例")
+        void save_clearsSystemManagedFields() {
+            BizPaymentApply a = apply(20L, "APPROVED");
+            a.setPayStatus("PAID");
+            a.setPayDate(java.time.LocalDate.of(2026, 1, 1));
+            a.setWorkflowInstanceId("forged");
+            a.setUnpaidAmountSnapshot(new BigDecimal("1"));
+            paymentApplyService.save(a);
+            assertThat(a.getStatus()).isEqualTo("DRAFT");
+            assertThat(a.getPayStatus()).isNull();
+            assertThat(a.getPayDate()).isNull();
+            assertThat(a.getWorkflowInstanceId()).isNull();
+            assertThat(a.getUnpaidAmountSnapshot()).isNull();
+        }
+
+        @Test
+        @DisplayName("onApproved 状态非 SUBMITTED（陈旧回调）忽略，不回写累计")
+        void onApproved_nonSubmitted_ignored() {
+            BizPaymentApply a = apply(30L, "DRAFT");
+            when(paymentApplyMapper.selectById(30L)).thenReturn(a);
+            paymentApplyService.onApproved(30L);
+            assertThat(a.getStatus()).isEqualTo("DRAFT");
+            verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+            verify(paymentApplyMapper, never()).updateById(any(BizPaymentApply.class));
+        }
+
+        @Test
+        @DisplayName("delete 封账期间拒绝：付款日期所在月已 LOCKED 时不删除")
+        void delete_lockedPeriod_rejected() {
+            BizPaymentApply a = apply(40L, "DRAFT");
+            a.setPaymentDate(java.time.LocalDate.of(2026, 9, 15));
+            when(paymentApplyMapper.selectById(40L)).thenReturn(a);
+            when(financeLockService.getStatus("2026-09")).thenReturn("LOCKED");
+
+            assertThatThrownBy(() -> paymentApplyService.delete(40L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("已封账");
+            verify(paymentApplyMapper, never()).deleteById(anyLong());
+        }
+
+        @Test
+        @DisplayName("markPaid 封账期间拒绝：付款日所在月已 LOCKED 时不标记")
+        void markPaid_lockedPeriod_rejected() {
+            BizPaymentApply a = apply(41L, "APPROVED");
+            when(paymentApplyMapper.selectById(41L)).thenReturn(a);
+            when(financeLockService.getStatus("2026-08")).thenReturn("LOCKED");
+
+            assertThatThrownBy(() -> paymentApplyService.markPaid(41L, java.time.LocalDate.of(2026, 8, 20), null))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("已封账");
+            verify(paymentApplyMapper, never()).updateById(any(BizPaymentApply.class));
         }
 
         @Test

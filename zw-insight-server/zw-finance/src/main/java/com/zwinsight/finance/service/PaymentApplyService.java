@@ -61,6 +61,7 @@ public class PaymentApplyService {
     private final FundPlanService fundPlanService;
     private final AmountTierService amountTierService;
     private final BudgetControlConfigService budgetControlConfigService;
+    private final FinanceLockService financeLockService;
 
     /** 走各模块合同表（biz_purchase_contract 等）的合同类型；其余（OTHER_EXPENSE/OTHER_INCOME/空）走 biz_other_contract */
     private static final java.util.Set<String> MODULE_CATEGORIES =
@@ -100,7 +101,34 @@ public class PaymentApplyService {
         fundPlanService.validatePaymentAgainstPlan(
                 paymentApply.getProjectId(), paymentApply.getPaymentDate(), paymentApply.getPaymentAmount());
         paymentApply.setStatus("DRAFT");
+        // 信任边界：状态机/现金态/快照/流程实例由系统写入，丢弃请求体里的同名字段
+        clearSystemManagedFields(paymentApply);
         paymentApplyMapper.insert(paymentApply);
+    }
+
+    /**
+     * 封账校验（Service 层）：切面 @FinanceLockCheck 只能从方法参数对象取日期，
+     * delete(id)/mark-paid/revoke-paid/批量删除 这类入口取不到，故在此显式校验。
+     * 日期为空不拦截（草稿可无付款日期）；封账状态查询失败按 503 上抛，不静默放行。
+     */
+    private void assertPeriodOpen(LocalDate bizDate, String operation) {
+        if (bizDate == null) {
+            return;
+        }
+        String period = java.time.YearMonth.from(bizDate).toString();
+        if ("LOCKED".equals(financeLockService.getStatus(period))) {
+            throw new BusinessException(403, "期间" + period + "已封账，禁止" + operation);
+        }
+    }
+
+    /** 请求体不可信的系统字段：现金执行态、可付快照、流程实例 */
+    private void clearSystemManagedFields(BizPaymentApply a) {
+        a.setPayStatus(null);
+        a.setPayDate(null);
+        a.setPayAccountId(null);
+        a.setCumulativeSettlementSnapshot(null);
+        a.setUnpaidAmountSnapshot(null);
+        a.setWorkflowInstanceId(null);
     }
 
     /**
@@ -125,7 +153,26 @@ public class PaymentApplyService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
-        paymentApplyMapper.updateById(paymentApply);
+        // 与 save 同源的金额/科目/计划校验，原实现 update 完全绕过
+        if (paymentApply.getPaymentAmount() != null && paymentApply.getPaymentAmount().signum() <= 0) {
+            throw new BusinessException("付款金额必须大于0");
+        }
+        if (paymentApply.getPaymentCategory() != null && !paymentApply.getPaymentCategory().isBlank()) {
+            fundCategoryService.getByCode(paymentApply.getPaymentCategory(), "EXPENSE");
+        }
+        // 白名单拷贝：只允许改业务录入字段；status/payStatus/快照/workflowInstanceId 等系统字段不接受请求体
+        if (paymentApply.getProjectId() != null) existing.setProjectId(paymentApply.getProjectId());
+        if (paymentApply.getContractId() != null) existing.setContractId(paymentApply.getContractId());
+        if (paymentApply.getContractCategory() != null) existing.setContractCategory(paymentApply.getContractCategory());
+        if (paymentApply.getSupplierId() != null) existing.setSupplierId(paymentApply.getSupplierId());
+        if (paymentApply.getSupplierName() != null) existing.setSupplierName(paymentApply.getSupplierName());
+        if (paymentApply.getPaymentAmount() != null) existing.setPaymentAmount(paymentApply.getPaymentAmount());
+        if (paymentApply.getPaymentCategory() != null) existing.setPaymentCategory(paymentApply.getPaymentCategory());
+        if (paymentApply.getFundPlanId() != null) existing.setFundPlanId(paymentApply.getFundPlanId());
+        if (paymentApply.getPaymentDate() != null) existing.setPaymentDate(paymentApply.getPaymentDate());
+        fundPlanService.validatePaymentAgainstPlan(
+                existing.getProjectId(), existing.getPaymentDate(), existing.getPaymentAmount());
+        paymentApplyMapper.updateById(existing);
     }
 
     /**
@@ -145,6 +192,7 @@ public class PaymentApplyService {
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) {
             throw new BusinessException("仅草稿状态可删除");
         }
+        assertPeriodOpen(existing.getPaymentDate(), "删除付款申请");
         BigDecimal amount = existing.getPaymentAmount() == null
                 ? BigDecimal.ZERO : existing.getPaymentAmount();
         paymentApplyMapper.deleteById(id);
@@ -267,6 +315,11 @@ public class PaymentApplyService {
             log.info("付款申请已生效，跳过重复回调, id={}", id);
             return;
         }
+        // 仅 SUBMITTED 可生效：DRAFT/REJECTED 收到陈旧回调时不得回写累计（原实现不限状态）
+        if (!"SUBMITTED".equals(paymentApply.getStatus())) {
+            log.warn("付款申请审批通过回调：状态非 SUBMITTED，忽略, id={}, status={}", id, paymentApply.getStatus());
+            return;
+        }
 
         ContractPayableInfo payable = resolvePayable(paymentApply);
         if (payable == null) {
@@ -286,11 +339,24 @@ public class PaymentApplyService {
             return;
         }
 
+        // 并发超付兜底：上面的校验是"读后判断"，两单同合同并发审批可同时通过。
+        // 先原子累加（UPDATE 锁行，读到最新已提交值），再读回复核；超限则反冲并驳回，保证后到的一单被拦。
+        addCumulativePaid(paymentApply, paymentApply.getPaymentAmount());
+        ContractPayableInfo after = resolvePayable(paymentApply);
+        if (after != null && exceedsLimitAfterWriteback(after, paymentApply.getContractId())) {
+            addCumulativePaid(paymentApply, paymentApply.getPaymentAmount().negate());
+            paymentApply.setStatus("REJECTED");
+            paymentApplyMapper.updateById(paymentApply);
+            notifyInitiator(paymentApply.getCreatedBy(), "付款申请生效失败",
+                    "同合同其他付款已先行生效，累计已付将超过可付额度", paymentApply.getWorkflowInstanceId());
+            log.warn("付款申请并发超付已反冲并驳回, id={}", id);
+            return;
+        }
+
         paymentApply.setStatus("APPROVED");
         paymentApplyMapper.updateById(paymentApply);
 
-        // 回写合同累计已付（按合同类型路由）与项目总支出（原子累加）
-        addCumulativePaid(paymentApply, paymentApply.getPaymentAmount());
+        // 项目总支出（审批口径，原子累加）
         projectMapper.addTotalExpense(paymentApply.getProjectId(), paymentApply.getPaymentAmount());
 
         log.info("付款申请审批通过并生效, id={}, paymentAmount={}", id, paymentApply.getPaymentAmount());
@@ -396,6 +462,7 @@ public class PaymentApplyService {
             // 部分支付必然源自银行勾稽：手工整笔标记会掩盖“还差多少未付”的事实
             throw new BusinessException("该付款申请已部分支付（银行勾稽产生），请继续勾稽剩余金额或取消勾稽，不可手工整笔标记");
         }
+        assertPeriodOpen(payDate, "标记付款");
         Long matchedFlows = bankFlowMapper.selectCount(new LambdaQueryWrapper<BizBankFlow>()
                 .eq(BizBankFlow::getReconciled, 1)
                 .eq(BizBankFlow::getMatchedType, BizBankFlow.MATCH_PAYMENT_APPLY)
@@ -428,6 +495,7 @@ public class PaymentApplyService {
             }
             throw new BusinessException("该付款申请未标记支付，无需撤销");
         }
+        assertPeriodOpen(apply.getPayDate(), "撤销付款标记");
         Long matchedFlows = bankFlowMapper.selectCount(new LambdaQueryWrapper<BizBankFlow>()
                 .eq(BizBankFlow::getReconciled, 1)
                 .eq(BizBankFlow::getMatchedType, BizBankFlow.MATCH_PAYMENT_APPLY)
@@ -462,6 +530,17 @@ public class PaymentApplyService {
         if (paymentAmount.compareTo(maxPayment) > 0) {
             throw new BusinessException("付款金额不能超过（累计结算含奖惩）减已付金额，最大可付金额：" + maxPayment);
         }
+    }
+
+    /** 累加后复核：累计已付（已含本笔）> 累计结算 + 净奖惩 即超付 */
+    private boolean exceedsLimitAfterWriteback(ContractPayableInfo after, Long contractId) {
+        BigDecimal settled = after.getCumulativeSettlement() == null ? BigDecimal.ZERO : after.getCumulativeSettlement();
+        BigDecimal paid = after.getCumulativePaid() == null ? BigDecimal.ZERO : after.getCumulativePaid();
+        BigDecimal net = settlementDataMapper.sumRewardPunishNetByContract(contractId);
+        if (net == null) {
+            net = BigDecimal.ZERO;
+        }
+        return paid.compareTo(settled.add(net)) > 0;
     }
 
     /**
