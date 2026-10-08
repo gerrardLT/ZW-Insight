@@ -333,7 +333,7 @@ cleanup_all() {
   log "  兑底 SQL 清理完成（执行 $sql_cleaned 张表的 tenant_id=$TEST_TENANT_ID 删除）"
 
   # 2b. 清理 Flowable 流程运行时/历史数据（按 TENANT_ID_ 列）
-  docker exec "$MYSQL_CT" mysql -uroot -p"$MYSQL_PW" zw_insight 2>/dev/null <<FLOW || true
+  docker exec -i "$MYSQL_CT" mysql -uroot -p"$MYSQL_PW" zw_insight 2>/dev/null <<FLOW || true
 SET FOREIGN_KEY_CHECKS=0;
 DELETE FROM ACT_RU_TASK WHERE TENANT_ID_='$TEST_TENANT_ID';
 DELETE FROM ACT_RU_EXECUTION WHERE TENANT_ID_='$TEST_TENANT_ID';
@@ -436,7 +436,7 @@ db_next_task() {
 pre_clean_flowable() {
   local MYSQL_PW="${ZWI_MYSQL_PASS:-zwinsight123}"
   log "🧹 预清理：租户 $TEST_TENANT_ID Flowable 运行时残留（防跨套件僵尸待办）"
-  docker exec "$MYSQL_CT" mysql -uroot -p"$MYSQL_PW" zw_insight 2>/dev/null <<FLOW || true
+  docker exec -i "$MYSQL_CT" mysql -uroot -p"$MYSQL_PW" zw_insight 2>/dev/null <<FLOW || true
 SET FOREIGN_KEY_CHECKS=0;
 DELETE FROM ACT_RU_TASK WHERE TENANT_ID_='$TEST_TENANT_ID';
 DELETE FROM ACT_RU_EXECUTION WHERE TENANT_ID_='$TEST_TENANT_ID';
@@ -769,7 +769,7 @@ stage_6_subcontracts() {
 
   # 6C: 机械合同（rentalType=台班，contractAmount 作为台班单价—代码取 contractAmount 为单价）
   log "  -- 6C: 机械合同 --"
-  api_call POST "/api/v1/machine/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"塔吊租赁合同\",\"supplierName\":\"华南机械租赁\",\"machineName\":\"QTZ63塔吊\",\"rentalType\":\"台班\",\"signingDate\":\"2026-08-01\",\"startDate\":\"2026-08-01\",\"endDate\":\"2027-01-31\",\"contractAmount\":500.00}"
+  api_call POST "/api/v1/machine/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"塔吊租赁合同\",\"supplierName\":\"华南机械租赁\",\"machineName\":\"QTZ63塔吊\",\"rentalType\":\"台班\",\"signingDate\":\"2026-08-01\",\"startDate\":\"2026-08-01\",\"endDate\":\"2027-01-31\",\"contractAmount\":100000.00,\"unitPrice\":500.00}"
   strict_assert "创建机械合同"
   sleep 1
   api_call GET "/api/v1/machine/contract/page?page=1&size=1&projectId=$PROJECT_ID"
@@ -778,8 +778,9 @@ stage_6_subcontracts() {
   success "机械合同 ID: $MACHINE_CONTRACT_ID"
   track_resource "DELETE" "/api/v1/machine/contract/$MACHINE_CONTRACT_ID"
   api_call POST "/api/v1/machine/contract/$MACHINE_CONTRACT_ID/submit"
-  strict_assert "提交机械合同"
-  sleep 1
+  strict_assert "提交机械合同审批"
+  sleep 2
+  approve "同意机械合同" 1
   assert_status "/api/v1/machine/contract/$MACHINE_CONTRACT_ID" "status" "EFFECTIVE" "机械合同状态"
 
   # 6D: 分包合同（无工作流，submit 直接 EFFECTIVE）
