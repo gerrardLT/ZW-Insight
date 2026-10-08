@@ -9,14 +9,14 @@
 
         <startEvent id="startEvent" name="提交竣工结算"/>
 
-        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="financeApproval"/>
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="managerApproval"/>
 
-        <userTask id="financeApproval" name="财务审批"
-                  flowable:assignee="${initiator}">
-            <documentation>竣工结算 - 财务复核结算金额与累计收付</documentation>
+        <userTask id="managerApproval" name="项目负责人审批"
+                  flowable:candidateGroups="PROJECT_MANAGER">
+            <documentation>竣工结算 - 项目负责人审批工程结算金额与决算确认</documentation>
         </userTask>
 
-        <sequenceFlow id="flow2" sourceRef="financeApproval" targetRef="endEvent"/>
+        <sequenceFlow id="flow2" sourceRef="managerApproval" targetRef="endEvent"/>
 
         <endEvent id="endEvent" name="审批完成"/>
 

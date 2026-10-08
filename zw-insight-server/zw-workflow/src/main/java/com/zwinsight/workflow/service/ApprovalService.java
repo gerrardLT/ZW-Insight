@@ -58,6 +58,7 @@ public class ApprovalService {
     /** 需要防自审的业务类型：发起人不得办理自己的单据 */
     private static final Set<String> SELF_APPROVAL_GUARDED_TYPES = Set.of(
             "MACHINE_CONTRACT", "machine_settlement", "PURCHASE_SETTLEMENT",
+            "FINAL_SETTLEMENT",
             "PROJECT_CLOSE", "PROJECT_FILING", "PROJECT_TERMINATE",
             "LABOR_CONTRACT", "LABOR_OUTPUT", "LABOR_SETTLEMENT", "LABOR_PAYROLL", "LABOR_REWARD_PUNISH");
 
