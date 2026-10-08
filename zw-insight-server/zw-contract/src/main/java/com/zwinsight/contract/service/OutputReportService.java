@@ -67,7 +67,19 @@ public class OutputReportService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizOutputReport report) {
+        // 后端计量边界：金额为正；合同必须存在且属于所填项目；系统字段不接受请求体
+        if (report.getCurrentOutput() == null || report.getCurrentOutput().signum() <= 0) {
+            throw new BusinessException("本期产值必须大于0");
+        }
+        BizConstructionContract contract = contractMapper.selectById(report.getContractId());
+        if (contract == null) {
+            throw new BusinessException("关联合同不存在");
+        }
+        if (report.getProjectId() != null && !java.util.Objects.equals(contract.getProjectId(), report.getProjectId())) {
+            throw new BusinessException("施工合同不属于该项目");
+        }
         report.setStatus("DRAFT");
+        report.setWorkflowInstanceId(null);
         outputReportMapper.insert(report);
         saveDetails(report.getId(), report.getDetails());
     }
@@ -118,11 +130,16 @@ public class OutputReportService {
             log.info("产值报告已生效，跳过重复回调, id={}", id);
             return;
         }
+        // 仅 SUBMITTED 可生效：DRAFT/REJECTED 收到陈旧回调不得入账
+        if (!"SUBMITTED".equals(report.getStatus())) {
+            log.warn("产值报告审批通过回调：状态非 SUBMITTED，忽略, id={}, status={}", id, report.getStatus());
+            return;
+        }
 
         BizConstructionContract contract = contractMapper.selectById(report.getContractId());
         if (contract == null) {
-            log.error("产值报告审批通过回调：关联合同不存在, reportId={}, contractId={}", id, report.getContractId());
-            return;
+            // 抛出而非静默返回：工作流已走完而业务未记账会造成账实分裂，由审批事务整体回滚并暴露
+            throw new BusinessException("关联合同不存在，产值上报无法生效");
         }
 
         // 审批期间上限可能变化，生效前重新校验；不通过则置 REJECTED 并通知发起人
@@ -137,21 +154,39 @@ public class OutputReportService {
             return;
         }
 
-        // 回写合同/项目累计产值（原子累加）
-        contractMapper.addCumulativeOutput(report.getContractId(), report.getCurrentOutput());
-        projectMapper.addCumulativeOutput(report.getProjectId(), report.getCurrentOutput());
+        // 合同累计：额度检查与累加在同一条 UPDATE 内（上面的读校验只给友好提示）。
+        // 并发时后到的产值单命中 0 行，按"审批期间额度被占用"驳回并通知，不越限。
+        if (contractMapper.addCumulativeOutputWithinLimit(report.getContractId(), report.getCurrentOutput()) != 1) {
+            report.setStatus("REJECTED");
+            outputReportMapper.updateById(report);
+            notifyInitiator(report, "产值上报生效失败", "合同累计产值已被其他产值单占用，超出合同额度");
+            log.warn("产值报告并发越限已驳回, id={}", id);
+            return;
+        }
+        if (projectMapper.addCumulativeOutput(report.getProjectId(), report.getCurrentOutput()) != 1) {
+            throw new BusinessException("关联项目不存在，产值上报无法生效");
+        }
 
-        // 回写 BOQ 清单条目已完成工程量
+        // 回写 BOQ 清单条目已完成工程量（未命中行即清单条目已不存在，整体回滚）
         List<BizOutputReportDetail> details = listDetails(id);
         for (BizOutputReportDetail detail : details) {
-            if (detail.getBoqItemId() != null && detail.getQuantity() != null) {
-                boqItemMapper.addCompletedQuantity(detail.getBoqItemId(), detail.getQuantity());
+            if (detail.getBoqItemId() != null && detail.getQuantity() != null
+                    && boqItemMapper.addCompletedQuantity(detail.getBoqItemId(), detail.getQuantity()) != 1) {
+                throw new BusinessException("清单条目不存在，产值上报无法生效：" + detail.getBoqItemId());
             }
         }
 
+        // 状态 CAS：并发重复回调只有一次生效，输家抛出使上面的累加随事务回滚
+        int moved = outputReportMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizOutputReport>()
+                .eq(BizOutputReport::getId, id)
+                .eq(BizOutputReport::getStatus, "SUBMITTED")
+                .set(BizOutputReport::getStatus, "APPROVED")
+                .set(BizOutputReport::getCumulativeOutput, newCumulativeOutput));
+        if (moved != 1) {
+            throw new BusinessException("产值报告状态已变更，重复回调已回滚");
+        }
         report.setStatus("APPROVED");
         report.setCumulativeOutput(newCumulativeOutput);
-        outputReportMapper.updateById(report);
 
         log.info("产值报告审批通过并生效, id={}, currentOutput={}, boqDetails={}",
                 id, report.getCurrentOutput(), details.size());
@@ -192,6 +227,22 @@ public class OutputReportService {
         if (!"DRAFT".equals(existing.getStatus()) && !"REJECTED".equals(existing.getStatus())
                 && !E2eTestGuard.containsE2eTestMarker(existing)) {
             throw new BusinessException("仅草稿或已驳回状态可删除");
+        }
+        // 对称冲销：APPROVED（仅 E2E 旁路可达）曾回写合同/项目累计与 BOQ 完成量，
+        // 删除必须同时冲销，否则单据没了而账还在；DRAFT/REJECTED 从未入账，不得冲销
+        if ("APPROVED".equals(existing.getStatus())) {
+            BigDecimal amount = existing.getCurrentOutput() == null ? BigDecimal.ZERO : existing.getCurrentOutput();
+            if (existing.getContractId() != null) {
+                contractMapper.addCumulativeOutput(existing.getContractId(), amount.negate());
+            }
+            if (existing.getProjectId() != null) {
+                projectMapper.addCumulativeOutput(existing.getProjectId(), amount.negate());
+            }
+            for (BizOutputReportDetail detail : listDetails(id)) {
+                if (detail.getBoqItemId() != null && detail.getQuantity() != null) {
+                    boqItemMapper.addCompletedQuantity(detail.getBoqItemId(), detail.getQuantity().negate());
+                }
+            }
         }
         LambdaQueryWrapper<BizOutputReportDetail> detailWrapper = new LambdaQueryWrapper<>();
         detailWrapper.eq(BizOutputReportDetail::getReportId, id);

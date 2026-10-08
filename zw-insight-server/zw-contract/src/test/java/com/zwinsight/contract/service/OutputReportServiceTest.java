@@ -185,13 +185,82 @@ class OutputReportServiceTest {
             when(outputReportMapper.selectById(id)).thenReturn(report);
             when(contractMapper.selectById(contractId)).thenReturn(contract);
             when(reportDetailMapper.selectList(any())).thenReturn(List.of(detail));
+            when(contractMapper.addCumulativeOutputWithinLimit(contractId, new BigDecimal("20000.00"))).thenReturn(1);
+            when(projectMapper.addCumulativeOutput(projectId, new BigDecimal("20000.00"))).thenReturn(1);
+            when(boqItemMapper.addCompletedQuantity(9001L, new BigDecimal("5"))).thenReturn(1);
+            when(outputReportMapper.update(isNull(), any())).thenReturn(1);
 
             outputReportService.onApproved(id);
 
             assertThat(report.getStatus()).isEqualTo("APPROVED");
-            verify(contractMapper).addCumulativeOutput(contractId, new BigDecimal("20000.00"));
+            // 合同累计走带上限的原子累加（额度检查与写入同一条 SQL）
+            verify(contractMapper).addCumulativeOutputWithinLimit(contractId, new BigDecimal("20000.00"));
+            verify(contractMapper, never()).addCumulativeOutput(anyLong(), any());
             verify(projectMapper).addCumulativeOutput(projectId, new BigDecimal("20000.00"));
             verify(boqItemMapper).addCompletedQuantity(9001L, new BigDecimal("5"));
+        }
+
+        @Test
+        @DisplayName("并发越限：带上限的原子累加命中 0 行 — 置 REJECTED+通知，不回写项目与 BOQ")
+        void onApproved_concurrentOverLimit_rejectedByAtomicUpdate() {
+            BizOutputReport report = new BizOutputReport();
+            report.setId(7L);
+            report.setContractId(700L);
+            report.setProjectId(10L);
+            report.setCurrentOutput(new BigDecimal("20000.00"));
+            report.setStatus("SUBMITTED");
+            BizConstructionContract contract = new BizConstructionContract();
+            contract.setId(700L);
+            contract.setContractAmount(new BigDecimal("100000.00"));
+            contract.setCumulativeOutput(new BigDecimal("50000.00"));
+            when(outputReportMapper.selectById(7L)).thenReturn(report);
+            when(contractMapper.selectById(700L)).thenReturn(contract);
+            // 读校验通过（70000 ≤ 100000），但另一单已先入账，条件 UPDATE 未命中
+            when(contractMapper.addCumulativeOutputWithinLimit(700L, new BigDecimal("20000.00"))).thenReturn(0);
+
+            outputReportService.onApproved(7L);
+
+            assertThat(report.getStatus()).isEqualTo("REJECTED");
+            verify(projectMapper, never()).addCumulativeOutput(anyLong(), any());
+            verify(boqItemMapper, never()).addCompletedQuantity(anyLong(), any());
+            verify(eventPublisher).publishEvent(any());
+        }
+
+        @Test
+        @DisplayName("状态 CAS 落空（并发重复回调）— 抛异常使累加随事务回滚")
+        void onApproved_statusCasLost_throws() {
+            BizOutputReport report = new BizOutputReport();
+            report.setId(8L);
+            report.setContractId(800L);
+            report.setProjectId(10L);
+            report.setCurrentOutput(new BigDecimal("1000.00"));
+            report.setStatus("SUBMITTED");
+            BizConstructionContract contract = new BizConstructionContract();
+            contract.setId(800L);
+            contract.setContractAmount(new BigDecimal("100000.00"));
+            when(outputReportMapper.selectById(8L)).thenReturn(report);
+            when(contractMapper.selectById(800L)).thenReturn(contract);
+            when(contractMapper.addCumulativeOutputWithinLimit(800L, new BigDecimal("1000.00"))).thenReturn(1);
+            when(projectMapper.addCumulativeOutput(10L, new BigDecimal("1000.00"))).thenReturn(1);
+            when(outputReportMapper.update(isNull(), any())).thenReturn(0);
+
+            assertThatThrownBy(() -> outputReportService.onApproved(8L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("重复回调已回滚");
+        }
+
+        @Test
+        @DisplayName("陈旧回调：状态非 SUBMITTED（如 DRAFT/REJECTED）忽略，不入账")
+        void onApproved_nonSubmitted_ignored() {
+            BizOutputReport report = new BizOutputReport();
+            report.setId(9L);
+            report.setStatus("REJECTED");
+            when(outputReportMapper.selectById(9L)).thenReturn(report);
+
+            outputReportService.onApproved(9L);
+
+            verify(contractMapper, never()).addCumulativeOutputWithinLimit(anyLong(), any());
+            verify(projectMapper, never()).addCumulativeOutput(anyLong(), any());
         }
 
         @Test
@@ -272,8 +341,8 @@ class OutputReportServiceTest {
         }
 
         @Test
-        @DisplayName("回调容错：报告/合同不存在仅记日志不抛错（P1 OUT-09）")
-        void onApproved_missingRefs_logsAndReturns() {
+        @DisplayName("回调：报告不存在仅记日志；合同不存在抛异常（不静默，使审批事务回滚暴露账实分裂）")
+        void onApproved_missingRefs_reportLogged_contractThrows() {
             when(outputReportMapper.selectById(99L)).thenReturn(null);
             outputReportService.onApproved(99L);
             verify(outputReportMapper, never()).updateById(any());
@@ -284,9 +353,11 @@ class OutputReportServiceTest {
             report.setStatus("SUBMITTED");
             when(outputReportMapper.selectById(6L)).thenReturn(report);
             when(contractMapper.selectById(600L)).thenReturn(null);
-            outputReportService.onApproved(6L);
+            assertThatThrownBy(() -> outputReportService.onApproved(6L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("无法生效");
             verify(outputReportMapper, never()).updateById(any());
-            verify(contractMapper, never()).addCumulativeOutput(anyLong(), any());
+            verify(contractMapper, never()).addCumulativeOutputWithinLimit(anyLong(), any());
         }
     }
 
@@ -339,6 +410,30 @@ class OutputReportServiceTest {
         }
 
         @Test
+        @DisplayName("删除已批准（E2E 旁路）— 对称冲销合同/项目累计与 BOQ 完成量，DRAFT 不冲销")
+        void delete_approved_reversesCumulatives() {
+            BizOutputReport report = new BizOutputReport();
+            report.setId(3L);
+            report.setStatus("APPROVED");
+            report.setContractId(100L);
+            report.setProjectId(10L);
+            report.setCurrentOutput(new BigDecimal("20000.00"));
+            report.setReportPeriod("E2E_TEST_1723900000000_2026-08");
+            BizOutputReportDetail detail = new BizOutputReportDetail();
+            detail.setBoqItemId(9001L);
+            detail.setQuantity(new BigDecimal("5"));
+            when(outputReportMapper.selectById(3L)).thenReturn(report);
+            when(reportDetailMapper.selectList(any())).thenReturn(List.of(detail));
+
+            outputReportService.delete(3L);
+
+            verify(contractMapper).addCumulativeOutput(100L, new BigDecimal("-20000.00"));
+            verify(projectMapper).addCumulativeOutput(10L, new BigDecimal("-20000.00"));
+            verify(boqItemMapper).addCompletedQuantity(9001L, new BigDecimal("-5"));
+            verify(outputReportMapper).deleteById(3L);
+        }
+
+        @Test
         @DisplayName("报告不存在抛异常")
         void delete_notFound() {
             when(outputReportMapper.selectById(99L)).thenReturn(null);
@@ -362,6 +457,9 @@ class OutputReportServiceTest {
             BizOutputReportDetail detail = new BizOutputReportDetail();
             detail.setId(555L);
             report.setDetails(List.of(detail));
+            BizConstructionContract c = new BizConstructionContract();
+            c.setId(100L);
+            when(contractMapper.selectById(100L)).thenReturn(c);
 
             outputReportService.save(report);
 
@@ -377,12 +475,53 @@ class OutputReportServiceTest {
         void save_noDetails_skipsDetailInsert() {
             BizOutputReport report = new BizOutputReport();
             report.setContractId(100L);
+            report.setCurrentOutput(new BigDecimal("1000"));
+            BizConstructionContract c = new BizConstructionContract();
+            c.setId(100L);
+            when(contractMapper.selectById(100L)).thenReturn(c);
 
             outputReportService.save(report);
 
             assertThat(report.getStatus()).isEqualTo("DRAFT");
             verify(outputReportMapper).insert(report);
             verify(reportDetailMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("保存校验：金额非正 / 合同不存在 / 合同不属于该项目均拒绝，且不落库；请求体流程实例被丢弃")
+        void save_boundaryRejected() {
+            BizOutputReport zero = new BizOutputReport();
+            zero.setContractId(100L);
+            zero.setCurrentOutput(BigDecimal.ZERO);
+            assertThatThrownBy(() -> outputReportService.save(zero))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("必须大于0");
+
+            BizOutputReport noContract = new BizOutputReport();
+            noContract.setContractId(404L);
+            noContract.setCurrentOutput(new BigDecimal("1"));
+            when(contractMapper.selectById(404L)).thenReturn(null);
+            assertThatThrownBy(() -> outputReportService.save(noContract))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("关联合同不存在");
+
+            BizConstructionContract c = new BizConstructionContract();
+            c.setId(100L);
+            c.setProjectId(1L);
+            when(contractMapper.selectById(100L)).thenReturn(c);
+            BizOutputReport mismatch = new BizOutputReport();
+            mismatch.setContractId(100L);
+            mismatch.setProjectId(2L);
+            mismatch.setCurrentOutput(new BigDecimal("1"));
+            assertThatThrownBy(() -> outputReportService.save(mismatch))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("不属于该项目");
+            verify(outputReportMapper, never()).insert(any(BizOutputReport.class));
+
+            BizOutputReport forged = new BizOutputReport();
+            forged.setContractId(100L);
+            forged.setProjectId(1L);
+            forged.setCurrentOutput(new BigDecimal("1"));
+            forged.setWorkflowInstanceId("forged");
+            outputReportService.save(forged);
+            assertThat(forged.getWorkflowInstanceId()).isNull();
         }
     }
 }

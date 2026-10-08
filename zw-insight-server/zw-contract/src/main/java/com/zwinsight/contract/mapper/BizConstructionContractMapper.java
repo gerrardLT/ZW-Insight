@@ -37,6 +37,19 @@ public interface BizConstructionContractMapper extends BaseMapper<BizConstructio
     int addCumulativeOutput(@Param("contractId") Long contractId, @Param("amount") java.math.BigDecimal amount);
 
     /**
+     * 带上限的原子累加合同累计产值：累计+本期 ≤ 合同额+累计变更额 才更新。
+     * <p>额度检查与写入在同一条 UPDATE 内完成（行锁串行化），取代"先读上限再加"：
+     * 两张产值单并发批准时后到者命中 0 行，不会双双越限。</p>
+     *
+     * @return 影响行数；0 表示越限或合同已不存在
+     */
+    @Update("UPDATE biz_construction_contract " +
+            "SET cumulative_output = COALESCE(cumulative_output, 0) + #{amount} " +
+            "WHERE id = #{contractId} AND deleted = 0 " +
+            "AND COALESCE(cumulative_output, 0) + #{amount} <= contract_amount + COALESCE(cumulative_change_amount, 0)")
+    int addCumulativeOutputWithinLimit(@Param("contractId") Long contractId, @Param("amount") java.math.BigDecimal amount);
+
+    /**
      * 原子累加合同累计开票金额（开票申请审批通过时回写，避免并发丢失更新）
      *
      * @param contractId 合同ID
