@@ -184,15 +184,16 @@ public class AuthService {
         }
 
         // 3. 参数校验
-        if (request.getUsername() == null || request.getUsername().isBlank()) {
-            throw new BusinessException("用户名不能为空");
+        String account = request.getUsername();
+        if (account == null || account.isBlank()) {
+            throw new BusinessException("用户名或手机号不能为空");
         }
         if (request.getPassword() == null || request.getPassword().isBlank()) {
             throw new BusinessException("密码不能为空");
         }
 
-        // 4. 检查账号锁定
-        String failKey = LOGIN_FAIL_PREFIX + request.getUsername();
+        // 4. 检查账号锁定（优先按输入凭据锁定，查出用户后同步按规范用户名锁定）
+        String failKey = LOGIN_FAIL_PREFIX + account;
         if (lockEnabled) {
             Object failCount = redisUtils.get(failKey);
             if (failCount != null && Integer.parseInt(failCount.toString()) >= maxAttempts) {
@@ -200,11 +201,11 @@ public class AuthService {
             }
         }
 
-        // 5. 查找用户
+        // 5. 查找用户（支持用户名或手机号）
         SysUser user = userMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>()
-                        .eq(SysUser::getUsername, request.getUsername())
                         .eq(SysUser::getDeleted, 0)
+                        .and(w -> w.eq(SysUser::getUsername, account).or().eq(SysUser::getPhone, account))
         );
         if (user == null) {
             incrementFailCount(failKey);
@@ -212,9 +213,21 @@ public class AuthService {
             throw new BusinessException("用户名或密码错误");
         }
 
+        // 若用户查出且凭据为手机号，补充检查其真实 username 维度的锁定态
+        String canonicalFailKey = LOGIN_FAIL_PREFIX + user.getUsername();
+        if (lockEnabled && !canonicalFailKey.equals(failKey)) {
+            Object canonicalFailCount = redisUtils.get(canonicalFailKey);
+            if (canonicalFailCount != null && Integer.parseInt(canonicalFailCount.toString()) >= maxAttempts) {
+                throw new BusinessException("账号已被锁定，请" + (lockDuration / 60) + "分钟后再试");
+            }
+        }
+
         // 6. 验证密码
         if (!ENCODER.matches(request.getPassword(), user.getPassword())) {
             incrementFailCount(failKey);
+            if (!canonicalFailKey.equals(failKey)) {
+                incrementFailCount(canonicalFailKey);
+            }
             captchaService.recordIpFailure(clientIp);
             throw new BusinessException("用户名或密码错误");
         }
@@ -231,8 +244,11 @@ public class AuthService {
         // 9. 生成 Token 和响应（含设备记录 + 异地检测）
         LoginResponse response = buildLoginResponse(user, tenant, clientIp, deviceInfo);
 
-        // 10. 清除失败计数
+        // 10. 清除失败计数（同时清理输入凭据 key 与真实用户名 key）
         redisUtils.delete(failKey);
+        if (!canonicalFailKey.equals(failKey)) {
+            redisUtils.delete(canonicalFailKey);
+        }
         captchaService.clearIpFailure(clientIp);
 
         log.info("User {} logged in successfully via password", user.getUsername());

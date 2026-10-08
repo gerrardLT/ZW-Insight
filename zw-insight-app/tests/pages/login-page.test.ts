@@ -57,7 +57,7 @@ describe('login/index.vue 登录页', () => {
   it('默认密码登录 tab，切换短信 tab 显示手机号/验证码表单', async () => {
     const wrapper = mountPage()
     expect(wrapper.text()).toContain('密码登录')
-    expect(wrapper.find('input[placeholder="请输入用户名"]').exists()).toBe(true)
+    expect(wrapper.find('input[placeholder="请输入用户名/手机号"]').exists()).toBe(true)
     expect(wrapper.find('input[placeholder="请输入手机号"]').exists()).toBe(false)
 
     const tabs = wrapper.findAll('.tab-item')
@@ -86,7 +86,7 @@ describe('login/index.vue 登录页', () => {
     const toast = vi.fn()
     ;(getUni() as any).showToast = toast
 
-    await wrapper.find('input[placeholder="请输入用户名"]').setValue('admin')
+    await wrapper.find('input[placeholder="请输入用户名/手机号"]').setValue('admin')
     await wrapper.find('input[placeholder="请输入密码"]').setValue('123456')
     await wrapper.find('.login-btn').trigger('click')
     await flushPromises()
@@ -102,7 +102,7 @@ describe('login/index.vue 登录页', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    await wrapper.find('input[placeholder="请输入用户名"]').setValue('admin')
+    await wrapper.find('input[placeholder="请输入用户名/手机号"]').setValue('admin')
     await wrapper.find('input[placeholder="请输入密码"]').setValue('123456')
     await wrapper.find('input[placeholder="请输入验证码"]').setValue('AB12')
     await wrapper.find('.login-btn').trigger('click')
@@ -129,7 +129,7 @@ describe('login/index.vue 登录页', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    await wrapper.find('input[placeholder="请输入用户名"]').setValue('admin')
+    await wrapper.find('input[placeholder="请输入用户名/手机号"]').setValue('admin')
     await wrapper.find('input[placeholder="请输入密码"]').setValue('123456')
     await wrapper.find('input[placeholder="请输入验证码"]').setValue('AB12')
     await wrapper.find('.login-btn').trigger('click')
@@ -147,7 +147,7 @@ describe('login/index.vue 登录页', () => {
     await flushPromises()
     expect(mockGetImageCaptcha).toHaveBeenCalledTimes(1)
 
-    await wrapper.find('input[placeholder="请输入用户名"]').setValue('admin')
+    await wrapper.find('input[placeholder="请输入用户名/手机号"]').setValue('admin')
     await wrapper.find('input[placeholder="请输入密码"]').setValue('wrong')
     await wrapper.find('input[placeholder="请输入验证码"]').setValue('XXXX')
     await wrapper.find('.login-btn').trigger('click')

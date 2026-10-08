@@ -29,7 +29,7 @@
           <input v-model="passwordForm.tenantCode" placeholder="请输入组织码" class="input" />
         </view>
         <view class="form-item">
-          <input v-model="passwordForm.username" placeholder="请输入用户名" class="input" />
+          <input v-model="passwordForm.username" placeholder="请输入用户名/手机号" class="input" />
         </view>
         <view class="form-item">
           <input v-model="passwordForm.password" type="password" placeholder="请输入密码" class="input" />

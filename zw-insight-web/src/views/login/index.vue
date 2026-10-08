@@ -55,7 +55,7 @@
         <!-- 密码登录表单 -->
         <el-form v-show="loginMode === 'password'" :model="loginForm" :rules="rules" ref="formRef" size="large">
           <el-form-item prop="username">
-            <el-input v-model="loginForm.username" placeholder="请输入用户名" prefix-icon="User" />
+            <el-input v-model="loginForm.username" placeholder="请输入用户名/手机号" prefix-icon="User" />
           </el-form-item>
           <el-form-item prop="password">
             <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
@@ -138,7 +138,7 @@ const loginForm = ref({
 })
 
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入用户名/手机号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 

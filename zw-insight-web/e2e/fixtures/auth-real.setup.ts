@@ -54,7 +54,7 @@ setup('authenticate against real server', async ({ page }) => {
   }
   await expect(page.getByRole('button', { name: '安全验证已完成' })).toBeVisible()
 
-  await page.fill('input[placeholder="请输入用户名"]', 'admin')
+  await page.fill('input[placeholder="请输入用户名/手机号"]', 'admin')
   await page.fill('input[placeholder="请输入密码"]', '123456')
   await page.click('button:has-text("进入系统")')
   await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 15_000 })

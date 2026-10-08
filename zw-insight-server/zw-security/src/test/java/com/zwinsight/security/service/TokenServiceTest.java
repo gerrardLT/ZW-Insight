@@ -281,6 +281,7 @@ class TokenServiceTest {
             SysUser user = new SysUser();
             user.setId(1001L);
             user.setUsername(TEST_USERNAME);
+            user.setPhone("13800000000");
             user.setPassword(ENCODER.encode(TEST_PASSWORD));
             user.setRealName("测试管理员");
             user.setStatus(1);
@@ -379,6 +380,37 @@ class TokenServiceTest {
             assertThat(response.getToken()).isEqualTo("token-123");
             // 验证未调用验证码校验方法
             verify(captchaService, never()).verifyImageCaptcha(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("密码登录 - 手机号作为用户名登录成功")
+        void login_phoneAsUsername_returnsTokenAndUserInfo() {
+            // Given
+            LoginRequest request = buildPasswordLoginRequest();
+            request.setUsername("13800000000");
+            SysUser user = buildTestUser();
+            SysTenant tenant = buildTestTenant();
+
+            when(captchaService.isCaptchaEnabled()).thenReturn(false);
+            doNothing().when(captchaService).checkIpLock(TEST_IP);
+            when(redisUtils.get("login_fail:13800000000")).thenReturn(null);
+            when(redisUtils.get("login_fail:" + TEST_USERNAME)).thenReturn(null);
+            when(userMapper.selectOne(any())).thenReturn(user);
+            when(tenantMapper.selectById(9999L)).thenReturn(tenant);
+            when(jwtUtils.generateToken(1001L, 9999L, TEST_USERNAME)).thenReturn("mock-jwt-token-by-phone");
+            when(jwtUtils.getExpiration()).thenReturn(86400000L);
+            when(userMapper.selectRoleCodesByUserId(1001L)).thenReturn(List.of("admin"));
+            when(userMapper.selectPermissionsByUserId(1001L)).thenReturn(List.of("system:user:list"));
+
+            // When
+            LoginResponse response = authService.login(request, TEST_IP);
+
+            // Then
+            assertThat(response).isNotNull();
+            assertThat(response.getToken()).isEqualTo("mock-jwt-token-by-phone");
+            assertThat(response.getUsername()).isEqualTo(TEST_USERNAME);
+            verify(redisUtils).delete("login_fail:13800000000");
+            verify(redisUtils).delete("login_fail:" + TEST_USERNAME);
         }
 
         // --- SUPER_ADMIN 通配权限（权限守卫 S2：前端路由守卫/v-permission 语义对齐） ---
