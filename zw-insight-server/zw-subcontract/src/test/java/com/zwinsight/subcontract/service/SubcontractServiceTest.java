@@ -49,6 +49,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class SubcontractServiceTest {
 
+    /** 结算提交用 LambdaUpdateWrapper.set(...) 做状态 CAS，纯单测环境需预初始化实体列缓存（嵌套类共享） */
+    @org.junit.jupiter.api.BeforeAll
+    static void initTableInfo() {
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(
+                        new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), BizSubcontractSettlement.class);
+    }
+
     // =====================================================================
     // SubcontractService 测试
     // =====================================================================

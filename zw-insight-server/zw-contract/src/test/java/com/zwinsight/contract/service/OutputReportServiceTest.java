@@ -34,6 +34,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OutputReportServiceTest {
 
+    /** 服务内用 LambdaUpdateWrapper.set(...) 做状态 CAS，纯单测环境需预初始化实体列缓存 */
+    @org.junit.jupiter.api.BeforeAll
+    static void initTableInfo() {
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(
+                        new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), BizOutputReport.class);
+    }
+
     @Mock private BizOutputReportMapper outputReportMapper;
     @Mock private BizOutputReportDetailMapper reportDetailMapper;
     @Mock private BizConstructionContractMapper contractMapper;
@@ -209,6 +217,7 @@ class OutputReportServiceTest {
             report.setProjectId(10L);
             report.setCurrentOutput(new BigDecimal("20000.00"));
             report.setStatus("SUBMITTED");
+            report.setCreatedBy(9L);
             BizConstructionContract contract = new BizConstructionContract();
             contract.setId(700L);
             contract.setContractAmount(new BigDecimal("100000.00"));

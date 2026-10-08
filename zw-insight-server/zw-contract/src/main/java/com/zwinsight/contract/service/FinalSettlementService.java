@@ -128,7 +128,10 @@ public class FinalSettlementService {
             throw new BusinessException("合同状态已变更为 " + contract.getStatus() + "，竣工结算无法生效");
         }
         contract.setStatus("SETTLED");
-        contractMapper.updateById(contract);
+        // 乐观锁冲突返回 0：合同未真正置 SETTLED 时不能继续累加项目结算额（避免半成品）
+        if (contractMapper.updateById(contract) != 1) {
+            throw new BusinessException("施工合同已被他人修改，竣工结算无法生效");
+        }
         if (projectMapper.addSettlementAmount(settlement.getProjectId(), settlement.getSettlementAmount()) != 1) {
             throw new BusinessException("关联项目不存在，竣工结算无法生效");
         }

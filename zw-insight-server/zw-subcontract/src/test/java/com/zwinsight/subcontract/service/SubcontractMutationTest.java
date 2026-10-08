@@ -48,6 +48,14 @@ import static org.mockito.Mockito.doAnswer;
 @DisplayName("分包模块变异补强测试")
 class SubcontractMutationTest {
 
+    /** 结算提交用 LambdaUpdateWrapper.set(...) 做状态 CAS，纯单测环境需预初始化实体列缓存 */
+    @org.junit.jupiter.api.BeforeAll
+    static void initTableInfo() {
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(
+                        new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), BizSubcontractSettlement.class);
+    }
+
     @Mock
     private BizSubcontractSettlementMapper settlementMapper;
     @Mock
@@ -321,6 +329,7 @@ class SubcontractMutationTest {
         contract.setCumulativeOutput(null); // null → 由 SQL COALESCE 兜底为 0
         when(subcontractMapper.selectById(40L)).thenReturn(contract);
         when(subcontractMapper.addOutput(40L, new BigDecimal("5000"))).thenReturn(1);
+        when(outputReportMapper.updateById(any(BizSubcontractOutputReport.class))).thenReturn(1);
 
         outputService.submit(4L);
 

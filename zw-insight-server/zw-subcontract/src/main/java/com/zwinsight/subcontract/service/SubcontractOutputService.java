@@ -77,7 +77,10 @@ public class SubcontractOutputService {
         }
 
         report.setStatus("APPROVED");
-        outputReportMapper.updateById(report);
+        // 乐观锁冲突（并发重复提交）时 updateById 返回 0：必须拒绝，否则两个请求都会累加产值
+        if (outputReportMapper.updateById(report) != 1) {
+            throw new BusinessException("产值报告已被他人修改，请刷新后重试");
+        }
 
         // 回写分包合同累计产值（与累计结算分离）：原子累加，避免读后覆盖丢增量
         BigDecimal current = report.getCurrentOutput() == null ? BigDecimal.ZERO : report.getCurrentOutput();

@@ -73,6 +73,7 @@ class SubcontractOutputServiceTest {
             when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
             when(subcontractMapper.selectById(10L)).thenReturn(contract);
             when(subcontractMapper.addOutput(10L, new BigDecimal("30000"))).thenReturn(1);
+            when(outputReportMapper.updateById(any(BizSubcontractOutputReport.class))).thenReturn(1);
 
             subcontractOutputService.submit(1L);
 
@@ -91,10 +92,26 @@ class SubcontractOutputServiceTest {
             when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
             when(subcontractMapper.selectById(10L)).thenReturn(contract);
             when(subcontractMapper.addOutput(10L, new BigDecimal("30000"))).thenReturn(0);
+            when(outputReportMapper.updateById(any(BizSubcontractOutputReport.class))).thenReturn(1);
 
             assertThatThrownBy(() -> subcontractOutputService.submit(1L))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("回写合同累计产值失败");
+        }
+
+        @Test
+        @DisplayName("提交：乐观锁冲突（updateById 返回 0，并发重复提交）时拒绝，不累加产值")
+        void submit_optimisticLockConflict_rejected() {
+            BizSubcontract contract = new BizSubcontract();
+            contract.setId(10L);
+            when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
+            when(subcontractMapper.selectById(10L)).thenReturn(contract);
+            when(outputReportMapper.updateById(any(BizSubcontractOutputReport.class))).thenReturn(0);
+
+            assertThatThrownBy(() -> subcontractOutputService.submit(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("已被他人修改");
+            verify(subcontractMapper, never()).addOutput(any(), any());
         }
 
         @Test

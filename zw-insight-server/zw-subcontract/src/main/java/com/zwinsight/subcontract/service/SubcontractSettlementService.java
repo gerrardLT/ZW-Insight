@@ -220,6 +220,11 @@ public class SubcontractSettlementService {
             throw new BusinessException("分包合同不存在");
         }
 
+        // 结算金额必须为正：负数能通过上限判断与原子 SQL 的下界，等于可冲减累计结算
+        if (settlement.getSettlementAmount() == null || settlement.getSettlementAmount().signum() <= 0) {
+            throw new BusinessException("结算金额必须大于0");
+        }
+
         // 校验：累计结算金额不能超过合同金额
         BigDecimal contractAmount = contract.getContractAmount() != null ? contract.getContractAmount() : BigDecimal.ZERO;
         BigDecimal currentCumulative = contract.getCumulativeSettlement() != null ? contract.getCumulativeSettlement() : BigDecimal.ZERO;

@@ -38,6 +38,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class FinalSettlementServiceTest {
 
+    /** 服务内用 LambdaUpdateWrapper.set(...) 做状态 CAS，纯单测环境需预初始化实体列缓存 */
+    @org.junit.jupiter.api.BeforeAll
+    static void initTableInfo() {
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(
+                        new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), BizFinalSettlement.class);
+    }
+
     @Mock
     private BizFinalSettlementMapper settlementMapper;
 
@@ -166,6 +174,7 @@ class FinalSettlementServiceTest {
         BizConstructionContract contract = effectiveContract();
         when(contractMapper.selectById(20L)).thenReturn(contract);
         when(projectMapper.addSettlementAmount(10L, new BigDecimal("50000"))).thenReturn(1);
+        when(contractMapper.updateById(any(BizConstructionContract.class))).thenReturn(1);
 
         service.onApproved(1L);
 

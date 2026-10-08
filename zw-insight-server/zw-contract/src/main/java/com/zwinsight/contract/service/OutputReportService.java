@@ -78,6 +78,10 @@ public class OutputReportService {
         if (report.getProjectId() != null && !java.util.Objects.equals(contract.getProjectId(), report.getProjectId())) {
             throw new BusinessException("施工合同不属于该项目");
         }
+        // 项目缺省时取合同所属项目：否则审批通过回写项目累计时命中 0 行，该单永远批不过
+        if (report.getProjectId() == null) {
+            report.setProjectId(contract.getProjectId());
+        }
         report.setStatus("DRAFT");
         report.setWorkflowInstanceId(null);
         outputReportMapper.insert(report);
