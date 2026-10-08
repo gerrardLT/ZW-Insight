@@ -300,13 +300,4 @@ async function handleNewProcess() {
   flex: 1;
   overflow: hidden;
 }
-
-.deploy-hint {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--zw-text-secondary);
-}
 </style>

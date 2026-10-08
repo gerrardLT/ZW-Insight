@@ -34,7 +34,7 @@
             placeholder="从系统用户中快捷选择"
             clearable
             filterable
-            style="width: 100%; margin-top: 4px"
+            style="width: 100%; margin-top: var(--zw-space-2xs)"
             @change="handleSelectQuickUser"
           >
             <el-option
@@ -53,7 +53,7 @@
             multiple
             filterable
             placeholder="点击选择角色（自动填充）"
-            style="width: 100%; margin-bottom: 4px"
+            style="width: 100%; margin-bottom: var(--zw-space-2xs)"
             @change="handleRoleSelectChange"
           >
             <el-option
@@ -77,7 +77,7 @@
             multiple
             filterable
             placeholder="点击选择候选人（自动填充）"
-            style="width: 100%; margin-bottom: 4px"
+            style="width: 100%; margin-bottom: var(--zw-space-2xs)"
             @change="handleUserSelectChange"
           >
             <el-option
@@ -254,7 +254,7 @@ onMounted(() => {
 }
 
 .quick-assignee-bar {
-  margin-top: 4px;
+  margin-top: var(--zw-space-2xs);
   display: flex;
   justify-content: flex-end;
 }
