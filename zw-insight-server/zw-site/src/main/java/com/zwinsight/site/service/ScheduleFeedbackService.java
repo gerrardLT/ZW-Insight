@@ -57,6 +57,10 @@ public class ScheduleFeedbackService {
                 && !feedback.getProjectId().equals(plan.getProjectId())) {
             throw new BusinessException("计划任务不属于该项目");
         }
+        // 请求体未带项目时取计划所属项目，避免不填项目就绕过归属校验
+        if (feedback.getProjectId() == null) {
+            feedback.setProjectId(plan.getProjectId());
+        }
         if (feedback.getProgress() != null
                 && (feedback.getProgress().signum() < 0 || feedback.getProgress().compareTo(new java.math.BigDecimal("100")) > 0)) {
             throw new BusinessException("进度必须在 0 到 100 之间");
