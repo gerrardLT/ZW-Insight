@@ -70,7 +70,10 @@ export function getProcessList() {
 }
 
 export function getProcessImage(id: string) {
-  return `/api/v1/workflow/process/${id}/image`
+  const token = localStorage.getItem('token')
+  return token
+    ? `/api/v1/workflow/process/${id}/image?token=${encodeURIComponent(token)}`
+    : `/api/v1/workflow/process/${id}/image`
 }
 
 export function getProcessVersions(processKey: string) {

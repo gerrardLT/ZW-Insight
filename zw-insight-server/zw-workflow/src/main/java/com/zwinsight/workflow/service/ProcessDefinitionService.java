@@ -17,8 +17,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 流程定义管理服务
@@ -89,25 +92,42 @@ public class ProcessDefinitionService {
     }
 
     /**
-     * 按租户列出流程定义
+     * 按租户列出流程定义（去重，只保留每个流程标识的最新版本）
      *
      * @param tenantId 租户ID
-     * @return 流程定义列表
+     * @return 流程定义列表（最新版本）
      */
     public List<WfProcessDef> listByTenant(Long tenantId) {
         LambdaQueryWrapper<WfProcessDef> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WfProcessDef::getTenantId, tenantId)
+                .orderByDesc(WfProcessDef::getVersionNum)
                 .orderByDesc(WfProcessDef::getCreatedAt);
-        return processDefMapper.selectList(wrapper);
+        List<WfProcessDef> all = processDefMapper.selectList(wrapper);
+        Map<String, WfProcessDef> latestMap = new LinkedHashMap<>();
+        for (WfProcessDef def : all) {
+            if (def.getProcessKey() != null) {
+                latestMap.putIfAbsent(def.getProcessKey(), def);
+            }
+        }
+        return new ArrayList<>(latestMap.values());
     }
 
     /**
      * 获取流程图（PNG格式）
      *
-     * @param processDefinitionId 流程定义ID
+     * @param idOrDefinitionId 流程扩展表ID或Flowable流程定义ID
      * @return 流程图输入流
      */
-    public InputStream getProcessImage(String processDefinitionId) {
+    public InputStream getProcessImage(String idOrDefinitionId) {
+        String processDefinitionId = idOrDefinitionId;
+        // 兼容传入 wf_process_def 表雪花 ID 的场景
+        if (idOrDefinitionId != null && idOrDefinitionId.matches("^\\d+$")) {
+            WfProcessDef wfDef = processDefMapper.selectById(Long.parseLong(idOrDefinitionId));
+            if (wfDef != null && wfDef.getProcessDefinitionId() != null) {
+                processDefinitionId = wfDef.getProcessDefinitionId();
+            }
+        }
+
         ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
                 .processDefinitionId(processDefinitionId)
                 .singleResult();

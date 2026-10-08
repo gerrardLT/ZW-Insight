@@ -91,11 +91,24 @@ const versionDialogVisible = ref(false)
 const versionLoading = ref(false)
 const versionList = ref<any[]>([])
 
+function normalizeItem(item: any) {
+  if (!item) return {}
+  return {
+    ...item,
+    id: item.id,
+    name: item.processName || item.name || item.processKey || '-',
+    key: item.processKey || item.key || '-',
+    version: item.versionNum ?? item.version ?? 0,
+    deploymentTime: item.createdAt || item.deploymentTime || '-'
+  }
+}
+
 async function loadData() {
   loading.value = true
   try {
     const res: any = await getProcessList()
-    tableData.value = res.data || []
+    const rawList = Array.isArray(res.data) ? res.data : (res.data?.records || [])
+    tableData.value = rawList.map(normalizeItem)
   } finally {
     loading.value = false
   }
@@ -123,8 +136,9 @@ async function handleViewVersions(row: any) {
   versionDialogVisible.value = true
   versionLoading.value = true
   try {
-    const res: any = await getProcessVersions(row.key)
-    versionList.value = res.data || []
+    const res: any = await getProcessVersions(row.key || row.processKey)
+    const rawList = Array.isArray(res.data) ? res.data : (res.data?.records || [])
+    versionList.value = rawList.map(normalizeItem)
   } finally {
     versionLoading.value = false
   }
