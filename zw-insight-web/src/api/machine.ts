@@ -95,7 +95,7 @@ export function getMachineEntryPage(params: any) {
 }
 
 export function createMachineEntry(data: any) {
-  return request.post('/v1/machine/entry', data)
+  return request.post(data.entryType === 'OUT' ? '/v1/machine/entry/out' : '/v1/machine/entry/in', data)
 }
 
 export function updateMachineEntry(data: any) {
@@ -109,6 +109,10 @@ export function deleteMachineEntry(id: number) {
 // ======================== 工作日志/台班 ========================
 export function getMachineWorkLogPage(params: any) {
   return request.get('/v1/machine/work-log/page', { params })
+}
+
+export function confirmMachineWorkLog(id: number) {
+  return request.post(`/v1/machine/work-log/${id}/confirm`)
 }
 
 export function createMachineWorkLog(data: any) {

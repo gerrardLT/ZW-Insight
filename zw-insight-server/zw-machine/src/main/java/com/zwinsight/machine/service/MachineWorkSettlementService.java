@@ -72,7 +72,7 @@ public class MachineWorkSettlementService {
         LocalDate periodEnd = request.getPeriodEnd();
 
         // 1. 基本校验
-        if (periodStart.isAfter(periodEnd)) {
+        if (projectId == null || periodStart == null || periodEnd == null || periodStart.isAfter(periodEnd)) {
             throw new BusinessException("周期开始日期不能晚于结束日期");
         }
 
@@ -94,7 +94,8 @@ public class MachineWorkSettlementService {
                 .filter(log -> "SETTLED".equals(log.getSettlementStatus()))
                 .collect(Collectors.toList());
         List<BizMachineWorkLog> workLogs = allWorkLogs.stream()
-                .filter(log -> !"SETTLED".equals(log.getSettlementStatus()))
+                .filter(log -> "CONFIRMED".equals(log.getStatus())
+                        && "UNSETTLED".equals(log.getSettlementStatus()))
                 .collect(Collectors.toList());
 
         if (!excludedLogs.isEmpty()) {
@@ -107,38 +108,30 @@ public class MachineWorkSettlementService {
             throw new BusinessException("该周期内无可结算的工作量记录（已结算的记录已被排除）");
         }
 
-        // 4. 按机械（machineId）分组计算费用
-        Map<Long, List<BizMachineWorkLog>> logsByMachine = workLogs.stream()
-                .collect(Collectors.groupingBy(BizMachineWorkLog::getMachineId));
-
-        // 5. 查询关联的机械合同，获取单价和计价方式
-        // 从机械合同中获取单价信息（通过项目ID关联）
-        LambdaQueryWrapper<BizMachineContract> contractWrapper = new LambdaQueryWrapper<>();
-        contractWrapper.eq(BizMachineContract::getProjectId, projectId)
-                .eq(BizMachineContract::getStatus, "EFFECTIVE");
-        List<BizMachineContract> contracts = contractMapper.selectList(contractWrapper);
-
-        // 建立机械到合同的映射（通过供应商或名称匹配合同）
+        Long tenant = SecurityContextHolder.getTenantId();
+        if (tenant == null) throw new BusinessException("缺少租户上下文");
+        Map<Long, List<BizMachineWorkLog>> logsByMachine = new TreeMap<>();
         Map<Long, BizMachineContract> machineContractMap = new HashMap<>();
-        if (!contracts.isEmpty()) {
-            // 查询台账获取机械名称
-            Set<Long> machineIds = logsByMachine.keySet();
-            LambdaQueryWrapper<BizMachineLedger> ledgerWrapper = new LambdaQueryWrapper<>();
-            ledgerWrapper.in(BizMachineLedger::getId, machineIds);
-            List<BizMachineLedger> ledgers = ledgerMapper.selectList(ledgerWrapper);
-            Map<Long, BizMachineLedger> ledgerMap = ledgers.stream()
-                    .collect(Collectors.toMap(BizMachineLedger::getId, l -> l));
-
-            for (Long machineId : machineIds) {
-                BizMachineLedger ledger = ledgerMap.get(machineId);
-                if (ledger != null) {
-                    // 通过机械名称匹配合同
-                    contracts.stream()
-                            .filter(c -> ledger.getMachineName().equals(c.getMachineName()))
-                            .findFirst()
-                            .ifPresent(c -> machineContractMap.put(machineId, c));
-                }
+        for (BizMachineWorkLog candidate : workLogs.stream().sorted(Comparator.comparing(BizMachineWorkLog::getId)).toList()) {
+            BizMachineWorkLog locked = workLogMapper.lockById(candidate.getId(), tenant);
+            if (locked == null || !Objects.equals(tenant, locked.getTenantId())
+                    || !Objects.equals(projectId, locked.getProjectId()) || locked.getWorkDate() == null
+                    || locked.getWorkDate().isBefore(periodStart) || locked.getWorkDate().isAfter(periodEnd)
+                    || !"CONFIRMED".equals(locked.getStatus())
+                    || !"UNSETTLED".equals(locked.getSettlementStatus())
+                    || workLogMapper.countOccupied(locked.getId(), tenant) != 0) {
+                throw new BusinessException("日志未确认、已结算或被其他结算单占用");
             }
+            BizMachineContract contract = contractMapper.selectById(locked.getContractId());
+            if (contract == null || !Objects.equals(tenant, contract.getTenantId())
+                    || !Objects.equals(projectId, contract.getProjectId()) || !"EFFECTIVE".equals(contract.getStatus())
+                    || contract.getUnitPrice() == null || contract.getUnitPrice().signum() <= 0
+                    || contract.getStartDate() == null || contract.getEndDate() == null
+                    || locked.getWorkDate().isBefore(contract.getStartDate()) || locked.getWorkDate().isAfter(contract.getEndDate())) {
+                throw new BusinessException("日志必须绑定本项目生效合同及有效单价");
+            }
+            machineContractMap.put(contract.getId(), contract);
+            logsByMachine.computeIfAbsent(contract.getId(), k -> new ArrayList<>()).add(locked);
         }
 
         // 6. 生成结算单编号
@@ -159,12 +152,13 @@ public class MachineWorkSettlementService {
         Long tenantId = SecurityContextHolder.getTenantId();
 
         for (Map.Entry<Long, List<BizMachineWorkLog>> entry : logsByMachine.entrySet()) {
-            Long machineId = entry.getKey();
+            Long contractId = entry.getKey();
             List<BizMachineWorkLog> machineLogs = entry.getValue();
 
             BizMachineWorkSettlementDetail detail = new BizMachineWorkSettlementDetail();
             detail.setSettlementId(settlement.getId());
-            detail.setLedgerId(machineId);
+            detail.setLedgerId(machineLogs.get(0).getMachineId());
+            detail.setContractId(contractId);
             detail.setWorkLogIds(machineLogs.stream().map(BizMachineWorkLog::getId).collect(Collectors.toList()));
             detail.setTenantId(tenantId);
             detail.setCreatedAt(LocalDateTime.now());
@@ -180,32 +174,36 @@ public class MachineWorkSettlementService {
             detail.setShiftCount(totalShiftCount);
             detail.setWorkVolume(totalWorkVolume);
 
-            // 获取合同确定计价方式和单价
-            BizMachineContract contract = machineContractMap.get(machineId);
-            BigDecimal subtotal;
-
-            if (contract != null) {
-                String rentalType = contract.getRentalType();
-                BigDecimal unitPrice = contract.getContractAmount(); // 合同单价信息
-
-                if ("台班".equals(rentalType) || "SHIFT".equalsIgnoreCase(rentalType)) {
-                    // 台班计价：subtotal = shiftCount × unitPrice
-                    detail.setPricingType("SHIFT");
-                    detail.setUnitPrice(unitPrice);
-                    subtotal = totalShiftCount.multiply(unitPrice).setScale(2, RoundingMode.HALF_UP);
-                } else {
-                    // 工作量计价：subtotal = workVolume × unitPrice
-                    detail.setPricingType("VOLUME");
-                    detail.setUnitPrice(unitPrice);
-                    subtotal = totalWorkVolume.multiply(unitPrice).setScale(2, RoundingMode.HALF_UP);
-                }
-            } else {
-                // 无合同关联时，默认台班计价，单价为0
+            BizMachineContract contract = machineContractMap.get(contractId);
+            String rentalType = contract.getRentalType();
+            BigDecimal quantity;
+            if ("SHIFT".equals(rentalType) || "台班".equals(rentalType)) {
                 detail.setPricingType("SHIFT");
-                detail.setUnitPrice(BigDecimal.ZERO);
-                subtotal = BigDecimal.ZERO;
+                quantity = totalShiftCount;
+            } else if ("VOLUME".equals(rentalType) || "工作量".equals(rentalType)) {
+                detail.setPricingType("VOLUME");
+                quantity = totalWorkVolume;
+            } else if (List.of("MONTHLY", "月租", "包月").contains(rentalType == null ? "" : rentalType)) {
+                detail.setPricingType("MONTHLY");
+                // 按合同周期自然日折月：每月覆盖天数/月天数；合同内多机械只计一次。
+                LocalDate start = periodStart.isAfter(contract.getStartDate()) ? periodStart : contract.getStartDate();
+                LocalDate end = periodEnd.isBefore(contract.getEndDate()) ? periodEnd : contract.getEndDate();
+                quantity = BigDecimal.ZERO;
+                for (LocalDate day = start; !day.isAfter(end); ) {
+                    LocalDate monthEnd = YearMonth.from(day).atEndOfMonth();
+                    LocalDate last = monthEnd.isBefore(end) ? monthEnd : end;
+                    quantity = quantity.add(BigDecimal.valueOf(java.time.temporal.ChronoUnit.DAYS.between(day, last) + 1)
+                            .divide(BigDecimal.valueOf(day.lengthOfMonth()), 10, RoundingMode.HALF_UP));
+                    day = last.plusDays(1);
+                }
+                quantity = quantity.setScale(4, RoundingMode.HALF_UP);
+            } else {
+                throw new BusinessException("不支持的机械计价类型");
             }
-
+            if (quantity.signum() <= 0) throw new BusinessException("计价数量必须大于零");
+            detail.setBillingQuantity(quantity);
+            detail.setUnitPrice(contract.getUnitPrice());
+            BigDecimal subtotal = quantity.multiply(contract.getUnitPrice()).setScale(2, RoundingMode.HALF_UP);
             detail.setSubtotal(subtotal);
             totalAmount = totalAmount.add(subtotal);
             detailMapper.insert(detail);
@@ -227,9 +225,12 @@ public class MachineWorkSettlementService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void submitForApproval(Long settlementId) {
-        BizMachineWorkSettlement settlement = getSettlementById(settlementId);
+        Long tenantId = SecurityContextHolder.getTenantId();
+        if (tenantId == null) throw new BusinessException("缺少租户上下文");
+        BizMachineWorkSettlement settlement = settlementMapper.lockById(settlementId, tenantId);
+        if (settlement == null) throw new BusinessException("结算单不存在");
 
-        if (settlement.getStatus() != 0 && settlement.getStatus() != 3) {
+        if (!Integer.valueOf(0).equals(settlement.getStatus()) && !Integer.valueOf(3).equals(settlement.getStatus())) {
             throw new BusinessException("仅草稿或已驳回状态的结算单可提交审批");
         }
 
@@ -270,94 +271,47 @@ public class MachineWorkSettlementService {
             return;
         }
 
-        // C2 幂等守卫（2026-08-11）：重复事件会重复累加合同 cumulativeSettlement，
-        // 已审批（status=2）直接短路
-        if (settlement.getStatus() != null && settlement.getStatus() == 2) {
-            log.info("机械工作量结算审批回调重复触发，跳过, settlementId={}", settlementId);
-            return;
+        Long tenant = SecurityContextHolder.getTenantId();
+        if (tenant == null || !Objects.equals(tenant, settlement.getTenantId())) throw new BusinessException("结算单不存在");
+        if (Integer.valueOf(2).equals(settlement.getStatus())) return;
+        if (!Integer.valueOf(1).equals(settlement.getStatus())) throw new BusinessException("仅审批中结算可生效");
+        var cas = new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizMachineWorkSettlement>();
+        cas.eq(BizMachineWorkSettlement::getId, settlementId).eq(BizMachineWorkSettlement::getTenantId, tenant)
+                .eq(BizMachineWorkSettlement::getStatus, 1).set(BizMachineWorkSettlement::getStatus, 2);
+        if (settlementMapper.update(null, cas) != 1) {
+            BizMachineWorkSettlement current = settlementMapper.selectById(settlementId);
+            if (current != null && Objects.equals(tenant, current.getTenantId()) && Integer.valueOf(2).equals(current.getStatus())) return;
+            throw new BusinessException("结算状态已变更");
         }
-
-        // 更新状态为已审批
-        settlement.setStatus(2);
-        settlementMapper.updateById(settlement);
-
-        // 回写工作日志的结算状态为"已结算"
-        LambdaQueryWrapper<BizMachineWorkSettlementDetail> detailWrapper = new LambdaQueryWrapper<>();
-        detailWrapper.eq(BizMachineWorkSettlementDetail::getSettlementId, settlementId);
+        var detailWrapper = new LambdaQueryWrapper<BizMachineWorkSettlementDetail>();
+        detailWrapper.eq(BizMachineWorkSettlementDetail::getSettlementId, settlementId)
+                .eq(BizMachineWorkSettlementDetail::getTenantId, tenant);
         List<BizMachineWorkSettlementDetail> details = detailMapper.selectList(detailWrapper);
-
-        List<Long> allWorkLogIds = details.stream()
-                .filter(d -> d.getWorkLogIds() != null)
-                .flatMap(d -> d.getWorkLogIds().stream())
-                .distinct()
-                .collect(Collectors.toList());
-
-        if (!allWorkLogIds.isEmpty()) {
-            workLogMapper.batchUpdateSettlementStatus(allWorkLogIds, "SETTLED");
-            log.info("回写工作日志结算状态, settlementId={}, workLogCount={}", settlementId, allWorkLogIds.size());
+        if (details.isEmpty()) throw new BusinessException("结算明细缺失");
+        Map<Long, BigDecimal> increments = new TreeMap<>();
+        Set<Long> ids = new TreeSet<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (BizMachineWorkSettlementDetail detail : details) {
+            if (detail.getContractId() == null || detail.getSubtotal() == null || detail.getSubtotal().signum() <= 0
+                    || detail.getWorkLogIds() == null || detail.getWorkLogIds().isEmpty()) throw new BusinessException("结算明细无有效合同或日志");
+            increments.merge(detail.getContractId(), detail.getSubtotal(), BigDecimal::add);
+            total = total.add(detail.getSubtotal());
+            for (Long id : detail.getWorkLogIds()) {
+                if (!ids.add(id)) throw new BusinessException("结算日志重复引用");
+                BizMachineWorkLog workLog = workLogMapper.lockById(id, tenant);
+                if (workLog == null || !Objects.equals(workLog.getProjectId(), settlement.getProjectId())
+                        || !Objects.equals(workLog.getContractId(), detail.getContractId())
+                        || !"CONFIRMED".equals(workLog.getStatus()) || !"UNSETTLED".equals(workLog.getSettlementStatus())) {
+                    throw new BusinessException("日志绑定或状态已变更");
+                }
+                workLog.setSettlementStatus("SETTLED");
+                if (workLogMapper.updateById(workLog) != 1) throw new BusinessException("日志结算回写失败");
+            }
         }
-
-        // 累加合同已结算金额 —— 按结算明细逐机械分摊到对应机械合同（而非全额倾倒到首个合同）
-        LambdaQueryWrapper<BizMachineContract> contractWrapper = new LambdaQueryWrapper<>();
-        contractWrapper.eq(BizMachineContract::getProjectId, settlement.getProjectId())
-                .eq(BizMachineContract::getStatus, "EFFECTIVE");
-        List<BizMachineContract> contracts = contractMapper.selectList(contractWrapper);
-
-        if (!contracts.isEmpty() && !details.isEmpty()) {
-            // 建立机械名称 -> 合同映射（与 createSettlement 计价时的匹配口径保持一致）
-            Map<String, BizMachineContract> contractByMachineName = new HashMap<>();
-            for (BizMachineContract c : contracts) {
-                if (c.getMachineName() != null) {
-                    contractByMachineName.putIfAbsent(c.getMachineName(), c);
-                }
-            }
-
-            // 加载明细对应的台账，获取机械名称
-            Set<Long> ledgerIds = details.stream()
-                    .map(BizMachineWorkSettlementDetail::getLedgerId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            Map<Long, BizMachineLedger> ledgerMap = new HashMap<>();
-            if (!ledgerIds.isEmpty()) {
-                LambdaQueryWrapper<BizMachineLedger> ledgerWrapper = new LambdaQueryWrapper<>();
-                ledgerWrapper.in(BizMachineLedger::getId, ledgerIds);
-                ledgerMap = ledgerMapper.selectList(ledgerWrapper).stream()
-                        .collect(Collectors.toMap(BizMachineLedger::getId, l -> l));
-            }
-
-            // 按合同汇总分摊金额（先在内存累加，再逐合同一次性回写）
-            Map<Long, BigDecimal> incrementByContractId = new HashMap<>();
-            BigDecimal unmatchedAmount = BigDecimal.ZERO;
-            for (BizMachineWorkSettlementDetail detail : details) {
-                BigDecimal subtotal = detail.getSubtotal() != null ? detail.getSubtotal() : BigDecimal.ZERO;
-                if (subtotal.compareTo(BigDecimal.ZERO) == 0) {
-                    continue;
-                }
-                BizMachineLedger ledger = ledgerMap.get(detail.getLedgerId());
-                BizMachineContract matched = (ledger != null && ledger.getMachineName() != null)
-                        ? contractByMachineName.get(ledger.getMachineName()) : null;
-                if (matched != null) {
-                    incrementByContractId.merge(matched.getId(), subtotal, BigDecimal::add);
-                } else {
-                    unmatchedAmount = unmatchedAmount.add(subtotal);
-                }
-            }
-
-            for (Map.Entry<Long, BigDecimal> e : incrementByContractId.entrySet()) {
-                BizMachineContract contract = contractMapper.selectById(e.getKey());
-                if (contract == null) {
-                    continue;
-                }
-                BigDecimal cumulative = contract.getCumulativeSettlement() != null
-                        ? contract.getCumulativeSettlement() : BigDecimal.ZERO;
-                contract.setCumulativeSettlement(cumulative.add(e.getValue()));
-                contractMapper.updateById(contract);
-            }
-
-            // 未匹配到合同的明细金额不静默丢弃，明确告警以便排查（机械名称与合同名称未对齐）
-            if (unmatchedAmount.compareTo(BigDecimal.ZERO) > 0) {
-                log.warn("机械结算存在未匹配到生效合同的明细金额, settlementId={}, unmatchedAmount={}",
-                        settlementId, unmatchedAmount);
+        if (total.compareTo(settlement.getTotalAmount()) != 0) throw new BusinessException("结算主表与明细金额不一致");
+        for (var increment : increments.entrySet()) {
+            if (contractMapper.addSettlement(increment.getKey(), increment.getValue(), tenant, settlement.getProjectId()) != 1) {
+                throw new BusinessException("合同失效或累计结算超合同额，审批已回滚");
             }
         }
 
@@ -444,7 +398,11 @@ public class MachineWorkSettlementService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         summary.setTotalPaidAmount(totalPaid);
 
-        // 未付款金额 = 已结算 - 已付款
+        BigDecimal contractSettled = contracts.stream().map(c -> c.getCumulativeSettlement() == null
+                ? BigDecimal.ZERO : c.getCumulativeSettlement()).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalSettled.compareTo(contractSettled) != 0 || totalPaid.compareTo(totalSettled) > 0) {
+            throw new BusinessException("机械结算与合同累计或付款口径不一致，请核对历史数据");
+        }
         summary.setUnpaidAmount(totalSettled.subtract(totalPaid));
 
         // 已审批结算单数量
@@ -628,7 +586,8 @@ public class MachineWorkSettlementService {
 
     private BizMachineWorkSettlement getSettlementById(Long id) {
         BizMachineWorkSettlement settlement = settlementMapper.selectById(id);
-        if (settlement == null) {
+        if (settlement == null || SecurityContextHolder.getTenantId() == null
+                || !Objects.equals(settlement.getTenantId(), SecurityContextHolder.getTenantId())) {
             throw new BusinessException("结算单不存在");
         }
         return settlement;

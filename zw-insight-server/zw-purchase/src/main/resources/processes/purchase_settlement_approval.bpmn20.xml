@@ -15,7 +15,7 @@
 
         <!-- 项目负责人审批 -->
         <userTask id="managerApproval" name="项目负责人审批"
-                  flowable:assignee="${initiator}">
+                  flowable:candidateGroups="PROJECT_MANAGER">
             <documentation>采购结算单审批 - 项目负责人审核</documentation>
         </userTask>
 
@@ -24,7 +24,7 @@
 
         <!-- 财务审核 -->
         <userTask id="financeApproval" name="财务审核"
-                  flowable:candidateGroups="FINANCE">
+                  flowable:candidateGroups="FINANCE_STAFF">
             <documentation>采购结算单审批 - 财务审核</documentation>
         </userTask>
 

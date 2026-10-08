@@ -269,14 +269,19 @@ describe('machine/work-log.vue B9 矩阵', () => {
     expect(rows[1].text()).toContain('未结算')
   })
 
-  it('B-9-7 已结算日志前端无编辑/删除禁用（盲点钉住）：SETTLED 行按钮仍渲染，守卫依赖后端', async () => {
+  it('B-9-7 仅未结算草稿可编辑删除，未知与已确认状态不放行', async () => {
     const w = await mountView(WorkLogView, mockWorkLogPage, [
-      { id: 1, machineName: '挖机', settlementStatus: 'SETTLED' },
+      { id: 1, machineName: '挖机', status: 'CONFIRMED', settlementStatus: 'SETTLED' },
+      { id: 2, machineName: '塔吊', status: null, settlementStatus: 'UNSETTLED' },
+      { id: 3, machineName: '泵车', status: 'DRAFT', settlementStatus: 'UNSETTLED' },
     ])
-    const btns = w.findAll('.el-table__row button').map((b: any) => b.text()).join(' ')
-    expect(btns).toContain('编辑')
-    expect(btns).toContain('删除')
-    expect(workLogSrc).not.toContain("settlementStatus === 'SETTLED' &&")
+    const rows = w.findAll('.el-table__row')
+    for (const row of rows.slice(0, 2)) {
+      expect(row.text()).not.toContain('编辑')
+      expect(row.text()).not.toContain('删除')
+    }
+    expect(rows[2].text()).toContain('编辑')
+    expect(rows[2].text()).toContain('删除')
   })
 
   it('B-9-8 台班数 0 放行：min=0 无 >0 校验规则（前端不拦，语义现状钉住）', async () => {

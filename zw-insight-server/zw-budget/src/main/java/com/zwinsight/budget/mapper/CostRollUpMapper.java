@@ -99,11 +99,15 @@ public interface CostRollUpMapper {
     List<SourceDoc> listSubcontractSettlements(@Param("projectId") Long projectId);
 
     /** 机械工作量结算（实际；该表 status 为 TINYINT，2=已审批） */
-    @Select("SELECT id AS sourceId, settlement_code AS sourceNumber, "
-            + "COALESCE(total_amount, 0) AS amount, created_at AS occurredAt "
-            + "FROM biz_machine_work_settlement "
-            + "WHERE project_id = #{projectId} AND deleted = 0 AND status = 2 "
-            + "ORDER BY id")
+    @Select("SELECT h.id AS sourceId, CONCAT('HISTORY:', h.id) AS sourceNumber, "
+            + "h.settlement_amount AS amount, h.created_at AS occurredAt FROM biz_machine_settlement h "
+            + "WHERE h.project_id = #{projectId} AND h.deleted = 0 AND h.status = 'APPROVED' "
+            + "UNION ALL SELECT d.id AS sourceId, s.settlement_code AS sourceNumber, "
+            + "d.subtotal AS amount, s.created_at AS occurredAt FROM biz_machine_work_settlement_detail d "
+            + "JOIN biz_machine_work_settlement s ON s.id = d.settlement_id AND s.tenant_id = d.tenant_id "
+            + "JOIN biz_machine_contract c ON c.id = d.contract_id AND c.tenant_id = d.tenant_id "
+            + "AND c.project_id = s.project_id AND c.deleted = 0 "
+            + "WHERE s.project_id = #{projectId} AND s.deleted = 0 AND s.status = 2")
     List<SourceDoc> listMachineSettlements(@Param("projectId") Long projectId);
 
     /**

@@ -7,6 +7,10 @@ export function startProcess(data: any) {
   return request.post('/v1/workflow/approval/start', data)
 }
 
+export function claimTask(taskId: string) {
+  return request.post(`/v1/workflow/approval/${taskId}/claim`)
+}
+
 export function completeTask(data: any) {
   return request.post('/v1/workflow/approval/complete', data)
 }

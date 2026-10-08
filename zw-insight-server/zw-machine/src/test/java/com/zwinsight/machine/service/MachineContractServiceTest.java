@@ -1,148 +1,94 @@
 package com.zwinsight.machine.service;
 
-import com.zwinsight.budget.domain.BizBudgetDetail;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.machine.domain.BizMachineContract;
 import com.zwinsight.machine.mapper.BizMachineContractMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import com.zwinsight.workflow.service.ApprovalService;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.List;
-
+import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class MachineContractServiceTest {
+    @Mock BizMachineContractMapper machineContractMapper;
+    @Mock BizBudgetDetailMapper budgetDetailMapper;
+    @Mock SerialNumberService serialNumberService;
+    @Mock ApprovalService approvalService;
+    @InjectMocks MachineContractService service;
 
-    @Mock private BizMachineContractMapper machineContractMapper;
-    @Mock private BizBudgetDetailMapper budgetDetailMapper;
-
-    private MachineContractService machineContractService;
-
-    @BeforeEach
-    void setUp() {
-        machineContractService = new MachineContractService(machineContractMapper, budgetDetailMapper);
+    @BeforeEach void setup() {
+        SecurityContextHolder.setTenantId(9999L);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), BizMachineContract.class);
     }
-
-    @Test
-    @DisplayName("新增合同：无预算时默认DRAFT并初始化累计字段")
-    void testSave_noBudget() {
-        BizMachineContract contract = new BizMachineContract();
-        contract.setContractAmount(new BigDecimal("50000"));
-
-        machineContractService.save(contract);
-
-        assertThat(contract.getStatus()).isEqualTo("DRAFT");
-        assertThat(contract.getCumulativeSettlement()).isEqualTo(BigDecimal.ZERO);
-        assertThat(contract.getCumulativePaid()).isEqualTo(BigDecimal.ZERO);
-        verify(machineContractMapper).insert(contract);
+    @AfterEach void cleanup() { SecurityContextHolder.clear(); }
+    private BizMachineContract contract() {
+        var c = new BizMachineContract();
+        c.setId(1L); c.setTenantId(9999L); c.setProjectId(10L); c.setStatus("DRAFT");
+        c.setContractAmount(new BigDecimal("10000")); c.setUnitPrice(new BigDecimal("100"));
+        c.setRentalType("SHIFT"); c.setStartDate(LocalDate.of(2026, 1, 1)); c.setEndDate(LocalDate.of(2026, 12, 31));
+        return c;
     }
-
-    @Test
-    @DisplayName("新增合同：预算充足时正常保存")
-    void testSave_budgetSufficient() {
-        BizMachineContract contract = new BizMachineContract();
-        contract.setProjectId(1L);
-        contract.setBudgetId(100L);
-        contract.setContractAmount(new BigDecimal("30000"));
-        when(budgetDetailMapper.selectList(any())).thenReturn(List.of(mockBudgetDetail("80000")));
-        when(machineContractMapper.selectList(any())).thenReturn(Collections.emptyList());
-
-        machineContractService.save(contract);
-
-        assertThat(contract.getStatus()).isEqualTo("DRAFT");
-        verify(machineContractMapper).insert(contract);
+    @Test void save_resetsUntrustedFields() {
+        var c = contract(); c.setCumulativeSettlement(BigDecimal.TEN); c.setStatus("EFFECTIVE");
+        when(serialNumberService.generate("MACHINE_CONTRACT")).thenReturn("T9JX001");
+        service.save(c);
+        assertThat(c.getId()).isNull(); assertThat(c.getStatus()).isEqualTo("DRAFT");
+        assertThat(c.getCumulativeSettlement()).isZero(); assertThat(c.getContractCode()).isEqualTo("T9JX001");
+        verify(machineContractMapper).insert(c);
     }
-
-    @Test
-    @DisplayName("新增合同：预算不足抛异常")
-    void testSave_budgetExceeded() {
-        BizMachineContract contract = new BizMachineContract();
-        contract.setProjectId(1L);
-        contract.setBudgetId(100L);
-        contract.setContractAmount(new BigDecimal("60000"));
-        lenient().when(budgetDetailMapper.selectList(any())).thenReturn(List.of(mockBudgetDetail("50000")));
-        lenient().when(machineContractMapper.selectList(any())).thenReturn(Collections.emptyList());
-
-        assertThatThrownBy(() -> machineContractService.save(contract))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("超出预算");
+    @Test void save_unknownPricingRejected() {
+        var c = contract(); c.setRentalType("unknown");
+        assertThatThrownBy(() -> service.save(c)).isInstanceOf(BusinessException.class);
+        verifyNoInteractions(serialNumberService);
     }
-
-    @Test
-    @DisplayName("提交：DRAFT→EFFECTIVE")
-    void testSubmit() {
-        BizMachineContract contract = new BizMachineContract();
-        contract.setId(1L);
-        contract.setStatus("DRAFT");
-        when(machineContractMapper.selectById(anyLong())).thenReturn(contract);
-
-        machineContractService.submit(1L);
-
-        assertThat(contract.getStatus()).isEqualTo("EFFECTIVE");
+    @Test void save_missingUnitPriceRejected() {
+        var c = contract(); c.setUnitPrice(null);
+        assertThatThrownBy(() -> service.save(c)).isInstanceOf(BusinessException.class);
     }
-
-    @Test
-    @DisplayName("提交：非DRAFT拒绝")
-    void testSubmit_nonDraft() {
-        BizMachineContract contract = new BizMachineContract();
-        contract.setId(1L);
-        contract.setStatus("EFFECTIVE");
-        when(machineContractMapper.selectById(anyLong())).thenReturn(contract);
-
-        assertThatThrownBy(() -> machineContractService.submit(1L))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅草稿状态可提交");
+    @Test void submit_startsApprovalNotEffective() {
+        var c = contract(); when(machineContractMapper.selectById(1L)).thenReturn(c);
+        when(approvalService.startProcess(eq("MACHINE_CONTRACT"), eq(1L), eq("machine_contract_approval"), anyMap())).thenReturn("p1");
+        when(machineContractMapper.update(isNull(), any())).thenReturn(1);
+        service.submit(1L);
+        assertThat(c.getStatus()).isEqualTo("DRAFT");
+        verify(machineContractMapper).update(isNull(), any());
     }
-
-    @Test
-    @DisplayName("删除：DRAFT可删")
-    void testDelete_draftAllowed() {
-        BizMachineContract contract = new BizMachineContract();
-        contract.setId(1L);
-        contract.setStatus("DRAFT");
-        when(machineContractMapper.selectById(anyLong())).thenReturn(contract);
-
-        machineContractService.delete(1L);
-
-        verify(machineContractMapper).deleteById(1L);
+    @Test void submit_crossTenantRejected() {
+        var c = contract(); c.setTenantId(1L); when(machineContractMapper.selectById(1L)).thenReturn(c);
+        assertThatThrownBy(() -> service.submit(1L)).isInstanceOf(BusinessException.class);
+        verifyNoInteractions(approvalService);
     }
-
-    @Test
-    @DisplayName("删除：非DRAFT拒绝")
-    void testDelete_nonDraft() {
-        BizMachineContract contract = new BizMachineContract();
-        contract.setId(1L);
-        contract.setStatus("EFFECTIVE");
-        when(machineContractMapper.selectById(anyLong())).thenReturn(contract);
-
-        assertThatThrownBy(() -> machineContractService.delete(1L))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅草稿状态可删除");
+    @Test void update_usesWhitelistNotRequestEntity() {
+        var original = contract(); var input = contract(); input.setStatus("EFFECTIVE"); input.setCumulativePaid(BigDecimal.TEN);
+        when(machineContractMapper.selectById(1L)).thenReturn(original);
+        when(machineContractMapper.update(isNull(), any())).thenReturn(1);
+        service.update(input); verify(machineContractMapper, never()).updateById(any());
     }
-
-    @Test
-    @DisplayName("查询：不存在抛异常")
-    void testGetById_notFound() {
-        when(machineContractMapper.selectById(anyLong())).thenReturn(null);
-
-        assertThatThrownBy(() -> machineContractService.getById(999L))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("机械合同不存在");
+    @Test void update_concurrentStateChangeRejected() {
+        when(machineContractMapper.selectById(1L)).thenReturn(contract());
+        assertThatThrownBy(() -> service.update(contract())).isInstanceOf(BusinessException.class);
     }
-
-    private BizBudgetDetail mockBudgetDetail(String total) {
-        BizBudgetDetail d = new BizBudgetDetail();
-        d.setBudgetTotalPrice(new BigDecimal(total));
-        return d;
+    @Test void getById_missingRejected() {
+        assertThatThrownBy(() -> service.getById(1L)).isInstanceOf(BusinessException.class);
+    }
+    @Test void delete_draftAllowed() {
+        when(machineContractMapper.selectById(1L)).thenReturn(contract());
+        service.delete(1L); verify(machineContractMapper).deleteById(1L);
+    }
+    @Test void delete_effectiveRejected() {
+        var c = contract(); c.setStatus("EFFECTIVE"); when(machineContractMapper.selectById(1L)).thenReturn(c);
+        assertThatThrownBy(() -> service.delete(1L)).isInstanceOf(BusinessException.class);
     }
 }

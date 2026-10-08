@@ -7,7 +7,7 @@
         <result column="settlement_id" property="settlementId"/>
         <result column="ledger_id" property="ledgerId"/>
         <result column="work_log_ids" property="workLogIds"
-                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+                typeHandler="com.zwinsight.machine.mapper.LongListTypeHandler"/>
         <result column="shift_count" property="shiftCount"/>
         <result column="work_volume" property="workVolume"/>
         <result column="unit_price" property="unitPrice"/>

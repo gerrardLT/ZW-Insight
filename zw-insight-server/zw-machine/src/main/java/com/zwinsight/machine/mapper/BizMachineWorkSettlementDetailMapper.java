@@ -20,7 +20,13 @@ public interface BizMachineWorkSettlementDetailMapper extends BaseMapper<BizMach
      * @param projectId 项目ID
      * @return 累计总金额
      */
-    @Select("SELECT COALESCE(SUM(s.total_amount), 0) FROM biz_machine_work_settlement s " +
-            "WHERE s.project_id = #{projectId} AND s.status = 2 AND s.deleted = 0")
+    @Select("SELECT COALESCE(SUM(amount), 0) FROM ("
+            + "SELECT h.settlement_amount AS amount FROM biz_machine_settlement h "
+            + "WHERE h.project_id = #{projectId} AND h.status = 'APPROVED' AND h.deleted = 0 "
+            + "UNION ALL SELECT d.subtotal AS amount FROM biz_machine_work_settlement_detail d "
+            + "JOIN biz_machine_work_settlement s ON s.id = d.settlement_id AND s.tenant_id = d.tenant_id "
+            + "JOIN biz_machine_contract c ON c.id = d.contract_id AND c.tenant_id = d.tenant_id "
+            + "AND c.project_id = s.project_id AND c.deleted = 0 "
+            + "WHERE s.project_id = #{projectId} AND s.status = 2 AND s.deleted = 0) amounts")
     BigDecimal sumApprovedAmountByProject(@Param("projectId") Long projectId);
 }

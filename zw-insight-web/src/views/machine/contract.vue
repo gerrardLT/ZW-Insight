@@ -59,6 +59,7 @@
         <el-form-item label="设备供应商" prop="supplierName"><el-input v-model="formData.supplierName" /></el-form-item>
         <el-form-item label="设备名称" prop="machineName"><el-input v-model="formData.machineName" /></el-form-item>
         <el-form-item label="合同金额" prop="contractAmount"><el-input-number v-model="formData.contractAmount" :min="0" :precision="2" style="width: 100%" /></el-form-item>
+        <el-form-item label="计价单价" prop="unitPrice"><el-input-number v-model="formData.unitPrice" :min="0.01" :precision="2" style="width: 100%" /></el-form-item>
         <el-form-item label="租赁方式"><el-select v-model="formData.rentalType" style="width: 100%"><el-option label="月租" value="月租" /><el-option label="台班" value="台班" /><el-option label="包月" value="包月" /></el-select></el-form-item>
         <el-form-item label="开始日期"><el-date-picker v-model="formData.startDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
         <el-form-item label="结束日期"><el-date-picker v-model="formData.endDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
@@ -88,13 +89,13 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, contractName: '', supplierName: '' })
-const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', supplierName: '', machineName: '', contractAmount: 0, rentalType: '月租', startDate: '', endDate: '' })
+const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', supplierName: '', machineName: '', contractAmount: 0, unitPrice: 0.01, rentalType: '月租', startDate: '', endDate: '' })
 const formRules = { projectId: [{ required: true, message: '请选择项目', trigger: 'change' }], contractName: [{ required: true, message: '请输入合同名称', trigger: 'blur' }], supplierName: [{ required: true, message: '请输入供应商', trigger: 'blur' }], machineName: [{ required: true, message: '请输入设备名称', trigger: 'blur' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getMachineContractPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, contractName: '', supplierName: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', supplierName: '', machineName: '', contractAmount: 0, rentalType: '月租', startDate: '', endDate: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', supplierName: '', machineName: '', contractAmount: 0, unitPrice: 0.01, rentalType: '月租', startDate: '', endDate: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateMachineContract(formData.value) : await createMachineContract(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteMachineContract(row.id); ElMessage.success('删除成功'); loadData() }

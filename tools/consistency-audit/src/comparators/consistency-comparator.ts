@@ -31,6 +31,12 @@ export class ConsistencyComparator implements IComparator {
   normalizePath(path: string): string {
     let normalized = path;
 
+    // 移除 query string（如 ?autoSubmit=true）
+    const queryIndex = normalized.indexOf('?');
+    if (queryIndex !== -1) {
+      normalized = normalized.substring(0, queryIndex);
+    }
+
     // 移除开头的 /api 前缀（仅移除第一层 /api，不影响路径中其他部分）
     if (normalized.startsWith('/api/')) {
       normalized = normalized.slice(4); // "/api/v1/xxx" → "/v1/xxx"

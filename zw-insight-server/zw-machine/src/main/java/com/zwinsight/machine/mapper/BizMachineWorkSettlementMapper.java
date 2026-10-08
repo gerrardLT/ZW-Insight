@@ -14,6 +14,9 @@ import java.time.LocalDate;
 @Mapper
 public interface BizMachineWorkSettlementMapper extends BaseMapper<BizMachineWorkSettlement> {
 
+    @Select("SELECT * FROM biz_machine_work_settlement WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE")
+    BizMachineWorkSettlement lockById(@Param("id") Long id, @Param("tenantId") Long tenantId);
+
     /**
      * 检查同一项目内是否存在周期重叠的结算单
      *

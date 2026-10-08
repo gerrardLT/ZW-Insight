@@ -135,12 +135,18 @@ export function getPurchaseContractDetails(contractId: number) {
   return request({ url: `/v1/purchase/contract/${contractId}/details` })
 }
 export function saveMaterialInbound(data: MaterialInboundPayload, autoSubmit = false) {
-  const url = autoSubmit ? '/v1/material/inbound?autoSubmit=true' : '/v1/material/inbound'
-  return request({ url, method: 'POST', data })
+  return request({
+    url: autoSubmit ? '/v1/material/inbound?autoSubmit=true' : '/v1/material/inbound',
+    method: 'POST',
+    data
+  })
 }
 export function saveMaterialOutbound(data: MaterialOutboundPayload, autoSubmit = false) {
-  const url = autoSubmit ? '/v1/material/outbound?autoSubmit=true' : '/v1/material/outbound'
-  return request({ url, method: 'POST', data })
+  return request({
+    url: autoSubmit ? '/v1/material/outbound?autoSubmit=true' : '/v1/material/outbound',
+    method: 'POST',
+    data
+  })
 }
 // 材料退货退款记录查询（MaterialRefundController，只读）
 export function getMaterialRefundList(params?: PageParams) {
@@ -154,7 +160,19 @@ export function getMachineLedgerPage(params?: { page?: number; size?: number; ma
 export function getMachineWorkLogPage(params?: { page?: number; size?: number; projectId?: number; machineId?: number; machineName?: string; workDate?: string }) {
   return request({ url: '/v1/machine/work-log/page', data: params })
 }
-export function saveMachineWorkLog(data: { projectId: number; machineId: number; workDate: string; shiftCount: number; workQuantity?: number; oilConsumption?: number; remark?: string }) {
+export function confirmMachineWorkLog(id: number) {
+  return request({ url: `/v1/machine/work-log/${id}/confirm`, method: 'POST' })
+}
+export function getMachineContractPage(params: { projectId: number; page?: number; size?: number }) {
+  return request({ url: '/v1/machine/contract/page', data: params })
+}
+export function machineEntryIn(data: { projectId: number; machineId: number; entryDate: string }) {
+  return request({ url: '/v1/machine/entry/in', method: 'POST', data })
+}
+export function machineEntryOut(data: { projectId: number; machineId: number; entryDate: string }) {
+  return request({ url: '/v1/machine/entry/out', method: 'POST', data })
+}
+export function saveMachineWorkLog(data: { projectId: number; contractId: number; machineId: number; workDate: string; shiftCount: number; workQuantity?: number; oilConsumption?: number; remark?: string }) {
   return request({ url: '/v1/machine/work-log', method: 'POST', data })
 }
 

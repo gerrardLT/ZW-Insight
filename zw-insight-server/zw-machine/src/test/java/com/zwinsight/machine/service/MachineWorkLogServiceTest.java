@@ -49,6 +49,11 @@ class MachineWorkLogServiceTest {
     @Mock
     private BizProjectMapper projectMapper;
 
+    @Mock private com.zwinsight.machine.mapper.BizMachineContractMapper contractMapper;
+
+    @org.junit.jupiter.api.BeforeEach void tenant() { com.zwinsight.common.config.SecurityContextHolder.setTenantId(9999L); }
+    @org.junit.jupiter.api.AfterEach void clear() { com.zwinsight.common.config.SecurityContextHolder.clear(); }
+
     @InjectMocks
     private MachineWorkLogService machineWorkLogService;
 
@@ -65,6 +70,7 @@ class MachineWorkLogServiceTest {
         BizMachineLedger ledger = new BizMachineLedger();
         ledger.setId(10L);
         ledger.setStatus(status);
+        ledger.setTenantId(9999L); ledger.setCurrentProject("20");
         return ledger;
     }
 
@@ -73,6 +79,14 @@ class MachineWorkLogServiceTest {
         workLog.setId(1L);
         workLog.setMachineId(10L);
         workLog.setStatus(status);
+        workLog.setTenantId(9999L); workLog.setProjectId(20L); workLog.setContractId(30L);
+        workLog.setWorkDate(java.time.LocalDate.of(2026, 7, 1));
+        workLog.setSettlementStatus("UNSETTLED");
+        var c = new com.zwinsight.machine.domain.BizMachineContract();
+        c.setId(30L); c.setTenantId(9999L); c.setProjectId(20L); c.setStatus("EFFECTIVE");
+        c.setStartDate(java.time.LocalDate.of(2026, 1, 1)); c.setEndDate(java.time.LocalDate.of(2026, 12, 31));
+        org.mockito.Mockito.lenient().when(contractMapper.selectById(30L)).thenReturn(c);
+        org.mockito.Mockito.lenient().when(ledgerMapper.lockById(10L, 9999L)).thenReturn(ledger("IN_FIELD"));
         return workLog;
     }
 
@@ -107,11 +121,11 @@ class MachineWorkLogServiceTest {
     void save_machineNotFound_throwsException() {
         BizMachineWorkLog workLog = workLog(null);
         workLog.setMachineId(999L);
-        when(ledgerMapper.selectById(999L)).thenReturn(null);
+        when(ledgerMapper.lockById(999L, 9999L)).thenReturn(null);
 
         assertThatThrownBy(() -> machineWorkLogService.save(workLog))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("机械不存在");
+                .hasMessageContaining("在场机械");
     }
 
     @Test
@@ -122,7 +136,7 @@ class MachineWorkLogServiceTest {
 
         assertThatThrownBy(() -> machineWorkLogService.save(workLog))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅在场机械可记录工作日志");
+                .hasMessageContaining("在场机械");
     }
 
     @Test
@@ -141,7 +155,7 @@ class MachineWorkLogServiceTest {
     @DisplayName("更新工作日志：不存在抛异常")
     void update_notFound_throwsException() {
         BizMachineWorkLog workLog = workLog("DRAFT");
-        when(workLogMapper.selectById(1L)).thenReturn(null);
+        when(workLogMapper.lockById(1L, 9999L)).thenReturn(null);
 
         assertThatThrownBy(() -> machineWorkLogService.update(workLog))
                 .isInstanceOf(BusinessException.class)
@@ -152,18 +166,18 @@ class MachineWorkLogServiceTest {
     @DisplayName("更新工作日志：非草稿状态拒绝编辑")
     void update_nonDraft_rejected() {
         BizMachineWorkLog workLog = workLog("DRAFT");
-        when(workLogMapper.selectById(1L)).thenReturn(workLog("SUBMITTED"));
+        when(workLogMapper.lockById(1L, 9999L)).thenReturn(workLog("SUBMITTED"));
 
         assertThatThrownBy(() -> machineWorkLogService.update(workLog))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅草稿状态可编辑");
+                .hasMessageContaining("不可修改");
     }
 
     @Test
     @DisplayName("更新工作日志：草稿状态正常更新")
     void update_draft_success() {
         BizMachineWorkLog workLog = workLog("DRAFT");
-        when(workLogMapper.selectById(1L)).thenReturn(workLog("DRAFT"));
+        when(workLogMapper.lockById(1L, 9999L)).thenReturn(workLog("DRAFT"));
 
         machineWorkLogService.update(workLog);
 
@@ -173,7 +187,7 @@ class MachineWorkLogServiceTest {
     @Test
     @DisplayName("删除工作日志：不存在抛异常")
     void delete_notFound_throwsException() {
-        when(workLogMapper.selectById(999L)).thenReturn(null);
+        when(workLogMapper.lockById(999L, 9999L)).thenReturn(null);
 
         assertThatThrownBy(() -> machineWorkLogService.delete(999L))
                 .isInstanceOf(BusinessException.class)
@@ -183,17 +197,17 @@ class MachineWorkLogServiceTest {
     @Test
     @DisplayName("删除工作日志：非草稿状态拒绝删除")
     void delete_nonDraft_rejected() {
-        when(workLogMapper.selectById(1L)).thenReturn(workLog("SUBMITTED"));
+        when(workLogMapper.lockById(1L, 9999L)).thenReturn(workLog("SUBMITTED"));
 
         assertThatThrownBy(() -> machineWorkLogService.delete(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("仅草稿状态可删除");
+                .hasMessageContaining("不可修改");
     }
 
     @Test
     @DisplayName("删除工作日志：草稿状态正常删除")
     void delete_draft_success() {
-        when(workLogMapper.selectById(1L)).thenReturn(workLog("DRAFT"));
+        when(workLogMapper.lockById(1L, 9999L)).thenReturn(workLog("DRAFT"));
 
         machineWorkLogService.delete(1L);
 
@@ -205,11 +219,11 @@ class MachineWorkLogServiceTest {
     void update_settled_rejected() {
         BizMachineWorkLog log = workLog("DRAFT");
         log.setSettlementStatus("SETTLED");
-        when(workLogMapper.selectById(1L)).thenReturn(log);
+        when(workLogMapper.lockById(1L, 9999L)).thenReturn(log);
 
         assertThatThrownBy(() -> machineWorkLogService.update(log))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("已结算的工作日志不可编辑");
+                .hasMessageContaining("不可修改");
 
         verify(workLogMapper, never()).updateById(any());
     }
@@ -219,12 +233,26 @@ class MachineWorkLogServiceTest {
     void delete_settled_rejected() {
         BizMachineWorkLog log = workLog("DRAFT");
         log.setSettlementStatus("SETTLED");
-        when(workLogMapper.selectById(1L)).thenReturn(log);
+        when(workLogMapper.lockById(1L, 9999L)).thenReturn(log);
 
         assertThatThrownBy(() -> machineWorkLogService.delete(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("已结算的工作日志不可删除");
+                .hasMessageContaining("不可修改");
 
         verify(workLogMapper, never()).deleteById(any());
+    }
+    @Test void confirm_normal() {
+        var log = workLog("DRAFT");
+        when(workLogMapper.lockById(1L, 9999L)).thenReturn(log);
+        when(workLogMapper.updateById(log)).thenReturn(1);
+        machineWorkLogService.confirm(1L);
+        assertThat(log.getStatus()).isEqualTo("CONFIRMED");
+    }
+    @Test void confirm_occupiedRejected() {
+        var log = workLog("DRAFT");
+        when(workLogMapper.lockById(1L, 9999L)).thenReturn(log);
+        when(workLogMapper.countOccupied(1L, 9999L)).thenReturn(1);
+        assertThatThrownBy(() -> machineWorkLogService.confirm(1L)).isInstanceOf(BusinessException.class);
+        verify(workLogMapper, never()).updateById(any());
     }
 }

@@ -39,6 +39,12 @@ public class MachineWorkLogController {
         return R.ok();
     }
 
+    @PostMapping("/{id}/confirm")
+    public R<Void> confirm(@PathVariable Long id) {
+        workLogService.confirm(id);
+        return R.ok();
+    }
+
     @PutMapping("/{id}")
     public R<Void> update(@PathVariable Long id, @RequestBody BizMachineWorkLog workLog) {
         workLog.setId(id);

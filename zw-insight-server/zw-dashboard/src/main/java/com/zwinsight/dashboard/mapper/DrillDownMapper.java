@@ -190,11 +190,17 @@ public interface DrillDownMapper {
             + "ORDER BY id DESC")
     List<Map<String, Object>> settlementsLabor(@Param("contractId") Long contractId);
 
-    /** 机械结算单（同上，无单号列） */
+    /** 机械结算单（支持历史旧单 biz_machine_settlement 与按合同明细归集的新单据） */
     @Select("SELECT id, NULL AS docNo, created_at AS docDate, "
             + "settlement_amount AS amount, status, NULL AS workflowInstanceId "
             + "FROM biz_machine_settlement "
             + "WHERE deleted = 0 AND contract_id = #{contractId} "
+            + "UNION ALL "
+            + "SELECT d.id, s.settlement_code AS docNo, d.created_at AS docDate, "
+            + "d.subtotal AS amount, 'APPROVED' AS status, s.workflow_instance_id AS workflowInstanceId "
+            + "FROM biz_machine_work_settlement_detail d "
+            + "JOIN biz_machine_work_settlement s ON s.id = d.settlement_id AND s.deleted = 0 AND s.status = 2 "
+            + "WHERE d.contract_id = #{contractId} "
             + "ORDER BY id DESC")
     List<Map<String, Object>> settlementsMachine(@Param("contractId") Long contractId);
 

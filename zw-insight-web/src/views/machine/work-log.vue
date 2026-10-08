@@ -32,8 +32,9 @@
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="row.status === 'DRAFT' && row.settlementStatus !== 'SETTLED'" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleConfirm(row)">确认</el-button>
+            <el-button v-if="row.status === 'DRAFT' && row.settlementStatus !== 'SETTLED'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -46,7 +47,12 @@
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑工作日志' : '新增工作日志'" width="550px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="设备" prop="machineId"><MachineSelector v-model="formData.machineId" /></el-form-item>
-        <el-form-item label="项目" prop="projectId"><ProjectSelector v-model="formData.projectId" /></el-form-item>
+        <el-form-item label="项目" prop="projectId"><ProjectSelector v-model="formData.projectId" @change="loadContracts" /></el-form-item>
+        <el-form-item label="机械合同" prop="contractId">
+          <el-select v-model="formData.contractId" placeholder="请选择本项目生效合同" style="width: 100%" @visible-change="visible => visible && loadContracts()">
+            <el-option v-for="contract in contracts" :key="contract.id" :label="contract.contractName" :value="contract.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="工作日期" prop="workDate"><el-date-picker v-model="formData.workDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
         <el-form-item label="台班数"><el-input-number v-model="formData.shiftCount" :min="0" :precision="1" style="width: 100%" /></el-form-item>
         <el-form-item label="工作量"><el-input-number v-model="formData.workQuantity" :min="0" :precision="2" style="width: 100%" /></el-form-item>
@@ -64,7 +70,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getMachineWorkLogPage, createMachineWorkLog, updateMachineWorkLog, deleteMachineWorkLog } from '@/api/machine'
+import { getMachineWorkLogPage, createMachineWorkLog, updateMachineWorkLog, deleteMachineWorkLog, confirmMachineWorkLog, getMachineContractPage } from '@/api/machine'
 import MachineSelector from '@/components/MachineSelector.vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 
@@ -75,14 +81,27 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
+const contracts = ref<any[]>([])
+async function loadContracts() {
+  contracts.value = []
+  if (!formData.value.projectId) return
+  const response: any = await getMachineContractPage({ projectId: formData.value.projectId, page: 1, size: 100 })
+  contracts.value = (response.data?.records ?? []).filter((contract: any) => contract.status === 'EFFECTIVE')
+}
+async function handleConfirm(row: any) {
+  await ElMessageBox.confirm('确认后不可修改，是否继续？', '确认日志')
+  await confirmMachineWorkLog(row.id)
+  ElMessage.success('确认成功')
+  await loadData()
+}
 
 function emptyForm() {
-  return { id: undefined as number | undefined, machineId: undefined as number | undefined, projectId: undefined as number | undefined, workDate: '', shiftCount: 0, workQuantity: 0, oilConsumption: 0 }
+  return { id: undefined as number | undefined, machineId: undefined as number | undefined, projectId: undefined as number | undefined, contractId: undefined as number | undefined, workDate: '', shiftCount: 0, workQuantity: 0, oilConsumption: 0 }
 }
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, machineName: '', workDate: '' })
 const formData = ref(emptyForm())
-const formRules = { machineId: [{ required: true, message: '请选择设备', trigger: 'change' }], workDate: [{ required: true, message: '请选择日期', trigger: 'change' }] }
+const formRules = { contractId: [{ required: true, message: '请选择生效机械合同', trigger: 'change' }], projectId: [{ required: true, message: '请选择项目', trigger: 'change' }], machineId: [{ required: true, message: '请选择设备', trigger: 'change' }], workDate: [{ required: true, message: '请选择日期', trigger: 'change' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getMachineWorkLogPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }

@@ -23,6 +23,9 @@ public class BizMachineWorkLog extends BaseEntity {
     /** 项目ID */
     private Long projectId;
 
+    /** 机械合同ID（结算按此归集，取代按机械名称匹配） */
+    private Long contractId;
+
     /** 工作日期 */
     private LocalDate workDate;
 
@@ -35,7 +38,7 @@ public class BizMachineWorkLog extends BaseEntity {
     /** 油耗 */
     private BigDecimal oilConsumption;
 
-    /** 状态（DRAFT-草稿/SETTLED-已结算） */
+    /** 状态（DRAFT-草稿/CONFIRMED-已确认，仅 CONFIRMED 可入结算；结算状态见 settlementStatus） */
     private String status;
 
     /** 结算状态（UNSETTLED-未结算/SETTLED-已结算） */

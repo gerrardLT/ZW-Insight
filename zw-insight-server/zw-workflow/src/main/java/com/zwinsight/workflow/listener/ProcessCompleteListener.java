@@ -72,13 +72,14 @@ public class ProcessCompleteListener implements FlowableEventListener {
 
             } catch (Exception e) {
                 log.error("流程完成回调处理异常", e);
+                throw new IllegalStateException("审批业务生效失败", e);
             }
         }
     }
 
     @Override
     public boolean isFailOnException() {
-        return false;
+        return true;
     }
 
     @Override

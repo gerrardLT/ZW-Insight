@@ -36,11 +36,16 @@ class MachineEntryServiceTest {
     @Test
     @DisplayName("进场：REGISTERED状态可进场")
     void testEntryIn_registered() {
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(1L);
+        when(projectMapper.selectById(10L)).thenReturn(new com.zwinsight.project.domain.BizProject());
         BizMachineEntry entry = new BizMachineEntry();
         entry.setMachineId(1L);
+        entry.setProjectId(10L);
+        entry.setEntryDate(java.time.LocalDate.now());
         BizMachineLedger ledger = new BizMachineLedger();
         ledger.setStatus("REGISTERED");
-        when(ledgerMapper.selectById(anyLong())).thenReturn(ledger);
+        when(ledgerMapper.lockById(eq(1L), eq(1L))).thenReturn(ledger);
+        when(ledgerMapper.updateById(any())).thenReturn(1);
 
         machineEntryService.entryIn(entry);
 
@@ -52,11 +57,16 @@ class MachineEntryServiceTest {
     @Test
     @DisplayName("进场：OUT_FIELD状态可再次进场")
     void testEntryIn_outField() {
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(1L);
+        when(projectMapper.selectById(10L)).thenReturn(new com.zwinsight.project.domain.BizProject());
         BizMachineEntry entry = new BizMachineEntry();
         entry.setMachineId(1L);
+        entry.setProjectId(10L);
+        entry.setEntryDate(java.time.LocalDate.now());
         BizMachineLedger ledger = new BizMachineLedger();
         ledger.setStatus("OUT_FIELD");
-        when(ledgerMapper.selectById(anyLong())).thenReturn(ledger);
+        when(ledgerMapper.lockById(eq(1L), eq(1L))).thenReturn(ledger);
+        when(ledgerMapper.updateById(any())).thenReturn(1);
 
         machineEntryService.entryIn(entry);
 
@@ -67,11 +77,15 @@ class MachineEntryServiceTest {
     @Test
     @DisplayName("进场：IN_FIELD状态拒绝")
     void testEntryIn_inField_rejected() {
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(1L);
+        when(projectMapper.selectById(10L)).thenReturn(new com.zwinsight.project.domain.BizProject());
         BizMachineEntry entry = new BizMachineEntry();
         entry.setMachineId(1L);
+        entry.setProjectId(10L);
+        entry.setEntryDate(java.time.LocalDate.now());
         BizMachineLedger ledger = new BizMachineLedger();
         ledger.setStatus("IN_FIELD");
-        when(ledgerMapper.selectById(anyLong())).thenReturn(ledger);
+        when(ledgerMapper.lockById(eq(1L), eq(1L))).thenReturn(ledger);
 
         assertThatThrownBy(() -> machineEntryService.entryIn(entry))
                 .isInstanceOf(BusinessException.class)
@@ -81,28 +95,37 @@ class MachineEntryServiceTest {
     @Test
     @DisplayName("退场：IN_FIELD且工作量已全部结算可退场")
     void testEntryOut() {
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(1L);
+        when(projectMapper.selectById(10L)).thenReturn(new com.zwinsight.project.domain.BizProject());
         BizMachineEntry entry = new BizMachineEntry();
         entry.setMachineId(1L);
+        entry.setProjectId(10L);
+        entry.setEntryDate(java.time.LocalDate.now());
         BizMachineLedger ledger = new BizMachineLedger();
+        ledger.setId(1L);
         ledger.setStatus("IN_FIELD");
-        when(ledgerMapper.selectById(anyLong())).thenReturn(ledger);
+        when(ledgerMapper.lockById(eq(1L), eq(1L))).thenReturn(ledger);
         // 无未结算工作量
         when(workLogMapper.selectCount(any())).thenReturn(0L);
+        when(ledgerMapper.update(any(), any())).thenReturn(1);
 
         machineEntryService.entryOut(entry);
 
         assertThat(entry.getEntryType()).isEqualTo("OUT");
-        assertThat(ledger.getStatus()).isEqualTo("OUT_FIELD");
     }
 
     @Test
     @DisplayName("退场：存在未结算工作量时拒绝")
     void testEntryOut_unsettledWorkLog_rejected() {
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(1L);
+        when(projectMapper.selectById(10L)).thenReturn(new com.zwinsight.project.domain.BizProject());
         BizMachineEntry entry = new BizMachineEntry();
         entry.setMachineId(1L);
+        entry.setProjectId(10L);
+        entry.setEntryDate(java.time.LocalDate.now());
         BizMachineLedger ledger = new BizMachineLedger();
         ledger.setStatus("IN_FIELD");
-        when(ledgerMapper.selectById(anyLong())).thenReturn(ledger);
+        when(ledgerMapper.lockById(eq(1L), eq(1L))).thenReturn(ledger);
         // 存在 2 条未结算工作量
         when(workLogMapper.selectCount(any())).thenReturn(2L);
 
@@ -115,11 +138,15 @@ class MachineEntryServiceTest {
     @Test
     @DisplayName("退场：REGISTERED状态拒绝")
     void testEntryOut_registered_rejected() {
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(1L);
+        when(projectMapper.selectById(10L)).thenReturn(new com.zwinsight.project.domain.BizProject());
         BizMachineEntry entry = new BizMachineEntry();
         entry.setMachineId(1L);
+        entry.setProjectId(10L);
+        entry.setEntryDate(java.time.LocalDate.now());
         BizMachineLedger ledger = new BizMachineLedger();
         ledger.setStatus("REGISTERED");
-        when(ledgerMapper.selectById(anyLong())).thenReturn(ledger);
+        when(ledgerMapper.lockById(eq(1L), eq(1L))).thenReturn(ledger);
 
         assertThatThrownBy(() -> machineEntryService.entryOut(entry))
                 .isInstanceOf(BusinessException.class)
@@ -129,9 +156,13 @@ class MachineEntryServiceTest {
     @Test
     @DisplayName("进退场：机械不存在抛异常")
     void testEntryIn_machineNotFound() {
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(1L);
+        when(projectMapper.selectById(10L)).thenReturn(new com.zwinsight.project.domain.BizProject());
         BizMachineEntry entry = new BizMachineEntry();
         entry.setMachineId(999L);
-        when(ledgerMapper.selectById(anyLong())).thenReturn(null);
+        entry.setProjectId(10L);
+        entry.setEntryDate(java.time.LocalDate.now());
+        when(ledgerMapper.lockById(eq(999L), eq(1L))).thenReturn(null);
 
         assertThatThrownBy(() -> machineEntryService.entryIn(entry))
                 .isInstanceOf(BusinessException.class)

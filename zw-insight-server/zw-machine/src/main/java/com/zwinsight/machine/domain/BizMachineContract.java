@@ -49,8 +49,11 @@ public class BizMachineContract extends BaseEntity {
     /** 关联预算ID */
     private Long budgetId;
 
-    /** 合同金额 */
+    /** 合同金额（总额，不再兼作单价） */
     private BigDecimal contractAmount;
+
+    /** 计价单价（台班单价 / 月租 / 工作量单价，按租赁方式解释） */
+    private BigDecimal unitPrice;
 
     /** 付款条款 */
     private String paymentTerms;
@@ -61,6 +64,9 @@ public class BizMachineContract extends BaseEntity {
     /** 累计付款金额 */
     private BigDecimal cumulativePaid;
 
-    /** 状态（DRAFT-草稿/EFFECTIVE-生效） */
+    /** 状态（DRAFT-草稿/SUBMITTED-审批中/EFFECTIVE-生效） */
     private String status;
+
+    /** 流程实例ID */
+    private String workflowInstanceId;
 }

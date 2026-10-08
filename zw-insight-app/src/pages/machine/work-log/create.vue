@@ -18,6 +18,9 @@
     </view>
 
     <view class="form-card">
+      <picker :range="contracts" range-key="contractName" @change="selectContract">
+        <ZwiPickerField label="生效机械合同" :displayValue="form.contractName" placeholder="请选择合同" />
+      </picker>
       <ZwiField label="工作日期" v-model="form.workDate" placeholder="YYYY-MM-DD" />
       <ZwiField label="台班数" v-model="form.shiftCount" inputType="digit" placeholder="如 1 或 1.5" />
       <ZwiField label="工程量" v-model="form.workQuantity" inputType="digit" placeholder="完成方量/米数(选填)" />
@@ -63,7 +66,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { saveMachineWorkLog, getMachineLedgerPage } from '@/api/common'
+import { saveMachineWorkLog, getMachineLedgerPage, getMachineContractPage } from '@/api/common'
 import { loadProjectList, NO_OFFLINE_DATA_TIP } from '@/utils/offlineData'
 import { submitOrQueue } from '@/utils/offlineSubmit'
 import OfflineBanner from '@/components/OfflineBanner.vue'
@@ -76,11 +79,22 @@ const showProjectPicker = ref(false)
 const showMachinePicker = ref(false)
 const projects = ref<any[]>([])
 const machines = ref<any[]>([])
+const contracts = ref<any[]>([])
+function selectContract(payload: any) {
+  let contract = payload
+  if (payload && payload.detail && payload.detail.value !== undefined) {
+    contract = contracts.value[Number(payload.detail.value)]
+  }
+  form.value.contractId = contract?.id ?? null
+  form.value.contractName = contract?.contractName ?? ''
+}
 const projectEmptyTip = ref('暂无项目')
 
 const form = ref({
   projectId: null as number | null,
   projectName: '',
+  contractId: null as number | null,
+  contractName: '',
   machineId: null as number | null,
   machineName: '',
   workDate: '',
@@ -106,10 +120,19 @@ onMounted(async () => {
   }
 })
 
-function selectProject(p: any) {
+async function selectProject(p: any) {
   form.value.projectId = p.id
   form.value.projectName = p.projectName
+  form.value.contractId = null
+  form.value.contractName = ''
+  contracts.value = []
   showProjectPicker.value = false
+  try {
+    const response: any = await getMachineContractPage({ projectId: p.id, page: 1, size: 100 })
+    contracts.value = (response.data?.records ?? []).filter((contract: any) => contract.status === 'EFFECTIVE')
+  } catch {
+    uni.showToast({ title: '合同加载失败，请重新选择项目', icon: 'none' })
+  }
 }
 
 function openMachinePicker() {
@@ -129,6 +152,9 @@ async function handleSubmit() {
   if (!form.value.machineId) {
     uni.showToast({ title: '请选择机械设备', icon: 'none' }); return
   }
+  if (!form.value.contractId) {
+    uni.showToast({ title: '请选择生效机械合同', icon: 'none' }); return
+  }
   const shifts = Number(form.value.shiftCount)
   if (!form.value.shiftCount || !Number.isFinite(shifts) || shifts <= 0 || shifts > 3) {
     uni.showToast({ title: '台班数须在0到3之间', icon: 'none' }); return
@@ -137,6 +163,7 @@ async function handleSubmit() {
   try {
     const payload = {
       projectId: form.value.projectId,
+      contractId: form.value.contractId,
       machineId: form.value.machineId,
       workDate: form.value.workDate,
       shiftCount: shifts,

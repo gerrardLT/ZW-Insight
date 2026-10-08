@@ -45,10 +45,19 @@ public class MachineProjectCascadeCleanupListener {
     private final BizMachineUsageRecordMapper machineUsageRecordMapper;
     private final BizMachineOilRecordMapper machineOilRecordMapper;
     private final BizMachineRepairMapper machineRepairMapper;
+    private final com.zwinsight.machine.mapper.BizMachineWorkSettlementDetailMapper detailMapper;
 
     @EventListener
     public void onProjectDeleted(ProjectDeletedEvent event) {
         Long projectId = event.getProjectId();
+        Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        if (tenantId == null) throw new com.zwinsight.common.exception.BusinessException("级联清理缺少租户上下文");
+        var workSettlementIds = machineWorkSettlementMapper.selectList(
+                new QueryWrapper<BizMachineWorkSettlement>().eq("project_id", projectId).eq("tenant_id", tenantId))
+                .stream().map(BizMachineWorkSettlement::getId).toList();
+        if (!workSettlementIds.isEmpty()) detailMapper.delete(
+                new QueryWrapper<com.zwinsight.machine.domain.BizMachineWorkSettlementDetail>()
+                        .eq("tenant_id", tenantId).in("settlement_id", workSettlementIds));
         int contracts = machineContractMapper.delete(
                 new QueryWrapper<BizMachineContract>().eq("project_id", projectId));
         int entries = machineEntryMapper.delete(

@@ -65,7 +65,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
-import { getTodoTasks, getDoneTasks, getApprovalDetail, completeTask, rejectToPrevious, rejectToStart, terminateProcess, batchApprove } from '@/api/workflow'
+import { getTodoTasks, getDoneTasks, getApprovalDetail, claimTask, completeTask, rejectToPrevious, rejectToStart, terminateProcess, batchApprove } from '@/api/workflow'
 import { getPaymentApplyDetail } from '@/api/finance'
 import { getProjectDetail } from '@/api/project'
 import { approvalBlock, batchBlock, money, validId, PAYMENT_TYPE } from './approval'
@@ -129,6 +129,11 @@ async function submitAction(action: 'approve' | 'reject' | 'terminate') {
     if (action === 'terminate') await ElMessageBox.confirm('确定终止此流程？终止后不可恢复。', '终止确认', { type: 'warning' })
     else if (action === 'approve') await ElMessageBox.confirm(`确认通过本单 ${detail.value.businessType} / ${detail.value.businessId}？${payment.value ? '付款金额：' + money(payment.value.paymentAmount) : ''}`, '逐单确认', { type: 'warning' })
     if (version !== detailVersion || blocked.value) return
+    if (detail.value.assignee === null || detail.value.assignee === '') {
+      await claimTask(taskId)
+      await openDetail({ taskId })
+      if (blocked.value) return
+    }
     const payload = { taskId, comment: comment.value.trim() }
     if (action === 'approve') await completeTask(payload)
     else if (action === 'terminate') await terminateProcess(payload)

@@ -199,16 +199,26 @@ export class MobileScanner implements IScanner<FrontendApiEntry> {
    */
   private extractPathFromExpression(
     expr: ts.Expression,
-    _sourceFile: ts.SourceFile
+    sourceFile: ts.SourceFile
   ): { path: string; params: string[] } | null {
+    // 条件三元表达式（如 autoSubmit ? 'a' : 'b'），优先提取假值/缺省分支
+    if (ts.isConditionalExpression(expr)) {
+      return (
+        this.extractPathFromExpression(expr.whenFalse, sourceFile) ||
+        this.extractPathFromExpression(expr.whenTrue, sourceFile)
+      );
+    }
+
     // 普通字符串字面量
     if (ts.isStringLiteral(expr)) {
-      return { path: expr.text, params: [] };
+      const cleanPath = expr.text.split('?')[0];
+      return { path: cleanPath, params: [] };
     }
 
     // 无替换的模板字符串（如 `plain string`）
     if (ts.isNoSubstitutionTemplateLiteral(expr)) {
-      return { path: expr.text, params: [] };
+      const cleanPath = expr.text.split('?')[0];
+      return { path: cleanPath, params: [] };
     }
 
     // 带变量的模板字符串（如 `/v1/archive/project/${projectId}`）

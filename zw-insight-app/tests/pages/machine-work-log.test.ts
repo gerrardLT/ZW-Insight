@@ -16,6 +16,7 @@ vi.mock('@dcloudio/uni-app', () => ({
 vi.mock('@/api/common', () => ({
   getProjectList: vi.fn(),
   getMachineLedgerPage: vi.fn(),
+  getMachineContractPage: vi.fn(),
   getMachineWorkLogPage: vi.fn(),
   saveMachineWorkLog: vi.fn(),
 }))
@@ -25,6 +26,7 @@ import WorkLogCreate from '@/pages/machine/work-log/create.vue'
 import {
   getProjectList,
   getMachineLedgerPage,
+  getMachineContractPage,
   getMachineWorkLogPage,
   saveMachineWorkLog,
 } from '@/api/common'
@@ -41,6 +43,10 @@ beforeEach(() => {
   vi.mocked(getMachineLedgerPage).mockResolvedValue({
     code: 200,
     data: { records: [{ id: 10, machineName: '小松PC200挖掘机', machineCode: 'M-001' }] },
+  } as any)
+  vi.mocked(getMachineContractPage).mockResolvedValue({
+    code: 200,
+    data: { records: [{ id: 100, contractName: '挖掘机租赁合同', status: 'EFFECTIVE' }] },
   } as any)
   vi.mocked(getMachineWorkLogPage).mockResolvedValue({
     code: 200,
@@ -95,8 +101,13 @@ describe('machine/work-log/create.vue 填报机械台班', () => {
     await wrapper.vm.handleSubmit()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请选择机械设备' }))
 
-    // 3. 设备已选，但台班数填 5 (超过 3)
+    // 3. 设备已选未选合同
     wrapper.vm.selectMachine({ id: 10, machineName: '小松挖掘机' })
+    await wrapper.vm.handleSubmit()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '请选择生效机械合同' }))
+
+    // 4. 合同已选，但台班数填 5 (超过 3)
+    wrapper.vm.selectContract({ id: 100, contractName: '挖掘机租赁合同' })
     wrapper.vm.form.shiftCount = '5'
     await wrapper.vm.handleSubmit()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '台班数须在0到3之间' }))
@@ -112,6 +123,7 @@ describe('machine/work-log/create.vue 填报机械台班', () => {
 
     wrapper.vm.selectProject({ id: 1, projectName: '测试示范项目' })
     wrapper.vm.selectMachine({ id: 10, machineName: '小松PC200挖掘机' })
+    wrapper.vm.selectContract({ id: 100, contractName: '挖掘机租赁合同' })
     wrapper.vm.form.shiftCount = '1.5'
     wrapper.vm.form.workQuantity = '300'
     wrapper.vm.form.oilConsumption = '50'
@@ -123,6 +135,7 @@ describe('machine/work-log/create.vue 填报机械台班', () => {
     expect(vi.mocked(saveMachineWorkLog)).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: 1,
+        contractId: 100,
         machineId: 10,
         workDate: today(),
         shiftCount: 1.5,

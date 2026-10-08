@@ -30,6 +30,48 @@ public class MachineWorkLogService {
     private final BizMachineWorkLogMapper workLogMapper;
     private final BizMachineLedgerMapper ledgerMapper;
     private final BizProjectMapper projectMapper;
+    private final com.zwinsight.machine.mapper.BizMachineContractMapper contractMapper;
+
+    private void validateBinding(BizMachineWorkLog workLog) {
+        Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        if (tenantId == null || workLog.getContractId() == null || workLog.getWorkDate() == null) {
+            throw new BusinessException("租户、合同及工作日期必填");
+        }
+        var contract = contractMapper.selectById(workLog.getContractId());
+        if (contract == null || !java.util.Objects.equals(tenantId, contract.getTenantId())
+                || !java.util.Objects.equals(workLog.getProjectId(), contract.getProjectId())
+                || !"EFFECTIVE".equals(contract.getStatus())) {
+            throw new BusinessException("合同不存在、未生效或不属于本项目");
+        }
+        if (contract.getStartDate() == null || contract.getEndDate() == null
+                || workLog.getWorkDate().isBefore(contract.getStartDate())
+                || workLog.getWorkDate().isAfter(contract.getEndDate())) {
+            throw new BusinessException("工作日期不在合同有效期内");
+        }
+        BizMachineLedger ledger = ledgerMapper.lockById(workLog.getMachineId(), tenantId);
+        if (ledger == null || !java.util.Objects.equals(tenantId, ledger.getTenantId())
+                || !"IN_FIELD".equals(ledger.getStatus())
+                || !String.valueOf(workLog.getProjectId()).equals(ledger.getCurrentProject())) throw new BusinessException("仅本租户在场机械可记录工作日志");
+        validateQuantities(workLog.getShiftCount(), workLog.getWorkQuantity());
+    }
+
+    private BizMachineWorkLog editable(Long id) {
+        Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        if (tenantId == null) throw new BusinessException("缺少租户上下文");
+        BizMachineWorkLog existing = workLogMapper.lockById(id, tenantId);
+        if (existing == null) throw new BusinessException("工作日志不存在");
+        if (!"DRAFT".equals(existing.getStatus()) || "SETTLED".equals(existing.getSettlementStatus())
+                || workLogMapper.countOccupied(id, tenantId) != 0) throw new BusinessException("已确认、已结算或被结算占用的日志不可修改");
+        return existing;
+    }
+
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public void confirm(Long id) {
+        BizMachineWorkLog existing = editable(id);
+        validateBinding(existing);
+        existing.setStatus("CONFIRMED");
+        if (workLogMapper.updateById(existing) != 1) throw new BusinessException("日志状态已变更，请重试");
+    }
 
     public PageResult<BizMachineWorkLog> page(int page, int size, Long machineId, Long projectId, String machineName, String workDate) {
         // machineName 属台账展示字段，需先经 biz_machine_ledger 解析为 machineId 集合再过滤
@@ -59,16 +101,12 @@ public class MachineWorkLogService {
         return PageResult.of(result);
     }
 
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void save(BizMachineWorkLog workLog) {
-        // 仅IN_FIELD的机械可记录
-        BizMachineLedger ledger = ledgerMapper.selectById(workLog.getMachineId());
-        if (ledger == null) throw new BusinessException("机械不存在");
-        if (!"IN_FIELD".equals(ledger.getStatus())) throw new BusinessException("仅在场机械可记录工作日志");
-        // P2 修复（2026-08-12，批次二 MAC-23）：台班/工作量非负校验，
-        // 负值会经结算汇总扣减合同累计结算
-        validateQuantities(workLog.getShiftCount(), workLog.getWorkQuantity());
-        // P2 修复（MAC-22）：结算状态由结算链路维护，防创建时伪造 SETTLED 绕过退场守卫
-        workLog.setSettlementStatus(null);
+        validateBinding(workLog);
+        workLog.setId(null);
+        workLog.setTenantId(com.zwinsight.common.config.SecurityContextHolder.getTenantId());
+        workLog.setSettlementStatus("UNSETTLED");
         workLog.setStatus("DRAFT");
         workLogMapper.insert(workLog);
     }
@@ -81,8 +119,14 @@ public class MachineWorkLogService {
         }
     }
 
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void update(BizMachineWorkLog workLog) {
-        BizMachineWorkLog existing = workLogMapper.selectById(workLog.getId());
+        BizMachineWorkLog existing = editable(workLog.getId());
+        workLog.setProjectId(existing.getProjectId());
+        workLog.setMachineId(existing.getMachineId());
+        workLog.setTenantId(existing.getTenantId());
+        workLog.setStatus("DRAFT");
+        validateBinding(workLog);
         if (existing == null) throw new BusinessException("工作日志不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
         // B4 修复（2026-08-11）：结算审批后 status 仍为 DRAFT 但 settlementStatus=SETTLED，
@@ -90,12 +134,13 @@ public class MachineWorkLogService {
         if ("SETTLED".equals(existing.getSettlementStatus())) throw new BusinessException("已结算的工作日志不可编辑");
         // P2 修复（2026-08-12，MAC-22/23）：结算状态置 null 防伪造；台班/工作量非负校验
         validateQuantities(workLog.getShiftCount(), workLog.getWorkQuantity());
-        workLog.setSettlementStatus(null);
+        workLog.setSettlementStatus("UNSETTLED");
         workLogMapper.updateById(workLog);
     }
 
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        BizMachineWorkLog existing = workLogMapper.selectById(id);
+        BizMachineWorkLog existing = editable(id);
         if (existing == null) throw new BusinessException("工作日志不存在");
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) throw new BusinessException("仅草稿状态可删除");
         // B4 修复：同上，已结算日志不可删除

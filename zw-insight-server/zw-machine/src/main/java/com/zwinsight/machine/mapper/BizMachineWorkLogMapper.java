@@ -15,6 +15,16 @@ import java.util.List;
 })
 public interface BizMachineWorkLogMapper extends BaseMapper<BizMachineWorkLog> {
 
+    @org.apache.ibatis.annotations.Select("SELECT * FROM biz_machine_work_log WHERE id = #{id} "
+            + "AND tenant_id = #{tenantId} AND deleted = 0 FOR UPDATE")
+    BizMachineWorkLog lockById(@Param("id") Long id, @Param("tenantId") Long tenantId);
+
+    @org.apache.ibatis.annotations.Select("SELECT COUNT(*) FROM biz_machine_work_settlement_detail d "
+            + "JOIN biz_machine_work_settlement s ON s.id = d.settlement_id AND s.tenant_id = d.tenant_id "
+            + "WHERE d.tenant_id = #{tenantId} AND s.deleted = 0 AND s.status IN (0,1,2) "
+            + "AND JSON_CONTAINS(d.work_log_ids, CAST(#{id} AS JSON), '$')")
+    int countOccupied(@Param("id") Long id, @Param("tenantId") Long tenantId);
+
     /**
      * 批量更新工作日志的结算状态
      *

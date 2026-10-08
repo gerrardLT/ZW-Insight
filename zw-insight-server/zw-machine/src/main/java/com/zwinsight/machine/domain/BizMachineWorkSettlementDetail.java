@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.zwinsight.machine.mapper.LongListTypeHandler;
 import lombok.Data;
 
 import java.io.Serial;
@@ -33,8 +33,11 @@ public class BizMachineWorkSettlementDetail implements Serializable {
     /** 机械台账ID */
     private Long ledgerId;
 
+    /** 机械合同ID（回写合同累计结算的依据） */
+    private Long contractId;
+
     /** 关联工作日志ID列表（JSON） */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = LongListTypeHandler.class)
     private List<Long> workLogIds;
 
     /** 台班数 */
@@ -46,10 +49,13 @@ public class BizMachineWorkSettlementDetail implements Serializable {
     /** 单价 */
     private BigDecimal unitPrice;
 
+    /** 计价数量（台班数/月数/工作量，小计 = 单价 × 计价数量） */
+    private BigDecimal billingQuantity;
+
     /** 小计金额 */
     private BigDecimal subtotal;
 
-    /** 计价方式：SHIFT-台班计价, VOLUME-工作量计价 */
+    /** 计价方式：SHIFT-台班计价, MONTHLY-月租/包月, VOLUME-工作量计价 */
     private String pricingType;
 
     /** 租户ID */

@@ -40,6 +40,12 @@ public class ApprovalController {
     /**
      * 办理（通过）
      */
+    @PostMapping("/{taskId}/claim")
+    public R<Void> claim(@PathVariable String taskId) {
+        approvalService.claim(taskId);
+        return R.ok();
+    }
+
     @PostMapping("/complete")
     public R<Void> complete(@RequestBody TaskCompleteRequest request) {
         approvalService.complete(request.getTaskId(), request.getComment(), request.getVariables());
