@@ -380,7 +380,9 @@ public class ArchiveService {
         List<BizEntryApply> entryApplies = user.getUsername() == null ? List.of()
                 : entryApplyMapper.selectList(
                 new LambdaQueryWrapper<BizEntryApply>()
-                        .eq(BizEntryApply::getUsername, user.getUsername()));
+                        .eq(BizEntryApply::getUsername, user.getUsername())
+                        // 只归入已批准的申请：草稿或被驳回的申请里填了同名账号，不应出现在现有员工的档案里
+                        .eq(BizEntryApply::getStatus, "APPROVED"));
         archive.put("entryApplies", entryApplies);
 
         // 转正申请
