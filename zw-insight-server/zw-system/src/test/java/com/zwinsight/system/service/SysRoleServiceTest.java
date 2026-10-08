@@ -117,9 +117,20 @@ class SysRoleServiceTest {
                 .hasMessageContaining("角色不存在");
     }
 
+    private SysRole role(Long id, String code) {
+        SysRole r = new SysRole();
+        r.setId(id);
+        r.setRoleCode(code);
+        r.setRoleName("角色" + id);
+        return r;
+    }
+
     @Test
-    @DisplayName("删除角色：同时删除角色菜单关联")
+    @DisplayName("删除角色：无用户引用时删除，同时删除角色菜单关联")
     void testDelete() {
+        when(roleMapper.selectById(1L)).thenReturn(role(1L, "CUSTOM"));
+        when(userRoleMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+
         roleService.delete(1L);
 
         verify(roleMapper).deleteById(1L);
@@ -127,8 +138,90 @@ class SysRoleServiceTest {
     }
 
     @Test
+    @DisplayName("删除角色：被用户引用阻断；内置管理员角色不可删；不存在抛异常")
+    void testDelete_guards() {
+        when(roleMapper.selectById(2L)).thenReturn(role(2L, "CUSTOM"));
+        when(userRoleMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(4L);
+        assertThatThrownBy(() -> roleService.delete(2L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("下存在 4 名用户");
+
+        when(roleMapper.selectById(3L)).thenReturn(role(3L, "SUPER_ADMIN"));
+        assertThatThrownBy(() -> roleService.delete(3L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("内置管理员角色");
+
+        when(roleMapper.selectById(404L)).thenReturn(null);
+        assertThatThrownBy(() -> roleService.delete(404L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("角色不存在");
+
+        verify(roleMapper, never()).deleteById(anyLong());
+        verify(roleMenuMapper, never()).delete(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    @DisplayName("更新角色：白名单拷贝，请求体 tenantId/dataScope 不入库；内置管理员编码受保护；非法状态拒绝")
+    void testUpdate_whitelistAndProtected() {
+        SysRole existing = role(5L, "CUSTOM");
+        existing.setDataScope("SELF");
+        existing.setTenantId(1L);
+        when(roleMapper.selectById(5L)).thenReturn(existing);
+
+        SysRole body = new SysRole();
+        body.setId(5L);
+        body.setRoleName("新名称");
+        body.setDataScope("ALL");
+        body.setTenantId(99L);
+        roleService.update(body);
+
+        assertThat(existing.getRoleName()).isEqualTo("新名称");
+        assertThat(existing.getDataScope()).isEqualTo("SELF");
+        assertThat(existing.getTenantId()).isEqualTo(1L);
+        verify(roleMapper).updateById(existing);
+
+        SysRole toAdmin = new SysRole();
+        toAdmin.setId(5L);
+        toAdmin.setRoleCode("SUPER_ADMIN");
+        assertThatThrownBy(() -> roleService.update(toAdmin))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("内置管理员角色编码");
+
+        SysRole badStatus = new SysRole();
+        badStatus.setId(5L);
+        badStatus.setStatus(5);
+        assertThatThrownBy(() -> roleService.update(badStatus))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("状态值无效");
+
+        when(roleMapper.selectById(6L)).thenReturn(role(6L, "ADMIN"));
+        SysRole disable = new SysRole();
+        disable.setId(6L);
+        disable.setStatus(0);
+        assertThatThrownBy(() -> roleService.update(disable))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("不能停用内置管理员角色");
+    }
+
+    @Test
+    @DisplayName("跨租户角色：更新 / 删除 / 分配菜单一律按不存在处理")
+    void testCrossTenantRoleTreatedAsMissing() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+            SysRole other = role(8L, "CUSTOM");
+            other.setTenantId(2L);
+            when(roleMapper.selectById(8L)).thenReturn(other);
+
+            SysRole body = new SysRole();
+            body.setId(8L);
+            assertThatThrownBy(() -> roleService.update(body)).hasMessageContaining("角色不存在");
+            assertThatThrownBy(() -> roleService.delete(8L)).hasMessageContaining("角色不存在");
+            assertThatThrownBy(() -> roleService.assignMenus(8L, List.of(1L))).hasMessageContaining("角色不存在");
+
+            verify(roleMenuMapper, never()).delete(any(LambdaQueryWrapper.class));
+            verify(roleMenuMapper, never()).insert(any(SysRoleMenu.class));
+        }
+    }
+
+    @Test
     @DisplayName("分配菜单权限：先删后插")
     void testAssignMenus() {
+        when(roleMapper.selectById(1L)).thenReturn(role(1L, "CUSTOM"));
+
         roleService.assignMenus(1L, List.of(100L, 200L));
 
         verify(roleMenuMapper).delete(any(LambdaQueryWrapper.class));
@@ -138,6 +231,8 @@ class SysRoleServiceTest {
     @Test
     @DisplayName("分配菜单权限：空列表仅删除不插入")
     void testAssignMenus_emptyList() {
+        when(roleMapper.selectById(1L)).thenReturn(role(1L, "CUSTOM"));
+
         roleService.assignMenus(1L, List.of());
 
         verify(roleMenuMapper).delete(any(LambdaQueryWrapper.class));

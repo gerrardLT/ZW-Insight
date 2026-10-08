@@ -77,18 +77,62 @@ public class SysRoleService {
      * 更新
      */
     public void update(SysRole role) {
-        SysRole existing = roleMapper.selectById(role.getId());
-        if (existing == null) {
+        SysRole existing = requireOwned(role.getId());
+        // 白名单拷贝：tenantId/deleted/version 不接受请求体；dataScope 只能走 updateDataScope（有管理员校验）
+        if (role.getRoleName() != null) existing.setRoleName(role.getRoleName());
+        if (role.getRoleCode() != null && !role.getRoleCode().equals(existing.getRoleCode())) {
+            // 角色编码是 M17 候选组与权限判断的键，内置管理员角色编码不得被改写，也不得改成管理员编码
+            if (isProtectedRole(existing) || isProtectedCode(role.getRoleCode())) {
+                throw new BusinessException("不能修改或占用内置管理员角色编码");
+            }
+            existing.setRoleCode(role.getRoleCode());
+        }
+        if (role.getRemark() != null) existing.setRemark(role.getRemark());
+        if (role.getStatus() != null) {
+            if (role.getStatus() != 0 && role.getStatus() != 1) {
+                throw new BusinessException("状态值无效，仅支持 0（停用）或 1（启用）");
+            }
+            if (role.getStatus() == 0 && isProtectedRole(existing)) {
+                throw new BusinessException("不能停用内置管理员角色");
+            }
+            existing.setStatus(role.getStatus());
+        }
+        roleMapper.updateById(existing);
+    }
+
+    private static boolean isProtectedCode(String code) {
+        return "SUPER_ADMIN".equals(code) || "ADMIN".equals(code);
+    }
+
+    private static boolean isProtectedRole(SysRole role) {
+        return isProtectedCode(role.getRoleCode());
+    }
+
+    /** 角色属于其他租户时按不存在处理（sys_* 免拦截器过滤）；全局角色（tenantId 为空）放行 */
+    private SysRole requireOwned(Long id) {
+        SysRole role = id == null ? null : roleMapper.selectById(id);
+        Long tenantId = SecurityContextHolder.getTenantId();
+        if (role == null || (tenantId != null && role.getTenantId() != null && !tenantId.equals(role.getTenantId()))) {
             throw new BusinessException("角色不存在");
         }
-        roleMapper.updateById(role);
+        return role;
     }
 
     /**
      * 删除
+     * <p>被用户引用的角色不得删除（否则这些用户静默失去权限，M17 候选组也会失效）；
+     * 内置管理员角色不可删。</p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
+        SysRole role = requireOwned(id);
+        if (isProtectedRole(role)) {
+            throw new BusinessException("不能删除内置管理员角色");
+        }
+        long users = userRoleMapper.selectCount(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, id));
+        if (users > 0) {
+            throw new BusinessException("角色「" + role.getRoleName() + "」下存在 " + users + " 名用户，无法删除");
+        }
         roleMapper.deleteById(id);
         // 同时删除角色菜单关联
         roleMenuMapper.delete(
@@ -100,6 +144,7 @@ public class SysRoleService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void assignMenus(Long roleId, List<Long> menuIds) {
+        requireOwned(roleId);
         // 先删除原有关联
         roleMenuMapper.delete(
                 new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, roleId));
@@ -142,11 +187,8 @@ public class SysRoleService {
                     + "，允许值为: ALL, DEPT_AND_CHILDREN, DEPT, PROJECT, SELF");
         }
 
-        // 校验角色存在
-        SysRole role = roleMapper.selectById(roleId);
-        if (role == null) {
-            throw new BusinessException("角色不存在");
-        }
+        // 校验角色存在且属于当前租户
+        SysRole role = requireOwned(roleId);
 
         // 更新数据范围
         role.setDataScope(dataScope.trim().toUpperCase());
