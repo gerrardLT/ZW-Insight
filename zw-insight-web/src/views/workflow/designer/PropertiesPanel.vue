@@ -120,14 +120,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, shallowRef, reactive, computed, onMounted } from 'vue'
 import { getRoleList, getUserPage } from '@/api/system'
 
 const props = defineProps<{
   modeler: any
 }>()
 
-const selected = ref<any>(null)
+// bpmn-js 图元（含不可配置的 labels 属性）不能被 Vue 深度代理，否则 updateProperties 时抛 Proxy 约束错误
+const selected = shallowRef<any>(null)
 const form = reactive({
   name: '',
   assignee: '',

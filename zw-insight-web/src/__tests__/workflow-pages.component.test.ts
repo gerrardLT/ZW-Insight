@@ -390,6 +390,24 @@ describe('workflow/designer/PropertiesPanel.vue 属性面板', () => {
     expect(mockUpdateProperties).toHaveBeenCalledWith(el, { 'flowable:assignee': undefined })
   })
 
+  it('回归：传给 updateProperties 的是原始图元而非 Vue 代理（深代理会触发 labels 不可配置属性的 Proxy 约束报错）', async () => {
+    const el = userTaskEl({ name: '审批' })
+    const fakeModeler = {
+      on: vi.fn(),
+      get: (svc: string) =>
+        svc === 'selection' ? { get: () => [el] }
+          : svc === 'modeling' ? { updateProperties: mockUpdateProperties }
+            : undefined,
+    }
+    wrapper = mount(PropertiesPanel, { props: { modeler: fakeModeler }, global: { plugins: [ElementPlus] } })
+    await flushPromises()
+    mockUpdateProperties.mockClear()
+    const inputs = wrapper.findAll('input')
+    await inputs[1].setValue('zhangwei')
+    await inputs[1].trigger('change')
+    expect(mockUpdateProperties.mock.calls[0][0]).toBe(el)
+  })
+
   it('未选中时显示说明卡：processKey 语义 + ${initiator} 示例', async () => {
     const fakeModeler = { on: vi.fn(), get: (svc: string) => (svc === 'selection' ? { get: () => [] } : undefined) }
     wrapper = mount(PropertiesPanel, { props: { modeler: fakeModeler }, global: { plugins: [ElementPlus] } })
