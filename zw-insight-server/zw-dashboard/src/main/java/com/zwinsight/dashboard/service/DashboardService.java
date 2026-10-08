@@ -687,7 +687,10 @@ public class DashboardService {
         List<BizPaymentReceived> allReceived = paymentReceivedMapper.selectList(
                 new LambdaQueryWrapper<BizPaymentReceived>()
                         .eq(BizPaymentReceived::getStatus, "APPROVED")
-                        .isNotNull(BizPaymentReceived::getReceiveDate));
+                        .isNotNull(BizPaymentReceived::getReceiveDate)
+                        // 年份过滤下推到数据库（原实现全表读入再在 Java 里按年过滤），结果集与下方 Java 过滤等价
+                        .ge(BizPaymentReceived::getReceiveDate, LocalDate.of(targetYear, 1, 1))
+                        .le(BizPaymentReceived::getReceiveDate, LocalDate.of(targetYear, 12, 31)));
         Map<Integer, BigDecimal> monthlyIncome = new HashMap<>();
         for (BizPaymentReceived received : allReceived) {
             if (received.getReceiveDate().getYear() == targetYear) {
@@ -704,7 +707,13 @@ public class DashboardService {
         Map<Long, BigDecimal> matchedByApply = matchedRaw != null ? matchedRaw : java.util.Collections.emptyMap();
         List<BizPaymentApply> allPayments = paymentApplyMapper.selectList(
                 new LambdaQueryWrapper<BizPaymentApply>()
-                        .eq(BizPaymentApply::getStatus, "APPROVED"));
+                        .eq(BizPaymentApply::getStatus, "APPROVED")
+                        // 与下方 Java 逻辑等价：有 pay_date 取 pay_date，否则取 payment_date，落在目标年份
+                        .and(w -> w.between(BizPaymentApply::getPayDate,
+                                        LocalDate.of(targetYear, 1, 1), LocalDate.of(targetYear, 12, 31))
+                                .or(o -> o.isNull(BizPaymentApply::getPayDate)
+                                        .between(BizPaymentApply::getPaymentDate,
+                                                LocalDate.of(targetYear, 1, 1), LocalDate.of(targetYear, 12, 31)))));
         Map<Integer, BigDecimal> monthlyExpense = new HashMap<>();
         for (BizPaymentApply payment : allPayments) {
             LocalDate expenseDate = payment.getPayDate() != null ? payment.getPayDate() : payment.getPaymentDate();
