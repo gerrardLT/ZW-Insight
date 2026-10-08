@@ -14,6 +14,11 @@ import { nextTick } from 'vue'
 import Guide from '@/views/help/guide.vue'
 import router from '@/router'
 
+// router 守卫的 NProgress.done() 带延迟定时器，会在 happy-dom 销毁后触发 "document is not defined"
+vi.mock('nprogress', () => ({
+  default: { start: vi.fn(), done: vi.fn(), remove: vi.fn(), configure: vi.fn(), set: vi.fn(), inc: vi.fn() },
+}))
+
 vi.mock('mermaid', () => ({
   default: {
     initialize: vi.fn(),
