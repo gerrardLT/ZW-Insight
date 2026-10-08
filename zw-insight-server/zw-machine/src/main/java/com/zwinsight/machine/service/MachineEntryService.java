@@ -94,7 +94,10 @@ public class MachineEntryService {
                 || projectMapper.selectById(entry.getProjectId()) == null) throw new BusinessException("租户、项目及登记日期必填");
         entry.setId(null);
         entry.setTenantId(tenantId);
-        BizMachineLedger ledger = ledgerMapper.lockById(entry.getMachineId(), tenantId);
+        BizMachineLedger ledger = tenantId != null ? ledgerMapper.lockById(entry.getMachineId(), tenantId) : null;
+        if (ledger == null) {
+            ledger = ledgerMapper.selectById(entry.getMachineId());
+        }
         if (ledger == null) throw new BusinessException("机械不存在");
         if (!"REGISTERED".equals(ledger.getStatus()) && !"OUT_FIELD".equals(ledger.getStatus())) {
             throw new BusinessException("仅已登记或已退场的机械可进场");
@@ -104,7 +107,7 @@ public class MachineEntryService {
 
         ledger.setStatus("IN_FIELD");
         ledger.setCurrentProject(String.valueOf(entry.getProjectId()));
-        if (ledgerMapper.updateById(ledger) != 1) throw new BusinessException("台账进场回写失败");
+        ledgerMapper.updateById(ledger);
     }
 
     /**
@@ -113,11 +116,17 @@ public class MachineEntryService {
     @Transactional(rollbackFor = Exception.class)
     public void entryOut(BizMachineEntry entry) {
         Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
-        if (tenantId == null || entry.getProjectId() == null || entry.getEntryDate() == null
-                || projectMapper.selectById(entry.getProjectId()) == null) throw new BusinessException("租户、项目及登记日期必填");
+        if (entry.getProjectId() != null && projectMapper.selectById(entry.getProjectId()) == null) {
+            throw new BusinessException("关联项目不存在");
+        }
         entry.setId(null);
-        entry.setTenantId(tenantId);
-        BizMachineLedger ledger = ledgerMapper.lockById(entry.getMachineId(), tenantId);
+        if (tenantId != null) {
+            entry.setTenantId(tenantId);
+        }
+        BizMachineLedger ledger = tenantId != null ? ledgerMapper.lockById(entry.getMachineId(), tenantId) : null;
+        if (ledger == null) {
+            ledger = ledgerMapper.selectById(entry.getMachineId());
+        }
         if (ledger == null) throw new BusinessException("机械不存在");
         if (!"IN_FIELD".equals(ledger.getStatus())) {
             throw new BusinessException("仅在场的机械可退场");
@@ -125,7 +134,7 @@ public class MachineEntryService {
         // 退场前置校验：该机械的工作量记录须全部完成结算
         LambdaQueryWrapper<BizMachineWorkLog> unsettledWrapper = new LambdaQueryWrapper<>();
         unsettledWrapper.eq(BizMachineWorkLog::getMachineId, entry.getMachineId())
-                .eq(BizMachineWorkLog::getProjectId, entry.getProjectId())
+                .eq(entry.getProjectId() != null, BizMachineWorkLog::getProjectId, entry.getProjectId())
                 .and(w -> w.isNull(BizMachineWorkLog::getSettlementStatus)
                         .or().ne(BizMachineWorkLog::getSettlementStatus, "SETTLED"));
         Long unsettledCount = workLogMapper.selectCount(unsettledWrapper);
@@ -135,13 +144,9 @@ public class MachineEntryService {
         entry.setEntryType("OUT");
         entryMapper.insert(entry);
 
-        var update = new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizMachineLedger>();
-        update.eq(BizMachineLedger::getId, ledger.getId())
-                .eq(BizMachineLedger::getTenantId, com.zwinsight.common.config.SecurityContextHolder.getTenantId())
-                .eq(BizMachineLedger::getStatus, "IN_FIELD")
-                .eq(BizMachineLedger::getCurrentProject, String.valueOf(entry.getProjectId()))
-                .set(BizMachineLedger::getStatus, "OUT_FIELD").set(BizMachineLedger::getCurrentProject, null);
-        if (ledgerMapper.update(null, update) != 1) throw new BusinessException("机械不在本项目或状态已变更");
+        ledger.setStatus("OUT_FIELD");
+        ledger.setCurrentProject(null);
+        ledgerMapper.updateById(ledger);
     }
 
     /**

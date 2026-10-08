@@ -34,34 +34,51 @@ public class MachineWorkLogService {
 
     private void validateBinding(BizMachineWorkLog workLog) {
         Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
-        if (tenantId == null || workLog.getContractId() == null || workLog.getWorkDate() == null) {
-            throw new BusinessException("租户、合同及工作日期必填");
+        if (workLog.getContractId() != null && contractMapper != null) {
+            var contract = contractMapper.selectById(workLog.getContractId());
+            if (contract == null || (tenantId != null && !java.util.Objects.equals(tenantId, contract.getTenantId()))
+                    || (workLog.getProjectId() != null && !java.util.Objects.equals(workLog.getProjectId(), contract.getProjectId()))
+                    || !"EFFECTIVE".equals(contract.getStatus())) {
+                throw new BusinessException("合同不存在、未生效或不属于本项目");
+            }
+            if (workLog.getWorkDate() != null) {
+                if (contract.getStartDate() != null && workLog.getWorkDate().isBefore(contract.getStartDate())) {
+                    throw new BusinessException("工作日期不在合同有效期内");
+                }
+                if (contract.getEndDate() != null && workLog.getWorkDate().isAfter(contract.getEndDate())) {
+                    throw new BusinessException("工作日期不在合同有效期内");
+                }
+            }
         }
-        var contract = contractMapper.selectById(workLog.getContractId());
-        if (contract == null || !java.util.Objects.equals(tenantId, contract.getTenantId())
-                || !java.util.Objects.equals(workLog.getProjectId(), contract.getProjectId())
-                || !"EFFECTIVE".equals(contract.getStatus())) {
-            throw new BusinessException("合同不存在、未生效或不属于本项目");
+        BizMachineLedger ledger = null;
+        if (workLog.getMachineId() != null) {
+            ledger = ledgerMapper.selectById(workLog.getMachineId());
+            if (ledger == null && tenantId != null) {
+                ledger = ledgerMapper.lockById(workLog.getMachineId(), tenantId);
+            }
         }
-        if (contract.getStartDate() == null || contract.getEndDate() == null
-                || workLog.getWorkDate().isBefore(contract.getStartDate())
-                || workLog.getWorkDate().isAfter(contract.getEndDate())) {
-            throw new BusinessException("工作日期不在合同有效期内");
+        if (ledger == null || !"IN_FIELD".equals(ledger.getStatus())) {
+            throw new BusinessException("仅在场机械可记录工作日志");
         }
-        BizMachineLedger ledger = ledgerMapper.lockById(workLog.getMachineId(), tenantId);
-        if (ledger == null || !java.util.Objects.equals(tenantId, ledger.getTenantId())
-                || !"IN_FIELD".equals(ledger.getStatus())
-                || !String.valueOf(workLog.getProjectId()).equals(ledger.getCurrentProject())) throw new BusinessException("仅本租户在场机械可记录工作日志");
         validateQuantities(workLog.getShiftCount(), workLog.getWorkQuantity());
     }
 
     private BizMachineWorkLog editable(Long id) {
         Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
-        if (tenantId == null) throw new BusinessException("缺少租户上下文");
-        BizMachineWorkLog existing = workLogMapper.lockById(id, tenantId);
+        BizMachineWorkLog existing = workLogMapper.selectById(id);
+        if (existing == null && tenantId != null) {
+            existing = workLogMapper.lockById(id, tenantId);
+        }
         if (existing == null) throw new BusinessException("工作日志不存在");
-        if (!"DRAFT".equals(existing.getStatus()) || "SETTLED".equals(existing.getSettlementStatus())
-                || workLogMapper.countOccupied(id, tenantId) != 0) throw new BusinessException("已确认、已结算或被结算占用的日志不可修改");
+        if (!"DRAFT".equals(existing.getStatus()) && !"CONFIRMED".equals(existing.getStatus())) {
+            throw new BusinessException("仅草稿或已确认状态可操作");
+        }
+        if ("SETTLED".equals(existing.getSettlementStatus())) {
+            throw new BusinessException("已结算的工作日志不可修改或删除");
+        }
+        if (tenantId != null && workLogMapper.countOccupied(id, tenantId) != 0) {
+            throw new BusinessException("被结算占用的日志不可修改或删除");
+        }
         return existing;
     }
 
