@@ -8,6 +8,13 @@ import com.zwinsight.workflow.mapper.WfProcessDefMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.EndEvent;
+import org.flowable.bpmn.model.FlowElement;
+import org.flowable.bpmn.model.FlowNode;
+import org.flowable.bpmn.model.Gateway;
+import org.flowable.bpmn.model.GraphicInfo;
+import org.flowable.bpmn.model.SequenceFlow;
+import org.flowable.bpmn.model.StartEvent;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
@@ -16,9 +23,20 @@ import org.flowable.image.impl.DefaultProcessDiagramGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.imageio.ImageIO;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -137,20 +155,177 @@ public class ProcessDefinitionService {
         }
 
         BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinitionId);
-        ProcessDiagramGenerator diagramGenerator = new DefaultProcessDiagramGenerator();
+        ensureGraphicalInformation(bpmnModel);
 
-        return diagramGenerator.generateDiagram(
-                bpmnModel,
-                "png",
-                Collections.emptyList(),
-                Collections.emptyList(),
-                "宋体",
-                "宋体",
-                "宋体",
-                null,
-                1.0,
-                true
-        );
+        try {
+            ProcessDiagramGenerator diagramGenerator = new DefaultProcessDiagramGenerator();
+            return diagramGenerator.generateDiagram(
+                    bpmnModel,
+                    "png",
+                    Collections.emptyList(),
+                    Collections.emptyList(),
+                    "Arial",
+                    "Arial",
+                    "Arial",
+                    null,
+                    1.0,
+                    true
+            );
+        } catch (Exception ex) {
+            log.warn("Flowable生成流程图异常，启用轻量绘图器兜底: {}", ex.getMessage());
+            return generateFallbackDiagram(bpmnModel);
+        }
+    }
+
+    /**
+     * 为缺少 BPMNDI 坐标信息的模型自动补全水平流向坐标
+     */
+    private void ensureGraphicalInformation(BpmnModel bpmnModel) {
+        if (bpmnModel == null) return;
+        Map<String, GraphicInfo> locationMap = bpmnModel.getLocationMap();
+        if (locationMap != null && !locationMap.isEmpty()) {
+            return;
+        }
+
+        org.flowable.bpmn.model.Process process = bpmnModel.getMainProcess();
+        if (process == null) return;
+
+        double currentX = 50.0;
+        double currentY = 100.0;
+        double spacing = 80.0;
+
+        List<FlowNode> nodes = new ArrayList<>();
+        List<SequenceFlow> flows = new ArrayList<>();
+        for (FlowElement el : process.getFlowElements()) {
+            if (el instanceof FlowNode node) {
+                nodes.add(node);
+            } else if (el instanceof SequenceFlow flow) {
+                flows.add(flow);
+            }
+        }
+
+        nodes.sort((a, b) -> {
+            if (a instanceof StartEvent) return -1;
+            if (b instanceof StartEvent) return 1;
+            if (a instanceof EndEvent) return 1;
+            if (b instanceof EndEvent) return -1;
+            return a.getId().compareTo(b.getId());
+        });
+
+        Map<String, GraphicInfo> nodeBounds = new HashMap<>();
+        for (FlowNode node : nodes) {
+            double width = (node instanceof StartEvent || node instanceof EndEvent) ? 36.0 : (node instanceof Gateway ? 50.0 : 100.0);
+            double height = (node instanceof StartEvent || node instanceof EndEvent) ? 36.0 : (node instanceof Gateway ? 50.0 : 80.0);
+            double yOffset = currentY - (height / 2.0);
+
+            GraphicInfo gi = new GraphicInfo(currentX, yOffset, height, width);
+            gi.setElement(node);
+            bpmnModel.addGraphicInfo(node.getId(), gi);
+            nodeBounds.put(node.getId(), gi);
+
+            currentX += width + spacing;
+        }
+
+        for (SequenceFlow flow : flows) {
+            GraphicInfo src = nodeBounds.get(flow.getSourceRef());
+            GraphicInfo tgt = nodeBounds.get(flow.getTargetRef());
+            if (src != null && tgt != null) {
+                List<GraphicInfo> waypoints = new ArrayList<>();
+                waypoints.add(new GraphicInfo(src.getX() + src.getWidth(), src.getY() + src.getHeight() / 2.0));
+                waypoints.add(new GraphicInfo(tgt.getX(), tgt.getY() + tgt.getHeight() / 2.0));
+                bpmnModel.addFlowGraphicInfoList(flow.getId(), waypoints);
+            }
+        }
+    }
+
+    /**
+     * 当图形引擎不可用时生成简洁优雅的轻量流程图 PNG
+     */
+    private InputStream generateFallbackDiagram(BpmnModel bpmnModel) {
+        try {
+            org.flowable.bpmn.model.Process process = bpmnModel != null ? bpmnModel.getMainProcess() : null;
+            List<String> nodeNames = new ArrayList<>();
+            if (process != null) {
+                for (FlowElement el : process.getFlowElements()) {
+                    if (el instanceof FlowNode node) {
+                        String name = node.getName();
+                        if (name == null || name.isBlank()) {
+                            name = (node instanceof StartEvent) ? "开始" : ((node instanceof EndEvent) ? "结束" : node.getId());
+                        }
+                        nodeNames.add(name);
+                    }
+                }
+            }
+            if (nodeNames.isEmpty()) {
+                nodeNames.add("开始");
+                nodeNames.add("审批");
+                nodeNames.add("结束");
+            }
+
+            int nodeWidth = 120;
+            int nodeHeight = 50;
+            int gap = 50;
+            int totalWidth = Math.max(600, 60 + nodeNames.size() * (nodeWidth + gap));
+            int totalHeight = 160;
+
+            BufferedImage image = new BufferedImage(totalWidth, totalHeight, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = image.createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            g.setColor(new Color(245, 247, 250));
+            g.fillRect(0, 0, totalWidth, totalHeight);
+
+            int x = 40;
+            int y = 55;
+            Font font = new Font(Font.SANS_SERIF, Font.PLAIN, 13);
+            g.setFont(font);
+
+            for (int i = 0; i < nodeNames.size(); i++) {
+                String name = nodeNames.get(i);
+                boolean isEdgeNode = (i == 0 || i == nodeNames.size() - 1);
+
+                g.setColor(isEdgeNode ? new Color(235, 245, 255) : Color.WHITE);
+                g.fillRoundRect(x, y, nodeWidth, nodeHeight, 10, 10);
+                g.setColor(isEdgeNode ? new Color(64, 158, 255) : new Color(200, 205, 215));
+                g.setStroke(new BasicStroke(1.5f));
+                g.drawRoundRect(x, y, nodeWidth, nodeHeight, 10, 10);
+
+                g.setColor(new Color(48, 49, 51));
+                FontMetrics fm = g.getFontMetrics();
+                int textX = x + (nodeWidth - fm.stringWidth(name)) / 2;
+                int textY = y + (nodeHeight + fm.getAscent() - fm.getDescent()) / 2;
+                g.drawString(name, Math.max(x + 5, textX), textY);
+
+                if (i < nodeNames.size() - 1) {
+                    int lineStartX = x + nodeWidth;
+                    int lineEndX = lineStartX + gap;
+                    int lineY = y + nodeHeight / 2;
+                    g.setColor(new Color(160, 170, 185));
+                    g.drawLine(lineStartX, lineY, lineEndX, lineY);
+                    g.fillPolygon(
+                            new int[]{lineEndX, lineEndX - 8, lineEndX - 8},
+                            new int[]{lineY, lineY - 5, lineY + 5},
+                            3
+                    );
+                }
+                x += nodeWidth + gap;
+            }
+            g.dispose();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", baos);
+            return new ByteArrayInputStream(baos.toByteArray());
+        } catch (Exception e) {
+            log.error("兜底流程图生成失败", e);
+            byte[] emptyPng = new byte[]{
+                    (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+                    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+                    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+                    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, (byte) 0xC4, (byte) 0x89
+            };
+            return new ByteArrayInputStream(emptyPng);
+        }
     }
 
     /**
