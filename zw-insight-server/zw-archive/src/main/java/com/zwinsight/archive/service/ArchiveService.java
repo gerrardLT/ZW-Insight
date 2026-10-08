@@ -96,6 +96,7 @@ public class ArchiveService {
     private final BizBudgetMapper budgetMapper;
     private final BizBudgetDetailMapper budgetDetailMapper;
     private final BdSupplierMapper supplierMapper;
+    private final com.zwinsight.security.mapper.SysUserMapper userMapper;
     private final BizEntryApplyMapper entryApplyMapper;
     private final BizRegularApplyMapper regularApplyMapper;
     private final BizResignApplyMapper resignApplyMapper;
@@ -367,10 +368,19 @@ public class ArchiveService {
     public Map<String, Object> getPersonnelArchive(Long userId) {
         Map<String, Object> archive = new HashMap<>();
 
-        // 入职申请（通过createdBy关联用户）
-        List<BizEntryApply> entryApplies = entryApplyMapper.selectList(
+        // 员工必须存在且属于当前租户（sys_* 免拦截器过滤，跨租户 ID 枚举会读到别家员工档案）
+        com.zwinsight.security.domain.SysUser user = userMapper.selectById(userId);
+        Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        if (user == null || (tenantId != null && user.getTenantId() != null && !tenantId.equals(user.getTenantId()))) {
+            throw new com.zwinsight.common.exception.BusinessException("员工不存在");
+        }
+
+        // 入职申请按员工账号 username 关联：入职审批通过时即以申请的 username 建账号（全局唯一）。
+        // 原实现按 createdBy 关联，那是「经办人」而非入职员工，会把别人的入职申请归到经办人名下。
+        List<BizEntryApply> entryApplies = user.getUsername() == null ? List.of()
+                : entryApplyMapper.selectList(
                 new LambdaQueryWrapper<BizEntryApply>()
-                        .eq(BizEntryApply::getCreatedBy, userId));
+                        .eq(BizEntryApply::getUsername, user.getUsername()));
         archive.put("entryApplies", entryApplies);
 
         // 转正申请

@@ -354,6 +354,25 @@ class FileUploadServiceTest {
         }
 
         @Test
+        @DisplayName("跨租户文件按不存在处理：不删对象存储也不删元数据")
+        void delete_foreignTenantFile_treatedAsMissing() {
+            FileInfo foreign = new FileInfo();
+            foreign.setId(7L);
+            foreign.setTenantId(2L);
+            foreign.setFilePath("other/tenant.pdf");
+            when(fileInfoMapper.selectById(7L)).thenReturn(foreign);
+
+            try (var sc = org.mockito.Mockito.mockStatic(com.zwinsight.common.config.SecurityContextHolder.class)) {
+                sc.when(com.zwinsight.common.config.SecurityContextHolder::getTenantId).thenReturn(1L);
+                assertThatThrownBy(() -> fileService.delete(7L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("文件不存在");
+            }
+            verifyNoInteractions(minioService);
+            verify(fileInfoMapper, org.mockito.Mockito.never()).deleteById(any(java.io.Serializable.class));
+        }
+
+        @Test
         @DisplayName("删除不存在的文件时抛出异常")
         void delete_nonExistingFile_throwsException() {
             // Given

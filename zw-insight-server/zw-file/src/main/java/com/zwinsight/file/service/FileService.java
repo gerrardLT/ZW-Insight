@@ -111,7 +111,10 @@ public class FileService {
      */
     public void delete(Long id) {
         FileInfo fileInfo = fileInfoMapper.selectById(id);
-        if (fileInfo == null) {
+        Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        // 他租户的文件按不存在处理，防止凭文件 ID 越权删除对象存储里的别家文件
+        if (fileInfo == null || (tenantId != null && fileInfo.getTenantId() != null
+                && !tenantId.equals(fileInfo.getTenantId()))) {
             throw new BusinessException("文件不存在");
         }
 

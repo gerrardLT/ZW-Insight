@@ -104,6 +104,7 @@ class ArchiveServiceAggregateTest {
     @Mock private BizBudgetMapper budgetMapper;
     @Mock private BizBudgetDetailMapper budgetDetailMapper;
     @Mock private BdSupplierMapper supplierMapper;
+    @Mock private com.zwinsight.security.mapper.SysUserMapper userMapper;
     @Mock private BizEntryApplyMapper entryApplyMapper;
     @Mock private BizRegularApplyMapper regularApplyMapper;
     @Mock private BizResignApplyMapper resignApplyMapper;
@@ -305,6 +306,10 @@ class ArchiveServiceAggregateTest {
     @Test
     @DisplayName("人事档案：入职/转正/离职三列表聚合")
     void getPersonnelArchive_threeApplyLists() {
+        com.zwinsight.security.domain.SysUser user = new com.zwinsight.security.domain.SysUser();
+        user.setId(100L);
+        user.setUsername("zhangsan");
+        when(userMapper.selectById(100L)).thenReturn(user);
         when(entryApplyMapper.selectList(any())).thenReturn(List.of(new BizEntryApply()));
         when(regularApplyMapper.selectList(any())).thenReturn(List.of());
         when(resignApplyMapper.selectList(any())).thenReturn(List.of(new BizResignApply()));
@@ -314,6 +319,28 @@ class ArchiveServiceAggregateTest {
         assertThat((List<?>) archive.get("entryApplies")).hasSize(1);
         assertThat((List<?>) archive.get("regularApplies")).isEmpty();
         assertThat((List<?>) archive.get("resignApplies")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("人事档案：员工不存在或属于其他租户时拒绝，不读任何申请表")
+    void getPersonnelArchive_unknownOrForeignUserRejected() {
+        when(userMapper.selectById(404L)).thenReturn(null);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> archiveService.getPersonnelArchive(404L))
+                .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                .hasMessageContaining("员工不存在");
+
+        try (var sc = org.mockito.Mockito.mockStatic(com.zwinsight.common.config.SecurityContextHolder.class)) {
+            sc.when(com.zwinsight.common.config.SecurityContextHolder::getTenantId).thenReturn(1L);
+            com.zwinsight.security.domain.SysUser foreign = new com.zwinsight.security.domain.SysUser();
+            foreign.setId(200L);
+            foreign.setTenantId(2L);
+            foreign.setUsername("lisi");
+            when(userMapper.selectById(200L)).thenReturn(foreign);
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> archiveService.getPersonnelArchive(200L))
+                    .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                    .hasMessageContaining("员工不存在");
+        }
+        org.mockito.Mockito.verifyNoInteractions(entryApplyMapper, regularApplyMapper, resignApplyMapper);
     }
 
     @Test
