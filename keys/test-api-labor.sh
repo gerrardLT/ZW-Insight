@@ -229,6 +229,17 @@ test_contract_submit() {
   call POST "/api/v1/labor/contract/$CREATED_CONTRACT_ID/submit"
   assert_http 2 "POST /api/v1/labor/contract/{id}/submit 状态码"
   assert_body_code 200 "POST /api/v1/labor/contract/{id}/submit 业务码"
+
+  # P3-M6：提交走 labor_contract_approval 流程，进入 SUBMITTED 中间态（不再提交即生效）
+  call GET "/api/v1/labor/contract/$CREATED_CONTRACT_ID"
+  assert_jq '.data.status == "SUBMITTED"' "提交后合同状态为 SUBMITTED(jq)"
+  assert_jq '(.data.workflowInstanceId // "") != ""' "提交后合同含流程实例ID(jq)"
+
+  # 撤回流程回收运行态：驳回回调把合同退回 DRAFT，保证清理可删、不残留 ACT_RU_TASK
+  call POST "/api/v1/workflow/approval/withdraw-by-business?businessType=LABOR_CONTRACT&businessId=$CREATED_CONTRACT_ID"
+  assert_body_code 200 "撤回劳务合同审批流程"
+  call GET "/api/v1/labor/contract/$CREATED_CONTRACT_ID"
+  assert_jq '.data.status == "DRAFT"' "撤回后合同退回 DRAFT(jq)"
 }
 
 # ===========================================================================
