@@ -55,6 +55,15 @@ public class ApprovalService {
      */
     private static final Set<String> INTERNAL_VARIABLES = Set.of("businessType", "businessId", "initiator", "businessTitle");
 
+    /** 需要防自审的业务类型：发起人不得办理自己的单据 */
+    private static final Set<String> SELF_APPROVAL_GUARDED_TYPES = Set.of(
+            "MACHINE_CONTRACT", "machine_settlement", "PURCHASE_SETTLEMENT",
+            "PROJECT_CLOSE", "PROJECT_FILING", "PROJECT_TERMINATE",
+            "LABOR_CONTRACT", "LABOR_OUTPUT", "LABOR_SETTLEMENT", "LABOR_PAYROLL", "LABOR_REWARD_PUNISH");
+
+    /** 办理时客户端不得写入的流程协议变量，防止篡改 initiator/businessId 绕过防自审或回调定位 */
+    private static final Set<String> PROTECTED_VARIABLES = Set.of("businessType", "businessId", "initiator");
+
     /**
      * 发起流程
      *
@@ -116,9 +125,14 @@ public class ApprovalService {
             taskService.addComment(taskId, task.getProcessInstanceId(), comment);
         }
 
-        // 完成任务
+        // 完成任务：客户端变量剔除协议字段，防止改写 initiator/businessId 绕过防自审或让回调落到别的单据
+        Map<String, Object> safeVariables = null;
         if (variables != null && !variables.isEmpty()) {
-            taskService.complete(taskId, variables);
+            safeVariables = new HashMap<>(variables);
+            safeVariables.keySet().removeAll(PROTECTED_VARIABLES);
+        }
+        if (safeVariables != null && !safeVariables.isEmpty()) {
+            taskService.complete(taskId, safeVariables);
         } else {
             taskService.complete(taskId);
         }
@@ -302,6 +316,7 @@ public class ApprovalService {
             return false;
         }
         Task task = tasks.get(0);
+        assertSameTenant(task.getTenantId());
         Long userId = SecurityContextHolder.getUserId();
 
         // 仅发起人可撤回（防越权终止他人流程）
@@ -335,6 +350,7 @@ public class ApprovalService {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
         assertTaskAssignee(task, userId);
+        assertTransferTarget(task, targetUserId, userId);
 
         // 添加审批意见
         if (comment != null && !comment.isEmpty()) {
@@ -362,6 +378,7 @@ public class ApprovalService {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
         assertTaskAssignee(task, userId);
+        assertTransferTarget(task, delegateUserId, userId);
 
         // 添加审批意见
         if (comment != null && !comment.isEmpty()) {
@@ -386,15 +403,12 @@ public class ApprovalService {
      * @return 分页结果
      */
     public PageResult<Map<String, Object>> getMyTodoTasks(Long userId, int page, int size) {
-        long count = taskService.createTaskQuery()
-                .taskAssignee(String.valueOf(userId))
-                .count();
+        long count = todoQuery(userId).count();
 
         // includeProcessVariables：随分页查询一次性携带流程变量，
         // 替代原 taskToMap 内逐任务 getVariables 的 N+1 查询
         // （2026-08-13 事故：ACT_RU_TASK 6万+行时 N+1 致 /todo 超时/500）
-        List<Task> tasks = taskService.createTaskQuery()
-                .taskAssignee(String.valueOf(userId))
+        List<Task> tasks = todoQuery(userId)
                 .includeProcessVariables()
                 .orderByTaskCreateTime()
                 .desc()
@@ -440,6 +454,7 @@ public class ApprovalService {
         Map<String, Object> processVariables;
         boolean running;
         if (runningTask != null) {
+            assertSameTenant(runningTask.getTenantId());
             running = true;
             processInstanceId = runningTask.getProcessInstanceId();
             taskName = runningTask.getName();
@@ -451,6 +466,7 @@ public class ApprovalService {
             if (historicTask == null) {
                 throw new BusinessException("任务不存在: " + taskId);
             }
+            assertSameTenant(historicTask.getTenantId());
             running = false;
             processInstanceId = historicTask.getProcessInstanceId();
             taskName = historicTask.getName();
@@ -538,6 +554,9 @@ public class ApprovalService {
         HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(processInstanceId)
                 .singleResult();
+        if (instance != null) {
+            assertSameTenant(instance.getTenantId());
+        }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("processInstanceId", processInstanceId);
@@ -657,6 +676,78 @@ public class ApprovalService {
 
     // ===== 私有方法 =====
 
+    /**
+     * 待办查询：本人已签收 + 本人角色为候选组的未签收任务。
+     * 候选组编码（PROJECT_MANAGER/FINANCE_STAFF）不带租户，必须叠加 taskTenantId，
+     * 否则同角色码会看到其他租户的任务。
+     */
+    private TaskQuery todoQuery(Long userId) {
+        String uid = String.valueOf(userId);
+        Long tenantId = SecurityContextHolder.getTenantId();
+        List<String> roles = sysUserMapper.selectRoleCodesByUserId(userId);
+        TaskQuery query = taskService.createTaskQuery();
+        if (tenantId != null) {
+            query = query.taskTenantId(String.valueOf(tenantId));
+        }
+        if (roles == null || roles.isEmpty()) {
+            return query.taskAssignee(uid);
+        }
+        return query.or().taskAssignee(uid).taskCandidateGroupIn(roles).endOr();
+    }
+
+    /** 读接口租户隔离：两端租户都明确且不一致时按不存在处理（不泄露其他租户任务是否存在） */
+    private void assertSameTenant(String resourceTenantId) {
+        Long tenantId = SecurityContextHolder.getTenantId();
+        if (tenantId != null && resourceTenantId != null && !resourceTenantId.isBlank()
+                && !String.valueOf(tenantId).equals(resourceTenantId)) {
+            throw new BusinessException("任务不存在或已被处理");
+        }
+    }
+
+    /** 转办/委托目标用户：必须存在、启用、同租户，且不能把防自审单据转给发起人 */
+    private void assertTransferTarget(Task task, String targetUserId, Long operatorId) {
+        if (targetUserId == null || targetUserId.isBlank()) {
+            throw new BusinessException("目标用户不能为空");
+        }
+        Long targetId;
+        try {
+            targetId = Long.valueOf(targetUserId.trim());
+        } catch (NumberFormatException e) {
+            throw new BusinessException("目标用户ID无效");
+        }
+        if (targetId.equals(operatorId)) {
+            throw new BusinessException("不能转办或委托给自己");
+        }
+        SysUser target = sysUserMapper.selectById(targetId);
+        if (target == null) {
+            throw new BusinessException("目标用户不存在");
+        }
+        if (target.getStatus() != null && target.getStatus() != 1) {
+            throw new BusinessException("目标用户已停用");
+        }
+        Long tenantId = SecurityContextHolder.getTenantId();
+        if (tenantId != null && target.getTenantId() != null && !tenantId.equals(target.getTenantId())) {
+            throw new BusinessException("目标用户不属于当前租户");
+        }
+        assertNotInitiator(task, targetId);
+    }
+
+    /** 防自审：列举的业务类型中，发起人不得办理（含被转办/委托）自己的单据 */
+    private void assertNotInitiator(Task task, Long userId) {
+        Object initiator = null;
+        Object type = null;
+        try {
+            initiator = taskService.getVariable(task.getId(), "initiator");
+            type = taskService.getVariable(task.getId(), "businessType");
+        } catch (Exception ignored) {
+            // 变量读取失败按无约束处理，与既有行为一致
+        }
+        if (initiator != null && type != null && SELF_APPROVAL_GUARDED_TYPES.contains(String.valueOf(type))
+                && String.valueOf(userId).equals(String.valueOf(initiator))) {
+            throw new BusinessException(403, "发起人不能审批自己的单据");
+        }
+    }
+
     private Task getTaskById(String taskId) {
         Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
         if (task == null) {
@@ -687,30 +778,32 @@ public class ApprovalService {
         Task task = query.singleResult();
         if (task == null) throw new BusinessException(403, "无权签收此任务");
         if (task.getAssignee() != null && !task.getAssignee().isBlank()) throw new BusinessException(409, "任务已签收");
-        Object initiator = null;
-        Object type = null;
-        try {
-            initiator = taskService.getVariable(taskId, "initiator");
-            type = taskService.getVariable(task.getId(), "businessType");
-        } catch (Exception ignored) {}
-        if (initiator != null && type != null
-                && Set.of("MACHINE_CONTRACT", "machine_settlement", "PURCHASE_SETTLEMENT", "PROJECT_CLOSE", "PROJECT_FILING", "PROJECT_TERMINATE",
-                        "LABOR_CONTRACT", "LABOR_OUTPUT", "LABOR_SETTLEMENT", "LABOR_PAYROLL", "LABOR_REWARD_PUNISH")
-                        .contains(String.valueOf(type)) && String.valueOf(userId).equals(String.valueOf(initiator))) {
-            throw new BusinessException(403, "发起人不能审批自己的单据");
-        }
+        assertNotInitiator(task, userId);
         List<String> roles = sysUserMapper.selectRoleCodesByUserId(userId);
-        boolean eligible = false;
+        if (!isCandidate(taskId, userId, roles) && (roles == null || !roles.contains(ROLE_SUPER_ADMIN))) {
+            throw new BusinessException(403, "不属于任务候选人或候选角色");
+        }
+        claimOrConflict(taskId, userId);
+    }
+
+    private boolean isCandidate(String taskId, Long userId, List<String> roles) {
         try {
-            eligible = taskService.getIdentityLinksForTask(taskId).stream()
+            return taskService.getIdentityLinksForTask(taskId).stream()
                     .filter(link -> "candidate".equals(link.getType()))
                     .anyMatch(link -> String.valueOf(userId).equals(link.getUserId())
                             || (roles != null && link.getGroupId() != null && roles.contains(link.getGroupId())));
-        } catch (Exception ignored) {}
-        if (!eligible && (roles == null || !roles.contains(ROLE_SUPER_ADMIN))) {
-            throw new BusinessException(403, "不属于任务候选人或候选角色");
+        } catch (Exception ignored) {
+            return false;
         }
-        taskService.claim(taskId, String.valueOf(userId));
+    }
+
+    /** 签收竞争：已被他人签收时返回 409，而不是引擎的 500 */
+    private void claimOrConflict(String taskId, Long userId) {
+        try {
+            taskService.claim(taskId, String.valueOf(userId));
+        } catch (org.flowable.common.engine.api.FlowableTaskAlreadyClaimedException e) {
+            throw new BusinessException(409, "任务已被他人签收");
+        }
     }
 
     private void assertTaskAssignee(Task task, Long userId) {
@@ -724,18 +817,7 @@ public class ApprovalService {
             throw new BusinessException(403, "无权操作其他租户任务");
         }
         // 防自审校验
-        try {
-            Object initiator = taskService.getVariable(task.getId(), "initiator");
-            Object type = taskService.getVariable(task.getId(), "businessType");
-            if (initiator != null && type != null
-                    && Set.of("MACHINE_CONTRACT", "machine_settlement", "PURCHASE_SETTLEMENT", "PROJECT_CLOSE", "PROJECT_FILING", "PROJECT_TERMINATE",
-                            "LABOR_CONTRACT", "LABOR_OUTPUT", "LABOR_SETTLEMENT", "LABOR_PAYROLL", "LABOR_REWARD_PUNISH")
-                            .contains(String.valueOf(type)) && String.valueOf(userId).equals(String.valueOf(initiator))) {
-                throw new BusinessException(403, "发起人不能审批自己的单据");
-            }
-        } catch (BusinessException be) {
-            throw be;
-        } catch (Exception ignored) {}
+        assertNotInitiator(task, userId);
 
         // 超级管理员放行
         List<String> roleCodes = sysUserMapper.selectRoleCodesByUserId(userId);
@@ -744,8 +826,12 @@ public class ApprovalService {
         }
         String assignee = task.getAssignee();
         if (assignee == null || assignee.isBlank()) {
-            // 未签收的候选任务，需先签收后再操作，避免越权处理
-            throw new BusinessException(403, "该任务尚未签收，无法直接操作，请先签收任务");
+            // 未签收的候选任务：候选人/候选角色成员办理时自动签收（PC/App 均无独立签收入口）；非候选人拒绝
+            if (!isCandidate(task.getId(), userId, roleCodes)) {
+                throw new BusinessException(403, "不属于任务候选人或候选角色");
+            }
+            claimOrConflict(task.getId(), userId);
+            return;
         }
         if (!assignee.equals(String.valueOf(userId))) {
             throw new BusinessException(403, "无权操作他人审批任务");

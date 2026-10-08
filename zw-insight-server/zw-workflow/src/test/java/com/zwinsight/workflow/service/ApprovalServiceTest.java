@@ -189,6 +189,95 @@ class ApprovalServiceTest {
     }
 
     @Test
+    @DisplayName("办理通过：客户端传入的协议变量（initiator/businessId/businessType）被剔除，业务变量保留")
+    void testComplete_protocolVariablesStripped() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
+            when(taskQuery.singleResult()).thenReturn(mockTask);
+
+            Map<String, Object> vars = new HashMap<>();
+            vars.put("approved", true);
+            vars.put("initiator", "200");
+            vars.put("businessId", 999L);
+            vars.put("businessType", "PROJECT_CLOSE");
+            approvalService.complete("task-001", null, vars);
+
+            verify(taskService).complete("task-001", Map.of("approved", true));
+        }
+    }
+
+    @Test
+    @DisplayName("办理通过：只传协议变量时等同无变量 complete")
+    void testComplete_onlyProtocolVariables() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
+            when(taskQuery.singleResult()).thenReturn(mockTask);
+
+            approvalService.complete("task-001", null, new HashMap<>(Map.of("initiator", "200")));
+
+            verify(taskService).complete("task-001");
+            verify(taskService, never()).complete(eq("task-001"), anyMap());
+        }
+    }
+
+    @Test
+    @DisplayName("办理通过：候选角色成员办理未签收任务时自动签收后办理")
+    void testComplete_candidateAutoClaim() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+
+            when(mockTask.getAssignee()).thenReturn(null);
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
+            when(taskQuery.singleResult()).thenReturn(mockTask);
+            when(sysUserMapper.selectRoleCodesByUserId(200L)).thenReturn(List.of("PROJECT_MANAGER"));
+            org.flowable.identitylink.api.IdentityLink link = mock(org.flowable.identitylink.api.IdentityLink.class);
+            when(link.getType()).thenReturn("candidate");
+            when(link.getGroupId()).thenReturn("PROJECT_MANAGER");
+            when(taskService.getIdentityLinksForTask("task-001")).thenReturn(List.of(link));
+
+            approvalService.complete("task-001", "同意", null);
+
+            verify(taskService).claim("task-001", "200");
+            verify(taskService).complete("task-001");
+        }
+    }
+
+    @Test
+    @DisplayName("办理通过：非候选人办理未签收任务被拒绝，且不签收不办理")
+    void testComplete_nonCandidateRejected() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+
+            when(mockTask.getAssignee()).thenReturn(null);
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
+            when(taskQuery.singleResult()).thenReturn(mockTask);
+            when(sysUserMapper.selectRoleCodesByUserId(200L)).thenReturn(List.of("HR_STAFF"));
+            org.flowable.identitylink.api.IdentityLink link = mock(org.flowable.identitylink.api.IdentityLink.class);
+            when(link.getType()).thenReturn("candidate");
+            when(link.getGroupId()).thenReturn("PROJECT_MANAGER");
+            when(taskService.getIdentityLinksForTask("task-001")).thenReturn(List.of(link));
+
+            assertThatThrownBy(() -> approvalService.complete("task-001", "同意", null))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("不属于任务候选人");
+            verify(taskService, never()).claim(anyString(), anyString());
+            verify(taskService, never()).complete(anyString());
+        }
+    }
+
+    @Test
     @DisplayName("办理通过：任务不存在抛 BusinessException")
     void testComplete_taskNotFound() {
         try (var sc = mockStatic(SecurityContextHolder.class)) {
@@ -369,11 +458,85 @@ class ApprovalServiceTest {
             when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
             when(taskQuery.singleResult()).thenReturn(mockTask);
 
+            SysUser target = new SysUser();
+            target.setId(300L);
+            target.setStatus(1);
+            when(sysUserMapper.selectById(300L)).thenReturn(target);
+
             approvalService.transfer("task-001", "300", "出差代审");
 
             verify(taskService).addComment("task-001", "pi-001", "【转办】出差代审");
             verify(taskService).setAssignee("task-001", "300");
             verify(approvalRecordMapper).insert(argThat(r -> "TRANSFER".equals(r.getOperationType())));
+        }
+    }
+
+    @Test
+    @DisplayName("转办：目标用户不存在 / 已停用 / 就是自己 / 跨租户均拒绝，且不改办理人")
+    void testTransfer_invalidTargetRejected() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
+            when(taskQuery.singleResult()).thenReturn(mockTask);
+
+            // 不存在
+            assertThatThrownBy(() -> approvalService.transfer("task-001", "301", "x"))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("目标用户不存在");
+
+            // 已停用
+            SysUser disabled = new SysUser();
+            disabled.setId(302L);
+            disabled.setStatus(0);
+            when(sysUserMapper.selectById(302L)).thenReturn(disabled);
+            assertThatThrownBy(() -> approvalService.transfer("task-001", "302", "x"))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("已停用");
+
+            // 跨租户
+            SysUser other = new SysUser();
+            other.setId(303L);
+            other.setStatus(1);
+            other.setTenantId(2L);
+            when(sysUserMapper.selectById(303L)).thenReturn(other);
+            assertThatThrownBy(() -> approvalService.transfer("task-001", "303", "x"))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("不属于当前租户");
+
+            // 自己
+            assertThatThrownBy(() -> approvalService.transfer("task-001", "200", "x"))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("自己");
+
+            // 非数字
+            assertThatThrownBy(() -> approvalService.transfer("task-001", "abc", "x"))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("无效");
+
+            verify(taskService, never()).setAssignee(anyString(), anyString());
+        }
+    }
+
+    @Test
+    @DisplayName("转办：防自审类型不得转给发起人")
+    void testTransfer_toInitiatorRejectedForGuardedType() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
+            when(taskQuery.singleResult()).thenReturn(mockTask);
+            when(taskService.getVariable("task-001", "initiator")).thenReturn("300");
+            when(taskService.getVariable("task-001", "businessType")).thenReturn("PURCHASE_SETTLEMENT");
+
+            SysUser target = new SysUser();
+            target.setId(300L);
+            target.setStatus(1);
+            when(sysUserMapper.selectById(300L)).thenReturn(target);
+
+            assertThatThrownBy(() -> approvalService.transfer("task-001", "300", "x"))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("发起人不能审批自己的单据");
+            verify(taskService, never()).setAssignee(anyString(), anyString());
         }
     }
 
@@ -391,6 +554,11 @@ class ApprovalServiceTest {
             when(taskService.createTaskQuery()).thenReturn(taskQuery);
             when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
             when(taskQuery.singleResult()).thenReturn(mockTask);
+
+            SysUser target = new SysUser();
+            target.setId(400L);
+            target.setStatus(1);
+            when(sysUserMapper.selectById(400L)).thenReturn(target);
 
             approvalService.delegate("task-001", "400", "休假委托");
 
@@ -468,6 +636,54 @@ class ApprovalServiceTest {
         assertThat(result.getRecords().get(0).get("startUserName")).isNull();
         verify(taskService, never()).getVariables(anyString());
         verify(sysUserMapper, never()).selectBatchIds(anyList());
+    }
+
+    @Test
+    @DisplayName("我的待办：持有候选角色时按（本人办理 OR 候选组）且限定租户查询")
+    void testGetMyTodoTasks_includesCandidateGroupsScopedByTenant() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+            when(sysUserMapper.selectRoleCodesByUserId(100L)).thenReturn(List.of("PROJECT_MANAGER", "FINANCE_STAFF"));
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskTenantId("1")).thenReturn(taskQuery);
+            when(taskQuery.or()).thenReturn(taskQuery);
+            when(taskQuery.taskAssignee("100")).thenReturn(taskQuery);
+            when(taskQuery.taskCandidateGroupIn(List.of("PROJECT_MANAGER", "FINANCE_STAFF"))).thenReturn(taskQuery);
+            when(taskQuery.endOr()).thenReturn(taskQuery);
+            when(taskQuery.count()).thenReturn(1L);
+            when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
+            when(taskQuery.orderByTaskCreateTime()).thenReturn(taskQuery);
+            when(taskQuery.desc()).thenReturn(taskQuery);
+            when(taskQuery.listPage(0, 10)).thenReturn(List.of(mockTask));
+            when(mockTask.getProcessVariables()).thenReturn(Map.of("businessType", "LABOR_CONTRACT"));
+
+            PageResult<Map<String, Object>> result = approvalService.getMyTodoTasks(100L, 1, 10);
+
+            assertThat(result.getTotal()).isEqualTo(1);
+            verify(taskQuery, atLeastOnce()).taskTenantId("1");
+            verify(taskQuery, atLeastOnce()).taskCandidateGroupIn(List.of("PROJECT_MANAGER", "FINANCE_STAFF"));
+        }
+    }
+
+    @Test
+    @DisplayName("按业务撤回：任务属于其他租户时按不存在处理，不终止流程")
+    void testWithdrawByBusiness_crossTenantRejected() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+
+            when(mockTask.getTenantId()).thenReturn("2");
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.processInstanceBusinessKey("PAYMENT_APPLY:55")).thenReturn(taskQuery);
+            when(taskQuery.listPage(0, 1)).thenReturn(List.of(mockTask));
+
+            assertThatThrownBy(() -> approvalService.withdrawByBusiness("PAYMENT_APPLY", 55L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("任务不存在");
+            verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
+        }
     }
 
     @Test
