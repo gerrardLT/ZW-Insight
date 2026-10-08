@@ -239,6 +239,37 @@ class InspectionServiceTest {
     }
 
     @Test
+    @DisplayName("更新检查：白名单拷贝，请求体里的整改状态/项目/方案快照不入库；记录不存在抛异常")
+    void testUpdate_whitelistIgnoresSystemFields() {
+        BizInspection existing = new BizInspection();
+        existing.setId(1L);
+        existing.setProjectId(10L);
+        existing.setRectificationStatus("PENDING");
+        existing.setSchemeSnapshot("{\"v\":1}");
+        when(inspectionMapper.selectById(1L)).thenReturn(existing);
+
+        BizInspection body = new BizInspection();
+        body.setId(1L);
+        body.setProjectId(99L);
+        body.setRectificationStatus("APPROVED");
+        body.setSchemeSnapshot("{\"v\":2}");
+        body.setProblemDescription("钢筋间距超标");
+        inspectionService.update(body);
+
+        assertThat(existing.getProblemDescription()).isEqualTo("钢筋间距超标");
+        assertThat(existing.getRectificationStatus()).isEqualTo("PENDING");
+        assertThat(existing.getProjectId()).isEqualTo(10L);
+        assertThat(existing.getSchemeSnapshot()).isEqualTo("{\"v\":1}");
+        verify(inspectionMapper).updateById(existing);
+
+        when(inspectionMapper.selectById(404L)).thenReturn(null);
+        BizInspection missing = new BizInspection();
+        missing.setId(404L);
+        assertThatThrownBy(() -> inspectionService.update(missing))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("检查记录不存在");
+    }
+
+    @Test
     @DisplayName("指派整改：记录不存在抛异常")
     void testAssignRectification_notFound() {
         when(inspectionMapper.selectById(999L)).thenReturn(null);

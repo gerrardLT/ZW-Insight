@@ -71,11 +71,12 @@ class ScheduleFeedbackServiceTest {
     }
 
     @Test
-    @DisplayName("新增反馈：DRAFT 状态并同步更新计划任务")
-    void save_syncsPlanFields() {
+    @DisplayName("新增反馈：只落 DRAFT 记录，不改正式计划任务（草稿不污染进度）")
+    void save_draftDoesNotTouchPlan() {
         BizScheduleFeedback feedback = feedback(5L);
         BizSchedulePlan plan = new BizSchedulePlan();
         plan.setId(5L);
+        plan.setProjectId(10L);
         plan.setParentId(1L);
         when(planMapper.selectById(5L)).thenReturn(plan);
 
@@ -83,6 +84,24 @@ class ScheduleFeedbackServiceTest {
 
         assertThat(feedback.getStatus()).isEqualTo("DRAFT");
         verify(feedbackMapper).insert(feedback);
+        verify(planMapper, org.mockito.Mockito.never()).updateById(any(BizSchedulePlan.class));
+        verify(schedulePlanService, org.mockito.Mockito.never()).calculateParentProgress(any());
+    }
+
+    @Test
+    @DisplayName("提交反馈：才把实际日期/状态/进度同步到计划并重算父节点")
+    void submit_syncsPlanFields() {
+        BizScheduleFeedback existing = feedback(5L);
+        existing.setId(1L);
+        existing.setStatus("DRAFT");
+        when(feedbackMapper.selectById(1L)).thenReturn(existing);
+        BizSchedulePlan plan = new BizSchedulePlan();
+        plan.setId(5L);
+        plan.setProjectId(10L);
+        plan.setParentId(1L);
+        when(planMapper.selectById(5L)).thenReturn(plan);
+
+        scheduleFeedbackService.submit(1L);
 
         ArgumentCaptor<BizSchedulePlan> captor = ArgumentCaptor.forClass(BizSchedulePlan.class);
         verify(planMapper).updateById(captor.capture());
@@ -92,6 +111,36 @@ class ScheduleFeedbackServiceTest {
         assertThat(updated.getTaskStatus()).isEqualTo("IN_PROGRESS");
         assertThat(updated.getProgress()).isEqualByComparingTo(new BigDecimal("60"));
         verify(schedulePlanService).calculateParentProgress(1L);
+    }
+
+    @Test
+    @DisplayName("反馈入参校验：计划不属于该项目 / 进度越界 / 日期倒置均拒绝，且不落库")
+    void save_invalidInputRejected() {
+        BizSchedulePlan plan = new BizSchedulePlan();
+        plan.setId(5L);
+        plan.setProjectId(99L);
+        when(planMapper.selectById(5L)).thenReturn(plan);
+        assertThatThrownBy(() -> scheduleFeedbackService.save(feedback(5L)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("不属于该项目");
+
+        plan.setProjectId(10L);
+        BizScheduleFeedback overflow = feedback(5L);
+        overflow.setProgress(new BigDecimal("101"));
+        assertThatThrownBy(() -> scheduleFeedbackService.save(overflow))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("0 到 100");
+
+        BizScheduleFeedback negative = feedback(5L);
+        negative.setProgress(new BigDecimal("-1"));
+        assertThatThrownBy(() -> scheduleFeedbackService.save(negative))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("0 到 100");
+
+        BizScheduleFeedback reversed = feedback(5L);
+        reversed.setActualStartDate(LocalDate.of(2026, 8, 1));
+        reversed.setActualEndDate(LocalDate.of(2026, 7, 1));
+        assertThatThrownBy(() -> scheduleFeedbackService.save(reversed))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("不能晚于");
+
+        verify(feedbackMapper, org.mockito.Mockito.never()).insert(any(BizScheduleFeedback.class));
     }
 
     @Test

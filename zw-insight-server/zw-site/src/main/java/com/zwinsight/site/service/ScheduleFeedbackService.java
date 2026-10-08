@@ -41,11 +41,30 @@ public class ScheduleFeedbackService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizScheduleFeedback feedback) {
+        validate(feedback);
         feedback.setStatus("DRAFT");
+        // 草稿只落反馈记录，不改正式计划：草稿阶段可被丢弃或修改，提交后才影响计划进度
         feedbackMapper.insert(feedback);
+    }
 
-        // 同步更新计划任务
-        syncPlan(feedback);
+    /** 反馈入参校验：计划存在且属于所填项目；进度 0–100；实际开始不晚于实际结束 */
+    private void validate(BizScheduleFeedback feedback) {
+        BizSchedulePlan plan = planMapper.selectById(feedback.getPlanId());
+        if (plan == null) {
+            throw new BusinessException("关联计划任务不存在");
+        }
+        if (feedback.getProjectId() != null && plan.getProjectId() != null
+                && !feedback.getProjectId().equals(plan.getProjectId())) {
+            throw new BusinessException("计划任务不属于该项目");
+        }
+        if (feedback.getProgress() != null
+                && (feedback.getProgress().signum() < 0 || feedback.getProgress().compareTo(new java.math.BigDecimal("100")) > 0)) {
+            throw new BusinessException("进度必须在 0 到 100 之间");
+        }
+        if (feedback.getActualStartDate() != null && feedback.getActualEndDate() != null
+                && feedback.getActualStartDate().isAfter(feedback.getActualEndDate())) {
+            throw new BusinessException("实际开始日期不能晚于实际结束日期");
+        }
     }
 
     /**
@@ -60,10 +79,11 @@ public class ScheduleFeedbackService {
         if (!"DRAFT".equals(feedback.getStatus())) {
             throw new BusinessException("仅草稿状态可提交");
         }
+        validate(feedback);
         feedback.setStatus("APPROVED");
         feedbackMapper.updateById(feedback);
 
-        // 同步更新计划任务
+        // 提交（确认）后才同步到正式计划任务
         syncPlan(feedback);
     }
 

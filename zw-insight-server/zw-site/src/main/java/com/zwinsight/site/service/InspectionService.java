@@ -118,7 +118,18 @@ public class InspectionService {
      * 更新检查记录
      */
     public void update(BizInspection inspection) {
-        inspectionMapper.updateById(inspection);
+        BizInspection existing = inspectionMapper.selectById(inspection.getId());
+        if (existing == null) {
+            throw new BusinessException("检查记录不存在");
+        }
+        // 白名单拷贝：整改状态/整改日期只能走整改闭环端点，方案快照与所属项目创建后不可改，
+        // 否则 PUT 可直接把"待整改"改成"已通过"绕过整改流程
+        if (inspection.getInspectionContent() != null) existing.setInspectionContent(inspection.getInspectionContent());
+        if (inspection.getHasProblem() != null) existing.setHasProblem(inspection.getHasProblem());
+        if (inspection.getProblemDescription() != null) existing.setProblemDescription(inspection.getProblemDescription());
+        if (inspection.getResponsiblePersonId() != null) existing.setResponsiblePersonId(inspection.getResponsiblePersonId());
+        if (inspection.getRectificationDeadline() != null) existing.setRectificationDeadline(inspection.getRectificationDeadline());
+        inspectionMapper.updateById(existing);
     }
 
     /**
