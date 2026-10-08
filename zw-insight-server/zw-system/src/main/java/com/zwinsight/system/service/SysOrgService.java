@@ -160,6 +160,11 @@ public class SysOrgService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
+        // 他租户机构按不存在处理：否则凭 ID 即可删除别家机构（sys_* 免拦截器过滤）
+        SysOrg target = orgMapper.selectById(id);
+        if (target != null && !sameTenant(target)) {
+            throw new BusinessException("机构不存在");
+        }
         // 检查是否有子机构
         long childCount = orgMapper.selectCount(
                 new LambdaQueryWrapper<SysOrg>().eq(SysOrg::getParentId, id));

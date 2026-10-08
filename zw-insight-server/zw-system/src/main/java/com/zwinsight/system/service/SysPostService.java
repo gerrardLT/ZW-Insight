@@ -28,7 +28,7 @@ public class SysPostService {
 
     /** 岗位属于其他租户时按不存在处理（sys_* 免拦截器过滤，必须显式校验） */
     private SysPost requireOwned(Long id) {
-        SysPost post = postMapper.selectById(id);
+        SysPost post = id == null ? null : postMapper.selectById(id);
         Long tenantId = SecurityContextHolder.getTenantId();
         if (post == null || (tenantId != null && post.getTenantId() != null && !tenantId.equals(post.getTenantId()))) {
             throw new BusinessException("岗位不存在");
