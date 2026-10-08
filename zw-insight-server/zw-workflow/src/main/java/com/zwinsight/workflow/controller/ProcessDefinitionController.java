@@ -92,4 +92,12 @@ public class ProcessDefinitionController {
         Long tenantId = SecurityContextHolder.getTenantId();
         return R.ok(processDefinitionService.getHistoryVersions(processKey, tenantId));
     }
+
+    /**
+     * 获取流程定义 XML 内容
+     */
+    @GetMapping("/{id}/xml")
+    public R<String> getProcessXml(@PathVariable String id) {
+        return R.ok(processDefinitionService.getProcessXml(id));
+    }
 }

@@ -7,6 +7,7 @@ import com.zwinsight.workflow.domain.WfProcessDef;
 import com.zwinsight.workflow.mapper.WfProcessDefMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.FlowElement;
@@ -341,5 +342,36 @@ public class ProcessDefinitionService {
                 .eq(WfProcessDef::getTenantId, tenantId)
                 .orderByDesc(WfProcessDef::getVersionNum);
         return processDefMapper.selectList(wrapper);
+    }
+
+    /**
+     * 获取流程定义 BPMN XML（含图形坐标）
+     *
+     * @param idOrDefinitionId 流程扩展表ID或Flowable流程定义ID
+     * @return BPMN XML 字符串
+     */
+    public String getProcessXml(String idOrDefinitionId) {
+        String processDefinitionId = idOrDefinitionId;
+        if (idOrDefinitionId != null && idOrDefinitionId.matches("^\\d+$")) {
+            WfProcessDef wfDef = processDefMapper.selectById(Long.parseLong(idOrDefinitionId));
+            if (wfDef != null && wfDef.getProcessDefinitionId() != null) {
+                processDefinitionId = wfDef.getProcessDefinitionId();
+            }
+        }
+
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionId(processDefinitionId)
+                .singleResult();
+
+        if (processDefinition == null) {
+            throw new BusinessException("流程定义不存在: " + processDefinitionId);
+        }
+
+        BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinitionId);
+        ensureGraphicalInformation(bpmnModel);
+
+        BpmnXMLConverter converter = new BpmnXMLConverter();
+        byte[] xmlBytes = converter.convertToXML(bpmnModel, "UTF-8");
+        return new String(xmlBytes, java.nio.charset.StandardCharsets.UTF_8);
     }
 }

@@ -37,10 +37,19 @@
       </el-table>
     </el-card>
 
-    <!-- 流程图弹窗 -->
-    <el-dialog v-model="imageDialogVisible" title="流程图" width="800px" destroy-on-close>
-      <div class="process-image-wrap">
+    <!-- 流程图弹窗（支持 bpmn-js 矢量流程图与服务端回退双模式） -->
+    <el-dialog
+      v-model="imageDialogVisible"
+      title="流程图"
+      width="860px"
+      destroy-on-close
+      @opened="renderBpmn"
+      @closed="cleanupViewer"
+    >
+      <div class="process-image-wrap" v-loading="viewerLoading">
+        <div ref="viewerContainerRef" class="bpmn-viewer-container" v-show="!renderFailed"></div>
         <el-image
+          v-if="renderFailed"
           :src="currentImageUrl"
           fit="contain"
           alt="流程图"
@@ -77,16 +86,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
-import { getProcessList, deployProcess, getProcessImage, getProcessVersions } from '@/api/workflow'
+import BpmnViewer from 'bpmn-js/lib/Viewer'
+import 'bpmn-js/dist/assets/diagram-js.css'
+import 'bpmn-js/dist/assets/bpmn-js.css'
+import { getProcessList, deployProcess, getProcessImage, getProcessVersions, getProcessXml } from '@/api/workflow'
 
 const uploadRef = ref()
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const imageDialogVisible = ref(false)
 const currentImageUrl = ref('')
+const currentProcessId = ref<string>('')
+const viewerContainerRef = ref<HTMLDivElement>()
+const viewerLoading = ref(false)
+const renderFailed = ref(false)
+let bpmnViewer: InstanceType<typeof BpmnViewer> | null = null
+
 const versionDialogVisible = ref(false)
 const versionLoading = ref(false)
 const versionList = ref<any[]>([])
@@ -128,8 +146,46 @@ async function handleFileChange(file: UploadFile) {
 }
 
 function handleViewImage(row: any) {
+  currentProcessId.value = String(row.id || '')
   currentImageUrl.value = getProcessImage(row.id)
+  renderFailed.value = false
   imageDialogVisible.value = true
+}
+
+async function renderBpmn() {
+  if (!viewerContainerRef.value || !currentProcessId.value) return
+  cleanupViewer()
+  viewerLoading.value = true
+  renderFailed.value = false
+
+  try {
+    const res: any = await getProcessXml(currentProcessId.value)
+    const xml = typeof res === 'string' ? res : (res?.data || '')
+    if (!xml) throw new Error('BPMN XML为空')
+
+    bpmnViewer = new BpmnViewer({
+      container: viewerContainerRef.value
+    })
+    await bpmnViewer.importXML(xml)
+    const canvas: any = bpmnViewer.get('canvas')
+    canvas.zoom('fit-viewport')
+  } catch (err) {
+    console.warn('前端BPMN渲染失败，自动回退到服务端图片', err)
+    renderFailed.value = true
+  } finally {
+    viewerLoading.value = false
+  }
+}
+
+function cleanupViewer() {
+  if (bpmnViewer) {
+    try {
+      bpmnViewer.destroy()
+    } catch {
+      // 忽略
+    }
+    bpmnViewer = null
+  }
 }
 
 async function handleViewVersions(row: any) {
@@ -147,6 +203,10 @@ async function handleViewVersions(row: any) {
 onMounted(() => {
   loadData()
 })
+
+onBeforeUnmount(() => {
+  cleanupViewer()
+})
 </script>
 
 <style scoped>
@@ -160,7 +220,15 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
+  min-height: 320px;
+  width: 100%;
+}
+.bpmn-viewer-container {
+  width: 100%;
+  height: 380px;
+  background: var(--zw-bg-page);
+  border-radius: var(--zw-radius-sm);
+  border: 1px solid var(--zw-border-light);
 }
 .image-error {
   display: flex;
@@ -168,6 +236,5 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--zw-text-tertiary);
-  gap: var(--zw-space-sm);
 }
 </style>

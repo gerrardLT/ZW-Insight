@@ -80,6 +80,10 @@ export function getProcessVersions(processKey: string) {
   return request.get(`/v1/workflow/process/${processKey}/versions`)
 }
 
+export function getProcessXml(id: string) {
+  return request.get(`/v1/workflow/process/${id}/xml`)
+}
+
 // ======================== 业务类型 ========================
 // BusinessTypeController: /api/v1/workflow/business-type
 
