@@ -75,7 +75,7 @@ class ApprovalServiceTest {
         lenient().when(mockTask.getTenantId()).thenReturn("9999");
         lenient().when(taskService.getVariable(anyString(), eq("businessType"))).thenReturn("PAYMENT_APPLY");
         lenient().when(taskService.getVariable(anyString(), eq("businessId"))).thenReturn(55L);
-        lenient().when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-001")));
+        lenient().when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-001")));
         lenient().when(mockTask.getId()).thenReturn("task-001");
         lenient().when(mockTask.getProcessInstanceId()).thenReturn("pi-001");
         lenient().when(mockTask.getName()).thenReturn("部门经理审批");
@@ -1181,7 +1181,7 @@ class ApprovalServiceTest {
         TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
         when(taskService.createTaskQuery()).thenReturn(query);
         when(query.singleResult()).thenReturn(mockTask);
-        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of());
+        when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of());
         assertThatThrownBy(() -> approvalService.complete("task-001", "同意", null))
                 .isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), "同意"))
@@ -1196,7 +1196,7 @@ class ApprovalServiceTest {
         TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
         when(taskService.createTaskQuery()).thenReturn(query);
         when(query.singleResult()).thenReturn(mockTask);
-        when(jdbc.queryForList(anyString(), any(), any()))
+        when(jdbc.queryForList(anyString(), anyLong(), anyLong()))
                 .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("unavailable"));
         assertThatThrownBy(() -> approvalService.complete("task-001", null, null))
                 .isInstanceOf(BusinessException.class).hasMessageContaining("禁止办理");
@@ -1295,15 +1295,15 @@ class ApprovalServiceTest {
         when(taskService.createTaskQuery()).thenReturn(query);
         when(query.singleResult()).thenReturn(mockTask);
         for (String state : List.of("DRAFT", "APPROVED", "CLOSED")) {
-            when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", state, "workflow_instance_id", "pi-001")));
+            when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", state, "workflow_instance_id", "pi-001")));
             assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class);
             assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class);
         }
-        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-new")));
+        when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-new")));
         assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class);
         verify(taskService, never()).complete(anyString());
-        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "REJECTED", "workflow_instance_id", "pi-001")));
+        when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", "REJECTED", "workflow_instance_id", "pi-001")));
         approvalService.complete("task-001", null, null);
         approvalService.batchApprove(List.of("task-001"), null);
         verify(taskService, times(2)).complete("task-001");
@@ -1317,16 +1317,16 @@ class ApprovalServiceTest {
         when(query.singleResult()).thenReturn(mockTask);
         when(taskService.getVariable("task-001", "businessType")).thenReturn("FINAL_SETTLEMENT");
         when(taskService.getVariable("task-001", "initiator")).thenReturn("300");
-        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "DRAFT", "workflow_instance_id", "pi-001")));
+        when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", "DRAFT", "workflow_instance_id", "pi-001")));
         when(approvalRecordMapper.selectCount(any())).thenReturn(0L);
         assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class).hasMessageContaining("源单状态或流程实例不匹配");
         assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class).hasMessageContaining("源单状态或流程实例不匹配");
         when(approvalRecordMapper.selectCount(any())).thenReturn(1L);
-        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "DRAFT", "workflow_instance_id", "pi-new")));
+        when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", "DRAFT", "workflow_instance_id", "pi-new")));
         assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class).hasMessageContaining("源单状态或流程实例不匹配");
         assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class).hasMessageContaining("源单状态或流程实例不匹配");
         verify(taskService, never()).complete(anyString());
-        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "DRAFT", "workflow_instance_id", "pi-001")));
+        when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", "DRAFT", "workflow_instance_id", "pi-001")));
         approvalService.complete("task-001", null, null);
         approvalService.batchApprove(List.of("task-001"), null);
         verify(taskService, times(2)).complete("task-001");
@@ -1340,10 +1340,10 @@ class ApprovalServiceTest {
         when(query.singleResult()).thenReturn(mockTask);
         for (String type : List.of("REGULAR_APPLY", "RESIGN_APPLY", "SEAL_APPLY", "TRANSFER_APPLY", "VEHICLE_APPLY")) {
             when(taskService.getVariable("task-001", "businessType")).thenReturn(type);
-            when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-new")));
+            when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-new")));
             assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class);
             assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class);
-            when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-001")));
+            when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-001")));
             approvalService.complete("task-001", null, null);
         }
         verify(taskService, times(5)).complete("task-001");
@@ -1356,7 +1356,7 @@ class ApprovalServiceTest {
         when(query.singleResult()).thenReturn(mockTask);
         when(query.listPage(0, 1)).thenReturn(List.of(mockTask));
         when(taskService.getVariable("task-001", "businessType")).thenReturn("SEAL_APPLY");
-        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("workflow_instance_id", "pi-new")));
+        when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("workflow_instance_id", "pi-new")));
         assertThatThrownBy(() -> approvalService.rejectToPrevious("task-001", "x")).hasMessageContaining("源单流程实例不匹配");
         assertThatThrownBy(() -> approvalService.rejectToStart("task-001", "x")).hasMessageContaining("源单流程实例不匹配");
         assertThatThrownBy(() -> approvalService.terminate("task-001", "x")).hasMessageContaining("源单流程实例不匹配");
