@@ -157,4 +157,61 @@ class ProcessDefinitionServiceTest {
         verify(processDefMapper).updateById(any(WfProcessDef.class));
         verify(processDefMapper, never()).insert(any(WfProcessDef.class));
     }
+
+    @Test
+    @DisplayName("部署流程：流程名称优先取 BPMN 内中文名，而非传入的流程标识")
+    void testDeploy_prefersBpmnChineseName() {
+        DeploymentBuilder builder = mock(DeploymentBuilder.class);
+        Deployment deployment = mock(Deployment.class);
+        ProcessDefinition pd = mock(ProcessDefinition.class);
+        when(repositoryService.createDeployment()).thenReturn(builder);
+        when(builder.addBytes(anyString(), any(byte[].class))).thenReturn(builder);
+        when(builder.name(anyString())).thenReturn(builder);
+        when(builder.tenantId(anyString())).thenReturn(builder);
+        when(builder.enableDuplicateFiltering()).thenReturn(builder);
+        when(builder.deploy()).thenReturn(deployment);
+        when(deployment.getId()).thenReturn("dep-1");
+
+        ProcessDefinitionQuery query = mock(ProcessDefinitionQuery.class);
+        when(repositoryService.createProcessDefinitionQuery()).thenReturn(query);
+        when(query.deploymentId("dep-1")).thenReturn(query);
+        when(query.singleResult()).thenReturn(pd);
+        when(pd.getKey()).thenReturn("budget_approval");
+        when(pd.getName()).thenReturn("预算审批");
+        when(pd.getId()).thenReturn("pd-1");
+        when(pd.getVersion()).thenReturn(1);
+
+        WfProcessDef result = processDefinitionService.deploy("budget_approval", 1L, "<bpmn/>".getBytes());
+
+        assertThat(result.getProcessName()).isEqualTo("预算审批");
+    }
+
+    @Test
+    @DisplayName("存量补名：名称等于标识的记录按 BPMN 中文名回填，其余不动")
+    void testBackfillProcessNames() {
+        WfProcessDef english = new WfProcessDef();
+        english.setProcessKey("budget_approval");
+        english.setProcessName("budget_approval");
+        english.setProcessDefinitionId("pd-1");
+        WfProcessDef orphan = new WfProcessDef();
+        orphan.setProcessKey("gone");
+        orphan.setProcessName("gone");
+        orphan.setProcessDefinitionId("pd-gone");
+        when(processDefMapper.selectList(any())).thenReturn(List.of(english, orphan));
+
+        ProcessDefinitionQuery query = mock(ProcessDefinitionQuery.class);
+        ProcessDefinition pd = mock(ProcessDefinition.class);
+        when(repositoryService.createProcessDefinitionQuery()).thenReturn(query);
+        when(query.processDefinitionId("pd-1")).thenReturn(query);
+        when(query.processDefinitionId("pd-gone")).thenReturn(query);
+        when(query.singleResult()).thenReturn(pd, (ProcessDefinition) null);
+        when(pd.getName()).thenReturn("预算审批");
+
+        int fixed = processDefinitionService.backfillProcessNames();
+
+        assertThat(fixed).isEqualTo(1);
+        assertThat(english.getProcessName()).isEqualTo("预算审批");
+        assertThat(orphan.getProcessName()).isEqualTo("gone");
+        verify(processDefMapper, times(1)).updateById(any(WfProcessDef.class));
+    }
 }

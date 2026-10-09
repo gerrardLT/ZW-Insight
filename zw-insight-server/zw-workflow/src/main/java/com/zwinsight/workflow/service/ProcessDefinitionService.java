@@ -92,7 +92,9 @@ public class ProcessDefinitionService {
                 .last("LIMIT 1"));
         WfProcessDef processDef = existing != null ? existing : new WfProcessDef();
         processDef.setProcessKey(processDefinition.getKey());
-        processDef.setProcessName(name);
+        // 优先用 BPMN 内 <process name> 的中文名；脚本/自检传入的 name 常是流程标识
+        String bpmnName = processDefinition.getName();
+        processDef.setProcessName(bpmnName != null && !bpmnName.isBlank() ? bpmnName : name);
         processDef.setResourceName(resourceName);
         processDef.setDeploymentId(deployment.getId());
         processDef.setProcessDefinitionId(processDefinition.getId());
@@ -327,6 +329,29 @@ public class ProcessDefinitionService {
             };
             return new ByteArrayInputStream(emptyPng);
         }
+    }
+
+    /**
+     * 存量补名：流程名称曾被存成流程标识（英文），按 Flowable 中 BPMN 的中文名回填。幂等。
+     *
+     * @return 回填条数
+     */
+    public int backfillProcessNames() {
+        int fixed = 0;
+        List<WfProcessDef> all = processDefMapper.selectList(new LambdaQueryWrapper<WfProcessDef>()
+                .apply("process_name = process_key"));
+        for (WfProcessDef def : all) {
+            if (def.getProcessDefinitionId() == null) continue;
+            ProcessDefinition pd = repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionId(def.getProcessDefinitionId()).singleResult();
+            String n = pd == null ? null : pd.getName();
+            if (n != null && !n.isBlank() && !n.equals(def.getProcessName())) {
+                def.setProcessName(n);
+                processDefMapper.updateById(def);
+                fixed++;
+            }
+        }
+        return fixed;
     }
 
     /**

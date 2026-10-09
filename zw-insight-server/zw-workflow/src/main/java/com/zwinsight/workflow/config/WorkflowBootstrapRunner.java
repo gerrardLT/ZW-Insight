@@ -71,6 +71,10 @@ public class WorkflowBootstrapRunner implements ApplicationRunner {
             if (deployedCount > 0) {
                 log.info("【工作流自检】本次启动共自动预设部署 {} 个缺失流程", deployedCount);
             }
+            int renamed = processDefinitionService.backfillProcessNames();
+            if (renamed > 0) {
+                log.info("【工作流自检】回填流程中文名称 {} 条", renamed);
+            }
         } catch (Exception e) {
             log.error("【工作流自检】扫描预设流程发生异常", e);
         } finally {
