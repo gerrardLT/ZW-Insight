@@ -680,7 +680,7 @@ public class ApprovalService {
     // ===== 私有方法 =====
 
     /**
-     * 待办查询：本人已签收 + 本人角色为候选组的未签收任务。
+     * 待办查询：本人已签收 + 点名本人为候选人 + 本人角色为候选组的未签收任务。
      * 候选组编码（PROJECT_MANAGER/FINANCE_STAFF）不带租户，必须叠加 taskTenantId，
      * 否则同角色码会看到其他租户的任务。
      */
@@ -694,10 +694,12 @@ public class ApprovalService {
             return query.taskAssignee(uid);
         }
         query = query.taskTenantId(String.valueOf(tenantId));
-        if (roles == null || roles.isEmpty()) {
-            return query.taskAssignee(uid);
+        // 本人已签收 OR 点名为候选人（candidateUsers，按用户ID匹配）OR 本人角色在候选组内
+        query = query.or().taskAssignee(uid).taskCandidateUser(uid);
+        if (roles != null && !roles.isEmpty()) {
+            query = query.taskCandidateGroupIn(roles);
         }
-        return query.or().taskAssignee(uid).taskCandidateGroupIn(roles).endOr();
+        return query.endOr();
     }
 
     /** 读接口租户隔离：两端租户都明确且不一致时按不存在处理（不泄露其他租户任务是否存在） */

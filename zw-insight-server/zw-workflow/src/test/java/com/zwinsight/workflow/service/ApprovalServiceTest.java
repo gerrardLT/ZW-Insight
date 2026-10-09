@@ -694,6 +694,7 @@ class ApprovalServiceTest {
             when(taskQuery.taskTenantId("1")).thenReturn(taskQuery);
             when(taskQuery.or()).thenReturn(taskQuery);
             when(taskQuery.taskAssignee("100")).thenReturn(taskQuery);
+            when(taskQuery.taskCandidateUser("100")).thenReturn(taskQuery);
             when(taskQuery.taskCandidateGroupIn(List.of("PROJECT_MANAGER", "FINANCE_STAFF"))).thenReturn(taskQuery);
             when(taskQuery.endOr()).thenReturn(taskQuery);
             when(taskQuery.count()).thenReturn(1L);
@@ -707,7 +708,35 @@ class ApprovalServiceTest {
 
             assertThat(result.getTotal()).isEqualTo(1);
             verify(taskQuery, atLeastOnce()).taskTenantId("1");
+            verify(taskQuery, atLeastOnce()).taskCandidateUser("100");
             verify(taskQuery, atLeastOnce()).taskCandidateGroupIn(List.of("PROJECT_MANAGER", "FINANCE_STAFF"));
+        }
+    }
+
+    @Test
+    @DisplayName("我的待办：无任何角色时仍按（本人办理 OR 点名候选人）查询，不带候选组")
+    void testGetMyTodoTasks_candidateUserWithoutRoles() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+            when(sysUserMapper.selectRoleCodesByUserId(100L)).thenReturn(List.of());
+
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskTenantId("1")).thenReturn(taskQuery);
+            when(taskQuery.or()).thenReturn(taskQuery);
+            when(taskQuery.taskAssignee("100")).thenReturn(taskQuery);
+            when(taskQuery.taskCandidateUser("100")).thenReturn(taskQuery);
+            when(taskQuery.endOr()).thenReturn(taskQuery);
+            when(taskQuery.count()).thenReturn(0L);
+            when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
+            when(taskQuery.orderByTaskCreateTime()).thenReturn(taskQuery);
+            when(taskQuery.desc()).thenReturn(taskQuery);
+            when(taskQuery.listPage(0, 10)).thenReturn(List.of());
+
+            approvalService.getMyTodoTasks(100L, 1, 10);
+
+            verify(taskQuery, atLeastOnce()).taskCandidateUser("100");
+            verify(taskQuery, never()).taskCandidateGroupIn(anyList());
         }
     }
 

@@ -92,7 +92,6 @@
             placeholder="多个用户ID用英文逗号分隔"
             @change="(v: string) => commit('flowable:candidateUsers', v)"
           />
-          <div class="field-warn">注意：待办列表目前只识别「审批人」和「候选组」，仅配置候选人的节点不会出现在任何人的待办里。</div>
         </el-form-item>
       </el-form>
     </template>
@@ -255,13 +254,6 @@ onMounted(() => {
   font-size: var(--zw-font-size-base);
   font-weight: 600;
   margin-bottom: var(--zw-space-sm-md);
-}
-
-.field-warn {
-  margin-top: var(--zw-space-xs);
-  font-size: var(--zw-font-size-xs);
-  line-height: 1.5;
-  color: var(--el-color-warning);
 }
 
 .quick-assignee-bar {
