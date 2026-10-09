@@ -73,6 +73,7 @@ class ApprovalServiceTest {
         defaultContext.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
         mockTask = mock(Task.class);
         lenient().when(mockTask.getTenantId()).thenReturn("9999");
+        lenient().when(taskService.getVariable(anyString(), eq("initiator"))).thenReturn("300");
         lenient().when(taskService.getVariable(anyString(), eq("businessType"))).thenReturn("PAYMENT_APPLY");
         lenient().when(taskService.getVariable(anyString(), eq("businessId"))).thenReturn(55L);
         lenient().when(jdbc.queryForList(anyString(), anyLong(), anyLong())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-001")));
