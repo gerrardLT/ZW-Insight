@@ -55,9 +55,10 @@
         <el-form-item label="选择用户" prop="userId">
           <el-select
             v-model="addForm.userId"
-            placeholder="请输入姓名搜索"
+            placeholder="输入姓名或账号搜索，或直接下拉选择"
             filterable
             remote
+            clearable
             :remote-method="searchUser"
             :loading="userSearchLoading"
             style="width: 100%"
@@ -66,7 +67,7 @@
             <el-option
               v-for="item in userOptions"
               :key="item.id"
-              :label="`${item.realName} (${item.deptName || '无部门'})`"
+              :label="`${item.realName || item.username} (${item.orgName || item.deptName || item.username})`"
               :value="item.id"
             />
           </el-select>
@@ -108,7 +109,7 @@ import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getProjectMembers, addProjectMember, removeProjectMember, updateMemberRoles } from '@/api/project'
-import { getUserPage } from '@/api/system'
+import { getUserPage, getUserCandidates } from '@/api/system'
 
 const props = defineProps<{
   projectId: number | string
@@ -183,9 +184,10 @@ const addLoading = ref(false)
 const addFormRef = ref<FormInstance>()
 const userSearchLoading = ref(false)
 const userOptions = ref<any[]>([])
+let userSearchSeq = 0
 
 const addForm = ref({
-  userId: undefined as number | undefined,
+  userId: undefined as number | string | undefined,
   userName: '',
   projectRoles: [] as string[]
 })
@@ -199,25 +201,53 @@ function showAddDialog() {
   addForm.value = { userId: undefined, userName: '', projectRoles: [] }
   userOptions.value = []
   addDialogVisible.value = true
+  searchUser('')
 }
 
-async function searchUser(query: string) {
-  if (!query || query.length < 1) {
-    userOptions.value = []
+async function searchUser(query?: string) {
+  const seq = ++userSearchSeq
+  userSearchLoading.value = true
+  const kw = (query ?? '').trim()
+  try {
+    // 优先使用选择器专用轻量候选人接口（无密码敏感字段，支持姓名/账号同时匹配）
+    const res: any = await getUserCandidates({ keyword: kw, limit: 30 })
+    if (seq !== userSearchSeq) return
+    const list = Array.isArray(res?.data) ? res.data : (res?.data?.records || [])
+    if (list.length > 0) {
+      userOptions.value = list
+      return
+    }
+  } catch {
+    // 降级回退
+  }
+
+  // 兜底回退传统用户分页接口
+  try {
+    const fallbackParams: any = { pageNum: 1, pageSize: 20 }
+    if (kw) {
+      fallbackParams.realName = kw
+    }
+    const res: any = await getUserPage(fallbackParams)
+    if (seq !== userSearchSeq) return
+    userOptions.value = res.data?.records || []
+  } catch {
+    if (seq === userSearchSeq) {
+      userOptions.value = []
+    }
+  } finally {
+    if (seq === userSearchSeq) {
+      userSearchLoading.value = false
+    }
+  }
+}
+
+function handleUserChange(userId: number | string | undefined) {
+  if (userId === undefined || userId === null) {
+    addForm.value.userName = ''
     return
   }
-  userSearchLoading.value = true
-  try {
-    const res: any = await getUserPage({ realName: query, pageNum: 1, pageSize: 20 })
-    userOptions.value = res.data?.records || []
-  } finally {
-    userSearchLoading.value = false
-  }
-}
-
-function handleUserChange(userId: number) {
-  const user = userOptions.value.find(u => u.id === userId)
-  addForm.value.userName = user?.realName || ''
+  const user = userOptions.value.find(u => String(u.id) === String(userId))
+  addForm.value.userName = user?.realName || user?.username || ''
 }
 
 async function handleAdd() {
@@ -262,7 +292,7 @@ async function handleRemove(row: any) {
 const roleDialogVisible = ref(false)
 const roleLoading = ref(false)
 const roleForm = ref({
-  userId: 0,
+  userId: 0 as number | string,
   userName: '',
   projectRoles: [] as string[]
 })

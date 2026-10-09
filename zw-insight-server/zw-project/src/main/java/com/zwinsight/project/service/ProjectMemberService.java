@@ -14,6 +14,8 @@ import com.zwinsight.project.domain.enums.ProjectRoleEnum;
 import com.zwinsight.project.domain.vo.ProjectMemberVO;
 import com.zwinsight.project.mapper.BizProjectMemberMapper;
 import com.zwinsight.project.mapper.SysUserProjectMapper;
+import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.security.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,7 @@ public class ProjectMemberService {
 
     private final BizProjectMemberMapper memberMapper;
     private final SysUserProjectMapper userProjectMapper;
+    private final SysUserMapper userMapper;
 
     /**
      * 获取项目成员列表（旧接口兼容）
@@ -55,6 +58,20 @@ public class ProjectMemberService {
         // 校验角色合法性
         validateRoles(request.getProjectRoles());
 
+        // 校验用户合法性：真实存在、本租户、已启用
+        String resolvedUserName = request.getUserName();
+        if (userMapper != null && request.getUserId() != null) {
+            SysUser user = userMapper.selectById(request.getUserId());
+            if (user == null || !Integer.valueOf(1).equals(user.getStatus())) {
+                throw new BusinessException(400, "用户不存在或已被停用");
+            }
+            Long currentTenant = SecurityContextHolder.getTenantId();
+            if (currentTenant != null && user.getTenantId() != null && !currentTenant.equals(user.getTenantId())) {
+                throw new BusinessException(403, "无权添加其他租户用户");
+            }
+            resolvedUserName = user.getRealName() != null ? user.getRealName() : user.getUsername();
+        }
+
         // 唯一性校验：同项目同用户不可重复（仅活跃成员，D7 修复：停用成员可重新加入）
         LambdaQueryWrapper<BizProjectMember> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BizProjectMember::getProjectId, projectId)
@@ -69,7 +86,7 @@ public class ProjectMemberService {
         BizProjectMember member = new BizProjectMember();
         member.setProjectId(projectId);
         member.setUserId(request.getUserId());
-        member.setUserName(request.getUserName());
+        member.setUserName(resolvedUserName);
         member.setProjectRoles(request.getProjectRoles());
         member.setJoinDate(LocalDate.now());
         member.setStatus(1);

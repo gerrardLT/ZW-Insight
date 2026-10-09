@@ -18,7 +18,7 @@ import ElementPlus from 'element-plus'
 
 const {
   mockMembers, mockAddMember, mockRemoveMember, mockUpdateRoles,
-  mockUserPage, mockProjectDetail, mockConfirm, mockMessageWarning,
+  mockUserPage, mockUserCandidates, mockProjectDetail, mockConfirm, mockMessageWarning,
   mockRouteParams, mockRouteQuery,
 } = vi.hoisted(() => ({
   mockMembers: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
@@ -26,6 +26,7 @@ const {
   mockRemoveMember: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockUpdateRoles: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockUserPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockUserCandidates: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
   mockProjectDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: { id: 1, projectName: 'P1' } })),
   mockConfirm: vi.fn(async () => 'confirm'),
   mockMessageWarning: vi.fn(),
@@ -39,7 +40,7 @@ vi.mock('@/api/project', () => ({
   getProjectDetail: mockProjectDetail,
   createProject: vi.fn(), updateProject: vi.fn(), getOwnerList: vi.fn(), getCompanyList: vi.fn(),
 }))
-vi.mock('@/api/system', () => ({ getUserPage: mockUserPage }))
+vi.mock('@/api/system', () => ({ getUserPage: mockUserPage, getUserCandidates: mockUserCandidates }))
 vi.mock('vue-router', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
@@ -106,22 +107,43 @@ describe('ProjectMember.vue 账本补测（@matrix A4）', () => {
     expect(st.addFormRules.projectRoles[0].min).toBe(1)
   })
 
-  it('@matrix A4-04 用户远程搜索带 realName/pageSize=20，空查询不请求，选项含部门后缀', async () => {
+  it('@matrix A4-04 用户选择器：打开即预载候选、支持按姓名或账号模糊搜索、字符串ID匹配', async () => {
+    mockUserCandidates.mockResolvedValue({
+      code: 200,
+      data: [{ id: '90071', username: 'zhangwei', realName: '张伟', orgName: '工程一部' }]
+    })
     await mountMember()
     const st = wrapper.vm.$.setupState
-    // 空查询直接清空不发请求
-    mockUserPage.mockClear()
-    await st.searchUser('')
-    expect(mockUserPage).not.toHaveBeenCalled()
-    expect(st.userOptions).toEqual([])
-    // 有效查询
-    mockUserPage.mockResolvedValue({ code: 200, data: { records: [{ id: 5, realName: '王五', deptName: '工程部' }], total: 1 } })
-    await st.searchUser('王')
-    expect(mockUserPage).toHaveBeenCalledWith({ realName: '王', pageNum: 1, pageSize: 20 })
+
+    // 打开弹窗：立即触发预载，不再空无一人
+    mockUserCandidates.mockClear()
+    st.showAddDialog()
+    await flushPromises()
+    expect(mockUserCandidates).toHaveBeenCalledWith({ keyword: '', limit: 30 })
     expect(st.userOptions).toHaveLength(1)
-    // 选中后同步 userName
-    st.handleUserChange(5)
-    expect(st.addForm.userName).toBe('王五')
+
+    // 输入姓名或账号搜索
+    mockUserCandidates.mockResolvedValueOnce({
+      code: 200,
+      data: [{ id: '90072', username: 'lina', realName: '李娜', orgName: '财务部' }]
+    })
+    await st.searchUser('lina')
+    expect(mockUserCandidates).toHaveBeenCalledWith({ keyword: 'lina', limit: 30 })
+    expect(st.userOptions[0].username).toBe('lina')
+
+    // 选中字符串ID后正确同步 userName
+    st.handleUserChange('90072')
+    expect(st.addForm.userName).toBe('李娜')
+
+    // 候选人接口异常时平滑回退传统用户分页
+    mockUserCandidates.mockRejectedValueOnce(new Error('fail'))
+    mockUserPage.mockResolvedValueOnce({
+      code: 200,
+      data: { records: [{ id: '90073', username: 'wangqiang', realName: '王强', orgName: '采购部' }], total: 1 }
+    })
+    await st.searchUser('王强')
+    expect(mockUserPage).toHaveBeenCalledWith({ realName: '王强', pageNum: 1, pageSize: 20 })
+    expect(st.userOptions[0].username).toBe('wangqiang')
   })
 
   it('@matrix A4-07 变更角色空选前端 warning 拦截，不发 PUT', async () => {

@@ -5,6 +5,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.system.domain.vo.SysUserCandidateVO;
 import com.zwinsight.system.dto.AssignRolesRequest;
 import com.zwinsight.system.service.SysUserService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -46,6 +47,17 @@ public class SysUserController {
     @RequiresPermission({"system:view", "project:view"})
     public R<SysUser> getById(@PathVariable Long id) {
         return R.ok(userService.getById(id));
+    }
+
+    /**
+     * 选择器候选人查询（轻量安全视图，支持按姓名/账号搜索，限定本租户启用用户）
+     */
+    @GetMapping("/candidates")
+    @RequiresPermission({"system:view", "project:view", "site:view", "workflow:view"})
+    public R<List<SysUserCandidateVO>> candidates(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "20") Integer limit) {
+        return R.ok(userService.listCandidates(keyword, limit));
     }
 
     @PostMapping

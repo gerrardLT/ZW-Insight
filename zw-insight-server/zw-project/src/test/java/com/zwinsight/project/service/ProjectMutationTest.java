@@ -11,6 +11,8 @@ import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.mapper.BizProjectMemberMapper;
 import com.zwinsight.project.mapper.BizProjectWbsNodeMapper;
 import com.zwinsight.project.mapper.SysUserProjectMapper;
+import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.workflow.service.ApprovalService;
 import org.junit.jupiter.api.AfterEach;
@@ -64,6 +66,8 @@ class ProjectMutationTest {
     private BizProjectMemberMapper memberMapper;
     @Mock
     private SysUserProjectMapper userProjectMapper;
+    @Mock
+    private SysUserMapper userMapper;
     // R7-02 级联删除给 ProjectService 新增的两个依赖
     @Mock
     private BizProjectWbsNodeMapper wbsNodeMapper;
@@ -220,7 +224,7 @@ class ProjectMutationTest {
     // ==================== ProjectMemberService ====================
 
     private ProjectMemberService memberServiceReal() {
-        return new ProjectMemberService(memberMapper, userProjectMapper);
+        return new ProjectMemberService(memberMapper, userProjectMapper, userMapper);
     }
 
     private ProjectMemberAddRequest addRequest(Long userId, List<String> roles) {
@@ -246,6 +250,13 @@ class ProjectMutationTest {
                 .hasMessageContaining("无效的项目角色");
 
         // 成功：成员字段写入 + sys_user_project 同步
+        SysUser mockUser2 = new SysUser();
+        mockUser2.setId(2L);
+        mockUser2.setTenantId(TENANT_ID);
+        mockUser2.setStatus(1);
+        mockUser2.setRealName("用户2");
+        when(userMapper.selectById(2L)).thenReturn(mockUser2);
+
         when(memberMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
         when(userProjectMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
 

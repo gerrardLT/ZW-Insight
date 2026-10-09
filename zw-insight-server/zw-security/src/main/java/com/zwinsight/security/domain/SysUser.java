@@ -2,6 +2,7 @@ package com.zwinsight.security.domain;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.zwinsight.common.desensitize.Desensitize;
 import com.zwinsight.common.desensitize.DesensitizeType;
 import com.zwinsight.common.domain.BaseEntity;
@@ -13,7 +14,10 @@ import lombok.EqualsAndHashCode;
 @TableName("sys_user")
 public class SysUser extends BaseEntity {
     private String username;
+
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
+
     private String realName;
 
     @Desensitize(type = DesensitizeType.PHONE)

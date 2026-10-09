@@ -32,6 +32,11 @@ export function getUserPage(params: any) {
   return request.get('/v1/system/user', { params })
 }
 
+/** 选择器专用候选人列表（支持按姓名/账号搜索，限定本租户启用用户） */
+export function getUserCandidates(params?: { keyword?: string; limit?: number }) {
+  return request.get('/v1/system/user/candidates', { params })
+}
+
 export function getUserDetail(id: number) {
   return request.get(`/v1/system/user/${id}`)
 }

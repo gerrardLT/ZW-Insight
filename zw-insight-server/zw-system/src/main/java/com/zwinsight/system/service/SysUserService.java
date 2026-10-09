@@ -13,6 +13,7 @@ import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.system.domain.SysOrg;
 import com.zwinsight.system.domain.SysRole;
+import com.zwinsight.system.domain.vo.SysUserCandidateVO;
 import com.zwinsight.system.mapper.SysRoleMapper;
 import com.zwinsight.system.domain.SysUserRole;
 import com.zwinsight.system.dto.SysUserExcelDTO;
@@ -69,6 +70,37 @@ public class SysUserService {
         Page<SysUser> result = userMapper.selectPage(pageParam, wrapper);
         fillOrgName(result.getRecords());
         return PageResult.of(result);
+    }
+
+    /**
+     * 选择器轻量候选人查询（租户隔离、仅启用用户、支持姓名/账号模糊匹配、回填机构名称）
+     */
+    public List<SysUserCandidateVO> listCandidates(String keyword, Integer limit) {
+        int max = (limit == null || limit <= 0) ? 20 : Math.min(limit, 100);
+        Page<SysUser> pageParam = new Page<>(1, max);
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysUser::getStatus, 1);
+        if (SecurityContextHolder.getTenantId() != null) {
+            wrapper.eq(SysUser::getTenantId, SecurityContextHolder.getTenantId());
+        }
+        if (StrUtil.isNotBlank(keyword)) {
+            String kw = keyword.trim();
+            wrapper.and(w -> w.like(SysUser::getRealName, kw).or().like(SysUser::getUsername, kw));
+        }
+        wrapper.orderByDesc(SysUser::getCreatedAt);
+
+        Page<SysUser> pageResult = userMapper.selectPage(pageParam, wrapper);
+        List<SysUser> records = pageResult.getRecords();
+        fillOrgName(records);
+
+        return records.stream()
+                .map(u -> SysUserCandidateVO.builder()
+                        .id(u.getId())
+                        .username(u.getUsername())
+                        .realName(u.getRealName() != null ? u.getRealName() : u.getUsername())
+                        .orgName(u.getOrgName())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     /**

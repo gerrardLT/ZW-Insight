@@ -29,5 +29,5 @@ export interface PageQuery {
   pageSize?: number
 }
 
-/** ID 类型 */
-export type ID = number
+/** ID 类型（雪花ID超出JS安全整数，后端Jackson序列化为string，故兼容number与string） */
+export type ID = number | string

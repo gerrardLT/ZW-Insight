@@ -9,6 +9,8 @@ import com.zwinsight.project.domain.dto.ProjectMemberAddRequest;
 import com.zwinsight.project.domain.enums.ProjectRoleEnum;
 import com.zwinsight.project.mapper.BizProjectMemberMapper;
 import com.zwinsight.project.mapper.SysUserProjectMapper;
+import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.security.mapper.SysUserMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +32,7 @@ class ProjectMemberServiceTest {
 
     @Mock private BizProjectMemberMapper memberMapper;
     @Mock private SysUserProjectMapper userProjectMapper;
+    @Mock private SysUserMapper userMapper;
 
     @InjectMocks
     private ProjectMemberService memberService;
@@ -67,19 +70,26 @@ class ProjectMemberServiceTest {
     }
 
     @Test
-    @DisplayName("添加成员：正常添加并同步 sys_user_project")
+    @DisplayName("添加成员：正常添加并同步 sys_user_project（回填真实姓名）")
     void testAddMember_success() {
         try (var sc = mockStatic(SecurityContextHolder.class)) {
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
 
             ProjectMemberAddRequest request = new ProjectMemberAddRequest();
             request.setUserId(200L);
-            request.setUserName("张三");
+            request.setUserName("伪造姓名");
             request.setProjectRoles(List.of(ProjectRoleEnum.PROJECT_MANAGER.getCode()));
+
+            SysUser realUser = new SysUser();
+            realUser.setId(200L);
+            realUser.setTenantId(1L);
+            realUser.setStatus(1);
+            realUser.setUsername("zhangsan");
+            realUser.setRealName("张三真实");
+            when(userMapper.selectById(200L)).thenReturn(realUser);
 
             when(memberMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
             when(memberMapper.insert(any(BizProjectMember.class))).thenReturn(1);
-            // syncAddUserProject 中的 selectCount
             when(userProjectMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
             when(userProjectMapper.insert(any(SysUserProject.class))).thenReturn(1);
 
@@ -88,8 +98,45 @@ class ProjectMemberServiceTest {
             verify(memberMapper).insert(argThat(m ->
                     m.getProjectId().equals(1L)
                             && m.getUserId().equals(200L)
+                            && "张三真实".equals(m.getUserName())
                             && m.getStatus() == 1));
             verify(userProjectMapper).insert(any(SysUserProject.class));
+        }
+    }
+
+    @Test
+    @DisplayName("添加成员：用户不存在或已停用拒绝")
+    void testAddMember_userDisabledOrNotFound_throws() {
+        ProjectMemberAddRequest request = new ProjectMemberAddRequest();
+        request.setUserId(404L);
+        request.setProjectRoles(List.of(ProjectRoleEnum.PROJECT_MANAGER.getCode()));
+
+        when(userMapper.selectById(404L)).thenReturn(null);
+
+        assertThatThrownBy(() -> memberService.addMember(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("用户不存在或已被停用");
+    }
+
+    @Test
+    @DisplayName("添加成员：跨租户用户拒绝")
+    void testAddMember_crossTenantUser_throws() {
+        try (var sc = mockStatic(SecurityContextHolder.class)) {
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+
+            ProjectMemberAddRequest request = new ProjectMemberAddRequest();
+            request.setUserId(200L);
+            request.setProjectRoles(List.of(ProjectRoleEnum.PROJECT_MANAGER.getCode()));
+
+            SysUser crossUser = new SysUser();
+            crossUser.setId(200L);
+            crossUser.setTenantId(2L);
+            crossUser.setStatus(1);
+            when(userMapper.selectById(200L)).thenReturn(crossUser);
+
+            assertThatThrownBy(() -> memberService.addMember(1L, request))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("无权添加其他租户用户");
         }
     }
 

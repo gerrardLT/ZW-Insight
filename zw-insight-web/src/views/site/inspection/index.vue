@@ -71,14 +71,20 @@
         <el-form-item label="整改责任人" prop="responsiblePersonId">
           <el-select
             v-model="assignForm.responsiblePersonId"
-            placeholder="请选择整改责任人"
+            placeholder="输入姓名或账号搜索，或直接选择"
             filterable
             remote
+            clearable
             :remote-method="searchUsers"
             :loading="userSearchLoading"
             style="width: 100%"
           >
-            <el-option v-for="u in userOptions" :key="u.id" :label="u.realName || u.username" :value="u.id" />
+            <el-option
+              v-for="u in userOptions"
+              :key="u.id"
+              :label="`${u.realName || u.username} (${u.orgName || u.deptName || u.username})`"
+              :value="u.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="整改期限" prop="rectificationDeadline">
@@ -98,7 +104,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { getQualityInspectionPage, getSafetyInspectionPage, deleteQualityInspection, deleteSafetyInspection, assignRectification } from '@/api/site'
-import { getUserPage } from '@/api/system'
+import { getUserPage, getUserCandidates } from '@/api/system'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 
 const router = useRouter()
@@ -162,9 +168,10 @@ const assignFormRef = ref<FormInstance>()
 const userOptions = ref<any[]>([])
 const userSearchLoading = ref(false)
 const assignTargetId = ref<number>(0)
+let userSearchSeq = 0
 
 const assignForm = ref({
-  responsiblePersonId: undefined as number | undefined,
+  responsiblePersonId: undefined as number | string | undefined,
   rectificationDeadline: ''
 })
 const assignRules: FormRules = {
@@ -177,15 +184,39 @@ function canAssign(row: any) {
   return row.hasProblem === 1 && row.rectificationStatus !== 'APPROVED'
 }
 
-async function searchUsers(query: string) {
+async function searchUsers(query?: string) {
+  const seq = ++userSearchSeq
   userSearchLoading.value = true
+  const kw = (query ?? '').trim()
   try {
-    const res: any = await getUserPage({ realName: query, page: 1, size: 20 })
+    const res: any = await getUserCandidates({ keyword: kw, limit: 30 })
+    if (seq !== userSearchSeq) return
+    const list = Array.isArray(res?.data) ? res.data : (res?.data?.records || [])
+    if (list.length > 0) {
+      userOptions.value = list
+      return
+    }
+  } catch {
+    // 降级回退
+  }
+
+  try {
+    const fallbackParams: any = { page: 1, size: 20 }
+    if (kw) {
+      fallbackParams.realName = kw
+    }
+    const res: any = await getUserPage(fallbackParams)
+    if (seq !== userSearchSeq) return
     userOptions.value = res.data?.records || []
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.message || '用户列表加载失败')
+    if (seq === userSearchSeq) {
+      ElMessage.error(e?.response?.data?.message || '用户列表加载失败')
+      userOptions.value = []
+    }
   } finally {
-    userSearchLoading.value = false
+    if (seq === userSearchSeq) {
+      userSearchLoading.value = false
+    }
   }
 }
 

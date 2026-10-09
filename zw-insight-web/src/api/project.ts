@@ -138,11 +138,11 @@ export function addProjectMember(projectId: number | string, data: ProjectMember
   return request.post<R<void>>(`/v1/project/${projectId}/member`, data)
 }
 
-export function removeProjectMember(projectId: number | string, userId: number) {
+export function removeProjectMember(projectId: number | string, userId: number | string) {
   return request.delete<R<void>>(`/v1/project/${projectId}/member/${userId}`)
 }
 
-export function updateMemberRoles(projectId: number | string, userId: number, data: UpdateMemberRolesRequest) {
+export function updateMemberRoles(projectId: number | string, userId: number | string, data: UpdateMemberRolesRequest) {
   return request.put<R<void>>(`/v1/project/${projectId}/member/${userId}/roles`, data)
 }
 
