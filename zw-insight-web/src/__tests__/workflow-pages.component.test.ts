@@ -7,7 +7,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
 const {
-  mockTodo, mockDone, mockComplete, mockRejectPrev, mockRejectStart, mockTerminate, mockBatchApprove, mockApprovalDetail, mockPaymentDetail,
+  mockTodo, mockDone, mockComplete, mockRejectPrev, mockRejectStart, mockTerminate, mockBatchApprove, mockApprovalDetail, mockBusinessDetail, mockPaymentDetail,
   mockBtTree, mockBtDetail, mockBtCreate, mockBtUpdate, mockBtDelete,
   mockDeploy, mockProcessList, mockProcessImage, mockProcessVersions,
   mockRollbackLogs, mockConfirmConflict,
@@ -33,7 +33,8 @@ const {
   return {
     mockTodo: page(), mockDone: page(), mockComplete: ok(), mockRejectPrev: ok(), mockRejectStart: ok(),
     mockTerminate: ok(), mockBatchApprove: ok(),
-    mockApprovalDetail: vi.fn(async (taskId: string) => ({ code: 200, data: { taskId, taskName: '审批任务', status: 'pending', businessType: 'OTHER', businessId: '12', processInstanceId: 'p1' } })),
+    mockApprovalDetail: vi.fn(async (taskId: string) => ({ code: 200, data: { taskId, taskName: '审批任务', status: 'pending', businessType: 'SEAL_APPLY', businessId: '12', processInstanceId: 'p1', assignee: '9999003' } })),
+    mockBusinessDetail: vi.fn(async () => ({ code: 200, data: { supported: true, found: true, fields: [{ label: '事由', value: '测试审批事由' }] } })),
     mockPaymentDetail: vi.fn(async (_id: number) => ({ code: 200, data: { id: '12', projectId: '21', projectName: '项目甲', paymentAmount: 123, status: 'SUBMITTED', workflowInstanceId: 'p1' } })),
     mockBtTree: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
     mockBtDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
@@ -59,7 +60,7 @@ const {
 vi.mock('@/api/workflow', () => ({
   getTodoTasks: mockTodo, getDoneTasks: mockDone, completeTask: mockComplete,
   rejectToPrevious: mockRejectPrev, rejectToStart: mockRejectStart, terminateProcess: mockTerminate,
-  batchApprove: mockBatchApprove, getApprovalDetail: mockApprovalDetail,
+  batchApprove: mockBatchApprove, getApprovalDetail: mockApprovalDetail, getBusinessDetail: mockBusinessDetail, claimTask: vi.fn(),
   getBusinessTypeTree: mockBtTree, getBusinessTypeDetail: mockBtDetail,
   createBusinessType: mockBtCreate, updateBusinessType: mockBtUpdate, deleteBusinessType: mockBtDelete,
   deployProcess: mockDeploy, getProcessList: mockProcessList,
