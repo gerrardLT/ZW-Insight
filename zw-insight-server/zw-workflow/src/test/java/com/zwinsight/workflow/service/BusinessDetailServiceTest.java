@@ -2,6 +2,7 @@ package com.zwinsight.workflow.service;
 
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.exception.DataPermissionException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -130,6 +131,16 @@ class BusinessDetailServiceTest {
                     .isInstanceOf(BusinessException.class);
             verify(jdbc, never()).queryForList(anyString(), eq(9L), eq(1L));
         }
+    }
+
+    @Test
+    void crossTenantTaskDenialPropagatesWithoutBusinessQuery() {
+        when(approvalService.getTaskDetail("t1"))
+                .thenThrow(new DataPermissionException("任务不存在或已被处理"));
+        assertThatThrownBy(() -> service.getForTask("t1"))
+                .isInstanceOf(DataPermissionException.class)
+                .satisfies(e -> assertThat(((DataPermissionException) e).getCode()).isEqualTo(403));
+        org.mockito.Mockito.verifyNoInteractions(jdbc);
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.exception.DataPermissionException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
@@ -289,8 +290,10 @@ class ApprovalServiceTest {
             TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
             when(taskService.createTaskQuery()).thenReturn(query);
             when(query.singleResult()).thenReturn(mockTask);
-            assertThatThrownBy(() -> approvalService.assertCanViewTask("task-001"))
-                    .isInstanceOf(BusinessException.class);
+            assertThatThrownBy(() -> approvalService.getTaskDetail("task-001"))
+                    .isInstanceOf(DataPermissionException.class)
+                    .hasMessage("任务不存在或已被处理")
+                    .satisfies(e -> assertThat(((DataPermissionException) e).getCode()).isEqualTo(403));
             verifyNoInteractions(sysUserMapper, historyService, approvalRecordMapper);
         }
     }
@@ -817,7 +820,7 @@ class ApprovalServiceTest {
             when(taskQuery.listPage(0, 1)).thenReturn(List.of(mockTask));
 
             assertThatThrownBy(() -> approvalService.withdrawByBusiness("PAYMENT_APPLY", 55L))
-                    .isInstanceOf(BusinessException.class)
+                    .isInstanceOf(DataPermissionException.class)
                     .hasMessageContaining("任务不存在");
             verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
         }

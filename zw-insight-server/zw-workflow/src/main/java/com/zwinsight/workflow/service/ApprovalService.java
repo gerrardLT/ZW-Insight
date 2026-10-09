@@ -3,6 +3,7 @@ package com.zwinsight.workflow.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.exception.DataPermissionException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.security.domain.SysUser;
 import com.zwinsight.security.mapper.SysUserMapper;
@@ -800,7 +801,7 @@ public class ApprovalService {
         Long tenantId = SecurityContextHolder.getTenantId();
         if (tenantId == null || resourceTenantId == null || resourceTenantId.isBlank()
                 || !String.valueOf(tenantId).equals(resourceTenantId)) {
-            throw new BusinessException("任务不存在或已被处理");
+            throw new DataPermissionException("任务不存在或已被处理");
         }
     }
 
