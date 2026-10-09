@@ -14,47 +14,94 @@
           <el-table ref="tableRef" :data="tableData" row-key="taskId" border highlight-current-row @selection-change="selectedRows = $event">
             <el-table-column v-if="activeTab === 'todo'" type="selection" width="50" />
             <el-table-column v-if="columnVisible[0]" prop="taskName" label="任务名称" min-width="150" />
-            <el-table-column v-if="columnVisible[1]" prop="businessType" label="业务类型" width="150" />
-            <el-table-column v-if="columnVisible[2]" prop="initiator" label="发起人" width="100" />
-            <el-table-column v-if="columnVisible[3]" prop="createTime" label="创建时间" width="170" />
+            <el-table-column v-if="columnVisible[1]" prop="businessType" label="业务类型" width="150" :formatter="(row: any) => businessTypeName(row.businessType)" />
+            <el-table-column v-if="columnVisible[2]" prop="startUserName" label="发起人" width="110" :formatter="(row: any) => row.startUserName || row.initiator || '—'" />
+            <el-table-column v-if="columnVisible[3]" prop="createTime" label="创建时间" width="170" :formatter="(row: any) => formatTime(row.createTime)" />
             <el-table-column label="操作" width="130" fixed="right"><template #default="{ row }"><el-button link type="primary" @click="openDetail(row)">查看详情 / 审批</el-button></template></el-table-column>
           </el-table>
         </el-skeleton>
       </div>
       <div class="pagination-wrap"><el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.size" :page-sizes="[10, 20, 50, 100]" :total="total" layout="total, sizes, prev, pager, next" @size-change="loadData" @current-change="loadData" /></div>
     </el-card>
-    <el-drawer v-model="drawerVisible" title="审批详情与意见" size="min(640px, 100vw)" @closed="invalidateDetail">
+
+    <el-drawer v-model="drawerVisible" title="审批详情与意见" size="min(680px, 100vw)" @closed="invalidateDetail">
+      <template #header>
+        <div class="drawer-head">
+          <span class="drawer-title">{{ detail?.taskName || detail?.processName || '审批详情' }}</span>
+          <el-tag v-if="detail" :type="detail.status === 'pending' ? 'warning' : 'info'" size="small">{{ detail.status === 'pending' ? '待我审批' : '已办结' }}</el-tag>
+        </div>
+      </template>
       <p v-if="detailLoading" role="status">正在核对审批详情及业务源单…</p>
-      <div v-if="detailError" role="alert">{{ detailError }} <el-button @click="retryDetail">重新加载详情</el-button></div>
+      <div v-if="detailError" role="alert" class="alert-line">{{ detailError }} <el-button @click="retryDetail">重新加载详情</el-button></div>
       <template v-if="detail">
-        <h2>{{ detail.taskName || detail.processName || '审批详情' }}</h2>
-        <dl class="summary"><dt>业务类型 / ID</dt><dd>{{ detail.businessType }} / {{ detail.businessId }}</dd><dt>任务状态（详情接口）</dt><dd>{{ detail.status }}</dd><dt>申请人</dt><dd>{{ detail.startUserName || '未提供' }}</dd><dt>申请时间</dt><dd>{{ detail.createTime || '未提供' }}</dd></dl>
-        <template v-if="detail.businessType === PAYMENT_TYPE">
-          <h3>付款源单摘要</h3>
-          <dl v-if="payment" class="summary">
-            <dt>项目</dt><dd>{{ projectName || '未提供' }}（ID：{{ payment.projectId || '未提供' }}）</dd>
-            <dt>付款金额</dt><dd>{{ money(payment.paymentAmount) }}</dd><dt>收款单位</dt><dd>{{ payment.supplierName || '未提供' }}</dd>
-            <dt>合同分类 / ID</dt><dd>{{ payment.contractCategory || '未提供' }} / {{ payment.contractId || '未提供' }}</dd>
-            <dt>累计结算快照</dt><dd>{{ money(payment.cumulativeSettlementSnapshot) }}</dd><dt>可付快照（未付金额）</dt><dd>{{ money(payment.unpaidAmountSnapshot) }}</dd>
-            <dt>源单状态</dt><dd>{{ payment.status }}</dd>
-          </dl>
-          <p>预算校验说明：当前接口未提供预算校验结果，不代表已通过预算校验。附件：当前接口未提供。快照不代表实时余额。</p>
-        </template>
-        <p v-else>业务摘要：{{ detail.businessTitle || '未提供' }}。金额合计：未提供（详情未提供可核验源单金额）。</p>
-        <h3>审批历史</h3>
-        <p v-if="!detail.approvalRecords?.length">暂无审批记录</p>
-        <ol v-else class="history"><li v-for="record in detail.approvalRecords" :key="record.id">{{ record.assigneeName || '未提供' }} · {{ record.resultText }} · {{ record.endTime }}<p>{{ record.comment || '未提供意见' }}</p></li></ol>
-        <template v-if="activeTab === 'todo' && detail.status === 'pending'">
-          <p v-if="blocked" role="alert">{{ blocked }}</p>
-          <el-form label-position="top"><el-form-item label="审批意见（退回、终止必填）"><el-input v-model="comment" type="textarea" :rows="4" maxlength="500" show-word-limit /></el-form-item><el-form-item label="退回方式"><el-radio-group v-model="rejectType"><el-radio value="previous">退回上一步</el-radio><el-radio value="start">退回发起人</el-radio></el-radio-group></el-form-item></el-form>
-          <div class="actions"><el-button type="success" :disabled="!!blocked || submitLoading" @click="submitAction('approve')">确认本单通过</el-button><el-button type="warning" :disabled="!!blocked || submitLoading" @click="submitAction('reject')">退回</el-button><el-button type="danger" :disabled="!!blocked || submitLoading" @click="submitAction('terminate')">终止流程</el-button></div>
+        <section class="block">
+          <h3>流程信息</h3>
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="单据类型">{{ businessTypeName(detail.businessType) }}</el-descriptions-item>
+            <el-descriptions-item label="单据ID">{{ detail.businessId }}</el-descriptions-item>
+            <el-descriptions-item label="申请人">{{ detail.startUserName || '未提供' }}</el-descriptions-item>
+            <el-descriptions-item label="申请时间">{{ formatTime(detail.createTime) }}</el-descriptions-item>
+          </el-descriptions>
+        </section>
+
+        <section class="block">
+          <h3>业务详情</h3>
+          <template v-if="detail.businessType === PAYMENT_TYPE">
+            <el-descriptions v-if="payment" :column="2" border size="small">
+              <el-descriptions-item label="项目" :span="2">{{ projectName || '未提供' }}（ID：{{ payment.projectId || '未提供' }}）</el-descriptions-item>
+              <el-descriptions-item label="付款金额">{{ money(payment.paymentAmount) }}</el-descriptions-item>
+              <el-descriptions-item label="收款单位">{{ payment.supplierName || '未提供' }}</el-descriptions-item>
+              <el-descriptions-item label="合同分类 / ID">{{ payment.contractCategory || '未提供' }} / {{ payment.contractId || '未提供' }}</el-descriptions-item>
+              <el-descriptions-item label="源单状态">{{ payment.status }}</el-descriptions-item>
+              <el-descriptions-item label="累计结算快照">{{ money(payment.cumulativeSettlementSnapshot) }}</el-descriptions-item>
+              <el-descriptions-item label="可付快照（未付金额）">{{ money(payment.unpaidAmountSnapshot) }}</el-descriptions-item>
+            </el-descriptions>
+            <p class="secondary">预算校验说明：当前接口未提供预算校验结果，不代表已通过预算校验。附件：当前接口未提供。快照不代表实时余额。</p>
+          </template>
+          <template v-else>
+            <p v-if="bizLoading" role="status">正在加载业务详情…</p>
+            <div v-else-if="bizError" role="alert" class="alert-line">{{ bizError }} <el-button @click="retryBusiness">重试</el-button></div>
+            <p v-else-if="biz && biz.supported === false" class="secondary">该类型暂无结构化详情，请到对应业务模块核对单据后再审批。</p>
+            <p v-else-if="biz && biz.found === false" class="secondary">未找到对应业务单据（可能已删除），请谨慎审批。</p>
+            <el-descriptions v-else-if="biz?.fields?.length" :column="2" border size="small">
+              <el-descriptions-item v-for="(f, i) in biz.fields" :key="i" :label="f.label" :span="bizSpan(f)">{{ fieldText(f) }}</el-descriptions-item>
+            </el-descriptions>
+          </template>
+        </section>
+
+        <section class="block">
+          <h3>审批记录</h3>
+          <p v-if="!detail.approvalRecords?.length" class="secondary">暂无审批记录</p>
+          <el-timeline v-else>
+            <el-timeline-item v-for="record in detail.approvalRecords" :key="record.id" :timestamp="formatTime(record.endTime)" placement="top">
+              <strong>{{ record.taskName }}</strong> · {{ record.assigneeName || '未提供' }} · {{ record.resultText }}
+              <p class="note">{{ record.comment || '未提供意见' }}</p>
+            </el-timeline-item>
+          </el-timeline>
+        </section>
+
+        <section v-if="activeTab === 'todo' && detail.status === 'pending'" class="block">
+          <h3>审批意见</h3>
+          <p v-if="blocked" role="alert" class="alert-line">{{ blocked }}</p>
+          <el-form label-position="top">
+            <el-form-item label="意见（退回、终止必填）"><el-input v-model="comment" type="textarea" :rows="4" maxlength="500" show-word-limit /></el-form-item>
+            <el-form-item label="退回方式"><el-radio-group v-model="rejectType"><el-radio value="previous">退回上一步</el-radio><el-radio value="start">退回发起人</el-radio></el-radio-group></el-form-item>
+          </el-form>
           <p class="secondary">操作权限以服务端校验为准；前端核对不构成授权。</p>
-        </template>
+        </section>
+      </template>
+      <template #footer>
+        <div v-if="detail && activeTab === 'todo' && detail.status === 'pending'" class="actions">
+          <el-button type="success" :disabled="!!blocked || submitLoading" @click="submitAction('approve')">确认本单通过</el-button>
+          <el-button type="warning" :disabled="!!blocked || submitLoading" @click="submitAction('reject')">退回</el-button>
+          <el-button type="danger" :disabled="!!blocked || submitLoading" @click="submitAction('terminate')">终止流程</el-button>
+        </div>
       </template>
     </el-drawer>
+
     <el-dialog v-model="batchVisible" title="批量核对确认" width="min(680px, 95vw)" :close-on-click-modal="false">
       <p v-if="batchLoading" role="status">正在逐条加载审批详情…</p><p v-if="batchError" role="alert">{{ batchError }}</p>
-      <ul class="history"><li v-for="item in batchDetails" :key="item.taskId">{{ item.taskName }} · {{ item.businessType }} / {{ item.businessId }}<p>{{ item.businessTitle || '未提供摘要' }} · 金额：未提供</p></li></ul>
+      <ul class="history"><li v-for="item in batchDetails" :key="item.taskId">{{ item.taskName }} · {{ businessTypeName(item.businessType) }} / {{ item.businessId }}<p>{{ item.businessTitle || '未提供摘要' }} · 金额：未提供</p></li></ul>
       <p>金额合计：未提供。当前同类型详情无可核验源单金额；付款申请禁止批量通过，须逐单确认。</p>
       <template #footer><el-button :disabled="submitLoading" @click="batchVisible = false">取消</el-button><el-button type="primary" :disabled="batchLoading || !!batchError || !batchDetails.length || submitLoading" @click="submitBatch">确认以上同类型任务通过</el-button></template>
     </el-dialog>
@@ -65,15 +112,16 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
-import { getTodoTasks, getDoneTasks, getApprovalDetail, claimTask, completeTask, rejectToPrevious, rejectToStart, terminateProcess, batchApprove } from '@/api/workflow'
+import { getTodoTasks, getDoneTasks, getApprovalDetail, getBusinessDetail, claimTask, completeTask, rejectToPrevious, rejectToStart, terminateProcess, batchApprove } from '@/api/workflow'
 import { getPaymentApplyDetail } from '@/api/finance'
 import { getProjectDetail } from '@/api/project'
-import { approvalBlock, batchBlock, money, validId, PAYMENT_TYPE } from './approval'
+import { approvalBlock, batchBlock, money, validId, businessTypeName, formatTime, PAYMENT_TYPE } from './approval'
 const approvalColumns = [{ key: 'taskName', label: '任务名称' }, { key: 'businessType', label: '业务类型' }, { key: 'initiator', label: '发起人' }, { key: 'createTime', label: '创建时间' }]
 const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('approval-table', approvalColumns)
 const activeTab = ref('todo'), loading = ref(false), listError = ref(''), tableData = ref<any[]>([]), total = ref(0), selectedRows = ref<any[]>([])
 const queryParams = ref({ page: 1, size: 10 }), tableRef = ref<any>(), tableRegion = ref<HTMLElement>(), currentRowIndex = ref(-1)
 const drawerVisible = ref(false), detailLoading = ref(false), detailError = ref(''), detail = ref<any>(null), payment = ref<any>(null), projectName = ref(''), currentTaskId = ref(''), comment = ref(''), rejectType = ref('previous'), submitLoading = ref(false)
+const biz = ref<any>(null), bizLoading = ref(false), bizError = ref('')
 const batchVisible = ref(false), batchLoading = ref(false), batchError = ref(''), batchDetails = ref<any[]>([])
 let listVersion = 0, detailVersion = 0, batchVersion = 0
 const blocked = computed(() => detailLoading.value ? '详情尚未加载完成' : detailError.value || approvalBlock(detail.value, currentTaskId.value, payment.value))
@@ -88,12 +136,32 @@ async function loadData() {
   } catch { if (version === listVersion) { tableData.value = []; total.value = 0; listError.value = '审批列表加载失败，请重试。' } }
   finally { if (version === listVersion) loading.value = false }
 }
-function invalidateDetail() { ++detailVersion; detail.value = null; payment.value = null }
+function invalidateDetail() { ++detailVersion; detail.value = null; payment.value = null; biz.value = null; bizError.value = ''; bizLoading.value = false }
 function handleTabChange() { queryParams.value.page = 1; drawerVisible.value = false; invalidateDetail(); batchVisible.value = false; ++batchVersion; loadData() }
+/** 业务详情是辅助信息：失败只提示，不阻断审批；单据本身的校验仍由服务端把关 */
+async function loadBusiness(taskId: string, version: number) {
+  bizLoading.value = true; bizError.value = ''; biz.value = null
+  try {
+    const res: any = await getBusinessDetail(taskId)
+    if (version !== detailVersion) return
+    if (!res?.data) throw new Error('empty')
+    if (res.data.error) { bizError.value = res.data.error; return }
+    biz.value = res.data
+  } catch { if (version === detailVersion) bizError.value = '业务详情加载失败，可重试；不影响下方审批操作。' }
+  finally { if (version === detailVersion) bizLoading.value = false }
+}
+function retryBusiness() { if (currentTaskId.value) loadBusiness(currentTaskId.value, detailVersion) }
+function bizSpan(f: any) { return f?.kind === 'T' && String(f.value ?? '').length > 20 ? 2 : 1 }
+function fieldText(f: any): string {
+  if (f?.value === null || f?.value === undefined || f.value === '') return '—'
+  if (f.kind === 'M') return money(f.value)
+  if (f.kind === 'P') return `${f.value}%`
+  return String(f.value)
+}
 async function openDetail(row: any) {
   if (submitLoading.value) return
   const version = ++detailVersion
-  currentTaskId.value = typeof row.taskId === 'string' ? row.taskId : ''; drawerVisible.value = true; detailLoading.value = true; detailError.value = ''; detail.value = null; payment.value = null; projectName.value = ''; comment.value = ''
+  currentTaskId.value = typeof row.taskId === 'string' ? row.taskId : ''; drawerVisible.value = true; detailLoading.value = true; detailError.value = ''; detail.value = null; payment.value = null; projectName.value = ''; comment.value = ''; biz.value = null; bizError.value = ''
   try {
     if (!currentTaskId.value) throw new Error('missing task')
     const res: any = await getApprovalDetail(currentTaskId.value)
@@ -115,6 +183,8 @@ async function openDetail(row: any) {
         if (String(project.data?.id) !== String(source.data.projectId) || !project.data?.projectName?.trim()) throw new Error('invalid project detail')
         projectName.value = project.data.projectName
       }
+    } else {
+      loadBusiness(currentTaskId.value, version)
     }
   } catch { if (version === detailVersion) detailError.value = '审批详情或付款源单加载失败，全部审批动作已阻断。请重试。' }
   finally { if (version === detailVersion) detailLoading.value = false }
@@ -127,7 +197,7 @@ async function submitAction(action: 'approve' | 'reject' | 'terminate') {
   submitLoading.value = true
   try {
     if (action === 'terminate') await ElMessageBox.confirm('确定终止此流程？终止后不可恢复。', '终止确认', { type: 'warning' })
-    else if (action === 'approve') await ElMessageBox.confirm(`确认通过本单 ${detail.value.businessType} / ${detail.value.businessId}？${payment.value ? '付款金额：' + money(payment.value.paymentAmount) : ''}`, '逐单确认', { type: 'warning' })
+    else if (action === 'approve') await ElMessageBox.confirm(`确认通过本单 ${businessTypeName(detail.value.businessType)} / ${detail.value.businessId}？${payment.value ? '付款金额：' + money(payment.value.paymentAmount) : ''}`, '逐单确认', { type: 'warning' })
     if (version !== detailVersion || blocked.value) return
     if (detail.value.assignee === null || detail.value.assignee === '') {
       await claimTask(taskId)
@@ -178,11 +248,18 @@ onBeforeUnmount(() => { ++listVersion; ++detailVersion; ++batchVersion })
 <style scoped>
 .approval-container { padding: var(--zw-space-md); }
 .table-toolbar, .actions { display: flex; flex-wrap: wrap; gap: var(--zw-space-sm); margin-bottom: var(--zw-space-md); }
+.actions { margin-bottom: 0; justify-content: flex-end; }
 .pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; overflow-x: auto; }
-.summary { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(0, 2fr); gap: var(--zw-space-sm); }
-.summary dt, .secondary { color: var(--el-text-color-secondary); }
-.summary dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.drawer-head { display: flex; align-items: center; gap: var(--zw-space-sm); }
+.drawer-title { font-size: var(--zw-font-size-lg); font-weight: 600; color: var(--zw-text-primary); }
+.block { margin-bottom: var(--zw-space-lg); }
+.block h3 { margin: 0 0 var(--zw-space-sm); font-size: var(--zw-font-size-base); font-weight: 600; color: var(--zw-text-primary); }
+.secondary, .note { color: var(--zw-text-tertiary); font-size: var(--zw-font-size-sm); }
+.note { margin: var(--zw-space-xs) 0 0; }
+.alert-line { color: var(--el-color-danger); margin-bottom: var(--zw-space-sm); }
 .history { padding-inline-start: var(--zw-space-lg); overflow-wrap: anywhere; }
+:deep(.el-descriptions__label) { width: 120px; color: var(--zw-text-secondary); }
+:deep(.el-descriptions__content) { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 [tabindex]:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: 2px; }
-@media (max-width: 600px) { .approval-container { padding: var(--zw-space-sm); } .summary { grid-template-columns: 1fr; } .summary dd { margin-bottom: var(--zw-space-sm); } }
+@media (max-width: 600px) { .approval-container { padding: var(--zw-space-sm); } }
 </style>

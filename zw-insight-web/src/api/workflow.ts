@@ -43,6 +43,11 @@ export function getApprovalDetail(taskId: string) {
   return request.get(`/v1/workflow/approval/detail/${encodeURIComponent(taskId)}`)
 }
 
+/** 审批任务对应的业务单据详情（只读，字段由后端白名单输出） */
+export function getBusinessDetail(taskId: string) {
+  return request.get(`/v1/workflow/approval/detail/${encodeURIComponent(taskId)}/business`)
+}
+
 export function getDoneTasks(params: any) {
   return request.get('/v1/workflow/approval/done', { params })
 }

@@ -5,6 +5,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.workflow.dto.*;
 import com.zwinsight.workflow.service.ApprovalService;
+import com.zwinsight.workflow.service.BusinessDetailService;
 import com.zwinsight.workflow.service.UrgeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,7 @@ public class ApprovalController {
 
     private final ApprovalService approvalService;
     private final UrgeService urgeService;
+    private final BusinessDetailService businessDetailService;
 
     /**
      * 发起流程
@@ -124,6 +126,14 @@ public class ApprovalController {
     @GetMapping("/detail/{taskId}")
     public R<Map<String, Object>> getTaskDetail(@PathVariable String taskId) {
         return R.ok(approvalService.getTaskDetail(taskId));
+    }
+
+    /**
+     * 审批任务对应的业务单据详情（只读，白名单表字段，仅任务相关人可看）
+     */
+    @GetMapping("/detail/{taskId}/business")
+    public R<Map<String, Object>> getBusinessDetail(@PathVariable String taskId) {
+        return R.ok(businessDetailService.getForTask(taskId));
     }
 
     /**

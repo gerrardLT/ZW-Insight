@@ -3,7 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import Approval from './index.vue'
-const api = vi.hoisted(() => ({ getTodoTasks: vi.fn(), getDoneTasks: vi.fn(), getApprovalDetail: vi.fn(), completeTask: vi.fn(), rejectToPrevious: vi.fn(), rejectToStart: vi.fn(), terminateProcess: vi.fn(), batchApprove: vi.fn(), payment: vi.fn(), project: vi.fn(), confirm: vi.fn() }))
+const api = vi.hoisted(() => ({ getTodoTasks: vi.fn(), getDoneTasks: vi.fn(), getApprovalDetail: vi.fn(), getBusinessDetail: vi.fn(), completeTask: vi.fn(), rejectToPrevious: vi.fn(), rejectToStart: vi.fn(), terminateProcess: vi.fn(), batchApprove: vi.fn(), payment: vi.fn(), project: vi.fn(), confirm: vi.fn() }))
 vi.mock('@/api/workflow', () => api)
 vi.mock('@/api/finance', () => ({ getPaymentApplyDetail: api.payment }))
 vi.mock('@/api/project', () => ({ getProjectDetail: api.project }))
@@ -11,7 +11,7 @@ vi.mock('@/composables/useColumnSetting', () => ({ useColumnSetting: () => ({ vi
 vi.mock('element-plus', () => ({ ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() }, ElMessageBox: { confirm: api.confirm } }))
 const stub = { template: '<div><slot/><slot name="footer"/></div>' }
 function page() {
-  return mount(Approval, { global: { stubs: Object.fromEntries(['ElCard', 'ElTabs', 'ElTabPane', 'ElButton', 'ColumnSettingPopover', 'ElSkeleton', 'ElTable', 'ElTableColumn', 'ElPagination', 'ElDrawer', 'ElDialog', 'ElForm', 'ElFormItem', 'ElInput', 'ElRadioGroup', 'ElRadio'].map(name => [name, stub])) } })
+  return mount(Approval, { global: { stubs: Object.fromEntries(['ElCard', 'ElTabs', 'ElTabPane', 'ElButton', 'ColumnSettingPopover', 'ElSkeleton', 'ElTable', 'ElTableColumn', 'ElPagination', 'ElDescriptions', 'ElDescriptionsItem', 'ElDrawer', 'ElDialog', 'ElForm', 'ElFormItem', 'ElInput', 'ElRadioGroup', 'ElRadio'].map(name => [name, stub])) } })
 }
 const detail = { taskId: 't1', status: 'pending', businessType: 'PAYMENT_APPLY', businessId: '12', processInstanceId: 'p1' }
 describe('approval component gates (stubbed, not real UI)', () => {
@@ -68,5 +68,21 @@ describe('approval component gates (stubbed, not real UI)', () => {
     const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
     const first = vm.openDetail({ taskId: 't1' }); await vm.openDetail({ taskId: 't2' }); resolve({ data: detail }); await first
     expect(vm.detail.taskId).toBe('t2'); expect(api.payment).not.toHaveBeenCalled(); wrapper.unmount()
+  })
+
+  it('shows structured business fields for non-payment types', async () => {
+    api.getApprovalDetail.mockResolvedValue({ data: { taskId: 't1', status: 'pending', businessType: 'CONSTRUCTION_CONTRACT', businessId: '12', processInstanceId: 'p1' } })
+    api.getBusinessDetail.mockResolvedValue({ data: { supported: true, found: true, fields: [{ label: '合同编号', kind: 'T', value: 'HT-001' }, { label: '合同金额', kind: 'M', value: '1200000' }] } })
+    const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
+    await vm.openDetail({ taskId: 't1' }); await flushPromises()
+    expect(api.getBusinessDetail).toHaveBeenCalledWith('t1'); expect(api.payment).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('HT-001'); expect(wrapper.text()).toContain('1,200,000.00'); wrapper.unmount()
+  })
+  it('business detail failure is shown but does not block approval', async () => {
+    api.getApprovalDetail.mockResolvedValue({ data: { taskId: 't1', status: 'pending', businessType: 'SEAL_APPLY', businessId: '12', processInstanceId: 'p1' } })
+    api.getBusinessDetail.mockRejectedValue(new Error('500'))
+    const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
+    await vm.openDetail({ taskId: 't1' }); await flushPromises()
+    expect(vm.bizError).toContain('业务详情加载失败'); expect(vm.blocked).toBe(''); wrapper.unmount()
   })
 })
