@@ -75,3 +75,17 @@ CI/CD Deploy to BaoTa Server run [37890289140](https://github.com/gerrardLT/ZW-I
 - 本轮无业务写测试；唯生产写为七条明确source实例绑定。登录仅产生正常登录审计/设备记录。
 
 受阻登记已更新test-maturity-upgrade/tasks.md。正式报告可持久保存；临时strict目录在证据落本地后清理，不删生产备份与既有非本任务文件。
+
+## 跨租户HTTP语义补正闭环
+
+独立增量review No blocking后，仅四文件提交 `00166a55e2672d91fa09e3415aecf485846e3f2f`。根因取自两机当次UTC06:00-06:15日志：GlobalExceptionHandler WARN业务异常“任务不存在或已被处理”；handler未输出stack，因此无堆栈证据，不能称取得stack。assertSameTenant单参BusinessException默认500，business handler无HTTP status，形成200/500；BusinessDetailService委托相同入口。非Flowable SQL或enum错误证据。
+
+最小修复仅租户guard换既有DataPermissionException，复用现有HTTP403/code403 handler，隐匿消息不变，不全局统一其他不存在/业务错误。正常与跨tenant service、business传播无jdbc调用、真实handler MockMvc两路200及403测试均在完整CI验证。
+
+新分支fix/approval-cross-tenant-http纯测试workflow_dispatch [37892333617](https://github.com/gerrardLT/ZW-Insight/actions/runs/37892333617) SUCCESS（完整mvn test及隔离MySQL检查，无部署）；随后ff main正常push，部署 [37892994654](https://github.com/gerrardLT/ZW-Insight/actions/runs/37892994654) SUCCESS。Backend113697887624、PC113697887728、app113697887491、supplier113697887703、runner dist113697887743、server1 deploy113699051561、server2 deploy113699051629全success，两机health/API docs断言success。未fast_deploy，未本地Java/Maven。
+
+部署后两机各三个正式测试账号真实captcha登录成功；各请求之前同一真实tenant1 task的detail/business，共12次均HTTP403/code403/data缺失，硬assert全部通过。三个账号todo均200/code200。只读复核V88两机success1；129七条仍有binding7，43该七ID0；两机role cross0。未重复迁移/source/role写，未写ACT或流程定义。
+
+真实正常本tenant详情受DATA阻断：两机ACT_HI_TASKINST tenant9999查询均无记录，todo亦无任务；禁止猜tenant1其他人的密码、伪造JWT或为正向凭空创建业务。正常详情service/MockMvc已在CI通过，但不替代真实HTTP正向。按测试受阻规则登记，后续可修复隔离测试夹具/延期/缩减真实详情正向范围，待用户决策。本轮不自行跑坏L4造夹具。
+
+R7证据仍为上轮after129=67/0/0/39、43=64/0/1/38，本次补正没有再次跑完整R7，不伪称新run R7。28项目、FINANCE、legacy tasks、L4边界不变。此补正未创建工作区或远端临时文件，原strict目录已清理。

@@ -34,3 +34,5 @@ P1 source状态/实例及公共启动禁403；PC batch真实详情逐单核验�
 纯测试CI run37887351402 SHA45e55421 SUCCESS；5131 tests/0 failures/0 errors/0 skipped（22模块summaries）。首两次失败真实修fixtures后重跑，不跳tests。待最终增量review/发布，禁止main推送。
 
 最终独立review确认45e55421无P0/P1，批准发布。迁移runner MySQL8两次验证run37888452141 SHA80b1872c SUCCESS；原L1 artifact664XML实际4014全0，日志sum5131非唯一数量。两机上线前备份已完成。最终发布81782cd1/run37890289140正常门禁与双机部署SUCCESS；V88及五列两机实际确认；129七seal唯一证据及备份hash守卫事务CHANGED7；43合法角色关联与cross0只读确认；strict R7 after129=67/0/0/39、43=64/0/1/38，故意SQL错误均exit97。三个正式t9999账号双机登录、limited项目HTTP403及start业务403通过；跨tenant detail/business无泄露但业务500，语义未通过；L4不安全清理未执行，28孤儿与legacy tasks保留未决。详audit-reports/permission-release-acceptance-20261009.md，不宣称全验收通过。
+
+跨tenant语义补正独立review No blocking；四文件00166a55纯测试37892333617 SUCCESS后ff main，正常部署37892994654双机全success。租户守卫复用DataPermissionException HTTP403，不全局改业务异常。双机三个测试账号两详情共12次HTTP403/code403/无数据真实assert通过；V88、source7、role仅只读复核无重写。正常tenant9999详情无历史或运行任务，真实正向DATA受阻已登记，CI正常service/MockMvc通过不能替代真实HTTP。正式报告追加证据，保留旧500历史不覆写。
