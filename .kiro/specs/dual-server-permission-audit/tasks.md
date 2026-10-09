@@ -30,3 +30,7 @@ P1 source状态/实例及公共启动禁403；PC batch真实详情逐单核验�
 - PC22/22复验通过；Java未执行；43历史HR SUBMITTED0、1297条用印唯一候选待备份复核写入。生产写0、提交推送0。
 
 第三review整改：rejectPrevious/rejectStart/terminate/withdraw独立当前binding守卫，不按状态/删除拦安全回收；HR listener事件实例二次验证，陈旧/已删不dispatch。补HR5current/stale、旧A三个动作及withdraw拒绝测试；Final DRAFT fixture initiator300及具体源单错误/selectCount六次断言。用户仅批准修复分支纯测试CI，严禁main/部署。
+
+纯测试CI run37887351402 SHA45e55421 SUCCESS；5131 tests/0 failures/0 errors/0 skipped（22模块summaries）。首两次失败真实修fixtures后重跑，不跳tests。待最终增量review/发布，禁止main推送。
+
+最终独立review确认45e55421无P0/P1，批准发布。迁移runner MySQL8两次验证run37888452141 SHA80b1872c SUCCESS；原L1 artifact664XML实际4014全0，日志sum5131非唯一数量。两机上线前备份已完成，正在正常部署与后验收。
