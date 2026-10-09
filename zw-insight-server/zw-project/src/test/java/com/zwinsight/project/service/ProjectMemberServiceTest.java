@@ -62,6 +62,11 @@ class ProjectMemberServiceTest {
         request.setUserName("张三");
         request.setProjectRoles(List.of(ProjectRoleEnum.PROJECT_MANAGER.getCode()));
 
+        SysUser realUser = new SysUser();
+        realUser.setId(200L);
+        realUser.setStatus(1);
+        when(userMapper.selectById(200L)).thenReturn(realUser);
+
         when(memberMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
 
         assertThatThrownBy(() -> memberService.addMember(1L, request))
