@@ -114,6 +114,7 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 const workerOptions = ref<any[]>([])
 const workerLoading = ref(false)
+let workerSeq = 0
 
 const queryParams = ref({ page: 1, size: 10, projectId: undefined as number | undefined, teamId: undefined as number | undefined, status: '' })
 const defaultForm = () => ({ id: undefined as number | undefined, projectId: undefined as number | undefined, teamId: undefined as number | undefined, workerId: undefined as number | undefined, workerName: '', orderType: 'TEMPORARY', workDate: '', hours: 0, hourlyRate: 0, overtime: 0, overtimeRate: 0 })
@@ -128,16 +129,23 @@ const formRules = {
 
 /** A1 实名制：按项目+班组加载在场工人（status=1） */
 async function loadWorkers(projectId?: number, teamId?: number) {
+  const seq = ++workerSeq
   workerOptions.value = []
   if (!projectId || !teamId) return
   workerLoading.value = true
   try {
     const res: any = await getLaborRosterPage({ page: 1, size: 200, projectId, teamId, entryStatus: 'ON_SITE' })
-    workerOptions.value = res.data?.records || []
+    if (seq === workerSeq) {
+      workerOptions.value = res.data?.records || []
+    }
   } catch {
-    workerOptions.value = []
+    if (seq === workerSeq) {
+      workerOptions.value = []
+    }
   } finally {
-    workerLoading.value = false
+    if (seq === workerSeq) {
+      workerLoading.value = false
+    }
   }
 }
 
@@ -154,8 +162,8 @@ function onTeamChange() {
   loadWorkers(formData.value.projectId, formData.value.teamId)
 }
 
-function onWorkerChange(workerId?: number) {
-  const wk = workerOptions.value.find(w => w.id === workerId)
+function onWorkerChange(workerId?: number | string) {
+  const wk = workerOptions.value.find(w => String(w.id) === String(workerId))
   formData.value.workerName = wk?.workerName || ''
 }
 

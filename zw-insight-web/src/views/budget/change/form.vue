@@ -244,10 +244,10 @@ function handleAddDetail() {
 }
 
 /** 选择原预算明细后带出科目与原金额 */
-function handleSelectBudgetDetail(row: DetailRow, budgetDetailId: number) {
-  const detail = budgetDetailOptions.value.find(d => d.id === budgetDetailId)
+function handleSelectBudgetDetail(row: DetailRow, budgetDetailId: number | string) {
+  const detail = budgetDetailOptions.value.find(d => String(d.id) === String(budgetDetailId))
   if (!detail) return
-  row.budgetDetailId = budgetDetailId
+  row.budgetDetailId = budgetDetailId as number
   row.costCategory = detail.costCategory
   row.costSubcategory = detail.costSubcategory
   row.itemName = detail.itemName
@@ -261,13 +261,13 @@ function handleRemoveDetail(index: number) {
 }
 
 /** 项目变更时加载该项目下的已批准预算 */
-async function handleProjectChange(projectId: number | undefined) {
+async function handleProjectChange(projectId: number | string | undefined) {
   budgetOptions.value = []
   budgetDetailOptions.value = []
   formData.value.budgetId = undefined
   if (!projectId) return
   try {
-    const res: any = await getBudgetPage({ projectId, status: 'APPROVED', pageNum: 1, pageSize: 100 })
+    const res: any = await getBudgetPage({ projectId: projectId as number, status: 'APPROVED', pageNum: 1, pageSize: 100 })
     budgetOptions.value = res.data?.records || []
   } catch {
     // 加载预算列表失败不阻塞操作

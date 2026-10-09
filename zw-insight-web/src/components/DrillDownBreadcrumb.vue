@@ -300,12 +300,12 @@ import { formatWan } from '@/utils/chart-format'
  * - contractCategory + categoryLabel：从成本中心/项目经营分类行进入（L1 直接给到类别级）。
  */
 export interface DrillEntry {
-  projectId: number
+  projectId: number | string
   projectName: string
   rootLabel?: string
   contractCategory?: DrillContractCategory
   categoryLabel?: string
-  projectRows?: { projectId: number; projectName: string; value: number | null }[]
+  projectRows?: { projectId: number | string; projectName: string; value: number | null }[]
 }
 
 const props = defineProps<{
@@ -320,11 +320,11 @@ interface Step {
   key: string
   label: string
   level: Level
-  projectId?: number
+  projectId?: number | string
   projectName?: string
   contractCategory?: DrillContractCategory
   supplierName?: string | null
-  contractId?: number
+  contractId?: number | string
   loading: boolean
   rows: any[]
   note?: string
@@ -407,7 +407,7 @@ function openEntry(entry: DrillEntry) {
   pushCostCategories(entry.projectId, entry.rootLabel || entry.projectName)
 }
 
-function pushCostCategories(projectId: number, projectLabel: string) {
+function pushCostCategories(projectId: number | string, projectLabel: string) {
   const step: Step = {
     key: `cc-${projectId}`, level: 'costCategories', loading: false, rows: [],
     projectId, label: projectLabel,
@@ -424,10 +424,10 @@ function pushCostCategories(projectId: number, projectLabel: string) {
 }
 
 function onProjectRow(row: any) {
-  pushCostCategories(Number(row.projectId), row.projectName)
+  pushCostCategories(row.projectId, row.projectName)
 }
 
-function pushCategoryStep(projectId: number, projectLabel: string,
+function pushCategoryStep(projectId: number | string, projectLabel: string,
   contractCategory: DrillContractCategory, categoryLabel: string) {
   const step: Step = {
     key: `sup-${projectId}-${contractCategory}`, level: 'suppliers', loading: false, rows: [],

@@ -127,8 +127,9 @@ import {
 
 const loading = ref(false)
 const generating = ref(false)
-const selectedProjectId = ref<number>()
+const selectedProjectId = ref<number | string>()
 const month = ref<string>(currentMonth())
+let loadSeq = 0
 
 const rows = ref<MonthlyAnalysisRow[]>([])
 const notes = ref<string[]>([])
@@ -182,6 +183,7 @@ function summaryMethod({ columns }: { columns: any[] }) {
 }
 
 async function loadData() {
+  const seq = ++loadSeq
   if (!selectedProjectId.value) {
     rows.value = []
     notes.value = []
@@ -195,22 +197,26 @@ async function loadData() {
       projectId: selectedProjectId.value,
       month: month.value || undefined
     })
+    if (seq !== loadSeq) return
     const data = res?.data
     rows.value = data?.rows || []
     notes.value = data?.notes || []
     totals.value = data?.totals || {}
     generatedAt.value = data?.generatedAt || null
-    // 后端可能回落到已生成的最新月份，以其返回的 month 为准（避免界面显示与实际数据不符）
     if (data?.month) {
       month.value = data.month
     }
   } catch (e: any) {
-    rows.value = []
-    notes.value = []
-    totals.value = {}
-    ElMessage.error('加载月度经营分析表失败：' + (e?.message || '接口异常'))
+    if (seq === loadSeq) {
+      rows.value = []
+      notes.value = []
+      totals.value = {}
+      ElMessage.error('加载月度经营分析表失败：' + (e?.message || '接口异常'))
+    }
   } finally {
-    loading.value = false
+    if (seq === loadSeq) {
+      loading.value = false
+    }
   }
 }
 

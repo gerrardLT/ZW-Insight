@@ -178,8 +178,8 @@ async function loadTeamOptions() {
   const res: any = await getLaborTeamPage({ page: 1, size: 200 })
   teamOptions.value = res.data?.records || []
 }
-function handleTeamChange(teamId: number) {
-  const team = teamOptions.value.find(t => t.id === teamId)
+function handleTeamChange(teamId: number | string) {
+  const team = teamOptions.value.find(t => String(t.id) === String(teamId))
   formData.value.projectId = team?.projectId
 }
 function handleSearch() { queryParams.value.page = 1; loadData(); trendPanelRef.value?.reload() }

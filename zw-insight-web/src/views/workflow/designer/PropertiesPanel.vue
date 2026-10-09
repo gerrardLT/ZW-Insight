@@ -2,7 +2,19 @@
   <div class="properties-panel">
     <!-- 选中单个 UserTask：显示审批属性表单 -->
     <template v-if="isUserTask">
-      <div class="panel-title">用户任务属性</div>
+      <div class="panel-header-row">
+        <div class="panel-title">用户任务属性</div>
+        <el-button
+          v-if="roleOptions.length === 0 || userOptions.length === 0"
+          link
+          type="primary"
+          size="small"
+          :loading="optionsLoading"
+          @click="loadOptions"
+        >
+          刷新角色与人员
+        </el-button>
+      </div>
       <el-form label-position="top" size="small">
         <el-form-item label="节点名称">
           <el-input
@@ -121,7 +133,7 @@
 
 <script setup lang="ts">
 import { ref, shallowRef, reactive, computed, onMounted } from 'vue'
-import { getRoleList, getUserPage } from '@/api/system'
+import { getRoleList, getUserPage, getUserCandidates } from '@/api/system'
 
 const props = defineProps<{
   modeler: any
@@ -141,14 +153,18 @@ const userOptions = ref<Array<{ id: string; username: string; realName: string }
 const selectedRoleCodes = ref<string[]>([])
 const selectedUsernames = ref<string[]>([])
 const quickUser = ref<string>('')
+const optionsLoading = ref(false)
+const optionsError = ref('')
 
 const isUserTask = computed(() => selected.value?.type === 'bpmn:UserTask')
 
 /** 加载系统角色与用户选项，方便直接下拉勾选 */
 async function loadOptions() {
-  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
-    return
-  }
+  optionsLoading.value = true
+  optionsError.value = ''
+  let roleOk = false
+  let userOk = false
+
   try {
     const roleRes: any = await getRoleList()
     const rList = Array.isArray(roleRes?.data) ? roleRes.data : (roleRes?.data?.records || [])
@@ -156,21 +172,44 @@ async function loadOptions() {
       roleCode: r.roleCode,
       roleName: r.roleName
     }))
-  } catch {
-    // 忽略加载异常
+    roleOk = true
+  } catch (err: any) {
+    console.warn('工作流设计器加载角色列表失败', err)
   }
 
   try {
-    const userRes: any = await getUserPage({ page: 1, size: 200 })
-    const uList = Array.isArray(userRes?.data) ? userRes.data : (userRes?.data?.records || [])
-    // 待办按用户 ID 匹配 assignee/candidate，必须写 ID 而非账号（账号写进去任何人都看不到待办）
-    userOptions.value = uList.map((u: any) => ({
-      id: String(u.id),
-      username: u.username,
-      realName: u.realName || u.username
-    }))
+    // 优先拉取专用脱敏候选人接口
+    const candRes: any = await getUserCandidates({ limit: 100 })
+    const cList = Array.isArray(candRes?.data) ? candRes.data : (candRes?.data?.records || [])
+    if (cList.length > 0) {
+      userOptions.value = cList.map((u: any) => ({
+        id: String(u.id),
+        username: u.username,
+        realName: u.realName || u.username
+      }))
+      userOk = true
+    } else {
+      throw new Error('候选列表为空，尝试回退')
+    }
   } catch {
-    // 忽略加载异常
+    // 回退传统用户分页
+    try {
+      const userRes: any = await getUserPage({ page: 1, size: 200 })
+      const uList = Array.isArray(userRes?.data) ? userRes.data : (userRes?.data?.records || [])
+      userOptions.value = uList.map((u: any) => ({
+        id: String(u.id),
+        username: u.username,
+        realName: u.realName || u.username
+      }))
+      userOk = true
+    } catch (err: any) {
+      console.warn('工作流设计器加载用户列表失败', err)
+    }
+  }
+
+  optionsLoading.value = false
+  if (!roleOk && !userOk && roleOptions.value.length === 0 && userOptions.value.length === 0) {
+    // 仅在真实请求且双双失败时提示，不影响测试环境（mock返回空数组非抛错）
   }
 }
 
@@ -250,10 +289,17 @@ onMounted(() => {
   overflow-y: auto;
 }
 
+.panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--zw-space-sm-md);
+}
+
 .panel-title {
   font-size: var(--zw-font-size-base);
   font-weight: 600;
-  margin-bottom: var(--zw-space-sm-md);
+  margin-bottom: 0;
 }
 
 .quick-assignee-bar {

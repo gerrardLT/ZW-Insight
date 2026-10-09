@@ -132,11 +132,11 @@ export interface ReceivableDrillInfoRequest {
 }
 
 /** §10 下钻 8 级链（路径为 /drill/{id}，避开与 /page /aging 的字面量路径歧义） */
-export function getReceivableDrill(id: number) {
+export function getReceivableDrill(id: number | string) {
   return request.get<R<ReceivableDrillChain>>(`/v1/finance/receivable/drill/${id}`)
 }
 
 /** 维护下钻信息（人工登记项；后端 @OperLog 强制留痕） */
-export function updateReceivableDrill(id: number, data: ReceivableDrillInfoRequest) {
+export function updateReceivableDrill(id: number | string, data: ReceivableDrillInfoRequest) {
   return request.put<R<Receivable>>(`/v1/finance/receivable/drill/${id}`, data)
 }

@@ -118,6 +118,7 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
+let inboundSeq = 0
 
 const contractOptions = ref<any[]>([])
 const inboundOptions = ref<any[]>([])
@@ -167,12 +168,21 @@ function handleEdit(row: any) {
 }
 
 async function handleContractChange() {
+  const seq = ++inboundSeq
   formData.value.inboundId = undefined
   formData.value.inboundAmount = 0
   inboundOptions.value = []
   if (!formData.value.contractId) return
-  const res: any = await getAvailableInbounds(formData.value.contractId)
-  inboundOptions.value = res.data || []
+  try {
+    const res: any = await getAvailableInbounds(formData.value.contractId)
+    if (seq === inboundSeq) {
+      inboundOptions.value = res.data || []
+    }
+  } catch {
+    if (seq === inboundSeq) {
+      inboundOptions.value = []
+    }
+  }
 }
 function handleInboundChange() {
   const inbound = inboundOptions.value.find(i => String(i.id) === String(formData.value.inboundId))

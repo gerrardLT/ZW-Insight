@@ -111,6 +111,7 @@ const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
 const contractOptions = ref<any[]>([])
+let contractSeq = 0
 
 const queryParams = ref({
   page: 1,
@@ -144,11 +145,16 @@ function formatAmount(val: any) {
 }
 
 async function loadContracts(projectId?: number) {
+  const seq = ++contractSeq
   try {
     const res: any = await getLaborContractPage({ page: 1, size: 100, projectId })
-    contractOptions.value = res.data?.records || []
+    if (seq === contractSeq) {
+      contractOptions.value = res.data?.records || []
+    }
   } catch {
-    contractOptions.value = []
+    if (seq === contractSeq) {
+      contractOptions.value = []
+    }
   }
 }
 

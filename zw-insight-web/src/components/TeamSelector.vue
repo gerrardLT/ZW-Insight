@@ -22,16 +22,16 @@ import { ref, onMounted, watch } from 'vue'
 import { getLaborTeamPage } from '@/api/labor'
 
 const props = withDefaults(defineProps<{
-  modelValue?: number
-  projectId?: number
+  modelValue?: number | string
+  projectId?: number | string
   width?: string
 }>(), {
   width: '100%'
 })
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: number | undefined): void
-  (e: 'change', value: number | undefined, item: any): void
+  (e: 'update:modelValue', value: number | string | undefined): void
+  (e: 'change', value: number | string | undefined, item: any): void
 }>()
 
 const modelValue = ref(props.modelValue)
@@ -56,9 +56,9 @@ async function loadData() {
   }
 }
 
-function handleChange(val: number | undefined) {
+function handleChange(val: number | string | undefined) {
   emit('update:modelValue', val)
-  const item = options.value.find(o => o.id === val)
+  const item = options.value.find(o => String(o.id) === String(val))
   emit('change', val, item)
 }
 

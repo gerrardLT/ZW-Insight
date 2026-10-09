@@ -6,8 +6,8 @@ import type { R } from '@/types/api'
 
 /** 月度经营分析行（项目 × 月份 × 费用类别） */
 export interface MonthlyAnalysisRow {
-  id?: number
-  projectId: number
+  id?: number | string
+  projectId: number | string
   /** 分析月份 yyyy-MM */
   analysisMonth: string
   /** 类别码：LABOR/MATERIAL/MACHINE/SUBCONTRACT/MEASURE/ADMIN/ENTERTAIN/TRAVEL_VEHICLE/PROFESSIONAL/TAX/UNCLASSIFIED */
@@ -89,7 +89,7 @@ export interface MonthlyAnalysisReport {
  * 查询月度经营分析表。
  * @param params.month 不传则后端取该项目已生成的最新月份（无数据时回退当月）
  */
-export function getMonthlyAnalysis(params: { projectId: number; month?: string }) {
+export function getMonthlyAnalysis(params: { projectId: number | string; month?: string }) {
   return request.get<R<MonthlyAnalysisResult>>('/v1/finance/monthly-analysis', { params })
 }
 
@@ -99,7 +99,7 @@ export function getMonthlyAnalysisCategories() {
 }
 
 /** 手工生成/重跑覆盖某项目某月（同月重跑为 upsert，不重复插行） */
-export function generateMonthlyAnalysis(projectId: number, month: string) {
+export function generateMonthlyAnalysis(projectId: number | string, month: string) {
   return request.post<R<MonthlyAnalysisReport>>('/v1/finance/monthly-analysis/generate', null, {
     params: { projectId, month }
   })

@@ -429,26 +429,26 @@ export interface DrillResult<T> {
 }
 
 /** 项目 → 成本分类构成 */
-export function getDrillCostCategories(params: { projectId: number }) {
+export function getDrillCostCategories(params: { projectId: number | string }) {
   return request.get<R<DrillResult<DrillCostCategoryRow>>>(
     '/v1/dashboard/cockpit/drill/cost-categories', { params })
 }
 
 /** 成本分类 → 供应商构成 */
-export function getDrillSuppliers(params: { projectId: number; contractCategory: DrillContractCategory }) {
+export function getDrillSuppliers(params: { projectId: number | string; contractCategory: DrillContractCategory }) {
   return request.get<R<DrillResult<DrillSupplierRow>>>(
     '/v1/dashboard/cockpit/drill/suppliers', { params })
 }
 
 /** 成本分类 → 成本账户实际流水（报销/人工记账类的构成答案） */
-export function getDrillAccountTxn(params: { projectId: number; contractCategory: DrillContractCategory }) {
+export function getDrillAccountTxn(params: { projectId: number | string; contractCategory: DrillContractCategory }) {
   return request.get<R<DrillResult<DrillTxnRow>>>(
     '/v1/dashboard/cockpit/drill/account-txn', { params })
 }
 
 /** 供应商 → 合同清单（supplierName 不传 = 该类全部） */
 export function getDrillContracts(params: {
-  projectId: number
+  projectId: number | string
   contractCategory: DrillContractCategory
   supplierName?: string
 }) {
@@ -459,7 +459,7 @@ export function getDrillContracts(params: {
 /** 合同 → 原始单据 */
 export function getDrillContractDocs(params: {
   contractCategory: DrillContractCategory
-  contractId: number
+  contractId: number | string
 }) {
   return request.get<R<DrillResult<DrillDocRow>>>(
     '/v1/dashboard/cockpit/drill/contract-docs', { params })

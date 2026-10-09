@@ -185,8 +185,8 @@ async function searchProject(query: string) {
   projectOptions.value = res.data || []
 }
 
-function handleMaterialChange(id: number) {
-  const m = materialOptions.value.find(x => x.id === id)
+function handleMaterialChange(id: number | string) {
+  const m = materialOptions.value.find(x => String(x.id) === String(id))
   configForm.value.materialName = m?.materialName || ''
 }
 

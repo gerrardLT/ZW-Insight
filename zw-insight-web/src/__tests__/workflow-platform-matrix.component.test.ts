@@ -71,6 +71,11 @@ vi.mock('@/api/workflow', () => ({
   getRollbackLogs: mockRollbackLogs,
   confirmRollbackConflict: mockConfirmConflict,
 }))
+vi.mock('@/api/system', () => ({
+  getRoleList: vi.fn(async () => ({ code: 200, data: [] })),
+  getUserPage: vi.fn(async () => ({ code: 200, data: [] })),
+  getUserCandidates: vi.fn(async () => ({ code: 200, data: [] }))
+}))
 vi.mock('@/api/platform', () => ({
   getTenantPage: mockTenantPage,
   createTenant: mockTenantCreate,

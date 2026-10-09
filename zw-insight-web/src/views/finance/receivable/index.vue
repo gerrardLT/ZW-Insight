@@ -340,7 +340,7 @@ async function openDrill(row: Receivable) {
   drillData.value = null
   drillForm.value = {}
   try {
-    const res: any = await getReceivableDrill(Number(row.id))
+    const res: any = await getReceivableDrill(row.id)
     drillData.value = res?.data || null
     // 表单回填已登记值；未登记项留空（不预填推算值，也不把 null 当空串以外的东西）
     const info = drillData.value?.drillInfo || {}

@@ -117,7 +117,7 @@ export function getRectifications(inspectionId: number) {
   return request.get(`/v1/site/rectification/by-inspection/${inspectionId}`)
 }
 
-export function submitRectification(inspectionId: number, data: any) {
+export function submitRectification(inspectionId: number | string, data: any) {
   return request.post(`/v1/site/rectification/${inspectionId}/submit`, data)
 }
 

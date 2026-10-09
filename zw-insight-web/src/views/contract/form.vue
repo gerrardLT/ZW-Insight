@@ -189,8 +189,8 @@ async function searchProject(query: string) {
   projectList.value = res.data || []
 }
 
-function handleProjectChange(id: number) {
-  const project = projectList.value.find(p => p.id === id)
+function handleProjectChange(id: number | string) {
+  const project = projectList.value.find(p => String(p.id) === String(id))
   formData.value.projectName = project?.projectName || ''
 }
 

@@ -183,7 +183,7 @@ async function handleSubmitRectification() {
   await submitFormRef.value?.validate()
   submitLoading.value = true
   try {
-    await submitRectification(Number(route.params.id), { rectificationContent: submitForm.value.rectificationContent })
+    await submitRectification(route.params.id as string, { rectificationContent: submitForm.value.rectificationContent })
     ElMessage.success('整改已提交，等待复查')
     submitForm.value.rectificationContent = ''
     await Promise.all([loadDetail(), loadRectifications()])

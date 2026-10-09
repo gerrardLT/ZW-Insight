@@ -319,12 +319,12 @@ const queryParams = ref({
 })
 
 const formData = ref({
-  projectId: undefined as number | undefined,
+  projectId: undefined as number | string | undefined,
   // 审计缺陷 D7 修复：不再默认 OTHER_EXPENSE（该分支累计结算无回写路径，付款永不可提交，
   // 已由 21-finance-chain.spec.ts 钉住为产品缺口）；空值强制用户显式选择，required 规则兜底
   contractCategory: '',
-  contractId: undefined as number | undefined,
-  supplierId: undefined as number | undefined,
+  contractId: undefined as number | string | undefined,
+  supplierId: undefined as number | string | undefined,
   supplierName: '',
   paymentAmount: 0,
   paymentDate: ''
@@ -360,7 +360,7 @@ async function loadContracts() {
   contractOptions.value = res.data?.records || res.data || []
 }
 
-function handleSupplierChange(_val: number | undefined, item: any) {
+function handleSupplierChange(_val: number | string | undefined, item: any) {
   formData.value.supplierName = item?.supplierName || ''
 }
 
@@ -638,17 +638,17 @@ onMounted(async () => {
   await searchProject('')
   // P3-M5 B3：从采购结算页跳转时预填项目、采购合同与结算金额，并打开新增弹窗
   const routeQuery = route?.query || {}
-  const pid = Number(routeQuery.projectId)
-  const contractId = Number(routeQuery.contractId)
+  const pid = routeQuery.projectId != null ? String(routeQuery.projectId).trim() : ''
+  const contractId = routeQuery.contractId != null ? String(routeQuery.contractId).trim() : ''
   const amount = Number(routeQuery.applyAmount)
-  const category = String(routeQuery.contractCategory || '')
-  if (Number.isFinite(pid) && pid > 0 && Number.isFinite(contractId) && contractId > 0 && category) {
+  const category = String(routeQuery.contractCategory || '').trim()
+  if (pid && contractId && category && pid !== '0' && contractId !== '0') {
     formData.value.projectId = pid
     formData.value.contractCategory = category
     await loadContracts()
     formData.value.contractId = contractId
     formData.value.paymentAmount = Number.isFinite(amount) && amount > 0 ? amount : 0
-    const selected = contractOptions.value.find((item: any) => String(item.id) === String(contractId))
+    const selected = contractOptions.value.find((item: any) => String(item.id) === contractId)
     formData.value.supplierId = selected?.partyBId || selected?.supplierId
     formData.value.supplierName = selected?.partyBName || selected?.supplierName || ''
     dialogVisible.value = true
