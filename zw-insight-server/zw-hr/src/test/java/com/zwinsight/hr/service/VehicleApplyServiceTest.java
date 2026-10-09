@@ -110,9 +110,11 @@ class VehicleApplyServiceTest {
         when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
                 .thenReturn("proc-1");
 
+        when(vehicleApplyMapper.updateById(apply)).thenReturn(1);
         vehicleApplyService.submit(1L);
 
         assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(apply.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(vehicleApplyMapper).updateById(apply);
         verify(approvalService).startProcess(eq("VEHICLE_APPLY"), eq(1L),
                 eq("vehicle_apply_approval"), anyMap());
@@ -173,4 +175,16 @@ class VehicleApplyServiceTest {
 
         assertThat(result.getTotal()).isEqualTo(2);
     }
+    @Test
+    void submit_instanceWriteFailureRejects() {
+        BizVehicleApply apply = new BizVehicleApply();
+        apply.setId(1L);
+        apply.setStatus("DRAFT");
+        when(vehicleApplyMapper.selectById(1L)).thenReturn(apply);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-new");
+        when(vehicleApplyMapper.updateById(apply)).thenReturn(0);
+        assertThatThrownBy(() -> vehicleApplyService.submit(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("实例回写失败");
+    }
+
 }

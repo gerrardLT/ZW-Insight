@@ -93,11 +93,14 @@ public class TransferApplyService {
         variables.put("userName", apply.getUserName());
         variables.put("toOrgId", apply.getToOrgId());
         variables.put("toPostId", apply.getToPostId());
-        approvalService.startProcess(
+        String processInstanceId = approvalService.startProcess(
                 "TRANSFER_APPLY", id, "transfer_apply_approval", variables);
 
+        apply.setWorkflowInstanceId(processInstanceId);
         apply.setStatus("SUBMITTED");
-        transferApplyMapper.updateById(apply);
+        if (transferApplyMapper.updateById(apply) != 1) {
+            throw new BusinessException("审批实例回写失败，请刷新后重试");
+        }
     }
 
     /**

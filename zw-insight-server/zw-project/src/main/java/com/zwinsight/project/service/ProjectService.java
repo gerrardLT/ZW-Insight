@@ -350,7 +350,8 @@ public class ProjectService {
             Map<String, Object> variables = new java.util.HashMap<>();
             variables.put("businessType", "PROJECT_FILING");
             variables.put("projectId", id);
-            approvalService.startProcess("PROJECT_FILING", id, "project_close_approval", variables);
+            existing.setWorkflowInstanceId(approvalService.startProcess("PROJECT_FILING", id, "project_close_approval", variables));
+            if (projectMapper.updateById(existing) != 1) throw new BusinessException("审批实例回写失败，请刷新后重试");
             log.info("立项审批已发起（开关开启）, projectId={}", id);
         }
     }
@@ -458,7 +459,8 @@ public class ProjectService {
         Map<String, Object> variables = new java.util.HashMap<>();
         variables.put("businessType", "PROJECT_TERMINATE");
         variables.put("projectId", id);
-        approvalService.startProcess("PROJECT_TERMINATE", id, "project_close_approval", variables);
+        existing.setWorkflowInstanceId(approvalService.startProcess("PROJECT_TERMINATE", id, "project_close_approval", variables));
+        if (projectMapper.updateById(existing) != 1) throw new BusinessException("审批实例回写失败，请刷新后重试");
     }
 
     /** 在途业务单据计数（终止守卫：审批中的付款申请与项目结算） */

@@ -69,11 +69,14 @@ public class VehicleApplyService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("plateNumber", apply.getPlateNumber());
         variables.put("vehicleId", apply.getVehicleId());
-        approvalService.startProcess(
+        String processInstanceId = approvalService.startProcess(
                 "VEHICLE_APPLY", id, "vehicle_apply_approval", variables);
 
+        apply.setWorkflowInstanceId(processInstanceId);
         apply.setStatus("SUBMITTED");
-        vehicleApplyMapper.updateById(apply);
+        if (vehicleApplyMapper.updateById(apply) != 1) {
+            throw new BusinessException("审批实例回写失败，请刷新后重试");
+        }
     }
 
     /**

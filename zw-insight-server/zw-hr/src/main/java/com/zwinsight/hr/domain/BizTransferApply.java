@@ -41,4 +41,7 @@ public class BizTransferApply extends BaseEntity {
 
     /** 状态（DRAFT/APPROVED） */
     private String status;
+
+    /** 当前审批流程实例；拒绝陈旧实例办理新提交。 */
+    private String workflowInstanceId;
 }

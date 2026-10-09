@@ -1,18 +1,9 @@
 package com.zwinsight.workflow.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
-import com.zwinsight.security.mapper.SysUserMapper;
-import com.zwinsight.workflow.domain.WfApprovalRecord;
-import com.zwinsight.workflow.mapper.WfApprovalRecordMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.flowable.engine.HistoryService;
-import org.flowable.engine.TaskService;
-import org.flowable.engine.history.HistoricProcessInstance;
-import org.flowable.task.api.Task;
-import org.flowable.task.api.history.HistoricTaskInstance;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -36,14 +27,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class BusinessDetailService {
 
-    private static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
-
     private final JdbcTemplate jdbc;
     private final ApprovalService approvalService;
-    private final TaskService taskService;
-    private final HistoryService historyService;
-    private final SysUserMapper sysUserMapper;
-    private final WfApprovalRecordMapper approvalRecordMapper;
+
+    static String sourceTable(String type) {
+        if ("PAYMENT_APPLY".equals(type)) return "biz_payment_apply";
+        Spec spec = SPECS.get(type);
+        return spec == null ? null : spec.table();
+    }
 
     /** 字段：列名、中文标签、类型（T 文本 M 金额 D 日期 P 百分比 B 是否 MASK 脱敏，以及外键名称解析 REF_*） */
     private record F(String col, String label, String kind) {}
@@ -208,7 +199,6 @@ public class BusinessDetailService {
         Map<String, Object> detail = approvalService.getTaskDetail(taskId);
         Object typeObj = detail.get("businessType");
         String type = typeObj == null ? null : String.valueOf(typeObj);
-        assertCanView(taskId);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("businessType", type);
@@ -223,7 +213,12 @@ public class BusinessDetailService {
         if (!idStr.matches("[1-9]\\d{0,18}") || tenantId == null) {
             throw new BusinessException(403, "业务单据标识无效");
         }
-        Long id = Long.valueOf(idStr);
+        Long id;
+        try {
+            id = Long.valueOf(idStr);
+        } catch (NumberFormatException e) {
+            throw new BusinessException(403, "业务单据标识无效");
+        }
 
         result.put("supported", true);
         result.put("typeName", spec.typeName());
@@ -302,40 +297,4 @@ public class BusinessDetailService {
         return String.valueOf(v);
     }
 
-    /** 仅任务相关人可看：超管、发起人、办理人、候选人/候选角色成员，或已办任务的参与人 */
-    private void assertCanView(String taskId) {
-        Long uid = SecurityContextHolder.getUserId();
-        if (uid == null) {
-            throw new BusinessException(401, "未登录");
-        }
-        List<String> roles = sysUserMapper.selectRoleCodesByUserId(uid);
-        if (roles != null && roles.contains(ROLE_SUPER_ADMIN)) {
-            return;
-        }
-        String u = String.valueOf(uid);
-        Task running = taskService.createTaskQuery().taskId(taskId).singleResult();
-        if (running != null) {
-            if (u.equals(running.getAssignee())) return;
-            Object initiator = taskService.getVariable(taskId, "initiator");
-            if (initiator != null && u.equals(String.valueOf(initiator))) return;
-            for (var link : taskService.getIdentityLinksForTask(taskId)) {
-                if (!"candidate".equals(link.getType())) continue;
-                if (u.equals(link.getUserId())) return;
-                if (link.getGroupId() != null && roles != null && roles.contains(link.getGroupId())) return;
-            }
-            throw new BusinessException(403, "无权查看该审批的业务详情");
-        }
-        HistoricTaskInstance hist = historyService.createHistoricTaskInstanceQuery().taskId(taskId).singleResult();
-        if (hist != null) {
-            if (u.equals(hist.getAssignee())) return;
-            HistoricProcessInstance pi = historyService.createHistoricProcessInstanceQuery()
-                    .processInstanceId(hist.getProcessInstanceId()).singleResult();
-            if (pi != null && u.equals(pi.getStartUserId())) return;
-            Long n = approvalRecordMapper.selectCount(new LambdaQueryWrapper<WfApprovalRecord>()
-                    .eq(WfApprovalRecord::getProcessInstanceId, hist.getProcessInstanceId())
-                    .eq(WfApprovalRecord::getAssignee, u));
-            if (n != null && n > 0) return;
-        }
-        throw new BusinessException(403, "无权查看该审批的业务详情");
-    }
 }

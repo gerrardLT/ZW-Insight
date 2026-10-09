@@ -89,11 +89,14 @@ public class RegularApplyService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("userName", apply.getUserName());
         variables.put("userId", apply.getUserId());
-        approvalService.startProcess(
+        String processInstanceId = approvalService.startProcess(
                 "REGULAR_APPLY", id, "regular_apply_approval", variables);
 
+        apply.setWorkflowInstanceId(processInstanceId);
         apply.setStatus("SUBMITTED");
-        regularApplyMapper.updateById(apply);
+        if (regularApplyMapper.updateById(apply) != 1) {
+            throw new BusinessException("审批实例回写失败，请刷新后重试");
+        }
     }
 
     /**

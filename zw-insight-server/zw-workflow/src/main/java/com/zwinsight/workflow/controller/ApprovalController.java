@@ -30,13 +30,7 @@ public class ApprovalController {
      */
     @PostMapping("/start")
     public R<String> start(@RequestBody ProcessStartRequest request) {
-        String processInstanceId = approvalService.startProcess(
-                request.getBusinessType(),
-                request.getBusinessId(),
-                request.getProcessKey(),
-                request.getVariables()
-        );
-        return R.ok(processInstanceId);
+        throw new com.zwinsight.common.exception.BusinessException(403, "请从业务单据提交审批，禁止直接启动流程");
     }
 
     /**

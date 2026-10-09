@@ -22,9 +22,18 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
             "WHERE id = #{userId} AND deleted = 0")
     int archiveForDelete(@Param("userId") Long userId);
 
-    @Select("SELECT r.role_code FROM sys_user_role ur JOIN sys_role r ON ur.role_id = r.id WHERE ur.user_id = #{userId}")
+    @Select("SELECT DISTINCT r.role_code FROM sys_user_role ur " +
+            "JOIN sys_user u ON u.id = ur.user_id JOIN sys_role r ON ur.role_id = r.id " +
+            "WHERE ur.user_id = #{userId} AND u.status = 1 AND u.deleted = 0 AND u.tenant_id IS NOT NULL " +
+            "AND r.status = 1 AND r.deleted = 0 AND (r.tenant_id = u.tenant_id OR r.tenant_id IS NULL)")
     List<String> selectRoleCodesByUserId(@Param("userId") Long userId);
 
-    @Select("SELECT m.permission FROM sys_role_menu rm JOIN sys_menu m ON rm.menu_id = m.id JOIN sys_user_role ur ON ur.role_id = rm.role_id WHERE ur.user_id = #{userId} AND m.permission IS NOT NULL AND m.permission != ''")
+    @Select("SELECT DISTINCT m.permission FROM sys_role_menu rm " +
+            "JOIN sys_menu m ON rm.menu_id = m.id JOIN sys_user_role ur ON ur.role_id = rm.role_id " +
+            "JOIN sys_user u ON u.id = ur.user_id JOIN sys_role r ON r.id = ur.role_id " +
+            "WHERE ur.user_id = #{userId} AND u.status = 1 AND u.deleted = 0 AND u.tenant_id IS NOT NULL " +
+            "AND r.status = 1 AND r.deleted = 0 AND (r.tenant_id = u.tenant_id OR r.tenant_id IS NULL) " +
+            "AND m.status = 1 AND m.deleted = 0 AND (m.tenant_id = u.tenant_id OR m.tenant_id IS NULL) " +
+            "AND m.permission IS NOT NULL AND m.permission != ''")
     List<String> selectPermissionsByUserId(@Param("userId") Long userId);
 }

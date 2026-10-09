@@ -35,6 +35,7 @@ public class HrApplyApprovalListener {
     private static final String SEAL = "SEAL_APPLY";
     private static final String VEHICLE = "VEHICLE_APPLY";
 
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
     private final EntryApplyService entryApplyService;
     private final RegularApplyService regularApplyService;
     private final TransferApplyService transferApplyService;
@@ -70,6 +71,27 @@ public class HrApplyApprovalListener {
     @EventListener
     public void onApprovalReject(ApprovalRejectEvent event) {
         Long applyId = event.getBizId();
+        String table = switch (event.getBizType() == null ? "" : event.getBizType()) {
+            case ENTRY -> "biz_entry_apply";
+            case REGULAR -> "biz_regular_apply";
+            case TRANSFER -> "biz_transfer_apply";
+            case RESIGN -> "biz_resign_apply";
+            case SEAL -> "biz_seal_apply";
+            case VEHICLE -> "biz_vehicle_apply";
+            default -> null;
+        };
+        if (table == null) return;
+        Long tenant = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        if (tenant == null || event.getWorkflowInstanceId() == null) {
+            throw new com.zwinsight.common.exception.BusinessException(403, "审批回调租户或实例缺失");
+        }
+        Integer current = jdbc.queryForObject("SELECT COUNT(*) FROM " + table
+                + " WHERE id = ? AND tenant_id = ? AND workflow_instance_id = ? AND deleted = 0",
+                Integer.class, applyId, tenant, event.getWorkflowInstanceId());
+        if (current == null || current != 1) {
+            log.info("忽略陈旧或已删人事审批回调, type={}, id={}, instance={}", event.getBizType(), applyId, event.getWorkflowInstanceId());
+            return;
+        }
         switch (event.getBizType() == null ? "" : event.getBizType()) {
             case ENTRY -> entryApplyService.onRejected(applyId);
             case REGULAR -> regularApplyService.onRejected(applyId);

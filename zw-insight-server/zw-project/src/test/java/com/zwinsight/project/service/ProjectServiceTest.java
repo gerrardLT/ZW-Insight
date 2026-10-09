@@ -405,6 +405,18 @@ class ProjectServiceTest {
     }
 
     @Test
+    void testSubmit_filingApprovalBindsInstance() {
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1);
+        when(projectMapper.selectConfigValue("project_filing_approval_enabled")).thenReturn("true");
+        when(approvalService.startProcess(eq("PROJECT_FILING"), eq(1L), eq("project_close_approval"), anyMap()))
+                .thenReturn("proc-filing");
+        projectService.submit(1L);
+        assertThat(sampleProject.getWorkflowInstanceId()).isEqualTo("proc-filing");
+        verify(projectMapper, atLeastOnce()).updateById(argThat(p -> "proc-filing".equals(p.getWorkflowInstanceId())));
+    }
+
+    @Test
     @DisplayName("提交：非 DRAFT 拒绝")
     void testSubmit_nonDraftRejected() {
         sampleProject.setStatus("FILED");
@@ -763,7 +775,8 @@ class ProjectServiceTest {
 
         projectService.terminate(1L, "资金链断裂");
         verify(approvalService).startProcess(eq("PROJECT_TERMINATE"), eq(1L), eq("project_close_approval"), anyMap());
-        verify(projectMapper).updateById(argThat(p -> "TERMINATING".equals(p.getStatus())));
+        verify(projectMapper, atLeastOnce()).updateById(argThat(p -> "TERMINATING".equals(p.getStatus())));
+        assertThat(sampleProject.getWorkflowInstanceId()).isEqualTo("proc-term");
     }
 
     @Test
@@ -790,4 +803,22 @@ class ProjectServiceTest {
         assertThat(projectService.statusTimeline(1L)).hasSize(1);
         assertThat(projectService.changeLogs(1L)).hasSize(1);
     }
+    @Test
+    void filing_instanceWriteZeroThrows() {
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1, 0);
+        when(projectMapper.selectConfigValue("project_filing_approval_enabled")).thenReturn("true");
+        when(approvalService.startProcess(eq("PROJECT_FILING"), eq(1L), eq("project_close_approval"), anyMap())).thenReturn("pi-filing");
+        assertThatThrownBy(() -> projectService.submit(1L)).isInstanceOf(BusinessException.class).hasMessageContaining("实例回写失败");
+    }
+
+    @Test
+    void terminating_instanceWriteZeroThrows() {
+        sampleProject.setStatus("CONSTRUCTION");
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        when(projectMapper.updateById(any())).thenReturn(1, 0);
+        when(approvalService.startProcess(eq("PROJECT_TERMINATE"), eq(1L), eq("project_close_approval"), anyMap())).thenReturn("pi-term");
+        assertThatThrownBy(() -> projectService.terminate(1L, "终止原因")).isInstanceOf(BusinessException.class).hasMessageContaining("实例回写失败");
+    }
+
 }

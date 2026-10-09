@@ -3,7 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import Approval from './index.vue'
-const api = vi.hoisted(() => ({ getTodoTasks: vi.fn(), getDoneTasks: vi.fn(), getApprovalDetail: vi.fn(), getBusinessDetail: vi.fn(), completeTask: vi.fn(), rejectToPrevious: vi.fn(), rejectToStart: vi.fn(), terminateProcess: vi.fn(), batchApprove: vi.fn(), payment: vi.fn(), project: vi.fn(), confirm: vi.fn() }))
+const api = vi.hoisted(() => ({ getTodoTasks: vi.fn(), getDoneTasks: vi.fn(), getApprovalDetail: vi.fn(), getBusinessDetail: vi.fn(), completeTask: vi.fn(), rejectToPrevious: vi.fn(), rejectToStart: vi.fn(), terminateProcess: vi.fn(), batchApprove: vi.fn(), payment: vi.fn(), project: vi.fn(), claimTask: vi.fn(), confirm: vi.fn() }))
 vi.mock('@/api/workflow', () => api)
 vi.mock('@/api/finance', () => ({ getPaymentApplyDetail: api.payment }))
 vi.mock('@/api/project', () => ({ getProjectDetail: api.project }))
@@ -34,6 +34,17 @@ describe('approval component gates (stubbed, not real UI)', () => {
     const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
     await vm.openDetail({ taskId: 't1' }); vm.comment = '同意'; await vm.submitAction('approve')
     expect(api.confirm.mock.calls[0][0]).toContain('123.00'); expect(api.completeTask).toHaveBeenCalledWith({ taskId: 't1', comment: '同意' }); wrapper.unmount()
+  })
+  it('refreshes after claim and retains the approval comment', async () => {
+    api.getApprovalDetail.mockResolvedValueOnce({ data: { ...detail, assignee: null } })
+      .mockResolvedValueOnce({ data: { ...detail, assignee: '9999003' } })
+    api.payment.mockResolvedValue({ data: { id: '12', status: 'SUBMITTED', workflowInstanceId: 'p1', paymentAmount: 123, projectId: '21', projectName: '项目甲' } })
+    api.claimTask.mockResolvedValue({})
+    const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
+    await vm.openDetail({ taskId: 't1' }); vm.comment = '核对后同意'; await vm.submitAction('approve')
+    expect(api.claimTask).toHaveBeenCalledWith('t1')
+    expect(api.getApprovalDetail).toHaveBeenCalledTimes(2)
+    expect(api.completeTask).toHaveBeenCalledWith({ taskId: 't1', comment: '核对后同意' }); wrapper.unmount()
   })
   it('blocks approval when required project detail fails', async () => {
     api.getApprovalDetail.mockResolvedValue({ data: detail })
@@ -78,11 +89,51 @@ describe('approval component gates (stubbed, not real UI)', () => {
     expect(api.getBusinessDetail).toHaveBeenCalledWith('t1'); expect(api.payment).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('HT-001'); expect(wrapper.text()).toContain('1,200,000.00'); wrapper.unmount()
   })
-  it('business detail failure is shown but does not block approval', async () => {
+  it.each([
+    { supported: false, fields: [] },
+    { supported: true, found: false, fields: [] },
+    { supported: true, found: false, error: 'SQL失败', fields: [] },
+    null,
+    {},
+  ])('blocks invalid business source response %j', async (source) => {
+    api.getApprovalDetail.mockResolvedValue({ data: { ...detail, businessType: 'SEAL_APPLY' } })
+    api.getBusinessDetail.mockResolvedValue({ data: source })
+    const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
+    await vm.openDetail({ taskId: 't1' }); vm.comment = '同意'; await vm.submitAction('approve')
+    expect(api.completeTask).not.toHaveBeenCalled(); wrapper.unmount()
+  })
+  it.each([{}, { supported: false, fields: [] }, { supported: true, found: false, fields: [] }, { supported: true, found: true }, { supported: true, found: true, fields: [], error: '503' }])('batch blocks invalid source %j', async source => {
+    api.getApprovalDetail.mockResolvedValue({ data: { ...detail, businessType: 'SEAL_APPLY', assignee: '9999003' } })
+    api.getBusinessDetail.mockResolvedValue({ data: source })
+    const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
+    vm.selectedRows = [{ taskId: 't1', businessType: 'SEAL_APPLY' }]
+    await vm.handleBatchApprove(); await vm.submitBatch()
+    expect(vm.batchError).toBeTruthy(); expect(api.batchApprove).not.toHaveBeenCalled(); wrapper.unmount()
+  })
+  it('batch source 503 blocks submission', async () => {
+    api.getApprovalDetail.mockResolvedValue({ data: { ...detail, businessType: 'SEAL_APPLY' } })
+    api.getBusinessDetail.mockRejectedValue(new Error('503'))
+    const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
+    vm.selectedRows = [{ taskId: 't1', businessType: 'SEAL_APPLY' }]
+    await vm.handleBatchApprove(); await vm.submitBatch()
+    expect(api.batchApprove).not.toHaveBeenCalled(); wrapper.unmount()
+  })
+  it('batch shows real source fields before successful submission', async () => {
+    api.getApprovalDetail.mockResolvedValue({ data: { ...detail, businessType: 'SEAL_APPLY' } })
+    api.getBusinessDetail.mockResolvedValue({ data: { supported: true, found: true, fields: [{ label: '事由', value: '真实源单' }] } })
+    const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
+    vm.selectedRows = [{ taskId: 't1', businessType: 'SEAL_APPLY' }]
+    await vm.handleBatchApprove(); expect(wrapper.text()).toContain('真实源单'); await vm.submitBatch()
+    expect(api.batchApprove).toHaveBeenCalledWith({ taskIds: ['t1'] }); wrapper.unmount()
+  })
+  it('business detail failure blocks every approval action', async () => {
     api.getApprovalDetail.mockResolvedValue({ data: { taskId: 't1', status: 'pending', businessType: 'SEAL_APPLY', businessId: '12', processInstanceId: 'p1' } })
     api.getBusinessDetail.mockRejectedValue(new Error('500'))
     const wrapper = page(); await flushPromises(); const vm = wrapper.vm as any
     await vm.openDetail({ taskId: 't1' }); await flushPromises()
-    expect(vm.bizError).toContain('业务详情加载失败'); expect(vm.blocked).toBe(''); wrapper.unmount()
+    expect(vm.bizError).toContain('业务详情加载失败'); expect(vm.blocked).toBeTruthy()
+    vm.comment = '原因'
+    for (const action of ['approve', 'reject', 'terminate']) await vm.submitAction(action)
+    expect(api.completeTask).not.toHaveBeenCalled(); expect(api.rejectToPrevious).not.toHaveBeenCalled(); expect(api.terminateProcess).not.toHaveBeenCalled(); wrapper.unmount()
   })
 })

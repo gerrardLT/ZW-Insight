@@ -165,9 +165,11 @@ class TransferApplyServiceTest {
         when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
                 .thenReturn("proc-1");
 
+        when(transferApplyMapper.updateById(apply)).thenReturn(1);
         transferApplyService.submit(1L);
 
         assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(apply.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(transferApplyMapper).updateById(apply);
         verify(approvalService).startProcess(eq("TRANSFER_APPLY"), eq(1L),
                 eq("transfer_apply_approval"), anyMap());
@@ -268,4 +270,16 @@ class TransferApplyServiceTest {
 
         assertThat(result.getTotal()).isEqualTo(4);
     }
+    @Test
+    void submit_instanceWriteFailureRejects() {
+        BizTransferApply apply = new BizTransferApply();
+        apply.setId(1L);
+        apply.setStatus("DRAFT");
+        when(transferApplyMapper.selectById(1L)).thenReturn(apply);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-new");
+        when(transferApplyMapper.updateById(apply)).thenReturn(0);
+        assertThatThrownBy(() -> transferApplyService.submit(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("实例回写失败");
+    }
+
 }

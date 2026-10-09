@@ -51,6 +51,8 @@ class ApprovalServiceTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private WfApprovalRecordMapper approvalRecordMapper;
     @Mock private SysUserMapper sysUserMapper;
+    @Mock private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private MockedStatic<SecurityContextHolder> defaultContext;
 
     @InjectMocks
     private ApprovalService approvalService;
@@ -66,13 +68,31 @@ class ApprovalServiceTest {
 
     @BeforeEach
     void setUp() {
+        defaultContext = mockStatic(SecurityContextHolder.class);
+        defaultContext.when(SecurityContextHolder::getUserId).thenReturn(200L);
+        defaultContext.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
         mockTask = mock(Task.class);
+        lenient().when(mockTask.getTenantId()).thenReturn("9999");
+        lenient().when(taskService.getVariable(anyString(), eq("businessType"))).thenReturn("PAYMENT_APPLY");
+        lenient().when(taskService.getVariable(anyString(), eq("businessId"))).thenReturn(55L);
+        lenient().when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-001")));
         lenient().when(mockTask.getId()).thenReturn("task-001");
         lenient().when(mockTask.getProcessInstanceId()).thenReturn("pi-001");
         lenient().when(mockTask.getName()).thenReturn("部门经理审批");
         lenient().when(mockTask.getTaskDefinitionKey()).thenReturn("deptManagerApprove");
         // assignee 与审批操作用例的当前用户(userId=200)一致，满足 assertTaskAssignee 处理人校验
         lenient().when(mockTask.getAssignee()).thenReturn("200");
+    }
+
+    @AfterEach
+    void closeContext() { if (!defaultContext.isClosed()) defaultContext.close(); }
+
+    private MockedStatic<SecurityContextHolder> context() {
+        defaultContext.close();
+        defaultContext = mockStatic(SecurityContextHolder.class);
+        defaultContext.when(SecurityContextHolder::getUserId).thenReturn(200L);
+        defaultContext.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
+        return defaultContext;
     }
 
     // =====================================================================
@@ -82,7 +102,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("发起流程：正常发起，验证变量设置和 businessKey 格式")
     void testStartProcess_success() {
-        try (var sc1 = mockStatic(SecurityContextHolder.class)) {
+        try (var sc1 = context()) {
             sc1.when(SecurityContextHolder::getUserId).thenReturn(100L);
             sc1.when(SecurityContextHolder::getTenantId).thenReturn(1L);
 
@@ -111,7 +131,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("发起流程：variables 为 null 时自动初始化空 Map")
     void testStartProcess_nullVariables() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(100L);
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
 
@@ -129,7 +149,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("发起流程：流程定义不存在时 RuntimeService 抛异常上抛")
     void testStartProcess_processDefinitionNotFound() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(100L);
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
 
@@ -152,7 +172,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("办理通过：含审批意见，验证 addComment + complete + saveRecord")
     void testComplete_withComment() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -172,7 +192,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("办理通过：含流程变量，验证带变量 complete")
     void testComplete_withVariables() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -191,7 +211,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("办理通过：客户端传入的协议变量（initiator/businessId/businessType）被剔除，业务变量保留")
     void testComplete_protocolVariablesStripped() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -213,7 +233,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("办理通过：金额分档路由变量 approvalTier/tierName 不可被审批人改写")
     void testComplete_approvalTierNotOverridable() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -232,32 +252,52 @@ class ApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("我的待办：租户上下文缺失时只查本人已签收任务，不带候选组（候选组编码不带租户）")
-    void testGetMyTodoTasks_noTenantContext_assigneeOnly() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+    @DisplayName("我的待办：缺失租户时拒绝查询，不以本人签收降级")
+    void testGetMyTodoTasks_noTenantContext_rejected() {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getTenantId).thenReturn(null);
             when(sysUserMapper.selectRoleCodesByUserId(100L)).thenReturn(List.of("PROJECT_MANAGER"));
-
             TaskQuery taskQuery = mock(TaskQuery.class);
             when(taskService.createTaskQuery()).thenReturn(taskQuery);
-            when(taskQuery.taskAssignee("100")).thenReturn(taskQuery);
-            when(taskQuery.count()).thenReturn(0L);
-            when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
-            when(taskQuery.orderByTaskCreateTime()).thenReturn(taskQuery);
-            when(taskQuery.desc()).thenReturn(taskQuery);
-            when(taskQuery.listPage(0, 10)).thenReturn(List.of());
+            assertThatThrownBy(() -> approvalService.getMyTodoTasks(100L, 1, 10))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("租户上下文缺失");
+            verify(taskQuery, never()).taskAssignee(anyString());
+        }
+    }
 
-            approvalService.getMyTodoTasks(100L, 1, 10);
+    @Test
+    void taskView_sameTenantAssignee_allowed() {
+        try (var sc = context()) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
+            when(mockTask.getTenantId()).thenReturn("9999");
+            TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+            when(taskService.createTaskQuery()).thenReturn(query);
+            when(query.singleResult()).thenReturn(mockTask);
+            approvalService.assertCanViewTask("task-001");
+            verifyNoInteractions(historyService, approvalRecordMapper);
+        }
+    }
 
-            verify(taskQuery, never()).taskCandidateGroupIn(anyList());
-            verify(taskQuery, never()).taskTenantId(anyString());
+    @Test
+    void taskView_crossTenantSuperAdmin_rejectedBeforeRoleLookup() {
+        try (var sc = context()) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
+            when(mockTask.getTenantId()).thenReturn("1");
+            TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+            when(taskService.createTaskQuery()).thenReturn(query);
+            when(query.singleResult()).thenReturn(mockTask);
+            assertThatThrownBy(() -> approvalService.assertCanViewTask("task-001"))
+                    .isInstanceOf(BusinessException.class);
+            verifyNoInteractions(sysUserMapper, historyService, approvalRecordMapper);
         }
     }
 
     @Test
     @DisplayName("办理通过：只传协议变量时等同无变量 complete")
     void testComplete_onlyProtocolVariables() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -275,7 +315,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("办理通过：候选角色成员办理未签收任务时自动签收后办理")
     void testComplete_candidateAutoClaim() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             when(mockTask.getAssignee()).thenReturn(null);
@@ -299,7 +339,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("办理通过：非候选人办理未签收任务被拒绝，且不签收不办理")
     void testComplete_nonCandidateRejected() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             when(mockTask.getAssignee()).thenReturn(null);
@@ -324,7 +364,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("办理通过：任务不存在抛 BusinessException")
     void testComplete_taskNotFound() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -345,7 +385,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("退回至上一节点：正常退回，验证 changeState + 发布事件")
     void testRejectToPrevious_success() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -390,7 +430,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("退回至上一节点：无历史节点时抛异常")
     void testRejectToPrevious_noPreviousNode() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -420,7 +460,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("退回至发起人：验证首节点定位")
     void testRejectToStart_success() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -464,7 +504,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("终止流程：验证 deleteProcessInstance + 发布 WITHDRAW 事件")
     void testTerminate_success() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -494,8 +534,10 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("转办：验证 setAssignee")
     void testTransfer_success() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
+            when(mockTask.getTenantId()).thenReturn("9999");
 
             TaskQuery taskQuery = mock(TaskQuery.class);
             when(taskService.createTaskQuery()).thenReturn(taskQuery);
@@ -505,6 +547,7 @@ class ApprovalServiceTest {
             SysUser target = new SysUser();
             target.setId(300L);
             target.setStatus(1);
+            target.setTenantId(9999L);
             when(sysUserMapper.selectById(300L)).thenReturn(target);
 
             approvalService.transfer("task-001", "300", "出差代审");
@@ -518,9 +561,10 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("转办：目标用户不存在 / 已停用 / 就是自己 / 跨租户均拒绝，且不改办理人")
     void testTransfer_invalidTargetRejected() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
-            sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
+            when(mockTask.getTenantId()).thenReturn("9999");
 
             TaskQuery taskQuery = mock(TaskQuery.class);
             when(taskService.createTaskQuery()).thenReturn(taskQuery);
@@ -548,6 +592,20 @@ class ApprovalServiceTest {
             assertThatThrownBy(() -> approvalService.transfer("task-001", "303", "x"))
                     .isInstanceOf(BusinessException.class).hasMessageContaining("不属于当前租户");
 
+            SysUser missingStatus = new SysUser();
+            missingStatus.setId(304L);
+            missingStatus.setTenantId(9999L);
+            when(sysUserMapper.selectById(304L)).thenReturn(missingStatus);
+            assertThatThrownBy(() -> approvalService.transfer("task-001", "304", "x"))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("已停用");
+
+            SysUser missingTenant = new SysUser();
+            missingTenant.setId(305L);
+            missingTenant.setStatus(1);
+            when(sysUserMapper.selectById(305L)).thenReturn(missingTenant);
+            assertThatThrownBy(() -> approvalService.transfer("task-001", "305", "x"))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("不属于当前租户");
+
             // 自己
             assertThatThrownBy(() -> approvalService.transfer("task-001", "200", "x"))
                     .isInstanceOf(BusinessException.class).hasMessageContaining("自己");
@@ -563,8 +621,10 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("转办：防自审类型不得转给发起人")
     void testTransfer_toInitiatorRejectedForGuardedType() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
+            when(mockTask.getTenantId()).thenReturn("9999");
 
             TaskQuery taskQuery = mock(TaskQuery.class);
             when(taskService.createTaskQuery()).thenReturn(taskQuery);
@@ -576,6 +636,7 @@ class ApprovalServiceTest {
             SysUser target = new SysUser();
             target.setId(300L);
             target.setStatus(1);
+            target.setTenantId(9999L);
             when(sysUserMapper.selectById(300L)).thenReturn(target);
 
             assertThatThrownBy(() -> approvalService.transfer("task-001", "300", "x"))
@@ -591,8 +652,10 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("委托：验证 delegateTask")
     void testDelegate_success() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
+            when(mockTask.getTenantId()).thenReturn("9999");
 
             TaskQuery taskQuery = mock(TaskQuery.class);
             when(taskService.createTaskQuery()).thenReturn(taskQuery);
@@ -602,6 +665,7 @@ class ApprovalServiceTest {
             SysUser target = new SysUser();
             target.setId(400L);
             target.setStatus(1);
+            target.setTenantId(9999L);
             when(sysUserMapper.selectById(400L)).thenReturn(target);
 
             approvalService.delegate("task-001", "400", "休假委托");
@@ -619,12 +683,13 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("批量通过：逐个调用 complete")
     void testBatchApprove_callsCompleteForEach() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             Task task2 = mock(Task.class);
+            lenient().when(task2.getTenantId()).thenReturn("9999");
             lenient().when(task2.getId()).thenReturn("task-002");
-            lenient().when(task2.getProcessInstanceId()).thenReturn("pi-002");
+            lenient().when(task2.getProcessInstanceId()).thenReturn("pi-001");
             lenient().when(task2.getName()).thenReturn("审批节点2");
             lenient().when(task2.getTaskDefinitionKey()).thenReturn("node2");
             lenient().when(task2.getAssignee()).thenReturn("200");
@@ -640,8 +705,6 @@ class ApprovalServiceTest {
             // 交替返回两个 task
             when(q1.singleResult())
                     .thenReturn(mockTask)
-                    .thenReturn(mockTask)
-                    .thenReturn(task2)
                     .thenReturn(task2);
 
             approvalService.batchApprove(List.of("task-001", "task-002"), "批量同意");
@@ -658,7 +721,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("我的待办：分页查询返回正确结构（变量随查询批量携带，无 N+1）")
     void testGetMyTodoTasks() {
-        TaskQuery taskQuery = mock(TaskQuery.class);
+        TaskQuery taskQuery = mock(TaskQuery.class, RETURNS_SELF);
         when(taskService.createTaskQuery()).thenReturn(taskQuery);
         when(taskQuery.taskAssignee("100")).thenReturn(taskQuery);
         when(taskQuery.count()).thenReturn(1L);
@@ -685,7 +748,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("我的待办：持有候选角色时按（本人办理 OR 候选组）且限定租户查询")
     void testGetMyTodoTasks_includesCandidateGroupsScopedByTenant() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
             when(sysUserMapper.selectRoleCodesByUserId(100L)).thenReturn(List.of("PROJECT_MANAGER", "FINANCE_STAFF"));
 
@@ -716,7 +779,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("我的待办：无任何角色时仍按（本人办理 OR 点名候选人）查询，不带候选组")
     void testGetMyTodoTasks_candidateUserWithoutRoles() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
             when(sysUserMapper.selectRoleCodesByUserId(100L)).thenReturn(List.of());
 
@@ -743,7 +806,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("按业务撤回：任务属于其他租户时按不存在处理，不终止流程")
     void testWithdrawByBusiness_crossTenantRejected() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
 
             when(mockTask.getTenantId()).thenReturn("2");
@@ -762,7 +825,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("我的待办：发起人 userId 批量翻译为 realName 填充 startUserName")
     void testGetMyTodoTasks_startUserName() {
-        TaskQuery taskQuery = mock(TaskQuery.class);
+        TaskQuery taskQuery = mock(TaskQuery.class, RETURNS_SELF);
         when(taskService.createTaskQuery()).thenReturn(taskQuery);
         when(taskQuery.taskAssignee("100")).thenReturn(taskQuery);
         when(taskQuery.count()).thenReturn(1L);
@@ -820,7 +883,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("按业务撤回：发起人定位运行中任务并终止+发撤回事件")
     void testWithdrawByBusiness_success() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -848,7 +911,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("按业务撤回：无运行中流程幂等返回 false（清理语义不报错）")
     void testWithdrawByBusiness_noRunningProcess_returnsFalse() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -867,7 +930,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("按业务撤回：非发起人拒绝（防越权终止他人流程）")
     void testWithdrawByBusiness_notInitiator_throws() {
-        try (var sc = mockStatic(SecurityContextHolder.class)) {
+        try (var sc = context()) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
 
             TaskQuery taskQuery = mock(TaskQuery.class);
@@ -897,7 +960,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("审批详情：运行中任务聚合流程信息/业务数据去内部变量/审批时间线映射")
     void testGetTaskDetail_runningTask_success() {
-        TaskQuery taskQuery = mock(TaskQuery.class);
+        TaskQuery taskQuery = mock(TaskQuery.class, RETURNS_SELF);
         when(taskService.createTaskQuery()).thenReturn(taskQuery);
         when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
         when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
@@ -943,6 +1006,7 @@ class ApprovalServiceTest {
         Map<String, Object> detail = approvalService.getTaskDetail("task-001");
 
         assertThat(detail.get("taskId")).isEqualTo("task-001");
+        assertThat(detail).containsEntry("assignee", "200");
         assertThat(detail.get("taskName")).isEqualTo("部门经理审批");
         assertThat(detail.get("processName")).isEqualTo("合同审批流程");
         assertThat(detail.get("createTime")).isEqualTo(startTime);
@@ -966,7 +1030,7 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("审批详情：运行中任务不存在时回退历史任务，status=done")
     void testGetTaskDetail_historicTask_statusDone() {
-        TaskQuery taskQuery = mock(TaskQuery.class);
+        TaskQuery taskQuery = mock(TaskQuery.class, RETURNS_SELF);
         when(taskService.createTaskQuery()).thenReturn(taskQuery);
         when(taskQuery.taskId("task-h")).thenReturn(taskQuery);
         when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
@@ -978,6 +1042,8 @@ class ApprovalServiceTest {
         when(histQuery.taskId("task-h")).thenReturn(histQuery);
         when(histQuery.includeProcessVariables()).thenReturn(histQuery);
         when(histQuery.singleResult()).thenReturn(hti);
+        when(hti.getTenantId()).thenReturn("9999");
+        when(hti.getAssignee()).thenReturn("200");
         when(hti.getProcessInstanceId()).thenReturn("pi-h");
         when(hti.getName()).thenReturn("历史审批任务");
         when(hti.getProcessVariables()).thenReturn(Map.of("businessType", "PAYMENT"));
@@ -991,6 +1057,7 @@ class ApprovalServiceTest {
         Map<String, Object> detail = approvalService.getTaskDetail("task-h");
 
         assertThat(detail.get("status")).isEqualTo("done");
+        assertThat(detail).containsEntry("assignee", "200");
         assertThat(detail.get("taskName")).isEqualTo("历史审批任务");
         assertThat(detail.get("processName")).isNull();
         assertThat(detail.get("startUserName")).isNull();
@@ -1002,21 +1069,19 @@ class ApprovalServiceTest {
     @Test
     @DisplayName("审批详情：运行中与历史任务均不存在抛 BusinessException")
     void testGetTaskDetail_notFound() {
-        TaskQuery taskQuery = mock(TaskQuery.class);
+        TaskQuery taskQuery = mock(TaskQuery.class, RETURNS_SELF);
         when(taskService.createTaskQuery()).thenReturn(taskQuery);
         when(taskQuery.taskId("nonexist")).thenReturn(taskQuery);
-        when(taskQuery.includeProcessVariables()).thenReturn(taskQuery);
         when(taskQuery.singleResult()).thenReturn(null);
 
         HistoricTaskInstanceQuery histQuery = mock(HistoricTaskInstanceQuery.class);
         when(historyService.createHistoricTaskInstanceQuery()).thenReturn(histQuery);
         when(histQuery.taskId("nonexist")).thenReturn(histQuery);
-        when(histQuery.includeProcessVariables()).thenReturn(histQuery);
         when(histQuery.singleResult()).thenReturn(null);
 
         assertThatThrownBy(() -> approvalService.getTaskDetail("nonexist"))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("任务不存在");
+                .hasMessageContaining("无权查看");
     }
 
     // =====================================================================
@@ -1031,6 +1096,8 @@ class ApprovalServiceTest {
         when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
         when(hpiQuery.processInstanceId("pi-001")).thenReturn(hpiQuery);
         when(hpiQuery.singleResult()).thenReturn(hpi);
+        when(hpi.getTenantId()).thenReturn("9999");
+        when(sysUserMapper.selectRoleCodesByUserId(200L)).thenReturn(List.of("SUPER_ADMIN"));
         when(hpi.getProcessDefinitionName()).thenReturn("付款审批流程");
         // Flowable 历史接口时间为 java.util.Date（非 LocalDateTime）
         when(hpi.getStartTime()).thenReturn(new java.util.Date(1756700000000L));
@@ -1074,13 +1141,10 @@ class ApprovalServiceTest {
         when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
         when(hpiQuery.processInstanceId("pi-ghost")).thenReturn(hpiQuery);
         when(hpiQuery.singleResult()).thenReturn(null);
-        when(approvalRecordMapper.selectList(any())).thenReturn(Collections.emptyList());
+        assertThatThrownBy(() -> approvalService.getApprovalTrace("pi-ghost"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("无权查看");
+        verifyNoInteractions(approvalRecordMapper);
 
-        Map<String, Object> trace = approvalService.getApprovalTrace("pi-ghost");
-
-        assertThat(trace.get("status")).isEqualTo("UNKNOWN");
-        assertThat(castList(trace.get("approvalRecords"))).isEmpty();
-        assertThat(String.valueOf(trace.get("note"))).contains("流程实例不存在");
     }
 
     @Test
@@ -1091,6 +1155,8 @@ class ApprovalServiceTest {
         when(historyService.createHistoricProcessInstanceQuery()).thenReturn(hpiQuery);
         when(hpiQuery.processInstanceId("pi-run")).thenReturn(hpiQuery);
         when(hpiQuery.singleResult()).thenReturn(hpi);
+        when(hpi.getTenantId()).thenReturn("9999");
+        when(hpi.getStartUserId()).thenReturn("200");
         when(hpi.getEndTime()).thenReturn(null);
         when(approvalRecordMapper.selectList(any())).thenReturn(Collections.emptyList());
 
@@ -1110,6 +1176,199 @@ class ApprovalServiceTest {
                 .isInstanceOf(BusinessException.class);
     }
 
+    @Test
+    void sourceGuard_missingRowBlocksSingleAndBatch() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of());
+        assertThatThrownBy(() -> approvalService.complete("task-001", "同意", null))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), "同意"))
+                .isInstanceOf(BusinessException.class);
+        verify(taskService, never()).complete(anyString());
+        verify(taskService, never()).addComment(anyString(), anyString(), anyString());
+        verifyNoInteractions(approvalRecordMapper);
+    }
+
+    @Test
+    void sourceGuard_queryFailureBlocksApproval() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(jdbc.queryForList(anyString(), any(), any()))
+                .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("unavailable"));
+        assertThatThrownBy(() -> approvalService.complete("task-001", null, null))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("禁止办理");
+        verify(taskService, never()).complete(anyString());
+    }
+
+    @Test
+    void sourceGuard_unknownTypeAndOverflowRejected() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(taskService.getVariable("task-001", "businessType")).thenReturn("UNKNOWN");
+        assertThatThrownBy(() -> approvalService.complete("task-001", null, null))
+                .isInstanceOf(BusinessException.class);
+        when(taskService.getVariable("task-001", "businessType")).thenReturn("PAYMENT_APPLY");
+        when(taskService.getVariable("task-001", "businessId")).thenReturn("9999999999999999999");
+        assertThatThrownBy(() -> approvalService.complete("task-001", null, null))
+                .isInstanceOf(BusinessException.class);
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void taskView_unrelatedUserDeniedBeforeBusinessRead() {
+        when(mockTask.getAssignee()).thenReturn("300");
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(taskService.getIdentityLinksForTask("task-001")).thenReturn(List.of());
+        HistoricProcessInstanceQuery history = mock(HistoricProcessInstanceQuery.class, RETURNS_SELF);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(history);
+        assertThatThrownBy(() -> approvalService.getTaskDetail("task-001"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("无权查看");
+        verify(query, never()).includeProcessVariables();
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void taskView_candidateUserAllowed() {
+        when(mockTask.getAssignee()).thenReturn(null);
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        org.flowable.identitylink.api.IdentityLink link = mock(org.flowable.identitylink.api.IdentityLink.class);
+        when(link.getType()).thenReturn("candidate");
+        when(link.getUserId()).thenReturn("200");
+        when(taskService.getIdentityLinksForTask("task-001")).thenReturn(List.of(link));
+        approvalService.assertCanViewTask("task-001");
+        verifyNoInteractions(historyService);
+    }
+
+    @Test
+    void taskView_historicParticipantAllowed() {
+        when(mockTask.getAssignee()).thenReturn("300");
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(taskService.getIdentityLinksForTask("task-001")).thenReturn(List.of());
+        HistoricProcessInstanceQuery history = mock(HistoricProcessInstanceQuery.class, RETURNS_SELF);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(history);
+        when(approvalRecordMapper.selectCount(any())).thenReturn(1L);
+        approvalService.assertCanViewTask("task-001");
+    }
+
+    @Test
+    void selfApproval_variableReadFailureDoesNotApprove() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(taskService.getVariable("task-001", "initiator")).thenThrow(new IllegalStateException("unavailable"));
+        assertThatThrownBy(() -> approvalService.complete("task-001", null, null))
+                .isInstanceOf(IllegalStateException.class);
+        verifyNoInteractions(jdbc);
+        verify(taskService, never()).complete(anyString());
+    }
+
+    @Test
+    void taskView_initiatorAllowed() {
+        when(mockTask.getAssignee()).thenReturn("300");
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(taskService.getIdentityLinksForTask("task-001")).thenReturn(List.of());
+        HistoricProcessInstanceQuery history = mock(HistoricProcessInstanceQuery.class, RETURNS_SELF);
+        HistoricProcessInstance instance = mock(HistoricProcessInstance.class);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(history);
+        when(history.singleResult()).thenReturn(instance);
+        when(instance.getTenantId()).thenReturn("9999");
+        when(instance.getStartUserId()).thenReturn("200");
+        approvalService.assertCanViewTask("task-001");
+        verifyNoInteractions(approvalRecordMapper);
+    }
+
+    @Test
+    void sourceGuard_stateAndInstanceSingleAndBatch() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        for (String state : List.of("DRAFT", "APPROVED", "CLOSED")) {
+            when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", state, "workflow_instance_id", "pi-001")));
+            assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class);
+            assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class);
+        }
+        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-new")));
+        assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class);
+        verify(taskService, never()).complete(anyString());
+        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "REJECTED", "workflow_instance_id", "pi-001")));
+        approvalService.complete("task-001", null, null);
+        approvalService.batchApprove(List.of("task-001"), null);
+        verify(taskService, times(2)).complete("task-001");
+    }
+
+
+    @Test
+    void finalSettlement_draftRequiresSameInstanceAndRejectedRecord_singleAndBatch() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(taskService.getVariable("task-001", "businessType")).thenReturn("FINAL_SETTLEMENT");
+        when(taskService.getVariable("task-001", "initiator")).thenReturn("300");
+        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "DRAFT", "workflow_instance_id", "pi-001")));
+        when(approvalRecordMapper.selectCount(any())).thenReturn(0L);
+        assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class).hasMessageContaining("源单状态或流程实例不匹配");
+        assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class).hasMessageContaining("源单状态或流程实例不匹配");
+        when(approvalRecordMapper.selectCount(any())).thenReturn(1L);
+        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "DRAFT", "workflow_instance_id", "pi-new")));
+        assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class).hasMessageContaining("源单状态或流程实例不匹配");
+        assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class).hasMessageContaining("源单状态或流程实例不匹配");
+        verify(taskService, never()).complete(anyString());
+        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "DRAFT", "workflow_instance_id", "pi-001")));
+        approvalService.complete("task-001", null, null);
+        approvalService.batchApprove(List.of("task-001"), null);
+        verify(taskService, times(2)).complete("task-001");
+        verify(approvalRecordMapper, times(6)).selectCount(any());
+    }
+
+    @Test
+    void hrBinding_oldInstanceCannotApproveNewSubmission() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        for (String type : List.of("REGULAR_APPLY", "RESIGN_APPLY", "SEAL_APPLY", "TRANSFER_APPLY", "VEHICLE_APPLY")) {
+            when(taskService.getVariable("task-001", "businessType")).thenReturn(type);
+            when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-new")));
+            assertThatThrownBy(() -> approvalService.complete("task-001", null, null)).isInstanceOf(BusinessException.class);
+            assertThatThrownBy(() -> approvalService.batchApprove(List.of("task-001"), null)).isInstanceOf(BusinessException.class);
+            when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-001")));
+            approvalService.complete("task-001", null, null);
+        }
+        verify(taskService, times(5)).complete("task-001");
+    }
+
+    @Test
+    void staleInstanceRejectActionsAndWithdrawCannotMutateNewHrSubmission() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(query.listPage(0, 1)).thenReturn(List.of(mockTask));
+        when(taskService.getVariable("task-001", "businessType")).thenReturn("SEAL_APPLY");
+        when(jdbc.queryForList(anyString(), any(), any())).thenReturn(List.of(Map.of("workflow_instance_id", "pi-new")));
+        assertThatThrownBy(() -> approvalService.rejectToPrevious("task-001", "x")).hasMessageContaining("源单流程实例不匹配");
+        assertThatThrownBy(() -> approvalService.rejectToStart("task-001", "x")).hasMessageContaining("源单流程实例不匹配");
+        assertThatThrownBy(() -> approvalService.terminate("task-001", "x")).hasMessageContaining("源单流程实例不匹配");
+        HistoricProcessInstanceQuery history = mock(HistoricProcessInstanceQuery.class, RETURNS_SELF);
+        HistoricProcessInstance instance = mock(HistoricProcessInstance.class);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(history);
+        when(history.singleResult()).thenReturn(instance);
+        when(instance.getStartUserId()).thenReturn("200");
+        assertThatThrownBy(() -> approvalService.withdrawByBusiness("SEAL_APPLY", 55L)).hasMessageContaining("源单流程实例不匹配");
+        verifyNoInteractions(runtimeService, eventPublisher, approvalRecordMapper);
+        verify(taskService, never()).addComment(anyString(), anyString(), anyString());
+    }
     @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> castList(Object obj) {
         return (List<Map<String, Object>>) obj;

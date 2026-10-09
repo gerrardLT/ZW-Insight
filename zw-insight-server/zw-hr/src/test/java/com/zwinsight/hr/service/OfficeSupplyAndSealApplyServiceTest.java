@@ -98,6 +98,7 @@ class OfficeSupplyAndSealApplyServiceTest {
             apply.setApplicant("张三");
             when(sealApplyMapper.selectById(1L)).thenReturn(apply);
             when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-1");
+            when(sealApplyMapper.updateById(apply)).thenReturn(1);
 
             sealApplyService.submit(1L);
 

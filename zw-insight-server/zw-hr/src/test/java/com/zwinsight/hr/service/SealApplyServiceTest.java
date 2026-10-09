@@ -156,9 +156,11 @@ class SealApplyServiceTest {
         when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
                 .thenReturn("proc-1");
 
+        when(sealApplyMapper.updateById(apply)).thenReturn(1);
         sealApplyService.submit(1L);
 
         assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(apply.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(sealApplyMapper).updateById(apply);
         verify(approvalService).startProcess(eq("SEAL_APPLY"), eq(1L),
                 eq("seal_apply_approval"), anyMap());
@@ -197,4 +199,16 @@ class SealApplyServiceTest {
 
         assertThat(result.getTotal()).isEqualTo(1);
     }
+    @Test
+    void submit_instanceWriteFailureRejects() {
+        BizSealApply apply = new BizSealApply();
+        apply.setId(1L);
+        apply.setStatus("DRAFT");
+        when(sealApplyMapper.selectById(1L)).thenReturn(apply);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-new");
+        when(sealApplyMapper.updateById(apply)).thenReturn(0);
+        assertThatThrownBy(() -> sealApplyService.submit(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("实例回写失败");
+    }
+
 }

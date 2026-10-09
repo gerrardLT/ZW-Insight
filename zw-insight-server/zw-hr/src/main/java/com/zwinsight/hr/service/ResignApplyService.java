@@ -68,11 +68,14 @@ public class ResignApplyService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("userName", apply.getUserName());
         variables.put("userId", apply.getUserId());
-        approvalService.startProcess(
+        String processInstanceId = approvalService.startProcess(
                 "RESIGN_APPLY", id, "resign_apply_approval", variables);
 
+        apply.setWorkflowInstanceId(processInstanceId);
         apply.setStatus("SUBMITTED");
-        resignApplyMapper.updateById(apply);
+        if (resignApplyMapper.updateById(apply) != 1) {
+            throw new BusinessException("审批实例回写失败，请刷新后重试");
+        }
     }
 
     /**

@@ -156,9 +156,11 @@ class RegularApplyServiceTest {
         when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap()))
                 .thenReturn("proc-1");
 
+        when(regularApplyMapper.updateById(apply)).thenReturn(1);
         regularApplyService.submit(1L);
 
         assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(apply.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(regularApplyMapper).updateById(apply);
         verify(approvalService).startProcess(eq("REGULAR_APPLY"), eq(1L),
                 eq("regular_apply_approval"), anyMap());
@@ -198,4 +200,16 @@ class RegularApplyServiceTest {
 
         assertThat(result.getTotal()).isEqualTo(2);
     }
+    @Test
+    void submit_instanceWriteFailureRejects() {
+        BizRegularApply apply = new BizRegularApply();
+        apply.setId(1L);
+        apply.setStatus("DRAFT");
+        when(regularApplyMapper.selectById(1L)).thenReturn(apply);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-new");
+        when(regularApplyMapper.updateById(apply)).thenReturn(0);
+        assertThatThrownBy(() -> regularApplyService.submit(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("实例回写失败");
+    }
+
 }

@@ -101,7 +101,7 @@
 
     <el-dialog v-model="batchVisible" title="批量核对确认" width="min(680px, 95vw)" :close-on-click-modal="false">
       <p v-if="batchLoading" role="status">正在逐条加载审批详情…</p><p v-if="batchError" role="alert">{{ batchError }}</p>
-      <ul class="history"><li v-for="item in batchDetails" :key="item.taskId">{{ item.taskName }} · {{ businessTypeName(item.businessType) }} / {{ item.businessId }}<p>{{ item.businessTitle || '未提供摘要' }} · 金额：未提供</p></li></ul>
+      <ul class="history"><li v-for="item in batchDetails" :key="item.taskId">{{ item.taskName }} · {{ businessTypeName(item.businessType) }} / {{ item.businessId }}<p>{{ item.businessTitle || '未提供摘要' }}</p><dl><template v-for="field in item.sourceFields" :key="field.label"><dt>{{ field.label }}</dt><dd>{{ field.value ?? '未提供' }}</dd></template></dl></li></ul>
       <p>金额合计：未提供。当前同类型详情无可核验源单金额；付款申请禁止批量通过，须逐单确认。</p>
       <template #footer><el-button :disabled="submitLoading" @click="batchVisible = false">取消</el-button><el-button type="primary" :disabled="batchLoading || !!batchError || !batchDetails.length || submitLoading" @click="submitBatch">确认以上同类型任务通过</el-button></template>
     </el-dialog>
@@ -124,7 +124,7 @@ const drawerVisible = ref(false), detailLoading = ref(false), detailError = ref(
 const biz = ref<any>(null), bizLoading = ref(false), bizError = ref('')
 const batchVisible = ref(false), batchLoading = ref(false), batchError = ref(''), batchDetails = ref<any[]>([])
 let listVersion = 0, detailVersion = 0, batchVersion = 0
-const blocked = computed(() => detailLoading.value ? '详情尚未加载完成' : detailError.value || approvalBlock(detail.value, currentTaskId.value, payment.value))
+const blocked = computed(() => detailLoading.value || bizLoading.value ? '详情尚未加载完成' : detailError.value || bizError.value || (detail.value?.businessType !== PAYMENT_TYPE && (!biz.value?.supported || !biz.value?.found) ? '业务源单未成功加载，不可审批' : '') || approvalBlock(detail.value, currentTaskId.value, payment.value))
 async function loadData() {
   const version = ++listVersion
   loading.value = true; listError.value = ''; selectedRows.value = []; currentRowIndex.value = -1
@@ -138,7 +138,7 @@ async function loadData() {
 }
 function invalidateDetail() { ++detailVersion; detail.value = null; payment.value = null; biz.value = null; bizError.value = ''; bizLoading.value = false }
 function handleTabChange() { queryParams.value.page = 1; drawerVisible.value = false; invalidateDetail(); batchVisible.value = false; ++batchVersion; loadData() }
-/** 业务详情是辅助信息：失败只提示，不阻断审批；单据本身的校验仍由服务端把关 */
+/** 源单加载成功方可办理；异步过期结果不得覆盖当前任务。 */
 async function loadBusiness(taskId: string, version: number) {
   bizLoading.value = true; bizError.value = ''; biz.value = null
   try {
@@ -147,7 +147,7 @@ async function loadBusiness(taskId: string, version: number) {
     if (!res?.data) throw new Error('empty')
     if (res.data.error) { bizError.value = res.data.error; return }
     biz.value = res.data
-  } catch { if (version === detailVersion) bizError.value = '业务详情加载失败，可重试；不影响下方审批操作。' }
+  } catch { if (version === detailVersion) bizError.value = '业务详情加载失败，审批动作已阻断，请重试。' }
   finally { if (version === detailVersion) bizLoading.value = false }
 }
 function retryBusiness() { if (currentTaskId.value) loadBusiness(currentTaskId.value, detailVersion) }
@@ -158,8 +158,8 @@ function fieldText(f: any): string {
   if (f.kind === 'P') return `${f.value}%`
   return String(f.value)
 }
-async function openDetail(row: any) {
-  if (submitLoading.value) return
+async function openDetail(row: any, afterClaim = false) {
+  if (submitLoading.value && !afterClaim) return
   const version = ++detailVersion
   currentTaskId.value = typeof row.taskId === 'string' ? row.taskId : ''; drawerVisible.value = true; detailLoading.value = true; detailError.value = ''; detail.value = null; payment.value = null; projectName.value = ''; comment.value = ''; biz.value = null; bizError.value = ''
   try {
@@ -184,7 +184,7 @@ async function openDetail(row: any) {
         projectName.value = project.data.projectName
       }
     } else {
-      loadBusiness(currentTaskId.value, version)
+      await loadBusiness(currentTaskId.value, version)
     }
   } catch { if (version === detailVersion) detailError.value = '审批详情或付款源单加载失败，全部审批动作已阻断。请重试。' }
   finally { if (version === detailVersion) detailLoading.value = false }
@@ -200,9 +200,12 @@ async function submitAction(action: 'approve' | 'reject' | 'terminate') {
     else if (action === 'approve') await ElMessageBox.confirm(`确认通过本单 ${businessTypeName(detail.value.businessType)} / ${detail.value.businessId}？${payment.value ? '付款金额：' + money(payment.value.paymentAmount) : ''}`, '逐单确认', { type: 'warning' })
     if (version !== detailVersion || blocked.value) return
     if (detail.value.assignee === null || detail.value.assignee === '') {
+      const savedComment = comment.value
       await claimTask(taskId)
-      await openDetail({ taskId })
-      if (blocked.value) return
+      if (version !== detailVersion) return
+      await openDetail({ taskId }, true)
+      comment.value = savedComment
+      if (blocked.value || currentTaskId.value !== taskId) return
     }
     const payload = { taskId, comment: comment.value.trim() }
     if (action === 'approve') await completeTask(payload)
@@ -221,7 +224,10 @@ async function handleBatchApprove() {
       if (!row.taskId) throw new Error('missing task')
       const res: any = await getApprovalDetail(row.taskId)
       if (approvalBlock(res.data, row.taskId) || (row.businessType && row.businessType !== res.data.businessType)) throw new Error('invalid detail or payment requires individual confirmation')
-      return res.data
+      const source: any = await getBusinessDetail(row.taskId)
+      if (!source.data || source.data.supported !== true || source.data.found !== true
+        || source.data.error || !Array.isArray(source.data.fields)) throw new Error('invalid business source')
+      return { ...res.data, sourceFields: source.data.fields }
     }))
     if (version !== batchVersion) return
     batchDetails.value = results; batchError.value = batchBlock(results)

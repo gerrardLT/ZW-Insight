@@ -89,11 +89,14 @@ public class SealApplyService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("sealType", apply.getSealType());
         variables.put("applicant", apply.getApplicant());
-        approvalService.startProcess(
+        String processInstanceId = approvalService.startProcess(
                 "SEAL_APPLY", id, "seal_apply_approval", variables);
 
+        apply.setWorkflowInstanceId(processInstanceId);
         apply.setStatus("SUBMITTED");
-        sealApplyMapper.updateById(apply);
+        if (sealApplyMapper.updateById(apply) != 1) {
+            throw new BusinessException("审批实例回写失败，请刷新后重试");
+        }
     }
 
     /**

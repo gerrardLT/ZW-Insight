@@ -2,12 +2,6 @@ package com.zwinsight.workflow.service;
 
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.BusinessException;
-import com.zwinsight.security.mapper.SysUserMapper;
-import com.zwinsight.workflow.mapper.WfApprovalRecordMapper;
-import org.flowable.engine.HistoryService;
-import org.flowable.engine.TaskService;
-import org.flowable.task.api.Task;
-import org.flowable.task.api.TaskQuery;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,7 +18,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,13 +28,23 @@ class BusinessDetailServiceTest {
 
     @Mock private JdbcTemplate jdbc;
     @Mock private ApprovalService approvalService;
-    @Mock private TaskService taskService;
-    @Mock private HistoryService historyService;
-    @Mock private SysUserMapper sysUserMapper;
-    @Mock private WfApprovalRecordMapper approvalRecordMapper;
 
     @InjectMocks
     private BusinessDetailService service;
+
+    @Test
+    void overflowingBusinessIdRejected() {
+        when(approvalService.getTaskDetail("t1")).thenReturn(taskDetail("SEAL_APPLY", "9999999999999999999"));
+        assertThatThrownBy(() -> service.getForTask("t1")).isInstanceOf(BusinessException.class);
+        org.mockito.Mockito.verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void sourceTableUsesActualPaymentAndMachineTypes() {
+        assertThat(BusinessDetailService.sourceTable("PAYMENT_APPLY")).isEqualTo("biz_payment_apply");
+        assertThat(BusinessDetailService.sourceTable("machine_settlement")).isEqualTo("biz_machine_work_settlement");
+        assertThat(BusinessDetailService.sourceTable("UNKNOWN")).isNull();
+    }
 
     private Map<String, Object> taskDetail(String type, Object id) {
         return Map.of("businessType", type, "businessId", id);
@@ -65,7 +68,6 @@ class BusinessDetailServiceTest {
         try (var sc = mockStatic(SecurityContextHolder.class)) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(1L);
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
-            when(sysUserMapper.selectRoleCodesByUserId(1L)).thenReturn(List.of("SUPER_ADMIN"));
             when(approvalService.getTaskDetail("t1")).thenReturn(taskDetail("CONSTRUCTION_CONTRACT", "2108043445773475842"));
             when(jdbc.queryForList(anyString(), eq(2108043445773475842L), eq(1L)))
                     .thenReturn(List.of(Map.of("contract_code", "HT-001", "contract_amount", new BigDecimal("1200000.00"))));
@@ -93,7 +95,6 @@ class BusinessDetailServiceTest {
     void unsupportedTypeDoesNotQuery() {
         try (var sc = mockStatic(SecurityContextHolder.class)) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(1L);
-            when(sysUserMapper.selectRoleCodesByUserId(1L)).thenReturn(List.of("SUPER_ADMIN"));
             when(approvalService.getTaskDetail("t1")).thenReturn(taskDetail("PAYMENT_APPLY", "5"));
 
             Map<String, Object> r = service.getForTask("t1");
@@ -109,7 +110,6 @@ class BusinessDetailServiceTest {
         try (var sc = mockStatic(SecurityContextHolder.class)) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(1L);
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
-            when(sysUserMapper.selectRoleCodesByUserId(1L)).thenReturn(List.of("SUPER_ADMIN"));
             when(approvalService.getTaskDetail("t1")).thenReturn(taskDetail("SEAL_APPLY", "9"));
             when(jdbc.queryForList(anyString(), eq(9L), eq(1L))).thenReturn(List.of());
 
@@ -124,15 +124,7 @@ class BusinessDetailServiceTest {
     void unrelatedUserIsDenied() {
         try (var sc = mockStatic(SecurityContextHolder.class)) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(7L);
-            when(sysUserMapper.selectRoleCodesByUserId(7L)).thenReturn(List.of("STAFF"));
-            when(approvalService.getTaskDetail("t1")).thenReturn(taskDetail("SEAL_APPLY", "9"));
-            TaskQuery q = mock(TaskQuery.class);
-            Task task = mock(Task.class);
-            when(taskService.createTaskQuery()).thenReturn(q);
-            when(q.taskId("t1")).thenReturn(q);
-            when(q.singleResult()).thenReturn(task);
-            when(task.getAssignee()).thenReturn("1");
-            when(taskService.getIdentityLinksForTask("t1")).thenReturn(List.of());
+            when(approvalService.getTaskDetail("t1")).thenThrow(new BusinessException(403, "无权查看该审批"));
 
             assertThatThrownBy(() -> service.getForTask("t1"))
                     .isInstanceOf(BusinessException.class);
@@ -146,7 +138,6 @@ class BusinessDetailServiceTest {
         try (var sc = mockStatic(SecurityContextHolder.class)) {
             sc.when(SecurityContextHolder::getUserId).thenReturn(1L);
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
-            when(sysUserMapper.selectRoleCodesByUserId(1L)).thenReturn(List.of("SUPER_ADMIN"));
             when(approvalService.getTaskDetail("t1")).thenReturn(taskDetail("SEAL_APPLY", "1 OR 1=1"));
 
             assertThatThrownBy(() -> service.getForTask("t1")).isInstanceOf(BusinessException.class);

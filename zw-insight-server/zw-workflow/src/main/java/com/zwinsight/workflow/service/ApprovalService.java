@@ -44,6 +44,7 @@ public class ApprovalService {
     private final ApplicationEventPublisher eventPublisher;
     private final WfApprovalRecordMapper approvalRecordMapper;
     private final SysUserMapper sysUserMapper;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     /** 超级管理员角色编码，拥有全部审批操作权限，跳过处理人校验 */
     private static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
@@ -122,6 +123,7 @@ public class ApprovalService {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
         assertTaskAssignee(task, userId);
+        assertSourceExists(task);
 
         // 添加审批意见
         if (comment != null && !comment.isEmpty()) {
@@ -157,6 +159,7 @@ public class ApprovalService {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
         assertTaskAssignee(task, userId);
+        assertCurrentBinding(task);
 
         // 查找上一个用户任务节点
         List<HistoricActivityInstance> activityInstances = historyService
@@ -214,6 +217,7 @@ public class ApprovalService {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
         assertTaskAssignee(task, userId);
+        assertCurrentBinding(task);
 
         // 查找第一个用户任务节点（发起人节点）
         List<HistoricActivityInstance> activityInstances = historyService
@@ -269,6 +273,7 @@ public class ApprovalService {
         Task task = getTaskById(taskId);
         Long userId = SecurityContextHolder.getUserId();
         assertTaskAssignee(task, userId);
+        assertCurrentBinding(task);
 
         // 添加审批意见
         if (comment != null && !comment.isEmpty()) {
@@ -326,10 +331,12 @@ public class ApprovalService {
         HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(task.getProcessInstanceId())
                 .singleResult();
-        if (instance != null && instance.getStartUserId() != null
-                && !instance.getStartUserId().equals(String.valueOf(userId))) {
+        if (userId == null || instance == null || instance.getStartUserId() == null
+                || !instance.getStartUserId().equals(String.valueOf(userId))) {
             throw new BusinessException("仅流程发起人可撤回");
         }
+
+        assertCurrentBinding(task);
 
         // 删除流程实例并发布撤回事件（单据置 REJECTED，不回写累计金额）
         runtimeService.deleteProcessInstance(task.getProcessInstanceId(), "自动化撤回：" + businessKey);
@@ -449,11 +456,13 @@ public class ApprovalService {
      * @throws BusinessException 任务不存在时
      */
     public Map<String, Object> getTaskDetail(String taskId) {
+        assertCanViewTask(taskId);
         // 优先查运行中任务；不在则回退历史任务（已办详情）
         Task runningTask = taskService.createTaskQuery()
                 .taskId(taskId).includeProcessVariables().singleResult();
         String processInstanceId;
         String taskName;
+        String assignee;
         Map<String, Object> processVariables;
         boolean running;
         if (runningTask != null) {
@@ -461,6 +470,7 @@ public class ApprovalService {
             running = true;
             processInstanceId = runningTask.getProcessInstanceId();
             taskName = runningTask.getName();
+            assignee = runningTask.getAssignee();
             processVariables = runningTask.getProcessVariables() != null
                     ? runningTask.getProcessVariables() : Collections.emptyMap();
         } else {
@@ -473,6 +483,7 @@ public class ApprovalService {
             running = false;
             processInstanceId = historicTask.getProcessInstanceId();
             taskName = historicTask.getName();
+            assignee = historicTask.getAssignee();
             processVariables = historicTask.getProcessVariables() != null
                     ? historicTask.getProcessVariables() : Collections.emptyMap();
         }
@@ -483,6 +494,7 @@ public class ApprovalService {
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("taskId", taskId);
         detail.put("taskName", taskName);
+        detail.put("assignee", assignee);
         detail.put("processInstanceId", processInstanceId);
         detail.put("processName", instance != null ? instance.getProcessDefinitionName() : null);
         detail.put("createTime", instance != null ? instance.getStartTime() : null);
@@ -557,8 +569,21 @@ public class ApprovalService {
         HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(processInstanceId)
                 .singleResult();
-        if (instance != null) {
-            assertSameTenant(instance.getTenantId());
+        if (instance == null) throw new BusinessException(403, "无权查看该审批");
+        assertSameTenant(instance.getTenantId());
+        Long userId = SecurityContextHolder.getUserId();
+        if (userId == null) throw new BusinessException(401, "未登录");
+        List<String> roles = sysUserMapper.selectRoleCodesByUserId(userId);
+        if ((roles == null || !roles.contains(ROLE_SUPER_ADMIN))
+                && !String.valueOf(userId).equals(instance.getStartUserId())) {
+            boolean related = taskService.createTaskQuery().processInstanceId(processInstanceId)
+                    .taskTenantId(String.valueOf(SecurityContextHolder.getTenantId())).list().stream()
+                    .anyMatch(task -> String.valueOf(userId).equals(task.getAssignee())
+                            || isCandidate(task.getId(), userId, roles));
+            Long count = approvalRecordMapper.selectCount(new LambdaQueryWrapper<WfApprovalRecord>()
+                    .eq(WfApprovalRecord::getProcessInstanceId, processInstanceId)
+                    .eq(WfApprovalRecord::getAssignee, String.valueOf(userId)));
+            if (!related && (count == null || count == 0)) throw new BusinessException(403, "无权查看该审批");
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -679,6 +704,75 @@ public class ApprovalService {
 
     // ===== 私有方法 =====
 
+    /** 驳回/终止只校验当前绑定，不按状态阻挡已删源单的有界流程回收。 */
+    private void assertCurrentBinding(Task task) {
+        Object type = taskService.getVariable(task.getId(), "businessType");
+        Object id = taskService.getVariable(task.getId(), "businessId");
+        Long tenant = SecurityContextHolder.getTenantId();
+        if (type == null || id == null || tenant == null) throw new BusinessException(403, "审批源单绑定无效");
+        String table = BusinessDetailService.sourceTable(String.valueOf(type));
+        if (table == null || !id.toString().matches("[1-9][0-9]{0,18}")) throw new BusinessException(403, "审批源单绑定无效");
+        try {
+            List<Map<String, Object>> rows = jdbc.queryForList("SELECT workflow_instance_id FROM " + table
+                    + " WHERE id = ? AND tenant_id = ?", Long.valueOf(id.toString()), tenant);
+            if (rows.size() != 1 || !Objects.equals(task.getProcessInstanceId(), rows.get(0).get("workflow_instance_id"))) {
+                throw new BusinessException(403, "审批源单流程实例不匹配");
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(403, "无法验证审批源单绑定，禁止操作");
+        }
+    }
+
+    /** 白名单源单校验；授权先行，失败必须使单条及批量办理事务回滚。 */
+    private void assertSourceExists(Task task) {
+        try {
+            Object type = taskService.getVariable(task.getId(), "businessType");
+            Object id = taskService.getVariable(task.getId(), "businessId");
+            String table = type == null ? null : BusinessDetailService.sourceTable(String.valueOf(type));
+            Long tenant = SecurityContextHolder.getTenantId();
+            if (table == null || id == null || tenant == null || !id.toString().matches("[1-9][0-9]{0,18}")) {
+                throw new BusinessException(403, "审批源单无效或不存在");
+            }
+            Long sourceId = Long.valueOf(id.toString());
+            String businessType = String.valueOf(type);
+            List<Map<String, Object>> rows = jdbc.queryForList("SELECT status, workflow_instance_id FROM " + table
+                    + " WHERE id = ? AND tenant_id = ? AND deleted = 0", sourceId, tenant);
+            if (rows.size() != 1) throw new BusinessException(403, "审批源单无效或不存在");
+            Map<String, Object> source = rows.get(0);
+            Set<String> states = switch (businessType) {
+                case "PROJECT_FILING" -> Set.of("FILED");
+                case "PROJECT_CLOSE" -> Set.of("CLOSING");
+                case "PROJECT_TERMINATE" -> Set.of("TERMINATING");
+                case "machine_settlement" -> Set.of("1", "3");
+                case "MATERIAL_REFUND" -> Set.of("PENDING");
+                // ponytail: 既有六类提交即生效；仅绑定同一实例兼容，审批时点改造另立业务任务。
+                case "CHANGE_VISA", "FUND_TRANSFER", "PERSONAL_REIMBURSEMENT", "PROJECT_REIMBURSEMENT",
+                     "RESERVE_FUND_APPLY", "RETENTION_RETURN" -> Set.of("APPROVED");
+                case "BUDGET_CHANGE", "OUTPUT_REPORT", "INVOICE_APPLY", "PAYMENT_APPLY",
+                     "PROJECT_SETTLEMENT", "MATERIAL_TRANSFER" -> Set.of("SUBMITTED", "REJECTED");
+                default -> Set.of("SUBMITTED");
+            };
+            boolean allowedState = states.contains(String.valueOf(source.get("status")));
+            if ("FINAL_SETTLEMENT".equals(businessType) && "DRAFT".equals(source.get("status"))) {
+                Long rejected = approvalRecordMapper.selectCount(new LambdaQueryWrapper<WfApprovalRecord>()
+                        .eq(WfApprovalRecord::getProcessInstanceId, task.getProcessInstanceId())
+                        .in(WfApprovalRecord::getOperationType, "REJECT_TO_START", "REJECT"));
+                allowedState = rejected != null && rejected > 0;
+            }
+            if (!allowedState
+                    || !Objects.equals(task.getProcessInstanceId(), source.get("workflow_instance_id"))) {
+                throw new BusinessException(403, "审批源单状态或流程实例不匹配");
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("审批源单校验失败, taskId={}", task.getId());
+            throw new BusinessException(403, "无法验证审批源单，禁止办理");
+        }
+    }
+
     /**
      * 待办查询：本人已签收 + 点名本人为候选人 + 本人角色为候选组的未签收任务。
      * 候选组编码（PROJECT_MANAGER/FINANCE_STAFF）不带租户，必须叠加 taskTenantId，
@@ -689,9 +783,8 @@ public class ApprovalService {
         Long tenantId = SecurityContextHolder.getTenantId();
         List<String> roles = sysUserMapper.selectRoleCodesByUserId(userId);
         TaskQuery query = taskService.createTaskQuery();
-        // 租户上下文缺失时只查本人已签收任务：候选组编码不带租户，无租户限定会跨租户可见
         if (tenantId == null) {
-            return query.taskAssignee(uid);
+            throw new BusinessException(403, "租户上下文缺失");
         }
         query = query.taskTenantId(String.valueOf(tenantId));
         // 本人已签收 OR 点名为候选人（candidateUsers，按用户ID匹配）OR 本人角色在候选组内
@@ -705,10 +798,38 @@ public class ApprovalService {
     /** 读接口租户隔离：两端租户都明确且不一致时按不存在处理（不泄露其他租户任务是否存在） */
     private void assertSameTenant(String resourceTenantId) {
         Long tenantId = SecurityContextHolder.getTenantId();
-        if (tenantId != null && resourceTenantId != null && !resourceTenantId.isBlank()
-                && !String.valueOf(tenantId).equals(resourceTenantId)) {
+        if (tenantId == null || resourceTenantId == null || resourceTenantId.isBlank()
+                || !String.valueOf(tenantId).equals(resourceTenantId)) {
             throw new BusinessException("任务不存在或已被处理");
         }
+    }
+
+    /** 先验证任务租户，再允许当前候选人、办理人、发起人或同流程已办参与人查看。 */
+    public void assertCanViewTask(String taskId) {
+        Long uid = SecurityContextHolder.getUserId();
+        if (uid == null) throw new BusinessException(401, "未登录");
+        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
+        HistoricTaskInstance history = task == null
+                ? historyService.createHistoricTaskInstanceQuery().taskId(taskId).singleResult() : null;
+        if (task == null && history == null) throw new BusinessException(403, "无权查看该审批");
+        assertSameTenant(task != null ? task.getTenantId() : history.getTenantId());
+        List<String> roles = sysUserMapper.selectRoleCodesByUserId(uid);
+        if (roles != null && roles.contains(ROLE_SUPER_ADMIN)) return;
+        String user = String.valueOf(uid);
+        String processId = task != null ? task.getProcessInstanceId() : history.getProcessInstanceId();
+        if (user.equals(task != null ? task.getAssignee() : history.getAssignee())) return;
+        if (task != null && isCandidate(taskId, uid, roles)) return;
+        HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
+                .processInstanceId(processId).singleResult();
+        if (instance != null) {
+            assertSameTenant(instance.getTenantId());
+            if (user.equals(instance.getStartUserId())) return;
+        }
+        Long count = approvalRecordMapper.selectCount(new LambdaQueryWrapper<WfApprovalRecord>()
+                .eq(WfApprovalRecord::getProcessInstanceId, processId)
+                .eq(WfApprovalRecord::getAssignee, user));
+        if (count != null && count > 0) return;
+        throw new BusinessException(403, "无权查看该审批");
     }
 
     /** 转办/委托目标用户：必须存在、启用、同租户，且不能把防自审单据转给发起人 */
@@ -729,11 +850,11 @@ public class ApprovalService {
         if (target == null) {
             throw new BusinessException("目标用户不存在");
         }
-        if (target.getStatus() != null && target.getStatus() != 1) {
+        if (!Integer.valueOf(1).equals(target.getStatus())) {
             throw new BusinessException("目标用户已停用");
         }
         Long tenantId = SecurityContextHolder.getTenantId();
-        if (tenantId != null && target.getTenantId() != null && !tenantId.equals(target.getTenantId())) {
+        if (tenantId == null || target.getTenantId() == null || !tenantId.equals(target.getTenantId())) {
             throw new BusinessException("目标用户不属于当前租户");
         }
         assertNotInitiator(task, targetId);
@@ -741,16 +862,10 @@ public class ApprovalService {
 
     /** 防自审：列举的业务类型中，发起人不得办理（含被转办/委托）自己的单据 */
     private void assertNotInitiator(Task task, Long userId) {
-        Object initiator = null;
-        Object type = null;
-        try {
-            initiator = taskService.getVariable(task.getId(), "initiator");
-            type = taskService.getVariable(task.getId(), "businessType");
-        } catch (Exception ignored) {
-            // 变量读取失败按无约束处理，与既有行为一致
-        }
-        if (initiator != null && type != null && SELF_APPROVAL_GUARDED_TYPES.contains(String.valueOf(type))
-                && String.valueOf(userId).equals(String.valueOf(initiator))) {
+        Object initiator = taskService.getVariable(task.getId(), "initiator");
+        Object type = taskService.getVariable(task.getId(), "businessType");
+        if (type != null && SELF_APPROVAL_GUARDED_TYPES.contains(String.valueOf(type))
+                && (initiator == null || String.valueOf(userId).equals(String.valueOf(initiator)))) {
             throw new BusinessException(403, "发起人不能审批自己的单据");
         }
     }
@@ -784,6 +899,7 @@ public class ApprovalService {
         }
         Task task = query.singleResult();
         if (task == null) throw new BusinessException(403, "无权签收此任务");
+        assertSameTenant(task.getTenantId());
         if (task.getAssignee() != null && !task.getAssignee().isBlank()) throw new BusinessException(409, "任务已签收");
         assertNotInitiator(task, userId);
         List<String> roles = sysUserMapper.selectRoleCodesByUserId(userId);
@@ -818,12 +934,7 @@ public class ApprovalService {
         if (userId == null) {
             throw new BusinessException(401, "未登录，无法执行审批操作");
         }
-        // 租户隔离校验：仅在两端租户上下文均明确存在时校验（兼容单测无租户 mock 环境）
-        Long tenantId = SecurityContextHolder.getTenantId();
-        if (tenantId != null && task.getTenantId() != null && !task.getTenantId().isBlank()
-                && !String.valueOf(tenantId).equals(task.getTenantId())) {
-            throw new BusinessException(403, "无权操作其他租户任务");
-        }
+        assertSameTenant(task.getTenantId());
         // 防自审校验
         assertNotInitiator(task, userId);
 

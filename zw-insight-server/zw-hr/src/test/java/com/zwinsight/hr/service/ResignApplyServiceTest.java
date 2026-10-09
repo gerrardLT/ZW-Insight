@@ -109,9 +109,11 @@ class ResignApplyServiceTest {
         when(approvalService.startProcess(eq("RESIGN_APPLY"), eq(1L), eq("resign_apply_approval"), anyMap()))
                 .thenReturn("proc-1");
 
+        when(resignApplyMapper.updateById(apply)).thenReturn(1);
         resignApplyService.submit(1L);
 
         assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(apply.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(resignApplyMapper).updateById(apply);
         // 未审批不得停用账号
         verify(userMapper, never()).updateById(any(SysUser.class));
@@ -204,4 +206,16 @@ class ResignApplyServiceTest {
         assertThat(result.getTotal()).isEqualTo(5);
         assertThat(result.getRecords()).isEmpty();
     }
+    @Test
+    void submit_instanceWriteFailureRejects() {
+        BizResignApply apply = new BizResignApply();
+        apply.setId(1L);
+        apply.setStatus("DRAFT");
+        when(resignApplyMapper.selectById(1L)).thenReturn(apply);
+        when(approvalService.startProcess(anyString(), anyLong(), anyString(), anyMap())).thenReturn("proc-new");
+        when(resignApplyMapper.updateById(apply)).thenReturn(0);
+        assertThatThrownBy(() -> resignApplyService.submit(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("实例回写失败");
+    }
+
 }
