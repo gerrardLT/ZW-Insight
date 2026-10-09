@@ -53,7 +53,7 @@ export function submitPurchaseSettlement(id: number) {
 }
 
 // 查询指定合同下可结算的入库单（已审批且未结算）
-export function getAvailableInbounds(contractId: number) {
+export function getAvailableInbounds(contractId: number | string) {
   return request.get('/v1/purchase/settlement/available-inbounds', { params: { contractId } })
 }
 

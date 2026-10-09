@@ -123,10 +123,10 @@ describe('project/form.vue 项目表单', () => {
     return wrapper
   }
 
-  it('挂载预载签约公司下拉（业主单位为远程搜索不预载）', async () => {
+  it('挂载预载签约公司与业主单位下拉（业主单位支持空搜索预载与输入过滤）', async () => {
     await mountPage()
     expect(mockCompanyList).toHaveBeenCalled()
-    expect(mockOwnerList).not.toHaveBeenCalled() // searchOwner 由输入触发
+    expect(mockOwnerList).toHaveBeenCalledWith({})
   })
 
   it('编辑态提交走 updateProject（handleEdit 回显后 formData.id 存在）', async () => {

@@ -189,9 +189,9 @@ const formData = ref({
   projectName: '',
   projectNature: '',
   projectType: '',
-  ownerCompanyId: undefined as number | undefined,
+  ownerCompanyId: undefined as number | string | undefined,
   ownerCompanyName: '',
-  signingCompanyId: undefined as number | undefined,
+  signingCompanyId: undefined as number | string | undefined,
   signingCompanyName: '',
   projectOverview: '',
   projectAddress: '',
@@ -211,23 +211,33 @@ const formRules = {
   signingCompanyId: [{ required: true, message: '请选择签约公司', trigger: 'change' }]
 }
 
-async function searchOwner(query: string) {
+async function searchOwner(query?: string) {
   ownerLoading.value = true
   try {
-    const res: any = await getOwnerList({ ownerName: query })
+    const kw = (query ?? '').trim()
+    const params: any = kw ? { ownerName: kw } : {}
+    const res: any = await getOwnerList(params)
     ownerList.value = res.data || []
   } finally {
     ownerLoading.value = false
   }
 }
 
-function handleOwnerChange(id: number) {
-  const owner = ownerList.value.find(o => o.id === id)
+function handleOwnerChange(id: number | string | undefined) {
+  if (id === undefined || id === null) {
+    formData.value.ownerCompanyName = ''
+    return
+  }
+  const owner = ownerList.value.find(o => String(o.id) === String(id))
   formData.value.ownerCompanyName = owner?.ownerName || ''
 }
 
-function handleCompanyChange(id: number) {
-  const company = companyList.value.find(c => c.id === id)
+function handleCompanyChange(id: number | string | undefined) {
+  if (id === undefined || id === null) {
+    formData.value.signingCompanyName = ''
+    return
+  }
+  const company = companyList.value.find(c => String(c.id) === String(id))
   formData.value.signingCompanyName = company?.companyName || ''
 }
 
@@ -279,6 +289,7 @@ function handleBack() {
 
 onMounted(() => {
   loadCompanyList()
+  searchOwner('')
   loadDetail()
 })
 </script>

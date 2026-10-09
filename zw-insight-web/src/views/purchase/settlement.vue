@@ -122,8 +122,8 @@ const isEdit = ref(false)
 const contractOptions = ref<any[]>([])
 const inboundOptions = ref<any[]>([])
 
-const queryParams = ref({ page: 1, size: 10, contractId: undefined as number | undefined, status: '' })
-const defaultForm = () => ({ id: undefined as number | undefined, contractId: undefined as number | undefined, inboundId: undefined as number | undefined, inboundAmount: 0, settlementAmount: 0, settlementDate: '', remark: '' })
+const queryParams = ref({ page: 1, size: 10, contractId: undefined as number | string | undefined, status: '' })
+const defaultForm = () => ({ id: undefined as number | string | undefined, contractId: undefined as number | string | undefined, inboundId: undefined as number | string | undefined, inboundAmount: 0, settlementAmount: 0, settlementDate: '', remark: '' })
 const formData = ref(defaultForm())
 const formRules = {
   contractId: [{ required: true, message: '请选择关联合同', trigger: 'change' }],
@@ -175,7 +175,7 @@ async function handleContractChange() {
   inboundOptions.value = res.data || []
 }
 function handleInboundChange() {
-  const inbound = inboundOptions.value.find(i => i.id === formData.value.inboundId)
+  const inbound = inboundOptions.value.find(i => String(i.id) === String(formData.value.inboundId))
   formData.value.inboundAmount = inbound ? Number(inbound.totalAmount || 0) : 0
 }
 
