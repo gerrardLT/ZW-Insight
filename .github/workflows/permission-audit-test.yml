@@ -8,8 +8,36 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0.37
+        env:
+          MYSQL_ROOT_PASSWORD: permission-test-only
+          MYSQL_DATABASE: permission_migration_test
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping -h localhost -ppermission-test-only" --health-interval=10s --health-timeout=5s --health-retries=12
     steps:
       - uses: actions/checkout@v4
+      - name: Verify V88 twice on isolated MySQL 8
+        env:
+          MYSQL_PWD: permission-test-only
+        run: |
+          set -euo pipefail
+          command -v mysql
+          sql() { mysql -h127.0.0.1 -uroot --batch --skip-column-names permission_migration_test "$@"; }
+          tables='biz_regular_apply biz_resign_apply biz_seal_apply biz_transfer_apply biz_vehicle_apply'
+          for table in $tables; do
+            sql -e "CREATE TABLE $table (id BIGINT PRIMARY KEY,status VARCHAR(32),tenant_id BIGINT,deleted INT); INSERT INTO $table VALUES (9999001,'SUBMITTED',9999,0);"
+          done
+          for attempt in 1 2; do
+            sql < zw-insight-server/zw-app/src/main/resources/db/migration/V2026_88__hr_approval_instance_binding.sql
+            for table in $tables; do
+              test "$(sql -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='$table' AND COLUMN_NAME='workflow_instance_id' AND COLUMN_TYPE='varchar(64)' AND IS_NULLABLE='YES';")" = 1
+              test "$(sql -e "SELECT COUNT(*) FROM $table WHERE id=9999001 AND status='SUBMITTED' AND tenant_id=9999 AND deleted=0 AND workflow_instance_id IS NULL;")" = 1
+              test "$(sql -e "SELECT COUNT(*) FROM $table;")" = 1
+            done
+          done
+          printf 'V88 MYSQL8 TWICE PASS; original rows preserved\n'
       - uses: actions/setup-java@v4
         with:
           distribution: corretto
