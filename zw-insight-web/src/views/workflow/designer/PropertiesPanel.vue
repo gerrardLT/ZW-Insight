@@ -16,7 +16,7 @@
         <el-form-item label="审批人 flowable:assignee">
           <el-input
             :model-value="form.assignee"
-            placeholder="如：${initiator} 或具体账号"
+            placeholder="如：${initiator} 或用户ID"
             @change="(v: string) => commit('flowable:assignee', v)"
           />
           <div class="quick-assignee-bar">
@@ -39,9 +39,9 @@
           >
             <el-option
               v-for="u in userOptions"
-              :key="u.username"
+              :key="u.id"
               :label="`${u.realName} (${u.username})`"
-              :value="u.username"
+              :value="u.id"
             />
           </el-select>
         </el-form-item>
@@ -82,14 +82,14 @@
           >
             <el-option
               v-for="u in userOptions"
-              :key="u.username"
+              :key="u.id"
               :label="`${u.realName} (${u.username})`"
-              :value="u.username"
+              :value="u.id"
             />
           </el-select>
           <el-input
             :model-value="form.candidateUsers"
-            placeholder="多个账号用英文逗号分隔"
+            placeholder="多个用户ID用英文逗号分隔"
             @change="(v: string) => commit('flowable:candidateUsers', v)"
           />
         </el-form-item>
@@ -137,7 +137,7 @@ const form = reactive({
 })
 
 const roleOptions = ref<Array<{ roleCode: string; roleName: string }>>([])
-const userOptions = ref<Array<{ username: string; realName: string }>>([])
+const userOptions = ref<Array<{ id: string; username: string; realName: string }>>([])
 const selectedRoleCodes = ref<string[]>([])
 const selectedUsernames = ref<string[]>([])
 const quickUser = ref<string>('')
@@ -163,7 +163,9 @@ async function loadOptions() {
   try {
     const userRes: any = await getUserPage({ page: 1, size: 200 })
     const uList = Array.isArray(userRes?.data) ? userRes.data : (userRes?.data?.records || [])
+    // 待办按用户 ID 匹配 assignee/candidate，必须写 ID 而非账号（账号写进去任何人都看不到待办）
     userOptions.value = uList.map((u: any) => ({
+      id: String(u.id),
       username: u.username,
       realName: u.realName || u.username
     }))
