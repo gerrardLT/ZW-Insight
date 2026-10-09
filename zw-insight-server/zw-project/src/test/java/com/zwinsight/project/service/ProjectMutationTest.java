@@ -285,6 +285,14 @@ class ProjectMutationTest {
     @DisplayName("添加成员：sys_user_project 已存在时幂等跳过插入")
     void addMember_userProjectExists_skipsSyncInsert() {
         ProjectMemberService service = memberServiceReal();
+
+        SysUser mockUser2 = new SysUser();
+        mockUser2.setId(2L);
+        mockUser2.setTenantId(TENANT_ID);
+        mockUser2.setStatus(1);
+        mockUser2.setRealName("用户2");
+        when(userMapper.selectById(2L)).thenReturn(mockUser2);
+
         when(memberMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
         when(userProjectMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
 
