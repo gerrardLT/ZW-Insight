@@ -194,6 +194,7 @@ async function searchUsers(query?: string) {
     const list = Array.isArray(res?.data) ? res.data : (res?.data?.records || [])
     if (list.length > 0) {
       userOptions.value = list
+      userSearchLoading.value = false
       return
     }
   } catch {

@@ -121,6 +121,7 @@ describe('ProjectMember.vue 账本补测（@matrix A4）', () => {
     await flushPromises()
     expect(mockUserCandidates).toHaveBeenCalledWith({ keyword: '', limit: 30 })
     expect(st.userOptions).toHaveLength(1)
+    expect(st.userSearchLoading).toBe(false)
 
     // 输入姓名或账号搜索
     mockUserCandidates.mockResolvedValueOnce({
@@ -130,6 +131,7 @@ describe('ProjectMember.vue 账本补测（@matrix A4）', () => {
     await st.searchUser('lina')
     expect(mockUserCandidates).toHaveBeenCalledWith({ keyword: 'lina', limit: 30 })
     expect(st.userOptions[0].username).toBe('lina')
+    expect(st.userSearchLoading).toBe(false)
 
     // 选中字符串ID后正确同步 userName
     st.handleUserChange('90072')
