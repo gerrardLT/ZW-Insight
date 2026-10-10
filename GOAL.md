@@ -123,8 +123,13 @@
   COMMERCE_STAFF=合同全部+开票申请（28 项）；FINANCE_STAFF=预算全部+开票申请+银行账户/税率/财务锁定（29 项）；
   COST_BUDGET_STAFF（徽颍）=合同全部+预算全部。**刻意不授予** system:*、预算控制配置/成本科目给 PM、只读角色不授予。
 - 结果：事务内零副作用验证 + 幂等验证（连跑两次 95→95 行，无重复 (role_id,menu_id)、无重复 id）。
-- 下一实验：推送 → CI → 双机部署 → 真实登录验证 PROJECT_MANAGER 可 `POST /api/v1/contract`（非 403）。
+- 部署与运行时验证（提交 `f6e96b2c`，CI run `38083099058` 双机 success）：
+  zhangwei(PROJECT_MANAGER) 权限码 15 → **53**；`POST /api/v1/contract` **403 → 400**（权限门已过，可建合同）；
+  `POST /finance/invoice-apply`、`POST /budget` 同样 403 → 400；`POST /finance/bank-account` 保持 403（刻意）。
+- 新发现（未修，已登记报告 §5 第 7/8 项）：变更事件等 `V2026_45_2` 细粒度子页面/按钮菜单只绑了 SUPER_ADMIN；
+  定时 k6 失败实为 2026-08-23/24 的 `E2E_TEST_` 历史残留触发残留巡检门禁，与本次改动无关。
 - 备注：按 role_code 授权，徽颍同名角色同时生效（已向用户声明）。
+
 
 
 
