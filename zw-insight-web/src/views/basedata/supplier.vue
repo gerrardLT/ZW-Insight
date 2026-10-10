@@ -28,7 +28,7 @@
         <el-table-column prop="contactName" label="联系人" width="100" />
         <el-table-column prop="contactPhone" label="联系电话" width="130" />
         <el-table-column prop="address" label="地址" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="creditCode" label="统一社会信用代码" width="200" />
+        <el-table-column prop="taxNumber" label="统一社会信用代码" width="200" />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
@@ -48,7 +48,7 @@
         <el-form-item label="类型"><el-select v-model="formData.supplierType" style="width: 100%"><el-option label="材料" value="MATERIAL" /><el-option label="机械" value="MACHINE" /><el-option label="劳务" value="LABOR" /></el-select></el-form-item>
         <el-form-item label="联系人"><el-input v-model="formData.contactName" /></el-form-item>
         <el-form-item label="联系电话"><el-input v-model="formData.contactPhone" /></el-form-item>
-        <el-form-item label="统一社会信用代码"><el-input v-model="formData.creditCode" /></el-form-item>
+        <el-form-item label="统一社会信用代码"><el-input v-model="formData.taxNumber" /></el-form-item>
         <el-form-item label="地址"><el-input v-model="formData.address" /></el-form-item>
       </el-form>
       <template #footer>
@@ -74,13 +74,13 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, supplierName: '', supplierType: '' })
-const formData = ref({ id: undefined as number | undefined, supplierName: '', supplierType: 'MATERIAL', contactName: '', contactPhone: '', creditCode: '', address: '' })
+const formData = ref({ id: undefined as number | undefined, supplierName: '', supplierType: 'MATERIAL', contactName: '', contactPhone: '', taxNumber: '', address: '' })
 const formRules = { supplierName: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getSupplierPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, supplierName: '', supplierType: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, supplierName: '', supplierType: 'MATERIAL', contactName: '', contactPhone: '', creditCode: '', address: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, supplierName: '', supplierType: 'MATERIAL', contactName: '', contactPhone: '', taxNumber: '', address: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateSupplier(formData.value) : await createSupplier(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteSupplier(row.id); ElMessage.success('删除成功'); loadData() }

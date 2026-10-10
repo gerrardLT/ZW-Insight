@@ -34,11 +34,13 @@ public class MaterialInventoryService {
 
     /**
      * 分页查询
+     * <p>2026-10-10：补 status 条件——前端「状态」筛选（DRAFT/APPROVED）此前随请求下发但后端无入参，筛选静默失效。</p>
      */
-    public PageResult<BizMaterialInventory> page(int page, int size, Long projectId) {
+    public PageResult<BizMaterialInventory> page(int page, int size, Long projectId, String status) {
         Page<BizMaterialInventory> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizMaterialInventory> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizMaterialInventory::getProjectId, projectId)
+                .eq(status != null && !status.isBlank(), BizMaterialInventory::getStatus, status)
                 .orderByDesc(BizMaterialInventory::getCreatedAt);
         Page<BizMaterialInventory> result = inventoryMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);

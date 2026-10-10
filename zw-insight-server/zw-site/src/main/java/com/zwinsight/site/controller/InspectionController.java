@@ -30,8 +30,9 @@ public class InspectionController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) String inspectionType,
-            @RequestParam(required = false) String rectificationStatus) {
-        return R.ok(inspectionService.page(page, size, projectId, inspectionType, rectificationStatus));
+            @RequestParam(required = false) String rectificationStatus,
+            @RequestParam(required = false) Integer hasProblem) {
+        return R.ok(inspectionService.page(page, size, projectId, inspectionType, rectificationStatus, hasProblem));
     }
 
     @GetMapping("/{id}")

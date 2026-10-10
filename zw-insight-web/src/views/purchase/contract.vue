@@ -71,8 +71,8 @@
         <el-form-item label="签订日期" prop="signingDate">
           <el-date-picker v-model="formData.signingDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="合同内容">
-          <el-input v-model="formData.content" type="textarea" :rows="3" />
+        <el-form-item label="付款条件">
+          <el-input v-model="formData.paymentTerms" type="textarea" :rows="3" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -101,7 +101,7 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, contractName: '', supplierName: '', status: '' })
-const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', content: '' })
+const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', paymentTerms: '' })
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   contractName: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
@@ -120,7 +120,7 @@ async function loadData() {
 
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, contractName: '', supplierName: '', status: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', content: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', paymentTerms: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 
 async function handleFormSubmit() {

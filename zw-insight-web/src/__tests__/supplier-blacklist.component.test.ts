@@ -23,6 +23,10 @@ vi.mock('@/api/basedata', () => ({
   createSupplierBlacklist: mockCreate,
   deleteSupplierBlacklist: mockDelete,
 }))
+// 2026-10-10：黑名单表单改为选供应商（提交 supplierId），SupplierSelector 走独立请求链，stub 之
+vi.mock('@/components/SupplierSelector.vue', () => ({
+  default: { name: 'SupplierSelector', render: () => null },
+}))
 vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
@@ -60,27 +64,28 @@ describe('supplier-blacklist.vue 供应商黑名单', () => {
     expect(w.text()).toContain('失信供应商A')
   })
 
-  it('必填规则配置：供应商名称 + 加入原因', async () => {
+  it('必填规则配置：供应商 + 加入原因', async () => {
     const w = await mountPage([])
     const rules = w.vm.$.setupState.formRules
     const msgs = Object.values(rules).flat().map((r: any) => r.message)
-    expect(msgs).toContain('请输入供应商名称')
+    expect(msgs).toContain('请选择供应商')
     expect(msgs).toContain('请输入加入原因')
   })
 
-  it('加入黑名单：提交组装 formData 调 create 并刷新列表', async () => {
+  it('加入黑名单：提交组装 formData（含 supplierId）调 create 并刷新列表', async () => {
     const w = await mountPage([])
     const st = w.vm.$.setupState
     st.handleAdd()
     await flushPromises()
     expect(st.dialogVisible).toBe(true)
+    st.formData.supplierId = 7
     st.formData.supplierName = '新失信供应商'
     st.formData.reason = '合同违约'
     mockPage.mockClear()
     await st.handleFormSubmit()
     await flushPromises()
     expect(mockCreate).toHaveBeenCalledTimes(1)
-    expect((mockCreate.mock.calls as any)[0][0]).toMatchObject({ supplierName: '新失信供应商', reason: '合同违约' })
+    expect((mockCreate.mock.calls as any)[0][0]).toMatchObject({ supplierId: 7, supplierName: '新失信供应商', reason: '合同违约' })
     expect(mockPage).toHaveBeenCalled() // 提交后刷新
     expect(st.dialogVisible).toBe(false)
   })

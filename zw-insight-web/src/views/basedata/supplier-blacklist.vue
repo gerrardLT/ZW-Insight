@@ -23,8 +23,10 @@
 
     <el-dialog v-model="dialogVisible" title="加入黑名单" width="500px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
-        <el-form-item label="供应商名称" prop="supplierName">
-          <el-input v-model="formData.supplierName" placeholder="请输入供应商名称" />
+        <!-- 2026-10-10：原为手填「供应商名称」文本，未提交 supplierId，而 biz_supplier_blacklist.supplier_id
+             为 NOT NULL 无默认值 → 新增必报 ERROR 1364 → 500。改为选供应商（提交 supplierId + 回填名称）。 -->
+        <el-form-item label="供应商" prop="supplierId">
+          <SupplierSelector v-model="formData.supplierId" @change="onSupplierChange" />
         </el-form-item>
         <el-form-item label="原因" prop="reason">
           <el-input v-model="formData.reason" type="textarea" :rows="3" placeholder="请输入加入原因" />
@@ -43,6 +45,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getSupplierBlacklistPage, createSupplierBlacklist, deleteSupplierBlacklist } from '@/api/basedata'
+import SupplierSelector from '@/components/SupplierSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -52,10 +55,14 @@ const dialogVisible = ref(false)
 const submitLoading = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10 })
-const formData = ref({ supplierName: '', reason: '' })
+const formData = ref({ supplierId: undefined as number | string | undefined, supplierName: '', reason: '' })
 const formRules = {
-  supplierName: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }],
+  supplierId: [{ required: true, message: '请选择供应商', trigger: 'change' }],
   reason: [{ required: true, message: '请输入加入原因', trigger: 'blur' }]
+}
+
+function onSupplierChange(_val: number | string | undefined, item: any) {
+  formData.value.supplierName = item?.supplierName || ''
 }
 
 async function loadData() {
@@ -69,7 +76,7 @@ async function loadData() {
   }
 }
 
-function handleAdd() { formData.value = { supplierName: '', reason: '' }; dialogVisible.value = true }
+function handleAdd() { formData.value = { supplierId: undefined, supplierName: '', reason: '' }; dialogVisible.value = true }
 
 async function handleFormSubmit() {
   await formRef.value?.validate()

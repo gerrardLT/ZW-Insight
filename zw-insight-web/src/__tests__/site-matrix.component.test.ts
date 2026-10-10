@@ -121,10 +121,11 @@ describe('site/schedule.vue 进度计划（C15）', () => {
     return w
   }
 
-  it('@matrix C-15-3 必填三条 taskName/planStartDate/planEndDate', async () => {
+  it('@matrix C-15-3 必填四条 projectId/taskName/planStartDate/planEndDate', async () => {
     const w = await mountPage()
     const st: any = w.vm.$.setupState
-    expect(Object.keys(st.formRules)).toEqual(['taskName', 'planStartDate', 'planEndDate'])
+    expect(Object.keys(st.formRules)).toEqual(['projectId', 'taskName', 'planStartDate', 'planEndDate'])
+    expect(st.formRules.projectId[0].message).toBe('请选择所属项目')
     expect(st.formRules.taskName[0].message).toBe('请输入任务名称')
     expect(st.formRules.planStartDate[0].message).toBe('请选择开始日期')
     expect(st.formRules.planEndDate[0].message).toBe('请选择完成日期')

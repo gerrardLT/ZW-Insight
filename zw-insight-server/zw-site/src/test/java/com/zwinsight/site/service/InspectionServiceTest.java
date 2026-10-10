@@ -288,7 +288,7 @@ class InspectionServiceTest {
         pageResult.setTotal(0);
         when(inspectionMapper.selectPage(any(), any())).thenReturn(pageResult);
 
-        PageResult<BizInspection> result = inspectionService.page(1, 10, null, null, "PENDING");
+        PageResult<BizInspection> result = inspectionService.page(1, 10, null, null, "PENDING", null);
 
         assertThat(result).isNotNull();
         ArgumentCaptor<LambdaQueryWrapper<BizInspection>> captor =
@@ -306,7 +306,7 @@ class InspectionServiceTest {
         pageResult.setTotal(0);
         when(inspectionMapper.selectPage(any(), any())).thenReturn(pageResult);
 
-        inspectionService.page(1, 10, null, null, null);
+        inspectionService.page(1, 10, null, null, null, null);
 
         ArgumentCaptor<LambdaQueryWrapper<BizInspection>> captor =
                 ArgumentCaptor.forClass(LambdaQueryWrapper.class);

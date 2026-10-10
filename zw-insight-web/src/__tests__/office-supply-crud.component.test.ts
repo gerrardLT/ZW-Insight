@@ -30,16 +30,16 @@ import OfficeSupply from '@/views/hr/office-supply.vue'
 import { crudPageSuite } from './helpers/crud-page-tests'
 
 crudPageSuite({
-  title: 'office-supply.vue 办公用品领用',
+  title: 'office-supply.vue 办公用品',
   component: OfficeSupply,
   pageMock: mockPage,
   createMock: mockCreate,
   updateMock: mockUpdate,
   deleteMock: mockDelete,
-  addButtonText: '新增领用申请',
+  addButtonText: '新增办公用品',
   requiredError: '请输入物品名称',
   records: [
-    { id: 1, applyNo: 'OS-001', itemName: '打印纸', specification: 'A4', quantity: 5, applicant: '张三', applyDate: '2026-08-01', status: 'PENDING' },
-    { id: 2, applyNo: 'OS-002', itemName: '硒鼓', specification: 'HP-88A', quantity: 2, applicant: '李四', applyDate: '2026-08-02', status: 'APPROVED' },
+    { id: 1, supplyName: '打印纸', categoryName: '办公耗材', specification: 'A4', unit: '包', stockQuantity: 50, status: 1 },
+    { id: 2, supplyName: '硒鼓', categoryName: '办公耗材', specification: 'HP-88A', unit: '个', stockQuantity: 3, status: 1 },
   ],
 })

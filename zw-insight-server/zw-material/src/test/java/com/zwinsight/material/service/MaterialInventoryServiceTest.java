@@ -92,7 +92,7 @@ class MaterialInventoryServiceTest {
             when(inventoryMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
                     .thenReturn(mockPage);
 
-            var result = inventoryService.page(1, 10, 100L);
+            var result = inventoryService.page(1, 10, 100L, null);
 
             assertThat(result).isNotNull();
             assertThat(result.getRecords()).hasSize(1);
@@ -110,7 +110,7 @@ class MaterialInventoryServiceTest {
             when(inventoryMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
                     .thenReturn(mockPage);
 
-            var result = inventoryService.page(1, 10, null);
+            var result = inventoryService.page(1, 10, null, null);
 
             assertThat(result).isNotNull();
             assertThat(result.getRecords()).isEmpty();

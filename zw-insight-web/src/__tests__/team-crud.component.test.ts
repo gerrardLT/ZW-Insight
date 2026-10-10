@@ -17,6 +17,11 @@ vi.mock('@/api/labor', () => ({
   updateLaborTeam: mockUpdate,
   deleteLaborTeam: mockDelete,
 }))
+// 2026-10-10：班组表单补齐「所属项目」ProjectSelector（project_id NOT NULL），
+// 该子组件会调 getProjectList，mock 防真实请求
+vi.mock('@/api/project', () => ({
+  getProjectList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+}))
 vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {

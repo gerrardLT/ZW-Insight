@@ -40,7 +40,8 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="sort" label="排序" width="80" align="center" />
+        <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
+        <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip />
         <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
@@ -76,8 +77,8 @@
         <el-form-item label="岗位编码" prop="postCode">
           <el-input v-model="formData.postCode" placeholder="请输入岗位编码" />
         </el-form-item>
-        <el-form-item label="排序" prop="sort">
-          <el-input-number v-model="formData.sort" :min="0" :max="9999" />
+        <el-form-item label="排序" prop="sortOrder">
+          <el-input-number v-model="formData.sortOrder" :min="0" :max="9999" />
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="formData.remark" type="textarea" placeholder="请输入备注" :rows="3" />
@@ -118,7 +119,7 @@ const formData = ref({
   id: undefined as number | undefined,
   postName: '',
   postCode: '',
-  sort: 0,
+  sortOrder: 0,
   remark: ''
 })
 
@@ -159,7 +160,7 @@ function handleAdd() {
     id: undefined,
     postName: '',
     postCode: '',
-    sort: 0,
+    sortOrder: 0,
     remark: ''
   }
   dialogVisible.value = true

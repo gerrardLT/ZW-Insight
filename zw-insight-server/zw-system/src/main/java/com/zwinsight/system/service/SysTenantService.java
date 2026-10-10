@@ -47,14 +47,16 @@ public class SysTenantService {
     // ============ 基础 CRUD ============
 
     /**
-     * 分页查询（支持按名称/状态/到期日期范围查询）
+     * 分页查询（支持按名称/状态/用户类型/到期日期范围查询）
+     * <p>2026-10-10：补 userType 条件——前端「用户类型」筛选此前随请求下发但后端无入参，筛选静默失效。</p>
      */
     public PageResult<SysTenant> page(int page, int size, String tenantName,
-                                       Integer status, LocalDate expireStart, LocalDate expireEnd) {
+                                       Integer status, String userType, LocalDate expireStart, LocalDate expireEnd) {
         Page<SysTenant> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<SysTenant> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(tenantName), SysTenant::getTenantName, tenantName)
                 .eq(status != null, SysTenant::getStatus, status)
+                .eq(StrUtil.isNotBlank(userType), SysTenant::getUserType, userType)
                 .ge(expireStart != null, SysTenant::getEndDate, expireStart)
                 .le(expireEnd != null, SysTenant::getEndDate, expireEnd)
                 .orderByDesc(SysTenant::getCreatedAt);

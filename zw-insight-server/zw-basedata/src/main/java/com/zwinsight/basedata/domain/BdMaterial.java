@@ -5,6 +5,8 @@ import com.zwinsight.common.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
+
 /**
  * 材料字典实体
  */
@@ -32,6 +34,11 @@ public class BdMaterial extends BaseEntity {
      * 单位
      */
     private String unit;
+
+    /**
+     * 参考单价（元）
+     */
+    private BigDecimal referencePrice;
 
     /**
      * 分类ID

@@ -54,8 +54,8 @@
         <el-form-item label="内容" prop="content">
           <el-input v-model="formData.content" type="textarea" :rows="5" placeholder="请输入公告内容" />
         </el-form-item>
-        <el-form-item label="发布范围" prop="scope">
-          <el-select v-model="formData.scope" style="width: 100%">
+        <el-form-item label="发布范围" prop="publishScope">
+          <el-select v-model="formData.publishScope" style="width: 100%">
             <el-option label="全部" value="ALL" />
             <el-option label="指定部门" value="DEPARTMENT" />
           </el-select>
@@ -104,14 +104,14 @@ const formData = ref({
   id: undefined as number | undefined,
   title: '',
   content: '',
-  scope: 'ALL',
+  publishScope: 'ALL',
   isTop: false
 })
 
 const formRules = {
   title: [{ required: true, message: '请输入公告标题', trigger: 'blur' }],
   content: [{ required: true, message: '请输入公告内容', trigger: 'blur' }],
-  scope: [{ required: true, message: '请选择发布范围', trigger: 'change' }]
+  publishScope: [{ required: true, message: '请选择发布范围', trigger: 'change' }]
 }
 
 function statusLabel(status: string) {
@@ -147,13 +147,13 @@ function handleReset() {
 
 function handleAdd() {
   isEdit.value = false
-  formData.value = { id: undefined, title: '', content: '', scope: 'ALL', isTop: false }
+  formData.value = { id: undefined, title: '', content: '', publishScope: 'ALL', isTop: false }
   dialogVisible.value = true
 }
 
 function handleEdit(row: any) {
   isEdit.value = true
-  formData.value = { id: row.id, title: row.title, content: row.content, scope: row.scope || 'ALL', isTop: row.isTop || false }
+  formData.value = { id: row.id, title: row.title, content: row.content, publishScope: row.publishScope || 'ALL', isTop: row.isTop || false }
   dialogVisible.value = true
 }
 

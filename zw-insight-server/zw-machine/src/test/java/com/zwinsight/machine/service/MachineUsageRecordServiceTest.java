@@ -99,7 +99,7 @@ class MachineUsageRecordServiceTest {
         when(usageRecordMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
                 .thenReturn(stubPage);
 
-        PageResult<BizMachineUsageRecord> result = machineUsageRecordService.page(1, 10, 10L, 20L);
+        PageResult<BizMachineUsageRecord> result = machineUsageRecordService.page(1, 10, 10L, 20L, null, null);
 
         assertThat(result.getTotal()).isEqualTo(2);
     }

@@ -343,10 +343,18 @@ describe('platform/tenant/index.vue 租户管理补盲（D-34）', () => {
     return wrapper
   }
 
-  it('D-34-3/4 边界钳制：maxUsers 1-9999、durationDays 1-3650', () => {
+  it('D-34-3/4 边界钳制：maxUsers 1-9999、customDays 1-3650', () => {
     const s = src('views/platform/tenant/index.vue')
     expect(s).toMatch(/maxUsers"\s+:min="1"\s+:max="9999"/)
-    expect(s).toMatch(/durationDays"\s+:min="1"\s+:max="3650"/)
+    expect(s).toMatch(/customDays"\s+:min="1"\s+:max="3650"/)
+  })
+
+  it('D-34-12 新建必填管理员账号/密码（createTenant 强校验，2026-10-10 补齐）', () => {
+    const s = src('views/platform/tenant/index.vue')
+    expect(s).toContain('v-model="formData.adminUsername"')
+    expect(s).toContain('v-model="formData.adminPassword"')
+    expect(s).toContain('请输入管理员账号')
+    expect(s).toContain('请输入管理员密码')
   })
 
   it('D-34-5 状态/类型组合查询提交且重置清空', async () => {

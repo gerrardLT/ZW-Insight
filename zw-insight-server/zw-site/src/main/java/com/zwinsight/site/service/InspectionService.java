@@ -31,13 +31,15 @@ public class InspectionService {
 
     /**
      * 分页查询
+     * <p>2026-10-10：补 hasProblem 条件——前端「是否有问题」筛选（0/1）此前随请求下发但后端无入参，筛选静默失效。</p>
      */
-    public PageResult<BizInspection> page(int page, int size, Long projectId, String inspectionType, String rectificationStatus) {
+    public PageResult<BizInspection> page(int page, int size, Long projectId, String inspectionType, String rectificationStatus, Integer hasProblem) {
         Page<BizInspection> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizInspection> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizInspection::getProjectId, projectId)
                 .eq(StrUtil.isNotBlank(inspectionType), BizInspection::getInspectionType, inspectionType)
                 .eq(StrUtil.isNotBlank(rectificationStatus), BizInspection::getRectificationStatus, rectificationStatus)
+                .eq(hasProblem != null, BizInspection::getHasProblem, hasProblem)
                 .orderByDesc(BizInspection::getCreatedAt);
         Page<BizInspection> result = inspectionMapper.selectPage(pageParam, wrapper);
         ProjectNameFiller.fill(result.getRecords(), projectMapper,

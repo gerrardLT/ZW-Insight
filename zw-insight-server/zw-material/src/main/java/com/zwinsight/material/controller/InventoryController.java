@@ -28,8 +28,9 @@ public class InventoryController {
     public R<PageResult<BizMaterialInventory>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(inventoryService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String status) {
+        return R.ok(inventoryService.page(page, size, projectId, status));
     }
 
     @GetMapping("/{id}")

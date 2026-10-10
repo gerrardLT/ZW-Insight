@@ -19,7 +19,7 @@
         <el-table-column prop="companyName" label="公司名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="shortName" label="简称" width="120" />
         <el-table-column prop="legalPerson" label="法人" width="100" />
-        <el-table-column prop="creditCode" label="统一社会信用代码" width="200" />
+        <el-table-column prop="taxNumber" label="统一社会信用代码" width="200" />
         <el-table-column prop="contactPhone" label="联系电话" width="130" />
         <el-table-column prop="address" label="注册地址" min-width="180" show-overflow-tooltip />
         <el-table-column label="操作" width="150" fixed="right">
@@ -40,7 +40,7 @@
         <el-form-item label="公司名称" prop="companyName"><el-input v-model="formData.companyName" /></el-form-item>
         <el-form-item label="简称"><el-input v-model="formData.shortName" /></el-form-item>
         <el-form-item label="法人"><el-input v-model="formData.legalPerson" /></el-form-item>
-        <el-form-item label="统一社会信用代码"><el-input v-model="formData.creditCode" /></el-form-item>
+        <el-form-item label="统一社会信用代码"><el-input v-model="formData.taxNumber" /></el-form-item>
         <el-form-item label="联系电话"><el-input v-model="formData.contactPhone" /></el-form-item>
         <el-form-item label="注册地址"><el-input v-model="formData.address" /></el-form-item>
       </el-form>
@@ -67,13 +67,13 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, companyName: '' })
-const formData = ref({ id: undefined as number | undefined, companyName: '', shortName: '', legalPerson: '', creditCode: '', contactPhone: '', address: '' })
+const formData = ref({ id: undefined as number | undefined, companyName: '', shortName: '', legalPerson: '', taxNumber: '', contactPhone: '', address: '' })
 const formRules = { companyName: [{ required: true, message: '请输入公司名称', trigger: 'blur' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getCompanyPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, companyName: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, companyName: '', shortName: '', legalPerson: '', creditCode: '', contactPhone: '', address: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, companyName: '', shortName: '', legalPerson: '', taxNumber: '', contactPhone: '', address: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateCompany(formData.value) : await createCompany(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteCompany(row.id); ElMessage.success('删除成功'); loadData() }

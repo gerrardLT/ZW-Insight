@@ -22,8 +22,10 @@ export function deleteOrg(id: number) {
   return request.delete(`/v1/system/org/${id}`)
 }
 
+// 后端 SysOrgController.updateStatus 以 @RequestParam Integer status 接收（非请求体），
+// 原实现发 JSON body 会触发 MissingServletRequestParameterException → 400，启用/停用恒失败。
 export function updateOrgStatus(id: number, status: number) {
-  return request.put(`/v1/system/org/${id}/status`, { status })
+  return request.put(`/v1/system/org/${id}/status`, null, { params: { status } })
 }
 
 // ======================== 用户管理 ========================

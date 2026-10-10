@@ -17,9 +17,12 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
+            <!-- 后端状态机为 DRAFT → SUBMITTED（提交时置）→ APPROVED/REJECTED，不存在 APPROVING；
+                 原选项值 APPROVING 使「审批中」筛选恒返回空列表（2026-10-10 修正为 SUBMITTED）。 -->
             <el-option label="草稿" value="DRAFT" />
-            <el-option label="审批中" value="APPROVING" />
+            <el-option label="审批中" value="SUBMITTED" />
             <el-option label="已通过" value="APPROVED" />
+            <el-option label="已驳回" value="REJECTED" />
           </el-select>
         </el-form-item>
         <el-form-item>

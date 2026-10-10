@@ -21,6 +21,11 @@ public class BdCompany extends BaseEntity {
     private String companyName;
 
     /**
+     * 简称
+     */
+    private String shortName;
+
+    /**
      * 公司编码
      */
     private String companyCode;

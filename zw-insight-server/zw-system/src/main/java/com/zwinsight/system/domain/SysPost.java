@@ -32,4 +32,9 @@ public class SysPost extends BaseEntity {
      * 排序号
      */
     private Integer sortOrder;
+
+    /**
+     * 备注
+     */
+    private String remark;
 }

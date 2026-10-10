@@ -24,6 +24,10 @@ vi.mock('@/api/hr', () => ({
 vi.mock('@/api/basedata', () => ({
   getSupplierEvaluationPage: mockEvalPage, createSupplierEvaluation: mockEvalCreate, deleteSupplierEvaluation: mockEvalDelete,
 }))
+// 2026-10-10：评价表单改为选供应商（提交 supplierId），stub 独立请求链
+vi.mock('@/components/SupplierSelector.vue', () => ({
+  default: { name: 'SupplierSelector', render: () => null },
+}))
 vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
@@ -105,32 +109,32 @@ describe('basedata/supplier-evaluation.vue 供应商评价（无编辑）', () =
 
   it('挂载加载并渲染行', async () => {
     const w = await mountPage([
-      { id: 1, supplierName: '供应商A', score: 90 },
-      { id: 2, supplierName: '供应商B', score: 75 },
+      { id: 1, supplierName: '供应商A', totalScore: 4.5 },
+      { id: 2, supplierName: '供应商B', totalScore: 3.5 },
     ])
     expect(w.findAll('.el-table__row')).toHaveLength(2)
     expect(w.text()).toContain('供应商A')
   })
 
-  it('必填规则配置：供应商名称 + 评分', async () => {
+  it('必填规则配置：供应商', async () => {
     await mountPage()
     const msgs = Object.values(wrapper.vm.$.setupState.formRules).flat().map((r: any) => r.message)
-    expect(msgs).toContain('请输入供应商名称')
-    expect(msgs).toContain('请输入评分')
+    expect(msgs).toContain('请选择供应商')
   })
 
-  it('新增评价：组装 formData 调 create 并刷新', async () => {
+  it('新增评价：组装 formData（含 supplierId）调 create 并刷新', async () => {
     await mountPage()
     const st = wrapper.vm.$.setupState
     st.handleAdd()
     await flushPromises()
+    st.formData.supplierId = 7
     st.formData.supplierName = '供应商C'
-    st.formData.score = 88
+    st.formData.qualityScore = 4
     mockEvalPage.mockClear()
     await st.handleFormSubmit()
     await flushPromises()
     expect(mockEvalCreate).toHaveBeenCalledTimes(1)
-    expect((mockEvalCreate.mock.calls as any)[0][0]).toMatchObject({ supplierName: '供应商C', score: 88 })
+    expect((mockEvalCreate.mock.calls as any)[0][0]).toMatchObject({ supplierId: 7, supplierName: '供应商C', qualityScore: 4 })
     expect(mockEvalPage).toHaveBeenCalled()
   })
 

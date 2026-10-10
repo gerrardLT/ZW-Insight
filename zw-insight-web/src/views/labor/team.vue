@@ -40,11 +40,14 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑班组' : '新增班组'" width="500px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
+        <!-- 2026-10-10：原表单无「所属项目」，而 biz_team.project_id 为 NOT NULL 无默认值，
+             新增必报 ERROR 1364 → 500。原「人数」输入项绑 memberCount，而该字段在实体上标
+             @TableField(exist = false)，由 TeamService.fillMemberCount 按花名册聚合，填了不落库，故移除。 -->
+        <el-form-item label="所属项目" prop="projectId"><ProjectSelector v-model="formData.projectId" /></el-form-item>
         <el-form-item label="班组名称" prop="teamName"><el-input v-model="formData.teamName" /></el-form-item>
         <el-form-item label="班组长" prop="leaderName"><el-input v-model="formData.leaderName" /></el-form-item>
         <el-form-item label="联系电话"><el-input v-model="formData.leaderPhone" /></el-form-item>
         <el-form-item label="工种" prop="workType"><el-input v-model="formData.workType" /></el-form-item>
-        <el-form-item label="人数"><el-input-number v-model="formData.memberCount" :min="1" style="width: 100%" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -59,6 +62,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getLaborTeamPage, createLaborTeam, updateLaborTeam, deleteLaborTeam } from '@/api/labor'
+import ProjectSelector from '@/components/ProjectSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -69,13 +73,13 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, teamName: '', workType: '' })
-const formData = ref({ id: undefined as number | undefined, teamName: '', leaderName: '', leaderPhone: '', workType: '', memberCount: 1 })
-const formRules = { teamName: [{ required: true, message: '请输入班组名称', trigger: 'blur' }], leaderName: [{ required: true, message: '请输入班组长', trigger: 'blur' }], workType: [{ required: true, message: '请输入工种', trigger: 'blur' }] }
+const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | string | undefined, teamName: '', leaderName: '', leaderPhone: '', workType: '' })
+const formRules = { projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }], teamName: [{ required: true, message: '请输入班组名称', trigger: 'blur' }], leaderName: [{ required: true, message: '请输入班组长', trigger: 'blur' }], workType: [{ required: true, message: '请输入工种', trigger: 'blur' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getLaborTeamPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, teamName: '', workType: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, teamName: '', leaderName: '', leaderPhone: '', workType: '', memberCount: 1 }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, teamName: '', leaderName: '', leaderPhone: '', workType: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateLaborTeam(formData.value) : await createLaborTeam(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteLaborTeam(row.id); ElMessage.success('删除成功'); loadData() }

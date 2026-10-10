@@ -174,22 +174,24 @@ describe('labor/team.vue B15 矩阵', () => {
     return wrapper
   }
 
-  it('B-15-2 formRules 必填 3 条：teamName/leaderName/workType', async () => {
+  it('B-15-2 formRules 必填 4 条：projectId/teamName/leaderName/workType（2026-10-10 补项目必填）', async () => {
     const w = await mountTeam()
     const rules = w.vm.$.setupState.formRules
+    expect((rules.projectId as any[])[0]).toMatchObject({ required: true, message: '请选择所属项目' })
     expect((rules.teamName as any[])[0]).toMatchObject({ required: true, message: '请输入班组名称' })
     expect((rules.leaderName as any[])[0]).toMatchObject({ required: true, message: '请输入班组长' })
     expect((rules.workType as any[])[0]).toMatchObject({ required: true, message: '请输入工种' })
-    expect(Object.keys(rules)).toHaveLength(3)
+    expect(Object.keys(rules)).toHaveLength(4)
   })
 
-  it('B-15-3 人数 memberCount 默认 1、min=1（handleAdd 重置 + 模板钉住）', async () => {
+  it('B-15-3 人数不再作为表单输入项（memberCount 实体标 exist=false，由花名册聚合）', async () => {
     const w = await mountTeam()
     const st = w.vm.$.setupState
-    st.formData.memberCount = 99
     st.handleAdd()
-    expect(st.formData.memberCount).toBe(1)
-    expect(teamSrc).toContain('v-model="formData.memberCount" :min="1"')
+    expect('memberCount' in st.formData).toBe(false)
+    expect(teamSrc).not.toContain('v-model="formData.memberCount"')
+    // 列表仍展示聚合人数
+    expect(teamSrc).toContain('<el-table-column prop="memberCount" label="人数"')
   })
 
   it('B-15-5 钉住现状：leaderPhone 无任何校验规则（formRules 无该键）', async () => {

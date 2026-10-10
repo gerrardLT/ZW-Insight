@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -27,12 +28,18 @@ public class SysLogService {
 
     /**
      * 操作日志分页查询
+     * <p>2026-10-10：补 operator（姓名或账号模糊）与时间范围条件，时间上界取 endTime 次日 0 点（含 endTime 全天）。</p>
      */
-    public PageResult<SysOperLog> pageOperLogs(int page, int size, String module, String operType) {
+    public PageResult<SysOperLog> pageOperLogs(int page, int size, String module, String operType,
+                                               String operator, LocalDate startTime, LocalDate endTime) {
         Page<SysOperLog> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<SysOperLog> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(module), SysOperLog::getModule, module)
                 .eq(StrUtil.isNotBlank(operType), SysOperLog::getOperType, operType)
+                .and(StrUtil.isNotBlank(operator), w -> w.like(SysOperLog::getOperName, operator)
+                        .or().like(SysOperLog::getOperAccount, operator))
+                .ge(startTime != null, SysOperLog::getOperTime, startTime == null ? null : startTime.atStartOfDay())
+                .lt(endTime != null, SysOperLog::getOperTime, endTime == null ? null : endTime.plusDays(1).atStartOfDay())
                 // 跨租户水平越权修复（2026-08-14）：sys_* 免拦截器过滤，
                 // 显式按当前租户条件化过滤（无上下文内部调用零回归）
                 .eq(SecurityContextHolder.getTenantId() != null,
@@ -44,11 +51,17 @@ public class SysLogService {
 
     /**
      * 登录日志分页查询
+     * <p>2026-10-10：补 operator（姓名或账号模糊）与时间范围条件，口径同操作日志。</p>
      */
-    public PageResult<SysLoginLog> pageLoginLogs(int page, int size, String loginName) {
+    public PageResult<SysLoginLog> pageLoginLogs(int page, int size, String loginName,
+                                                 String operator, LocalDate startTime, LocalDate endTime) {
         Page<SysLoginLog> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<SysLoginLog> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(loginName), SysLoginLog::getLoginName, loginName)
+                .and(StrUtil.isNotBlank(operator), w -> w.like(SysLoginLog::getLoginName, operator)
+                        .or().like(SysLoginLog::getLoginAccount, operator))
+                .ge(startTime != null, SysLoginLog::getLoginTime, startTime == null ? null : startTime.atStartOfDay())
+                .lt(endTime != null, SysLoginLog::getLoginTime, endTime == null ? null : endTime.plusDays(1).atStartOfDay())
                 // 跨租户水平越权修复（2026-08-14）：同上，按当前租户条件化过滤
                 .eq(SecurityContextHolder.getTenantId() != null,
                         SysLoginLog::getTenantId, SecurityContextHolder.getTenantId())

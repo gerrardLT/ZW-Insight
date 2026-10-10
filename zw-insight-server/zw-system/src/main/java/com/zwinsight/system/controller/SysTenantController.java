@@ -34,9 +34,10 @@ public class SysTenantController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String tenantName,
             @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String userType,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate expireStart,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate expireEnd) {
-        return R.ok(tenantService.page(page, size, tenantName, status, expireStart, expireEnd));
+        return R.ok(tenantService.page(page, size, tenantName, status, userType, expireStart, expireEnd));
     }
 
     @GetMapping("/{id}")

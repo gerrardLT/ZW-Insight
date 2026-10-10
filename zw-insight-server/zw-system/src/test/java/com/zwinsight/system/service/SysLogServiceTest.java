@@ -56,7 +56,7 @@ class SysLogServiceTest {
         page.setTotal(1);
         when(operLogMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
 
-        PageResult<SysOperLog> result = sysLogService.pageOperLogs(1, 10, "合同", "CREATE");
+        PageResult<SysOperLog> result = sysLogService.pageOperLogs(1, 10, "合同", "CREATE", null, null, null);
 
         assertThat(result.getRecords()).hasSize(1);
     }
@@ -69,7 +69,7 @@ class SysLogServiceTest {
         page.setTotal(1);
         when(loginLogMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
 
-        PageResult<SysLoginLog> result = sysLogService.pageLoginLogs(1, 10, "admin");
+        PageResult<SysLoginLog> result = sysLogService.pageLoginLogs(1, 10, "admin", null, null, null);
 
         assertThat(result.getRecords()).hasSize(1);
     }

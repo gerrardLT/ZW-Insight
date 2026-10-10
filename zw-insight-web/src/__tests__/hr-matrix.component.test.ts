@@ -168,21 +168,25 @@ describe('hr/entry.vue 入职申请增量（C21）', () => {
   })
 })
 
-describe('hr/office-supply.vue 办公用品领用（C22）', () => {
-  it('@matrix C-22-1 必填两条 itemName/quantity + C-22-2 quantity min=1（默认值 1）', async () => {
+describe('hr/office-supply.vue 办公用品主数据（C22）', () => {
+  it('@matrix C-22-1 仅 supplyName 必填 + C-22-2 库存数量默认 0（2026-10-10 按实体字段重建）', async () => {
     const w = await mountOf(OfficeSupply)
     const st: any = w.vm.$.setupState
-    expect(Object.keys(st.formRules)).toEqual(['itemName', 'quantity'])
-    expect(st.formRules.itemName[0].message).toBe('请输入物品名称')
-    expect(st.formRules.quantity[0].message).toBe('请输入数量')
-    expect(st.formData.quantity).toBe(1)
-    expect(supplySrc).toContain('v-model="formData.quantity" :min="1"')
+    expect(Object.keys(st.formRules)).toEqual(['supplyName'])
+    expect(st.formRules.supplyName[0].message).toBe('请输入物品名称')
+    expect(st.formData.stockQuantity).toBe(0)
+    expect(supplySrc).toContain('v-model="formData.stockQuantity" :min="0"')
   })
 
-  it('@matrix C-22-4 状态三元翻译 APPROVED 已领用/PENDING 审批中/其他草稿 + C-22-6 applyNo 列源码钉住', () => {
-    expect(supplySrc).toContain("row.status === 'APPROVED' ? '已领用' : row.status === 'PENDING' ? '审批中' : '草稿'")
-    expect(supplySrc).toContain("row.status === 'APPROVED' ? 'success' : row.status === 'PENDING' ? 'warning' : 'info'")
-    expect(supplySrc).toContain('<el-table-column prop="applyNo" label="申请单号" width="150" />')
+  it('@matrix C-22-4 状态按整数翻译（0 停用 / 其余启用）+ C-22-6 列与实体字段一致', () => {
+    expect(supplySrc).toContain("row.status === 0 ? '停用' : '启用'")
+    expect(supplySrc).toContain("row.status === 0 ? 'info' : 'success'")
+    for (const prop of ['supplyName', 'categoryName', 'specification', 'unit', 'stockQuantity']) {
+      expect(supplySrc).toContain(`prop="${prop}"`)
+    }
+    // 原「领用申请」语义列（applyNo/itemName/applicant/applyDate）在 biz_office_supply 中不存在，已移除
+    expect(supplySrc).not.toContain('prop="applyNo"')
+    expect(supplySrc).not.toContain('formData.itemName')
   })
 })
 

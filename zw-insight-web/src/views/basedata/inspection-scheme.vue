@@ -60,8 +60,8 @@
             <el-option label="安全检查" value="SAFETY" />
           </el-select>
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+        <el-form-item label="方案内容">
+          <el-input v-model="formData.content" type="textarea" :rows="3" placeholder="请输入方案内容" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -87,7 +87,7 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, schemeName: '', schemeType: '' })
-const formData = ref({ id: undefined as number | undefined, schemeName: '', schemeType: 'QUALITY', remark: '' })
+const formData = ref({ id: undefined as number | undefined, schemeName: '', schemeType: 'QUALITY', content: '' })
 const formRules = {
   schemeName: [{ required: true, message: '请输入方案名称', trigger: 'blur' }],
   schemeType: [{ required: true, message: '请选择方案类型', trigger: 'change' }]
@@ -106,7 +106,7 @@ async function loadData() {
 
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, schemeName: '', schemeType: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, schemeName: '', schemeType: 'QUALITY', remark: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, schemeName: '', schemeType: 'QUALITY', content: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 
 async function handleFormSubmit() {

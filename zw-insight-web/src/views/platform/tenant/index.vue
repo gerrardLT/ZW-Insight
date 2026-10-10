@@ -111,6 +111,16 @@
         <el-form-item label="联系电话" prop="contactPhone">
           <el-input v-model="formData.contactPhone" placeholder="请输入联系电话" />
         </el-form-item>
+        <!-- 2026-10-10：SysTenantService.createTenant 强制校验 adminUsername/adminPassword 非空
+             （否则抛「管理员用户名不能为空」），原表单无这两个输入项 → 新建租户必失败。仅新建时展示。 -->
+        <template v-if="!formData.id">
+          <el-form-item label="管理员账号" prop="adminUsername">
+            <el-input v-model="formData.adminUsername" placeholder="租户管理员登录账号" />
+          </el-form-item>
+          <el-form-item label="管理员密码" prop="adminPassword">
+            <el-input v-model="formData.adminPassword" type="password" show-password placeholder="租户管理员初始密码" />
+          </el-form-item>
+        </template>
         <el-form-item label="用户类型" prop="userType">
           <el-select v-model="formData.userType" placeholder="请选择" style="width: 100%">
             <el-option label="试用" value="TRIAL" />
@@ -121,8 +131,9 @@
         <el-form-item label="最大用户数" prop="maxUsers">
           <el-input-number v-model="formData.maxUsers" :min="1" :max="9999" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="有效天数" prop="durationDays">
-          <el-input-number v-model="formData.durationDays" :min="1" :max="3650" style="width: 100%" />
+        <el-form-item label="有效天数" prop="customDays">
+          <el-input-number v-model="formData.customDays" :min="1" :max="3650" style="width: 100%" />
+          <div class="form-tip">仅「企业」类型按此天数设置有效期，其他类型用默认天数</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -249,18 +260,22 @@ const formData = ref({
   tenantName: '',
   contactName: '',
   contactPhone: '',
+  adminUsername: '',
+  adminPassword: '',
   userType: 'STANDARD',
   maxUsers: 10,
-  durationDays: 365
+  customDays: 365
 })
 
 const formRules = {
   tenantName: [{ required: true, message: '请输入租户名称', trigger: 'blur' }],
   contactName: [{ required: true, message: '请输入联系人', trigger: 'blur' }],
   contactPhone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
+  adminUsername: [{ required: true, message: '请输入管理员账号', trigger: 'blur' }],
+  adminPassword: [{ required: true, message: '请输入管理员密码', trigger: 'blur' }],
   userType: [{ required: true, message: '请选择用户类型', trigger: 'change' }],
   maxUsers: [{ required: true, message: '请输入最大用户数', trigger: 'blur' }],
-  durationDays: [{ required: true, message: '请输入有效天数', trigger: 'blur' }]
+  customDays: [{ required: true, message: '请输入有效天数', trigger: 'blur' }]
 }
 
 // ==================== 续期弹窗 ====================
@@ -319,7 +334,7 @@ function handleReset() {
 }
 
 function handleAdd() {
-  formData.value = { id: undefined, tenantName: '', contactName: '', contactPhone: '', userType: 'STANDARD', maxUsers: 10, durationDays: 365 }
+  formData.value = { id: undefined, tenantName: '', contactName: '', contactPhone: '', adminUsername: '', adminPassword: '', userType: 'STANDARD', maxUsers: 10, customDays: 365 }
   formDialogVisible.value = true
 }
 
@@ -329,9 +344,11 @@ function handleEdit(row: any) {
     tenantName: row.tenantName,
     contactName: row.contactName,
     contactPhone: row.contactPhone,
+    adminUsername: '',
+    adminPassword: '',
     userType: row.userType,
     maxUsers: row.maxUsers,
-    durationDays: row.durationDays || 365
+    customDays: 365
   }
   formDialogVisible.value = true
 }

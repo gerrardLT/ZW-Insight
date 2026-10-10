@@ -3,7 +3,7 @@
     <el-card shadow="never">
       <el-form :model="queryParams" inline>
         <el-form-item label="项目">
-          <el-input v-model="queryParams.projectName" placeholder="项目名称" clearable style="width: 200px" />
+          <ProjectSelector v-model="queryParams.projectId" width="200px" @change="handleSearch" />
         </el-form-item>
         <el-form-item label="任务名称">
           <el-input v-model="queryParams.taskName" placeholder="任务名称" clearable style="width: 180px" />
@@ -73,7 +73,7 @@
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑计划' : '新增进度计划'" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="任务名称" prop="taskName"><el-input v-model="formData.taskName" /></el-form-item>
-        <el-form-item label="所属项目"><el-input v-model="formData.projectName" /></el-form-item>
+        <el-form-item label="所属项目" prop="projectId"><ProjectSelector v-model="formData.projectId" /></el-form-item>
         <el-form-item label="计划开始" prop="planStartDate"><el-date-picker v-model="formData.planStartDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
         <el-form-item label="计划完成" prop="planEndDate"><el-date-picker v-model="formData.planEndDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
         <el-form-item label="负责人"><el-input v-model="formData.responsible" /></el-form-item>
@@ -107,14 +107,14 @@ const isEdit = ref(false)
 const ganttProjectId = ref<number | undefined>(undefined)
 const ganttHasData = ref(false)
 
-const queryParams = ref({ pageNum: 1, pageSize: 10, projectName: '', taskName: '' })
-const formData = ref({ id: undefined as number | undefined, taskName: '', projectName: '', planStartDate: '', planEndDate: '', responsible: '', progress: 0 })
-const formRules = { taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }], planStartDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }], planEndDate: [{ required: true, message: '请选择完成日期', trigger: 'change' }] }
+const queryParams = ref({ pageNum: 1, pageSize: 10, projectId: undefined as number | string | undefined, taskName: '' })
+const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | string | undefined, taskName: '', planStartDate: '', planEndDate: '', responsible: '', progress: 0 })
+const formRules = { projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }], taskName: [{ required: true, message: '请输入任务名称', trigger: 'blur' }], planStartDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }], planEndDate: [{ required: true, message: '请选择完成日期', trigger: 'change' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getSchedulePage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
-function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, projectName: '', taskName: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, taskName: '', projectName: '', planStartDate: '', planEndDate: '', responsible: '', progress: 0 }; dialogVisible.value = true }
+function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined, taskName: '' }; loadData() }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, taskName: '', planStartDate: '', planEndDate: '', responsible: '', progress: 0 }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateSchedule(formData.value) : await createSchedule(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData(); ganttRef.value?.refresh() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteSchedule(row.id); ElMessage.success('删除成功'); loadData(); ganttRef.value?.refresh() }

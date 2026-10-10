@@ -62,6 +62,10 @@ vi.mock('@/api/basedata', () => ({
   getSupplierBlacklistPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   createSupplierBlacklist: vi.fn(), deleteSupplierBlacklist: vi.fn(),
 }))
+// 2026-10-10：supplier-evaluation / supplier-blacklist 表单改为选供应商，stub 独立请求链
+vi.mock('@/components/SupplierSelector.vue', () => ({
+  default: { name: 'SupplierSelector', render: () => null },
+}))
 vi.mock('@/api/message', () => ({
   getNoticePage: mockNoticePage, createNotice: vi.fn(), publishNotice: mockPublishNotice,
   getAnnouncementPage: mockAnnouncePage, createAnnouncement: vi.fn(), updateAnnouncement: vi.fn(),
@@ -159,19 +163,22 @@ describe('basedata/supplier-evaluation 边界与差距（@matrix D-23-3/4/6）',
     return wrapper
   }
 
-  it('D-23-3 score :min="1" :max="100" + 新增默认 80', async () => {
+  it('D-23-3 五维评分 1-5 + 新增默认 5（2026-10-10 按实体真实字段重建）', async () => {
     const w = await mountEval()
     const src = norm('views/basedata/supplier-evaluation.vue')
-    expect(src).toContain('v-model="formData.score" :min="1" :max="100" :step="1"')
+    expect(src).toContain('v-model="formData.qualityScore" :min="1" :max="5"')
     const st = w.vm.$.setupState
     st.handleAdd()
-    expect(st.formData.score, '默认评分 80').toBe(80)
+    expect(st.formData.qualityScore, '默认评分 5').toBe(5)
+    expect(st.formData.timelinessScore).toBe(5)
   })
 
-  it('D-23-4/6 页面仅新增+删除无编辑入口、仅单一 score（差距现状钉住）', () => {
+  it('D-23-4/6 页面仅新增+删除无编辑入口；五维已接入（原「仅单一 score」差距已闭合）', () => {
     const src = norm('views/basedata/supplier-evaluation.vue')
     expect(src).not.toContain('handleEdit')
-    expect(src).not.toMatch(/(qualityScore|priceScore|deliveryScore|serviceScore|五维)/)
+    for (const f of ['qualityScore', 'timelinessScore', 'priceScore', 'serviceScore', 'cooperationScore']) {
+      expect(src).toContain(`formData.${f}`)
+    }
     expect(src).not.toContain('updateSupplierEvaluation')
     // API 层 updateSupplierEvaluation 存在但页面未导入消费（闲置 API 实证）
     expect(norm('api/basedata.ts')).toContain('export function updateSupplierEvaluation')
@@ -231,11 +238,11 @@ describe('message/announcement 状态机守卫（@matrix D-26-5~10）', () => {
     expect(src).not.toMatch(/handlePublish[\s\S]{0,80}REVOKED/)
   })
 
-  it('D-26-7/8 表单 scope 两选项 ALL/DEPARTMENT + isTop switch 默认 false', async () => {
+  it('D-26-7/8 表单 publishScope 两选项 ALL/DEPARTMENT + isTop switch 默认 false', async () => {
     const w = await mountAnnounce([])
     const st = w.vm.$.setupState
     st.handleAdd()
-    expect(st.formData.scope).toBe('ALL')
+    expect(st.formData.publishScope).toBe('ALL')
     expect(st.formData.isTop).toBe(false)
     const src = norm('views/message/announcement/index.vue')
     expect(src).toContain('<el-option label="全部" value="ALL" />')
