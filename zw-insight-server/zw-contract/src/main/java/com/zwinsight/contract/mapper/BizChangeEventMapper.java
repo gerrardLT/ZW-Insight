@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.common.datapermission.DataColumn;
+import com.zwinsight.common.datapermission.DataPermission;
 import com.zwinsight.contract.domain.BizChangeEvent;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -20,6 +22,9 @@ import java.util.List;
  * </p>
  */
 @Mapper
+@DataPermission(value = {
+    @DataColumn(projectColumn = "project_id", userColumn = "created_by", deptColumn = "dept_id")
+})
 public interface BizChangeEventMapper extends BaseMapper<BizChangeEvent> {
 
     /**

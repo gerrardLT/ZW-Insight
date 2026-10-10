@@ -2,6 +2,8 @@ package com.zwinsight.budget.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.zwinsight.common.datapermission.DataColumn;
+import com.zwinsight.common.datapermission.DataPermission;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.budget.domain.BizCostAccount;
@@ -17,6 +19,9 @@ import java.util.List;
  * CBS 成本账户 Mapper。
  */
 @Mapper
+@DataPermission(value = {
+    @DataColumn(projectColumn = "project_id", userColumn = "created_by", deptColumn = "dept_id")
+})
 public interface BizCostAccountMapper extends BaseMapper<BizCostAccount> {
 
     /**
@@ -84,6 +89,7 @@ public interface BizCostAccountMapper extends BaseMapper<BizCostAccount> {
     @Update("UPDATE biz_cost_account SET current_amount = current_amount + #{delta}, "
             + "version = version + 1, updated_at = NOW() "
             + "WHERE id = #{id} AND deleted = 0 AND current_amount + #{delta} >= 0")
+    @DataPermission({})
     int adjustCurrentAmount(@Param("id") Long id, @Param("delta") BigDecimal delta);
 
     /**
@@ -96,6 +102,7 @@ public interface BizCostAccountMapper extends BaseMapper<BizCostAccount> {
     @Update("UPDATE biz_cost_account SET commitment_amount = commitment_amount + #{delta}, "
             + "version = version + 1, updated_at = NOW() "
             + "WHERE id = #{id} AND deleted = 0 AND commitment_amount + #{delta} >= 0")
+    @DataPermission({})
     int adjustCommitmentAmount(@Param("id") Long id, @Param("delta") BigDecimal delta);
 
     /**
@@ -108,6 +115,7 @@ public interface BizCostAccountMapper extends BaseMapper<BizCostAccount> {
     @Update("UPDATE biz_cost_account SET actual_amount = actual_amount + #{delta}, "
             + "version = version + 1, updated_at = NOW() "
             + "WHERE id = #{id} AND deleted = 0 AND actual_amount + #{delta} >= 0")
+    @DataPermission({})
     int adjustActualAmount(@Param("id") Long id, @Param("delta") BigDecimal delta);
 
     /**
