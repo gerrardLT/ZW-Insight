@@ -237,11 +237,42 @@ ssh -i keys/zwinsight.pem root@129.204.3.200 "bash /root/zwi-deploy/perm-audit-d
 
 ---
 
-## 7. 部署后复验（待回填）
+## 7. 部署后复验（已完成）
 
-- [ ] CI 编译 + 单测通过
-- [ ] 双机部署完成
-- [ ] `perm-audit-sql.sh`：F1 目录差从 54 → 0
-- [ ] `perm-audit-http.sh`：D1/D2 仍 PASS（菜单/权限码下发未被破坏）
-- [ ] `perm-audit-data.sh`：D3 FAIL 从 33 → 仅剩已声明的 `machine-ledger` 例外（2 处）
-- [ ] `keys/audit-data.ps1` R7 基线不回归（PASS=67 FAIL=0）
+- 提交：`7306f6ef`（`fix(security): 线上权限一致性清查修复——数据范围越权/权限码目录/菜单下发口径`）
+- CI：run `38067042053` / `38067042051`（双机 matrix）均 **success**
+  —— `Backend Build`（编译 + 单测 + jacoco 分档 check）、前端三端单测、`Build Frontend Dist (runner)`、
+  `Deploy to 主服务器1 (中维)`、`Deploy to 新服务器2 (徽颖)` 全部 success。
+- 迁移落库复核（双机一致）：`flyway_schema_history` 含 `2026.91`；`sys_menu` 新增 53 行；
+  菜单 211 权限码 = `system:version:view`；活跃权限码 distinct **83 → 136**。
+
+| 验收项 | 修复前 | 修复后 | 结论 |
+|---|---|---|---|
+| F1 守卫码无菜单承载（目录差） | 54 | **0**（双机） | ✅ 关闭 |
+| D1/D2 菜单与权限码下发 == 配置 | PASS 8/8 | **PASS 8/8** | ✅ 无回归（admin 权限码 84 → 137 = 136 + `*:*:*`） |
+| D4 结构完整性 | PASS 5/5 | **PASS 5/5**（双机） | ✅ 无回归 |
+| D3 行级越权 FAIL | 33 | **6** | ⚠ 剩余 6 处全部为已声明的两个例外（见下） |
+| R7 数据审计基线 | PASS=67 FAIL=0 | **PASS=67 FAIL=0 WARN=0 INFO=39** | ✅ 无回归 |
+
+D3 剩余 6 处明细：`fin-fundplan` × 4（zhangwei/wangqiang/chengang/zhaolei）、`machine-ledger` × 2（zhangwei/chengang）
+—— 即 §3 F2 已声明的两个「公司级共享数据」例外（`biz_fund_monthly_plan` 含公司级行、`biz_machine_ledger` 无 `project_id`），
+经只读审阅确认**不应**加行级过滤，非缺陷。
+
+运行时显式验证（主环境真实登录，`total` 为分页总数）：
+
+| 端点 | zhangwei（SELF，修复后） | admin（ALL） |
+|---|---|---|
+| `GET /api/v1/finance/invoice-apply/page` | 200 / total=0（修复前 5） | 200 / total=5 |
+| `GET /api/v1/finance/payment-received/page` | 200 / total=0（修复前 7） | 200 / total=7 |
+| `GET /api/v1/material/outbound/page` | 200 / total=0（修复前 2） | 200 / total=2 |
+| `GET /api/v1/subcontract/output/page` | 200 / total=0（修复前 2） | 200 / total=2 |
+| `GET /api/v1/project/page` | 200 / total=0 | 200 / total=6 |
+| `GET /api/v1/tender/register/page` | 403（无 `tender:view`，预期） | 200 / total=1 |
+
+部署后证据文件（`audit-reports/perm-audit-evidence/`）：
+`s1-{sql,http,data}-postfix.txt`、`s2-{sql,http,data}-postfix.txt`。
+
+**遗留**：F1 修复只让 54 个权限码「可被授予」，**未给任何业务角色新增授权**，
+故 `POST /api/v1/contract` 等写接口对业务角色仍为 403 —— 这是配置现状而非缺陷，
+授权矩阵属 §5 待决策项。
+

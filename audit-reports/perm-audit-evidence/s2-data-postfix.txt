@@ -1,0 +1,49 @@
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+==============================================================
+权限一致性清查 · D3 行级数据范围面
+时间: 2026-10-11 00:27:03  租户: 1  BASE: http://127.0.0.1:18080
+==============================================================
+全量基线账号: admin (id=1)
+---- admin (id=1, scope=ALL, dept=2105101928955174914, projects=[]) ----
+  project              PASS (expected=1 actual=1)
+  contract             PASS (expected=1 actual=1)
+  contract-change      PASS (expected=0 actual=0)
+  budget               PASS (expected=0 actual=0)
+  budget-costaccount   PASS (expected=0 actual=0)
+  fin-payment          PASS (expected=0 actual=0)
+  fin-invoice          PASS (expected=1 actual=1)
+  fin-receivable       PASS (expected=0 actual=0)
+  fin-pay-recv         PASS (expected=1 actual=1)
+  fin-retention        PASS (expected=0 actual=0)
+  fin-security         PASS (expected=0 actual=0)
+  fin-bill             PASS (expected=0 actual=0)
+  fin-lock             PASS (expected=0 actual=0)
+  fin-fundplan         PASS (expected=0 actual=0)
+  fin-wage             PASS (expected=0 actual=0)
+  labor-contract       PASS (expected=0 actual=0)
+  labor-roster         PASS (expected=0 actual=0)
+  labor-settlement     PASS (expected=0 actual=0)
+  labor-output         PASS (expected=3 actual=3)
+  machine-contract     PASS (expected=3 actual=3)
+  machine-entry        PASS (expected=0 actual=0)
+  machine-ledger       PASS (expected=0 actual=0)
+  material-inbound     PASS (expected=0 actual=0)
+  material-outbound    PASS (expected=0 actual=0)
+  material-inventory   PASS (expected=0 actual=0)
+  purchase-contract    PASS (expected=0 actual=0)
+  purchase-settlement  PASS (expected=0 actual=0)
+  site-inspection      PASS (expected=0 actual=0)
+  site-completion      PASS (expected=0 actual=0)
+  site-log             PASS (expected=0 actual=0)
+  subcontract          PASS (expected=2 actual=2)
+  subcontract-output   PASS (expected=0 actual=0)
+  tender-register      PASS (expected=0 actual=0)
+[BLOCKED] wangting 登录失败（凭证未知），D3 无法验证
+[BLOCKED] wangshuangtao 登录失败（凭证未知），D3 无法验证
+[BLOCKED] wanghaiyang 登录失败（凭证未知），D3 无法验证
+[BLOCKED] biancongyou 登录失败（凭证未知），D3 无法验证
+==============================================================
+D3 小结: PASS=33 FAIL=0 BLOCKED=4 UNVERIFIABLE=0 ERROR=0
+==============================================================

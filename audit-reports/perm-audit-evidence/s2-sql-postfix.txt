@@ -1,0 +1,236 @@
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+==============================================================
+权限一致性清查 · 只读 SQL 面
+时间: 2026-10-11 00:26:51  库: zw_insight  容器: zwi-mysql
+==============================================================
+
+---- D4 结构完整性 ----
+[PASS] D4.1 孤儿 sys_role_menu(菜单不存在或已删) = 0
+[PASS] D4.2 悬空 sys_user_role(角色不存在或已删) = 0
+[PASS] D4.3 禁用/已删菜单仍被角色绑定 = 0
+[PASS] D4.4 跨租户角色绑定(role.tenant_id 与 user.tenant_id 不符) = 0
+[PASS] D4.5 同租户内角色码重复(未删除) = 0
+
+-- D4.6 无角色用户(启用未删) 明细 --
+2108341865611837441	l4entry1791502843	9999
+
+-- D4.7 无菜单角色(启用未删、非 SUPER_ADMIN) 明细 --
+9999900	T9999_LIMITED	9999
+9999902	T9999_REGRESSION	9999
+
+-- D4.8 角色数据范围取值分布(启用未删) --
+ALL	7
+DEPT	2
+DEPT_AND_CHILDREN	1
+PROJECT	2
+SELF	3
+
+---- D1/D2 每用户期望菜单集与期望权限码 ----
+列: user_id | username | tenant_id | effective_scope | expected_menu_cnt | expected_perm_cnt
+注: menu_cnt 排除 BUTTON（菜单下发口径）；perm_cnt 含 BUTTON（权限码口径，与 selectPermissionsByUserId 一致）
+1	admin	1	ALL	144	136
+2105171155849678849	wangting	1	ALL	144	136
+2108020491165573122	wangshuangtao	1	ALL	86	44
+2108026454622806017	wanghaiyang	1	ALL	79	42
+2108105768880537601	biancongyou	1	ALL	119	83
+9999001	t9999admin	9999	ALL	0	0
+9999002	t9999user	9999	SELF	0	0
+9999003	t9999approver	9999	ALL	0	0
+
+-- D1 每用户期望菜单 id 明细 --
+1	1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,201,202,203,204,205,206,207,208,209,210,211,212,213,301,302,303,401,402,403,501,502,503,504,505,506,507,601,602,603,604,701,702,703,801,802,803,804,805,806,807,808,901,902,903,904,1001,1002,1003,1004,1005,1101,1102,1201,1202,1203,1301,1302,1401,1402,1403,1501,1601,1602,1603,1604,1701,1702,1703,1704,1801,1802,1803,1804,1805,1806,1807,20141,20142,20201,20202,20203,20204,910050,910051,910052,910053,910054,910055,910056,910057,910058,910059,910060,910061,910062,910070,910071,910072,910073,910074,910075,910076,910077,910078,910079,910080,910081,910082,910083,910084,910085,910086,910087,910088,910089,910090,910091,910092,910093,910094,910095,910096,910097,910098,910099
+2105171155849678849	1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,201,202,203,204,205,206,207,208,209,210,211,212,213,301,302,303,401,402,403,501,502,503,504,505,506,507,601,602,603,604,701,702,703,801,802,803,804,805,806,807,808,901,902,903,904,1001,1002,1003,1004,1005,1101,1102,1201,1202,1203,1301,1302,1401,1402,1403,1501,1601,1602,1603,1604,1701,1702,1703,1704,1801,1802,1803,1804,1805,1806,1807,20141,20142,20201,20202,20203,20204,910050,910051,910052,910053,910054,910055,910056,910057,910058,910059,910060,910061,910062,910070,910071,910072,910073,910074,910075,910076,910077,910078,910079,910080,910081,910082,910083,910084,910085,910086,910087,910088,910089,910090,910091,910092,910093,910094,910095,910096,910097,910098,910099
+2108020491165573122	1,3,4,5,6,7,8,9,10,11,12,13,15,17,19,301,302,303,401,402,403,501,502,503,504,505,506,507,601,602,603,604,701,702,703,801,802,803,804,805,901,902,903,904,1001,1002,1003,1004,1005,1101,1102,1201,1202,1203,1301,1302,1501,1701,1702,1703,1704,20141,20201,20202,20203,20204,910050,910051,910052,910053,910054,910055,910056,910058,910059,910060,910061,910062,910070,910071,910072,910073,910074,910075,910076,910077
+2108026454622806017	1,3,4,5,6,8,9,10,11,12,15,17,19,301,302,303,401,402,403,501,502,503,504,505,506,507,601,602,603,604,801,802,803,804,805,901,902,903,904,1001,1002,1003,1004,1005,1101,1102,1201,1202,1203,1501,1701,1702,1703,1704,20141,20201,20202,20203,20204,910050,910051,910052,910053,910054,910055,910056,910058,910059,910060,910061,910062,910070,910071,910072,910073,910074,910075,910076,910077
+2108105768880537601	1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,201,202,203,204,205,206,207,208,209,210,211,212,213,301,302,303,401,402,403,501,502,503,504,505,506,507,601,602,603,604,701,702,703,801,802,803,804,805,901,902,903,904,1001,1002,1003,1004,1005,1101,1102,1201,1202,1203,1301,1302,1401,1402,1403,1501,1601,1602,1603,1604,1701,1702,1703,1704,1801,1802,1803,1804,1805,1806,1807,20141,20142,20201,20202,20203,20204,910050,910051,910052,910053,910054,910055,910056,910057,910058,910059,910060,910061,910062,910070,910071,910072,910073,910074,910075,910076,910077
+
+-- D2 每用户期望权限码明细 --
+1	archive:view,basedata:view,budget:add,budget:budget:add,budget:budget:delete,budget:budget:edit,budget:budget:submit,budget:budgetchange:add,budget:budgetchange:delete,budget:budgetchange:edit,budget:budgetchange:submit,budget:budgetchange:withdraw,budget:budgetcontrolconfig:add,budget:budgetcontrolconfig:delete,budget:budgetcontrolconfig:edit,budget:costaccount:add,budget:costaccount:delete,budget:costaccount:edit,budget:costaccount:lock,budget:costaccount:sync,budget:costaccount:update,budget:costaccount:view,budget:costsubcategory:add,budget:costsubcategory:delete,budget:costsubcategory:edit,budget:view,contract:bom:add,contract:bom:delete,contract:bom:edit,contract:bom:import,contract:boq:delete,contract:boq:upload,contract:changeevent:add,contract:changeevent:approve,contract:changeevent:assess,contract:changeevent:cancel,contract:changeevent:delete,contract:changeevent:edit,contract:changeevent:reject,contract:changeevent:submit,contract:changeevent:view,contract:changevisa:add,contract:changevisa:submit,contract:contract:add,contract:contract:delete,contract:contract:edit,contract:contract:submit,contract:othercontract:add,contract:othercontract:delete,contract:othercontract:edit,contract:outputreport:add,contract:outputreport:delete,contract:outputreport:submit,contract:quantitylist:add,contract:quantitylist:delete,contract:quantitylist:edit,contract:quantitylist:import,contract:settlement:add,contract:settlement:submit,contract:view,dashboard:costcontrol:view,dashboard:view,finance:bankaccount:add,finance:bankaccount:delete,finance:bankaccount:edit,finance:financelock:create,finance:financelock:unlock,finance:invoiceapply:add,finance:invoiceapply:delete,finance:invoiceapply:edit,finance:invoiceapply:submit,finance:payment:submit,finance:paymentreceived:claim,finance:paymentreceived:writeoff,finance:taxrate:add,finance:taxrate:delete,finance:taxrate:edit,finance:view,hr:view,labor:view,machine:view,material:stockwarningconfig:delete,material:stockwarningconfig:save,material:view,message:notice:add,message:notice:publish,message:push-config:edit,message:view,project-dashboard:view,project:create,project:delete,project:edit,project:view,project:wbs:add,project:wbs:delete,project:wbs:edit,project:wbs:view,purchase:view,site:view,subcontract:view,system:backup:list,system:dict:add,system:dict:delete,system:dict:edit,system:menu:add,system:menu:delete,system:menu:edit,system:monitor:view,system:org:add,system:org:delete,system:org:edit,system:post:add,system:post:delete,system:post:edit,system:role:add,system:role:assign-menu,system:role:data-scope,system:role:delete,system:role:edit,system:tenant:add,system:tenant:delete,system:tenant:edit,system:tenant:modules,system:tenant:renew,system:tenant:status,system:user:add,system:user:assign-role,system:user:delete,system:user:edit,system:user:import,system:user:reset-pwd,system:user:status,system:version:view,system:view,tender:view,workflow:view
+2105171155849678849	archive:view,basedata:view,budget:add,budget:budget:add,budget:budget:delete,budget:budget:edit,budget:budget:submit,budget:budgetchange:add,budget:budgetchange:delete,budget:budgetchange:edit,budget:budgetchange:submit,budget:budgetchange:withdraw,budget:budgetcontrolconfig:add,budget:budgetcontrolconfig:delete,budget:budgetcontrolconfig:edit,budget:costaccount:add,budget:costaccount:delete,budget:costaccount:edit,budget:costaccount:lock,budget:costaccount:sync,budget:costaccount:update,budget:costaccount:view,budget:costsubcategory:add,budget:costsubcategory:delete,budget:costsubcategory:edit,budget:view,contract:bom:add,contract:bom:delete,contract:bom:edit,contract:bom:import,contract:boq:delete,contract:boq:upload,contract:changeevent:add,contract:changeevent:approve,contract:changeevent:assess,contract:changeevent:cancel,contract:changeevent:delete,contract:changeevent:edit,contract:changeevent:reject,contract:changeevent:submit,contract:changeevent:view,contract:changevisa:add,contract:changevisa:submit,contract:contract:add,contract:contract:delete,contract:contract:edit,contract:contract:submit,contract:othercontract:add,contract:othercontract:delete,contract:othercontract:edit,contract:outputreport:add,contract:outputreport:delete,contract:outputreport:submit,contract:quantitylist:add,contract:quantitylist:delete,contract:quantitylist:edit,contract:quantitylist:import,contract:settlement:add,contract:settlement:submit,contract:view,dashboard:costcontrol:view,dashboard:view,finance:bankaccount:add,finance:bankaccount:delete,finance:bankaccount:edit,finance:financelock:create,finance:financelock:unlock,finance:invoiceapply:add,finance:invoiceapply:delete,finance:invoiceapply:edit,finance:invoiceapply:submit,finance:payment:submit,finance:paymentreceived:claim,finance:paymentreceived:writeoff,finance:taxrate:add,finance:taxrate:delete,finance:taxrate:edit,finance:view,hr:view,labor:view,machine:view,material:stockwarningconfig:delete,material:stockwarningconfig:save,material:view,message:notice:add,message:notice:publish,message:push-config:edit,message:view,project-dashboard:view,project:create,project:delete,project:edit,project:view,project:wbs:add,project:wbs:delete,project:wbs:edit,project:wbs:view,purchase:view,site:view,subcontract:view,system:backup:list,system:dict:add,system:dict:delete,system:dict:edit,system:menu:add,system:menu:delete,system:menu:edit,system:monitor:view,system:org:add,system:org:delete,system:org:edit,system:post:add,system:post:delete,system:post:edit,system:role:add,system:role:assign-menu,system:role:data-scope,system:role:delete,system:role:edit,system:tenant:add,system:tenant:delete,system:tenant:edit,system:tenant:modules,system:tenant:renew,system:tenant:status,system:user:add,system:user:assign-role,system:user:delete,system:user:edit,system:user:import,system:user:reset-pwd,system:user:status,system:version:view,system:view,tender:view,workflow:view
+2108020491165573122	archive:view,budget:costaccount:add,budget:costaccount:delete,budget:costaccount:edit,budget:costaccount:lock,budget:costaccount:sync,budget:costaccount:view,budget:view,contract:changeevent:add,contract:changeevent:approve,contract:changeevent:assess,contract:changeevent:cancel,contract:changeevent:delete,contract:changeevent:edit,contract:changeevent:reject,contract:changeevent:submit,contract:changeevent:view,contract:view,dashboard:costcontrol:view,dashboard:view,finance:payment:submit,finance:paymentreceived:claim,finance:paymentreceived:writeoff,finance:view,labor:view,machine:view,material:view,message:notice:add,message:notice:publish,message:push-config:edit,message:view,project-dashboard:view,project:create,project:delete,project:edit,project:view,project:wbs:add,project:wbs:delete,project:wbs:edit,project:wbs:view,purchase:view,site:view,subcontract:view,tender:view
+2108026454622806017	archive:view,budget:costaccount:add,budget:costaccount:delete,budget:costaccount:edit,budget:costaccount:lock,budget:costaccount:sync,budget:costaccount:view,budget:view,contract:changeevent:add,contract:changeevent:approve,contract:changeevent:assess,contract:changeevent:cancel,contract:changeevent:delete,contract:changeevent:edit,contract:changeevent:reject,contract:changeevent:submit,contract:changeevent:view,contract:view,dashboard:costcontrol:view,dashboard:view,finance:payment:submit,finance:paymentreceived:claim,finance:paymentreceived:writeoff,finance:view,labor:view,machine:view,material:view,message:notice:add,message:notice:publish,message:push-config:edit,message:view,project-dashboard:view,project:create,project:delete,project:edit,project:view,project:wbs:add,project:wbs:delete,project:wbs:edit,project:wbs:view,site:view,subcontract:view
+2108105768880537601	archive:view,basedata:view,budget:costaccount:add,budget:costaccount:delete,budget:costaccount:edit,budget:costaccount:lock,budget:costaccount:sync,budget:costaccount:view,budget:view,contract:changeevent:add,contract:changeevent:approve,contract:changeevent:assess,contract:changeevent:cancel,contract:changeevent:delete,contract:changeevent:edit,contract:changeevent:reject,contract:changeevent:submit,contract:changeevent:view,contract:view,dashboard:costcontrol:view,dashboard:view,finance:payment:submit,finance:paymentreceived:claim,finance:paymentreceived:writeoff,finance:view,hr:view,labor:view,machine:view,material:stockwarningconfig:delete,material:stockwarningconfig:save,material:view,message:notice:add,message:notice:publish,message:push-config:edit,message:view,project-dashboard:view,project:create,project:delete,project:edit,project:view,project:wbs:add,project:wbs:delete,project:wbs:edit,project:wbs:view,purchase:view,site:view,subcontract:view,system:backup:list,system:dict:add,system:dict:delete,system:dict:edit,system:menu:add,system:menu:delete,system:menu:edit,system:monitor:view,system:org:add,system:org:delete,system:org:edit,system:post:add,system:post:delete,system:post:edit,system:role:add,system:role:assign-menu,system:role:data-scope,system:role:delete,system:role:edit,system:tenant:add,system:tenant:delete,system:tenant:edit,system:tenant:modules,system:tenant:renew,system:tenant:status,system:user:add,system:user:assign-role,system:user:delete,system:user:edit,system:user:import,system:user:reset-pwd,system:user:status,system:version:view,system:view,tender:view,workflow:view
+
+-- D2 全库菜单提供码目录(启用未删) --
+archive:view
+basedata:view
+budget:add
+budget:budget:add
+budget:budget:delete
+budget:budget:edit
+budget:budget:submit
+budget:budgetchange:add
+budget:budgetchange:delete
+budget:budgetchange:edit
+budget:budgetchange:submit
+budget:budgetchange:withdraw
+budget:budgetcontrolconfig:add
+budget:budgetcontrolconfig:delete
+budget:budgetcontrolconfig:edit
+budget:costaccount:add
+budget:costaccount:delete
+budget:costaccount:edit
+budget:costaccount:lock
+budget:costaccount:sync
+budget:costaccount:update
+budget:costaccount:view
+budget:costsubcategory:add
+budget:costsubcategory:delete
+budget:costsubcategory:edit
+budget:view
+contract:bom:add
+contract:bom:delete
+contract:bom:edit
+contract:bom:import
+contract:boq:delete
+contract:boq:upload
+contract:changeevent:add
+contract:changeevent:approve
+contract:changeevent:assess
+contract:changeevent:cancel
+contract:changeevent:delete
+contract:changeevent:edit
+contract:changeevent:reject
+contract:changeevent:submit
+contract:changeevent:view
+contract:changevisa:add
+contract:changevisa:submit
+contract:contract:add
+contract:contract:delete
+contract:contract:edit
+contract:contract:submit
+contract:othercontract:add
+contract:othercontract:delete
+contract:othercontract:edit
+contract:outputreport:add
+contract:outputreport:delete
+contract:outputreport:submit
+contract:quantitylist:add
+contract:quantitylist:delete
+contract:quantitylist:edit
+contract:quantitylist:import
+contract:settlement:add
+contract:settlement:submit
+contract:view
+dashboard:costcontrol:view
+dashboard:view
+finance:bankaccount:add
+finance:bankaccount:delete
+finance:bankaccount:edit
+finance:financelock:create
+finance:financelock:unlock
+finance:invoiceapply:add
+finance:invoiceapply:delete
+finance:invoiceapply:edit
+finance:invoiceapply:submit
+finance:payment:submit
+finance:paymentreceived:claim
+finance:paymentreceived:writeoff
+finance:taxrate:add
+finance:taxrate:delete
+finance:taxrate:edit
+finance:view
+hr:view
+labor:view
+machine:view
+material:stockwarningconfig:delete
+material:stockwarningconfig:save
+material:view
+message:notice:add
+message:notice:publish
+message:push-config:edit
+message:view
+project-dashboard:view
+project:create
+project:delete
+project:edit
+project:view
+project:wbs:add
+project:wbs:delete
+project:wbs:edit
+project:wbs:view
+purchase:view
+site:view
+subcontract:view
+system:backup:list
+system:dict:add
+system:dict:delete
+system:dict:edit
+system:menu:add
+system:menu:delete
+system:menu:edit
+system:monitor:view
+system:org:add
+system:org:delete
+system:org:edit
+system:post:add
+system:post:delete
+system:post:edit
+system:role:add
+system:role:assign-menu
+system:role:data-scope
+system:role:delete
+system:role:edit
+system:tenant:add
+system:tenant:delete
+system:tenant:edit
+system:tenant:modules
+system:tenant:renew
+system:tenant:status
+system:user:add
+system:user:assign-role
+system:user:delete
+system:user:edit
+system:user:import
+system:user:reset-pwd
+system:user:status
+system:version:view
+system:view
+tender:view
+workflow:view
+
+---- D3 数据范围支撑数据 ----
+-- 用户有效范围与部门 --
+1	admin	1	2105101928955174914	ALL
+2105171155849678849	wangting	1	2105101928955174914	ALL
+2108020491165573122	wangshuangtao	1	2105101928955174914	ALL
+2108026454622806017	wanghaiyang	1	2105101928955174914	ALL
+2108105768880537601	biancongyou	1	2105101928955174914	ALL
+9999001	t9999admin	9999	NULL	ALL
+9999002	t9999user	9999	NULL	SELF
+9999003	t9999approver	9999	NULL	ALL
+2108341865611837441	l4entry1791502843	9999	NULL	SELF
+-- 部门树 --
+102101054153294449	2105101928955174914	0,2105101928955174914	1
+102101054153294450	2105101928955174914	0,2105101928955174914	1
+102101054153294451	2105101928955174914	0,2105101928955174914	1
+102101054153294452	2105101928955174914	0,2105101928955174914	1
+102101054153294453	2105101928955174914	0,2105101928955174914	1
+102101054153294454	2105101928955174914	0,2105101928955174914	1
+2105101928955174914	0	0	1
+-- 用户项目归属 --
+9999001	2108341348923916289
+2105171155849678849	2108033399987576834
+2108020491165573122	2108033399987576834
+-- 角色-菜单绑定计数(启用未删角色) --
+1	SUPER_ADMIN	ALL	254
+102101054153294473	COMPANY_LEADER	ALL	111
+102101054153294474	DEPT_MANAGER	DEPT_AND_CHILDREN	79
+102101054153294475	PROJECT_MANAGER	PROJECT	77
+102101054153294476	ENGINEERING_STAFF	PROJECT	47
+102101054153294477	COST_BUDGET_STAFF	ALL	70
+102101054153294478	PURCHASE_STAFF	DEPT	29
+102101054153294479	FINANCE_STAFF	ALL	66
+102101054153294480	HR_STAFF	DEPT	13
+102101054153294481	AUDITOR	ALL	90
+102101054153294482	STAFF	SELF	9
+2105102738548121601	admin	ALL	176
+9999900	T9999_LIMITED	SELF	0
+9999901	SUPER_ADMIN	ALL	0
+9999902	T9999_REGRESSION	SELF	0
+
+==============================================================
+D4 结构完整性小结: PASS=5 FAIL=0
+==============================================================

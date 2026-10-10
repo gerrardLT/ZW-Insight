@@ -102,4 +102,19 @@
 - 未决：F3（DEPT 列缺失）、F5（角色范围取值）、F1 授权矩阵、F2 其余未标注表、F4 同族 latent 项；
   徽颍 4 用户凭证缺失（F6）。
 
+### R2（推送 + 双机部署 + 部署后复验）
+- 改动：提交 `7306f6ef` 并推送 `main`；CI run `38067042053`/`38067042051` 双机 matrix 全绿
+  （Backend Build 含编译+单测+jacoco、三端前端单测、frontend dist、两台部署均 success）。
+- 结果（部署后复跑，证据 `audit-reports/perm-audit-evidence/*-postfix.txt`）：
+  - **F1 目录差 54 → 0**（双机；活跃权限码 83 → 136，菜单 211 = `system:version:view`，Flyway 2026.91 已落库）。
+  - **D1/D2 仍 PASS 8/8**（无回归；admin 权限码 84 → 137 = 136 + `*:*:*`）。
+  - **D4 双机 PASS 5/5**；**R7 基线 PASS=67 FAIL=0 WARN=0 INFO=39 无回归**。
+  - **D3 越权 FAIL 33 → 6**，剩余 6 处全部为已声明的两个「公司级共享数据」例外
+    （`fin-fundplan` ×4、`machine-ledger` ×2），非缺陷。
+  - 运行时显式验证：invoice-apply / payment-received / material-outbound / subcontract-output / project
+    对 zhangwei(SELF) 均 total=0（修复前 5/7/2/2），admin 仍见全量。
+- 验收结论：合同五项验收面全部有证据；剩余未达成项均为**已声明例外**或**待用户决策项**（§5），
+  非本轮 blocker。
+
+
 

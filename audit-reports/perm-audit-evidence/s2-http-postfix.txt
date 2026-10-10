@@ -1,0 +1,15 @@
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+==============================================================
+权限一致性清查 · 真实登录 HTTP 面
+时间: 2026-10-11 00:26:56  租户: 1  BASE: http://127.0.0.1:18080
+==============================================================
+[PASS] admin (id=1) menus=144 perms=137
+[FAIL] wangting 登录失败: {"code":500,"message":"用户名或密码错误"}
+[FAIL] wangshuangtao 登录失败: {"code":500,"message":"用户名或密码错误"}
+[FAIL] wanghaiyang 登录失败: {"code":500,"message":"用户名或密码错误"}
+[FAIL] biancongyou 登录失败: {"code":500,"message":"用户名或密码错误"}
+==============================================================
+HTTP 面小结: PASS=1 FAIL=4
+==============================================================
