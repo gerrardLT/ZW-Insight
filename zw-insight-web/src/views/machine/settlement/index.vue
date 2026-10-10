@@ -131,6 +131,7 @@ import {
   exportMachineSettlement
 } from '@/api/machine'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 
 const router = useRouter()
 const loading = ref(false)
@@ -148,7 +149,7 @@ const summary = ref({
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  projectId: undefined as number | undefined,
+  projectId: defaultProjectId(),
   status: undefined as number | undefined,
   dateRange: null as string[] | null
 })
@@ -223,7 +224,7 @@ function handleReset() {
   queryParams.value = {
     pageNum: 1,
     pageSize: 10,
-    projectId: undefined,
+    projectId: defaultProjectId(),
     status: undefined,
     dateRange: null
   }

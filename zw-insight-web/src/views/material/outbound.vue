@@ -123,6 +123,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getMaterialOutboundPage, getMaterialOutboundDetail, createMaterialOutbound, updateMaterialOutbound, deleteMaterialOutbound, submitMaterialOutbound } from '@/api/material'
 import { getProjectPage } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -133,7 +134,7 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 const projectOptions = ref<any[]>([])
 
-const queryParams = ref({ pageNum: 1, pageSize: 10, projectId: undefined as number | undefined, outboundType: '' })
+const queryParams = ref({ pageNum: 1, pageSize: 10, projectId: defaultProjectId(), outboundType: '' })
 const defaultForm = () => ({ id: undefined as number | undefined, projectId: undefined as number | undefined, outboundType: 'PICK', operatorName: '', outboundDate: '', details: [] as any[] })
 const formData = ref(defaultForm())
 const formRules = {
@@ -158,7 +159,7 @@ async function loadProjectOptions() {
   projectOptions.value = res.data?.records || []
 }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
-function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined, outboundType: '' }; loadData() }
+function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, projectId: defaultProjectId(), outboundType: '' }; loadData() }
 function handleAdd() { isEdit.value = false; formData.value = defaultForm(); dialogVisible.value = true }
 async function handleEdit(row: any) {
   isEdit.value = true

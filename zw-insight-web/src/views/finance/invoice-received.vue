@@ -110,6 +110,7 @@ import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getInvoiceReceivedPage, createInvoiceReceived } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 import TaxRateSelector from '@/components/TaxRateSelector.vue'
 
 const formRef = ref<FormInstance>()
@@ -123,7 +124,7 @@ const submitLoading = ref(false)
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  projectId: undefined as number | undefined
+  projectId: defaultProjectId()
 })
 
 const formData = ref({
@@ -172,7 +173,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined }
+  queryParams.value = { pageNum: 1, pageSize: 10, projectId: defaultProjectId() }
   loadData()
 }
 

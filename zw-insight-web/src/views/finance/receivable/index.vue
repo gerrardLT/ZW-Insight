@@ -217,6 +217,7 @@ import {
   type ReceivableDrillChain, type ReceivableDrillLevel, type ReceivableDrillInfoRequest
 } from '@/api/receivable'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 
 const bucketDefs: { key: AgingBucket; label: string }[] = [
   { key: 'NOT_DUE', label: '未到期' },
@@ -232,7 +233,7 @@ const tableData = ref<Receivable[]>([])
 const total = ref(0)
 const aging = ref<ReceivableAging>({ totalOpen: 0, totalOverdue: 0, projects: [] })
 const projectList = ref<any[]>([])
-const query = ref<{ page: number; size: number; projectId?: number; status?: string }>({ page: 1, size: 10 })
+const query = ref<{ page: number; size: number; projectId?: number | string; status?: string }>({ page: 1, size: 10, projectId: defaultProjectId() })
 
 function formatAmount(value?: number) {
   return value != null ? `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}` : '—'

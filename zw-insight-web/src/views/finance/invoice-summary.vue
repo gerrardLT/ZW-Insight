@@ -68,6 +68,7 @@ import { ref, onMounted } from 'vue'
 import type { TableColumnCtx } from 'element-plus'
 import { getInvoiceSummary } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 import type { InvoiceSummary } from '@/types/finance'
 
 const loading = ref(false)
@@ -76,7 +77,7 @@ const projectList = ref<any[]>([])
 const dateRange = ref<[string, string] | null>(null)
 
 const queryParams = ref({
-  projectId: undefined as number | undefined
+  projectId: defaultProjectId()
 })
 
 function formatMoney(val: number) {
@@ -130,7 +131,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { projectId: undefined }
+  queryParams.value = { projectId: defaultProjectId() }
   dateRange.value = null
   loadData()
 }

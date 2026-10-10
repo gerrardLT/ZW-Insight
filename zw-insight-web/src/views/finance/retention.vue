@@ -148,6 +148,7 @@ import {
   createRetentionReturn
 } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 import FieldHelpLabel from '@/components/FieldHelpLabel.vue'
 
 const formRef = ref<FormInstance>()
@@ -164,7 +165,7 @@ const submitLoading = ref(false)
 const queryParams = ref({
   page: 1,
   size: 10,
-  projectId: undefined as number | undefined
+  projectId: defaultProjectId()
 })
 
 const formData = ref({
@@ -235,7 +236,7 @@ function handleSearch() {
   loadData()
 }
 function handleReset() {
-  queryParams.value = { page: 1, size: 10, projectId: undefined }
+  queryParams.value = { page: 1, size: 10, projectId: defaultProjectId() }
   loadData()
 }
 function handleAdd() {

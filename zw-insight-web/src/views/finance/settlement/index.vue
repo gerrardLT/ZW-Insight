@@ -118,6 +118,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getSettlementPage, createSettlement, submitSettlement, exportSettlement } from '@/api/settlement'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 
 const router = useRouter()
 const createFormRef = ref<FormInstance>()
@@ -131,7 +132,7 @@ const createLoading = ref(false)
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  projectId: undefined as number | undefined,
+  projectId: defaultProjectId(),
   status: ''
 })
 
@@ -190,7 +191,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined, status: '' }
+  queryParams.value = { pageNum: 1, pageSize: 10, projectId: defaultProjectId(), status: '' }
   loadData()
 }
 

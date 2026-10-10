@@ -179,6 +179,7 @@ import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
+import { defaultProjectId } from '@/composables/useProjectContext'
 import ContractDetailDrawer from './components/ContractDetailDrawer.vue'
 
 // 列显隐配置（S2.1）：按 contract-table 持久化 localStorage
@@ -223,7 +224,7 @@ async function handleWithdrawContract(row: any) {
 const queryParams = ref({
   page: 1,
   size: 10,
-  projectId: undefined as number | undefined,
+  projectId: defaultProjectId(),
   status: '',
   contractCode: '',
   partyAName: ''
@@ -284,7 +285,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { page: 1, size: 10, projectId: undefined, status: '', contractCode: '', partyAName: '' }
+  queryParams.value = { page: 1, size: 10, projectId: defaultProjectId(), status: '', contractCode: '', partyAName: '' }
   loadData()
   summaryPanelRef.value?.reload()
 }

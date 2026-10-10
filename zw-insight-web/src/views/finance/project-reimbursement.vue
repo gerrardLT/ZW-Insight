@@ -109,6 +109,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getProjectReimbursementPage, createProjectReimbursement, submitProjectReimbursement } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -121,7 +122,7 @@ const submitLoading = ref(false)
 const queryParams = ref({
   page: 1,
   size: 10,
-  projectId: undefined as number | undefined
+  projectId: defaultProjectId()
 })
 
 const formData = ref({
@@ -176,7 +177,7 @@ function handleSearch() {
   loadData()
 }
 function handleReset() {
-  queryParams.value = { page: 1, size: 10, projectId: undefined }
+  queryParams.value = { page: 1, size: 10, projectId: defaultProjectId() }
   loadData()
 }
 function handleAdd() {

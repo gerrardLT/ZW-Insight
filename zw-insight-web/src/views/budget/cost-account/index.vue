@@ -380,6 +380,7 @@ import {
 } from '@/api/cost-account'
 import { getWbsSelectList, type WbsNode } from '@/api/wbs'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 import { toWan, clampPercent } from '@/utils/chart-format'
 
 // 路由实例（承接外部跳转携带的 projectId 查询参数）
@@ -457,7 +458,7 @@ const currentUnmappedDoc = ref<UnmappedDoc | null>(null)
 const bindingAccountId = ref<number | null>(null)
 
 const queryParams = reactive({
-  projectId: null as number | null,
+  projectId: (defaultProjectId() ?? null) as number | string | null,
   costCategory: '',
   status: ''
 })

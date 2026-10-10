@@ -73,6 +73,16 @@
           <AppBreadcrumb />
         </div>
         <div class="header-right">
+          <!-- 全局项目上下文：选中后各页项目筛选默认选中该项目；清空=全部项目 -->
+          <ProjectSelector
+            class="header-project"
+            :model-value="appStore.currentProjectId ?? undefined"
+            :auto-default="false"
+            placeholder="全部项目"
+            width="176px"
+            data-testid="global-project-switcher"
+            @change="handleGlobalProjectChange"
+          />
           <!-- 最近访问（方案A）：全局任务恢复入口，与域无关，收进顶栏 -->
           <el-dropdown
             trigger="click"
@@ -166,7 +176,7 @@
       <main class="layout-main">
         <router-view v-slot="{ Component }">
           <transition name="fade-slide" mode="out-in">
-            <component :is="Component" />
+            <component :is="Component" :key="projectViewKey" />
           </transition>
         </router-view>
       </main>
@@ -215,6 +225,7 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import GuideQuickDrawer from '@/components/GuideQuickDrawer.vue'
 import ZwAvatar from '@/components/ZwAvatar.vue'
 import NavLink from '@/components/NavLink.vue'
+import ProjectSelector from '@/components/ProjectSelector.vue'
 import { useGuideStore } from '@/stores/guide'
 import { useShortcuts, ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
 import { useCommandPalette, type PaletteCommand } from '@/composables/useCommandPalette'
@@ -232,6 +243,20 @@ const route = useRoute()
 const userStore = useUserStore()
 const appStore = useAppStore()
 const guideStore = useGuideStore()
+
+/* ================= 全局项目上下文（顶栏切换器） =================
+ * appStore.currentProjectId 早已定义并持久化，但此前无任何页面读写；
+ * 这里把它接出来：顶栏选择后写入上下文，各页筛选器据此初始化默认项目。
+ * 切换项目时给 router-view 换 key 强制重挂载，使当前页按新上下文重新初始化。 */
+const projectViewKey = computed(() => String(appStore.currentProjectId ?? 'all'))
+
+function handleGlobalProjectChange(val: number | string | undefined, item?: { projectName?: string }) {
+  if (val === undefined || val === null || val === '') {
+    appStore.clearProjectContext()
+  } else {
+    appStore.setCurrentProject(val, item?.projectName || '')
+  }
+}
 // 品牌 Store：Logo 双态（亮底黑字/暗底反白）、系统名称与副标题按部署环境动态取值，
 // 详见 stores/brand.ts；App.vue 已在应用启动时拉取配置
 const brandStore = useBrandStore()
@@ -673,6 +698,11 @@ onBeforeUnmount(() => {
   gap: var(--zw-space-xs);
 }
 
+/* 全局项目切换器：与图标按钮同高，窄屏隐藏（改由各页自选） */
+.header-project {
+  width: 176px;
+}
+
 .header-action {
   width: 36px;
   height: 36px;
@@ -766,6 +796,8 @@ onBeforeUnmount(() => {
   /* 窄屏只保留高频动作（最近访问/命令面板/帮助），主题与消息收纳进用户菜单场景 */
   .layout-header .header-action[aria-label="切换主题"],
   .layout-header .header-action[aria-label="消息通知"] { display: none; }
+  /* 窄屏顶栏空间不足以容纳项目切换器，隐藏后由各页自选 */
+  .header-project { display: none; }
 }
 </style>
 

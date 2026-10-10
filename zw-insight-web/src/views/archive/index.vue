@@ -134,13 +134,14 @@ import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 import { getProjectArchive } from '@/api/archive'
 import type { Project } from '@/types/project'
 
 const projectLoading = ref(false)
 const loading = ref(false)
 const projectOptions = ref<Project[]>([])
-const selectedProjectId = ref<number | undefined>()
+const selectedProjectId = ref<number | string | undefined>(defaultProjectId())
 
 const project = ref<Record<string, any>>({})
 const members = ref<any[]>([])

@@ -161,6 +161,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getBudgetPage, createBudget, updateBudget, deleteBudget, submitBudget, getBudgetDetailsByBudgetId } from '@/api/budget'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 import { getBudgetExecution } from '@/api/dashboard'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
@@ -198,7 +199,7 @@ const importBudgetId = ref<number | undefined>(undefined)
 const queryParams = ref({
   page: 1,
   size: 10,
-  projectId: undefined as number | undefined
+  projectId: defaultProjectId()
 })
 
 const formData = ref({
@@ -245,7 +246,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { page: 1, size: 10, projectId: undefined }
+  queryParams.value = { page: 1, size: 10, projectId: defaultProjectId() }
   loadData()
   execPanelRef.value?.reload()
 }
