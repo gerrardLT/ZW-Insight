@@ -1,8 +1,8 @@
 <template>
   <div class="cockpit-container">
     <!-- 顶部筛选 + 数据时间（§18 顶部 5% / §14 全局筛选器）
-         已实现：所属公司 / 项目 / 年度 / 刷新 + 6 个快捷筛选，可选项均取自
-         /cockpit/filter-options 真实数据（公司=项目表 distinct owner_company）。
+         已实现：业主单位 / 项目 / 年度 / 刷新 + 6 个快捷筛选，可选项均取自
+         /cockpit/filter-options 真实数据（业主单位=项目表 distinct owner_company，即甲方）。
          ⚠ §14 另要求「区域」「项目经理」：biz_project 无 region / project_manager 列，
          全仓亦无项目经理字段 → 无数据源，故置灰并在 tooltip 说明原因，不做选了不生效的假下拉。 -->
     <div class="cockpit-header">
@@ -11,7 +11,7 @@
         <span class="header-hint">30 秒看懂经营 → 3 分钟定位异常 → 10 分钟追到单据</span>
       </div>
       <div class="header-actions">
-        <el-select v-model="companyFilter" clearable placeholder="全部公司" style="width: 150px"
+        <el-select v-model="companyFilter" clearable placeholder="全部业主单位" style="width: 150px"
           @change="onCompanyChange">
           <el-option v-for="c in filterOptions.companies" :key="c.companyId"
             :label="c.companyName" :value="c.companyId" />
@@ -349,7 +349,7 @@ const yearOptions = computed(() => {
 })
 
 // ==================== 全局筛选（UI §14）====================
-// 可选项全部取自后端 /filter-options 真实数据，前端不写死公司/项目/快捷筛选清单
+// 可选项全部取自后端 /filter-options 真实数据，前端不写死业主单位/项目/快捷筛选清单
 const companyFilter = ref<number | undefined>(undefined)
 const projectFilter = ref<number | undefined>(undefined)
 const quickFilter = ref('ALL')
@@ -357,7 +357,7 @@ const filterOptions = ref<CockpitFilterOptions>({
   companies: [], projects: [], quickFilters: [], unsupportedDimensions: []
 })
 
-/** 项目下拉随所属公司联动（未选公司时列出全部项目） */
+/** 项目下拉随业主单位联动（未选业主单位时列出全部项目） */
 const scopedProjectOptions = computed(() =>
   companyFilter.value == null
     ? filterOptions.value.projects
@@ -371,7 +371,7 @@ function dimensionLabel(code: string) {
   return code === 'REGION' ? '区域' : code === 'PROJECT_MANAGER' ? '项目经理' : code
 }
 
-/** 切换公司时清空已选项目（否则可能带着其他公司的 projectId 去筛） */
+/** 切换业主单位时清空已选项目（否则可能带着其他业主单位的 projectId 去筛） */
 function onCompanyChange() {
   projectFilter.value = undefined
   loadAll()
@@ -384,7 +384,7 @@ async function loadFilterOptions() {
       filterOptions.value = res.data
     }
   } catch (e: any) {
-    // 筛选器可选项加载失败不阻断首屏，但必须显式告知（否则用户以为“没有公司可选”）
+    // 筛选器可选项加载失败不阻断首屏，但必须显式告知（否则用户以为“没有业主单位可选”）
     ElMessage.error('加载筛选器可选项失败：' + (e?.message || '接口异常'))
   }
 }
@@ -579,7 +579,7 @@ const metricCards = computed(() => {
       tooltip: '资金流转 §10.4：缺口 = 未来 3 个月预计支付 − 可用资金（正数=缺钱）。'
         + '可用资金 = 账户余额快照 + 窗口内预计回款'
         + (o.gapBasis === 'PROJECT_SNAPSHOT_WITHOUT_ACCOUNT_BALANCE'
-          ? '；当前为公司/项目筛选口径，账户余额无法拆分故未计入，数值偏保守' : ''),
+          ? '；当前为业主单位/项目筛选口径，账户余额无法拆分故未计入，数值偏保守' : ''),
       alert: gapPositive
     }
   ]
@@ -994,7 +994,7 @@ watch(() => appStore.isDark, () => renderCharts())
 
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
-  // 筛选器可选项先加载（公司/项目/快捷筛选/无数据源维度均由后端下发）
+  // 筛选器可选项先加载（业主单位/项目/快捷筛选/无数据源维度均由后端下发）
   await loadFilterOptions()
   await loadAll()
   await ensureRisksScanned()

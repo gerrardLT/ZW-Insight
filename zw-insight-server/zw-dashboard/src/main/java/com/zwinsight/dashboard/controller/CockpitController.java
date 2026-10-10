@@ -47,7 +47,7 @@ public class CockpitController {
     /**
      * 经营总览 8 卡（§4）：合同收入/预计总成本/预计利润/预计利润率
      * + 累计回款/累计支付/应收未收/90天资金缺口，另附账户资金与已实现利润。
-     * <p>UI §14 全局筛选：{@code ownerCompanyId}（所属公司）/ {@code projectId}（项目）。
+     * <p>UI §14 全局筛选：{@code ownerCompanyId}（业主单位）/ {@code projectId}（项目）。
      * 有筛选时资金缺口读项目级快照且<b>不含账户余额</b>（无法拆分），
      * 响应体 {@code gapBasis} 标明口径，前端必须展示该提示。</p>
      */
@@ -59,7 +59,7 @@ public class CockpitController {
     }
 
     /**
-     * 全局筛选器可选项（UI §14）：所属公司 / 项目 / 6 个快捷筛选。
+     * 全局筛选器可选项（UI §14）：业主单位 / 项目 / 6 个快捷筛选。
      * <p>同时返回 {@code unsupportedDimensions}：区域与项目经理<b>无数据源</b>，
      * 前端据此置灰并说明原因，不得做成选了不生效的假下拉。</p>
      */
@@ -100,7 +100,7 @@ public class CockpitController {
      *
      * @param quickFilter    快捷筛选（ALL/HIGH_RISK/LOSS/FUND_TIGHT/PROFIT_DOWN/MONTH_ABNORMAL）；
      *                       非法值报 400，不静默当作“全部”
-     * @param ownerCompanyId 所属公司筛选（UI §14）
+     * @param ownerCompanyId 业主单位筛选（UI §14）
      * @param projectId      项目筛选（UI §14）
      */
     @GetMapping("/project-health")

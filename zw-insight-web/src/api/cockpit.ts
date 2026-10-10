@@ -163,7 +163,7 @@ export interface ProjectHealth {
 
 /** 全局筛选器可选项（UI §14） */
 export interface CockpitFilterOptions {
-  /** 所属公司（取项目表 distinct 真实值，不造虚拟公司） */
+  /** 业主单位（取项目表 distinct owner_company 真实值，不造虚拟单位） */
   companies: { companyId: number; companyName: string }[]
   projects: {
     projectId: number
@@ -245,7 +245,7 @@ export interface CockpitProfitTrend {
 }
 
 /**
- * 经营总览 8 卡（UI §14 全局筛选：所属公司 / 项目，均可选）。
+ * 经营总览 8 卡（UI §14 全局筛选：业主单位 / 项目，均可选）。
  * 有筛选时资金缺口读项目级快照且不含账户余额，须按 gapBasis 提示口径。
  */
 export function getCockpitOverview(params?: { ownerCompanyId?: number; projectId?: number }) {

@@ -91,7 +91,7 @@ public class CockpitService {
      * （biz_project 无 region / project_manager 列，全仓亦无项目经理字段），
      * 故不提供该筛选，避免做出选了不生效的假下拉。</p>
      *
-     * @param ownerCompanyId 所属公司ID（空=不限）
+     * @param ownerCompanyId 业主单位ID（空=不限）
      * @param projectId      项目ID（空=不限；与 ownerCompanyId 同时传时取交集）
      */
     public Map<String, Object> getOverview(Long ownerCompanyId, Long projectId) {
@@ -208,9 +208,9 @@ public class CockpitService {
     }
 
     /**
-     * 全局筛选器可选项（UI §14）：所属公司清单 + 项目清单。
-     * <p>数据源为真实项目表的 distinct 值，<b>不造虚拟公司</b>；未登记所属公司的项目
-     * 归入“未分配公司”且不可作为筛选项（否则筛不到任何数据）。
+     * 全局筛选器可选项（UI §14）：业主单位清单 + 项目清单。
+     * <p>数据源为真实项目表的 distinct 值，<b>不造虚拟单位</b>；未登记业主单位的项目
+     * 归入“未分配业主单位”且不可作为筛选项（否则筛不到任何数据）。
      * 区域/项目经理无数据源，故不返回该维度。</p>
      */
     public Map<String, Object> getFilterOptions() {
@@ -362,12 +362,12 @@ public class CockpitService {
 
     /**
      * 项目经营健康度 + 快捷筛选 + 全局筛选（UI §14）。
-     * <p>公司/项目筛选先于快捷筛选生效（先缩小范围再按异常类型过滤），
+     * <p>业主单位/项目筛选先于快捷筛选生效（先缩小范围再按异常类型过滤），
      * 两层筛选均基于已算出的真实指标，不额外估算。筛选范围内无项目时返回空列表
-     * （而非全量），避免“选了公司却看到其他公司项目”的口径错位。</p>
+     * （而非全量），避免“选了业主单位却看到其他单位项目”的口径错位。</p>
      *
      * @param quickFilter    快捷筛选码（空/ALL = 不筛选）
-     * @param ownerCompanyId 所属公司ID（空=不限）
+     * @param ownerCompanyId 业主单位ID（空=不限）
      * @param projectId      项目ID（空=不限）
      */
     public List<Map<String, Object>> getProjectHealth(String quickFilter, Long ownerCompanyId, Long projectId) {

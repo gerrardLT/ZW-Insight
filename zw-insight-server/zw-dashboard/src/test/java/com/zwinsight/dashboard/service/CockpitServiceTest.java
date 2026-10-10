@@ -443,7 +443,7 @@ class CockpitServiceTest {
     }
 
     @Nested
-    @DisplayName("UI §14 全局筛选（所属公司 / 项目）与筛选器可选项")
+    @DisplayName("UI §14 全局筛选（业主单位 / 项目）与筛选器可选项")
     class ScopeFilterTests {
 
         private BizFundRollingForecast projectForecast(Long projectId, String month,
@@ -462,7 +462,7 @@ class CockpitServiceTest {
         }
 
         @Test
-        @DisplayName("正常路径 — 按公司筛选仅聚合范围内项目，且不得把公司级账户余额冒充项目级可用资金")
+        @DisplayName("正常路径 — 按业主单位筛选仅聚合范围内项目，且不得把公司级账户余额冒充项目级可用资金")
         void overview_companyFilter_scopedAggregation() {
             // 全量有 2 个项目，但筛选后范围仅项目1（projectMapper 返回已过滤的集合）
             when(profitSnapshotService.listProjectForecasts()).thenReturn(List.of(
@@ -507,7 +507,7 @@ class CockpitServiceTest {
         void overview_emptyScope_zeroNotFallback() {
             when(profitSnapshotService.listProjectForecasts()).thenReturn(List.of(
                     forecastRow(1L, "项目1", "8000000", "5000000", "3000000")));
-            // 该公司下无项目
+            // 该业主单位下无项目
             when(projectMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
             when(rollingForecastMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
 
@@ -520,7 +520,7 @@ class CockpitServiceTest {
             // 空集合不得传给 Mapper（否则 foreach 生成 IN () 直接报 SQL 语法错）
             verify(contractPayableMapper, never()).sumPayableOutstandingByProjects(any());
             verify(paymentApplyMapper, never()).sumApprovedUnpaidRemainingByProjects(any());
-            // 也不得回退到全量口径（那会把其他公司的应付归到本公司头上）
+            // 也不得回退到全量口径（那会把其他业主单位的应付归到本单位头上）
             verify(contractPayableMapper, never()).sumPayableOutstanding(any());
         }
 
@@ -553,7 +553,7 @@ class CockpitServiceTest {
         }
 
         @Test
-        @DisplayName("筛选器可选项 — 公司/项目取真实 distinct 值，6 个快捷筛选齐备，无数据源维度如实声明")
+        @DisplayName("筛选器可选项 — 业主单位/项目取真实 distinct 值，6 个快捷筛选齐备，无数据源维度如实声明")
         @SuppressWarnings("unchecked")
         void filterOptions_realValuesAndUnsupportedDeclared() {
             BizProject withCompany = project(1L, "0", "0", "0");
@@ -566,7 +566,7 @@ class CockpitServiceTest {
             Map<String, Object> result = cockpitService.getFilterOptions();
 
             List<Map<String, Object>> companies = (List<Map<String, Object>>) result.get("companies");
-            // 未登记所属公司的项目不得造出虚拟公司选项
+            // 未登记业主单位的项目不得造出虚拟单位选项
             assertThat(companies).hasSize(1);
             assertThat(companies.get(0).get("companyName")).isEqualTo("华东建设");
             assertThat((List<Map<String, Object>>) result.get("projects")).hasSize(2);
