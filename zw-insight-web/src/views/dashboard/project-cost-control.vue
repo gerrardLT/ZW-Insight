@@ -345,8 +345,8 @@
 
 <script setup lang="ts">
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
-import { ref, computed, reactive, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, reactive, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
@@ -358,6 +358,7 @@ import emptyLight from '@/assets/empty-blueprint.png'
 import emptyDark from '@/assets/empty-blueprint-dark.png'
 
 const router = useRouter()
+const route = useRoute()
 const appStore = useAppStore()
 // 空状态插画随明暗主题切换（与 project-dashboard / StatChartPanel 同口径；
 // 此前本页只引用未定义 emptyImg，导致 <img :src> 绑定 undefined 而显示破损图标）
@@ -437,7 +438,7 @@ async function loadBizView() {
     const res: any = await getProjectHealth()
     const list: ProjectHealth[] = res.data || []
     // 未命中（如项目状态不在快照范围）时为 null，模板展示空态而不伪造 0
-    bizHealth.value = list.find(p => p.projectId === selectedProjectId.value) || null
+    bizHealth.value = list.find(p => String(p.projectId) === String(selectedProjectId.value)) || null
   } catch (e: any) {
     bizHealth.value = null
     ElMessage.error(`加载经营视角失败：${e?.message || '接口异常'}`)
@@ -506,7 +507,16 @@ function goChangeEvents() {
   if (selectedProjectId.value) router.push({ path: '/contract/change-event', query: { projectId: selectedProjectId.value } })
 }
 
-const selectedProjectId = ref<number>()
+// 下钻携带的项目上下文（经营总览「详情」/风险中心 → /project-cost-control?projectId=xx）：
+// setup 期同步取值作为初值，使 ProjectSelector 不再回落全局项目，避免二次加载与请求竞态
+const initialProjectId = (() => {
+  const raw = route?.query?.projectId
+  const pid = Array.isArray(raw) ? raw[0] : raw
+  return pid != null && String(pid).trim() !== '' ? pid : undefined
+})()
+
+// 雪花 ID 经 Jackson 序列化为 string，路由 query 亦为 string，故不做 Number 强转（会截断）
+const selectedProjectId = ref<number | string | undefined>(initialProjectId)
 const searchQuery = ref('')
 const treeRef = ref<any>()
 
@@ -712,6 +722,11 @@ watch(selectedProjectId, (newVal) => {
     approvedChangeDelta.value = 0
     bizHealth.value = null
   }
+})
+
+// 初值来自下钻 query 时主动加载一次（上面的 watch 只响应后续变化，不触发初始化）
+onMounted(() => {
+  if (initialProjectId != null) loadAll()
 })
 </script>
 

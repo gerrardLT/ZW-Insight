@@ -176,7 +176,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getRiskSummary, getRiskPage, handleRisk, scanRisks,
@@ -186,6 +186,7 @@ import { getProjectList } from '@/api/project'
 import { formatWan } from '@/utils/chart-format'
 
 const router = useRouter()
+const route = useRoute()
 
 /** 风险类型中文（与后端 RiskRule.riskType() 值域一致） */
 const RISK_TYPE_LABELS: Record<string, string> = {
@@ -214,7 +215,7 @@ const total = ref(0)
 const projectList = ref<any[]>([])
 const query = ref<{
   page: number; size: number; severity?: string; handleStatus?: string;
-  riskType?: string; projectId?: number
+  riskType?: string; projectId?: number | string
 }>({ page: 1, size: 20 })
 
 const detailVisible = ref(false)
@@ -403,6 +404,12 @@ async function searchProject(keyword: string) {
 }
 
 onMounted(() => {
+  // 承接下钻携带的项目上下文（成本主线看板 → /cockpit/risk-center?projectId=xx）
+  const raw = route?.query?.projectId
+  const pid = Array.isArray(raw) ? raw[0] : raw
+  if (pid != null && String(pid).trim() !== '') {
+    query.value.projectId = pid
+  }
   loadSummary()
   loadList()
   searchProject('')

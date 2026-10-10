@@ -194,6 +194,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, RefreshLeft } from '@element-plus/icons-vue'
 import {
@@ -211,6 +212,7 @@ import { toWan } from '@/utils/chart-format'
 import ChangeEventDetailDrawer from './detail-drawer.vue'
 import ChangeEventFormModal from './form-modal.vue'
 
+const route = useRoute()
 const loading = ref(false)
 const list = ref<BizChangeEvent[]>([])
 const projectList = ref<any[]>([])
@@ -392,6 +394,12 @@ function handleSaved() {
 
 onMounted(async () => {
   await searchProject('')
+  // 承接下钻携带的项目上下文（成本主线看板 → /contract/change-event?projectId=xx），优先于全局默认
+  const raw = route?.query?.projectId
+  const pid = Array.isArray(raw) ? raw[0] : raw
+  if (pid != null && String(pid).trim() !== '') {
+    filters.projectId = pid
+  }
   await loadList()
 })
 

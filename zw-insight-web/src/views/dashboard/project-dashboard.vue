@@ -251,6 +251,7 @@
 <script setup lang="ts">
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, reactive, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
@@ -273,10 +274,19 @@ import ZwStateIllustration from '@/components/visual/ZwStateIllustration.vue'
 import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
 
 const appStore = useAppStore()
+const route = useRoute()
+
+// 下钻携带的项目上下文（风险中心 → /project-dashboard?projectId=xx）：
+// setup 期同步取初值，避免 ProjectSelector 回落全局项目造成二次加载
+const initialProjectId = (() => {
+  const raw = route?.query?.projectId
+  const pid = Array.isArray(raw) ? raw[0] : raw
+  return pid != null && String(pid).trim() !== '' ? pid : undefined
+})()
 
 // 当前选中的项目 ID：后端雪花 ID 超出 JS 安全整数，真实序列化为 string，
 // 故此处为 number | string（与 ProjectSelector/卡片回传原生类型一致，不做强转）
-const selectedProjectId = ref<number | string | undefined>()
+const selectedProjectId = ref<number | string | undefined>(initialProjectId)
 
 // ======================== 项目墙（L1）：卡片网格即看板入口 ========================
 
@@ -486,6 +496,8 @@ function fmtWan(v: number): string {
 
 onMounted(() => {
   loadWall()
+  // 初值来自下钻 query 时直接进入对应项目看板（用户无需再选一次）
+  if (initialProjectId != null) handleProjectChange(initialProjectId)
 })
 
 // ======================== ECharts 图表渲染（task 8.3） ========================
