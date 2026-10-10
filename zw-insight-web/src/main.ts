@@ -9,6 +9,7 @@ import { EP_ICON_MAP } from './components/icons/registry'
 import App from './App.vue'
 import router from './router'
 import { permissionDirective } from './utils/permission'
+import { isDialogDismiss } from './utils/dialog'
 
 // 字体（自托管子集，零 CDN）：Display 层 Barlow Condensed（D-DIN 开源替代）+ 账本数字 JetBrains Mono；中文零 webfont 走系统栈
 import '@fontsource/barlow-condensed/latin-700.css'
@@ -46,6 +47,8 @@ app.directive('permission', permissionDirective)
 
 // Global error boundary: render errors + uncaught promise rejection handling
 app.config.errorHandler = (err, instance, info) => {
+  // 弹窗取消/关闭（ElMessageBox reject 字符串 'cancel'/'close'）是正常交互，不是错误
+  if (isDialogDismiss(err)) return
   const errMsg = (err as any)?.message || String(err)
   if (/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(errMsg)) {
     console.warn('[GlobalError] 捕获到过期静态 Chunk 加载失败，忽略全局弹窗提示')
@@ -56,6 +59,11 @@ app.config.errorHandler = (err, instance, info) => {
 }
 window.addEventListener('unhandledrejection', event => {
   if (event.reason?.__zwHandled) {
+    event.preventDefault()
+    return
+  }
+  // 未捕获的弹窗取消/关闭（ElMessageBox rejection）同理：静默忽略，不提示系统异常
+  if (isDialogDismiss(event.reason)) {
     event.preventDefault()
     return
   }
