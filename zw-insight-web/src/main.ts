@@ -46,6 +46,11 @@ app.directive('permission', permissionDirective)
 
 // Global error boundary: render errors + uncaught promise rejection handling
 app.config.errorHandler = (err, instance, info) => {
+  const errMsg = (err as any)?.message || String(err)
+  if (/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(errMsg)) {
+    console.warn('[GlobalError] 捕获到过期静态 Chunk 加载失败，忽略全局弹窗提示')
+    return
+  }
   console.error('[GlobalError]', info, err)
   ElMessage.error('页面渲染异常，请刷新重试')
 }
@@ -55,6 +60,17 @@ window.addEventListener('unhandledrejection', event => {
     return
   }
   const reason = event.reason?.message || String(event.reason)
+  if (/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(reason)) {
+    event.preventDefault()
+    const lastReload = Number(sessionStorage.getItem('last_chunk_reload') || '0')
+    const now = Date.now()
+    if (now - lastReload > 10000) {
+      sessionStorage.setItem('last_chunk_reload', String(now))
+      console.warn('[PromiseRejection] 捕获到旧客户端 Chunk 404，自动刷新页面拉取最新版本资源')
+      window.location.reload()
+    }
+    return
+  }
   console.error('[PromiseRejection]', reason, event)
   ElMessage.error('系统异常，请刷新页面')
 })

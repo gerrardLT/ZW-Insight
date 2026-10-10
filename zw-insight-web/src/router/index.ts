@@ -1112,4 +1112,24 @@ router.afterEach(() => {
   NProgress.done()
 })
 
+// 捕获新版本发布后旧客户端拉取过期 Chunk 失败异常（ChunkLoadError / Failed to fetch dynamically imported module）
+router.onError((error, to) => {
+  NProgress.done()
+  const errorMsg = error?.message || String(error)
+  const pattern = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i
+  if (pattern.test(errorMsg)) {
+    const targetPath = to?.fullPath || window.location.pathname
+    const key = `reload_chunk_${targetPath}`
+    const lastReload = Number(sessionStorage.getItem(key) || '0')
+    const now = Date.now()
+    // 防抖：10 秒内只自动重载一次，避免由于真实网络不可达引发死循环
+    if (now - lastReload > 10000) {
+      sessionStorage.setItem(key, String(now))
+      console.warn('[Router] 检测到系统已发布新版本，自动重载以加载最新静态资源:', targetPath)
+      window.location.href = targetPath
+      return
+    }
+  }
+})
+
 export default router

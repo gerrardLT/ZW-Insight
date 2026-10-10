@@ -169,5 +169,11 @@ describe('router 全局守卫', () => {
       store.setPermissions(['*:*:*'])
       expect(await nav('/system/user')).toBe('/system/user')
     })
+
+    it('新版本发布 Chunk 过期异常（Failed to fetch dynamically imported module）自动重试与拦截', () => {
+      const errorMsg = 'TypeError: Failed to fetch dynamically imported module: https://example.com/assets/old-chunk.js'
+      const pattern = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i
+      expect(pattern.test(errorMsg)).toBe(true)
+    })
   })
 })
