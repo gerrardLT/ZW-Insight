@@ -29,7 +29,7 @@
             <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" />
+        <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column prop="publishTime" label="发布时间" width="170" />
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">

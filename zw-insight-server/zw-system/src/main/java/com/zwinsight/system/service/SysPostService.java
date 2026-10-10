@@ -93,6 +93,7 @@ public class SysPostService {
         if (post.getPostName() != null) existing.setPostName(post.getPostName());
         if (post.getPostCode() != null) existing.setPostCode(post.getPostCode());
         if (post.getSortOrder() != null) existing.setSortOrder(post.getSortOrder());
+        if (post.getRemark() != null) existing.setRemark(post.getRemark());
         if (post.getStatus() != null) {
             assertValidStatus(post.getStatus());
             existing.setStatus(post.getStatus());

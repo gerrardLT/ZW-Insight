@@ -131,7 +131,9 @@
         <el-form-item label="最大用户数" prop="maxUsers">
           <el-input-number v-model="formData.maxUsers" :min="1" :max="9999" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="有效天数" prop="customDays">
+        <!-- 有效天数仅新建时生效：编辑走 PUT /tenant/{id} 接收 SysTenant 实体（无 customDays 字段），
+             有效期变更须走「续期」入口。 -->
+        <el-form-item v-if="!formData.id" label="有效天数" prop="customDays">
           <el-input-number v-model="formData.customDays" :min="1" :max="3650" style="width: 100%" />
           <div class="form-tip">仅「企业」类型按此天数设置有效期，其他类型用默认天数</div>
         </el-form-item>
