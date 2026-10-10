@@ -223,13 +223,13 @@ export function submitRetentionReturn(id: number) {
 // ======================== 财务统计 ========================
 // 后端：FinanceStatisticsController /api/v1/finance/statistics
 
-/** 回款率分析（已回款对比已开票） */
-export function getCollectionRate(projectId: number) {
+/** 回款率分析（已回款对比已开票）；projectId 省略时跨项目汇总全部 */
+export function getCollectionRate(projectId?: number | string) {
   return request.get<R<any>>('/v1/finance/statistics/collection-rate', { params: { projectId } })
 }
 
-/** 资金计划（按月应付预测，聚合已审批付款申请） */
-export function getFundPlan(projectId: number, months = 6) {
+/** 资金计划（按月应付预测，聚合已审批付款申请）；projectId 省略时跨项目汇总全部 */
+export function getFundPlan(projectId?: number | string, months = 6) {
   return request.get<R<any[]>>('/v1/finance/statistics/fund-plan', { params: { projectId, months } })
 }
 

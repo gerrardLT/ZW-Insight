@@ -26,18 +26,20 @@ public class ContractStatisticsController {
 
     /**
      * 合同金额汇总（合同金额/变更/产值/开票/收款 + 状态分布）
+     * <p>{@code projectId} 可空：不传即跨项目汇总全部（未选项目的默认口径）。</p>
      */
     @GetMapping("/amount-summary")
-    public R<ContractAmountSummaryVO> amountSummary(@RequestParam Long projectId) {
+    public R<ContractAmountSummaryVO> amountSummary(@RequestParam(required = false) Long projectId) {
         return R.ok(contractStatisticsService.getAmountSummary(projectId));
     }
 
     /**
      * 产值完成率趋势（按月聚合已审批产值上报）
+     * <p>{@code projectId} 可空：不传即跨项目汇总全部（未选项目的默认口径）。</p>
      */
     @GetMapping("/output-trend")
     public R<List<OutputTrendItemVO>> outputTrend(
-            @RequestParam Long projectId,
+            @RequestParam(required = false) Long projectId,
             @RequestParam(defaultValue = "12") Integer months) {
         return R.ok(contractStatisticsService.getOutputTrend(projectId, months));
     }

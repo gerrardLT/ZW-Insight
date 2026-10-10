@@ -26,18 +26,20 @@ public class FinanceStatisticsController {
 
     /**
      * 回款率分析（已回款对比已开票）
+     * <p>{@code projectId} 可空：不传即跨项目汇总全部（未选项目的默认口径）。</p>
      */
     @GetMapping("/collection-rate")
-    public R<CollectionRateVO> collectionRate(@RequestParam Long projectId) {
+    public R<CollectionRateVO> collectionRate(@RequestParam(required = false) Long projectId) {
         return R.ok(financeStatisticsService.getCollectionRate(projectId));
     }
 
     /**
      * 资金计划（按月应付预测，聚合已审批付款申请）
+     * <p>{@code projectId} 可空：不传即跨项目汇总全部（未选项目的默认口径）。</p>
      */
     @GetMapping("/fund-plan")
     public R<List<FundPlanItemVO>> fundPlan(
-            @RequestParam Long projectId,
+            @RequestParam(required = false) Long projectId,
             @RequestParam(defaultValue = "6") Integer months) {
         return R.ok(financeStatisticsService.getFundPlan(projectId, months));
     }

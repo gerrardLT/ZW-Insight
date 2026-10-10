@@ -136,8 +136,8 @@ async function handleSubmit(row: any) { await ElMessageBox.confirm('确定要提
 const costPanelRef = ref<InstanceType<typeof StatChartPanel>>()
 
 async function fetchCostRatio() {
-  if (!queryParams.value.projectId) throw new Error('请先选择项目后查看劳务成本占比')
-  const res: any = await getLaborCostRatio(queryParams.value.projectId)
+  // 未选项目时后端跨项目汇总全部（与列表同口径），不再要求先选项目
+  const res: any = await getLaborCostRatio(queryParams.value.projectId || undefined)
   return res.data
 }
 

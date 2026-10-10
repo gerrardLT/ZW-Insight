@@ -44,22 +44,20 @@ public class FinanceStatisticsService {
     /**
      * 回款率分析（已审批回款对比已审批开票）
      *
-     * @param projectId 项目ID
+     * @param projectId 项目ID；为 null 时跨项目汇总全部（未选项目的默认口径）
      * @return 回款率
      */
     public CollectionRateVO getCollectionRate(Long projectId) {
-        validateProjectId(projectId);
-
         List<BizPaymentReceived> receivedList = paymentReceivedMapper.selectList(
                 new LambdaQueryWrapper<BizPaymentReceived>()
-                        .eq(BizPaymentReceived::getProjectId, projectId)
+                        .eq(projectId != null, BizPaymentReceived::getProjectId, projectId)
                         .eq(BizPaymentReceived::getStatus, STATUS_APPROVED));
         List<BizInvoiceApply> invoiceList = invoiceApplyMapper.selectList(
                 new LambdaQueryWrapper<BizInvoiceApply>()
-                        .eq(BizInvoiceApply::getProjectId, projectId)
+                        .eq(projectId != null, BizInvoiceApply::getProjectId, projectId)
                         .eq(BizInvoiceApply::getStatus, STATUS_APPROVED));
         if (receivedList.isEmpty() && invoiceList.isEmpty()) {
-            throw new BusinessException("该项目暂无已审批的开票或回款数据");
+            throw new BusinessException(projectId == null ? "暂无已审批的开票或回款数据" : "该项目暂无已审批的开票或回款数据");
         }
 
         BigDecimal totalReceived = sumField(receivedList, BizPaymentReceived::getReceiveAmount);
@@ -77,21 +75,20 @@ public class FinanceStatisticsService {
     /**
      * 资金计划（已审批付款申请按付款日期月份聚合的应付预测）
      *
-     * @param projectId 项目ID
+     * @param projectId 项目ID；为 null 时跨项目汇总全部（未选项目的默认口径）
      * @param months    返回的月份数（默认 6，上限 24）
      * @return 计划列表（按月份升序）
      */
     public List<FundPlanItemVO> getFundPlan(Long projectId, Integer months) {
-        validateProjectId(projectId);
         int limit = months == null ? 6 : Math.min(Math.max(months, 1), MAX_PLAN_MONTHS);
 
         List<BizPaymentApply> applies = paymentApplyMapper.selectList(
                 new LambdaQueryWrapper<BizPaymentApply>()
-                        .eq(BizPaymentApply::getProjectId, projectId)
+                        .eq(projectId != null, BizPaymentApply::getProjectId, projectId)
                         .eq(BizPaymentApply::getStatus, STATUS_APPROVED)
                         .isNotNull(BizPaymentApply::getPaymentDate));
         if (applies.isEmpty()) {
-            throw new BusinessException("该项目暂无已审批的付款申请");
+            throw new BusinessException(projectId == null ? "暂无已审批的付款申请" : "该项目暂无已审批的付款申请");
         }
 
         // 按付款日期月份分组（TreeMap 保证月份升序）
@@ -114,12 +111,6 @@ public class FinanceStatisticsService {
 
         // 仅返回最近 limit 个月份
         return plan.size() > limit ? plan.subList(plan.size() - limit, plan.size()) : plan;
-    }
-
-    private void validateProjectId(Long projectId) {
-        if (projectId == null) {
-            throw new BusinessException("项目ID不能为空");
-        }
     }
 
     private <T> BigDecimal sumField(List<T> list, Function<T, BigDecimal> getter) {

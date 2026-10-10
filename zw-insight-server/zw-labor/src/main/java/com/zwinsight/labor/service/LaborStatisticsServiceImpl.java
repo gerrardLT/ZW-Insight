@@ -41,12 +41,11 @@ public class LaborStatisticsServiceImpl implements LaborStatisticsService {
 
     @Override
     public List<PayrollTrendItemVO> getPayrollTrend(Long projectId, Integer months) {
-        validateProjectId(projectId);
         int limit = months == null ? 12 : Math.min(Math.max(months, 1), MAX_TREND_MONTHS);
 
         List<BizLaborPayroll> payrolls = queryEffectivePayrolls(projectId);
         if (payrolls.isEmpty()) {
-            throw new BusinessException("该项目暂无已审批的工资单");
+            throw new BusinessException(projectId == null ? "暂无已审批的工资单" : "该项目暂无已审批的工资单");
         }
 
         // 按周期起始月份分组（TreeMap 保证月份升序）
@@ -74,15 +73,14 @@ public class LaborStatisticsServiceImpl implements LaborStatisticsService {
 
     @Override
     public LaborCostRatioVO getCostRatio(Long projectId) {
-        validateProjectId(projectId);
-
         List<BizLaborContract> contracts = laborContractMapper.selectList(
                 new LambdaQueryWrapper<BizLaborContract>()
-                        .eq(BizLaborContract::getProjectId, projectId)
+                        .eq(projectId != null, BizLaborContract::getProjectId, projectId)
                         .eq(BizLaborContract::getStatus, CONTRACT_STATUS_EFFECTIVE));
         BigDecimal contractAmountTotal = sumContractAmount(contracts);
         if (contractAmountTotal.compareTo(BigDecimal.ZERO) == 0) {
-            throw new BusinessException("该项目暂无生效的劳务合同，无法计算成本占比");
+            throw new BusinessException(projectId == null ? "暂无生效的劳务合同，无法计算成本占比"
+                    : "该项目暂无生效的劳务合同，无法计算成本占比");
         }
 
         List<BizLaborPayroll> payrolls = queryEffectivePayrolls(projectId);
@@ -102,12 +100,12 @@ public class LaborStatisticsServiceImpl implements LaborStatisticsService {
     }
 
     /**
-     * 已审批/已结算工资单（排除草稿）
+     * 已审批/已结算工资单（排除草稿）；projectId 为 null 时跨项目取全部
      */
     private List<BizLaborPayroll> queryEffectivePayrolls(Long projectId) {
         return payrollMapper.selectList(
                 new LambdaQueryWrapper<BizLaborPayroll>()
-                        .eq(BizLaborPayroll::getProjectId, projectId)
+                        .eq(projectId != null, BizLaborPayroll::getProjectId, projectId)
                         .ne(BizLaborPayroll::getStatus, STATUS_DRAFT));
     }
 
@@ -116,12 +114,6 @@ public class LaborStatisticsServiceImpl implements LaborStatisticsService {
                 .map(BizLaborContract::getContractAmount)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private void validateProjectId(Long projectId) {
-        if (projectId == null) {
-            throw new BusinessException("项目ID不能为空");
-        }
     }
 
     private BigDecimal sumField(List<BizLaborPayroll> list, Function<BizLaborPayroll, BigDecimal> getter) {

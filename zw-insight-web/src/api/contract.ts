@@ -190,12 +190,12 @@ export function importBomItems(data: FormData) {
 // ======================== 合同统计 ========================
 // 后端：ContractStatisticsController /api/v1/contract/statistics
 
-/** 合同金额汇总（金额合计 + 回款比例 + 状态分布） */
-export function getContractAmountSummary(projectId: number) {
+/** 合同金额汇总（金额合计 + 回款比例 + 状态分布）；projectId 省略时跨项目汇总全部 */
+export function getContractAmountSummary(projectId?: number | string) {
   return request.get<R<any>>('/v1/contract/statistics/amount-summary', { params: { projectId } })
 }
 
-/** 产值完成率趋势（按月聚合已审批产值上报） */
-export function getOutputTrend(projectId: number, months = 12) {
+/** 产值完成率趋势（按月聚合已审批产值上报）；projectId 省略时跨项目汇总全部 */
+export function getOutputTrend(projectId?: number | string, months = 12) {
   return request.get<R<any[]>>('/v1/contract/statistics/output-trend', { params: { projectId, months } })
 }

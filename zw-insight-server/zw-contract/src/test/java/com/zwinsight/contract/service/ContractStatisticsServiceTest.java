@@ -91,11 +91,15 @@ class ContractStatisticsServiceTest {
         }
 
         @Test
-        @DisplayName("项目ID为空抛业务异常")
-        void rejects_null_project_id() {
+        @DisplayName("项目ID为空不再拒绝：按跨项目口径提示（文案不含「该项目」）")
+        void null_project_id_no_longer_rejected() {
+            when(contractMapper.selectList(any(LambdaQueryWrapper.class)))
+                    .thenReturn(Collections.emptyList());
+
             assertThatThrownBy(() -> service.getAmountSummary(null))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("项目ID不能为空");
+                    .hasMessageContaining("暂无生效的施工合同")
+                    .hasMessageNotContaining("该项目");
         }
 
         @Test

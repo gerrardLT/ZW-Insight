@@ -583,17 +583,13 @@ async function loadWbsOptions() {
 }
 
 async function loadPage() {
-  if (!queryParams.projectId) {
-    rows.value = []
-    pagination.total = 0
-    return
-  }
   loading.value = true
   try {
     // P2-M4 B1：无多维度筛选时优先调服务端全量树接口，保证父子结构不因分页截断。
     // 服务端返回「根节点嵌套 children」结构，须拉平后存入 rows，
     // 否则 assembleTree 会把 children 重置为空（树只剩根），totals 也只汇总根节点。
-    if (!queryParams.costCategory && !queryParams.status) {
+    // 注意：/tree 需要 projectId；未选项目时改走分页接口（跨项目返回全部账户，与其它列表页同口径）。
+    if (queryParams.projectId && !queryParams.costCategory && !queryParams.status) {
       const res: any = await getCostAccountTree(queryParams.projectId)
       rows.value = flattenTree(res.data || [])
       pagination.total = rows.value.length
@@ -601,7 +597,7 @@ async function loadPage() {
       const res: any = await getCostAccountPage({
         page: pagination.page,
         size: pagination.size,
-        projectId: queryParams.projectId,
+        projectId: queryParams.projectId || undefined,
         costCategory: queryParams.costCategory || undefined,
         status: queryParams.status || undefined
       })

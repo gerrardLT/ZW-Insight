@@ -42,19 +42,17 @@ public class ContractStatisticsService {
     /**
      * 合同金额汇总（仅统计非草稿的登记合同，变更/补充合同金额已体现在累计变更字段）
      *
-     * @param projectId 项目ID
+     * @param projectId 项目ID；为 null 时跨项目汇总全部（未选项目的默认口径）
      * @return 金额汇总
      */
     public ContractAmountSummaryVO getAmountSummary(Long projectId) {
-        validateProjectId(projectId);
-
         List<BizConstructionContract> contracts = contractMapper.selectList(
                 new LambdaQueryWrapper<BizConstructionContract>()
-                        .eq(BizConstructionContract::getProjectId, projectId)
+                        .eq(projectId != null, BizConstructionContract::getProjectId, projectId)
                         .eq(BizConstructionContract::getContractType, CONTRACT_TYPE_REGISTER)
                         .ne(BizConstructionContract::getStatus, STATUS_DRAFT));
         if (contracts.isEmpty()) {
-            throw new BusinessException("该项目暂无生效的施工合同");
+            throw new BusinessException(projectId == null ? "暂无生效的施工合同" : "该项目暂无生效的施工合同");
         }
 
         ContractAmountSummaryVO vo = new ContractAmountSummaryVO();
@@ -90,21 +88,20 @@ public class ContractStatisticsService {
     /**
      * 产值完成率趋势（已审批产值上报按期间聚合，累计值为本期产值滚动累加）
      *
-     * @param projectId 项目ID
+     * @param projectId 项目ID；为 null 时跨项目汇总全部（未选项目的默认口径）
      * @param months    返回的期间数（默认 12，上限 36）
      * @return 趋势列表（按期间升序）
      */
     public List<OutputTrendItemVO> getOutputTrend(Long projectId, Integer months) {
-        validateProjectId(projectId);
         int limit = months == null ? 12 : Math.min(Math.max(months, 1), MAX_TREND_MONTHS);
 
         List<BizOutputReport> reports = outputReportMapper.selectList(
                 new LambdaQueryWrapper<BizOutputReport>()
-                        .eq(BizOutputReport::getProjectId, projectId)
+                        .eq(projectId != null, BizOutputReport::getProjectId, projectId)
                         .eq(BizOutputReport::getStatus, STATUS_APPROVED)
                         .isNotNull(BizOutputReport::getReportPeriod));
         if (reports.isEmpty()) {
-            throw new BusinessException("该项目暂无已审批的产值上报");
+            throw new BusinessException(projectId == null ? "暂无已审批的产值上报" : "该项目暂无已审批的产值上报");
         }
 
         // 合同金额合计作为完成率分母（无登记合同则完成率为 null）
@@ -137,21 +134,15 @@ public class ContractStatisticsService {
     }
 
     /**
-     * 项目登记合同（非草稿）金额合计，用于完成率分母
+     * 登记合同（非草稿）金额合计，用于完成率分母；projectId 为 null 时跨项目合计
      */
     private BigDecimal sumRegisterContractAmount(Long projectId) {
         List<BizConstructionContract> contracts = contractMapper.selectList(
                 new LambdaQueryWrapper<BizConstructionContract>()
-                        .eq(BizConstructionContract::getProjectId, projectId)
+                        .eq(projectId != null, BizConstructionContract::getProjectId, projectId)
                         .eq(BizConstructionContract::getContractType, CONTRACT_TYPE_REGISTER)
                         .ne(BizConstructionContract::getStatus, STATUS_DRAFT));
         return sumField(contracts, BizConstructionContract::getContractAmount);
-    }
-
-    private void validateProjectId(Long projectId) {
-        if (projectId == null) {
-            throw new BusinessException("项目ID不能为空");
-        }
     }
 
     private BigDecimal sumField(List<BizConstructionContract> list,

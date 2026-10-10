@@ -26,19 +26,21 @@ public class LaborStatisticsController {
 
     /**
      * 工资发放趋势（按月聚合结算/已付/未付）
+     * <p>{@code projectId} 可空：不传即跨项目汇总全部（未选项目的默认口径）。</p>
      */
     @GetMapping("/payroll-trend")
     public R<List<PayrollTrendItemVO>> payrollTrend(
-            @RequestParam Long projectId,
+            @RequestParam(required = false) Long projectId,
             @RequestParam(defaultValue = "12") Integer months) {
         return R.ok(laborStatisticsService.getPayrollTrend(projectId, months));
     }
 
     /**
      * 劳务成本占比（结算总额对比生效劳务合同金额）
+     * <p>{@code projectId} 可空：不传即跨项目汇总全部（未选项目的默认口径）。</p>
      */
     @GetMapping("/cost-ratio")
-    public R<LaborCostRatioVO> costRatio(@RequestParam Long projectId) {
+    public R<LaborCostRatioVO> costRatio(@RequestParam(required = false) Long projectId) {
         return R.ok(laborStatisticsService.getCostRatio(projectId));
     }
 }

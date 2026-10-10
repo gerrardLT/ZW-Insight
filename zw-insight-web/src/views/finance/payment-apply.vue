@@ -666,8 +666,8 @@ onBeforeUnmount(() => {
 const planPanelRef = ref<InstanceType<typeof StatChartPanel>>()
 
 async function fetchFundPlan() {
-  if (!queryParams.value.projectId) throw new Error('请先选择项目后查看资金计划')
-  const res: any = await getFundPlan(queryParams.value.projectId, 6)
+  // 未选项目时后端跨项目汇总全部（与列表同口径），不再要求先选项目
+  const res: any = await getFundPlan(queryParams.value.projectId || undefined, 6)
   return res.data
 }
 

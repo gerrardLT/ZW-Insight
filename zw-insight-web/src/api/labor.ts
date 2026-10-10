@@ -218,13 +218,13 @@ export function exportSalaryExcel(projectId: number, month: string) {
 // ======================== 劳务统计 ========================
 // 后端：LaborStatisticsController /api/v1/labor/statistics
 
-/** 工资发放趋势（按月聚合结算/已付/未付） */
-export function getPayrollTrend(projectId: number, months = 12) {
+/** 工资发放趋势（按月聚合结算/已付/未付）；projectId 省略时跨项目汇总全部 */
+export function getPayrollTrend(projectId?: number | string, months = 12) {
   return request.get('/v1/labor/statistics/payroll-trend', { params: { projectId, months } })
 }
 
-/** 劳务成本占比（结算总额对比生效劳务合同金额） */
-export function getLaborCostRatio(projectId: number) {
+/** 劳务成本占比（结算总额对比生效劳务合同金额）；projectId 省略时跨项目汇总全部 */
+export function getLaborCostRatio(projectId?: number | string) {
   return request.get('/v1/labor/statistics/cost-ratio', { params: { projectId } })
 }
 

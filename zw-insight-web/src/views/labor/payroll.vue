@@ -225,8 +225,8 @@ onMounted(() => { loadData(); loadTeamOptions() })
 const trendPanelRef = ref<InstanceType<typeof StatChartPanel>>()
 
 async function fetchPayrollTrend() {
-  if (!queryParams.value.projectId) throw new Error('请先选择项目后查看工资发放趋势')
-  const res: any = await getPayrollTrend(queryParams.value.projectId, 12)
+  // 未选项目时后端跨项目汇总全部（与列表同口径），不再要求先选项目
+  const res: any = await getPayrollTrend(queryParams.value.projectId || undefined, 12)
   return res.data
 }
 
