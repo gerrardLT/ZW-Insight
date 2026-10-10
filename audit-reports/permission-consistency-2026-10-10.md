@@ -198,23 +198,45 @@
 不再出现「报错 → 0 → PASS」）；`perm-audit-http.sh` 增加「期望集合为空即中止」；
 `perm-audit-data.sh` 把 HTTP 000 单列为 ERROR（不计 PASS）。
 
-**授权影响声明（修正）**：本次**未给任何业务角色新增授权**。唯一会改变既有角色有效权限码的是
+**授权影响声明（修正）**：F1 目录补齐本身**未给任何业务角色新增授权**；唯一会改变既有角色有效权限码的是
 菜单 211 的码对齐——经核对，绑定 211 的角色为主环境 `SUPER_ADMIN`、徽颍 `SUPER_ADMIN` 与
 `admin`（`biancongyou` 持有）。即：徽颍 `biancongyou` 部署后将**获得**只读的 `system:version:view`
-（其本就持有该菜单，属修正而非扩权）。
+（其本就持有该菜单，属修正而非扩权）。**写权限的实际授予见下节 F1-b。**
 
-未实施（待决策，见 §5）：F3、F5、F1 的授权矩阵、F2 的公司级表与其余未标注 Mapper。
+### 4.1 F1-b 授权矩阵（2026-10-10 用户指示「项目经理要能建合同」后落地）
+
+迁移 `V2026_92__role_write_permission_grant.sql`（双轨：`db/migration/` + `deploy/db-init/94_`）。
+授权原则：**角色在它已持有视图权限的模块内获得写权限**；财务敏感码仅 FINANCE_STAFF；
+系统码与预算控制配置/成本科目维护不授予业务角色；只读角色不授予写权限。
+
+| role_code | 授予的权限码范围 | 主环境实得条数 |
+|---|---|---|
+| `PROJECT_MANAGER` | `contract:*` 全部 + `budget:add`/`budget:budget:*`/`budget:budgetchange:*` + `finance:invoiceapply:*` | 38 |
+| `COMMERCE_STAFF` | `contract:*` 全部 + `finance:invoiceapply:*` | 28 |
+| `FINANCE_STAFF` | `budget:*` 全部（含控制配置/成本科目）+ `finance:invoiceapply:*` + `finance:bankaccount:*` + `finance:taxrate:*` + `finance:financelock:*` | 29 |
+| `COST_BUDGET_STAFF`（徽颍） | `contract:*` 全部 + `budget:*` 全部 | — |
+
+**刻意不授予**：`system:*`（任何业务角色）、`budget:budgetcontrolconfig:*`/`budget:costsubcategory:*`/`budget:costaccount:update` 给 PROJECT_MANAGER
+（属财务/成本管控配置）、`AUDITOR`/`COMPANY_LEADER`/`DEPT_MANAGER`/`HR_STAFF`/`STAFF`/`PURCHASE_STAFF`/`MATERIAL_STAFF`/`ENGINEERING_STAFF`（只读或本轮 54 码不含其模块）。
+
+**按 role_code 而非 role_id 授权**，故主环境与徽颍的同名角色同时生效、两侧口径一致。
+幂等验证：同一事务内连跑两次 → 95 行 / 95 行，无重复 `(role_id, menu_id)`、无重复 id。
+回滚：`DELETE FROM sys_role_menu WHERE id BETWEEN 600001 AND 603999;`
+
+未实施（待决策，见 §5）：F3、F5、F2 的公司级表与其余未标注 Mapper；徽颍 ENGINEERING_STAFF 等角色的写权限归属。
 
 ---
 
 ## 5. 待用户决策项
 
-1. **F1 授权矩阵**：54 个写权限码补入目录后，是否按「持有 `{module}:view` 即授予该模块写权限」批量授权？
-   还是仅项目经理/商务保留写入、其余角色只读？（`V2026_45_2` 的注释显示原意是"写权限仅超管 + 项目立项/编辑给 PM/商务"）
+1. ~~**F1 授权矩阵**~~ → **已按上表落地**（用户 2026-10-10 指示"项目经理要能建合同"）。
+   如需调整（例如收回 `*:delete`、或把徽颍 `ENGINEERING_STAFF` 纳入），按 role_code 增减 `V2026_92` 的前缀行即可。
+   另注：**徽颍的 `PROJECT_MANAGER` / `FINANCE_STAFF` / `COST_BUDGET_STAFF` 也同时获得写权限**（同一缺陷的同一修复），如需保留只读请告知。
 2. **F3 DEPT 范围**：三选一——(a) 为相关表补 `dept_id` 列并由项目归属回填；(b) 把 DEPT 语义改为"经项目→部门"派生；
    (c) 从 `data_scope` 合法值中移除 DEPT/DEPT_AND_CHILDREN（则徽颍现有角色需改配）。
 3. **F5 主环境角色范围**：是否把 5 个演示角色改为 `PROJECT_MANAGER=PROJECT / FINANCE_STAFF=ALL / MATERIAL_STAFF=DEPT /
    COMMERCE_STAFF=ALL / STAFF=SELF`（对齐徽颍语义）？改后演示账号才能看到数据。
+   （注：授权矩阵已落地，但数据范围仍为 SELF 时，PM 建的新合同 `created_by`=自己，可自见；历史 admin 建的单据仍不可见。）
 4. **F2 公司级表**：`biz_machine_ledger`（无 project_id）、`biz_fund_monthly_plan`（含公司级行）
    已确认**不加**行级过滤；是否认可？其余约 40 张未标注表是否要按模块补齐（需逐表确认业务语义）？
 5. **F4 同族 latent 项**：是否一并把菜单侧租户过滤（`m.tenant_id`）与 `u.status=1` 对齐到权限码口径？
