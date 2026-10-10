@@ -12,7 +12,11 @@
 
     <!-- 成员列表表格 -->
     <el-table :data="tableData" v-loading="loading" border>
-      <el-table-column prop="userName" label="姓名" width="120" />
+      <el-table-column prop="userName" label="姓名" width="120">
+        <template #default="{ row }">
+          {{ row.userName || (row.userId ? ('用户#' + row.userId) : '—') }}
+        </template>
+      </el-table-column>
       <el-table-column prop="deptName" label="部门" width="150" show-overflow-tooltip />
       <el-table-column label="项目角色" min-width="200">
         <template #default="{ row }">
@@ -88,7 +92,7 @@
     <el-dialog v-model="roleDialogVisible" title="变更角色" width="450px" destroy-on-close>
       <el-form :model="roleForm" label-width="80px">
         <el-form-item label="成员">
-          <el-input :model-value="roleForm.userName" disabled />
+          <el-input :model-value="roleForm.userName || (roleForm.userId ? ('用户#' + roleForm.userId) : '—')" disabled />
         </el-form-item>
         <el-form-item label="项目角色">
           <el-select v-model="roleForm.projectRoles" multiple placeholder="请选择角色" style="width: 100%">

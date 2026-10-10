@@ -25,6 +25,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -213,8 +215,10 @@ public class ProjectMemberService {
         Page<BizProjectMember> pageParam = new Page<>(page, size);
         IPage<BizProjectMember> result = memberMapper.selectMemberPage(pageParam, projectId, role);
 
-        // 转换为 VO
-        List<ProjectMemberVO> voList = result.getRecords().stream()
+        // 转换为 VO 并为缺失姓名的记录从 sys_user 自动回填
+        List<BizProjectMember> records = result.getRecords();
+        fillMemberUserName(records);
+        List<ProjectMemberVO> voList = records.stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
 
@@ -374,5 +378,40 @@ public class ProjectMemberService {
         }
 
         return vo;
+    }
+
+    /**
+     * 批量为缺失 userName 的成员记录从 sys_user 自动回填真实姓名（防历史脏数据在界面上展示为空）
+     */
+    private void fillMemberUserName(List<BizProjectMember> records) {
+        if (records == null || records.isEmpty() || userMapper == null) {
+            return;
+        }
+        List<Long> missingUserIds = records.stream()
+                .filter(m -> m.getUserName() == null || m.getUserName().isBlank())
+                .map(BizProjectMember::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (missingUserIds.isEmpty()) {
+            return;
+        }
+        List<SysUser> users = userMapper.selectBatchIds(missingUserIds);
+        if (users == null || users.isEmpty()) {
+            return;
+        }
+        Map<Long, String> nameMap = users.stream()
+                .collect(Collectors.toMap(
+                        SysUser::getId,
+                        u -> u.getRealName() != null && !u.getRealName().isBlank() ? u.getRealName() : u.getUsername(),
+                        (a, b) -> a));
+        for (BizProjectMember m : records) {
+            if ((m.getUserName() == null || m.getUserName().isBlank()) && m.getUserId() != null) {
+                String name = nameMap.get(m.getUserId());
+                if (name != null) {
+                    m.setUserName(name);
+                }
+            }
+        }
     }
 }

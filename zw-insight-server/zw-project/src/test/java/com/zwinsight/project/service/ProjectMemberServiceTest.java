@@ -314,4 +314,34 @@ class ProjectMemberServiceTest {
 
         verify(memberMapper).insert(any(BizProjectMember.class));
     }
+
+    @Test
+    @DisplayName("查询成员列表：历史记录userName为null时自动从sys_user回填真实姓名")
+    void testListMembers_fillsMissingUserName() {
+        BizProjectMember m1 = new BizProjectMember();
+        m1.setId(10L);
+        m1.setProjectId(1L);
+        m1.setUserId(200L);
+        m1.setUserName(null); // 存量历史脏数据
+        m1.setProjectRoles(List.of("PROJECT_MANAGER"));
+        m1.setStatus(1);
+
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<BizProjectMember> pageResult =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, 10);
+        pageResult.setRecords(List.of(m1));
+        pageResult.setTotal(1L);
+
+        when(memberMapper.selectMemberPage(any(), eq(1L), any())).thenReturn(pageResult);
+
+        SysUser u = new SysUser();
+        u.setId(200L);
+        u.setUsername("wangting");
+        u.setRealName("王停");
+        when(userMapper.selectBatchIds(List.of(200L))).thenReturn(List.of(u));
+
+        var res = memberService.listMembers(1L, null, 1, 10);
+
+        assertThat(res.getRecords()).hasSize(1);
+        assertThat(res.getRecords().get(0).getUserName()).isEqualTo("王停");
+    }
 }
