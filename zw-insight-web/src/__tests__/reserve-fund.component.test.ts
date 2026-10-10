@@ -7,12 +7,13 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
-const { mockPage, mockApply, mockSubmit, mockReturn, mockProjectList } = vi.hoisted(() => ({
+const { mockPage, mockApply, mockSubmit, mockReturn, mockProjectList, mockSuccess } = vi.hoisted(() => ({
   mockPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockApply: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockSubmit: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockReturn: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockProjectList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+  mockSuccess: vi.fn(),
 }))
 
 vi.mock('@/api/finance', () => ({
@@ -28,7 +29,7 @@ vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
     ...actual,
-    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+    ElMessage: { success: mockSuccess, error: vi.fn(), warning: vi.fn() },
     ElMessageBox: { ...actual.ElMessageBox, confirm: vi.fn(async () => 'confirm') },
   }
 })
@@ -63,12 +64,18 @@ describe('reserve-fund.vue 备用金管理', () => {
     expect(w.text()).toContain('20,000.00')
   })
 
-  it('状态标签映射：DRAFT=草稿 / APPROVING=审批中 / APPROVED=已通过 / 未知透传', async () => {
-    const w = await mountPage([...RECORDS, { id: 4, projectName: 'X', applicant: 'Y', applyAmount: 1, status: 'RETURNED', applyDate: '2026-08-04' }])
+  it('状态标签映射：DRAFT=草稿 / SUBMITTED·APPROVING=审批中 / APPROVED=已通过 / REJECTED=已驳回 / 未知透传', async () => {
+    const w = await mountPage([
+      ...RECORDS,
+      { id: 4, projectName: 'X', applicant: 'Y', applyAmount: 1, status: 'RETURNED', applyDate: '2026-08-04' },
+      { id: 5, projectName: 'X', applicant: 'Y', applyAmount: 1, status: 'REJECTED', applyDate: '2026-08-05' },
+      { id: 6, projectName: 'X', applicant: 'Y', applyAmount: 1, status: 'SUBMITTED', applyDate: '2026-08-06' },
+    ])
     expect(w.text()).toContain('草稿')
-    expect(w.text()).toContain('审批中')
+    expect(w.text()).toContain('审批中') // SUBMITTED（提交后）与 APPROVING 同义
     expect(w.text()).toContain('已通过')
-    expect(w.text()).toContain('RETURNED')
+    expect(w.text()).toContain('已驳回')
+    expect(w.text()).toContain('RETURNED') // 未映射状态透传原值
   })
 
   it('双表单必填规则：申请（项目/申请人/金额/日期）与归还（金额/日期）', async () => {
@@ -102,13 +109,32 @@ describe('reserve-fund.vue 备用金管理', () => {
     expect(st.applyVisible).toBe(false)
   })
 
-  it('行提交审批：确认后调 submitReserveFundApply 并刷新', async () => {
+  it('行提交审批：确认后调 submitReserveFundApply，提示「已提交审批，审批通过后生效」', async () => {
     const w = await mountPage()
     mockPage.mockClear()
     await w.vm.$.setupState.handleSubmitRow(RECORDS[0])
     await flushPromises()
     expect(mockSubmit).toHaveBeenCalledWith(1)
     expect(mockPage).toHaveBeenCalled()
+    expect(mockSuccess).toHaveBeenCalledWith('已提交审批，审批通过后生效')
+  })
+
+  it('操作列：提交按钮仅 DRAFT/REJECTED 可见；归还按钮仅 APPROVED 可见', async () => {
+    const w = await mountPage([
+      { id: 1, projectName: 'P', applicant: 'A', applyAmount: 1, status: 'DRAFT', applyDate: '2026-08-01' },
+      { id: 2, projectName: 'P', applicant: 'A', applyAmount: 1, status: 'REJECTED', applyDate: '2026-08-02' },
+      { id: 3, projectName: 'P', applicant: 'A', applyAmount: 1, status: 'SUBMITTED', applyDate: '2026-08-03' },
+      { id: 4, projectName: 'P', applicant: 'A', applyAmount: 1, status: 'APPROVED', applyDate: '2026-08-04' },
+    ])
+    const rows = w.findAll('.el-table__row')
+    expect(rows).toHaveLength(4)
+    const btn = (i: number, label: string) => rows[i].findAll('button').filter(b => b.text() === label)
+    expect(btn(0, '提交')).toHaveLength(1) // DRAFT
+    expect(btn(1, '提交')).toHaveLength(1) // REJECTED 可重新提交
+    expect(btn(2, '提交')).toHaveLength(0) // SUBMITTED 审批中
+    expect(btn(3, '提交')).toHaveLength(0) // APPROVED
+    expect(btn(3, '归还')).toHaveLength(1) // 仅审批通过可归还
+    expect(btn(2, '归还')).toHaveLength(0)
   })
 
   it('归还登记：回显 reserveApplyId + 提交调 createReserveFundReturn', async () => {

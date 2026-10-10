@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * ProjectReimbursementService 单元测试
- * <p>项目报销：提交即审批，冲抵备用金时累加 offsetAmount。</p>
+ * <p>项目报销：提交置 SUBMITTED 发起审批，审批通过回调 onApproved 才置 APPROVED 并冲抵备用金。</p>
  */
 @ExtendWith(MockitoExtension.class)
 class ProjectReimbursementServiceTest {
@@ -86,18 +86,21 @@ class ProjectReimbursementServiceTest {
     }
 
     @Test
-    @DisplayName("submit - 守卫：不存在/非草稿抛异常")
+    @DisplayName("submit - 守卫：不存在/非草稿非驳回抛异常")
     void submit_guardCases_throws() {
         when(reimbursementMapper.selectById(99L)).thenReturn(null);
         assertThatThrownBy(() -> service.submit(99L)).hasMessageContaining("报销记录不存在");
 
-        when(reimbursementMapper.selectById(1L)).thenReturn(reimbursement(1L, "APPROVED", null, null, null));
-        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("仅草稿状态可提交");
+        when(reimbursementMapper.selectById(1L)).thenReturn(reimbursement(1L, "SUBMITTED", null, null, null));
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("仅草稿或已驳回状态可提交");
+
+        when(reimbursementMapper.selectById(2L)).thenReturn(reimbursement(2L, "APPROVED", null, null, null));
+        assertThatThrownBy(() -> service.submit(2L)).hasMessageContaining("仅草稿或已驳回状态可提交");
     }
 
     @Test
-    @DisplayName("submit - 不冲抵备用金：仅状态流转")
-    void submit_noOffset_statusOnly() {
+    @DisplayName("submit - 不冲抵备用金：状态置 SUBMITTED 而非 APPROVED（审批通过才生效）")
+    void submit_noOffset_setsSubmitted() {
         BizProjectReimbursement r = reimbursement(1L, "DRAFT", 0, null, null);
         when(reimbursementMapper.selectById(1L)).thenReturn(r);
         when(approvalService.startProcess(eq("PROJECT_REIMBURSEMENT"), eq(1L),
@@ -105,13 +108,28 @@ class ProjectReimbursementServiceTest {
 
         service.submit(1L);
 
-        assertThat(r.getStatus()).isEqualTo("APPROVED");
+        assertThat(r.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(r.getWorkflowInstanceId()).isEqualTo("proc-1");
+        verify(reimbursementMapper).updateById(r);
         verify(reserveFundApplyMapper, never()).selectById(any());
     }
 
     @Test
-    @DisplayName("submit - 冲抵备用金：offsetAmount 累加（null 视 0）")
-    void submit_withOffset_accumulatesReserveOffset() {
+    @DisplayName("submit - 已驳回可重新提交")
+    void submit_fromRejected_allowed() {
+        BizProjectReimbursement r = reimbursement(1L, "REJECTED", 0, null, null);
+        when(reimbursementMapper.selectById(1L)).thenReturn(r);
+        when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-2");
+
+        service.submit(1L);
+
+        assertThat(r.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(r.getWorkflowInstanceId()).isEqualTo("proc-2");
+    }
+
+    @Test
+    @DisplayName("submit - 冲抵备用金：提交时只校验，不改备用金余额")
+    void submit_withOffset_validatesOnly() {
         BizProjectReimbursement r = reimbursement(1L, "DRAFT", 1, 50L, "300");
         when(reimbursementMapper.selectById(1L)).thenReturn(r);
         when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-1");
@@ -125,8 +143,9 @@ class ProjectReimbursementServiceTest {
 
         service.submit(1L);
 
-        assertThat(reserve.getOffsetAmount()).isEqualByComparingTo("500"); // 200+300
-        verify(reserveFundApplyMapper).updateById(reserve);
+        assertThat(r.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(reserve.getOffsetAmount()).isEqualByComparingTo("200"); // 提交不改余额
+        verify(reserveFundApplyMapper, never()).updateById(any());
     }
 
     @Test
@@ -146,7 +165,8 @@ class ProjectReimbursementServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("冲抵金额超过备用金待冲抵余额");
 
-        verify(reserveFundApplyMapper, never()).updateById(any());
+        verify(approvalService, never()).startProcess(anyString(), any(), anyString(), anyMap());
+        verify(reimbursementMapper, never()).updateById(any());
     }
 
     @Test
@@ -185,16 +205,100 @@ class ProjectReimbursementServiceTest {
     }
 
     @Test
-    @DisplayName("submit - 冲抵标记开启但备用金申请不存在：跳过不报错")
-    void submit_withOffsetButReserveMissing_skips() {
-        BizProjectReimbursement r = reimbursement(1L, "DRAFT", 1, 50L, "300");
+    @DisplayName("onApproved - 置 APPROVED 并累加备用金冲抵额（null 视 0）")
+    void onApproved_accumulatesReserveOffset() {
+        BizProjectReimbursement r = reimbursement(1L, "SUBMITTED", 1, 50L, "300");
         when(reimbursementMapper.selectById(1L)).thenReturn(r);
-        when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-1");
+        BizReserveFundApply reserve = new BizReserveFundApply();
+        reserve.setId(50L);
+        reserve.setApplyAmount(new BigDecimal("1000"));
+        reserve.setReturnedAmount(BigDecimal.ZERO);
+        reserve.setOffsetAmount(new BigDecimal("200"));
+        when(reserveFundApplyMapper.selectById(50L)).thenReturn(reserve);
+
+        service.onApproved(1L);
+
+        assertThat(r.getStatus()).isEqualTo("APPROVED");
+        assertThat(reserve.getOffsetAmount()).isEqualByComparingTo("500"); // 200+300
+        verify(reserveFundApplyMapper).updateById(reserve);
+        verify(reimbursementMapper).updateById(r);
+    }
+
+    @Test
+    @DisplayName("onApproved - 幂等：已 APPROVED 直接返回，不重复冲抵")
+    void onApproved_idempotent() {
+        BizProjectReimbursement r = reimbursement(1L, "APPROVED", 1, 50L, "300");
+        when(reimbursementMapper.selectById(1L)).thenReturn(r);
+
+        service.onApproved(1L);
+
+        verify(reserveFundApplyMapper, never()).selectById(any());
+        verify(reserveFundApplyMapper, never()).updateById(any());
+        verify(reimbursementMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onApproved - 记录不存在：跳过不报错")
+    void onApproved_missingRecord_skips() {
+        when(reimbursementMapper.selectById(9L)).thenReturn(null);
+
+        service.onApproved(9L);
+
+        verify(reimbursementMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onApproved - 冲抵标记开启但备用金申请不存在：仅置 APPROVED，跳过冲抵")
+    void onApproved_withOffsetButReserveMissing_skips() {
+        BizProjectReimbursement r = reimbursement(1L, "SUBMITTED", 1, 50L, "300");
+        when(reimbursementMapper.selectById(1L)).thenReturn(r);
         when(reserveFundApplyMapper.selectById(50L)).thenReturn(null);
 
-        service.submit(1L);
+        service.onApproved(1L);
 
         assertThat(r.getStatus()).isEqualTo("APPROVED");
         verify(reserveFundApplyMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onApproved - 审批期间待冲抵余额被占用：拒绝生效并回滚")
+    void onApproved_offsetNoLongerAffordable_rejected() {
+        BizProjectReimbursement r = reimbursement(1L, "SUBMITTED", 1, 50L, "300");
+        when(reimbursementMapper.selectById(1L)).thenReturn(r);
+        BizReserveFundApply reserve = new BizReserveFundApply();
+        reserve.setId(50L);
+        // 审批期间已归还 900 → 待冲抵余额仅剩 100 < 300
+        reserve.setApplyAmount(new BigDecimal("1000"));
+        reserve.setReturnedAmount(new BigDecimal("900"));
+        reserve.setOffsetAmount(BigDecimal.ZERO);
+        when(reserveFundApplyMapper.selectById(50L)).thenReturn(reserve);
+
+        assertThatThrownBy(() -> service.onApproved(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("冲抵金额超过备用金待冲抵余额");
+
+        assertThat(r.getStatus()).isEqualTo("SUBMITTED");
+        verify(reserveFundApplyMapper, never()).updateById(any());
+        verify(reimbursementMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onRejected - SUBMITTED 置 REJECTED；非 SUBMITTED 不改动")
+    void onRejected_setsRejectedOnlyFromSubmitted() {
+        BizProjectReimbursement submitted = reimbursement(1L, "SUBMITTED", 0, null, null);
+        when(reimbursementMapper.selectById(1L)).thenReturn(submitted);
+
+        service.onRejected(1L);
+
+        assertThat(submitted.getStatus()).isEqualTo("REJECTED");
+        verify(reimbursementMapper).updateById(submitted);
+
+        BizProjectReimbursement approved = reimbursement(2L, "APPROVED", 0, null, null);
+        when(reimbursementMapper.selectById(2L)).thenReturn(approved);
+
+        service.onRejected(2L);
+
+        assertThat(approved.getStatus()).isEqualTo("APPROVED");
+        verify(reimbursementMapper, never()).updateById(approved);
     }
 }

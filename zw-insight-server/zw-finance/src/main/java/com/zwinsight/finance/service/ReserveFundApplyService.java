@@ -8,6 +8,7 @@ import com.zwinsight.finance.domain.BizReserveFundApply;
 import com.zwinsight.finance.mapper.BizReserveFundApplyMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.util.Map;
 /**
  * 备用金申请服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReserveFundApplyService {
@@ -58,7 +60,7 @@ public class ReserveFundApplyService {
     }
 
     /**
-     * 提交备用金申请
+     * 提交备用金申请（发起审批，状态置 SUBMITTED；审批通过后才会出现在归还页的待归还列表）
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
@@ -66,8 +68,8 @@ public class ReserveFundApplyService {
         if (apply == null) {
             throw new BusinessException("备用金申请不存在");
         }
-        if (!"DRAFT".equals(apply.getStatus())) {
-            throw new BusinessException("仅草稿状态可提交");
+        if (!"DRAFT".equals(apply.getStatus()) && !"REJECTED".equals(apply.getStatus())) {
+            throw new BusinessException("仅草稿或已驳回状态可提交");
         }
 
         Map<String, Object> variables = new HashMap<>();
@@ -77,7 +79,45 @@ public class ReserveFundApplyService {
                 "RESERVE_FUND_APPLY", id, "reserve_fund_apply_approval", variables);
 
         apply.setWorkflowInstanceId(processInstanceId);
+        apply.setStatus("SUBMITTED");
+        reserveFundApplyMapper.updateById(apply);
+    }
+
+    /**
+     * 审批通过回调：置 APPROVED
+     * <p>幂等：状态已为 APPROVED 时直接返回（兼容审批时点改造前的存量在途单据与重复事件）。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onApproved(Long id) {
+        BizReserveFundApply apply = reserveFundApplyMapper.selectById(id);
+        if (apply == null) {
+            log.warn("备用金申请审批通过回调：记录不存在, id={}", id);
+            return;
+        }
+        if ("APPROVED".equals(apply.getStatus())) {
+            log.info("备用金申请已生效，跳过重复回调, id={}", id);
+            return;
+        }
         apply.setStatus("APPROVED");
         reserveFundApplyMapper.updateById(apply);
+        log.info("备用金申请审批通过并生效, id={}, applyAmount={}", id, apply.getApplyAmount());
+    }
+
+    /**
+     * 审批驳回/撤回回调：状态置 REJECTED（数据未生效，无需回滚）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onRejected(Long id) {
+        BizReserveFundApply apply = reserveFundApplyMapper.selectById(id);
+        if (apply == null) {
+            log.warn("备用金申请驳回回调：记录不存在, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(apply.getStatus())) {
+            return;
+        }
+        apply.setStatus("REJECTED");
+        reserveFundApplyMapper.updateById(apply);
+        log.info("备用金申请审批驳回, id={}", id);
     }
 }

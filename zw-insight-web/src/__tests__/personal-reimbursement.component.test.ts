@@ -8,10 +8,11 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
-const { mockPage, mockCreate, mockSubmit } = vi.hoisted(() => ({
+const { mockPage, mockCreate, mockSubmit, mockSuccess } = vi.hoisted(() => ({
   mockPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockCreate: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockSubmit: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  mockSuccess: vi.fn(),
 }))
 
 vi.mock('@/api/finance', () => ({
@@ -23,7 +24,7 @@ vi.mock('element-plus', async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
     ...actual,
-    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+    ElMessage: { success: mockSuccess, error: vi.fn(), warning: vi.fn() },
     ElMessageBox: { ...actual.ElMessageBox, confirm: vi.fn(async () => 'confirm') },
   }
 })
@@ -57,15 +58,18 @@ describe('personal-reimbursement.vue 个人报销', () => {
     expect(w.text()).toContain('1,234.50') // formatMoney zh-CN 千分位
   })
 
-  it('状态标签映射：DRAFT=草稿 / APPROVING=审批中 / APPROVED=已通过 / 未知透传', async () => {
+  it('状态标签映射：DRAFT=草稿 / SUBMITTED·APPROVING=审批中 / APPROVED=已通过 / REJECTED=已驳回 / 未知透传', async () => {
     const w = await mountPage([
       ...RECORDS,
       { id: 4, totalAmount: 1, reimbursementDate: '2026-08-04', status: 'REJECTED', remark: '' },
+      { id: 5, totalAmount: 1, reimbursementDate: '2026-08-05', status: 'SUBMITTED', remark: '' },
+      { id: 6, totalAmount: 1, reimbursementDate: '2026-08-06', status: 'UNKNOWN_X', remark: '' },
     ])
     expect(w.text()).toContain('草稿')
-    expect(w.text()).toContain('审批中')
+    expect(w.text()).toContain('审批中') // SUBMITTED（提交后）与 APPROVING 同义
     expect(w.text()).toContain('已通过')
-    expect(w.text()).toContain('REJECTED') // 未知状态透传原值
+    expect(w.text()).toContain('已驳回')
+    expect(w.text()).toContain('UNKNOWN_X') // 未知状态透传原值
   })
 
   it('formatMoney：0 合法展示，null/undefined 显示 -', async () => {
@@ -101,12 +105,29 @@ describe('personal-reimbursement.vue 个人报销', () => {
     expect(st.dialogVisible).toBe(false)
   })
 
-  it('行提交审批：确认后调 submitPersonalReimbursement 并刷新', async () => {
+  it('行提交审批：确认后调 submitPersonalReimbursement，提示「已提交审批，审批通过后生效」', async () => {
     const w = await mountPage()
     mockPage.mockClear()
     await w.vm.$.setupState.handleSubmitRow(RECORDS[0])
     await flushPromises()
     expect(mockSubmit).toHaveBeenCalledWith(1)
     expect(mockPage).toHaveBeenCalled()
+    expect(mockSuccess).toHaveBeenCalledWith('已提交审批，审批通过后生效')
+  })
+
+  it('提交按钮：DRAFT 与 REJECTED 行可见（已驳回可重新提交），SUBMITTED/APPROVED 不可见', async () => {
+    const w = await mountPage([
+      { id: 1, totalAmount: 1, reimbursementDate: '2026-08-01', status: 'DRAFT', remark: '' },
+      { id: 2, totalAmount: 1, reimbursementDate: '2026-08-02', status: 'REJECTED', remark: '' },
+      { id: 3, totalAmount: 1, reimbursementDate: '2026-08-03', status: 'SUBMITTED', remark: '' },
+      { id: 4, totalAmount: 1, reimbursementDate: '2026-08-04', status: 'APPROVED', remark: '' },
+    ])
+    const rows = w.findAll('.el-table__row')
+    expect(rows).toHaveLength(4)
+    const submitBtn = (i: number) => rows[i].findAll('button').filter(b => b.text() === '提交')
+    expect(submitBtn(0)).toHaveLength(1) // DRAFT
+    expect(submitBtn(1)).toHaveLength(1) // REJECTED
+    expect(submitBtn(2)).toHaveLength(0) // SUBMITTED 审批中
+    expect(submitBtn(3)).toHaveLength(0) // APPROVED
   })
 })

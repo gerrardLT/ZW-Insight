@@ -31,7 +31,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * ReserveFundApplyService 单元测试
- * <p>备用金申请：保存初始化返还/冲抵金额为 0，提交即审批。</p>
+ * <p>备用金申请：保存初始化返还/冲抵金额为 0；提交置 SUBMITTED 发起审批，审批通过回调 onApproved 才置 APPROVED。</p>
  */
 @ExtendWith(MockitoExtension.class)
 class ReserveFundApplyServiceTest {
@@ -125,17 +125,20 @@ class ReserveFundApplyServiceTest {
     }
 
     @Test
-    @DisplayName("submit - 守卫：不存在/非草稿抛异常")
+    @DisplayName("submit - 守卫：不存在/非草稿非驳回抛异常")
     void submit_guardCases_throws() {
         when(reserveFundApplyMapper.selectById(99L)).thenReturn(null);
         assertThatThrownBy(() -> service.submit(99L)).hasMessageContaining("备用金申请不存在");
 
         when(reserveFundApplyMapper.selectById(1L)).thenReturn(apply(1L, "APPROVED"));
-        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("仅草稿状态可提交");
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("仅草稿或已驳回状态可提交");
+
+        when(reserveFundApplyMapper.selectById(2L)).thenReturn(apply(2L, "SUBMITTED"));
+        assertThatThrownBy(() -> service.submit(2L)).hasMessageContaining("仅草稿或已驳回状态可提交");
     }
 
     @Test
-    @DisplayName("submit - 正常：启动流程置 APPROVED")
+    @DisplayName("submit - 正常：启动流程置 SUBMITTED（审批通过才 APPROVED）")
     void submit_success() {
         BizReserveFundApply a = apply(1L, "DRAFT");
         when(reserveFundApplyMapper.selectById(1L)).thenReturn(a);
@@ -144,9 +147,71 @@ class ReserveFundApplyServiceTest {
 
         service.submit(1L);
 
-        assertThat(a.getStatus()).isEqualTo("APPROVED");
+        assertThat(a.getStatus()).isEqualTo("SUBMITTED");
         assertThat(a.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(reserveFundApplyMapper).updateById(a);
+    }
+
+    @Test
+    @DisplayName("submit - 已驳回可重新提交")
+    void submit_fromRejected_allowed() {
+        BizReserveFundApply a = apply(1L, "REJECTED");
+        when(reserveFundApplyMapper.selectById(1L)).thenReturn(a);
+        when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-2");
+
+        service.submit(1L);
+
+        assertThat(a.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(a.getWorkflowInstanceId()).isEqualTo("proc-2");
+    }
+
+    @Test
+    @DisplayName("onApproved - SUBMITTED 置 APPROVED；已 APPROVED 幂等跳过")
+    void onApproved_approvesAndIsIdempotent() {
+        BizReserveFundApply a = apply(1L, "SUBMITTED");
+        when(reserveFundApplyMapper.selectById(1L)).thenReturn(a);
+
+        service.onApproved(1L);
+
+        assertThat(a.getStatus()).isEqualTo("APPROVED");
+        verify(reserveFundApplyMapper).updateById(a);
+
+        BizReserveFundApply already = apply(2L, "APPROVED");
+        when(reserveFundApplyMapper.selectById(2L)).thenReturn(already);
+
+        service.onApproved(2L);
+
+        verify(reserveFundApplyMapper, never()).updateById(already);
+    }
+
+    @Test
+    @DisplayName("onApproved - 记录不存在：跳过不报错")
+    void onApproved_missingRecord_skips() {
+        when(reserveFundApplyMapper.selectById(9L)).thenReturn(null);
+
+        service.onApproved(9L);
+
+        verify(reserveFundApplyMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onRejected - SUBMITTED 置 REJECTED；非 SUBMITTED 不改动")
+    void onRejected_setsRejectedOnlyFromSubmitted() {
+        BizReserveFundApply submitted = apply(1L, "SUBMITTED");
+        when(reserveFundApplyMapper.selectById(1L)).thenReturn(submitted);
+
+        service.onRejected(1L);
+
+        assertThat(submitted.getStatus()).isEqualTo("REJECTED");
+        verify(reserveFundApplyMapper).updateById(submitted);
+
+        BizReserveFundApply approved = apply(2L, "APPROVED");
+        when(reserveFundApplyMapper.selectById(2L)).thenReturn(approved);
+
+        service.onRejected(2L);
+
+        assertThat(approved.getStatus()).isEqualTo("APPROVED");
+        verify(reserveFundApplyMapper, never()).updateById(approved);
     }
 
     @Test

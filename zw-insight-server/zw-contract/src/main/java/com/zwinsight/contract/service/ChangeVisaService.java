@@ -11,6 +11,7 @@ import com.zwinsight.contract.mapper.BizChangeVisaMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.util.Map;
 /**
  * 变更签证服务
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChangeVisaService {
@@ -52,7 +54,7 @@ public class ChangeVisaService {
     }
 
     /**
-     * 提交审批（审批通过→回写合同累计变更金额）
+     * 提交审批（发起流程，状态置 SUBMITTED；合同累计变更金额待审批通过后回写）
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
@@ -60,8 +62,8 @@ public class ChangeVisaService {
         if (changeVisa == null) {
             throw new BusinessException("变更签证不存在");
         }
-        if (!"DRAFT".equals(changeVisa.getStatus())) {
-            throw new BusinessException("仅草稿状态可提交");
+        if (!"DRAFT".equals(changeVisa.getStatus()) && !"REJECTED".equals(changeVisa.getStatus())) {
+            throw new BusinessException("仅草稿或已驳回状态可提交");
         }
 
         // 发起审批流程
@@ -72,6 +74,27 @@ public class ChangeVisaService {
                 "CHANGE_VISA", id, "change_visa_approval", variables);
 
         changeVisa.setWorkflowInstanceId(processInstanceId);
+        changeVisa.setStatus("SUBMITTED");
+        changeVisaMapper.updateById(changeVisa);
+    }
+
+    /**
+     * 审批通过回调：置 APPROVED 并回写合同累计变更金额
+     * <p>幂等：状态已为 APPROVED 时直接返回（兼容审批时点改造前的存量在途单据与重复事件），
+     * 避免同一笔变更重复累加合同累计变更金额。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onApproved(Long id) {
+        BizChangeVisa changeVisa = changeVisaMapper.selectById(id);
+        if (changeVisa == null) {
+            log.warn("变更签证审批通过回调：记录不存在, id={}", id);
+            return;
+        }
+        if ("APPROVED".equals(changeVisa.getStatus())) {
+            log.info("变更签证已生效，跳过重复回调, id={}", id);
+            return;
+        }
+
         changeVisa.setStatus("APPROVED");
         changeVisaMapper.updateById(changeVisa);
 
@@ -85,5 +108,24 @@ public class ChangeVisaService {
             contract.setCumulativeChangeAmount(cumulative.add(changeAmount));
             contractMapper.updateById(contract);
         }
+        log.info("变更签证审批通过并生效, id={}, changeAmount={}", id, changeVisa.getChangeAmount());
+    }
+
+    /**
+     * 审批驳回/撤回回调：状态置 REJECTED（合同累计变更金额未回写，无需回滚）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onRejected(Long id) {
+        BizChangeVisa changeVisa = changeVisaMapper.selectById(id);
+        if (changeVisa == null) {
+            log.warn("变更签证驳回回调：记录不存在, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(changeVisa.getStatus())) {
+            return;
+        }
+        changeVisa.setStatus("REJECTED");
+        changeVisaMapper.updateById(changeVisa);
+        log.info("变更签证审批驳回, id={}", id);
     }
 }

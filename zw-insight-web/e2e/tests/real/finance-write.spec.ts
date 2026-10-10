@@ -619,7 +619,7 @@ test.describe('财务域 — C7 项目报销（@matrix C-7-1/3；建单受阻 AP
     expect(postCount, '必填拦截下不应发出创建请求').toBe(0)
   })
 
-  test('无编辑/删除入口 + 提交按钮仅 DRAFT 行（状态条件渲染）', async ({ page }) => {
+  test('无编辑/删除入口 + 提交按钮仅 DRAFT/REJECTED 行（状态条件渲染）', async ({ page }) => {
     await page.goto('/finance/project-reimbursement')
     // 2026-08-20 稳定化：空态块先于数据渲染，waitForSelector(empty-block) 与 count() 竞态（M7 回归复现）→ expect.poll 等行渲染
     await expect.poll(async () => await page.locator('.el-table__row').count(), {
@@ -628,7 +628,7 @@ test.describe('财务域 — C7 项目报销（@matrix C-7-1/3；建单受阻 AP
     // C-7-3 实测修正：UI 无编辑/删除入口（源码实证仅提交按钮）
     await expect(page.locator('.el-table button:has-text("编辑")')).toHaveCount(0)
     await expect(page.locator('.el-table button:has-text("删除")')).toHaveCount(0)
-    // 状态条件渲染：逐行核对「提交」按钮仅出现在草稿行
+    // 状态条件渲染：逐行核对「提交」按钮仅出现在草稿/已驳回行（2026-10-10 起驳回可重新提交）
     const rows = page.locator('.el-table__row')
     const rowCount = await rows.count()
     // 2026-08-20 解除 skip：种子 99051（APPROVED）已导入实证，数据态缺口消除，改硬断言
@@ -637,8 +637,8 @@ test.describe('财务域 — C7 项目报销（@matrix C-7-1/3；建单受阻 AP
       const row = rows.nth(i)
       const statusText = (await row.locator('.el-tag').first().innerText()).trim()
       const submitCount = await row.locator('button:has-text("提交")').count()
-      if (statusText === '草稿') {
-        expect(submitCount, `第 ${i + 1} 行草稿应有提交按钮`).toBe(1)
+      if (statusText === '草稿' || statusText === '已驳回') {
+        expect(submitCount, `第 ${i + 1} 行「${statusText}」应有提交按钮`).toBe(1)
       } else {
         expect(submitCount, `第 ${i + 1} 行「${statusText}」不应有提交按钮`).toBe(0)
       }

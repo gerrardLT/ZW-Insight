@@ -221,13 +221,24 @@ describe('finance/project-reimbursement.vue 项目报销（C7）', () => {
     expect(reimbSrc).toContain("row.offsetReserve === 1 ? formatMoney(row.offsetAmount) : '-'")
   })
 
-  it('@matrix C-7-4 提交按钮仅 DRAFT 渲染 + 行提交调 submitProjectReimbursement', async () => {
-    expect(reimbSrc).toContain('v-if="row.status === \'DRAFT\'" link type="success" @click="handleSubmitRow(row)"')
+  it('@matrix C-7-4 提交按钮仅 DRAFT/REJECTED 渲染 + 行提交调 submitProjectReimbursement', async () => {
+    expect(reimbSrc).toContain('v-if="row.status === \'DRAFT\' || row.status === \'REJECTED\'" link type="success" @click="handleSubmitRow(row)"')
     const w = await mountPage()
     await w.vm.$.setupState.handleSubmitRow({ id: 51 })
     await flushPromises()
     expect(mocks.mockReimbSubmit).toHaveBeenCalledWith(51)
-    expect(mocks.mockSuccess).toHaveBeenCalledWith('提交成功')
+    expect(mocks.mockSuccess).toHaveBeenCalledWith('已提交审批，审批通过后生效')
+  })
+
+  it('@matrix C-7-5 statusMap：提交后 SUBMITTED=审批中，审批通过才 APPROVED=已通过（不再提交即已通过）', async () => {
+    const w = await mountPage()
+    const st: any = w.vm.$.setupState
+    expect(st.getStatusLabel('DRAFT')).toBe('草稿')
+    expect(st.getStatusLabel('SUBMITTED')).toBe('审批中')
+    expect(st.getStatusType('SUBMITTED')).toBe('warning')
+    expect(st.getStatusLabel('APPROVED')).toBe('已通过')
+    expect(st.getStatusLabel('REJECTED')).toBe('已驳回')
+    expect(st.getStatusLabel('APPROVING')).toBe('审批中')
   })
 })
 

@@ -868,13 +868,13 @@
 | C-7-1 | offsetReserve 开关（active=1）控制 offsetAmount 列显隐 | 功能 | 列表有冲销数据 | 切换抵扣开关 | offsetAmount 列与表单项随开关显隐 | L1 finance-matrix.component.test.ts（2026-08-20，el-switch 1/0 + 表单项 v-if 联动运行时实证（=0 隐藏/=1 出现）+ 列表列 formatMoney/'-' 源码钉住） |
 | C-7-2 | 必填校验 projectId/totalAmount/reimbursementDate | 负向 | 弹窗打开 | 留空提交 | 必填提示 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿；空态确定不发 POST。**API-GAP-fin**：后端无 DELETE 通道，不真实建单） |
 | C-7-3 | 新增/编辑/删除 CRUD | 功能 | 项目存在 | 依次操作 | 各操作成功且列表刷新 | E2E finance-write.spec.ts（真实模式，2026-08-18 全绿。**2026-08 实测修正**：UI 无编辑/删除入口，仅提交按钮且只在草稿行渲染。**2026-08-20 解除 skip**：种子 99051（APPROVED）已导入，列表有数据行硬断言全绿） |
-| C-7-4 | 提交仅 DRAFT（submit POST） | 功能 | 草稿存在 | 提交 | 状态→审批中 | E2E finance-write.spec.ts（真实模式，逐行状态条件渲染断言）+ L1 finance-matrix.component.test.ts（2026-08-20，提交按钮 v-if DRAFT 源码钉住 + submitProjectReimbursement 调用实证） |
+| C-7-4 | 提交仅 DRAFT/REJECTED（submit POST） | 功能 | 草稿或已驳回存在 | 提交 | 状态→审批中（SUBMITTED），审批通过才 APPROVED | E2E finance-write.spec.ts（真实模式，逐行状态条件渲染断言）+ L1 finance-matrix.component.test.ts（2026-10-10，提交按钮 v-if DRAFT/REJECTED 源码钉住 + submitProjectReimbursement 调用 + 提示「已提交审批，审批通过后生效」实证） |
 | C-7-5 | 勾选冲销时 offsetAmount 必填 | 负向 | 开关开启 | 留空冲销额提交 | 校验提示 | 无 |
-| C-7-6 | offsetAmount 边界（0/负值/超总额） | 边界 | 开关开启 | 输入 0、-5、大于 totalAmount | 按校验规则拦截或正确计算实付 | 无 |
+| C-7-6 | offsetAmount 边界（0/负值/超总额） | 边界 | 开关开启 | 输入 0、-5、大于 totalAmount | 按校验规则拦截或正确计算实付 | zw-finance L1 ProjectReimbursementServiceTest（2026-10-10，submit 提交即校验：负值/超报销额/超备用金待冲抵余额三类拒绝 + 审批通过时二次校验） |
 | C-7-7 | 金额 formatMoney + 分页 | 一致性 | 列表有数据 | 核对 | 一致 | 无 |
 | C-7-8 | 重复提交防抖 | 负向 | 表单已填 | 双击 | 一次请求 | 无 |
-| C-7-9 | 非 DRAFT 状态不可提交/删除 | 负向 | APPROVED 单存在 | 检查操作列 | 按钮隐藏 | 无 |
-| C-7-10 | 冲销联动备用金余额 | 集成 | 存在已借支备用金 | 报销勾选冲销并审批通过 | 备用金待冲销余额相应减少 | 无 |
+| C-7-9 | 非 DRAFT/REJECTED 状态不可提交/删除 | 负向 | APPROVED/SUBMITTED 单存在 | 检查操作列 | 按钮隐藏 | zw-finance L1 ProjectReimbursementServiceTest（submit 守卫：SUBMITTED/APPROVED 提交抛「仅草稿或已驳回状态可提交」） |
+| C-7-10 | 冲销联动备用金余额 | 集成 | 存在已借支备用金 | 报销勾选冲销并审批通过 | 备用金待冲销余额相应减少 | zw-finance L1 ProjectReimbursementServiceTest（2026-10-10，**审批时点修正**：提交只校验不改余额，onApproved 才累加 offsetAmount，且幂等不重复冲抵） |
 
 ### C8 备用金管理（/finance/reserve-fund）
 
@@ -886,8 +886,8 @@
 | C-8-4 | 归还必填 returnAmount/returnDate | 负向 | 归还弹窗打开 | 留空提交 | 必填提示 | 无 |
 | C-8-5 | 归还调用 createReserveFundReturn | 功能 | APPROVED 记录 | 填归还额提交 | 归还成功，记录状态/余额更新 | 无 |
 | C-8-6 | 归还金额>借支金额边界 | 边界 | APPROVED 记录 | 输入超额 | 拦截或提示 | 无 |
-| C-8-7 | 提交借支审批（仅 DRAFT） | 功能 | 草稿存在 | 提交 | 状态流转 | 无 |
-| C-8-8 | 状态枚举渲染 | 一致性 | 多状态数据 | 核对状态列 | 与 statusMap 一致 | 无 |
+| C-8-7 | 提交借支审批（仅 DRAFT/REJECTED） | 功能 | 草稿或已驳回存在 | 提交 | 状态→审批中（SUBMITTED），审批通过才 APPROVED | L1 reserve-fund.component.test.ts（2026-10-10，提交按钮仅 DRAFT/REJECTED 可见运行时实证 + 提示「已提交审批，审批通过后生效」）+ zw-finance L1 ReserveFundApplyServiceTest（submit 置 SUBMITTED / onApproved 幂等 / onRejected） |
+| C-8-8 | 状态枚举渲染 | 一致性 | 多状态数据 | 核对状态列 | 与 statusMap 一致（含 SUBMITTED=审批中、REJECTED=已驳回） | L1 reserve-fund.component.test.ts（2026-10-10，五态映射 + 未映射状态透传） |
 | C-8-9 | 金额 formatMoney + 分页 | 一致性 | 列表有数据 | 核对 | 一致 | 无 |
 | C-8-10 | 重复提交防抖 | 负向 | 表单已填 | 双击 | 一次请求 | 无 |
 | C-8-11 | 归还后余额一致性 | 一致性 | 归还成功 | 对比余额=借支-累计归还 | 严格相等 | 无 |

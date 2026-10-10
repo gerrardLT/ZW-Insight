@@ -104,28 +104,57 @@ class FundTransferServiceTest {
     }
 
     @Test
-    @DisplayName("submit - 守卫：不存在/非草稿抛异常")
+    @DisplayName("submit - 守卫：不存在/非草稿非驳回抛异常")
     void submit_guardCases_throws() {
         when(fundTransferMapper.selectById(99L)).thenReturn(null);
         assertThatThrownBy(() -> service.submit(99L)).hasMessageContaining("资金调度单不存在");
 
         when(fundTransferMapper.selectById(1L)).thenReturn(transfer(1L, "APPROVED", 1L, 2L, "100"));
-        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("仅草稿状态可提交");
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("仅草稿或已驳回状态可提交");
+
+        when(fundTransferMapper.selectById(2L)).thenReturn(transfer(2L, "SUBMITTED", 1L, 2L, "100"));
+        assertThatThrownBy(() -> service.submit(2L)).hasMessageContaining("仅草稿或已驳回状态可提交");
     }
 
     @Test
-    @DisplayName("submit - 正常：APPROVED + 调出项目计支出 + 调入项目计收入")
-    void submit_success_writesBackBothProjects() {
+    @DisplayName("submit - 正常：置 SUBMITTED，不回写项目资金")
+    void submit_marksSubmittedWithoutWriteBack() {
         BizFundTransfer t = transfer(1L, "DRAFT", 10L, 20L, "5000");
         when(fundTransferMapper.selectById(1L)).thenReturn(t);
         when(approvalService.startProcess(eq("FUND_TRANSFER"), eq(1L),
                 eq("fund_transfer_approval"), anyMap())).thenReturn("proc-1");
+
+        service.submit(1L);
+
+        assertThat(t.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(t.getWorkflowInstanceId()).isEqualTo("proc-1");
+        verify(projectMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("submit - 已驳回可重新提交")
+    void submit_fromRejected_allowed() {
+        BizFundTransfer t = transfer(1L, "REJECTED", 10L, 20L, "5000");
+        when(fundTransferMapper.selectById(1L)).thenReturn(t);
+        when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-2");
+
+        service.submit(1L);
+
+        assertThat(t.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(t.getWorkflowInstanceId()).isEqualTo("proc-2");
+    }
+
+    @Test
+    @DisplayName("onApproved - 置 APPROVED + 调出项目计支出 + 调入项目计收入")
+    void onApproved_writesBackBothProjects() {
+        BizFundTransfer t = transfer(1L, "SUBMITTED", 10L, 20L, "5000");
+        when(fundTransferMapper.selectById(1L)).thenReturn(t);
         BizProject from = project(10L, null, "1000");
         BizProject to = project(20L, "2000", null);
         when(projectMapper.selectById(10L)).thenReturn(from);
         when(projectMapper.selectById(20L)).thenReturn(to);
 
-        service.submit(1L);
+        service.onApproved(1L);
 
         assertThat(t.getStatus()).isEqualTo("APPROVED");
         assertThat(from.getTotalExpense()).isEqualByComparingTo("6000"); // 1000+5000
@@ -133,17 +162,59 @@ class FundTransferServiceTest {
     }
 
     @Test
-    @DisplayName("submit - 公司资金池（fromProjectId=null）不回写项目表")
-    void submit_poolSource_noWriteBack() {
-        BizFundTransfer t = transfer(1L, "DRAFT", null, 20L, "5000");
+    @DisplayName("onApproved - 幂等：已 APPROVED 直接返回，不重复计入项目收支")
+    void onApproved_idempotent() {
+        BizFundTransfer t = transfer(1L, "APPROVED", 10L, 20L, "5000");
         when(fundTransferMapper.selectById(1L)).thenReturn(t);
-        when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-1");
+
+        service.onApproved(1L);
+
+        verify(projectMapper, never()).selectById(any());
+        verify(projectMapper, never()).updateById(any());
+        verify(fundTransferMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onApproved - 公司资金池（fromProjectId=null）不回写项目表")
+    void onApproved_poolSource_noWriteBack() {
+        BizFundTransfer t = transfer(1L, "SUBMITTED", null, 20L, "5000");
+        when(fundTransferMapper.selectById(1L)).thenReturn(t);
         when(projectMapper.selectById(20L)).thenReturn(null); // 调入项目也不存在
 
-        service.submit(1L);
+        service.onApproved(1L);
 
         assertThat(t.getStatus()).isEqualTo("APPROVED");
         verify(projectMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onApproved - 记录不存在：跳过不报错")
+    void onApproved_missingRecord_skips() {
+        when(fundTransferMapper.selectById(9L)).thenReturn(null);
+
+        service.onApproved(9L);
+
+        verify(fundTransferMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onRejected - SUBMITTED 置 REJECTED；非 SUBMITTED 不改动")
+    void onRejected_setsRejectedOnlyFromSubmitted() {
+        BizFundTransfer submitted = transfer(1L, "SUBMITTED", 10L, 20L, "5000");
+        when(fundTransferMapper.selectById(1L)).thenReturn(submitted);
+
+        service.onRejected(1L);
+
+        assertThat(submitted.getStatus()).isEqualTo("REJECTED");
+        verify(fundTransferMapper).updateById(submitted);
+
+        BizFundTransfer approved = transfer(2L, "APPROVED", 10L, 20L, "5000");
+        when(fundTransferMapper.selectById(2L)).thenReturn(approved);
+
+        service.onRejected(2L);
+
+        assertThat(approved.getStatus()).isEqualTo("APPROVED");
+        verify(fundTransferMapper, never()).updateById(approved);
     }
 
     @Test

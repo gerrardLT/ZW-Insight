@@ -128,12 +128,13 @@ async function handleSubmit() {
       invoiceCount: Number(form.value.invoiceCount) || 0,
       remark: form.value.remark
     }
-    // 两段式提交：save 写入草稿返回 id → 链式调用 submit 启动审批流置 APPROVED
+    // 两段式提交：save 写入草稿返回 id → 链式调用 submit 启动审批流置 SUBMITTED，
+    // 审批通过后由后端回调置 APPROVED（提交不等于已通过）
     const res: any = await saveReimbursement(payload)
     if (res?.data) {
       await submitReimbursement(res.data)
     }
-    uni.showToast({ title: '提交成功', icon: 'success' })
+    uni.showToast({ title: '已提交审批', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally {
     submitting.value = false

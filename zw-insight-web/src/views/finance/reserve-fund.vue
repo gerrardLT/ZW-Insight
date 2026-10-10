@@ -50,7 +50,7 @@
         </el-table-column>
         <el-table-column label="操作" width="170" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitRow(row)">提交</el-button>
+            <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="success" @click="handleSubmitRow(row)">提交</el-button>
             <el-button v-if="row.status === 'APPROVED'" link type="primary" @click="handleReturn(row)">归还</el-button>
           </template>
         </el-table-column>
@@ -174,8 +174,10 @@ const returnRules = {
 
 const statusMap: Record<string, { label: string; type: string }> = {
   DRAFT: { label: '草稿', type: 'info' },
+  SUBMITTED: { label: '审批中', type: 'warning' },
   APPROVING: { label: '审批中', type: 'warning' },
-  APPROVED: { label: '已通过', type: 'success' }
+  APPROVED: { label: '已通过', type: 'success' },
+  REJECTED: { label: '已驳回', type: 'danger' }
 }
 
 function getStatusLabel(status: string) {
@@ -234,7 +236,7 @@ async function handleApplySubmit() {
 async function handleSubmitRow(row: any) {
   await ElMessageBox.confirm('确定要提交该备用金申请吗？', '提示', { type: 'warning' })
   await submitReserveFundApply(row.id)
-  ElMessage.success('提交成功')
+  ElMessage.success('已提交审批，审批通过后生效')
   loadData()
 }
 

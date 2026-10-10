@@ -748,9 +748,12 @@ public class ApprovalService {
                 case "PROJECT_TERMINATE" -> Set.of("TERMINATING");
                 case "machine_settlement" -> Set.of("1", "3");
                 case "MATERIAL_REFUND" -> Set.of("PENDING");
-                // ponytail: 既有六类提交即生效；仅绑定同一实例兼容，审批时点改造另立业务任务。
-                case "CHANGE_VISA", "FUND_TRANSFER", "PERSONAL_REIMBURSEMENT", "PROJECT_REIMBURSEMENT",
-                     "RESERVE_FUND_APPLY", "RETENTION_RETURN" -> Set.of("APPROVED");
+                // 报销/备用金/质保金返还/资金调拨/变更签证 已于 2026-10-10 改为审批后生效
+                // （SUBMITTED→APPROVED/REJECTED）；APPROVED 仅兼容改造前遗留的在途单据，
+                // 否则其待办会因状态不匹配而永久卡死。
+                case "PROJECT_REIMBURSEMENT", "PERSONAL_REIMBURSEMENT", "RESERVE_FUND_APPLY",
+                     "RETENTION_RETURN", "FUND_TRANSFER", "CHANGE_VISA" ->
+                        Set.of("SUBMITTED", "REJECTED", "APPROVED");
                 case "BUDGET_CHANGE", "OUTPUT_REPORT", "INVOICE_APPLY", "PAYMENT_APPLY",
                      "PROJECT_SETTLEMENT", "MATERIAL_TRANSFER" -> Set.of("SUBMITTED", "REJECTED");
                 default -> Set.of("SUBMITTED");

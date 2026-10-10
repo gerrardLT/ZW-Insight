@@ -76,17 +76,20 @@ class PersonalReimbursementServiceTest {
     }
 
     @Test
-    @DisplayName("submit - 守卫：不存在/非草稿抛异常")
+    @DisplayName("submit - 守卫：不存在/非草稿非驳回抛异常")
     void submit_guardCases_throws() {
         when(personalReimbursementMapper.selectById(99L)).thenReturn(null);
         assertThatThrownBy(() -> service.submit(99L)).hasMessageContaining("个人报销不存在");
 
         when(personalReimbursementMapper.selectById(1L)).thenReturn(reimbursement(1L, "APPROVED"));
-        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("仅草稿状态可提交");
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("仅草稿或已驳回状态可提交");
+
+        when(personalReimbursementMapper.selectById(2L)).thenReturn(reimbursement(2L, "SUBMITTED"));
+        assertThatThrownBy(() -> service.submit(2L)).hasMessageContaining("仅草稿或已驳回状态可提交");
     }
 
     @Test
-    @DisplayName("submit - 正常：启动流程置 APPROVED")
+    @DisplayName("submit - 正常：启动流程置 SUBMITTED（审批通过才 APPROVED）")
     void submit_success() {
         BizPersonalReimbursement r = reimbursement(1L, "DRAFT");
         when(personalReimbursementMapper.selectById(1L)).thenReturn(r);
@@ -95,9 +98,22 @@ class PersonalReimbursementServiceTest {
 
         service.submit(1L);
 
-        assertThat(r.getStatus()).isEqualTo("APPROVED");
+        assertThat(r.getStatus()).isEqualTo("SUBMITTED");
         assertThat(r.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(personalReimbursementMapper).updateById(r);
+    }
+
+    @Test
+    @DisplayName("submit - 已驳回可重新提交")
+    void submit_fromRejected_allowed() {
+        BizPersonalReimbursement r = reimbursement(1L, "REJECTED");
+        when(personalReimbursementMapper.selectById(1L)).thenReturn(r);
+        when(approvalService.startProcess(anyString(), any(), anyString(), anyMap())).thenReturn("proc-2");
+
+        service.submit(1L);
+
+        assertThat(r.getStatus()).isEqualTo("SUBMITTED");
+        assertThat(r.getWorkflowInstanceId()).isEqualTo("proc-2");
     }
 
     @Test
@@ -116,5 +132,54 @@ class PersonalReimbursementServiceTest {
                 .isInstanceOf(BusinessException.class).hasMessageContaining("报销金额必须大于0");
 
         verify(personalReimbursementMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onApproved - SUBMITTED 置 APPROVED；已 APPROVED 幂等跳过")
+    void onApproved_approvesAndIsIdempotent() {
+        BizPersonalReimbursement r = reimbursement(1L, "SUBMITTED");
+        when(personalReimbursementMapper.selectById(1L)).thenReturn(r);
+
+        service.onApproved(1L);
+
+        assertThat(r.getStatus()).isEqualTo("APPROVED");
+        verify(personalReimbursementMapper).updateById(r);
+
+        BizPersonalReimbursement already = reimbursement(2L, "APPROVED");
+        when(personalReimbursementMapper.selectById(2L)).thenReturn(already);
+
+        service.onApproved(2L);
+
+        verify(personalReimbursementMapper, never()).updateById(already);
+    }
+
+    @Test
+    @DisplayName("onApproved - 记录不存在：跳过不报错")
+    void onApproved_missingRecord_skips() {
+        when(personalReimbursementMapper.selectById(9L)).thenReturn(null);
+
+        service.onApproved(9L);
+
+        verify(personalReimbursementMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("onRejected - SUBMITTED 置 REJECTED；非 SUBMITTED 不改动")
+    void onRejected_setsRejectedOnlyFromSubmitted() {
+        BizPersonalReimbursement submitted = reimbursement(1L, "SUBMITTED");
+        when(personalReimbursementMapper.selectById(1L)).thenReturn(submitted);
+
+        service.onRejected(1L);
+
+        assertThat(submitted.getStatus()).isEqualTo("REJECTED");
+        verify(personalReimbursementMapper).updateById(submitted);
+
+        BizPersonalReimbursement approved = reimbursement(2L, "APPROVED");
+        when(personalReimbursementMapper.selectById(2L)).thenReturn(approved);
+
+        service.onRejected(2L);
+
+        assertThat(approved.getStatus()).isEqualTo("APPROVED");
+        verify(personalReimbursementMapper, never()).updateById(approved);
     }
 }

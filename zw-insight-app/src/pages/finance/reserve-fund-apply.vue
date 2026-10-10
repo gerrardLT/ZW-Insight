@@ -75,8 +75,8 @@ async function handleSubmit() {
   if (rejectIfOffline('备用金申请需联网提交审批，请联网后重试')) return
   submitting.value = true
   try {
-    // 两段式提交（与 web 端一致）：save 落 DRAFT 返回 id → submit 启动审批置 APPROVED，
-    // 否则记录永久 DRAFT 且在归还页（按 APPROVED 过滤）永不可见
+    // 两段式提交（与 web 端一致）：save 落 DRAFT 返回 id → submit 启动审批置 SUBMITTED，
+    // 审批通过后由后端回调置 APPROVED；归还页按 APPROVED 过滤，未审批通过不会出现
     const res: any = await saveReserveFundApply({
       projectId: form.value.projectId,
       applicant: form.value.applicant,
@@ -84,7 +84,7 @@ async function handleSubmit() {
       applyAmount: amount
     })
     await submitReserveFundApply(res.data)
-    uni.showToast({ title: '提交成功', icon: 'success' })
+    uni.showToast({ title: '已提交审批', icon: 'success' })
     setTimeout(() => { uni.navigateBack() }, 1500)
   } catch {} finally { submitting.value = false }
 }

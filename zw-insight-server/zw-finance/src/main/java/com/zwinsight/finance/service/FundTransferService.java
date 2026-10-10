@@ -76,13 +76,15 @@ public class FundTransferService {
     }
 
     /**
-     * 提交审批
+     * 提交审批（发起流程，状态置 SUBMITTED；项目资金待审批通过后回写）
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizFundTransfer transfer = fundTransferMapper.selectById(id);
         if (transfer == null) throw new BusinessException("资金调度单不存在");
-        if (!"DRAFT".equals(transfer.getStatus())) throw new BusinessException("仅草稿状态可提交");
+        if (!"DRAFT".equals(transfer.getStatus()) && !"REJECTED".equals(transfer.getStatus())) {
+            throw new BusinessException("仅草稿或已驳回状态可提交");
+        }
 
         // 发起审批
         Map<String, Object> variables = new HashMap<>();
@@ -91,13 +93,52 @@ public class FundTransferService {
                 "FUND_TRANSFER", id, "fund_transfer_approval", variables);
 
         transfer.setWorkflowInstanceId(processInstanceId);
+        transfer.setStatus("SUBMITTED");
+        fundTransferMapper.updateById(transfer);
+    }
+
+    /**
+     * 审批通过回调：置 APPROVED 并回写项目资金
+     * <p>幂等：状态已为 APPROVED 时直接返回（兼容审批时点改造前的存量在途单据与重复事件），
+     * 避免同一笔调拨重复计入项目收支。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onApproved(Long id) {
+        BizFundTransfer transfer = fundTransferMapper.selectById(id);
+        if (transfer == null) {
+            log.warn("资金调拨审批通过回调：记录不存在, id={}", id);
+            return;
+        }
+        if ("APPROVED".equals(transfer.getStatus())) {
+            log.info("资金调拨已生效，跳过重复回调, id={}", id);
+            return;
+        }
+
         transfer.setStatus("APPROVED");
         fundTransferMapper.updateById(transfer);
 
         // 回写项目资金
         writeBackProjectFund(transfer);
-        log.info("资金调度审批通过: {} -> {}, 金额: {}",
+        log.info("资金调拨审批通过并生效: {} -> {}, 金额: {}",
                 transfer.getFromProjectId(), transfer.getToProjectId(), transfer.getTransferAmount());
+    }
+
+    /**
+     * 审批驳回/撤回回调：状态置 REJECTED（项目资金未回写，无需回滚）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void onRejected(Long id) {
+        BizFundTransfer transfer = fundTransferMapper.selectById(id);
+        if (transfer == null) {
+            log.warn("资金调拨驳回回调：记录不存在, id={}", id);
+            return;
+        }
+        if (!"SUBMITTED".equals(transfer.getStatus())) {
+            return;
+        }
+        transfer.setStatus("REJECTED");
+        fundTransferMapper.updateById(transfer);
+        log.info("资金调拨审批驳回, id={}", id);
     }
 
     /**
