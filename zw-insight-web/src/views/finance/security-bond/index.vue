@@ -213,8 +213,8 @@ async function loadPage() {
       bondType: query.value.bondType || undefined,
       refundStatus: query.value.refundStatus || undefined
     })
-    tableData.value = res.data.data?.records || []
-    total.value = res.data.data?.total || 0
+    tableData.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } finally {
     loading.value = false
   }
@@ -224,7 +224,7 @@ async function loadExpiring() {
   loading.value = true
   try {
     const res = await getExpiringBonds(30)
-    tableData.value = res.data.data || []
+    tableData.value = res.data || []
     total.value = tableData.value.length
     ElMessage.info(`共 ${tableData.value.length} 笔保证金 30 天内到期`)
   } finally {

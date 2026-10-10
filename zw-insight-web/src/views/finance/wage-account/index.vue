@@ -212,8 +212,8 @@ async function loadPage() {
   loading.value = true
   try {
     const res = await getWageAccountPage({ page: query.value.page, size: query.value.size })
-    tableData.value = res.data.data?.records || []
-    total.value = res.data.data?.total || 0
+    tableData.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } finally {
     loading.value = false
   }
@@ -274,13 +274,13 @@ async function submitWagePayment() {
 
 async function handleViewDeposits(row: WageSpecialAccount) {
   const res = await getWageDeposits(row.id as number)
-  depositRecords.value = res.data.data || []
+  depositRecords.value = res.data || []
   depositsDialogVisible.value = true
 }
 
 async function handleScan() {
   const res = await complianceScan()
-  const accounts = res.data.data || []
+  const accounts = res.data || []
   const warnings = accounts.filter(a => a.complianceFlag !== 'COMPLIANT').length
   ElMessage.success(`巡检完成：${accounts.length} 个在用专户，${warnings} 个存在合规预警`)
   await loadPage()

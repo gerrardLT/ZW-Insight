@@ -240,7 +240,7 @@ function removeDetail(idx: number) {
 
 async function loadExpenseCategories() {
   const res = await getEnabledCategories('EXPENSE')
-  expenseCategories.value = res.data.data || []
+  expenseCategories.value = res.data || []
 }
 
 function formatAmount(value?: number) {
@@ -258,7 +258,7 @@ async function loadAnnual() {
   annualLoading.value = true
   try {
     const res = await getAnnualBudgetPage({ page: 1, size: 50 })
-    annualData.value = res.data.data?.records || []
+    annualData.value = res.data?.records || []
   } finally {
     annualLoading.value = false
   }
@@ -268,7 +268,7 @@ async function loadMonthly() {
   monthlyLoading.value = true
   try {
     const res = await getMonthlyPlanPage({ page: 1, size: 50 })
-    monthlyData.value = res.data.data?.records || []
+    monthlyData.value = res.data?.records || []
   } finally {
     monthlyLoading.value = false
   }
@@ -278,7 +278,7 @@ async function loadRolling() {
   rollingLoading.value = true
   try {
     const res = await getRollingForecastPage({ page: 1, size: 24 })
-    rollingData.value = res.data.data?.records || []
+    rollingData.value = res.data?.records || []
   } finally {
     rollingLoading.value = false
   }

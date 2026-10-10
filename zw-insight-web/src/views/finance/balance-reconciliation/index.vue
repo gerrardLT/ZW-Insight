@@ -178,8 +178,8 @@ async function loadPage() {
       start: dateRange.value?.[0],
       end: dateRange.value?.[1]
     })
-    tableData.value = res.data.data?.records || []
-    total.value = res.data.data?.total || 0
+    tableData.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } finally {
     loading.value = false
   }
@@ -204,7 +204,7 @@ async function handleSubmit() {
   submitLoading.value = true
   try {
     const res = await saveReconciliation(formData.value as BalanceReconciliation)
-    const saved = res.data.data
+    const saved = res.data
     if (saved && saved.balanced === 1) {
       ElMessage.success('调节表已生成，双向余额已调平')
     } else {
@@ -219,7 +219,7 @@ async function handleSubmit() {
 
 async function handleDetail(row: BalanceReconciliation) {
   const res = await getReconciliationDetail(row.id as number)
-  detail.value = res.data.data
+  detail.value = res.data
   detailDialogVisible.value = true
 }
 

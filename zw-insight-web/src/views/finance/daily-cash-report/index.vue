@@ -128,7 +128,7 @@ async function loadReport() {
   loading.value = true
   try {
     const res = await getDailyReport(reportDate.value)
-    report.value = res.data.data || ({} as DailyCashReport)
+    report.value = res.data || ({} as DailyCashReport)
   } catch {
     report.value = {} as DailyCashReport
   } finally {
@@ -138,12 +138,12 @@ async function loadReport() {
 
 async function loadLargeOutflows() {
   const res = await getLargeOutflows(reportDate.value)
-  largeOutflows.value = res.data.data || []
+  largeOutflows.value = res.data || []
 }
 
 async function loadTrend() {
   const res = await getDailyReportTrend(trendDays.value)
-  const list = res.data.data || []
+  const list = res.data || []
   await nextTick()
   renderChart(list)
 }

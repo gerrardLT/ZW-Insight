@@ -132,7 +132,7 @@ async function loadTree() {
   loading.value = true
   try {
     const res = await getFundCategoryTree(directionFilter.value || undefined)
-    treeData.value = res.data.data || []
+    treeData.value = res.data || []
   } finally {
     loading.value = false
   }

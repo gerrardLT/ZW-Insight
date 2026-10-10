@@ -271,8 +271,8 @@ async function loadPage() {
       projectId: query.value.projectId || undefined,
       status: query.value.status || undefined
     })
-    tableData.value = res.data.data?.records || []
-    total.value = res.data.data?.total || 0
+    tableData.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } finally {
     loading.value = false
   }
@@ -282,7 +282,7 @@ async function loadAging() {
   agingLoading.value = true
   try {
     const res = await getReceivableAging(query.value.projectId || undefined)
-    aging.value = res.data.data || { totalOpen: 0, totalOverdue: 0, projects: [] }
+    aging.value = res.data || { totalOpen: 0, totalOverdue: 0, projects: [] }
   } finally {
     agingLoading.value = false
   }

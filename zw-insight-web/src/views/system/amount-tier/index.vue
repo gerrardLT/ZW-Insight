@@ -138,7 +138,7 @@ async function loadTiers() {
   loading.value = true
   try {
     const res = await getTierList(MODULE)
-    tierList.value = res.data.data || []
+    tierList.value = res.data || []
   } finally {
     loading.value = false
   }
@@ -192,7 +192,7 @@ async function handleSubmit() {
 
 async function handleMatch() {
   const res = await matchTier(MODULE, previewAmount.value)
-  matchedTier.value = res.data.data || null
+  matchedTier.value = res.data || null
   matched.value = matchedTier.value !== null
 }
 

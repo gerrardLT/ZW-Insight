@@ -106,7 +106,7 @@ async function loadTree() {
   loading.value = true
   try {
     const res = await getGroupTree()
-    treeData.value = res.data.data || []
+    treeData.value = res.data || []
   } finally {
     loading.value = false
   }

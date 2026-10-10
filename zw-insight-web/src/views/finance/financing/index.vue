@@ -228,8 +228,8 @@ async function loadPage() {
       size: query.value.size,
       status: query.value.status || undefined
     })
-    tableData.value = res.data.data?.records || []
-    total.value = res.data.data?.total || 0
+    tableData.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } finally {
     loading.value = false
   }
@@ -274,7 +274,7 @@ async function handleSubmit() {
 
 async function handleViewPlan(row: BizFinancing) {
   const res = await getRepayments(row.id as number)
-  repaymentPlan.value = res.data.data || []
+  repaymentPlan.value = res.data || []
   planDialogVisible.value = true
 }
 

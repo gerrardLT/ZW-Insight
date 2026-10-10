@@ -250,8 +250,8 @@ async function loadPage() {
       end: dateRange.value?.[1],
       reconciled: query.value.reconciled
     })
-    tableData.value = res.data.data?.records || []
-    total.value = res.data.data?.total || 0
+    tableData.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } finally {
     loading.value = false
   }
@@ -336,7 +336,7 @@ async function submitImport() {
     return
   }
   const res = await importFlows(flows)
-  const r = res.data.data || {}
+  const r = res.data || {}
   ElMessage.success(`导入完成：新增 ${r.inserted ?? 0} 条，跳过重复 ${r.skipped ?? 0} 条`)
   importDialogVisible.value = false
   importText.value = ''

@@ -174,7 +174,7 @@ async function loadDashboard() {
   loading.value = true
   try {
     const res = await getFundDashboard()
-    dashboard.value = res.data.data || {}
+    dashboard.value = res.data || {}
   } finally {
     loading.value = false
   }
