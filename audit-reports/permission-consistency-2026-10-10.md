@@ -405,7 +405,7 @@ wangqiang(ALL) 见全部；**zhaolei 需补 90001 或 90002 归属**。
 
 ### 8.4 ③ 子页面/按钮菜单只绑 SUPER_ADMIN
 
-**根因**：`V2026_45_2` 建立的细粒度层（`20201-20238` 共 21 行 = 4 个子页面 + 17 个按钮）只 `INSERT` 给 `role_id=1`，
+**根因（主环境）**：`V2026_45_2` 建立的细粒度层（`20201-20238` 共 21 行 = 4 个子页面 + 17 个按钮）只 `INSERT` 给 `role_id=1`，
 业务角色从未绑定 → 看不到 WBS结构/变更事件/成本账户CBS/成本主线看板，对应接口一律 403
 （如实测 PM `POST /api/v1/contract/change-event` 仍 403）。
 
@@ -440,3 +440,80 @@ wangqiang(ALL) 见全部；**zhaolei 需补 90001 或 90002 归属**。
 3. **③** 变更事件的 `approve`/`reject` 给谁（徽颍 `COMPANY_LEADER`/`DEPT_MANAGER`？主环境 `PROJECT_MANAGER`？）；`20201` 成本看板是否全量下发？
 
 
+
+---
+
+## 9. 三项整改的实施与复验（2026-10-10 完成）
+
+用户 2026-10-10 批准 §8 规划并指示"实施→review→推送部署"。实施分两批推送：
+
+| 批次 | 提交 | 内容 | CI |
+|---|---|---|---|
+| 第一批 | `1add93b1` | P1 数据范围（V2026_93）+ P2 子页面菜单（V2026_94）+ P3 DEPT 语义（V2026_95 + handler） | run `38087104120` 双机 success |
+| 第二批 | `47899c01` | P2 暴露出的两处行级数据权限缺口（`biz_cost_account` / `biz_change_event`） | run `38087859630` 双机 success |
+
+### 9.1 实施要点（与 §8 规划的差异）
+
+- **P2 的闸门**最终采用「**持有该子页面所属模块的一级 DIR 菜单**」而非 `{module}:view`：
+  后者被大量授予用于级联下拉（如 `project:view` 几乎人人都有），不能代表"该角色负责这个模块"；
+  DIR 菜单持有者则精确对应（主环境：DIR 3=项目经理、DIR 4=项目经理+商务、DIR 6=项目经理+财务）。
+- **P2 在徽颍几乎为 no-op**（仅新增 1 行）：徽颍此前已自行把 20201-20238 绑给了多个角色
+  （admin/COMPANY_LEADER/COST_BUDGET_STAFF/PROJECT_MANAGER 各 20 项，AUDITOR/ENGINEERING_STAFF 各 4 项）——
+  **"子页面只绑 SUPER_ADMIN"是主环境特有的状态**，§8.4 的表述已据此修正。
+  注：徽颍 `AUDITOR`/`COMPANY_LEADER` 现持有写按钮（含 changeevent add/edit/delete 等），
+  与本轮"只读角色不下发写权限"的口径不符，属**徽颍既有配置**，本轮为纯增量迁移故未回收，列为待确认项。
+- **P3 的 DEPT 语义**改为经 `biz_project.dept_id` 派生子查询，并**显式在子查询内带 `tenant_id` 与 `deleted=0`**
+  （租户拦截器只改写外层 WHERE，不会进入 handler 生成的内联子查询）；无租户上下文时降级 SELF。
+- **P3 的测试面**：handler 新增"需租户上下文"后，4 个数据权限测试类必须显式 `setTenantId`；
+  其中两个是 jqwik `@Property` 容器，**不执行** JUnit 的 `@BeforeEach/@AfterEach`（jqwik 明示会拒绝带
+  Jupiter 注解的方法），须用 jqwik 原生 `@BeforeTry/@AfterTry`。DEPT 断言由 `EqualsTo` 改为 `InExpression`。
+
+### 9.2 部署后复验（有证据）
+
+**迁移落库**（双机一致）：`flyway_schema_history` 含 `2026.93/94/95`；`biz_project.dept_id` 列与索引已建；
+主环境 4 个演示项目回填 `dept_id`（90001/90003→90026 滨江花园项目部，90002/90004→90027 城南市政项目部）。
+
+**P1 运行时**（主环境真实登录，修复前这些页面全是 0 行）：
+
+| 账号 | 角色 | 项目 | 合同 | 付款申请 | 采购合同 | 投标登记 |
+|---|---|---|---|---|---|---|
+| zhangwei | 项目经理(PROJECT) | 2 | 2 | 8 | 403(无 purchase:view) | 403 |
+| chengang | 项目经理(PROJECT) | 1 | 1 | 5 | 403 | 403 |
+| zhaolei | 商务(PROJECT) | 2 | 2 | 8 | 3 | 1 |
+| liumin | 材料员(PROJECT) | 1 | 403(无 contract:view) | 403 | 3 | 403 |
+
+**P2 运行时**：`POST /api/v1/contract/change-event` 由 **403 → 200**；`GET /contract/change-event/page` 200。
+
+**P3 运行时**（临时把 PROJECT_MANAGER 改为 `DEPT_AND_CHILDREN`，验后已还原为 `PROJECT`）：
+`/project/page`、`/contract/page`、`/finance/payment-apply/page` 均 **HTTP 200**（旧实现必 500 于 `dept_id=?`），
+返回集合正确（本部门负责的项目及其单据）。
+
+**越权收敛（D3 面，主环境）**：
+
+| 阶段 | PASS | FAIL | 说明 |
+|---|---|---|---|
+| 初始基线 | 69 | 33 | 15 个端点无行级过滤 |
+| F2 修复后 | 96 | 6 | 剩余为 machine-ledger / fin-fundplan 两个已声明例外 |
+| P1/P2/P3 后（脚本含类型比较 bug） | 58 | 46 | 43 处为审计脚本假阳性（JSON 中 id 是字符串，脚本按数字比较） |
+| 修脚本 + 补 cost-account/change-event | **101** | **3** | 3 处全部为 `fin-fundplan` 已声明例外 |
+
+> 审计脚本 bug 已修（`keys/perm-audit-data.sh` 的判定式改为字符串强转比较），
+> 并保留两轮证据 `s1-data-postfix2.txt`（假阳性版）/ `s1-data-postfix3.txt`（修正版）。
+
+**P2 暴露的两处新越权（已随第二批修复）**：
+- `BizCostAccountMapper`：`biz_cost_account` 有 `project_id` 无过滤 → 项目经理在 `/budget/cost-account/page`
+  看到全部 30 条（应 12 条）。补类级注解；3 个 `adjust*`（UPDATE）加**方法级 `@DataPermission({})` 豁免**
+  （拦截器对 UPDATE 同样注入，否则 `CostRollUpService` 归集语句静默不生效，同应收核销的坑）。
+- `BizChangeEventMapper`：`biz_change_event` 同样缺过滤（当前无数据，潜在越权）。补类级注解。
+
+**回归**：R7 数据审计 主环境 **PASS=67 FAIL=0 WARN=0 INFO=39**（与基线一致）；
+徽颍 **PASS=64 FAIL=0 WARN=1 INFO=38**，唯一 WARN 为「种子项目数 0（期望 4）」——徽颍未导入演示种子，属环境差异、非本次引入。
+
+### 9.3 遗留
+
+- 徽颍 `AUDITOR`/`COMPANY_LEADER` 持有写按钮（既有配置，本轮未回收）。
+- `biz_machine_ledger`（无 `project_id`）、`biz_fund_monthly_plan`（含公司级行）维持不加行级过滤（§3 F2）。
+- 其余约 40 张含 `project_id` 但未标注 `@DataPermission` 的表：**当前端点对业务角色不可达或表内无数据**；
+  本轮的教训是"**授权会让不可达的端点变可达，从而暴露潜在的过滤缺口**"——后续每次放开页面授权都应同步复跑 D3。
+- 徽颍 4 个真实用户凭证缺失（F6），HTTP 维度仍未验证。
+- 变更事件 `approve`/`reject`（20236/20237）按规划未下发给业务角色，保持 SUPER_ADMIN，待指定审批角色。

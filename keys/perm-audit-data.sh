@@ -176,13 +176,13 @@ for U in $ULIST; do
       printf '  %-20s UNVERIFIABLE（响应缺字段 %s）\n' "$name" "$NEED"
       UNVER=$((UNVER+1)); continue
     fi
-    E_IDS=$(jq -c --arg scope "$SCOPE" --argjson uid "${U_ID:-0}" --argjson projs "$PROJS_JSON" --argjson depts "$DEPTS_JSON" --argjson dept "${DEPT:-0}" '
+    E_IDS=$(jq -c --arg scope "$SCOPE" --arg uid "${U_ID:-0}" --arg dept "${DEPT:-0}" --argjson projs "$PROJS_JSON" --argjson depts "$DEPTS_JSON" '
         [.[] | . as $r | select(
             $scope=="ALL"
-            or ($scope=="SELF" and ($r.createdBy==$uid))
-            or ($scope=="PROJECT" and (($projs|index($r.projectId))!=null))
-            or ($scope=="DEPT" and ($r.deptId==$dept))
-            or ($scope=="DEPT_AND_CHILDREN" and (($depts|index($r.deptId))!=null))
+            or ($scope=="SELF" and ($r.createdBy != null) and (($r.createdBy|tostring) == $uid))
+            or ($scope=="PROJECT" and ($r.projectId != null) and (($projs|map(tostring)|index($r.projectId|tostring)) != null))
+            or ($scope=="DEPT" and ($r.deptId != null) and (($r.deptId|tostring) == $dept))
+            or ($scope=="DEPT_AND_CHILDREN" and ($r.deptId != null) and (($depts|map(tostring)|index($r.deptId|tostring)) != null))
           ) | $r.id] | sort' 2>/dev/null <<<"${SUPER_RECS[$path]:-[]}")
     E_IDS="${E_IDS:-[]}"
     if [ "$E_IDS" = "$U_IDS" ]; then

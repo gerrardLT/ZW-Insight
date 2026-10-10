@@ -1,0 +1,303 @@
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+==============================================================
+权限一致性清查 · D3 行级数据范围面
+时间: 2026-10-11 05:38:35  租户: 1  BASE: http://127.0.0.1:18080
+==============================================================
+全量基线账号: admin (id=1)
+---- admin (id=1, scope=ALL, dept=0, projects=[
+  2107493219357999106,
+  2108289553094721537
+]) ----
+  project              PASS (expected=6 actual=6)
+  contract             PASS (expected=4 actual=4)
+  contract-change      PASS (expected=0 actual=0)
+  budget               PASS (expected=1 actual=1)
+  budget-costaccount   PASS (expected=30 actual=30)
+  fin-payment          PASS (expected=17 actual=17)
+  fin-invoice          PASS (expected=5 actual=5)
+  fin-receivable       PASS (expected=0 actual=0)
+  fin-pay-recv         PASS (expected=7 actual=7)
+  fin-retention        PASS (expected=1 actual=1)
+  fin-security         PASS (expected=0 actual=0)
+  fin-bill             PASS (expected=0 actual=0)
+  fin-lock             PASS (expected=2 actual=2)
+  fin-fundplan         PASS (expected=2 actual=2)
+  fin-wage             PASS (expected=0 actual=0)
+  labor-contract       PASS (expected=4 actual=4)
+  labor-roster         PASS (expected=6 actual=6)
+  labor-settlement     PASS (expected=4 actual=4)
+  labor-output         PASS (expected=5 actual=5)
+  machine-contract     PASS (expected=4 actual=4)
+  machine-entry        PASS (expected=2 actual=2)
+  machine-ledger       PASS (expected=52 actual=52)
+  material-inbound     PASS (expected=3 actual=3)
+  material-outbound    PASS (expected=2 actual=2)
+  material-inventory   PASS (expected=1 actual=1)
+  purchase-contract    PASS (expected=5 actual=5)
+  purchase-settlement  PASS (expected=4 actual=4)
+  site-inspection      PASS (expected=2 actual=2)
+  site-completion      PASS (expected=1 actual=1)
+  site-log             PASS (expected=3 actual=3)
+  subcontract          PASS (expected=5 actual=5)
+  subcontract-output   PASS (expected=2 actual=2)
+  tender-register      PASS (expected=1 actual=1)
+---- zhangwei (id=90071, scope=PROJECT, dept=90026, projects=[
+  90001,
+  90003
+]) ----
+  project              UNVERIFIABLE（响应缺字段 projectId）
+  contract             PASS (expected=2 actual=2)
+  contract-change      UNVERIFIABLE（响应缺字段 projectId）
+  budget               PASS (expected=1 actual=1)
+  budget-costaccount   PASS (expected=12 actual=12)
+  fin-payment          PASS (expected=8 actual=8)
+  fin-invoice          PASS (expected=2 actual=2)
+  fin-receivable       UNVERIFIABLE（响应缺字段 projectId）
+  fin-pay-recv         PASS (expected=3 actual=3)
+  fin-retention        PASS (expected=0 actual=0)
+  fin-security         UNVERIFIABLE（响应缺字段 projectId）
+  fin-bill             UNVERIFIABLE（响应缺字段 projectId）
+  fin-lock             UNVERIFIABLE（响应缺字段 projectId）
+  fin-fundplan         FAIL expected=1 actual=2  越权多显=["99662"] 误杀少显=[]
+  fin-wage             UNVERIFIABLE（响应缺字段 projectId）
+  labor-contract       PASS (expected=2 actual=2)
+  labor-roster         PASS (expected=6 actual=6)
+  labor-settlement     PASS (expected=2 actual=2)
+  labor-output         PASS (expected=3 actual=3)
+  machine-contract     PASS (expected=1 actual=1)
+  machine-entry        PASS (expected=2 actual=2)
+  machine-ledger       UNVERIFIABLE（响应缺字段 projectId）
+  material-inbound     PASS (expected=2 actual=2)
+  material-outbound    PASS (expected=1 actual=1)
+  material-inventory   PASS (expected=1 actual=1)
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      PASS (expected=2 actual=2)
+  site-completion      PASS (expected=0 actual=0)
+  site-log             PASS (expected=3 actual=3)
+  subcontract          PASS (expected=2 actual=2)
+  subcontract-output   PASS (expected=2 actual=2)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- lina (id=90072, scope=SELF, dept=90026, projects=[
+  90001,
+  90003
+]) ----
+  project              SKIP-403 (HTTP 403，用户无 project:view，预期)
+  contract             SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-invoice          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-receivable       SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-pay-recv         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-retention        SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-security         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-bill             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-lock             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-fundplan         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-wage             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-outbound    SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-inventory   SKIP-403 (HTTP 403，用户无 material:view，预期)
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- wangqiang (id=90073, scope=ALL, dept=90023, projects=[
+  90002
+]) ----
+  project              PASS (expected=6 actual=6)
+  contract             SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               PASS (expected=1 actual=1)
+  budget-costaccount   PASS (expected=30 actual=30)
+  fin-payment          PASS (expected=17 actual=17)
+  fin-invoice          PASS (expected=5 actual=5)
+  fin-receivable       PASS (expected=0 actual=0)
+  fin-pay-recv         PASS (expected=7 actual=7)
+  fin-retention        PASS (expected=1 actual=1)
+  fin-security         PASS (expected=0 actual=0)
+  fin-bill             PASS (expected=0 actual=0)
+  fin-lock             PASS (expected=2 actual=2)
+  fin-fundplan         PASS (expected=2 actual=2)
+  fin-wage             PASS (expected=0 actual=0)
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-outbound    SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-inventory   SKIP-403 (HTTP 403，用户无 material:view，预期)
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- liumin (id=90074, scope=PROJECT, dept=90024, projects=[
+  90001
+]) ----
+  project              UNVERIFIABLE（响应缺字段 projectId）
+  contract             SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-invoice          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-receivable       SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-pay-recv         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-retention        SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-security         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-bill             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-lock             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-fundplan         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-wage             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     PASS (expected=2 actual=2)
+  material-outbound    PASS (expected=1 actual=1)
+  material-inventory   PASS (expected=1 actual=1)
+  purchase-contract    PASS (expected=3 actual=3)
+  purchase-settlement  PASS (expected=2 actual=2)
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- chengang (id=90075, scope=PROJECT, dept=90027, projects=[
+  90002
+]) ----
+  project              UNVERIFIABLE（响应缺字段 projectId）
+  contract             PASS (expected=1 actual=1)
+  contract-change      UNVERIFIABLE（响应缺字段 projectId）
+  budget               PASS (expected=0 actual=0)
+  budget-costaccount   PASS (expected=11 actual=11)
+  fin-payment          PASS (expected=5 actual=5)
+  fin-invoice          PASS (expected=2 actual=2)
+  fin-receivable       UNVERIFIABLE（响应缺字段 projectId）
+  fin-pay-recv         PASS (expected=3 actual=3)
+  fin-retention        PASS (expected=1 actual=1)
+  fin-security         UNVERIFIABLE（响应缺字段 projectId）
+  fin-bill             UNVERIFIABLE（响应缺字段 projectId）
+  fin-lock             UNVERIFIABLE（响应缺字段 projectId）
+  fin-fundplan         FAIL expected=0 actual=2  越权多显=["99661","99662"] 误杀少显=[]
+  fin-wage             UNVERIFIABLE（响应缺字段 projectId）
+  labor-contract       PASS (expected=1 actual=1)
+  labor-roster         PASS (expected=0 actual=0)
+  labor-settlement     PASS (expected=1 actual=1)
+  labor-output         PASS (expected=2 actual=2)
+  machine-contract     PASS (expected=1 actual=1)
+  machine-entry        PASS (expected=0 actual=0)
+  machine-ledger       UNVERIFIABLE（响应缺字段 projectId）
+  material-inbound     PASS (expected=0 actual=0)
+  material-outbound    PASS (expected=0 actual=0)
+  material-inventory   PASS (expected=0 actual=0)
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      PASS (expected=0 actual=0)
+  site-completion      PASS (expected=1 actual=1)
+  site-log             PASS (expected=0 actual=0)
+  subcontract          PASS (expected=1 actual=1)
+  subcontract-output   PASS (expected=0 actual=0)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- zhaolei (id=90076, scope=PROJECT, dept=90025, projects=[
+  90001,
+  90003
+]) ----
+  project              UNVERIFIABLE（响应缺字段 projectId）
+  contract             PASS (expected=2 actual=2)
+  contract-change      UNVERIFIABLE（响应缺字段 projectId）
+  budget               SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          PASS (expected=8 actual=8)
+  fin-invoice          PASS (expected=2 actual=2)
+  fin-receivable       UNVERIFIABLE（响应缺字段 projectId）
+  fin-pay-recv         PASS (expected=3 actual=3)
+  fin-retention        PASS (expected=0 actual=0)
+  fin-security         UNVERIFIABLE（响应缺字段 projectId）
+  fin-bill             UNVERIFIABLE（响应缺字段 projectId）
+  fin-lock             UNVERIFIABLE（响应缺字段 projectId）
+  fin-fundplan         FAIL expected=1 actual=2  越权多显=["99662"] 误杀少显=[]
+  fin-wage             UNVERIFIABLE（响应缺字段 projectId）
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-outbound    SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-inventory   SKIP-403 (HTTP 403，用户无 material:view，预期)
+  purchase-contract    PASS (expected=3 actual=3)
+  purchase-settlement  PASS (expected=2 actual=2)
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      PASS (expected=1 actual=1)
+---- sunli (id=90077, scope=SELF, dept=90022, projects=[
+  90001
+]) ----
+  project              SKIP-403 (HTTP 403，用户无 project:view，预期)
+  contract             SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-invoice          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-receivable       SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-pay-recv         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-retention        SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-security         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-bill             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-lock             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-fundplan         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-wage             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-outbound    SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-inventory   SKIP-403 (HTTP 403，用户无 material:view，预期)
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+==============================================================
+D3 小结: PASS=101 FAIL=3 BLOCKED=0 UNVERIFIABLE=24 ERROR=0
+==============================================================
