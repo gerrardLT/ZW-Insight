@@ -54,7 +54,7 @@ public class PaymentReceivedService {
     }
 
     /**
-     * 新增收款（校验回款上限 + 回写项目totalIncome + 合同cumulativeReceivedAmount）
+     * 新增收款（校验回款上限 + 回写项目totalIncome + 合同cumulativeReceivedAmount + 登记即已认领）
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizPaymentReceived paymentReceived) {
@@ -85,6 +85,12 @@ public class PaymentReceivedService {
         }
 
         paymentReceived.setStatus("APPROVED");
+        // 登记即已认领（2026-10-10）：登记时项目/合同已绑定，且业务效果（项目总收入、合同累计收款、
+        // 应收 FIFO 核销）在下方全部立即生效，故"待认领"在本流程中不存在——认领曾是纯文档状态机
+        // （claim_status 无任何业务消费方），登记时直接落 CLAIMED，仅保留 CLAIMED→WRITTEN_OFF 作对账标记
+        paymentReceived.setClaimStatus(CLAIM_CLAIMED);
+        paymentReceived.setClaimedBy(SecurityContextHolder.getUserId());
+        paymentReceived.setClaimedAt(LocalDateTime.now());
         paymentReceivedMapper.insert(paymentReceived);
 
         // 回写项目总收入
@@ -124,6 +130,8 @@ public class PaymentReceivedService {
      * 认领回款：UNCLAIMED → CLAIMED，记录认领人与认领时间。
      * 非法流转（已认领/已核销再认领）抛 BusinessException。
      * 存量数据无 claim_status 列默认值时按待认领处理。
+     * <p>2026-10-10 起登记即已认领（见 {@link #save}），本方法仅用于兼容存量 UNCLAIMED 行，
+     * 前端不再提供「认领」入口。</p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void claim(Long id) {

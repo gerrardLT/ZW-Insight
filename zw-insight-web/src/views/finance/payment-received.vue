@@ -60,12 +60,7 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
-            <el-button
-              v-if="!row.claimStatus || row.claimStatus === 'UNCLAIMED'"
-              link
-              type="primary"
-              @click="handleClaim(row)"
-            >认领</el-button>
+            <!-- 登记即已认领（2026-10-10），不再提供「认领」入口；仅保留核销作为对账标记 -->
             <el-button
               v-if="row.claimStatus === 'CLAIMED'"
               link
@@ -156,8 +151,9 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getPaymentReceivedPage, createPaymentReceived, updatePaymentReceived, deletePaymentReceived, claimPaymentReceived, writeOffPaymentReceived, getCollectionRate } from '@/api/finance'
+import { getPaymentReceivedPage, createPaymentReceived, updatePaymentReceived, deletePaymentReceived, writeOffPaymentReceived, getCollectionRate } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import { defaultProjectId } from '@/composables/useProjectContext'
 import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import ContractSelector from '@/components/ContractSelector.vue'
@@ -176,7 +172,7 @@ const exportVisible = ref(false)
 const queryParams = ref({
   page: 1,
   size: 10,
-  projectId: undefined as number | undefined,
+  projectId: defaultProjectId(),
   claimStatus: ''
 })
 
@@ -225,7 +221,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { page: 1, size: 10, projectId: undefined, claimStatus: '' }
+  queryParams.value = { page: 1, size: 10, projectId: defaultProjectId(), claimStatus: '' }
   loadData()
   ratePanelRef.value?.reload()
 }
@@ -261,21 +257,24 @@ async function handleFormSubmit() {
 }
 
 async function handleDelete(row: any) {
-  await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' })
+  // 用户点「取消」时 ElMessageBox 会 reject 字符串 'cancel'，必须就地吞掉：
+  // 否则该 rejection 会被 Vue 交给全局 errorHandler，误报「页面渲染异常，请刷新重试」
+  try {
+    await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
   await deletePaymentReceived(row.id)
   ElMessage.success('删除成功')
   loadData()
 }
 
-async function handleClaim(row: any) {
-  await ElMessageBox.confirm(`确认认领该笔回款（${formatMoney(row.receiveAmount)} 元）？`, '认领回款', { type: 'info' })
-  await claimPaymentReceived(row.id)
-  ElMessage.success('认领成功')
-  loadData()
-}
-
 async function handleWriteOff(row: any) {
-  await ElMessageBox.confirm(`确认核销该笔回款（${formatMoney(row.receiveAmount)} 元）？核销后不可撤销。`, '核销回款', { type: 'warning' })
+  try {
+    await ElMessageBox.confirm(`确认核销该笔回款（${formatMoney(row.receiveAmount)} 元）？核销后不可撤销。`, '核销回款', { type: 'warning' })
+  } catch {
+    return
+  }
   await writeOffPaymentReceived(row.id)
   ElMessage.success('核销成功')
   loadData()

@@ -113,6 +113,24 @@ class PaymentReceivedServiceTest {
         }
 
         @Test
+        @DisplayName("保存：登记即已认领（claim_status=CLAIMED + 认领人/时间），不再需要人工认领")
+        void save_marksClaimedOnRegistration() {
+            when(contractMapper.selectById(10L)).thenReturn(contract("200000", "0"));
+            when(projectMapper.selectById(100L)).thenReturn(null);
+
+            try (var sc = mockStatic(SecurityContextHolder.class)) {
+                sc.when(SecurityContextHolder::getUserId).thenReturn(88L);
+
+                paymentReceivedService.save(samplePayment);
+            }
+
+            assertThat(samplePayment.getClaimStatus()).isEqualTo("CLAIMED");
+            assertThat(samplePayment.getClaimedBy()).isEqualTo(88L);
+            assertThat(samplePayment.getClaimedAt()).isNotNull();
+            verify(paymentReceivedMapper).insert(samplePayment);
+        }
+
+        @Test
         @DisplayName("保存：contractId 为 null 时不校验上限、不回写合同")
         void save_contractIdNull_skipContract() {
             samplePayment.setContractId(null);
