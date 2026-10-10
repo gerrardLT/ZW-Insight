@@ -41,10 +41,6 @@ vi.mock('vue-router', async (importOriginal) => {
 vi.mock('@/api/system', () => ({
   getUserMenus: () => Promise.resolve({ data: [] })
 }))
-// 顶栏全局项目切换器（ProjectSelector）挂载即拉项目列表，测试中必须打桩，避免真实网络请求
-vi.mock('@/api/project', () => ({
-  getProjectList: () => Promise.resolve({ data: [] })
-}))
 
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 

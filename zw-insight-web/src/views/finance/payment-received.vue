@@ -153,7 +153,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getPaymentReceivedPage, createPaymentReceived, updatePaymentReceived, deletePaymentReceived, writeOffPaymentReceived, getCollectionRate } from '@/api/finance'
 import { getProjectList } from '@/api/project'
-import { defaultProjectId } from '@/composables/useProjectContext'
 import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import ContractSelector from '@/components/ContractSelector.vue'
@@ -172,7 +171,7 @@ const exportVisible = ref(false)
 const queryParams = ref({
   page: 1,
   size: 10,
-  projectId: defaultProjectId(),
+  projectId: undefined as number | undefined,
   claimStatus: ''
 })
 
@@ -221,7 +220,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { page: 1, size: 10, projectId: defaultProjectId(), claimStatus: '' }
+  queryParams.value = { page: 1, size: 10, projectId: undefined as number | undefined, claimStatus: '' }
   loadData()
   ratePanelRef.value?.reload()
 }

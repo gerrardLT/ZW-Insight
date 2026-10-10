@@ -207,7 +207,6 @@ import {
   type BizChangeEvent
 } from '@/api/change-event'
 import { getProjectList } from '@/api/project'
-import { defaultProjectId } from '@/composables/useProjectContext'
 import { toWan } from '@/utils/chart-format'
 import ChangeEventDetailDrawer from './detail-drawer.vue'
 import ChangeEventFormModal from './form-modal.vue'
@@ -222,7 +221,7 @@ const currentEventId = ref<number>()
 const editingEventId = ref<number>()
 
 const filters = reactive({
-  projectId: (defaultProjectId() ?? null) as number | string | null,
+  projectId: null as number | null,
   status: '',
   sourceType: '',
   category: '',

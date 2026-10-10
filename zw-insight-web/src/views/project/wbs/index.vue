@@ -138,7 +138,6 @@ import {
   type WbsNode
 } from '@/api/wbs'
 import { getProjectList } from '@/api/project'
-import { defaultProjectId } from '@/composables/useProjectContext'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -153,7 +152,7 @@ const editingId = ref<number | null>(null)
 const parentLabel = ref('')
 
 const queryParams = reactive({
-  projectId: (defaultProjectId() ?? null) as number | string | null,
+  projectId: null as number | null,
   status: ''
 })
 

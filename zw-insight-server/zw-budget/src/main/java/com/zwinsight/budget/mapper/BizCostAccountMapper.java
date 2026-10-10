@@ -33,7 +33,7 @@ public interface BizCostAccountMapper extends BaseMapper<BizCostAccount> {
      * 分页查询成本账户（支持按父账户/WBS/类别/状态筛选）。
      *
      * @param page         分页参数
-     * @param projectId    项目ID（必填）
+     * @param projectId    项目ID（可空；为空时不限项目，返回全部账户）
      * @param parentId     父账户ID；为 null 时不限制（查全量而非仅根节点，
      *                     因为列表页通常展示扁平全量再前端分组）
      * @param wbsNodeId    WBS 节点ID（可空）
@@ -49,7 +49,7 @@ public interface BizCostAccountMapper extends BaseMapper<BizCostAccount> {
                                                     String status,
                                                     String keyword) {
         LambdaQueryWrapper<BizCostAccount> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(BizCostAccount::getProjectId, projectId)
+        wrapper.eq(projectId != null, BizCostAccount::getProjectId, projectId)
                 .eq(parentId != null, BizCostAccount::getParentId, parentId)
                 .eq(wbsNodeId != null, BizCostAccount::getWbsNodeId, wbsNodeId)
                 .eq(costCategory != null && !costCategory.isBlank(), BizCostAccount::getCostCategory, costCategory)

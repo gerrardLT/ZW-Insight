@@ -41,13 +41,12 @@ public class CostAccountService {
 
     /**
      * 分页查询成本账户
+     * <p>{@code projectId} 可空：不传即跨项目返回全部账户（列表页默认口径），
+     * 与其它列表接口一致；需要按项目收敛时由前端筛选器显式传入。</p>
      */
     public PageResult<BizCostAccount> page(int page, int size, Long projectId,
                                            Long parentId, Long wbsNodeId,
                                            String costCategory, String status) {
-        if (projectId == null) {
-            throw new BusinessException("项目ID不能为空");
-        }
         Page<BizCostAccount> p = new Page<>(page, size);
         return PageResult.of(
                 costAccountMapper.selectAccountPage(p, projectId, parentId, wbsNodeId, costCategory, status, null));

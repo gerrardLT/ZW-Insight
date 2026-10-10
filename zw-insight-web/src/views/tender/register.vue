@@ -4,7 +4,7 @@
       <!-- 顶部搜索栏：支持按项目筛选及落标原因分类筛选（B4） -->
       <el-form :model="queryParams" inline>
         <el-form-item label="项目">
-          <ProjectSelector v-model="queryParams.projectId" width="200px" />
+          <ProjectSelector v-model="queryParams.projectId" width="200px" @change="handleSearch" />
         </el-form-item>
         <el-form-item label="落标原因">
           <el-select

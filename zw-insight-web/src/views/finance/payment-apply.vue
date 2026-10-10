@@ -289,7 +289,6 @@ const paymentColumns = [
 ]
 const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('payment-apply-table', paymentColumns)
 import { getProjectList } from '@/api/project'
-import { defaultProjectId } from '@/composables/useProjectContext'
 import { getOtherContractPage } from '@/api/contract'
 import { getPurchaseContractPage } from '@/api/purchase'
 import { getLaborContractPage } from '@/api/labor'
@@ -314,7 +313,7 @@ const submitLoading = ref(false)
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  projectId: defaultProjectId(),
+  projectId: undefined as number | undefined,
   status: '',
   payStatus: ''
 })
@@ -457,7 +456,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  queryParams.value = { pageNum: 1, pageSize: 10, projectId: defaultProjectId(), status: '', payStatus: '' }
+  queryParams.value = { pageNum: 1, pageSize: 10, projectId: undefined as number | undefined, status: '', payStatus: '' }
   loadData()
   planPanelRef.value?.reload()
 }

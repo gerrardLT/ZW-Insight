@@ -115,7 +115,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getMaterialTransferPage, getMaterialTransferDetail, createMaterialTransfer, updateMaterialTransfer, deleteMaterialTransfer, submitMaterialTransfer } from '@/api/material'
 import { getProjectPage } from '@/api/project'
-import { defaultProjectId } from '@/composables/useProjectContext'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -126,7 +125,7 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 const projectOptions = ref<any[]>([])
 
-const queryParams = ref({ pageNum: 1, pageSize: 10, fromProjectId: defaultProjectId(), toProjectId: undefined as number | undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 10, fromProjectId: undefined as number | undefined, toProjectId: undefined as number | undefined })
 const defaultForm = () => ({ id: undefined as number | undefined, fromProjectId: undefined as number | undefined, toProjectId: undefined as number | undefined, transferDate: '', details: [] as any[] })
 const formData = ref(defaultForm())
 const formRules = {
@@ -149,7 +148,7 @@ async function loadProjectOptions() {
   projectOptions.value = res.data?.records || []
 }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
-function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, fromProjectId: defaultProjectId(), toProjectId: undefined }; loadData() }
+function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, fromProjectId: undefined as number | undefined, toProjectId: undefined }; loadData() }
 function handleAdd() { isEdit.value = false; formData.value = defaultForm(); dialogVisible.value = true }
 async function handleEdit(row: any) {
   isEdit.value = true

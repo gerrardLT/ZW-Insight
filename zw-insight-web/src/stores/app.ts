@@ -28,8 +28,8 @@ export const useAppStore = defineStore('app', () => {
   /** 全局 loading 计数器（支持并发请求） */
   const loadingCount = ref(0)
 
-  /** 当前选中的项目ID（全局项目上下文；雪花ID经 Jackson 序列化为 string，故兼容 number|string） */
-  const currentProjectId = ref<number | string | null>(null)
+  /** 当前选中的项目ID（全局项目上下文） */
+  const currentProjectId = ref<number | null>(null)
 
   /** 当前选中的项目名称 */
   const currentProjectName = ref<string>('')
@@ -114,7 +114,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   /** 设置当前项目上下文 */
-  function setCurrentProject(projectId: number | string | null, projectName = '') {
+  function setCurrentProject(projectId: number | null, projectName = '') {
     currentProjectId.value = projectId
     currentProjectName.value = projectName
   }

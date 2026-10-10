@@ -69,11 +69,6 @@ vi.mock('@/stores/user', () => ({
   }),
 }))
 
-// 顶栏全局项目切换器（ProjectSelector）挂载即拉项目列表，测试中必须打桩，避免真实网络请求
-vi.mock('@/api/project', () => ({
-  getProjectList: () => Promise.resolve({ data: [] }),
-}))
-
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 
 const RECENT_KEY = 'zw-nav-recent:42'

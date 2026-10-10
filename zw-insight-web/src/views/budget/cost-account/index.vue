@@ -380,7 +380,6 @@ import {
 } from '@/api/cost-account'
 import { getWbsSelectList, type WbsNode } from '@/api/wbs'
 import { getProjectList } from '@/api/project'
-import { defaultProjectId } from '@/composables/useProjectContext'
 import { toWan, clampPercent } from '@/utils/chart-format'
 
 // 路由实例（承接外部跳转携带的 projectId 查询参数）
@@ -458,7 +457,8 @@ const currentUnmappedDoc = ref<UnmappedDoc | null>(null)
 const bindingAccountId = ref<number | null>(null)
 
 const queryParams = reactive({
-  projectId: (defaultProjectId() ?? null) as number | string | null,
+  // 雪花 ID 经 Jackson 序列化为 string，路由 query 亦为 string，故兼容 number|string
+  projectId: null as number | string | null,
   costCategory: '',
   status: ''
 })
@@ -918,12 +918,15 @@ function formatMoney(value: unknown): string {
 
 onMounted(async () => {
   await searchProject('')
-  // 承接外部跳转携带的项目上下文（如成本主线看板"详情"入口：/budget/cost-account?projectId=xx）
-  const projectIdFromQuery = Number(route?.query?.projectId)
-  if (Number.isFinite(projectIdFromQuery) && projectIdFromQuery > 0) {
-    queryParams.projectId = projectIdFromQuery
-    await Promise.all([loadPage(), loadWbsOptions()])
+  // 承接外部跳转携带的项目上下文（如成本主线看板"详情"入口：/budget/cost-account?projectId=xx）；
+  // 雪花 ID 超出 JS 安全整数，不做 Number 强转（会截断）
+  const raw = route?.query?.projectId
+  const fromQuery = Array.isArray(raw) ? raw[0] : raw
+  if (fromQuery != null && String(fromQuery).trim() !== '') {
+    queryParams.projectId = fromQuery
   }
+  // 不传项目即跨项目返回全部账户（与其它列表页同口径），未选项目也照常加载
+  await Promise.all([loadPage(), loadWbsOptions()])
 })
 </script>
 

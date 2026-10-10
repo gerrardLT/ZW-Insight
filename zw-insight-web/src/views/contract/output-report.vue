@@ -202,7 +202,10 @@ async function loadContractOptions(projectId?: number, target: 'query' | 'form' 
 
 function handleContractReload() {
   queryParams.contractId = undefined
+  queryParams.pageNum = 1
   loadContractOptions(queryParams.projectId, 'query')
+  // 切换项目必须同步刷新列表：否则筛选显示新项目、列表仍是旧范围，口径错位
+  loadData()
   trendPanelRef.value?.reload()
 }
 

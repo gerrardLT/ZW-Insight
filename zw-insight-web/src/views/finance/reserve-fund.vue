@@ -129,7 +129,6 @@ import {
   createReserveFundReturn
 } from '@/api/finance'
 import { getProjectList } from '@/api/project'
-import { defaultProjectId } from '@/composables/useProjectContext'
 
 const applyRef = ref<FormInstance>()
 const returnRef = ref<FormInstance>()
@@ -144,7 +143,7 @@ const submitLoading = ref(false)
 const queryParams = ref({
   page: 1,
   size: 10,
-  projectId: defaultProjectId()
+  projectId: undefined as number | undefined
 })
 
 const applyForm = ref({
@@ -212,7 +211,7 @@ function handleSearch() {
   loadData()
 }
 function handleReset() {
-  queryParams.value = { page: 1, size: 10, projectId: defaultProjectId() }
+  queryParams.value = { page: 1, size: 10, projectId: undefined as number | undefined }
   loadData()
 }
 function handleAddApply() {

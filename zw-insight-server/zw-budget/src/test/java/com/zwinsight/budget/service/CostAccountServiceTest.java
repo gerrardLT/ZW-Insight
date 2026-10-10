@@ -107,14 +107,18 @@ class CostAccountServiceTest {
     class QueryTests {
 
         @Test
-        @DisplayName("page：projectId 为空拒绝，不触达 Mapper")
-        void page_nullProjectId_throws() {
-            assertThatThrownBy(() -> service.page(1, 10, null, null, null, null, null))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("项目ID不能为空");
+        @DisplayName("page：projectId 为空不拒绝，跨项目返回全部（列表页默认口径）")
+        void page_nullProjectId_returnsAll() {
+            Page<BizCostAccount> mpPage = new Page<>(1, 10);
+            mpPage.setRecords(List.of(account(10L, null, "CB-001", "LABOR", STATUS_ACTIVE)));
+            mpPage.setTotal(1L);
+            doReturn(mpPage).when(costAccountMapper)
+                    .selectAccountPage(any(Page.class), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
 
-            verify(costAccountMapper, never())
-                    .selectAccountPage(any(), any(), any(), any(), any(), any(), any());
+            PageResult<BizCostAccount> result = service.page(1, 10, null, null, null, null, null);
+
+            assertThat(result.getTotal()).isEqualTo(1L);
+            assertThat(result.getRecords()).hasSize(1);
         }
 
         @Test
