@@ -5,9 +5,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.system.domain.SysMenu;
+import com.zwinsight.system.domain.SysRole;
 import com.zwinsight.system.domain.SysUserRole;
 import com.zwinsight.system.mapper.SysMenuMapper;
+import com.zwinsight.system.mapper.SysRoleMapper;
 import com.zwinsight.system.mapper.SysUserRoleMapper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
@@ -48,11 +51,17 @@ class SysMenuServiceTest {
     @Mock
     private SysUserRoleMapper userRoleMapper;
 
+    @Mock
+    private SysRoleMapper roleMapper;
+
+    @Mock
+    private SysUserMapper userMapper;
+
     private SysMenuService menuService;
 
     @BeforeEach
     void setUp() {
-        menuService = new SysMenuService(menuMapper, userRoleMapper);
+        menuService = new SysMenuService(menuMapper, userRoleMapper, roleMapper, userMapper);
     }
 
     @BeforeAll
@@ -61,6 +70,7 @@ class SysMenuServiceTest {
         MybatisConfiguration configuration = new MybatisConfiguration();
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysMenu.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysUserRole.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(configuration, ""), SysRole.class);
     }
 
     // ==================== 菜单 CRUD 操作测试 ====================
@@ -222,6 +232,7 @@ class SysMenuServiceTest {
             // Given
             Long userId = 100L;
 
+            when(userMapper.selectById(userId)).thenReturn(sysUser(userId, 1L));
             when(userRoleMapper.selectList(any(LambdaQueryWrapper.class)))
                 .thenReturn(List.of());
 
@@ -258,8 +269,11 @@ class SysMenuServiceTest {
                 createMenu(3L, "预算管理", 3, "MENU")
             );
 
+            when(userMapper.selectById(userId)).thenReturn(sysUser(userId, 1L));
             when(userRoleMapper.selectList(any(LambdaQueryWrapper.class)))
                 .thenReturn(userRoles);
+            when(roleMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(role(10L, 1), role(20L, 1)));
             when(menuMapper.selectMenusByRoleIds(eq(roleIds)))
                 .thenReturn(menus);
 
@@ -272,6 +286,39 @@ class SysMenuServiceTest {
                 .noneMatch(m -> "BUTTON".equals(m.getMenuType()));
                 
             verify(menuMapper).selectMenusByRoleIds(eq(roleIds));
+        }
+
+        @Test
+        @DisplayName("获取用户菜单：停用/已删角色不下发菜单（口径与权限码一致）")
+        void getMenusByUserId_disabledRole_filteredOut() {
+            // Given：用户绑定 active(10) 与 disabled(20) 两个角色
+            Long userId = 300L;
+            SysUserRole ur1 = new SysUserRole();
+            ur1.setUserId(userId);
+            ur1.setRoleId(10L);
+            SysUserRole ur2 = new SysUserRole();
+            ur2.setUserId(userId);
+            ur2.setRoleId(20L);
+
+            List<SysMenu> activeRoleMenus = List.of(createMenu(3L, "项目管理", 3, "MENU"));
+
+            when(userMapper.selectById(userId)).thenReturn(sysUser(userId, 1L));
+            when(userRoleMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(ur1, ur2));
+            // 角色表只返回启用且未删除的角色 10；角色 20 被过滤
+            when(roleMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(role(10L, 1)));
+            when(menuMapper.selectMenusByRoleIds(eq(List.of(10L))))
+                .thenReturn(activeRoleMenus);
+
+            // When
+            List<SysMenu> result = menuService.getMenusByUserId(userId);
+
+            // Then：只查了启用角色的菜单，停用角色 20 不参与
+            assertEquals(1, result.size());
+            assertEquals("项目管理", result.get(0).getMenuName());
+            verify(menuMapper).selectMenusByRoleIds(eq(List.of(10L)));
+            verify(menuMapper, never()).selectMenusByRoleIds(eq(List.of(10L, 20L)));
         }
 
         @Test
@@ -296,9 +343,14 @@ class SysMenuServiceTest {
                 // 普通租户管理员不应看到"租户管理"
             );
 
+            when(userMapper.selectById(1L)).thenReturn(sysUser(1L, 1L));
+            when(userMapper.selectById(2L)).thenReturn(sysUser(2L, 1L));
             when(userRoleMapper.selectList(any(LambdaQueryWrapper.class)))
                 .thenReturn(List.of(adminRole))
                 .thenReturn(List.of(tenantRole));
+            when(roleMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(role(1L, 1)))
+                .thenReturn(List.of(role(2L, 1)));
             when(menuMapper.selectMenusByRoleIds(eq(List.of(1L))))
                 .thenReturn(superAdminMenus);
             when(menuMapper.selectMenusByRoleIds(eq(List.of(2L))))
@@ -365,6 +417,21 @@ class SysMenuServiceTest {
     }
 
     // ==================== 辅助方法 ====================
+
+    private SysUser sysUser(Long id, Long tenantId) {
+        SysUser user = new SysUser();
+        user.setId(id);
+        user.setTenantId(tenantId);
+        return user;
+    }
+
+    private SysRole role(Long id, Integer status) {
+        SysRole r = new SysRole();
+        r.setId(id);
+        r.setStatus(status);
+        r.setDataScope("SELF");
+        return r;
+    }
 
     private SysMenu createMenu(Long id, String name, Integer sortOrder) {
         return createMenu(id, name, sortOrder, "MENU");

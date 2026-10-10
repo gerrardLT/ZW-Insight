@@ -2,9 +2,13 @@ package com.zwinsight.system.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.system.domain.SysMenu;
+import com.zwinsight.system.domain.SysRole;
 import com.zwinsight.system.domain.SysUserRole;
 import com.zwinsight.system.mapper.SysMenuMapper;
+import com.zwinsight.system.mapper.SysRoleMapper;
 import com.zwinsight.system.mapper.SysUserRoleMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +26,8 @@ public class SysMenuService {
 
     private final SysMenuMapper menuMapper;
     private final SysUserRoleMapper userRoleMapper;
+    private final SysRoleMapper roleMapper;
+    private final SysUserMapper userMapper;
 
     /**
      * 查询所有菜单列表（用于前端构建树）
@@ -75,19 +81,43 @@ public class SysMenuService {
 
     /**
      * 获取用户菜单（用于动态路由）
+     * <p>
+     * 角色口径必须与 {@code SysUserMapper.selectPermissionsByUserId} 一致：只取
+     * <b>用户所属租户内、启用（status=1）且未逻辑删除</b>的角色。否则用户被绑定到
+     * 停用/已删角色时，该角色仍会下发菜单（页面可见），却不参与权限码计算（接口 403），
+     * 形成「看得见、点不动」的口径分叉（2026-10-10 线上权限一致性清查 F4）。
+     * </p>
      */
     public List<SysMenu> getMenusByUserId(Long userId) {
-        // 查询用户角色
+        SysUser user = userMapper.selectById(userId);
+        if (user == null || user.getTenantId() == null) {
+            return Collections.emptyList();
+        }
+
         List<SysUserRole> userRoles = userRoleMapper.selectList(
                 new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
         if (userRoles.isEmpty()) {
             return Collections.emptyList();
         }
+
         List<Long> roleIds = userRoles.stream()
                 .map(SysUserRole::getRoleId)
                 .collect(Collectors.toList());
-        // 查询角色对应的菜单（排除按钮类型）
-        List<SysMenu> menus = menuMapper.selectMenusByRoleIds(roleIds);
+
+        // 启用且未删除（deleted 由 @TableLogic 自动过滤），且租户匹配（全局共享角色 tenant_id 为 NULL）
+        List<Long> activeRoleIds = roleMapper.selectList(new LambdaQueryWrapper<SysRole>()
+                        .in(SysRole::getId, roleIds)
+                        .eq(SysRole::getStatus, 1)
+                        .and(w -> w.eq(SysRole::getTenantId, user.getTenantId())
+                                .or().isNull(SysRole::getTenantId)))
+                .stream()
+                .map(SysRole::getId)
+                .collect(Collectors.toList());
+        if (activeRoleIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<SysMenu> menus = menuMapper.selectMenusByRoleIds(activeRoleIds);
         return menus.stream()
                 .filter(m -> !"BUTTON".equals(m.getMenuType()))
                 .collect(Collectors.toList());

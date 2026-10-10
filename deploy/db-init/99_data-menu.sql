@@ -54,7 +54,7 @@ INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon
 -- 数据运维（p2-advanced 需求11.4/12.2/13.3 新增，parent_id=2）
 INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden, permission) VALUES
 (210, '数据备份', 'MENU', 2, 'backup',  'views/system/backup/index',  'FolderChecked', 10, 1, 0, 'system:backup:list'),
-(211, '版本管理', 'MENU', 2, 'version', 'views/system/version/index', 'Tickets',       11, 1, 0, 'system:version:list'),
+(211, '版本管理', 'MENU', 2, 'version', 'views/system/version/index', 'Tickets',       11, 1, 0, 'system:version:view'),
 (212, '系统监控', 'MENU', 2, 'monitor', 'views/system/monitor/index', 'Monitor',       12, 1, 0, 'system:monitor:view');
 
 -- ============================================================

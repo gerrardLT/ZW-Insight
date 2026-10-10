@@ -1,0 +1,300 @@
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+==============================================================
+权限一致性清查 · D3 行级数据范围面
+时间: 2026-10-11 00:13:57  租户: 1  BASE: http://127.0.0.1:18080
+==============================================================
+全量基线账号: admin (id=1)
+---- admin (id=1, scope=ALL, dept=0, projects=[
+  2107493219357999106,
+  2108289553094721537
+]) ----
+  project              PASS (expected=6 actual=6)
+  contract             PASS (expected=4 actual=4)
+  contract-change      PASS (expected=0 actual=0)
+  budget               PASS (expected=1 actual=1)
+  budget-costaccount   PASS (expected=30 actual=30)
+  fin-payment          PASS (expected=17 actual=17)
+  fin-invoice          PASS (expected=5 actual=5)
+  fin-receivable       PASS (expected=0 actual=0)
+  fin-pay-recv         PASS (expected=7 actual=7)
+  fin-retention        PASS (expected=1 actual=1)
+  fin-security         PASS (expected=0 actual=0)
+  fin-bill             PASS (expected=0 actual=0)
+  fin-lock             PASS (expected=2 actual=2)
+  fin-fundplan         PASS (expected=2 actual=2)
+  fin-wage             PASS (expected=0 actual=0)
+  labor-contract       PASS (expected=4 actual=4)
+  labor-roster         PASS (expected=6 actual=6)
+  labor-settlement     PASS (expected=4 actual=4)
+  labor-output         PASS (expected=5 actual=5)
+  machine-contract     PASS (expected=4 actual=4)
+  machine-entry        PASS (expected=2 actual=2)
+  machine-ledger       PASS (expected=52 actual=52)
+  material-inbound     PASS (expected=3 actual=3)
+  material-outbound    PASS (expected=2 actual=2)
+  material-inventory   PASS (expected=1 actual=1)
+  purchase-contract    PASS (expected=5 actual=5)
+  purchase-settlement  PASS (expected=4 actual=4)
+  site-inspection      PASS (expected=2 actual=2)
+  site-completion      PASS (expected=1 actual=1)
+  site-log             PASS (expected=3 actual=3)
+  subcontract          PASS (expected=5 actual=5)
+  subcontract-output   PASS (expected=2 actual=2)
+  tender-register      PASS (expected=1 actual=1)
+---- zhangwei (id=90071, scope=SELF, dept=90026, projects=[
+  90001,
+  90003
+]) ----
+  project              PASS (expected=0 actual=0)
+  contract             PASS (expected=0 actual=0)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               PASS (expected=0 actual=0)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          PASS (expected=0 actual=0)
+  fin-invoice          FAIL expected=0 actual=5  越权多显=["99001","99002","99521","99522","99553"] 误杀少显=[]
+  fin-receivable       UNVERIFIABLE（响应缺字段 createdBy）
+  fin-pay-recv         FAIL expected=0 actual=7  越权多显=["99011","99012","99013","99523","99524","99525","99554"] 误杀少显=[]
+  fin-retention        FAIL expected=0 actual=1  越权多显=["99091"] 误杀少显=[]
+  fin-security         UNVERIFIABLE（响应缺字段 createdBy）
+  fin-bill             UNVERIFIABLE（响应缺字段 createdBy）
+  fin-lock             UNVERIFIABLE（响应缺字段 createdBy）
+  fin-fundplan         FAIL expected=0 actual=2  越权多显=["99661","99662"] 误杀少显=[]
+  fin-wage             UNVERIFIABLE（响应缺字段 createdBy）
+  labor-contract       PASS (expected=0 actual=0)
+  labor-roster         PASS (expected=0 actual=0)
+  labor-settlement     PASS (expected=0 actual=0)
+  labor-output         PASS (expected=0 actual=0)
+  machine-contract     PASS (expected=0 actual=0)
+  machine-entry        PASS (expected=0 actual=0)
+  machine-ledger       FAIL expected=0 actual=52  越权多显=["2089383174977155073","2089385662207815681","2089386086092566529","2089386616072237057","2089836942084599810","2089837114176892930","2089837282217488386","2089839208153804801","2089839527470362626","2089895529691541505","2090245212754472962","2090266278088470530","2090296710586757121","2090303876903268354","2090315919492444161","2090357100196720642","2090453344801845250","2090454998519443457","2090455487243939842","2090477644216856578","2090479466738413570","2090479911758262273","2090479952925356033","2090531739816488961","2090538093050392577","2090539739486679042","2090540089451016193","2090605580173504513","2090607278593994754","2090607676281122818","2090617130464636929","2090618736602050562","2090619115393839106","2090627233175629826","2090628221408178177","2090628719808933890","2090648072172400641","2090649818470871041","2090650328045252610","2091516553193385985","2091518452135161858","2091518998757830658","2091531987552628737","2091533677538373633","2091534089188339714","2091550418058407938","2091552269696823298","2091552746794708993","2091793363533623297","2091794969230635010","95001","95002"] 误杀少显=[]
+  material-inbound     PASS (expected=0 actual=0)
+  material-outbound    FAIL expected=0 actual=2  越权多显=["2107911825002643457","94101"] 误杀少显=[]
+  material-inventory   FAIL expected=0 actual=1  越权多显=["94301"] 误杀少显=[]
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      PASS (expected=0 actual=0)
+  site-completion      FAIL expected=0 actual=1  越权多显=["98061"] 误杀少显=[]
+  site-log             FAIL expected=0 actual=3  越权多显=["98021","98022","98023"] 误杀少显=[]
+  subcontract          PASS (expected=0 actual=0)
+  subcontract-output   FAIL expected=0 actual=2  越权多显=["97001","97002"] 误杀少显=[]
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- lina (id=90072, scope=SELF, dept=90026, projects=[
+  90001,
+  90003
+]) ----
+  project              SKIP-403 (HTTP 403，用户无 project:view，预期)
+  contract             SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-invoice          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-receivable       SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-pay-recv         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-retention        SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-security         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-bill             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-lock             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-fundplan         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-wage             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-outbound    SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-inventory   SKIP-403 (HTTP 403，用户无 material:view，预期)
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- wangqiang (id=90073, scope=SELF, dept=90023, projects=[
+  90002
+]) ----
+  project              PASS (expected=0 actual=0)
+  contract             SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               PASS (expected=0 actual=0)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          PASS (expected=0 actual=0)
+  fin-invoice          FAIL expected=0 actual=5  越权多显=["99001","99002","99521","99522","99553"] 误杀少显=[]
+  fin-receivable       UNVERIFIABLE（响应缺字段 createdBy）
+  fin-pay-recv         FAIL expected=0 actual=7  越权多显=["99011","99012","99013","99523","99524","99525","99554"] 误杀少显=[]
+  fin-retention        FAIL expected=0 actual=1  越权多显=["99091"] 误杀少显=[]
+  fin-security         UNVERIFIABLE（响应缺字段 createdBy）
+  fin-bill             UNVERIFIABLE（响应缺字段 createdBy）
+  fin-lock             UNVERIFIABLE（响应缺字段 createdBy）
+  fin-fundplan         FAIL expected=0 actual=2  越权多显=["99661","99662"] 误杀少显=[]
+  fin-wage             UNVERIFIABLE（响应缺字段 createdBy）
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-outbound    SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-inventory   SKIP-403 (HTTP 403，用户无 material:view，预期)
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- liumin (id=90074, scope=SELF, dept=90024, projects=[
+  90001
+]) ----
+  project              PASS (expected=0 actual=0)
+  contract             SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-invoice          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-receivable       SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-pay-recv         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-retention        SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-security         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-bill             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-lock             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-fundplan         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-wage             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     PASS (expected=0 actual=0)
+  material-outbound    FAIL expected=0 actual=2  越权多显=["2107911825002643457","94101"] 误杀少显=[]
+  material-inventory   FAIL expected=0 actual=1  越权多显=["94301"] 误杀少显=[]
+  purchase-contract    PASS (expected=0 actual=0)
+  purchase-settlement  FAIL expected=0 actual=4  越权多显=["99411","99412","99538","99561"] 误杀少显=[]
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- chengang (id=90075, scope=SELF, dept=90027, projects=[
+  90002
+]) ----
+  project              PASS (expected=0 actual=0)
+  contract             PASS (expected=0 actual=0)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               PASS (expected=0 actual=0)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          PASS (expected=0 actual=0)
+  fin-invoice          FAIL expected=0 actual=5  越权多显=["99001","99002","99521","99522","99553"] 误杀少显=[]
+  fin-receivable       UNVERIFIABLE（响应缺字段 createdBy）
+  fin-pay-recv         FAIL expected=0 actual=7  越权多显=["99011","99012","99013","99523","99524","99525","99554"] 误杀少显=[]
+  fin-retention        FAIL expected=0 actual=1  越权多显=["99091"] 误杀少显=[]
+  fin-security         UNVERIFIABLE（响应缺字段 createdBy）
+  fin-bill             UNVERIFIABLE（响应缺字段 createdBy）
+  fin-lock             UNVERIFIABLE（响应缺字段 createdBy）
+  fin-fundplan         FAIL expected=0 actual=2  越权多显=["99661","99662"] 误杀少显=[]
+  fin-wage             UNVERIFIABLE（响应缺字段 createdBy）
+  labor-contract       PASS (expected=0 actual=0)
+  labor-roster         PASS (expected=0 actual=0)
+  labor-settlement     PASS (expected=0 actual=0)
+  labor-output         PASS (expected=0 actual=0)
+  machine-contract     PASS (expected=0 actual=0)
+  machine-entry        PASS (expected=0 actual=0)
+  machine-ledger       FAIL expected=0 actual=52  越权多显=["2089383174977155073","2089385662207815681","2089386086092566529","2089386616072237057","2089836942084599810","2089837114176892930","2089837282217488386","2089839208153804801","2089839527470362626","2089895529691541505","2090245212754472962","2090266278088470530","2090296710586757121","2090303876903268354","2090315919492444161","2090357100196720642","2090453344801845250","2090454998519443457","2090455487243939842","2090477644216856578","2090479466738413570","2090479911758262273","2090479952925356033","2090531739816488961","2090538093050392577","2090539739486679042","2090540089451016193","2090605580173504513","2090607278593994754","2090607676281122818","2090617130464636929","2090618736602050562","2090619115393839106","2090627233175629826","2090628221408178177","2090628719808933890","2090648072172400641","2090649818470871041","2090650328045252610","2091516553193385985","2091518452135161858","2091518998757830658","2091531987552628737","2091533677538373633","2091534089188339714","2091550418058407938","2091552269696823298","2091552746794708993","2091793363533623297","2091794969230635010","95001","95002"] 误杀少显=[]
+  material-inbound     PASS (expected=0 actual=0)
+  material-outbound    FAIL expected=0 actual=2  越权多显=["2107911825002643457","94101"] 误杀少显=[]
+  material-inventory   FAIL expected=0 actual=1  越权多显=["94301"] 误杀少显=[]
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      PASS (expected=0 actual=0)
+  site-completion      FAIL expected=0 actual=1  越权多显=["98061"] 误杀少显=[]
+  site-log             FAIL expected=0 actual=3  越权多显=["98021","98022","98023"] 误杀少显=[]
+  subcontract          PASS (expected=0 actual=0)
+  subcontract-output   FAIL expected=0 actual=2  越权多显=["97001","97002"] 误杀少显=[]
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+---- zhaolei (id=90076, scope=SELF, dept=90025, projects=[]) ----
+  project              PASS (expected=0 actual=0)
+  contract             PASS (expected=0 actual=0)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          PASS (expected=0 actual=0)
+  fin-invoice          FAIL expected=0 actual=5  越权多显=["99001","99002","99521","99522","99553"] 误杀少显=[]
+  fin-receivable       UNVERIFIABLE（响应缺字段 createdBy）
+  fin-pay-recv         FAIL expected=0 actual=7  越权多显=["99011","99012","99013","99523","99524","99525","99554"] 误杀少显=[]
+  fin-retention        FAIL expected=0 actual=1  越权多显=["99091"] 误杀少显=[]
+  fin-security         UNVERIFIABLE（响应缺字段 createdBy）
+  fin-bill             UNVERIFIABLE（响应缺字段 createdBy）
+  fin-lock             UNVERIFIABLE（响应缺字段 createdBy）
+  fin-fundplan         FAIL expected=0 actual=2  越权多显=["99661","99662"] 误杀少显=[]
+  fin-wage             UNVERIFIABLE（响应缺字段 createdBy）
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-outbound    SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-inventory   SKIP-403 (HTTP 403，用户无 material:view，预期)
+  purchase-contract    PASS (expected=0 actual=0)
+  purchase-settlement  FAIL expected=0 actual=4  越权多显=["99411","99412","99538","99561"] 误杀少显=[]
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      FAIL expected=0 actual=1  越权多显=["90801"] 误杀少显=[]
+---- sunli (id=90077, scope=SELF, dept=90022, projects=[
+  90001
+]) ----
+  project              SKIP-403 (HTTP 403，用户无 project:view，预期)
+  contract             SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  contract-change      SKIP-403 (HTTP 403，用户无 contract:view，预期)
+  budget               SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  budget-costaccount   SKIP-403 (HTTP 403，用户无 budget:view，预期)
+  fin-payment          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-invoice          SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-receivable       SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-pay-recv         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-retention        SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-security         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-bill             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-lock             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-fundplan         SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  fin-wage             SKIP-403 (HTTP 403，用户无 finance:view，预期)
+  labor-contract       SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-roster         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-settlement     SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  labor-output         SKIP-403 (HTTP 403，用户无 labor:view，预期)
+  machine-contract     SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-entry        SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  machine-ledger       SKIP-403 (HTTP 403，用户无 machine:view，预期)
+  material-inbound     SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-outbound    SKIP-403 (HTTP 403，用户无 material:view，预期)
+  material-inventory   SKIP-403 (HTTP 403，用户无 material:view，预期)
+  purchase-contract    SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  purchase-settlement  SKIP-403 (HTTP 403，用户无 purchase:view，预期)
+  site-inspection      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-completion      SKIP-403 (HTTP 403，用户无 site:view，预期)
+  site-log             SKIP-403 (HTTP 403，用户无 site:view，预期)
+  subcontract          SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  subcontract-output   SKIP-403 (HTTP 403，用户无 subcontract:view，预期)
+  tender-register      SKIP-403 (HTTP 403，用户无 tender:view，预期)
+==============================================================
+D3 小结: PASS=69 FAIL=33 BLOCKED=0 UNVERIFIABLE=20 ERROR=0
+==============================================================

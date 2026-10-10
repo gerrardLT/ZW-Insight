@@ -1,0 +1,18 @@
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+==============================================================
+权限一致性清查 · 真实登录 HTTP 面
+时间: 2026-10-11 00:13:53  租户: 1  BASE: http://127.0.0.1:18080
+==============================================================
+[PASS] admin (id=1) menus=144 perms=84
+[PASS] zhangwei (id=90071) menus=44 perms=15
+[PASS] lina (id=90072) menus=2 perms=2
+[PASS] wangqiang (id=90073) menus=41 perms=6
+[PASS] liumin (id=90074) menus=13 perms=6
+[PASS] chengang (id=90075) menus=44 perms=15
+[PASS] zhaolei (id=90076) menus=20 perms=10
+[PASS] sunli (id=90077) menus=2 perms=2
+==============================================================
+HTTP 面小结: PASS=8 FAIL=0
+==============================================================
