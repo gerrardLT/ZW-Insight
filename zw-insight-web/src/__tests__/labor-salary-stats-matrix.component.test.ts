@@ -74,6 +74,7 @@ describe('labor/salary/stats.vue B19 矩阵', () => {
     await st.handleSearch()
     expect(mockWarning).toHaveBeenCalledWith('请选择项目')
     st.queryParams.projectId = 1
+    st.queryParams.month = '' // 月份默认当月，这里显式清空以验证月份拦截分支
     await st.handleSearch()
     expect(mockWarning).toHaveBeenCalledWith('请选择月份')
     expect(mockStats).not.toHaveBeenCalled()
@@ -142,7 +143,7 @@ describe('labor/salary/stats.vue B19 矩阵', () => {
     expect(st.searched).toBe(false)
   })
 
-  it('B-19-7 handleProjectChange 清空已加载数据与查询标记', async () => {
+  it('B-19-7 handleProjectChange 清空旧数据后按新项目重新查询', async () => {
     mockStats.mockResolvedValue({ code: 200, data: { teamList: teamListFixture } })
     const w = await mountStats()
     const st = w.vm.$.setupState
@@ -150,10 +151,13 @@ describe('labor/salary/stats.vue B19 矩阵', () => {
     st.queryParams.month = '2026-07'
     await st.handleSearch()
     await flushPromises()
+    expect(st.statsData).toBeTruthy()
+    mockStats.mockClear()
     st.handleProjectChange()
-    expect(st.statsData).toBeNull()
-    expect(st.compareData).toBeNull()
-    expect(st.searched).toBe(false)
+    await flushPromises()
+    // 切换项目即重新查询，不停留在上一个项目的数据上
+    expect(mockStats).toHaveBeenCalled()
+    expect(st.searched).toBe(true)
   })
 
   it('B-19-9 导出按钮未查询时禁用、文件名模板钉住（源码钉住）', async () => {

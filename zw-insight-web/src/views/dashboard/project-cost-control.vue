@@ -7,6 +7,7 @@
         <ProjectSelector
           v-model="selectedProjectId"
           width="320px"
+          default-first
           @change="handleProjectChange"
         />
       </div>

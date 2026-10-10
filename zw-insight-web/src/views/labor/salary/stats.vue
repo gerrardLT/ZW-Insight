@@ -4,7 +4,7 @@
     <el-card shadow="never" class="filter-card">
       <el-form :model="queryParams" inline>
         <el-form-item label="项目" required>
-          <ProjectSelector v-model="queryParams.projectId" width="220px" @change="handleProjectChange" />
+          <ProjectSelector v-model="queryParams.projectId" width="220px" default-first @change="handleProjectChange" />
         </el-form-item>
         <el-form-item label="月份" required>
           <el-date-picker
@@ -218,8 +218,10 @@ const activeTab = ref('ALL')
 const expandedRows = ref<string[]>([])
 
 const queryParams = ref({
-  projectId: undefined as number | undefined,
-  month: '',
+  // 雪花 ID 经 Jackson 序列化为 string，故兼容 number|string
+  projectId: undefined as number | string | undefined,
+  // 默认当月：避免进入页面因「未选月份」而整页空白
+  month: new Date().toISOString().slice(0, 7),
   teamName: '',
   workerName: ''
 })
@@ -261,10 +263,11 @@ function getRateClass(rate: number | null): string {
 }
 
 function handleProjectChange() {
-  // 项目变更时清空已有数据
+  // 项目变更（含挂载时 default-first 自动选中）：清空旧数据后按新项目重新查询
   statsData.value = null
   compareData.value = null
   searched.value = false
+  handleSearch()
 }
 
 async function handleSearch() {

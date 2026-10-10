@@ -104,7 +104,7 @@
           </div>
           <div class="banner-switch">
             <span class="banner-switch-label">快速切换</span>
-            <ProjectSelector v-model="selectedProjectId" width="240px" @change="handleProjectChange" />
+            <ProjectSelector v-model="selectedProjectId" width="240px" default-first @change="handleProjectChange" />
           </div>
         </div>
       </el-card>

@@ -4,7 +4,7 @@
     <el-card shadow="never" class="filter-card">
       <div class="filter-bar">
         <span class="filter-label">项目：</span>
-        <ProjectSelector v-model="selectedProjectId" width="300px" @change="loadAll" />
+        <ProjectSelector v-model="selectedProjectId" width="300px" default-first @change="loadAll" />
         <el-button :loading="loading" :icon="Refresh" :disabled="!selectedProjectId" @click="loadAll">
           刷新
         </el-button>

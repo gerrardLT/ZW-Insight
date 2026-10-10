@@ -198,7 +198,8 @@ const importBudgetId = ref<number | undefined>(undefined)
 const queryParams = ref({
   page: 1,
   size: 10,
-  projectId: undefined as number | undefined
+  // 雪花 ID 经 Jackson 序列化为 string，故兼容 number|string
+  projectId: undefined as number | string | undefined
 })
 
 const formData = ref({
@@ -327,8 +328,13 @@ async function handleDelete(row: any) {
   loadData()
 }
 
-onMounted(() => {
-  searchProject('')
+onMounted(async () => {
+  await searchProject('')
+  // 预算执行面板需项目：未选时默认选中首个可访问项目，避免面板出现「请先选择项目」空白引导
+  if (!queryParams.value.projectId && projectList.value.length) {
+    queryParams.value.projectId = projectList.value[0].id
+    execPanelRef.value?.reload()
+  }
   loadData()
 })
 

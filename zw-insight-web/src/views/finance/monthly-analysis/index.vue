@@ -4,7 +4,7 @@
     <el-card shadow="never" class="filter-card">
       <div class="filter-bar">
         <span class="filter-label">项目：</span>
-        <ProjectSelector v-model="selectedProjectId" width="280px" @change="onProjectChange" />
+        <ProjectSelector v-model="selectedProjectId" width="280px" default-first @change="onProjectChange" />
         <span class="filter-label">月份：</span>
         <el-date-picker v-model="month" type="month" value-format="YYYY-MM" format="YYYY 年 MM 月"
           placeholder="选择月份" style="width: 150px" :clearable="false" @change="loadData" />

@@ -23,8 +23,15 @@ import { getProjectList } from '@/api/project'
 const props = withDefaults(defineProps<{
   modelValue?: number | string
   width?: string
+  /**
+   * 挂载时若未选值，自动选中项目列表首项并触发 change。
+   * 仅用于「必须选项目才能渲染」的页面（成本看板/项目看板/成本中心/月度分析/甘特图等），
+   * 避免进入页面出现「请先选择项目」的空白引导；列表类页面不要开启（需保持「全部项目」）。
+   */
+  defaultFirst?: boolean
 }>(), {
-  width: '100%'
+  width: '100%',
+  defaultFirst: false
 })
 
 const emit = defineEmits<{
@@ -57,7 +64,16 @@ function handleChange(val: number | string | undefined) {
   emit('change', val, item)
 }
 
-onMounted(() => {
-  handleSearch('')
+onMounted(async () => {
+  await handleSearch('')
+  // 必须选项目才能渲染的页面：未选值时默认选中首项并触发 change，避免空白引导
+  if (props.defaultFirst && (modelValue.value === undefined || modelValue.value === null || modelValue.value === '')) {
+    const first = options.value[0]
+    if (first) {
+      modelValue.value = first.id
+      emit('update:modelValue', first.id)
+      emit('change', first.id, first)
+    }
+  }
 })
 </script>

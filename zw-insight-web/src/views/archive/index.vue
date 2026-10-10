@@ -140,7 +140,8 @@ import type { Project } from '@/types/project'
 const projectLoading = ref(false)
 const loading = ref(false)
 const projectOptions = ref<Project[]>([])
-const selectedProjectId = ref<number | undefined>()
+// 雪花 ID 经 Jackson 序列化为 string，故兼容 number|string
+const selectedProjectId = ref<number | string | undefined>()
 
 const project = ref<Record<string, any>>({})
 const members = ref<any[]>([])
@@ -181,7 +182,7 @@ async function loadProjects() {
   }
 }
 
-async function handleProjectChange(id: number | undefined) {
+async function handleProjectChange(id: number | string | undefined) {
   if (!id) {
     resetArchive()
     return
@@ -206,8 +207,12 @@ async function handleProjectChange(id: number | undefined) {
   }
 }
 
-onMounted(() => {
-  loadProjects()
+onMounted(async () => {
+  await loadProjects()
+  // 项目档案需项目：未选时默认选中首个可访问项目，避免出现「请先选择项目」空白引导
+  if (!selectedProjectId.value && projectOptions.value.length) {
+    handleProjectChange(projectOptions.value[0].id)
+  }
 })
 </script>
 

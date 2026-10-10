@@ -3,7 +3,7 @@
     <el-card shadow="never">
       <el-form :model="queryParams" inline>
         <el-form-item label="项目">
-          <ProjectSelector v-model="queryParams.projectId" width="200px" @change="handleSearch" />
+          <ProjectSelector v-model="queryParams.projectId" width="200px" default-first @change="handleSearch" />
         </el-form-item>
         <el-form-item label="任务名称">
           <el-input v-model="queryParams.taskName" placeholder="任务名称" clearable style="width: 180px" />
@@ -55,7 +55,7 @@
         <template #header>
           <div style="display: flex; align-items: center; gap: var(--zw-space-sm-md);">
             <span>甘特图视图</span>
-            <ProjectSelector v-model="ganttProjectId" placeholder="选择项目" width="240px" />
+            <ProjectSelector v-model="ganttProjectId" placeholder="选择项目" width="240px" default-first />
           </div>
         </template>
         <GanttChart

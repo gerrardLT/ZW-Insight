@@ -152,7 +152,8 @@ const editingId = ref<number | null>(null)
 const parentLabel = ref('')
 
 const queryParams = reactive({
-  projectId: null as number | null,
+  // 雪花 ID 经 Jackson 序列化为 string，故兼容 number|string
+  projectId: null as number | string | null,
   status: ''
 })
 
@@ -378,6 +379,11 @@ async function handleDelete(node: WbsNode) {
 
 onMounted(async () => {
   await searchProject('')
+  // WBS 树需项目：未选时默认选中首个可访问项目，避免出现「请先选择项目」空白引导
+  if (!queryParams.projectId && projectList.value.length) {
+    queryParams.projectId = projectList.value[0].id
+  }
+  await loadTree()
 })
 </script>
 

@@ -126,12 +126,18 @@ function buildThemedOption(data: any) {
   return applyChartTheme(option, pickChartTheme(appStore.isDark))
 }
 
+/** 加载序号：父组件可能在挂载期先触发一次（无项目）再带默认项目重载，
+ *  必须丢弃过期结果，否则先发起的失败请求会覆盖后发起成功的数据（面板显示报错） */
+let loadSeq = 0
+
 async function load() {
+  const seq = ++loadSeq
   loading.value = true
   errorMsg.value = ''
   isEmpty.value = false
   try {
     const data = await props.fetchData()
+    if (seq !== loadSeq) return
     const option = buildThemedOption(data)
     if (!option) {
       isEmpty.value = true
@@ -140,18 +146,22 @@ async function load() {
     }
     lastData = data
     await nextTick()
+    if (seq !== loadSeq) return
     if (!chartRef.value) return
     if (!chart || chart.isDisposed()) {
       chart = echarts.init(chartRef.value)
     }
     chart.setOption(option, true)
   } catch (e: any) {
+    if (seq !== loadSeq) return
     // 不静默：错误消息直接展示（后端空数据的业务提示也走此通道）
     errorMsg.value = e?.message || '加载统计数据失败'
     lastData = null
   } finally {
-    loading.value = false
-    hasLoaded.value = true
+    if (seq === loadSeq) {
+      loading.value = false
+      hasLoaded.value = true
+    }
   }
 }
 
