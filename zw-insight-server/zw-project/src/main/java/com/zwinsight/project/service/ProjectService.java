@@ -60,6 +60,11 @@ public class ProjectService {
     private final SerialNumberService serialNumberService;
     private final ProjectMemberService memberService;
     private final ApprovalService approvalService;
+    /**
+     * 数据权限数据提供者（zw-common 接口，实现由 zw-system 提供）：创建项目时取创建人所属机构，
+     * 作为项目「负责部门」(dept_id) 默认值。仅依赖 zw-common 接口，不引入 zw-system 模块依赖。
+     */
+    private final com.zwinsight.common.datapermission.DataPermissionDataProvider dataPermissionDataProvider;
     /** 项目删除级联：自有子表直接清理（R7-02） */
     private final BizProjectMemberMapper projectMemberMapper;
     private final BizProjectWbsNodeMapper wbsNodeMapper;
@@ -173,10 +178,15 @@ public class ProjectService {
             project.setTotalOtherPayment(BigDecimal.ZERO);
         }
 
+        // 负责部门：默认取创建人所属机构（DEPT / DEPT_AND_CHILDREN 数据范围的判定依据，V2026_95）
+        Long currentUserId = SecurityContextHolder.getUserId();
+        if (project.getDeptId() == null && currentUserId != null) {
+            project.setDeptId(dataPermissionDataProvider.getUserDeptId(currentUserId));
+        }
+
         projectMapper.insert(project);
 
         // 自动将创建人添加为项目经理
-        Long currentUserId = SecurityContextHolder.getUserId();
         if (currentUserId != null) {
             memberService.addCreatorAsProjectManager(project.getId(), currentUserId, null);
         }

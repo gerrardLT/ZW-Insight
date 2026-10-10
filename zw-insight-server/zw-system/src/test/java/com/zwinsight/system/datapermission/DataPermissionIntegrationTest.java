@@ -1,5 +1,6 @@
 package com.zwinsight.system.datapermission;
 
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.datapermission.*;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.LongValue;
@@ -46,8 +47,15 @@ class DataPermissionIntegrationTest {
     private Table testTable;
     private DataColumn testDataColumn;
 
+    @AfterEach
+    void clearTenant() {
+        SecurityContextHolder.clear();
+    }
+
     @BeforeEach
     void setUp() {
+        // DEPT 条件经 biz_project.dept_id 派生子查询，需租户上下文（生产由登录态注入）
+        SecurityContextHolder.setTenantId(1L);
         mockProvider = Mockito.mock(DataPermissionDataProvider.class);
         handler = new ZwDataPermissionHandler(mockProvider);
 
@@ -132,8 +140,8 @@ class DataPermissionIntegrationTest {
     // ===========================================
 
     @Test
-    @DisplayName("DEPT 范围 - 生成 dept_id = userDeptId 条件")
-    void deptScope_shouldGenerateDeptIdEqualsCondition() {
+    @DisplayName("DEPT 范围 - 生成 项目负责部门子查询 条件")
+    void deptScope_shouldGenerateProjectDeptSubqueryCondition() {
         when(mockProvider.getUserDataScopes(TEST_USER_ID)).thenReturn(List.of("DEPT"));
         when(mockProvider.getUserDeptId(TEST_USER_ID)).thenReturn(TEST_DEPT_ID);
 
@@ -143,7 +151,7 @@ class DataPermissionIntegrationTest {
         Expression condition = handler.buildDeptCondition(testDataColumn, testTable, TEST_USER_ID);
 
         assertThat(condition).isNotNull();
-        assertThat(condition).isInstanceOf(EqualsTo.class);
+        assertThat(condition).isInstanceOf(InExpression.class);
 
         String sql = condition.toString();
         assertThat(sql).contains("dept_id");
@@ -218,7 +226,7 @@ class DataPermissionIntegrationTest {
 
         // 异常时降级为仅本部门
         assertThat(condition).isNotNull();
-        assertThat(condition).isInstanceOf(EqualsTo.class);
+        assertThat(condition).isInstanceOf(InExpression.class);
         String sql = condition.toString();
         assertThat(sql).contains("dept_id");
         assertThat(sql).contains(String.valueOf(TEST_DEPT_ID));
@@ -431,7 +439,7 @@ class DataPermissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("带表别名的 DEPT 条件 - 生成 alias.dept_id = deptId")
+    @DisplayName("带表别名的 DEPT 条件 - 生成 alias.project_id 派生子查询")
     void deptConditionWithTableAlias() {
         Table aliasedTable = new Table("biz_inspection");
         aliasedTable.setAlias(new net.sf.jsqlparser.expression.Alias("bi"));
@@ -441,6 +449,6 @@ class DataPermissionIntegrationTest {
 
         assertThat(condition).isNotNull();
         String sql = condition.toString();
-        assertThat(sql).contains("bi.dept_id");
+        assertThat(sql).contains("bi.project_id IN (SELECT id FROM biz_project WHERE dept_id =");
     }
 }

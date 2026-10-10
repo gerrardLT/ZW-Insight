@@ -57,6 +57,8 @@ class ProjectMutationTest {
     @Mock
     private BizProjectMapper projectMapper;
     @Mock
+    private com.zwinsight.common.datapermission.DataPermissionDataProvider dataPermissionDataProvider;
+    @Mock
     private SerialNumberService serialNumberService;
     @Mock
     private ProjectMemberService memberService;
@@ -94,7 +96,7 @@ class ProjectMutationTest {
     private ProjectService projectService() {
         // 参数顺序必须与 ProjectService 的 @RequiredArgsConstructor 字段声明顺序一致
         return new ProjectService(projectMapper, serialNumberService, memberService, approvalService,
-                memberMapper, wbsNodeMapper, userProjectMapper, eventPublisher,
+                dataPermissionDataProvider, memberMapper, wbsNodeMapper, userProjectMapper, eventPublisher,
                 new ProjectStateMachine(projectMapper, statusLogMapper), statusLogMapper, changeLogMapper);
     }
 

@@ -13,8 +13,10 @@ import java.util.Set;
  * 验证：根据数据范围枚举生成的 SQL 过滤条件格式正确且逻辑一致。
  * - ALL → 不追加任何条件
  * - SELF → WHERE created_by = ?
- * - DEPT → WHERE dept_id = ?
- * - DEPT_AND_CHILDREN → WHERE dept_id IN (...)
+ * - DEPT → WHERE dept_id = ?（**历史模型**：V2026_95 起生产实现改为
+ *   project_column IN (SELECT id FROM biz_project WHERE dept_id = ? ...)，本文件保留旧模型仅作
+ *   条件拼接自洽性校验，不代表生产 SQL 形态）
+ * - DEPT_AND_CHILDREN → WHERE dept_id IN (...)，同上
  * - PROJECT → WHERE project_id IN (...)
  * <p>
  * Validates: Requirements 1.3

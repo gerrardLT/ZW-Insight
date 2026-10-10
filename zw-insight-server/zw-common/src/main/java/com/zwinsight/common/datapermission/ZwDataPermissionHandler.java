@@ -5,11 +5,13 @@ import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.exception.DataPermissionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.InExpression;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 
@@ -17,6 +19,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * ZW-Insight 数据权限处理器
@@ -169,7 +172,20 @@ public class ZwDataPermissionHandler implements MultiDataPermissionHandler {
     }
 
     /**
-     * 构建 DEPT 范围条件：WHERE dept_id = #{userDeptId}
+     * 构建 DEPT 范围条件：本部门负责的项目及其全部单据。
+     * <p>
+     * 生成 {@code <projectColumn> IN (SELECT id FROM biz_project WHERE dept_id = ? AND tenant_id = ? AND deleted = 0)}。
+     * </p>
+     * <p>
+     * <b>为何不直接用 {@code dept_id} 列比较</b>：全库业务表均无 {@code dept_id} 列（本系统以「项目」为中心，
+     * 业务表统一带 {@code project_id}），旧实现生成 {@code dept_id = ?} 会直接 MySQL 1054 报 500
+     * （2026-10-10 权限一致性清查 F3）。改为经 {@code biz_project.dept_id}（项目负责部门）派生后，
+     * DEPT 语义为「本部门负责的项目及其全部单据」，与数据模型一致。
+     * </p>
+     * <p>
+     * 子查询内**必须显式带 {@code tenant_id} 与 {@code deleted = 0}**：租户拦截器只改写外层 WHERE，
+     * 不会进入 handler 生成的内联子查询。
+     * </p>
      */
     public Expression buildDeptCondition(DataColumn column, Table table, Long userId) {
         Long deptId;
@@ -185,12 +201,11 @@ public class ZwDataPermissionHandler implements MultiDataPermissionHandler {
             return buildSelfCondition(column, table, userId);
         }
 
-        Column col = new Column(resolveColumnWithAlias(table, column.deptColumn()));
-        return new EqualsTo(col, new LongValue(deptId));
+        return buildProjectDeptSubquery(column, table, "dept_id = " + deptId, userId);
     }
 
     /**
-     * 构建 DEPT_AND_CHILDREN 范围条件：WHERE dept_id IN (部门及所有子部门ID)
+     * 构建 DEPT_AND_CHILDREN 范围条件：本部门及所有下级部门负责的项目及其全部单据。
      */
     public Expression buildDeptAndChildrenCondition(DataColumn column, Table table, Long userId) {
         Long deptId;
@@ -211,18 +226,42 @@ public class ZwDataPermissionHandler implements MultiDataPermissionHandler {
             deptIds = dataProvider.getDeptAndChildIds(deptId);
         } catch (Exception e) {
             log.error("数据权限：获取部门及子部门ID异常，降级为仅本部门. deptId={}", deptId, e);
-            Column col = new Column(resolveColumnWithAlias(table, column.deptColumn()));
-            return new EqualsTo(col, new LongValue(deptId));
+            return buildProjectDeptSubquery(column, table, "dept_id = " + deptId, userId);
         }
 
         if (deptIds == null || deptIds.isEmpty()) {
             // 无法查询部门树，仅用本部门
-            Column col = new Column(resolveColumnWithAlias(table, column.deptColumn()));
-            return new EqualsTo(col, new LongValue(deptId));
+            return buildProjectDeptSubquery(column, table, "dept_id = " + deptId, userId);
         }
 
-        String columnName = resolveColumnWithAlias(table, column.deptColumn());
-        return buildInExpression(columnName, deptIds);
+        String inList = deptIds.stream().map(String::valueOf).collect(Collectors.joining(","));
+        return buildProjectDeptSubquery(column, table, "dept_id IN (" + inList + ")", userId);
+    }
+
+    /**
+     * 构造「经项目负责部门派生」的 DEPT 条件：
+     * {@code <projectColumn> IN (SELECT id FROM biz_project WHERE <deptPredicate> AND tenant_id = ? AND deleted = 0)}
+     * <p>
+     * 所有拼接进去的都是 Long（部门 ID / 租户 ID），不存在注入面；用 jsqlparser 解析成表达式树，
+     * 避免直接手写 AST 带来的版本 API 差异。
+     * </p>
+     */
+    private Expression buildProjectDeptSubquery(DataColumn column, Table table, String deptPredicate, Long userId) {
+        Long tenantId = SecurityContextHolder.getTenantId();
+        if (tenantId == null) {
+            // 无租户上下文时不可跨租户派生（与租户拦截器一致取最小权限）
+            log.warn("数据权限：DEPT 范围缺少租户上下文，降级为 SELF 范围. userId={}", userId);
+            return buildSelfCondition(column, table, userId);
+        }
+        String projectCol = resolveColumnWithAlias(table, column.projectColumn());
+        String sql = projectCol + " IN (SELECT id FROM biz_project WHERE " + deptPredicate
+                + " AND tenant_id = " + tenantId + " AND deleted = 0)";
+        try {
+            return CCJSqlParserUtil.parseCondExpression(sql);
+        } catch (JSQLParserException e) {
+            log.error("数据权限：DEPT 条件解析失败，降级为 SELF 范围. sql={}", sql, e);
+            return buildSelfCondition(column, table, userId);
+        }
     }
 
     /**

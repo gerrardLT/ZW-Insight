@@ -51,6 +51,8 @@ class TenantDataPermissionAndPropertyTest {
                                                      List<Long> projectIds) {
         return switch (scope) {
             case SELF -> new EqualsTo(new Column("created_by"), new LongValue(userId));
+            // 历史模型：V2026_95 起生产实现改为经 biz_project.dept_id 派生子查询（本文件仅校验
+            // 租户条件与数据权限条件的 AND 组合，不校验 DEPT 的 SQL 形态）
             case DEPT -> new EqualsTo(new Column("dept_id"), new LongValue(deptId));
             case DEPT_AND_CHILDREN -> new EqualsTo(new Column("dept_id"), new LongValue(deptId));
             case PROJECT -> {

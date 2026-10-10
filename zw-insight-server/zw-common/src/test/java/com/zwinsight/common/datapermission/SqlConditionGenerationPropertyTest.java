@@ -1,7 +1,10 @@
 package com.zwinsight.common.datapermission;
 
 // Feature: p0-data-permission-overdue, Property 3: SQL 条件生成正确性
+import com.zwinsight.common.config.SecurityContextHolder;
 import net.jqwik.api.*;
+import net.jqwik.api.lifecycle.AfterTry;
+import net.jqwik.api.lifecycle.BeforeTry;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
@@ -21,8 +24,8 @@ import static org.mockito.Mockito.when;
  * <p>
  * 验证：对于每种 DataScopeEnum 值，ZwDataPermissionHandler 生成正确的 SQL 表达式：
  * - ALL → 返回 null（不追加条件）
- * - DEPT → 生成 equalsTo(dept_column, deptId)
- * - DEPT_AND_CHILDREN → 生成 IN 表达式（dept_column IN (...)）
+ * - DEPT → 生成「项目负责部门」子查询（project_column IN (SELECT id FROM biz_project WHERE dept_id = ? ...)）
+ * - DEPT_AND_CHILDREN → 同上，部门条件为 IN
  * - PROJECT → 生成 IN 表达式（project_column IN (...)）
  * - SELF → 生成 equalsTo(user_column, userId)
  * </p>
@@ -32,6 +35,18 @@ import static org.mockito.Mockito.when;
  */
 @Tag("Feature: p0-data-permission-overdue, Property 3: SQL 条件生成正确性")
 class SqlConditionGenerationPropertyTest {
+
+    // 注意：jqwik 的 @Property 容器**不执行** JUnit 的 @BeforeEach/@AfterEach
+    //（jqwik 文档明示会拒绝带 Jupiter 注解的方法），必须用 jqwik 原生生命周期注解。
+    @AfterTry
+    void clearTenant() {
+        SecurityContextHolder.clear();
+    }
+
+    @BeforeTry
+    void bindTenant() {
+        SecurityContextHolder.setTenantId(1L);
+    }
 
     /**
      * 创建测试用的 DataColumn 注解代理
@@ -87,7 +102,7 @@ class SqlConditionGenerationPropertyTest {
     // ========== Property: DEPT → equalsTo(dept_column, deptId) ==========
 
     @Property(tries = 100)
-    void deptScope_generatesEqualsToDeptColumn(
+    void deptScope_generatesProjectDeptSubquery(
             @ForAll("userIds") Long userId,
             @ForAll("deptIds") Long deptId) {
 
@@ -100,7 +115,7 @@ class SqlConditionGenerationPropertyTest {
         Expression result = handler.buildDeptCondition(column, table, userId);
 
         Assertions.assertThat(result).isNotNull();
-        Assertions.assertThat(result).isInstanceOf(EqualsTo.class);
+        Assertions.assertThat(result).isInstanceOf(InExpression.class);
         String sql = result.toString();
         Assertions.assertThat(sql).contains("dept_id");
         Assertions.assertThat(sql).contains(String.valueOf(deptId));

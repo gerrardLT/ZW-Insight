@@ -48,8 +48,15 @@ class DataPermissionIntegrationTest {
     private static final String ANNOTATED_MAPPER_MS_ID =
             "com.zwinsight.site.mapper.BizInspectionMapper.selectList";
 
+    @AfterEach
+    void clearTenant() {
+        SecurityContextHolder.clear();
+    }
+
     @BeforeEach
     void setUp() {
+        // DEPT 条件经 biz_project.dept_id 派生子查询，需租户上下文（生产由登录态注入）
+        SecurityContextHolder.setTenantId(1L);
         handler = new ZwDataPermissionHandler(dataProvider);
     }
 
@@ -105,8 +112,8 @@ class DataPermissionIntegrationTest {
     // ==================== DEPT 范围测试 ====================
 
     @Test
-    @DisplayName("DEPT范围 - 生成 dept_id = userDeptId 条件")
-    void deptScope_shouldGenerateEqualsToDeptIdCondition() {
+    @DisplayName("DEPT范围 - 生成 项目负责部门子查询 条件（本部门负责的项目及其单据）")
+    void deptScope_shouldGenerateProjectDeptSubqueryCondition() {
         when(dataProvider.getUserDataScopes(USER_ID)).thenReturn(List.of("DEPT"));
         when(dataProvider.getUserDeptId(USER_ID)).thenReturn(DEPT_ID);
 
@@ -118,7 +125,7 @@ class DataPermissionIntegrationTest {
 
         Expression condition = handler.buildDeptCondition(column, table, USER_ID);
 
-        assertThat(condition).isInstanceOf(EqualsTo.class);
+        assertThat(condition).isInstanceOf(InExpression.class);
         String sql = condition.toString();
         assertThat(sql).contains("dept_id");
         assertThat(sql).contains(String.valueOf(DEPT_ID));

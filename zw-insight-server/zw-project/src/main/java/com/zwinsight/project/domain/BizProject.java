@@ -151,4 +151,12 @@ public class BizProject extends BaseEntity {
      * 其他总支付
      */
     private BigDecimal totalOtherPayment;
+
+    /**
+     * 负责部门ID —— 数据范围 DEPT / DEPT_AND_CHILDREN 的判定依据。
+     * <p>创建项目时默认取创建人所属机构（org_id），可在后续调整。
+     * 业务表均无 dept_id 列，DEPT 范围经本列派生为「本部门负责的项目及其全部单据」，
+     * 详见 {@code ZwDataPermissionHandler#buildDeptCondition} 与 V2026_95 迁移。</p>
+     */
+    private Long deptId;
 }

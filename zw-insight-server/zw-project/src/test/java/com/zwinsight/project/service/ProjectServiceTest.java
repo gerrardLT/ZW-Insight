@@ -39,6 +39,7 @@ import static org.mockito.Mockito.*;
 class ProjectServiceTest {
 
     @Mock private BizProjectMapper projectMapper;
+    @Mock private com.zwinsight.common.datapermission.DataPermissionDataProvider dataPermissionDataProvider;
     @Mock private SerialNumberService serialNumberService;
     @Mock private ProjectMemberService memberService;
     @Mock private ApprovalService approvalService;
@@ -63,8 +64,8 @@ class ProjectServiceTest {
         sampleProject.setStatus("DRAFT");
         ProjectStateMachine stateMachine = new ProjectStateMachine(projectMapper, statusLogMapper);
         projectService = new ProjectService(projectMapper, serialNumberService, memberService,
-                approvalService, projectMemberMapper, wbsNodeMapper, userProjectMapper,
-                eventPublisher, stateMachine, statusLogMapper, changeLogMapper);
+                approvalService, dataPermissionDataProvider, projectMemberMapper, wbsNodeMapper,
+                userProjectMapper, eventPublisher, stateMachine, statusLogMapper, changeLogMapper);
     }
 
     // =====================================================================
