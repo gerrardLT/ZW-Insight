@@ -323,7 +323,120 @@ D3 剩余 6 处明细：`fin-fundplan` × 4（zhangwei/wangqiang/chengang/zhaole
 部署后证据文件（`audit-reports/perm-audit-evidence/`）：
 `s1-{sql,http,data}-postfix.txt`、`s2-{sql,http,data}-postfix.txt`。
 
-**遗留**：F1 修复只让 54 个权限码「可被授予」，**未给任何业务角色新增授权**，
-故 `POST /api/v1/contract` 等写接口对业务角色仍为 403 —— 这是配置现状而非缺陷，
-授权矩阵属 §5 待决策项。
+**遗留（更新）**：F1 目录补齐 + F1-b 授权矩阵（`V2026_92`）已落地并验证，业务角色写接口已放行；
+仍待办的是三项结构性整改，规划见 §8。
+
+---
+
+## 8. 三项遗留问题的整改规划
+
+### 8.1 依赖关系与推荐顺序
+
+```
+① DEPT 范围实现断裂 ── 独立（当前无实际影响，改动最大）
+② 主环境业务角色数据范围全 SELF ── 独立（推荐用 PROJECT，故不依赖 ①）
+③ 子页面/按钮菜单只绑 SUPER_ADMIN ── 独立
+```
+
+推荐顺序 **② → ③ → ①**：前两项立即可见效且风险低，第三项改动面最大而当前无实际暴露面。
+
+### 8.2 ① DEPT / DEPT_AND_CHILDREN 范围实现断裂
+
+**根因（已实证）**：全库 0 张表有 `dept_id` 列（`information_schema` 全表扫描）；所有 `@DataPermission`
+使用默认 `deptColumn="dept_id"`；`ZwDataPermissionHandler.buildDeptCondition` 生成 `dept_id = ?` → MySQL 1054 → 500。
+未被触发仅因徽颍 DEPT 角色用户同时持有 ALL 角色（多角色取最高优先级）。
+
+| 方案 | 做法 | 成本 | 风险 | 结论 |
+|---|---|---|---|---|
+| **A 项目归属部门** | `biz_project` 增 `dept_id`（负责部门）；DEPT 条件改为 `projectColumn IN (SELECT id FROM biz_project WHERE dept_id IN (部门子树) AND tenant_id=? AND deleted=0)`；项目创建/编辑维护 `dept_id`；存量回填 | 1 列 + 1 个 handler 方法 + 单测 + 回填迁移 | 中（handler 为全模块共用） | **推荐** |
+| B 取消 DEPT 维度 | 从 `DataScopeEnum`/校验/前端下拉移除 DEPT、DEPT_AND_CHILDREN；徽颍两个 DEPT 角色改配 PROJECT/ALL | 小 | 低 | 若确认不需要部门维度则选它 |
+| C 给业务表加 dept_id | 81 张表加列 + 每处写入维护 | 大 | 高 | 不推荐（与 `project_id` 语义重复） |
+
+**推荐 A 的理由**：唯一能让 DEPT 语义真正成立且稳定的做法（"本部门负责的项目及其全部单据"），
+与"项目为中心"的数据模型一致；业务表都已有 `project_id`，**无需动 81 张表**；与 PROJECT 范围共用同一通道。
+
+A 的实施步骤：
+1. 迁移（双轨）：`biz_project` 加 `dept_id BIGINT NULL` + 索引；存量 4 个项目回填（优先取项目经理所属部门，无则取 `created_by` 的 `org_id`）
+2. 代码：`ProjectService` 创建/编辑时写入 `dept_id`（默认创建人 `org_id`，允许显式指定）
+3. 代码：`ZwDataPermissionHandler` 的 DEPT / DEPT_AND_CHILDREN 分支改为子查询形式，**子查询内显式带 `tenant_id` 与 `deleted=0`**（租户拦截器不会改写 handler 生成的内联子查询）
+4. 单测 + 扩展既有 PBT（`DataScopeValidationPropertyTest` / `DataScopeConfigEffectPropertyTest`）
+5. 复跑 `perm-audit-data.sh`：在测试租户造一个"仅 DEPT"用户，验证不再 500 且可见范围正确
+
+**风险窗口**：仅当"某角色被单独设为 DEPT 且其用户无更宽范围角色"时才 500，当前两台环境均无此类用户。
+若要求零窗口，可在 A 落地前先给 `SysRoleService.updateDataScope` 加一条对 DEPT/DEPT_AND_CHILDREN 的显式提示（前端标注"该范围暂未启用"）。
+
+### 8.3 ② 主环境 5 个业务角色数据范围全 SELF
+
+**根因**：`31_V2026_26__seed_demo_data.sql` 建这 5 个角色时未写 `data_scope` 列 → 落到 `V2026_10` 的 `DEFAULT 'SELF'`。
+配合"演示单据 `created_by` 全是 admin"，业务角色在所有 `@DataPermission` 表上可见 0 行。
+
+**建议目标**（对齐徽颍语义 + 项目为中心）：
+
+| role_code | 现在 | 建议 | 依据 |
+|---|---|---|---|
+| `PROJECT_MANAGER` | SELF | **PROJECT** | 徽颍同码角色=PROJECT；看自己参与项目的全部单据 |
+| `COMMERCE_STAFF` | SELF | **PROJECT** | 商务跟项目（徽颍对应 `COST_BUDGET_STAFF`=ALL，但按项目更贴合） |
+| `MATERIAL_STAFF` | SELF | **PROJECT** | 徽颍对应 `PURCHASE_STAFF`=DEPT（DEPT 不可用，故取 PROJECT） |
+| `FINANCE_STAFF` | SELF | **ALL** | 徽颍同码角色=ALL；财务需全公司口径 |
+| `STAFF` | SELF | SELF（不变） | — |
+
+**前置条件（必须同时补，否则改了仍看不到数据）**——`sys_user_project` 成员要齐。主环境现状：
+
+| 用户 | 角色 | 现有项目归属 |
+|---|---|---|
+| zhangwei 90071 | 项目经理 | 90001, 90003 |
+| chengang 90075 | 项目经理 | 90002 |
+| wangqiang 90073 | 财务 | 90002 |
+| liumin 90074 | 材料员 | 90001 |
+| lina 90072 / sunli 90077 | 普通员工 | 90001, 90003 / 90001 |
+| **zhaolei 90076** | **商务** | **无 ← 缺失；改为 PROJECT 后将看到 0 行** |
+
+演示单据项目分布（实测）：合同 90001×2 / 90002×1 / 90004×1；付款申请 90001×8 / 90002×5 / 90004×4；
+劳务合同 90001×2 / 90002×1 / 90004×1。→ 改 PROJECT 后 zhangwei/liumin 见 90001、chengang 见 90002、
+wangqiang(ALL) 见全部；**zhaolei 需补 90001 或 90002 归属**。
+
+实施：
+1. `31_V2026_26__seed_demo_data.sql`：给 5 个角色补 `data_scope`；补 zhaolei 的 `sys_user_project` 行（新环境即正确）
+2. 新迁移（双轨）幂等修正存量：`UPDATE sys_role SET data_scope=? WHERE role_code=? AND data_scope='SELF'`
+   （`data_scope='SELF'` 守卫避免覆盖人工调整；徽颍同码角色已是目标值，为 no-op）
+3. 复跑 `perm-audit-data.sh`：演示账号可见行数 0 → 非 0，且与判定式双向零差异
+
+**注意**：改范围不影响 R7 审计基线（其直连数据库、不走数据权限），但会改变"谁看到什么"，属可见性变更。
+
+### 8.4 ③ 子页面/按钮菜单只绑 SUPER_ADMIN
+
+**根因**：`V2026_45_2` 建立的细粒度层（`20201-20238` 共 21 行 = 4 个子页面 + 17 个按钮）只 `INSERT` 给 `role_id=1`，
+业务角色从未绑定 → 看不到 WBS结构/变更事件/成本账户CBS/成本主线看板，对应接口一律 403
+（如实测 PM `POST /api/v1/contract/change-event` 仍 403）。
+
+**建议下发规则**（按模块视图码，与 F1-b 授权矩阵同源）：
+
+| 菜单 | 承载权限码 | 下发给持有 | 排除 |
+|---|---|---|---|
+| `20202` WBS结构 + `20211-20213` | `project:wbs:view` / `project:wbs:{add,edit,delete}` | `project:view` | — |
+| `20203` 变更事件 + `20231-20238` | `contract:changeevent:view` / `...:{add,edit,delete,assess,submit,approve,reject,cancel}` | `contract:view` | **`approve`(20236) / `reject`(20237)** 属审批动作，不下发给业务角色 |
+| `20204` 成本账户CBS + `20221-20225` | `budget:costaccount:view` / `...:{add,edit,delete,lock,sync}` | `budget:view` | **`lock`(20224) / `sync`(20225)** 属财务管控，仅 `FINANCE_STAFF` |
+| `20201` 成本主线看板 | `dashboard:costcontrol:view` | 建议限定 `PROJECT_MANAGER` / `FINANCE_STAFF` / `COMMERCE_STAFF` | 不建议全量（看板含成本结构） |
+
+**只读角色排除**：`AUDITOR`（审计查看）、`COMPANY_LEADER`（公司领导）不下发写按钮。
+
+实施：一个按 `role_code` + 模块的迁移（双轨，幂等，带 `DELETE` 回滚）；复跑 `perm-audit-http.sh`；
+用 PM 实测 `POST /api/v1/contract/change-event` 403 → 400。
+
+### 8.5 实施顺序、可回滚性
+
+| 阶段 | 内容 | 见效 | 风险 | 回滚 |
+|---|---|---|---|---|
+| P1 | ② 数据范围 + 成员补齐 | 演示账号立刻能看到数据 | 低（5 行角色 + 1 行成员） | `UPDATE` 回 SELF / `DELETE` 成员行 |
+| P2 | ③ 子页面/按钮下发 | 角色能看到并操作子页面 | 低-中（只增绑定） | `DELETE FROM sys_role_menu WHERE menu_id BETWEEN 20201 AND 20238 AND role_id<>1` |
+| P3 | ① DEPT 语义实现 | 消除 latent 500 | 中（动 handler，需单测/PBT） | 回滚迁移删列；handler 改动可 revert |
+
+三阶段**互不阻塞、各自独立可交付**。
+
+### 8.6 需拍板的三点
+
+1. **①** 选 A（实现 DEPT，推荐）还是 B（取消 DEPT 维度）？
+2. **②** 目标矩阵是否照 §8.3 上表？特别是 `FINANCE_STAFF` 取 **ALL 还是 PROJECT**；`zhaolei` 补哪个项目？
+3. **③** 变更事件的 `approve`/`reject` 给谁（徽颍 `COMPANY_LEADER`/`DEPT_MANAGER`？主环境 `PROJECT_MANAGER`？）；`20201` 成本看板是否全量下发？
+
 
