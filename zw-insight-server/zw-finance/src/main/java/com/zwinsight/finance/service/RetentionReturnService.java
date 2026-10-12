@@ -1,6 +1,9 @@
 package com.zwinsight.finance.service;
 
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.result.PageResult;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.finance.domain.BizRetentionMoney;
 import com.zwinsight.finance.domain.BizRetentionReturn;
 import com.zwinsight.finance.mapper.BizRetentionMoneyMapper;
@@ -37,6 +40,19 @@ public class RetentionReturnService {
     public void save(BizRetentionReturn retentionReturn) {
         retentionReturn.setStatus("DRAFT");
         retentionReturnMapper.insert(retentionReturn);
+    }
+
+    /**
+     * 返还单分页查询（2026-10-12 新增）
+     * <p>补齐「提交返还审批」入口的数据源：原先只有登记与提交两个写端点，且 {@code saveReturn}
+     * 不回传 id，前端无从列出/提交已登记的返还单，导致 RETURNED 状态在 UI 上不可达。</p>
+     */
+    public PageResult<BizRetentionReturn> pageReturn(int page, int size, Long retentionId) {
+        Page<BizRetentionReturn> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<BizRetentionReturn> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(retentionId != null, BizRetentionReturn::getRetentionId, retentionId)
+                .orderByDesc(BizRetentionReturn::getCreatedAt);
+        return PageResult.of(retentionReturnMapper.selectPage(pageParam, wrapper));
     }
 
     /**

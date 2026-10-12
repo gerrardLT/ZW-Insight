@@ -95,6 +95,23 @@ public class ApprovalService {
         // 设置businessKey为 businessType:businessId
         String businessKey = businessType + ":" + businessId;
 
+        // 同一业务单只保留一个在途流程实例（2026-10-12 修复实例泄漏）：
+        // 「退回发起人」(reject-start) 按设计**不终止流程**（单据置 REJECTED、流程回到发起人节点），
+        // 此时用户若「修改后重新提交」，原实现会直接起第二个实例 → 旧实例无人收口，其任务永久滞留
+        // 且经 API 无法清理（terminate 报「发起人不能审批自己的单据」、withdraw-by-business 报
+        // 「源单流程实例不匹配」；实证见验收报告 §十）。
+        // 注意：「驳回后重提」是**被支持的正式流程**（11 个 Service 的 submit 放行 REJECTED、
+        // 前端有提交按钮、帮助文档有描述），故不能简单地拒绝提交，而是**先回收在途实例再起新的**——
+        // 这样「驳回后重提」既能用、又不泄漏。终止旧实例会触发其驳回回调（把单据置 REJECTED），
+        // 而调用方随后会置为 SUBMITTED，顺序无冲突。
+        List<ProcessInstance> staleInstances = runtimeService.createProcessInstanceQuery()
+                .processInstanceBusinessKey(businessKey)
+                .processInstanceTenantId(String.valueOf(tenantId))
+                .list();
+        for (ProcessInstance staleInstance : staleInstances) {
+            runtimeService.deleteProcessInstance(staleInstance.getId(), "重新提交：回收上一在途实例");
+        }
+
         // 记录流程发起人，使 HistoricProcessInstance.startUserId 可用（支持"我发起"查询）
         identityService.setAuthenticatedUserId(String.valueOf(userId));
 

@@ -74,24 +74,36 @@ public interface CostRollUpMapper {
 
     // ===================== 实际成本源单据：已审批结算 / 材料消耗 =====================
 
-    /** 采购结算（实际） */
-    @Select("SELECT id AS sourceId, settlement_code AS sourceNumber, "
+    /**
+     * 采购结算（实际）
+     * <p>2026-10-12 修复：原写 {@code settlement_code}，但 {@code biz_purchase_settlement} 的编号列是
+     * {@code settlement_no}（无 settlement_code）→ SQL 恒报 1054，导致 CBS 归集定时任务整体失败。</p>
+     */
+    @Select("SELECT id AS sourceId, settlement_no AS sourceNumber, "
             + "COALESCE(settlement_amount, 0) AS amount, created_at AS occurredAt "
             + "FROM biz_purchase_settlement "
             + "WHERE project_id = #{projectId} AND deleted = 0 AND status = 'APPROVED' "
             + "ORDER BY id")
     List<SourceDoc> listPurchaseSettlements(@Param("projectId") Long projectId);
 
-    /** 劳务结算（实际） */
-    @Select("SELECT id AS sourceId, settlement_code AS sourceNumber, "
+    /**
+     * 劳务结算（实际）
+     * <p>2026-10-12 修复：{@code biz_labor_settlement} **无任何编号列**，原 {@code settlement_code}
+     * 恒报 1054 → 改用合成单号（与机械结算的 {@code CONCAT('HISTORY:', id)} 同策略）。</p>
+     */
+    @Select("SELECT id AS sourceId, CONCAT('LABOR_SETTLEMENT:', id) AS sourceNumber, "
             + "COALESCE(settlement_amount, 0) AS amount, created_at AS occurredAt "
             + "FROM biz_labor_settlement "
             + "WHERE project_id = #{projectId} AND deleted = 0 AND status = 'APPROVED' "
             + "ORDER BY id")
     List<SourceDoc> listLaborSettlements(@Param("projectId") Long projectId);
 
-    /** 分包结算（实际） */
-    @Select("SELECT id AS sourceId, settlement_code AS sourceNumber, "
+    /**
+     * 分包结算（实际）
+     * <p>2026-10-12 修复：{@code biz_subcontract_settlement} 同样无编号列，原 {@code settlement_code}
+     * 恒报 1054 → 改用合成单号。</p>
+     */
+    @Select("SELECT id AS sourceId, CONCAT('SUBCONTRACT_SETTLEMENT:', id) AS sourceNumber, "
             + "COALESCE(settlement_amount, 0) AS amount, created_at AS occurredAt "
             + "FROM biz_subcontract_settlement "
             + "WHERE project_id = #{projectId} AND deleted = 0 AND status = 'APPROVED' "

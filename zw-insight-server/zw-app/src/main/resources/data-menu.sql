@@ -139,7 +139,8 @@ INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon
 -- ============================================================
 INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
 (1101, '分包合同', 'MENU', 11, 'contract',   'views/subcontract/contract',   'Document', 1, 1, 0),
-(1102, '分包结算', 'MENU', 11, 'settlement', 'views/subcontract/settlement', 'Tickets',  2, 1, 0);
+(1102, '分包结算', 'MENU', 11, 'settlement', 'views/subcontract/settlement', 'Tickets',  2, 1, 0),
+(1103, '分包产值', 'MENU', 11, 'output',     'views/subcontract/output',     'TrendCharts', 3, 1, 0);
 
 -- ============================================================
 -- 二级菜单：现场管理 (parent_id=12)
@@ -232,7 +233,7 @@ INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES
 
 -- 数据运维菜单授权超级管理员（p2-advanced 需求11.4/12.2/13.3）
 INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES
-(89, 1, 210), (90, 1, 211), (91, 1, 212);
+(89, 1, 210), (90, 1, 211), (91, 1, 212), (92, 1, 1103);
 
 -- 默认管理员账号（密码BCrypt加密后的123456）
 INSERT INTO sys_user (id, username, password, real_name, phone, org_id, status, tenant_id, created_at) VALUES

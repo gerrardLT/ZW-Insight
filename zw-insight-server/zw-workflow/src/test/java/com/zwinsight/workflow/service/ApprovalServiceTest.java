@@ -22,6 +22,7 @@ import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.history.HistoricProcessInstanceQuery;
 import org.flowable.engine.runtime.ChangeActivityStateBuilder;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.engine.runtime.ProcessInstanceQuery;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
 import org.flowable.task.api.history.HistoricTaskInstance;
@@ -101,12 +102,55 @@ class ApprovalServiceTest {
     // startProcess
     // =====================================================================
 
+    /**
+     * 桩：该 businessKey 当前**无**在途流程实例（startProcess 的「实例回收」前置查询）。
+     * 2026-10-12 新增该查询后，未打桩会让 createProcessInstanceQuery() 返回 null → NPE。
+     */
+    private void stubNoRunningInstance() {
+        ProcessInstanceQuery query = mock(ProcessInstanceQuery.class);
+        when(runtimeService.createProcessInstanceQuery()).thenReturn(query);
+        when(query.processInstanceBusinessKey(anyString())).thenReturn(query);
+        when(query.processInstanceTenantId(anyString())).thenReturn(query);
+        when(query.list()).thenReturn(java.util.List.of());
+    }
+
+    @Test
+    @DisplayName("发起流程：同一单据已有在途实例时先回收旧实例再起新实例（防实例泄漏，2026-10-12）")
+    void testStartProcess_recyclesRunningInstance() {
+        try (var sc = context()) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(100L);
+            sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+
+            ProcessInstance stale = mock(ProcessInstance.class);
+            when(stale.getId()).thenReturn("stale-001");
+            ProcessInstanceQuery query = mock(ProcessInstanceQuery.class);
+            when(runtimeService.createProcessInstanceQuery()).thenReturn(query);
+            when(query.processInstanceBusinessKey(anyString())).thenReturn(query);
+            when(query.processInstanceTenantId(anyString())).thenReturn(query);
+            when(query.list()).thenReturn(java.util.List.of(stale));
+
+            ProcessInstance fresh = mock(ProcessInstance.class);
+            when(fresh.getId()).thenReturn("pi-new");
+            when(runtimeService.startProcessInstanceByKeyAndTenantId(anyString(), anyString(), anyMap(), anyString()))
+                    .thenReturn(fresh);
+
+            String result = approvalService.startProcess("OUTPUT_REPORT", 9L, "output_report_approval", null);
+
+            assertThat(result).isEqualTo("pi-new");
+            // 旧实例被回收 —— 这是「驳回后重提」不再泄漏的关键
+            verify(runtimeService).deleteProcessInstance(eq("stale-001"), anyString());
+            verify(runtimeService).startProcessInstanceByKeyAndTenantId(
+                    anyString(), anyString(), anyMap(), anyString());
+        }
+    }
+
     @Test
     @DisplayName("发起流程：正常发起，验证变量设置和 businessKey 格式")
     void testStartProcess_success() {
         try (var sc1 = context()) {
             sc1.when(SecurityContextHolder::getUserId).thenReturn(100L);
             sc1.when(SecurityContextHolder::getTenantId).thenReturn(1L);
+            stubNoRunningInstance();
 
             ProcessInstance pi = mock(ProcessInstance.class);
             when(pi.getId()).thenReturn("pi-001");
@@ -137,6 +181,7 @@ class ApprovalServiceTest {
             sc.when(SecurityContextHolder::getUserId).thenReturn(100L);
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
 
+            stubNoRunningInstance();
             ProcessInstance pi = mock(ProcessInstance.class);
             when(pi.getId()).thenReturn("pi-002");
             when(runtimeService.startProcessInstanceByKeyAndTenantId(anyString(), anyString(), anyMap(), anyString()))
@@ -155,6 +200,7 @@ class ApprovalServiceTest {
             sc.when(SecurityContextHolder::getUserId).thenReturn(100L);
             sc.when(SecurityContextHolder::getTenantId).thenReturn(1L);
 
+            stubNoRunningInstance();
             when(runtimeService.startProcessInstanceByKeyAndTenantId(
                     eq("nonexistent_process"), anyString(), anyMap(), anyString()))
                     .thenThrow(new org.flowable.common.engine.api.FlowableObjectNotFoundException(

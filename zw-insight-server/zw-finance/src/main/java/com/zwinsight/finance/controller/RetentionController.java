@@ -42,6 +42,19 @@ public class RetentionController {
     }
 
     /**
+     * 分页查询质保金返还单
+     * <p>2026-10-12 新增：补齐「提交返还审批」入口所需的数据源——原先只有登记(POST /return)
+     * 与提交(POST /return/{id}/submit)两个写端点，且 saveReturn 不回传 id，前端无从列出/提交已登记的返还单。</p>
+     */
+    @GetMapping("/return/page")
+    public R<PageResult<BizRetentionReturn>> pageReturn(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long retentionId) {
+        return R.ok(retentionReturnService.pageReturn(page, size, retentionId));
+    }
+
+    /**
      * 新增质保金
      */
     @PostMapping
