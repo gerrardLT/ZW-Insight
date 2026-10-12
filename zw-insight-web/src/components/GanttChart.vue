@@ -97,8 +97,10 @@ function transformData(backendData: any[]): { data: any[]; links: any[] } {
     progress: item.progress || 0,
     parent: item.parentId || 0,
     open: true,
-    // 自定义字段用于状态颜色
-    status: item.status || 'NOT_STARTED',
+    // 自定义字段用于状态颜色。
+    // 2026-10-12 修正：后端字段名为 taskStatus（BizSchedulePlan.taskStatus），
+    // 原读 item.status 恒为 undefined → 状态配色恒回落「未开始」。
+    status: item.taskStatus || 'NOT_STARTED',
     actual_start: item.actualStartDate || ''
   }))
 
@@ -181,7 +183,7 @@ function initGantt() {
     { name: 'text', label: '任务名称', tree: true, width: 200 },
     { name: 'start_date', label: '开始日期', align: 'center', width: 90 },
     { name: 'end_date', label: '结束日期', align: 'center', width: 90 },
-    { name: 'progress', label: '进度', align: 'center', width: 60, template: (task: any) => Math.round(task.progress * 100) + '%' }
+    { name: 'progress', label: '进度', align: 'center', width: 60, template: (task: any) => Math.round(task.progress) + '%' }
   ]
 
   // 状态颜色模板

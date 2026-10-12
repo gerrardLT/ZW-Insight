@@ -369,6 +369,45 @@ cd tools/consistency-audit && npm run dev
 - 测试常量定义见 `zw-insight-server/zw-common/src/test/java/com/zwinsight/common/base/TestConstants.java`
 - 统一编排脚本：`bash tests/run-all-tests.sh`
 
+#### 测试同步守卫（Test-Sync Guard，2026-10-12）
+
+**要解决的问题**：代码改动/需求变更时，配套的测试改动容易被遗漏，且事后无从查证。
+实测教训——提交 `e5bdaa07`（P1-M1）给 `ProjectCreateRequest` 加了 6 个 `@NotBlank`，
+只补了同模块 Service 单测，却没动 25 个 `e2e/api-tests` spec，导致整个 L5 层
+（api-tests / e2e-real / consistency）静默腐烂两个月，直到手动跑基线才暴露
+（64 passed / 11 failed / 92 被阻断）。根因是 CI push 默认不跑 L5，且无任何"测试是否同步"的约束。
+
+**机制**：`tests/check-test-sync.mjs` 按**契约面**判定每个生产文件所需的最小测试层级：
+
+| 生产文件类型 | 所需测试层级 | 说明 |
+|---|---|---|
+| `controller/*Controller.java`、`domain/dto/*.java`、`vo/*.java` | **api** | 接口契约面，须由 `keys/test-api-*.sh` / `e2e/api-tests` / `e2e/consistency` / `e2e/tests/real` 覆盖；**同模块 Service 单测不算同步** |
+| `zw-insight-web/src/api/*.ts` | **api** | 前端 API 定义变更影响三端契约 |
+| `views/**`、`components/**`、`layouts/**`、`router/**` | **ui** | 须由组件测试或 UI E2E 覆盖 |
+| Service / Mapper / Entity / utils / stores 等 | **unit** | 模块内单测即可 |
+| 文档 / 配置 / 迁移 SQL / 样式 / 资源 | **EXEMPT** | 按约定无需测试 |
+
+判定结果：`SYNCED`（所需层级有同名对应测试）/ `AREA`（所需层级有测试但无同名）/
+`UNSYNCED`（所需层级无任何测试改动）/ `EXEMPT`。
+
+**策略：仅告警，不阻断**（用户决策 2026-10-12）。钩子恒 `exit 0`，不拦截推送。
+
+**用法**：
+
+```bash
+bash tests/install-git-hooks.sh          # 每人本地装一次（.git/hooks 不入库）
+bash tests/install-git-hooks.sh --list   # 查看安装状态
+node tests/check-test-sync.mjs           # 手动核对 origin/main..HEAD
+node tests/check-test-sync.mjs --range A..B   # 指定提交范围
+node tests/check-test-sync.mjs --last    # 只看最后一个提交
+```
+
+每次 push 自动生成报告 `audit-reports/test-sync-<时间戳>.md`（含逐文件判定与证据链）。
+报告默认**不入库**（见 `.gitignore` 的 `audit-reports/test-sync-*`）；若需在 git 历史中留痕，删掉该行即可。
+
+**若将来要改为阻断**：把 `tests/check-test-sync.mjs` 顶部 `EXIT_ON_UNSYNCED` 置 `true`
+（本地钩子层），或在 CI 增加调用步骤（远端兜底，本地钩子可被 `--no-verify` 绕过）。
+
 ### 9. 临时文件与文档管理
 
 AI 代理在开发、调试、评审过程中产生的临时产物必须遵循以下规则：

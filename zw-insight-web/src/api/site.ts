@@ -10,6 +10,14 @@ export function getSchedulePlanTree(projectId: number) {
   return request.get(`/v1/site/schedule/plan/${projectId}`)
 }
 
+/**
+ * 滞后任务清单（计划结束日期早于今天且未完成）。
+ * 判定在服务端动态推导，返回项含 `delayed` 与 `delayDays`（2026-10-12 新增）。
+ */
+export function getDelayedPlans() {
+  return request.get('/v1/site/schedule/delayed')
+}
+
 /** 更新进度计划日期（甘特图拖拽后保存） */
 export function updateSchedulePlanDates(id: number, data: { planStartDate: string; planEndDate: string }) {
   return request.put(`/v1/site/schedule/plan/${id}`, data)
@@ -42,6 +50,14 @@ export function createScheduleFeedback(data: any) {
 
 export function submitScheduleFeedback(id: number) {
   return request.post(`/v1/site/schedule/feedback/${id}/submit`)
+}
+
+/**
+ * 提交进度反馈并立即生效（创建 + 回写计划，一步完成）。
+ * 后端 POST /feedback 返回 R<Void> 拿不到 id，故由 /feedback/apply 承担（2026-10-12 新增）。
+ */
+export function applyScheduleFeedback(data: any) {
+  return request.post('/v1/site/schedule/feedback/apply', data)
 }
 
 // ======================== 施工日志 ========================

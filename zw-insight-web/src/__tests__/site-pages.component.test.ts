@@ -57,6 +57,9 @@ crudPageSuite({
   pageMock: mockSchedulePage, createMock: mockScheduleCreate, updateMock: mockScheduleUpdate, deleteMock: mockScheduleDelete,
   addButtonText: '新增进度计划',
   requiredError: '请输入任务名称',
+  // 2026-10-12：schedule 分页参数已由 pageNum/pageSize 纠正为 page/size
+  // （原参数名与后端 ScheduleController 的 page/size 不匹配，导致翻页恒失效）
+  pageKey: 'page',
   records: [
     { id: 1, projectName: '滨江花园一期', taskName: '基础施工', planStartDate: '2026-01-01', planEndDate: '2026-03-31', status: 'IN_PROGRESS' },
     { id: 2, projectName: '城南市政', taskName: '路基工程', planStartDate: '2026-02-01', planEndDate: '2026-05-31', status: 'COMPLETED' },

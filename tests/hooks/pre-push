@@ -1,0 +1,27 @@
+#!/bin/sh
+# ==============================================================================
+# 测试同步守卫 · pre-push 钩子（2026-10-12）
+#
+# 作用：push 前自动核对「生产代码改动是否配套了对应层级的测试改动」，
+#       结果落一份报告到 audit-reports/test-sync-<时间戳>.md。
+# 策略：**仅告警，不阻断**（用户决策 2026-10-12）。恒 exit 0。
+#
+# 安装：bash tests/install-git-hooks.sh
+# 卸载：rm .git/hooks/pre-push
+# 手动跑：node tests/check-test-sync.mjs
+# ==============================================================================
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+[ -z "$repo_root" ] && exit 0
+
+[ -f "$repo_root/tests/check-test-sync.mjs" ] || exit 0
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "[测试同步守卫] 未找到 node，跳过本次核对"
+  exit 0
+fi
+
+cd "$repo_root" || exit 0
+node tests/check-test-sync.mjs --hook 2>&1
+
+# 仅告警，不阻断推送
+exit 0

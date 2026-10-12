@@ -196,7 +196,8 @@ const RISK_TYPE_LABELS: Record<string, string> = {
   RECEIVABLE_OVERDUE: '应收逾期',
   RETENTION_OVERDUE: '质保金逾期',
   WAGE_COMPLIANCE: '工资专户合规',
-  ENTERTAINMENT_ANOMALY: '招待费异常'
+  ENTERTAINMENT_ANOMALY: '招待费异常',
+  SCHEDULE_DELAY: '工期滞后'
 }
 
 const HANDLE_STATUS_LABELS: Record<string, string> = {
@@ -305,6 +306,13 @@ const drillActions = computed(() => {
       break
     case 'ENTERTAINMENT':
       actions.push({ label: '项目报销', go: () => router.push({ path: '/finance/project-reimbursement' }) })
+      break
+    case 'SCHEDULE':
+      // 工期滞后：穿透到现场管理的进度计划页（带项目定位）
+      actions.push({
+        label: '进度计划',
+        go: () => router.push({ path: '/site/schedule', query: r.projectId ? { projectId: String(r.projectId) } : {} })
+      })
       break
     default:
       break

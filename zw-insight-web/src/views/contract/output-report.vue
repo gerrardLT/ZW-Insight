@@ -4,7 +4,10 @@
     <el-card shadow="never" class="filter-card">
       <el-form :inline="true" :model="queryParams">
         <el-form-item label="项目">
-          <ProjectSelector v-model="queryParams.projectId" style="width: 220px" @change="handleContractReload" />
+          <!-- default-first：挂载即选中首个项目并触发 change，
+               否则 queryParams.projectId 为空 → loadContractOptions 直接 return，
+               合同下拉首屏恒为空（2026-10-12 修正） -->
+          <ProjectSelector v-model="queryParams.projectId" style="width: 220px" default-first @change="handleContractReload" />
         </el-form-item>
         <el-form-item label="合同">
           <el-select v-model="queryParams.contractId" placeholder="全部" clearable filterable style="width: 220px">

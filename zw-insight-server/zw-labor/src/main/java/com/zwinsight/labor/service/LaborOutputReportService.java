@@ -83,7 +83,9 @@ public class LaborOutputReportService {
         }
         // 白名单防篡改：状态与流程字段由服务端控制
         existing.setCurrentOutput(report.getCurrentOutput());
-        existing.setCumulativeOutput(report.getCumulativeOutput());
+        // 注：cumulativeOutput 是服务端累加字段，不再从前端采信（2026-10-12 移除原
+        // `existing.setCumulativeOutput(report.getCumulativeOutput())`——前端表单无该字段，
+        // 采信只会把服务端算好的累计值覆盖成空）。
         if (report.getProjectId() != null) {
             existing.setProjectId(report.getProjectId());
         }
@@ -177,6 +179,14 @@ public class LaborOutputReportService {
 
         if (report.getContractId() != null && report.getCurrentOutput() != null) {
             laborContractMapper.addOutput(report.getContractId(), report.getCurrentOutput());
+            // 回写单据自身的累计产值（合同口径，与施工产值 OutputReportService.onApproved 同族写法）。
+            // 2026-10-12 修复：此前只累加合同、不写单据，导致 biz_labor_output_report.cumulative_output
+            // 恒为 null → 列表「累计产值」列恒显示 0.00（真正累计值只体现在合同上）。
+            BizLaborContract contract = laborContractMapper.selectById(report.getContractId());
+            if (contract != null && contract.getCumulativeOutput() != null) {
+                report.setCumulativeOutput(contract.getCumulativeOutput());
+                outputReportMapper.updateById(report);
+            }
             log.info("劳务产值审批通过并原子回写合同累计产值: reportId={}, contractId={}, amount={}",
                     id, report.getContractId(), report.getCurrentOutput());
         }

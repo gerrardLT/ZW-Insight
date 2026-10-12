@@ -47,6 +47,15 @@ public class ScheduleController {
         return R.ok(planService.page(page, size, projectId, projectName, taskName));
     }
 
+    /**
+     * 滞后任务清单（2026-10-12 新增）。
+     * 判定式：计划结束日期早于今天且任务未完成；供看板/风险扫描等监督链路消费。
+     */
+    @GetMapping("/delayed")
+    public R<List<BizSchedulePlan>> delayedPlans() {
+        return R.ok(planService.listDelayed());
+    }
+
     @PostMapping("/plan")
     public R<Void> savePlan(@RequestBody BizSchedulePlan plan) {
         planService.save(plan);
@@ -86,6 +95,16 @@ public class ScheduleController {
     @PostMapping("/feedback/{id}/submit")
     public R<Void> submitFeedback(@PathVariable Long id) {
         feedbackService.submit(id);
+        return R.ok();
+    }
+
+    /**
+     * 提交进度反馈并立即生效（创建 + 回写计划，一步完成；2026-10-12 新增）。
+     * 供前端「进度反馈」入口使用——POST /feedback 返回 R&lt;Void&gt; 拿不到 id，无法再调 submit。
+     */
+    @PostMapping("/feedback/apply")
+    public R<Void> applyFeedback(@RequestBody BizScheduleFeedback feedback) {
+        feedbackService.saveAndSubmit(feedback);
         return R.ok();
     }
 }

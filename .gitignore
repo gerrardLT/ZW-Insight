@@ -187,6 +187,8 @@ audit-reports/data-audit-round7-*
 audit-reports/audit-round7-*
 audit-reports/server2-*
 audit-reports/_*
+# 测试同步核对报告（pre-push 钩子每次推送自动生成；如需入库留痕请删除本行）
+audit-reports/test-sync-*
 
 # ========================
 # 本地工具缓存与 AI 评审产物（不入库，可随时重建）

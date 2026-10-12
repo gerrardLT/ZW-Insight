@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -237,5 +238,55 @@ class SchedulePlanServiceTest {
         assertThat(parent.getTaskStatus()).isEqualTo("COMPLETED");
         // 递归调用到祖父节点（parentId=1）时查询其子任务
         verify(planMapper).selectById(2L);
+    }
+
+    @Test
+    @DisplayName("动态推导滞后：计划完成在过去且未完成置 DELAYED，已完成不判定")
+    void list_derivesDelayedStatus() {
+        LocalDate yesterday = java.time.LocalDate.now().minusDays(3);
+        LocalDate tomorrow = java.time.LocalDate.now().plusDays(3);
+
+        BizSchedulePlan pastPending = plan(1L, 0L, "IN_PROGRESS", new BigDecimal("50"));
+        pastPending.setPlanEndDate(yesterday);
+
+        BizSchedulePlan pastCompleted = plan(2L, 0L, "COMPLETED", new BigDecimal("100"));
+        pastCompleted.setPlanEndDate(yesterday);
+
+        BizSchedulePlan futurePending = plan(3L, 0L, "IN_PROGRESS", new BigDecimal("20"));
+        futurePending.setPlanEndDate(tomorrow);
+
+        when(planMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(pastPending, pastCompleted, futurePending));
+
+        List<BizSchedulePlan> result = schedulePlanService.list(10L);
+
+        // pastPending 动态推导为 DELAYED，delayDays 为 3
+        assertThat(pastPending.getTaskStatus()).isEqualTo("DELAYED");
+        assertThat(pastPending.getDelayed()).isTrue();
+        assertThat(pastPending.getDelayDays()).isEqualTo(3);
+
+        // pastCompleted 保持 COMPLETED，未滞后
+        assertThat(pastCompleted.getTaskStatus()).isEqualTo("COMPLETED");
+        assertThat(pastCompleted.getDelayed()).isFalse();
+
+        // futurePending 保持 IN_PROGRESS，未滞后
+        assertThat(futurePending.getTaskStatus()).isEqualTo("IN_PROGRESS");
+        assertThat(futurePending.getDelayed()).isFalse();
+    }
+
+    @Test
+    @DisplayName("写入侧守卫：保存或更新回传 DELAYED 时归一为空，不得落库")
+    void save_and_update_normalizeDelayedStatus() {
+        BizSchedulePlan plan = plan(1L, 0L, "DELAYED", new BigDecimal("50"));
+        schedulePlanService.save(plan);
+        // 新增时 DELAYED 归一后回落默认 NOT_STARTED
+        assertThat(plan.getTaskStatus()).isEqualTo("NOT_STARTED");
+
+        BizSchedulePlan existing = plan(2L, 0L, "IN_PROGRESS", new BigDecimal("60"));
+        when(planMapper.selectById(2L)).thenReturn(existing);
+        BizSchedulePlan updatePlan = plan(2L, 0L, "DELAYED", new BigDecimal("60"));
+        schedulePlanService.update(updatePlan);
+        // 更新时 DELAYED 归一为 null（避免 updateById 写入）
+        assertThat(updatePlan.getTaskStatus()).isNull();
     }
 }

@@ -98,15 +98,19 @@ class LaborOutputReportServiceTest {
         }
 
         @Test
-        @DisplayName("审批通过：状态变更为 APPROVED 并原子累加合同累计产值")
+        @DisplayName("审批通过：状态变更为 APPROVED 并原子累加合同累计产值与单据自身累计值")
         void onApproved_atomicAddOutput() {
             sampleReport.setStatus("SUBMITTED");
             when(outputReportMapper.selectById(1L)).thenReturn(sampleReport);
+            BizLaborContract contract = new BizLaborContract();
+            contract.setId(10L);
+            contract.setCumulativeOutput(new BigDecimal("70000"));
+            when(laborContractMapper.selectById(10L)).thenReturn(contract);
 
             laborOutputReportService.onApproved(1L);
 
             assertThat(sampleReport.getStatus()).isEqualTo("APPROVED");
-            verify(outputReportMapper).updateById(sampleReport);
+            assertThat(sampleReport.getCumulativeOutput()).isEqualByComparingTo(new BigDecimal("70000"));
             verify(laborContractMapper).addOutput(10L, new BigDecimal("20000"));
         }
 

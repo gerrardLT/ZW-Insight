@@ -485,7 +485,11 @@ const kpi = computed(() => {
     receipt: c && !isEmpty(c) ? { amount: toWan(c.receivedAmount), rate: clampPercent(c.receiptRate) } : null,
     output: o && !isEmpty(o) ? { total: toWan(o.totalOutput), month: toWan(o.monthOutput) } : null,
     budget: b && !isEmpty(b) ? { used: toWan(b.usedAmount), rate: clampPercent(b.usageRate) } : null,
-    progress: p && !isEmpty(p) ? { rate: clampPercent(p.completionRate), done: p.completedTasks, total: p.totalTasks } : null
+    // 2026-10-12：无计划任务时 totalTasks=0，后端 completionRate 返回 0，
+    // 直接展示会误导为「进度为零」。此处按「无数据」处理，与 receipt/budget 同范式。
+    progress: p && !isEmpty(p) && Number(p.totalTasks) > 0
+      ? { rate: clampPercent(p.completionRate), done: p.completedTasks, total: p.totalTasks }
+      : null
   }
 })
 

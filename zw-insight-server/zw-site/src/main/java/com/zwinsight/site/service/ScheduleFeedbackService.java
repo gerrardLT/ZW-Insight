@@ -47,6 +47,21 @@ public class ScheduleFeedbackService {
         feedbackMapper.insert(feedback);
     }
 
+    /**
+     * 创建反馈并立即提交生效（2026-10-12 新增）。
+     *
+     * <p>动机：前端进度反馈入口需要「填完即回写计划」的一步操作，而 {@code POST /feedback}
+     * 返回 {@code R<Void>} 拿不到新记录 id，无法再调 submit。此方法在同一事务内完成
+     * 「插入 → 提交 → 回写计划」，避免前端先建后查再提交的三次往返与竞态。
+     *
+     * <p>注意：本系统进度反馈无 Flowable 审批环节，submit 即 APPROVED 并 syncPlan。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void saveAndSubmit(BizScheduleFeedback feedback) {
+        save(feedback);
+        submit(feedback.getId());
+    }
+
     /** 反馈入参校验：计划存在且属于所填项目；进度 0–100；实际开始不晚于实际结束 */
     private void validate(BizScheduleFeedback feedback) {
         BizSchedulePlan plan = planMapper.selectById(feedback.getPlanId());
@@ -106,7 +121,8 @@ public class ScheduleFeedbackService {
         if (feedback.getActualEndDate() != null) {
             plan.setActualEndDate(feedback.getActualEndDate());
         }
-        if (feedback.getTaskStatus() != null) {
+        // DELAYED 为查询时派生态、不可持久化：反馈若回传该值则忽略，避免污染库
+        if (feedback.getTaskStatus() != null && !"DELAYED".equals(feedback.getTaskStatus())) {
             plan.setTaskStatus(feedback.getTaskStatus());
         }
         if (feedback.getProgress() != null) {
