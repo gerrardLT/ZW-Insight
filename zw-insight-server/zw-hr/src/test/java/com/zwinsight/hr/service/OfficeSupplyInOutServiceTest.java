@@ -80,6 +80,9 @@ class OfficeSupplyInOutServiceTest {
         inOut.setId(1L);
         inOut.setSupplyId(5L);
         inOut.setStatus("DRAFT");
+        // 2026-10-12：submit 新增了「数量必须>0」的前置校验，故此处需给定合法数量，
+        // 否则会在校验处先抛错、断言不到「关联办公用品不存在」
+        inOut.setQuantity(1);
         when(inOutMapper.selectById(1L)).thenReturn(inOut);
         when(supplyMapper.selectById(5L)).thenReturn(null);
 
@@ -101,6 +104,10 @@ class OfficeSupplyInOutServiceTest {
         inOutService.submit(1L);
 
         assertThat(supply.getStockQuantity()).isEqualTo(13);
+        // 2026-10-12：档案页四列同步（原先无写入方、恒为 0）
+        assertThat(supply.getTotalInbound()).isEqualByComparingTo("10");
+        assertThat(supply.getCurrentStock()).isEqualByComparingTo("13");
+        assertThat(supply.getLastInboundDate()).isNotNull();
         assertThat(inOut.getStatus()).isEqualTo("APPROVED");
         verify(supplyMapper).updateById(supply);
         verify(inOutMapper).updateById(inOut);

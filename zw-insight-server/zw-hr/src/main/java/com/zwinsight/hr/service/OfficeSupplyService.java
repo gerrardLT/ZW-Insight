@@ -10,6 +10,8 @@ import com.zwinsight.hr.mapper.BizOfficeSupplyMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+
 /**
  * 办公用品服务
  */
@@ -38,6 +40,10 @@ public class OfficeSupplyService {
         if (supply.getStockQuantity() == null) {
             supply.setStockQuantity(0);
         }
+        // 档案页读的是 current_stock，与 stock_quantity 双列并存 → 建档时即对齐，避免分叉
+        if (supply.getCurrentStock() == null) {
+            supply.setCurrentStock(BigDecimal.valueOf(supply.getStockQuantity()));
+        }
         supplyMapper.insert(supply);
     }
 
@@ -48,6 +54,11 @@ public class OfficeSupplyService {
         BizOfficeSupply existing = supplyMapper.selectById(supply.getId());
         if (existing == null) {
             throw new BusinessException("办公用品不存在");
+        }
+        // 直接 PUT stockQuantity 时同步 current_stock（2026-10-12：两列此前会分叉，
+        // 档案页显示旧值、HR 页显示新值）
+        if (supply.getStockQuantity() != null) {
+            supply.setCurrentStock(BigDecimal.valueOf(supply.getStockQuantity()));
         }
         supplyMapper.updateById(supply);
     }

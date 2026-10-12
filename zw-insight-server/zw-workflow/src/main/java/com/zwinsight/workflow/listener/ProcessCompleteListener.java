@@ -76,6 +76,13 @@ public class ProcessCompleteListener implements FlowableEventListener {
                 SystemEventPublisher.publishSystemEvent(eventPublisher,
                         new ApprovalCompleteEvent(this, businessType, businessId, "APPROVED"));
 
+            } catch (com.zwinsight.common.exception.BusinessException e) {
+                // 业务侧可预期约束错误（如「退款失败：退款金额超过合同累计已付款」）原样上抛，
+                // 由 GlobalExceptionHandler 透出**具体业务文案**；若被下面的包装成
+                // 「审批业务生效失败」，用户只能看到通用「系统内部错误，请稍后重试」，无法定位
+                // （2026-10-12 修复，实证见批次 6 报告 9K）。
+                log.warn("流程完成回调业务失败（原样上抛以透出具体文案）, reason={}", e.getMessage());
+                throw e;
             } catch (Exception e) {
                 log.error("流程完成回调处理异常", e);
                 throw new IllegalStateException("审批业务生效失败", e);
