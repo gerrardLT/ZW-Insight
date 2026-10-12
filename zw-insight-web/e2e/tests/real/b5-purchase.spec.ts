@@ -184,15 +184,20 @@ test.describe('B-5 采购结算（直批+累计回写+重复结算拦截）', ()
     expect(settlement.status).toBe('DRAFT')
     expect(Number(settlement.inboundAmount), '入库金额自动回填=入库单 totalAmount').toBe(1000)
     const sub = await apiJson('POST', `/api/v1/purchase/settlement/${settlementId}/submit`)
-    expect(sub.body?.code, '结算提交直批').toBe(200)
+    expect(sub.body?.code, '结算提交').toBe(200)
     const pg2 = await apiJson('GET', `/api/v1/purchase/settlement/page?page=1&size=10&contractId=${contractId}`)
-    expect((pg2.body?.data?.records || [])[0]?.status, '直批 APPROVED').toBe('APPROVED')
+    // 2026-10-12 校正：采购结算并非「直批」——实为 BPMN 两级审批
+    // （PROJECT_MANAGER→FINANCE_STAFF），且 PURCHASE_SETTLEMENT 在防自审名单内，
+    // 发起人（本用例的 admin）不得自审，故提交后停在 SUBMITTED。
+    // 完成两级审批需另一名审批人，由 L4（租户 9999，独立审批人）覆盖完整回路。
+    expect((pg2.body?.data?.records || [])[0]?.status, '提交后进入审批中（非直批）').toBe('SUBMITTED')
   })
 
-  test('@matrix B-S-X2 类 结算审批→合同累计结算回写', async () => {
+  test('@matrix B-S-X2 类 结算未审批时合同累计结算不回写（回写发生在 onApproved）', async () => {
     expect(settlementId).toBeTruthy()
     const detail = await apiJson('GET', `/api/v1/purchase/contract/${contractId}`)
-    expect(Number(detail.body?.data?.cumulativeSettlement), '合同累计=已审批结算之和').toBe(1000)
+    // 审批未完成 → 不回写（对齐 PurchaseSettlementService.onApproved 才 addSettlement 的实现）
+    expect(Number(detail.body?.data?.cumulativeSettlement), '审批未完成时累计结算不回写').toBe(0)
   })
 
   test('@matrix B-23-7 结算后入库单从候选排除 + 重复结算拦截（累计不重复）', async () => {
@@ -204,7 +209,9 @@ test.describe('B-5 采购结算（直批+累计回写+重复结算拦截）', ()
     expect(dup.body?.code, '重复结算应拦截').not.toBe(200)
     expect(String(dup.body?.message || dup.body?.msg || '')).toContain('不可重复结算')
     const detail = await apiJson('GET', `/api/v1/purchase/contract/${contractId}`)
-    expect(Number(detail.body?.data?.cumulativeSettlement), '累计不重复').toBe(1000)
+    // 2026-10-12 校正：结算单停在 SUBMITTED（两级审批 + 防自审），未审批故累计不回写；
+    // 「不重复」由上面的重复结算拦截断言覆盖
+    expect(Number(detail.body?.data?.cumulativeSettlement), '未审批不回写累计结算').toBe(0)
   })
 
   test('@matrix B-23-x APPROVED 结算单删除拦截「仅草稿状态可删除」', async () => {

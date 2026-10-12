@@ -300,7 +300,9 @@ test.describe('A-1 项目状态流转', () => {
     // API 面：非草稿 resubmit 业务拦截（探测实证 code=500 仅草稿状态可提交）
     const resub = await apiJson('POST', `/api/v1/project/${mainProjectId}/submit`)
     expect(resub.body?.code, '非草稿 resubmit 应拦截').not.toBe(200)
-    expect(resub.body?.message).toContain('仅草稿状态可提交')
+    // 2026-10-12 校正：立项提交已改走项目状态机（P1-M1），拒绝文案随之变化
+    // （由「仅草稿状态可提交」变为「项目状态[FILED]不允许由事件[SUBMIT]流转（合法源：[DRAFT]）」）
+    expect(resub.body?.message).toMatch(/不允许由事件\[SUBMIT\]|仅草稿状态可提交/)
   })
 
   test('@matrix A1-13 删除草稿成功刷新（A2-02 创建的表单项目）', async ({ page }) => {
