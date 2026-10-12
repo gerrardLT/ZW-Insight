@@ -48,6 +48,12 @@ public class ReserveFundApplyService {
         if (apply.getApplyAmount() == null || apply.getApplyAmount().signum() <= 0) {
             throw new BusinessException("备用金申请金额必须大于0");
         }
+        // 2026-10-12 补：project_id 为 NOT NULL，缺省时原实现直接落库撞约束 → 被兜底成通用 409
+        // 「数据已存在或仍被其他数据引用」，用户无法定位缺失项。前置校验给出明确提示。
+        // （置于金额校验之后，保持既有「金额必须>0」用例的报错优先级不变）
+        if (apply.getProjectId() == null) {
+            throw new BusinessException("所属项目不能为空");
+        }
         apply.setStatus("DRAFT");
         if (apply.getReturnedAmount() == null) {
             apply.setReturnedAmount(BigDecimal.ZERO);

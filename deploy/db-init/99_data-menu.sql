@@ -151,7 +151,8 @@ INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon
 INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
 (1201, '进度计划',     'MENU', 12, 'schedule',         'views/site/schedule',         'DataLine',    1, 1, 0),
 (1202, '施工日志',     'MENU', 12, 'construction-log', 'views/site/construction-log', 'Memo',        2, 1, 0),
-(1203, '质量安全检查', 'MENU', 12, 'inspection',       'views/site/inspection',       'CircleCheck', 3, 1, 0);
+(1203, '质量安全检查', 'MENU', 12, 'inspection',       'views/site/inspection',       'CircleCheck', 3, 1, 0),
+(1204, '竣工验收',     'MENU', 12, 'completion',       'views/site/completion',       'CircleCheck', 4, 1, 0);
 
 -- ============================================================
 -- 二级菜单：投标管理 (parent_id=13)
@@ -237,6 +238,10 @@ INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES
 -- 数据运维菜单授权超级管理员（p2-advanced 需求11.4/12.2/13.3）
 INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES
 (89, 1, 210), (90, 1, 211), (91, 1, 212), (92, 1, 1103);
+
+-- 竣工验收菜单授权超级管理员（现场管理，2026-10-13）
+INSERT INTO sys_role_menu (id, role_id, menu_id) VALUES
+(93, 1, 1204);
 
 -- 默认管理员账号（密码BCrypt加密后的123456）
 INSERT INTO sys_user (id, username, password, real_name, phone, org_id, status, tenant_id, created_at) VALUES
