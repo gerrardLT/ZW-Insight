@@ -708,6 +708,12 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'SubSettlement',
         component: () => import('@/views/subcontract/settlement.vue'),
         meta: { title: '分包结算', icon: 'Tickets' }
+      },
+      {
+        path: 'output',
+        name: 'SubOutput',
+        component: () => import('@/views/subcontract/output.vue'),
+        meta: { title: '分包产值', icon: 'TrendCharts' }
       }
     ]
   },

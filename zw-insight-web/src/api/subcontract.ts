@@ -43,6 +43,11 @@ export function deleteSubcontractOutput(id: number) {
   return request.delete(`/v1/subcontract/output/${id}`)
 }
 
+export function submitSubcontractOutput(id: number) {
+  // 后端 SubcontractOutputController 为 @RequestMapping("/{id}/submit") POST|PUT（直批，提交即 APPROVED）
+  return request.post(`/v1/subcontract/output/${id}/submit`)
+}
+
 // ======================== 分包结算 ========================
 export function getSubcontractSettlementPage(params: any) {
   // 后端为根 @GetMapping（/api/v1/subcontract/settlement），无 /page 后缀

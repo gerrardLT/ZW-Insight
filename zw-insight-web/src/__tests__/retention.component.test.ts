@@ -7,11 +7,13 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
-const { mockPage, mockCreate, mockExpiring, mockReturn, mockProjectList } = vi.hoisted(() => ({
+const { mockPage, mockCreate, mockExpiring, mockReturn, mockReturnPage, mockSubmitReturn, mockProjectList } = vi.hoisted(() => ({
   mockPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockCreate: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockExpiring: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
   mockReturn: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  mockReturnPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockSubmitReturn: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockProjectList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
 }))
 
@@ -20,6 +22,8 @@ vi.mock('@/api/finance', () => ({
   createRetention: mockCreate,
   getExpiringRetention: mockExpiring,
   createRetentionReturn: mockReturn,
+  getRetentionReturnPage: mockReturnPage,
+  submitRetentionReturn: mockSubmitReturn,
 }))
 vi.mock('@/api/project', () => ({
   getProjectList: mockProjectList,

@@ -76,6 +76,49 @@
       </div>
     </el-card>
 
+    <!-- 返还单列表（2026-10-12 补「提交审批」入口：登记后此处列出，草稿/已驳回可提交） -->
+    <el-card shadow="never" style="margin-top: var(--zw-space-md)">
+      <template #header>
+        <span>质保金返还单</span>
+      </template>
+
+      <el-table :data="returnData" v-loading="returnLoading" border>
+        <el-table-column prop="retentionId" label="关联质保金" width="180" />
+        <el-table-column prop="returnAmount" label="返还金额" width="130" align="right">
+          <template #default="{ row }">{{ formatMoney(row.returnAmount) }}</template>
+        </el-table-column>
+        <el-table-column prop="returnDate" label="返还日期" width="120" />
+        <el-table-column label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getReturnStatusType(row.status)" size="small">{{ getReturnStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createdAt" label="创建时间" width="170" />
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.status === 'DRAFT' || row.status === 'REJECTED'"
+              link
+              type="success"
+              @click="handleSubmitReturn(row)"
+            >提交审批</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="returnQueryParams.pageNum"
+          v-model:page-size="returnQueryParams.pageSize"
+          :page-sizes="[10, 20, 50]"
+          :total="returnTotal"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="loadReturnData"
+          @current-change="loadReturnData"
+        />
+      </div>
+    </el-card>
+
     <!-- 新增质保金 -->
     <el-dialog v-model="dialogVisible" title="新增质保金" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="110px">
@@ -139,13 +182,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import {
   getRetentionPage,
   createRetention,
   getExpiringRetention,
-  createRetentionReturn
+  createRetentionReturn,
+  getRetentionReturnPage,
+  submitRetentionReturn
 } from '@/api/finance'
 import { getProjectList } from '@/api/project'
 import FieldHelpLabel from '@/components/FieldHelpLabel.vue'
@@ -160,11 +205,20 @@ const expiringList = ref<any[]>([])
 const dialogVisible = ref(false)
 const returnVisible = ref(false)
 const submitLoading = ref(false)
+const returnLoading = ref(false)
+const returnData = ref<any[]>([])
+const returnTotal = ref(0)
 
 const queryParams = ref({
   page: 1,
   size: 10,
   projectId: undefined as number | undefined
+})
+
+const returnQueryParams = ref({
+  pageNum: 1,
+  pageSize: 10,
+  retentionId: undefined as number | undefined
 })
 
 const formData = ref({
@@ -204,6 +258,21 @@ function getStatusLabel(status: string) {
 function getStatusType(status: string) {
   return (statusMap[status]?.type || 'info') as any
 }
+
+// 返还单状态完整映射（DRAFT→草稿 / SUBMITTED→审批中 / APPROVED→已通过 / REJECTED→已驳回）
+const returnStatusMap: Record<string, { label: string; type: string }> = {
+  DRAFT: { label: '草稿', type: 'info' },
+  SUBMITTED: { label: '审批中', type: 'warning' },
+  APPROVED: { label: '已通过', type: 'success' },
+  REJECTED: { label: '已驳回', type: 'danger' }
+}
+
+function getReturnStatusLabel(status: string) {
+  return returnStatusMap[status]?.label || status
+}
+function getReturnStatusType(status: string) {
+  return (returnStatusMap[status]?.type || 'info') as any
+}
 function formatMoney(val: number) {
   if (!val && val !== 0) return '-'
   return val.toLocaleString('zh-CN', { minimumFractionDigits: 2 })
@@ -228,6 +297,17 @@ async function loadData() {
 async function loadExpiring() {
   const res: any = await getExpiringRetention(30)
   expiringList.value = res.data || []
+}
+
+async function loadReturnData() {
+  returnLoading.value = true
+  try {
+    const res: any = await getRetentionReturnPage(returnQueryParams.value)
+    returnData.value = res.data?.records || []
+    returnTotal.value = res.data?.total || 0
+  } finally {
+    returnLoading.value = false
+  }
 }
 
 function handleSearch() {
@@ -269,14 +349,23 @@ async function handleReturnSubmit() {
     ElMessage.success('返还登记成功')
     returnVisible.value = false
     loadData()
+    loadReturnData()
   } finally {
     submitLoading.value = false
   }
 }
 
+async function handleSubmitReturn(row: any) {
+  await ElMessageBox.confirm('确定要提交该返还单审批吗？', '提示', { type: 'warning' })
+  await submitRetentionReturn(row.id)
+  ElMessage.success('已提交审批，审批通过后生效')
+  loadReturnData()
+}
+
 onMounted(() => {
   loadData()
   loadExpiring()
+  loadReturnData()
   searchProject('')
 })
 </script>

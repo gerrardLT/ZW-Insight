@@ -220,6 +220,14 @@ export function submitRetentionReturn(id: number) {
   return request.post<R<void>>(`/v1/finance/retention/return/${id}/submit`)
 }
 
+/**
+ * 返还单分页查询（2026-10-12 新增，后端 GET /return/page）。
+ * 分页参数按本仓约定传 pageNum/pageSize，由 request.ts 拦截器统一映射为 page/size。
+ */
+export function getRetentionReturnPage(params: { pageNum?: number; pageSize?: number; retentionId?: number }) {
+  return request.get<R<PageResult<RetentionReturn>>>('/v1/finance/retention/return/page', { params })
+}
+
 // ======================== 财务统计 ========================
 // 后端：FinanceStatisticsController /api/v1/finance/statistics
 

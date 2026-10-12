@@ -145,9 +145,21 @@
             <el-table-column prop="changeContent" label="变更内容" min-width="180" show-overflow-tooltip />
             <el-table-column prop="status" label="状态" width="90" align="center">
               <template #default="{ row }">
-                <el-tag :type="row.status === 'APPROVED' ? 'success' : 'info'" size="small">
-                  {{ row.status === 'APPROVED' ? '已批准' : '编制中' }}
+                <el-tag :type="visaStatusType(row.status)" size="small">
+                  {{ visaStatusLabel(row.status) }}
                 </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="110" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button
+                  v-if="row.status === 'DRAFT' || row.status === 'REJECTED'"
+                  link
+                  type="success"
+                  @click="handleSubmitVisa(row)"
+                >
+                  提交审批
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -238,12 +250,13 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { ElMessage, type FormInstance } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import {
   getContractDetails,
   getChangeVisaPage,
   createChangeVisa,
+  submitChangeVisa,
   getOutputReportPage,
   getFinalSettlementPage
 } from '@/api/contract'
@@ -286,6 +299,22 @@ function calcRate(amount?: number, total?: number): number {
   if (!amount || !total || total <= 0) return 0
   const rate = Math.round((Number(amount) / Number(total)) * 100)
   return Math.min(rate, 100)
+}
+
+// 变更签证状态展示（后端 save 恒置 DRAFT，submit 后 SUBMITTED，审批回调 APPROVED/REJECTED）
+const visaStatusMap: Record<string, { label: string; type: string }> = {
+  DRAFT: { label: '编制中', type: 'info' },
+  SUBMITTED: { label: '审批中', type: 'warning' },
+  APPROVED: { label: '已批准', type: 'success' },
+  REJECTED: { label: '已驳回', type: 'danger' }
+}
+
+function visaStatusLabel(status: string) {
+  return visaStatusMap[status]?.label || status || '编制中'
+}
+
+function visaStatusType(status: string) {
+  return (visaStatusMap[status]?.type || 'info') as any
 }
 
 const details = ref<any[]>([])
@@ -334,12 +363,7 @@ async function loadAllData() {
     }
 
     // 2. 变更签证
-    try {
-      const vRes: any = await getChangeVisaPage({ contractId: cid, pageNum: 1, pageSize: 50 })
-      changeVisas.value = vRes.data?.records || []
-    } catch {
-      changeVisas.value = []
-    }
+    await loadChangeVisas()
 
     // 3. 产值记录
     try {
@@ -361,6 +385,16 @@ async function loadAllData() {
   }
 }
 
+async function loadChangeVisas() {
+  if (!props.contract?.id) return
+  try {
+    const vRes: any = await getChangeVisaPage({ contractId: props.contract.id, pageNum: 1, pageSize: 50 })
+    changeVisas.value = vRes.data?.records || []
+  } catch {
+    changeVisas.value = []
+  }
+}
+
 function handleAddVisa() {
   visaForm.value = {
     changeType: 'DESIGN_CHANGE',
@@ -375,23 +409,34 @@ async function submitVisa() {
   await visaFormRef.value?.validate()
   visaSubmitting.value = true
   try {
+    // 后端 ChangeVisaService.save 硬编码 status=DRAFT（提交审批须经 submit 接口），
+    // 前端不再传 status（D 清理：原显式传 'APPROVED' 无意义且误导）
     await createChangeVisa({
       projectId: props.contract.projectId,
       contractId: props.contract.id,
       changeType: visaForm.value.changeType,
       changeAmount: visaForm.value.changeAmount,
       changeReason: visaForm.value.changeReason,
-      changeContent: visaForm.value.changeContent,
-      status: 'APPROVED'
+      changeContent: visaForm.value.changeContent
     })
     ElMessage.success('变更签证登记成功')
     visaDialogVisible.value = false
-    const vRes: any = await getChangeVisaPage({ contractId: props.contract.id, pageNum: 1, pageSize: 50 })
-    changeVisas.value = vRes.data?.records || []
+    await loadChangeVisas()
     emit('refresh')
   } finally {
     visaSubmitting.value = false
   }
+}
+
+async function handleSubmitVisa(row: any) {
+  try {
+    await ElMessageBox.confirm('确定提交该变更签证进入审批流程吗？', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
+  await submitChangeVisa(row.id)
+  ElMessage.success('已提交审批，审批通过后生效')
+  await loadChangeVisas()
 }
 </script>
 

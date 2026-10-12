@@ -24,6 +24,7 @@ vi.mock('@/api/contract', () => ({
   getContractDetails: mockGetDetails,
   getChangeVisaPage: mockGetChangeVisaPage,
   createChangeVisa: mockCreateChangeVisa,
+  submitChangeVisa: vi.fn(async (): Promise<any> => ({ code: 200 })),
   getOutputReportPage: mockGetOutputReportPage,
   getFinalSettlementPage: mockGetFinalSettlementPage
 }))
@@ -135,8 +136,7 @@ describe('ContractDetailDrawer 合同履约全息抽屉 (P1-M3 A1/B1)', () => {
       changeType: 'SITE_VISA',
       changeAmount: 30000,
       changeReason: '土方换填',
-      changeContent: '现场签证确认换填工程量',
-      status: 'APPROVED'
+      changeContent: '现场签证确认换填工程量'
     })
   })
 })
