@@ -257,3 +257,62 @@
 - **后端**：本地不可编译（用户硬性要求禁 `mvn`）→ 以 **CI 全量单测为门禁**：push 触发 `deploy.yml`，`mvn -B -T 1C clean verify -Djacoco.skip=true`，**单测失败则不部署**。
 - **回滚**：本次为纯代码修复，无 DB 迁移；如需回滚直接 revert 对应提交即可。
 
+---
+
+## 十、第二批修复实施记录（2026-10-12 续）
+
+> 承接 §九，继续修「不需产品决策、证据充分」的一组。提交：`297c1629`（任务书）/ `158e85d5`（后端+迁移）/ `f88e67c2`（前端）/ `e23918d5`（e2e 断言）。CI 门禁通过，双机部署成功。
+
+### 已修复（7 项）
+
+| # | 缺陷 | 修法 | 部署后验证 |
+|---|---|---|---|
+| 1 | 审批回调业务异常被包成通用「系统内部错误」（P2-11） | `ProcessCompleteListener` 新增 `catch (BusinessException)` 分支：记 warn 后**原样上抛**，由 `GlobalExceptionHandler` 返回 `code=500 + 具体 message` | 静态核实：Flowable 事件分发（`isFailOnException=true`）**不二次包装**（字节码级核对）；`GlobalExceptionHandler.handleBusinessException` 返回具体文案。**副作用**：该路径 HTTP 码由 500 → 200（body 仍 code=500），与本项目 `BusinessException` 既有约定一致 |
+| 2 | 办公用品档案四列无写入方（P2-10） | ① `hr.domain.BizOfficeSupply` 补声明 4 列（与 `archive.domain.BizOfficeSupply` 同表 `biz_office_supply`）；② `OfficeSupplyInOutService.submit` 按 IN/OUT 同步维护四列；③ `OfficeSupplyService.save/update` 同步 `current_stock`；④ 新增双轨幂等迁移 `V2026_97` 对齐存量 + 按 APPROVED 出入库重算 | **真机验证**：IN 50 → `stockQuantity=50/currentStock=50/totalInbound=50/lastInboundDate=2026-10-12`；OUT 20 → `stockQuantity=30/totalIssued=20`。迁移在两台服务器均 `success=1` |
+| 3 | 劳务/HR 列表状态「两态」（已提交显示成「草稿」） | 两处标签改三态（补 `SUBMITTED→审批中`） | `consistency/{hr,labor}.spec.ts` 通过 |
+| 4 | 机械合同列表无状态列 | 新增「状态」列（三态） | `consistency/machine.spec.ts` 通过 |
+| 5 | HR 列表「编辑」按钮对非 DRAFT 行误显 | 加 `v-if="row.status === 'DRAFT'"` | 组件测试通过 |
+| 6 | 机械结算预览取 `usage-record`、后端聚合 `work-log`（预览常空并误禁保存） | 预览改调 `work-log/page`，按后端聚合口径镜像（同表/同周期/同 SETTLED 排除/同计价含月租折算） | `npm test` 131/1340、`npm run build` 通过 |
+| 7 | 付款申请支付态筛选缺 `PARTIAL_PAID` | 补选项 | 组件测试通过 |
+
+**同时修正 4 处陈旧 e2e 断言**（均为「测试与实现脱节」，非产品缺陷）：`a1 A2-02`（未填联系人字段）、`a2 A5-09`（未先提交立项）、`a1 A1-10`（拒绝文案已随状态机改造变化）、`b5` 采购合同与采购结算（均非「直批/自动完成」）。
+
+### 复审（独立子智能体）抓到并已修的两处硬失败
+
+1. **编译失败**：`hr` 与 `archive` 是**两个类映射同一张表**，四列只声明在 archive 侧 → 我的 `setCurrentStock/...` 无法解析。
+2. **单测失败**：`submit_supplyNotFound_throwsException` 未设 quantity，撞我新增的前置校验。
+   —— 这两处若直接推送，CI 会在 zw-hr 阶段即失败（不部署）。
+
+### 部署后 e2e 验证（真机，针对已部署产物）
+
+| 套件 | 结果 |
+|---|---|
+| `a1-project` / `a2-tender` / `b5-purchase` / `a3-contract` | **35 passed / 1 failed / 4 did not run** |
+| `a3-contract` 的 `A-X10 审批两级通过→EFFECTIVE` | ✅ **通过**（P0 修复在线上生效的直接证据；此前恒 500） |
+| `consistency-real`（hr/labor/machine） | ✅ **7 passed** |
+
+### ⚠ 新发现的真实缺陷（此前被 serial 中断掩盖，本次才跑到）
+
+**`reject-start` 后重新 `submit` 会泄漏原流程实例。** `a3-contract` 的 `A10-12/A-X11/A-X12`（产值：提交→驳回→重提→通过）失败，根因经库内实证：
+- 同一业务单 `2109637478630604802` 存在**两个流程实例**：`e5e65483`（已结束）+ `e511040e`（**仍在运行**，任务永久滞留）；
+- 业务行 `workflow_instance_id` 只记录后者之外的一个 → 滞留实例的任务**经 API 无法收口**（`terminate` 报「发起人不能审批自己的单据」、`withdraw-by-business` 报「源单流程实例不匹配」）。
+
+**根因**：`reject-start`（退回发起人）**不终止流程**（这是设计，路径 A 的正确用法是「再次完成同一任务」），但代码允许对 `REJECTED` 再次 `submit` → 起**新实例**，旧实例无人收口。
+**建议修法**：`submit` 前检查该 businessKey 是否仍有运行中实例——有则拒绝提交并提示「请完成/终止在途流程」，或先终止旧实例。**该缺陷不止影响产值，凡「允许 REJECTED 重提 + reject-start 不终止」的模块同族**，需横向排查。
+
+### 明确推迟（附本次新增证据）
+
+| 项 | 推迟理由（新证据） |
+|---|---|
+| P2-1 收票回写 | 收票记录**唯一创建入口** `views/finance/invoice-received.vue` 的表单**没有合同选择器** → `contractId` 恒 null、回写路径 UI 不可达。真实缺口是「收票登记缺合同关联字段」（属补功能）；且劳务/机械/分包合同表**没有 invoice 列**，无法路由 |
+| P3 `contractType` 白名单 | 枚举本身有歧义：实体注释写 `REGISTER/CHANGE/SUPPLEMENT`，但**真库已有 12 行 `CONSTRUCTION`** → 加白名单会误伤，需先定枚举口径 |
+| 驳回链路异常吞没（`ApprovalRejectListener`，`isFailOnException=false`） | 与 #1 同源但需改动 Flowable 异常传播，风险更大，留专项 |
+| `total_inbound` 统计起点 | 迁移已按 APPROVED 记录重算，实际已覆盖存量；仅提示口径 |
+
+### 数据卫生
+
+- 本轮 e2e 产生的 `E2E_TEST_*` 项目/报名/合同已按 id 精确清理（复验 `deleted=0` 残留为 0）；种子 90001-90004 状态未变。
+- 4 个 `PURCHASE_SETTLEMENT` 在途任务已**经应用层 `withdraw-by-business` 收口**（`ACT_RU_TASK` 221→217）。
+- ⚠ **2 个 `OUTPUT_REPORT` 滞留任务未能收口**——正是上述「实例泄漏」缺陷的直接产物（其业务行已删、实例不匹配，API 无路径）。**按纪律未直删 `ACT_*` 表**，如实登记待该缺陷修复后一并清理。
+
+
