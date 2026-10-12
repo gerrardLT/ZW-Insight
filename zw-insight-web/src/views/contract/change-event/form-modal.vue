@@ -204,7 +204,7 @@ import { toWan } from '@/utils/chart-format'
 
 const props = defineProps<{
   visible: boolean
-  eventId?: number
+  eventId?: number | string
   presetProjectId?: number | null
 }>()
 
@@ -270,10 +270,10 @@ const accountsSum = computed(() =>
   }, 0)
 )
 
-watch(() => [props.visible, props.eventId], async ([visible, id]) => {
+watch(() => [props.visible, props.eventId] as const, async ([visible, id]) => {
   if (!visible) return
   if (id) {
-    await loadEvent(Number(id))
+    await loadEvent(id)
   } else {
     resetForm()
     if (props.presetProjectId) {
@@ -309,7 +309,7 @@ async function handleProjectChange(projectId: number | null) {
   else costAccountOptions.value = []
 }
 
-async function loadEvent(id: number) {
+async function loadEvent(id: number | string) {
   loading.value = true
   try {
     const res: any = await getChangeEvent(id)

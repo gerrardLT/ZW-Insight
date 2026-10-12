@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import cn.hutool.core.util.StrUtil;
 import com.zwinsight.basedata.annotation.BlacklistCheck;
-import com.zwinsight.budget.annotation.BudgetCheck;
+import com.zwinsight.budget.context.BudgetWarningContext;
+import com.zwinsight.budget.dto.BudgetCheckResult;
+import com.zwinsight.budget.service.BudgetControlConfigService;
 import com.zwinsight.budget.domain.BizBudgetDetail;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.common.exception.BusinessException;
@@ -39,6 +41,7 @@ public class MachineContractService {
     private final BizBudgetDetailMapper budgetDetailMapper;
     private final SerialNumberService serialNumberService;
     private final ApprovalService approvalService;
+    private final BudgetControlConfigService budgetControlConfigService;
 
     private void validate(BizMachineContract contract) {
         if (contract.getProjectId() == null || contract.getContractAmount() == null
@@ -144,16 +147,40 @@ public class MachineContractService {
         machineContractMapper.insert(contract);
     }
 
-    @BudgetCheck(category = "MACHINE")
+    /**
+     * 提交审批
+     * <p>预算控制（2026-10-12 修复）：原 {@code @BudgetCheck(category="MACHINE")} 挂本方法但参数为裸
+     * {@code Long}，切面反射取不到 projectId/金额，校验完全空转 → 移除死注解，改为载入实体后显式校验。</p>
+     */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizMachineContract contract = owned(id);
         if (!"DRAFT".equals(contract.getStatus())) throw new BusinessException("仅草稿状态可提交");
         validate(contract);
+        enforceBudgetControl(contract);
         String processId = approvalService.startProcess("MACHINE_CONTRACT", id,
                 "machine_contract_approval", new java.util.HashMap<>(Map.of("projectId", contract.getProjectId(),
                 "contractAmount", contract.getContractAmount())));
         transition(id, "DRAFT", "SUBMITTED", processId);
+    }
+
+    /**
+     * 提交环节预算控制：BLOCK 抛业务异常拦截，WARN 写线程上下文由响应 Advice 透出响应头。
+     */
+    private void enforceBudgetControl(BizMachineContract contract) {
+        if (contract.getProjectId() == null || contract.getContractAmount() == null) {
+            return;
+        }
+        BudgetCheckResult result = budgetControlConfigService.checkBudget(
+                contract.getProjectId(), "MACHINE", contract.getContractAmount());
+        if (result == null) {
+            return;
+        }
+        switch (result.getStatus()) {
+            case BLOCK -> throw new BusinessException(result.getMessage());
+            case WARN -> BudgetWarningContext.setWarning(result.getMessage());
+            case PASS -> { }
+        }
     }
 
     public BizMachineContract getById(Long id) {

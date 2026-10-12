@@ -263,7 +263,7 @@ function handleDeleteDetail(index: number) {
 }
 
 /** 加载检查记录详情 */
-async function loadInspectionDetail(id: number) {
+async function loadInspectionDetail(id: number | string) {
   try {
     const res: any = await getInspectionDetail(id)
     const data = res.data
@@ -345,7 +345,7 @@ onMounted(async () => {
   if (id) {
     pageLoading.value = true
     try {
-      await loadInspectionDetail(Number(id))
+      await loadInspectionDetail(id)
     } finally {
       pageLoading.value = false
     }

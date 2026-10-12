@@ -371,7 +371,11 @@ public class ProjectService {
             String v = projectMapper.selectConfigValue(CONFIG_FILING_APPROVAL);
             return "true".equalsIgnoreCase(v == null ? "" : v.trim());
         } catch (Exception e) {
-            return false; // 配置读取异常一律回退直置位，不阻断立项
+            // 回退直置位不阻断立项，但必须留痕：静默吞异常会把「SQL 写错/列不存在」这类真 bug
+            // 伪装成「配置未开启」而永远查不出（2026-10-12 立项审批开关失效即此模式）
+            log.warn("读取立项审批开关失败，回退为直置位（不阻断立项）, key={}, error={}",
+                    CONFIG_FILING_APPROVAL, e.getMessage(), e);
+            return false;
         }
     }
 

@@ -386,6 +386,7 @@ class ConstructionContractServiceTest {
             project.setStatus("WON");
 
             when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(1L)).thenReturn(project);
 
             contractService.onApproved(contractId);
 
@@ -410,6 +411,7 @@ class ConstructionContractServiceTest {
             project.setStatus("FILED");
 
             when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(1L)).thenReturn(project);
 
             contractService.onApproved(contractId);
 
@@ -417,7 +419,7 @@ class ConstructionContractServiceTest {
         }
 
         @Test
-        @DisplayName("审批通过 — 项目其他状态不流转（如 DRAFT 保持）")
+        @DisplayName("审批通过 — 项目其他状态不流转（如 COMPLETED 保持，不再调用开工）")
         void onApproved_otherProjectStatus_noAdvance() {
             Long contractId = 100L;
             BizConstructionContract existing = new BizConstructionContract();
@@ -431,10 +433,37 @@ class ConstructionContractServiceTest {
             project.setStatus("COMPLETED");
 
             when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(1L)).thenReturn(project);
 
             contractService.onApproved(contractId);
 
-            verify(projectService).startConstruction(1L);
+            // 2026-10-12 修复 P0：非 WON/FILED 时不再调用 startConstruction
+            // （原先调用会被状态机拒绝并把共享事务标记 rollback-only，导致审批完成接口 500）
+            verify(projectService, never()).startConstruction(anyLong());
+        }
+
+        @Test
+        @DisplayName("审批通过 — 项目已 CONSTRUCTION（同项目第 2 份合同）：合同仍生效且不重复流转（P0 回归）")
+        void onApproved_projectAlreadyConstruction_contractStillEffective() {
+            Long contractId = 101L;
+            BizConstructionContract existing = new BizConstructionContract();
+            existing.setId(contractId);
+            existing.setStatus("SUBMITTED");
+            existing.setContractAmount(new BigDecimal("500000"));
+            existing.setProjectId(1L);
+
+            BizProject project = new BizProject();
+            project.setId(1L);
+            project.setStatus("CONSTRUCTION");
+
+            when(contractMapper.selectById(contractId)).thenReturn(existing);
+            when(projectMapper.selectById(1L)).thenReturn(project);
+
+            contractService.onApproved(contractId);
+
+            assertThat(existing.getStatus()).isEqualTo("EFFECTIVE");
+            verify(projectMapper).addContractAmount(1L, new BigDecimal("500000"));
+            verify(projectService, never()).startConstruction(anyLong());
         }
 
         @Test

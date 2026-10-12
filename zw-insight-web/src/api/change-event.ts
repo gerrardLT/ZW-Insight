@@ -130,7 +130,7 @@ export function listChangeEvents(params: ChangeEventPageQuery) {
   return request.get<R<PageResult<BizChangeEvent>>>('/v1/contract/change-event/page', { params })
 }
 
-export function getChangeEvent(id: number) {
+export function getChangeEvent(id: number | string) {
   return request.get<R<BizChangeEvent>>(`/v1/contract/change-event/${id}`)
 }
 
@@ -150,7 +150,7 @@ export function createChangeEvent(data: Partial<BizChangeEvent>) {
 }
 
 /** 更新（仅 DRAFT/ASSESSING 可改；终态只读以保证已批准变更可追溯） */
-export function updateChangeEvent(id: number, data: Partial<BizChangeEvent>) {
+export function updateChangeEvent(id: number | string, data: Partial<BizChangeEvent>) {
   return request.put<R<BizChangeEvent>>(`/v1/contract/change-event/${id}`, data)
 }
 
@@ -164,7 +164,7 @@ export function startChangeEventAssessment(id: number) {
  * 成本影响非 0 时必须已在 affectedAccounts 指明账户，否则后端拒绝
  * （否则批准后无法传导到 CBS，主链断裂）。
  */
-export function submitChangeEventAssessment(id: number, assessment: ImpactAssessment) {
+export function submitChangeEventAssessment(id: number | string, assessment: ImpactAssessment) {
   return request.post<R<BizChangeEvent>>(`/v1/contract/change-event/${id}/assessment`, assessment)
 }
 

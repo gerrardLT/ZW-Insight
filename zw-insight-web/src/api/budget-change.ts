@@ -8,12 +8,12 @@ export function listBudgetChanges(params: any) {
 }
 
 /** 变更单详情 */
-export function getBudgetChange(id: number) {
+export function getBudgetChange(id: number | string) {
   return request.get(`/v1/budget/change/${id}`)
 }
 
 /** 变更单明细列表 */
-export function getBudgetChangeDetails(id: number) {
+export function getBudgetChangeDetails(id: number | string) {
   return request.get(`/v1/budget/change/${id}/details`)
 }
 

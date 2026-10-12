@@ -3,7 +3,6 @@ package com.zwinsight.finance.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.common.exception.BusinessException;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.zwinsight.budget.annotation.BudgetCheck;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.finance.domain.BizOtherPayment;
 import com.zwinsight.finance.mapper.BizOtherPaymentMapper;
@@ -39,8 +38,11 @@ public class OtherPaymentService {
 
     /**
      * 新增其他支付（回写项目totalOtherPayment）
+     * <p><b>不参与预算控制</b>（2026-10-12 决策）：{@code BizOtherPayment} 无
+     * contractCategory/costCategory/category 取值方法，切面无法识别成本科目；原
+     * {@code @BudgetCheck(category = "")} 因此恒被切面跳过（死注解），若强行映射到 OTHER
+     * 科目又会因「该科目未设置预算额度」误拦全部其他支付。故移除死注解并明确该语义。</p>
      */
-    @BudgetCheck(category = "")
     @Transactional(rollbackFor = Exception.class)
     public void save(BizOtherPayment otherPayment) {
         // P0 修复（FIN-OPT-03，2026-08-12）：付款金额必须>0，

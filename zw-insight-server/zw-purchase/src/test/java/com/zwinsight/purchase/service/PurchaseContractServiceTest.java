@@ -48,6 +48,9 @@ class PurchaseContractServiceTest {
     @Mock
     private ApprovalService approvalService;
 
+    @Mock
+    private com.zwinsight.budget.service.BudgetControlConfigService budgetControlConfigService;
+
     @InjectMocks
     private PurchaseContractService purchaseContractService;
 

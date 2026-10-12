@@ -169,7 +169,7 @@ class EntryApplyServiceTest {
         assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
         assertThat(apply.getWorkflowInstanceId()).isEqualTo("proc-1");
         verify(entryApplyMapper).updateById(apply);
-        verify(sysUserService, never()).save(any(SysUser.class));
+        verify(sysUserService, never()).saveWithDefaultRole(any(SysUser.class));
     }
 
     @Test
@@ -190,7 +190,7 @@ class EntryApplyServiceTest {
 
         assertThat(apply.getStatus()).isEqualTo("APPROVED");
         ArgumentCaptor<SysUser> captor = ArgumentCaptor.forClass(SysUser.class);
-        verify(sysUserService).save(captor.capture());
+        verify(sysUserService).saveWithDefaultRole(captor.capture());
         SysUser created = captor.getValue();
         assertThat(created.getUsername()).isEqualTo("zhangsan");
         assertThat(created.getRealName()).isEqualTo("张三");
@@ -211,7 +211,7 @@ class EntryApplyServiceTest {
 
         entryApplyService.onApproved(1L);
 
-        verify(sysUserService, never()).save(any(SysUser.class));
+        verify(sysUserService, never()).saveWithDefaultRole(any(SysUser.class));
         assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
     }
 
@@ -225,7 +225,7 @@ class EntryApplyServiceTest {
 
         entryApplyService.onApproved(1L);
 
-        verify(sysUserService, never()).save(any(SysUser.class));
+        verify(sysUserService, never()).saveWithDefaultRole(any(SysUser.class));
         verify(entryApplyMapper, never()).updateById(any());
     }
 
@@ -239,13 +239,13 @@ class EntryApplyServiceTest {
         when(entryApplyMapper.selectById(1L)).thenReturn(apply);
         when(entryApplyMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
         doThrow(new com.zwinsight.common.exception.BusinessException("用户名已存在"))
-                .when(sysUserService).save(any(SysUser.class));
+                .when(sysUserService).saveWithDefaultRole(any(SysUser.class));
 
         assertThatThrownBy(() -> entryApplyService.onApproved(1L))
                 .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
                 .hasMessageContaining("用户名已存在");
 
-        verify(sysUserService).save(any(SysUser.class));
+        verify(sysUserService).saveWithDefaultRole(any(SysUser.class));
     }
 
     @Test

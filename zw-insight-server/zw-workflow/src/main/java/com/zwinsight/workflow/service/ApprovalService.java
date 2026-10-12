@@ -2,6 +2,7 @@ package com.zwinsight.workflow.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.common.config.SecurityContextHolder;
+import com.zwinsight.common.event.SystemEventPublisher;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.exception.DataPermissionException;
 import com.zwinsight.common.result.PageResult;
@@ -200,8 +201,7 @@ public class ApprovalService {
         if (businessType != null && businessIdObj != null) {
             Long businessId = businessIdObj instanceof Long
                     ? (Long) businessIdObj : Long.valueOf(businessIdObj.toString());
-            eventPublisher.publishEvent(new ApprovalRejectEvent(
-                    this, task.getProcessInstanceId(), businessType, businessId, "REJECT"));
+            publishRejectEvent(task.getProcessInstanceId(), businessType, businessId, "REJECT");
         }
 
         log.info("任务退回至上一节点, taskId={}, targetActivity={}", taskId, targetActivityId);
@@ -256,8 +256,7 @@ public class ApprovalService {
         if (businessType != null && businessIdObj != null) {
             Long businessId = businessIdObj instanceof Long
                     ? (Long) businessIdObj : Long.valueOf(businessIdObj.toString());
-            eventPublisher.publishEvent(new ApprovalRejectEvent(
-                    this, task.getProcessInstanceId(), businessType, businessId, "REJECT"));
+            publishRejectEvent(task.getProcessInstanceId(), businessType, businessId, "REJECT");
         }
 
         log.info("任务退回至发起人, taskId={}, targetActivity={}", taskId, startActivityId);
@@ -296,8 +295,7 @@ public class ApprovalService {
         if (businessType != null && businessIdObj != null) {
             Long businessId = businessIdObj instanceof Long
                     ? (Long) businessIdObj : Long.valueOf(businessIdObj.toString());
-            eventPublisher.publishEvent(new ApprovalRejectEvent(
-                    this, task.getProcessInstanceId(), businessType, businessId, "WITHDRAW"));
+            publishRejectEvent(task.getProcessInstanceId(), businessType, businessId, "WITHDRAW");
         }
 
         log.info("流程已终止, taskId={}, processInstanceId={}", taskId, task.getProcessInstanceId());
@@ -342,8 +340,7 @@ public class ApprovalService {
         // 删除流程实例并发布撤回事件（单据置 REJECTED，不回写累计金额）
         runtimeService.deleteProcessInstance(task.getProcessInstanceId(), "自动化撤回：" + businessKey);
         saveApprovalRecord(task, String.valueOf(userId), "TERMINATE", "自动化撤回");
-        eventPublisher.publishEvent(new ApprovalRejectEvent(
-                this, task.getProcessInstanceId(), businessType, businessId, "WITHDRAW"));
+        publishRejectEvent(task.getProcessInstanceId(), businessType, businessId, "WITHDRAW");
 
         log.info("流程已按业务撤回, businessKey={}, processInstanceId={}", businessKey, task.getProcessInstanceId());
         return true;
@@ -872,6 +869,18 @@ public class ApprovalService {
                 && (initiator == null || String.valueOf(userId).equals(String.valueOf(initiator)))) {
             throw new BusinessException(403, "发起人不能审批自己的单据");
         }
+    }
+
+    /**
+     * 发布驳回/撤回事件（触发各业务模块的数据回滚回调）。
+     * <p>审批回调是「系统操作」：业务模块按 businessId（来自流程变量，受信）读单回滚，不应受
+     * 「发起人/审批人的行级数据范围」约束——否则审批人无该项目数据范围时，回调读单被
+     * {@code @DataPermission} 谓词过滤为 null，业务侧多只 log.warn 后 return，单据永久卡在原状态。
+     * 统一委托 {@link SystemEventPublisher} 以系统任务身份发布（2026-10-12 修复）。</p>
+     */
+    private void publishRejectEvent(String processInstanceId, String businessType, Long businessId, String result) {
+        SystemEventPublisher.publishSystemEvent(eventPublisher,
+                new ApprovalRejectEvent(this, processInstanceId, businessType, businessId, result));
     }
 
     private Task getTaskById(String taskId) {

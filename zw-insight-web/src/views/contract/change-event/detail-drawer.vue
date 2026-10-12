@@ -208,7 +208,7 @@ import { toWan } from '@/utils/chart-format'
 
 const props = defineProps<{
   visible: boolean
-  eventId?: number
+  eventId?: number | string
 }>()
 
 const emit = defineEmits<{
@@ -265,16 +265,16 @@ const processStatus = computed(() => {
   return 'process'
 })
 
-watch(() => [props.visible, props.eventId], ([visible, id]) => {
+watch(() => [props.visible, props.eventId] as const, ([visible, id]) => {
   if (visible && id) {
-    loadEventData(Number(id))
+    loadEventData(id)
   } else if (!visible) {
     eventData.value = null
     error.value = null
   }
 }, { immediate: true })
 
-async function loadEventData(id: number) {
+async function loadEventData(id: number | string) {
   loading.value = true
   error.value = null
   try {

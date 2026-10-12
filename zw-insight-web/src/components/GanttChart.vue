@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<GanttChartProps>(), {
 })
 
 const emit = defineEmits<{
-  (e: 'task-updated', id: number): void
+  (e: 'task-updated', id: number | string): void
 }>()
 
 // ======================== 响应式状态 ========================
@@ -213,12 +213,12 @@ function initGantt() {
       const endDate = task.end_date ? formatDate(task.end_date) : ''
 
       try {
-        await updateSchedulePlanDates(Number(id), {
+        await updateSchedulePlanDates(id, {
           planStartDate: startDate,
           planEndDate: endDate
         })
         ElMessage.success('进度已更新')
-        emit('task-updated', Number(id))
+        emit('task-updated', id)
       } catch {
         ElMessage.error('保存失败，请重试')
         // 重新加载数据恢复原状

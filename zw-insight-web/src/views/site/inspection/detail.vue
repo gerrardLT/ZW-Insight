@@ -170,7 +170,7 @@ async function loadRectifications() {
   if (!id) return
   rectLoading.value = true
   try {
-    const res: any = await getRectifications(Number(id))
+    const res: any = await getRectifications(id)
     rectifications.value = res.data || []
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || '整改记录加载失败')
@@ -225,7 +225,7 @@ async function loadDetail() {
   const id = route.params.id as string
   if (!id) return
   try {
-    const res: any = await getInspectionDetail(Number(id))
+    const res: any = await getInspectionDetail(id)
     detail.value = res.data || {}
 
     // 优先从details字段获取明细

@@ -177,7 +177,7 @@ const budgetDetailOptions = ref<any[]>([])
 
 const changeId = computed(() => {
   const id = route.query.id
-  return id ? Number(id) : undefined
+  return id ? String(id) : undefined
 })
 const isViewMode = computed(() => route.query.mode === 'view')
 const isEdit = computed(() => !!changeId.value && !isViewMode.value)

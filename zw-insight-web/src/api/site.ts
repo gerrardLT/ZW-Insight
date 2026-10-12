@@ -19,7 +19,7 @@ export function getDelayedPlans() {
 }
 
 /** 更新进度计划日期（甘特图拖拽后保存） */
-export function updateSchedulePlanDates(id: number, data: { planStartDate: string; planEndDate: string }) {
+export function updateSchedulePlanDates(id: number | string, data: { planStartDate: string; planEndDate: string }) {
   return request.put(`/v1/site/schedule/plan/${id}`, data)
 }
 
@@ -129,7 +129,7 @@ export function assignRectification(id: number, data: any) {
 
 // ======================== 整改管理 ========================
 /** 查询某条检查记录下的整改记录列表（按提交时间倒序） */
-export function getRectifications(inspectionId: number) {
+export function getRectifications(inspectionId: number | string) {
   return request.get(`/v1/site/rectification/by-inspection/${inspectionId}`)
 }
 

@@ -26,6 +26,7 @@ class MachineContractServiceTest {
     @Mock BizBudgetDetailMapper budgetDetailMapper;
     @Mock SerialNumberService serialNumberService;
     @Mock ApprovalService approvalService;
+    @Mock com.zwinsight.budget.service.BudgetControlConfigService budgetControlConfigService;
     @InjectMocks MachineContractService service;
 
     @BeforeEach void setup() {

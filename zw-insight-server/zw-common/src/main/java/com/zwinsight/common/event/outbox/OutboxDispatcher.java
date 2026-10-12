@@ -182,8 +182,11 @@ public class OutboxDispatcher {
 
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            // 必须带异常栈：MyBatisSystemException 等 getMessage() 为 null 的异常若只记 msg，
+            // 会退化成类名，真实根因（如 SQL 列不存在）完全不可见，导致「失败被记录但无法定位」
+            // （2026-10-12 实证：变更事件 → CBS 传导，last_error 只有 MyBatisSystemException）
             log.warn("发件箱事件投递失败，id={}, eventType={}, error={}",
-                    event.getId(), event.getEventType(), msg);
+                    event.getId(), event.getEventType(), msg, e);
             handleFailure(event, msg);
             return DeliveryResult.FAILED;
         } finally {

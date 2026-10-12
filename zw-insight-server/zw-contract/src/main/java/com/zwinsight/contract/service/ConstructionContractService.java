@@ -18,8 +18,11 @@ import com.zwinsight.project.util.ProjectNameFiller;
 import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -31,6 +34,7 @@ import java.util.Map;
  * 施工合同服务
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ConstructionContractService {
 
@@ -191,14 +195,48 @@ public class ConstructionContractService {
                     ? BigDecimal.ZERO : contract.getContractAmount();
             projectMapper.addContractAmount(contract.getProjectId(), amount);
 
-            // P1-M1：开工走项目状态机（START_CONSTRUCTION 事件：I2 准入守卫 + 实际开工日回写 + 大事记）
-            // 状态机自带 WON/FILED→CONSTRUCTION 边校验，advanceToConstruction 私有方法废弃
-            try {
-                projectService.startConstruction(contract.getProjectId());
-            } catch (com.zwinsight.common.exception.BusinessException e) {
-                // 兼容历史直写语义：合同生效是既定事实，状态机拒绝（如已在 CONSTRUCTION）时不阻断生效
-                // 原因经审批日志可查（project_close_approval 大事记缺此事件即代表被拒）
+            // P1-M1：开工走项目状态机（START_CONSTRUCTION 事件：I2 准入守卫 + 实际开工日回写 + 大事记）。
+            //
+            // 2026-10-12 修复 P0，两条关键约束：
+            // ① 先判项目状态，仅 WON/FILED（START_CONSTRUCTION 的唯一合法源）才联动；其余状态
+            //    （CONSTRUCTION/DRAFT/TENDERING/PAUSED…）直接跳过——原先无条件调用会被状态机拒绝。
+            // ② 联动放到**事务提交后**执行：startConstruction 自带 @Transactional，若在当前事务内调用，
+            //    其内部 stateMachine.fire 抛异常会把共享事务标记 rollback-only，外层 catch 无法挽救
+            //    （提交时仍抛 UnexpectedRollbackException → 审批完成接口 500、合同永远卡 SUBMITTED）。
+            //    afterCommit 阶段合同已生效落库（既定事实），联动失败只记日志，不再影响合同生效。
+            final Long projectId = contract.getProjectId();
+            BizProject project = projectMapper.selectById(projectId);
+            String projectStatus = project == null ? null : project.getStatus();
+            if ("WON".equals(projectStatus) || "FILED".equals(projectStatus)) {
+                if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            startConstructionSafely(projectId, "afterCommit");
+                        }
+                    });
+                } else {
+                    // 无活动事务（如单测直调）：直接联动，失败仅记日志
+                    startConstructionSafely(projectId, "no-tx");
+                }
+            } else {
+                log.info("施工合同生效，项目状态[{}]非 WON/FILED，跳过开工流转（合同生效不受阻）, projectId={}",
+                        projectStatus, projectId);
             }
+        }
+    }
+
+    /**
+     * 联动项目开工（best-effort）：合同生效是既定事实，项目状态机拒绝时只记日志、不阻断合同。
+     * <p>调用点必须在「无活动事务」或「事务已提交后」，否则其内部异常会污染共享事务
+     * （见 {@link #onApproved(Long)} 的说明）。</p>
+     */
+    private void startConstructionSafely(Long projectId, String phase) {
+        try {
+            projectService.startConstruction(projectId);
+        } catch (Exception e) {
+            log.warn("施工合同生效后联动项目开工失败（合同已生效，不阻断）, projectId={}, phase={}, reason={}",
+                    projectId, phase, e.getMessage(), e);
         }
     }
 

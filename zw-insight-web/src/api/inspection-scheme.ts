@@ -24,7 +24,7 @@ export function applyScheme(inspectionId: number, schemeId: number) {
 /**
  * 获取检查记录详情（含方案快照）
  */
-export function getInspectionDetail(id: number) {
+export function getInspectionDetail(id: number | string) {
   return request.get(`/v1/site/inspection/${id}`)
 }
 

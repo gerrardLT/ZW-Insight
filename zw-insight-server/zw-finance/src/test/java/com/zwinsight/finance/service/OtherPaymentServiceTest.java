@@ -146,14 +146,16 @@ class OtherPaymentServiceTest {
     }
 
     @Test
-    @DisplayName("save 挂载 @BudgetCheck — 超预算拦截由切面执行（P1 FIN-OPT-06 注解钉住）")
-    void save_hasBudgetCheckAnnotation() throws NoSuchMethodException {
-        // 拦截行为由 BudgetControlAspectTest.block_throws + BudgetBlockIntegrationTest 覆盖；
-        // 此处钉住注解挂载不丢失（防重构误删导致其他付款绕过预算管控）
+    @DisplayName("save 不挂 @BudgetCheck — 其他支付无成本科目，不参与预算控制（2026-10-12 决策钉住）")
+    void save_hasNoBudgetCheckAnnotation() throws NoSuchMethodException {
+        // 背景（2026-10-12）：BizOtherPayment 无 contractCategory/costCategory/category getter，
+        // 切面 extractCategory 恒取不到科目 → 原 @BudgetCheck(category="") 属死注解（恒被跳过）；
+        // 而强行映射到 OTHER 科目又会因「该科目未设置预算额度」误拦全部其他支付。
+        // 故移除死注解，明确「其他支付不参与预算控制」。此处钉住该决策，防被误加回。
         BudgetCheck check = OtherPaymentService.class
                 .getMethod("save", BizOtherPayment.class)
                 .getAnnotation(BudgetCheck.class);
-        assertThat(check).as("save 必须保留 @BudgetCheck 注解").isNotNull();
+        assertThat(check).as("其他支付不应挂 @BudgetCheck（无成本科目，会误拦）").isNull();
     }
 
     @Test

@@ -204,7 +204,9 @@ describe('budget/change/form.vue A13 矩阵', () => {
     ] })
     await mountForm()
     const st = wrapper.vm.$.setupState
-    expect(mockGetChange).toHaveBeenCalledWith(123)
+    // route.query.id 在运行时本就是字符串；雪花 ID 超出 Number 安全范围，
+    // 必须字符串直传，不得 Number() 转换（否则精度丢失导致请求错 id）
+    expect(mockGetChange).toHaveBeenCalledWith('123')
     expect(st.pageTitle).toBe('编辑变更单')
     expect(st.formData.projectId).toBe(5)
     expect(st.formData.budgetId).toBe(66) // 二次回填成功

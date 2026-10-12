@@ -158,8 +158,11 @@ public interface BizProjectMapper extends BaseMapper<BizProject> {
 
     /**
      * 读取 sys_config 布尔开关（跨表只读；未配置/异常一律回退默认值，绝不阻断主流程）
+     * <p>注意：{@code sys_config} 表**没有 deleted 列**（该表不使用逻辑删除），
+     * 早期误加的 {@code AND deleted = 0} 会让 SQL 恒报 1054 → 调用方 catch 后静默回退默认值，
+     * 导致「项目立项需审批」开关永久失效（2026-10-12 修复）。</p>
      */
-    @Select("SELECT config_value FROM sys_config WHERE config_key = #{key} AND deleted = 0 LIMIT 1")
+    @Select("SELECT config_value FROM sys_config WHERE config_key = #{key} LIMIT 1")
     String selectConfigValue(@Param("key") String key);
 
     /** 在途付款申请数（终止守卫：审批中单据须清零才可终止） */

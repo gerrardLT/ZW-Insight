@@ -144,8 +144,10 @@ public class EntryApplyService {
         user.setOrgId(apply.getOrgId());
         user.setPostId(apply.getPostId());
         user.setStatus(1);
-        sysUserService.save(user);
-        log.info("入职审批通过，系统账号已创建: applyId={}, username={}", id, apply.getUsername());
+        // 2026-10-12 修复：改调 saveWithDefaultRole —— 原 save() 不写 sys_user_role，
+        // 产出「可登录但 roles/permissions 均为空」的幽灵账号
+        sysUserService.saveWithDefaultRole(user);
+        log.info("入职审批通过，系统账号已创建（含默认角色）: applyId={}, username={}", id, apply.getUsername());
     }
 
     /**

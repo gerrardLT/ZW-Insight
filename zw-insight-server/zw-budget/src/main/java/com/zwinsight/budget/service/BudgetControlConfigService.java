@@ -87,19 +87,36 @@ public class BudgetControlConfigService {
         validateWarningThreshold(dto.getWarningThreshold());
         // 同项目重复预检（2026-08-21 台账缺陷修复）：唯一键冲突前业务拦截，
         // 避免裸 DuplicateKeyException 500（无业务文案）
+        // 2026-10-12 修复：projectId 为空即「全局默认配置」，须按 is_null(project_id) 判定——
+        // 原实现 eq(projectId, null) 生成 `project_id = NULL` 恒不匹配，导致全局默认可无限重复创建。
         LambdaQueryWrapper<SysBudgetControlConfig> dupWrapper = new LambdaQueryWrapper<>();
-        dupWrapper.eq(SysBudgetControlConfig::getProjectId, dto.getProjectId());
-        if (configMapper.selectCount(dupWrapper) > 0) {
-            throw new BusinessException("该项目已存在预算控制配置，请直接编辑");
+        if (dto.getProjectId() == null) {
+            dupWrapper.isNull(SysBudgetControlConfig::getProjectId)
+                    .eq(SysBudgetControlConfig::getIsDefault, 1);
+            if (configMapper.selectCount(dupWrapper) > 0) {
+                throw new BusinessException("已存在系统默认预算控制配置，请直接编辑");
+            }
+        } else {
+            dupWrapper.eq(SysBudgetControlConfig::getProjectId, dto.getProjectId());
+            if (configMapper.selectCount(dupWrapper) > 0) {
+                throw new BusinessException("该项目已存在预算控制配置，请直接编辑");
+            }
         }
 
         SysBudgetControlConfig config = new SysBudgetControlConfig();
         config.setProjectId(dto.getProjectId());
         config.setControlMode(dto.getControlMode());
         config.setWarningThreshold(dto.getWarningThreshold());
-        config.setIsDefault(0);
+        // 无项目 ID 即「全局默认配置」，必须置 is_default=1，否则 getEffectiveConfig 的默认查询
+        // （eq is_default=1）永远命中不到，该行成为死配置（2026-10-12 修复）
+        boolean asDefault = dto.getProjectId() == null;
+        config.setIsDefault(asDefault ? 1 : 0);
 
         configMapper.insert(config);
+        if (asDefault) {
+            // 保证「全局默认」唯一：降级其它既有默认行
+            demoteOtherDefaults(config.getId());
+        }
     }
 
     /**
@@ -119,8 +136,29 @@ public class BudgetControlConfigService {
         existing.setProjectId(dto.getProjectId());
         existing.setControlMode(dto.getControlMode());
         existing.setWarningThreshold(dto.getWarningThreshold());
+        // 与 save 同口径：projectId 为空即「全局默认配置」，is_default 必须随之置位/复位，
+        // 否则编辑后该行会再次成为「既非项目级、也非默认」的死配置（2026-10-12 修复）
+        boolean asDefault = dto.getProjectId() == null;
+        existing.setIsDefault(asDefault ? 1 : 0);
 
         configMapper.updateById(existing);
+        if (asDefault) {
+            demoteOtherDefaults(existing.getId());
+        }
+    }
+
+    /**
+     * 降级其它系统默认配置（is_default 置 0），保证「全局默认」唯一。
+     * 由 save/update 在写入 is_default=1 后调用。
+     */
+    private void demoteOtherDefaults(Long keepId) {
+        LambdaQueryWrapper<SysBudgetControlConfig> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysBudgetControlConfig::getIsDefault, 1)
+                .ne(keepId != null, SysBudgetControlConfig::getId, keepId);
+        for (SysBudgetControlConfig other : configMapper.selectList(wrapper)) {
+            other.setIsDefault(0);
+            configMapper.updateById(other);
+        }
     }
 
     /**

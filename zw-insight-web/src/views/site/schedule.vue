@@ -231,7 +231,7 @@ async function handleFeedbackSubmit() {
     feedbackLoading.value = false
   }
 }
-function handleGanttTaskUpdated(_id: number) { loadData() }
+function handleGanttTaskUpdated(_id: number | string) { loadData() }
 
 /** 监听甘特图项目选择变化，查询数据并设置 ganttHasData */
 watch(ganttProjectId, async (newId) => {

@@ -217,8 +217,8 @@ const list = ref<BizChangeEvent[]>([])
 const projectList = ref<any[]>([])
 const detailVisible = ref(false)
 const formVisible = ref(false)
-const currentEventId = ref<number>()
-const editingEventId = ref<number>()
+const currentEventId = ref<number | string>()
+const editingEventId = ref<number | string>()
 
 const filters = reactive({
   projectId: null as number | null,

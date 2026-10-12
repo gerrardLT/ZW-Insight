@@ -21,6 +21,7 @@ import com.zwinsight.system.mapper.SysOrgMapper;
 import com.zwinsight.system.mapper.SysUserRoleMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
  * 用户管理服务
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class SysUserService {
 
@@ -158,6 +160,48 @@ public class SysUserService {
         // 密码加密
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userMapper.insert(user);
+    }
+
+    /** 入职自动建号的默认角色码（最小权限：普通员工，data_scope=SELF） */
+    private static final String DEFAULT_ENTRY_ROLE_CODE = "STAFF";
+
+    /**
+     * 新增用户并分配默认角色（入职审批自动建号专用）。
+     * <p>2026-10-12 修复：入职审批通过原先仅调用 {@link #save(SysUser)}，不写 {@code sys_user_role}，
+     * 产出「可登录但 roles/permissions 均为空」的幽灵账号。此处建号后按
+     * {@link #DEFAULT_ENTRY_ROLE_CODE} 分配默认角色；若该角色在本租户不存在，记录 WARN 并跳过
+     * （不阻断建号），由管理员事后手工分配。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void saveWithDefaultRole(SysUser user) {
+        save(user);
+        Long roleId = findRoleIdByCode(DEFAULT_ENTRY_ROLE_CODE);
+        if (roleId == null) {
+            log.warn("默认角色[{}]不存在，入职建号未分配角色，请管理员手工分配, userId={}",
+                    DEFAULT_ENTRY_ROLE_CODE, user.getId());
+            return;
+        }
+        assignRoles(user.getId(), List.of(roleId));
+        log.info("入职建号已分配默认角色, userId={}, roleCode={}", user.getId(), DEFAULT_ENTRY_ROLE_CODE);
+    }
+
+    /**
+     * 按角色码查询**本租户**角色 ID；不存在或无租户上下文时返回 null。
+     * <p>必须显式带 tenant_id 谓词：{@code MybatisPlusConfig} 的租户拦截器对 {@code sys_} 前缀表
+     * **一律放行**（不做租户过滤），因此只按 role_code 查会命中任意租户的同名角色；随后
+     * {@code assignRoles} 的归属校验会抛 400，把「无角色」变成「审批回调回滚」（2026-10-12 修复）。</p>
+     */
+    private Long findRoleIdByCode(String roleCode) {
+        Long tenantId = SecurityContextHolder.getTenantId();
+        if (tenantId == null) {
+            // 无租户上下文时不做跨租户猜测：宁可不分配，也不误用别家角色（会被 assignRoles 拒绝）
+            return null;
+        }
+        SysRole role = roleMapper.selectOne(new LambdaQueryWrapper<SysRole>()
+                .eq(SysRole::getRoleCode, roleCode)
+                .eq(SysRole::getTenantId, tenantId)
+                .last("LIMIT 1"));
+        return role == null ? null : role.getId();
     }
 
     /**

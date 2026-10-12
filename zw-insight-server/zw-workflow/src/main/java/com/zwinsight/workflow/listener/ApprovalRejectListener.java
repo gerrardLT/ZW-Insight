@@ -2,6 +2,7 @@ package com.zwinsight.workflow.listener;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.zwinsight.common.event.SystemEventPublisher;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
@@ -66,9 +67,11 @@ public class ApprovalRejectListener implements FlowableEventListener {
             log.info("流程被终止（驳回/撤回）, processInstanceId={}, businessType={}, businessId={}",
                     processInstanceId, businessType, businessId);
 
-            // 发布驳回事件，触发数据回滚
-            eventPublisher.publishEvent(new ApprovalRejectEvent(
-                    this, processInstanceId, businessType, businessId, "REJECT"));
+            // 发布驳回事件，触发数据回滚。
+            // 审批回调是「系统操作」，不应受审批人行级数据范围约束（2026-10-12 与
+            // ProcessCompleteListener 同源修复），统一委托 SystemEventPublisher 以系统任务身份发布。
+            SystemEventPublisher.publishSystemEvent(eventPublisher,
+                    new ApprovalRejectEvent(this, processInstanceId, businessType, businessId, "REJECT"));
 
         } catch (Exception e) {
             log.error("驳回监听器处理异常", e);

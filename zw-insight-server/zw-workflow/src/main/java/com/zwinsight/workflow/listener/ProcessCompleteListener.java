@@ -2,6 +2,7 @@ package com.zwinsight.workflow.listener;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.zwinsight.common.event.SystemEventPublisher;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
@@ -67,8 +68,13 @@ public class ProcessCompleteListener implements FlowableEventListener {
 
                 log.info("流程完成回调, businessType={}, businessId={}", businessType, businessId);
 
-                // 发布审批通过事件
-                eventPublisher.publishEvent(new ApprovalCompleteEvent(this, businessType, businessId, "APPROVED"));
+                // 发布审批通过事件。审批回调是「系统操作」：各业务模块在回调里按 businessId（来自流程
+                // 变量，受信）读单并回写，不应受「发起人/审批人的行级数据范围」约束——否则当审批人无
+                // 该项目数据范围时，回调读单被 @DataPermission 谓词过滤为 null，业务侧多只 log.warn 后
+                // return，单据永久卡 SUBMITTED（2026-10-12 实证：劳务产值单级 PM 审批）。
+                // 由 SystemEventPublisher 临时标记系统任务并在发布后还原。
+                SystemEventPublisher.publishSystemEvent(eventPublisher,
+                        new ApprovalCompleteEvent(this, businessType, businessId, "APPROVED"));
 
             } catch (Exception e) {
                 log.error("流程完成回调处理异常", e);

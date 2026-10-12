@@ -74,6 +74,9 @@ class SubcontractServiceTest {
         @Mock
         private BizProjectMapper projectMapper;
 
+        @Mock
+        private com.zwinsight.budget.service.BudgetControlConfigService budgetControlConfigService;
+
         @InjectMocks
         private SubcontractService subcontractService;
 

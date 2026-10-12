@@ -68,6 +68,8 @@ class SubcontractMutationTest {
     private BizBudgetDetailMapper budgetDetailMapper;
     @Mock
     private BizProjectMapper projectMapper;
+    @Mock
+    private com.zwinsight.budget.service.BudgetControlConfigService budgetControlConfigService;
 
     @InjectMocks
     private SubcontractSettlementService settlementService;
@@ -247,7 +249,7 @@ class SubcontractMutationTest {
     @DisplayName("保存分包合同：无预算ID跳过校验；累计恰达预算放行（边界）；超预算拒绝")
     void save_budgetBranches() {
         SubcontractService subcontractService =
-                new SubcontractService(subcontractMapper, budgetDetailMapper, projectMapper);
+                new SubcontractService(subcontractMapper, budgetDetailMapper, projectMapper, budgetControlConfigService);
 
         // budgetId=null → 跳过预算校验直接插入
         BizSubcontract noBudget = new BizSubcontract();

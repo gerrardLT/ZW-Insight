@@ -5,6 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.basedata.annotation.BlacklistCheck;
 import com.zwinsight.budget.annotation.BudgetCheck;
+import com.zwinsight.budget.context.BudgetWarningContext;
+import com.zwinsight.budget.dto.BudgetCheckResult;
+import com.zwinsight.budget.service.BudgetControlConfigService;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
@@ -36,6 +39,7 @@ public class PurchaseContractService {
     private final BizPurchaseContractDetailMapper detailMapper;
     private final SerialNumberService serialNumberService;
     private final ApprovalService approvalService;
+    private final BudgetControlConfigService budgetControlConfigService;
 
     /**
      * 分页查询
@@ -61,6 +65,26 @@ public class PurchaseContractService {
             throw new BusinessException("采购合同不存在");
         }
         return contract;
+    }
+
+    /**
+     * 提交环节预算控制：BLOCK 抛业务异常拦截，WARN 写线程上下文由响应 Advice 透出响应头。
+     * 与 save 环节的 {@code @BudgetCheck(category="MATERIAL")} 同口径。
+     */
+    private void enforceBudgetControl(BizPurchaseContract contract) {
+        if (contract.getProjectId() == null || contract.getContractAmount() == null) {
+            return;
+        }
+        BudgetCheckResult result = budgetControlConfigService.checkBudget(
+                contract.getProjectId(), "MATERIAL", contract.getContractAmount());
+        if (result == null) {
+            return;
+        }
+        switch (result.getStatus()) {
+            case BLOCK -> throw new BusinessException(result.getMessage());
+            case WARN -> BudgetWarningContext.setWarning(result.getMessage());
+            case PASS -> { }
+        }
     }
 
     /**
@@ -118,8 +142,10 @@ public class PurchaseContractService {
 
     /**
      * 提交审批
+     * <p>预算控制（2026-10-12 修复）：原 {@code @BudgetCheck} 挂本方法但参数为裸 {@code Long}，
+     * 切面反射既取不到 projectId 也取不到金额，校验完全空转 → 移除死注解，改为载入实体后
+     * 显式校验（对齐 {@code PaymentApplyService.submit} 的既有范式）。</p>
      */
-    @BudgetCheck(category = "MATERIAL")
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         BizPurchaseContract contract = purchaseContractMapper.selectById(id);
@@ -129,6 +155,8 @@ public class PurchaseContractService {
         if (!"DRAFT".equals(contract.getStatus())) {
             throw new BusinessException("仅草稿状态可提交");
         }
+
+        enforceBudgetControl(contract);
 
         // 发起审批流程
         Map<String, Object> variables = new HashMap<>();

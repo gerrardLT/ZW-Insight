@@ -48,6 +48,16 @@ public class SecurityContextHolder {
     }
 
     /**
+     * 取消系统任务标记（恢复为「普通用户请求」语义）。
+     * <p>供「临时标记后必须还原」的场景使用——例如审批回调发布事件期间临时放行数据权限，
+     * 发布结束即还原，避免污染同一请求后续查询的行级过滤（{@link #clear()} 会连租户/用户
+     * 上下文一并清掉，不适用于此场景）。</p>
+     */
+    public static void unmarkSystemTask() {
+        SYSTEM_TASK.remove();
+    }
+
+    /**
      * 清除当前线程上下文（在请求结束时调用，防止内存泄漏）
      */
     public static void clear() {
