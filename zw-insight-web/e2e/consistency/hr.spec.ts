@@ -22,7 +22,7 @@ const ENTRY_COLUMNS: ColumnSpec[] = [
   { label: '登录账号', index: 1, field: 'username', type: 'text' },
   { label: '手机号', index: 2, field: 'phone', type: 'text' },
   { label: '入职日期', index: 3, field: 'entryDate', type: 'date' },
-  { label: '状态', index: 4, field: 'status', expect: (r) => (r.status === 'APPROVED' ? '已通过' : '草稿') },
+  { label: '状态', index: 4, field: 'status', expect: (r) => (r.status === 'APPROVED' ? '已通过' : r.status === 'SUBMITTED' ? '审批中' : '草稿') },
 ]
 
 const RESIGN_COLUMNS: ColumnSpec[] = [

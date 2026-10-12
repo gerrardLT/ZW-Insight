@@ -9,7 +9,6 @@ import {
   type ColumnSpec,
   type PageConsistencyResult,
 } from './consistency-helper'
-import { SIMPLE_CONTRACT_STATUS } from './enum-baseline'
 
 const LIST_COLUMNS: ColumnSpec[] = [
   { label: '合同编号', index: 0, field: 'contractCode', type: 'text' },
@@ -18,7 +17,7 @@ const LIST_COLUMNS: ColumnSpec[] = [
   { label: '合同金额', index: 3, field: 'contractAmount', type: 'numeric' },
   { label: '开始日期', index: 4, field: 'startDate', type: 'date' },
   { label: '结束日期', index: 5, field: 'endDate', type: 'date' },
-  { label: '状态', index: 6, field: 'status', type: 'enum', enumMap: SIMPLE_CONTRACT_STATUS },
+  { label: '状态', index: 6, field: 'status', expect: (r) => (r.status === 'EFFECTIVE' ? '生效' : r.status === 'SUBMITTED' ? '审批中' : '草稿') },
 ]
 
 const results: PageConsistencyResult[] = []

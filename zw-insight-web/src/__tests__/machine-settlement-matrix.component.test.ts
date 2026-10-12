@@ -12,7 +12,7 @@ import ElementPlus from 'element-plus'
 
 const {
   mockSettlementPage, mockSubmitSettlement, mockSummary, mockExport,
-  mockCreateSettlement, mockUsagePage, mockSettlementDetail,
+  mockCreateSettlement, mockWorkLogPage, mockContractPage, mockSettlementDetail,
   mockProjectList, mockRouteParams, mockPush, mockBack,
   mockSuccess, mockError, mockWarning, mockConfirm,
 } = vi.hoisted(() => ({
@@ -21,7 +21,8 @@ const {
   mockSummary: vi.fn(async (): Promise<any> => ({ code: 200, data: { totalSettledAmount: 0, totalPaidAmount: 0, unpaidAmount: 0, settlementCount: 0 } })),
   mockExport: vi.fn(async (): Promise<any> => new ArrayBuffer(8)),
   mockCreateSettlement: vi.fn(async (): Promise<any> => ({ code: 200 })),
-  mockUsagePage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockWorkLogPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockContractPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockSettlementDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
   mockProjectList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
   mockRouteParams: {} as Record<string, string>,
@@ -39,7 +40,8 @@ vi.mock('@/api/machine', () => ({
   getMachineSettlementSummary: mockSummary,
   exportMachineSettlement: mockExport,
   createMachineSettlement: mockCreateSettlement,
-  getMachineUsagePage: mockUsagePage,
+  getMachineWorkLogPage: mockWorkLogPage,
+  getMachineContractPage: mockContractPage,
   getMachineSettlementDetail: mockSettlementDetail,
 }))
 vi.mock('@/api/project', () => ({
@@ -211,7 +213,7 @@ describe('settlement/create.vue B12 矩阵', () => {
     st.formData.period = null
     await st.loadPreview()
     expect(st.previewVisible).toBe(false)
-    expect(mockUsagePage).not.toHaveBeenCalled()
+    expect(mockWorkLogPage).not.toHaveBeenCalled()
   })
 
   it('B-12-3 合计金额 computed = Σ previewData.amount', async () => {
@@ -226,25 +228,25 @@ describe('settlement/create.vue B12 矩阵', () => {
     expect(st.totalAmount).toBe(0)
   })
 
-  it('B-12-4 切换项目/周期自动重载预览：handlePeriodChange 触发 usage 请求', async () => {
+  it('B-12-4 切换项目/周期自动重载预览：handlePeriodChange 触发 work-log 请求', async () => {
     const w = await mountCreate()
     const st = w.vm.$.setupState
     st.formData.projectId = 1
     st.formData.period = ['2026-08-01', '2026-08-31']
     await st.handlePeriodChange()
     await flushPromises()
-    expect(mockUsagePage).toHaveBeenCalledTimes(1)
-    const params = (mockUsagePage.mock.calls as any)[0][0]
+    expect(mockWorkLogPage).toHaveBeenCalledTimes(1)
+    const params = (mockWorkLogPage.mock.calls as any)[0][0]
     expect(params.projectId).toBe(1)
-    expect(params.startDate).toBe('2026-08-01')
-    expect(params.endDate).toBe('2026-08-31')
+    expect(params.page).toBe(1)
+    expect(params.size).toBe(200)
     expect(st.previewVisible).toBe(true)
   })
 
   it('B-12-5 空预览拦截保存（盲点 12 守卫，2026-08-24 翻转）：canSave=false + handleSave 不发请求仅 warning', async () => {
     const w = await mountCreate()
     const st = w.vm.$.setupState
-    mockUsagePage.mockResolvedValue({ code: 200, data: { records: [], total: 0 } })
+    mockWorkLogPage.mockResolvedValue({ code: 200, data: { records: [], total: 0 } })
     st.formData.projectId = 1
     st.formData.period = ['2026-08-01', '2026-08-31']
     await st.loadPreview()
@@ -258,10 +260,10 @@ describe('settlement/create.vue B12 矩阵', () => {
     expect(st.canSave).toBe(true)
   })
 
-  it('B-12-8 usage 接口失败降级：previewData=[] 不阻断', async () => {
+  it('B-12-8 work-log 接口失败降级：previewData=[] 不阻断', async () => {
     const w = await mountCreate()
     const st = w.vm.$.setupState
-    mockUsagePage.mockRejectedValue(new Error('500'))
+    mockWorkLogPage.mockRejectedValue(new Error('500'))
     st.formData.projectId = 1
     st.formData.period = ['2026-08-01', '2026-08-31']
     await st.loadPreview()

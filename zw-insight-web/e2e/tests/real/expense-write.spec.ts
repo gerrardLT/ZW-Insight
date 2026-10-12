@@ -229,7 +229,7 @@ test.describe('支出域 — 机械结算 create 页（@matrix B-11/B-12/B-13）
     await expect(page.locator('.el-form-item__error').first()).toBeVisible({ timeout: 10_000 })
   })
 
-  test('选择项目+周期触发使用明细预览查询（usage-record/page）', async ({ page }) => {
+  test('选择项目+周期触发工作日志预览查询（work-log/page，与后端结算同源）', async ({ page }) => {
     test.setTimeout(90_000)
     await page.goto('/machine/settlement/create')
     await page.waitForLoadState('networkidle')
@@ -247,7 +247,7 @@ test.describe('支出域 — 机械结算 create 页（@matrix B-11/B-12/B-13）
     await endInput.fill('2026-12-31')
     const [previewResp] = await Promise.all([
       page.waitForResponse(
-        (resp) => resp.url().includes('/v1/machine/usage-record/page') && resp.request().method() === 'GET',
+        (resp) => resp.url().includes('/v1/machine/work-log/page') && resp.request().method() === 'GET',
         { timeout: 20_000 }
       ),
       endInput.press('Enter'),
@@ -259,7 +259,7 @@ test.describe('支出域 — 机械结算 create 页（@matrix B-11/B-12/B-13）
 
   // @matrix 盲点 12 守卫（2026-08-24 翻转，原现状钉住）：预览为空时保存按钮禁用，
   // 防空结算单提交；后端「无可结算工作量」拦截由 b2-machine.spec.ts API 层钉住
-  test('盲点 12 守卫：无使用记录时预览合计为 0 且保存按钮禁用', async ({ page }) => {
+  test('盲点 12 守卫：无工作日志时预览合计为 0 且保存按钮禁用', async ({ page }) => {
     test.setTimeout(90_000)
     await page.goto('/machine/settlement/create')
     await page.waitForLoadState('networkidle')
@@ -275,7 +275,7 @@ test.describe('支出域 — 机械结算 create 页（@matrix B-11/B-12/B-13）
     await endInput.fill('2020-01-02')
     await endInput.press('Enter')
     await page.waitForTimeout(2000)
-    // 远古周期必无使用记录：预览区域为空表或合计 0
+    // 远古周期必无工作日志：预览区域为空表或合计 0
     const totalText = await page.locator('.preview-total').innerText().catch(() => '')
     if (totalText) {
       expect(totalText).toContain('¥ 0')

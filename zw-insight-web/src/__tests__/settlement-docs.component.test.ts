@@ -7,7 +7,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
 const {
-  mockMSettlePage, mockMSettleDetail, mockMSettleCreate, mockMSettleSubmit, mockMSettleSummary, mockMSettleExport, mockUsagePage,
+  mockMSettlePage, mockMSettleDetail, mockMSettleCreate, mockMSettleSubmit, mockMSettleSummary, mockMSettleExport, mockWorkLogPage, mockContractPage,
   mockPSettlePage, mockPSettleCreate, mockPSettleUpdate, mockPSettleDelete, mockPSettleSubmit, mockPContractPage, mockAvailInbounds,
   mockPayrollPage, mockPayrollCreate, mockPayrollDelete, mockPayrollSubmit, mockTeamPage,
   mockProjectList,
@@ -19,7 +19,8 @@ const {
     mockMSettleCreate: ok(), mockMSettleSubmit: ok(),
     mockMSettleSummary: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
     mockMSettleExport: vi.fn(async (): Promise<any> => new Blob(['x'])),
-    mockUsagePage: page(),
+    mockWorkLogPage: page(),
+    mockContractPage: page(),
     mockPSettlePage: page(), mockPSettleCreate: ok(), mockPSettleUpdate: ok(), mockPSettleDelete: ok(), mockPSettleSubmit: ok(),
     mockPContractPage: page(), mockAvailInbounds: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
     mockPayrollPage: page(), mockPayrollCreate: ok(), mockPayrollDelete: ok(), mockPayrollSubmit: ok(),
@@ -32,7 +33,8 @@ vi.mock('@/api/machine', () => ({
   getMachineSettlementPage: mockMSettlePage, getMachineSettlementDetail: mockMSettleDetail,
   createMachineSettlement: mockMSettleCreate, submitMachineSettlement: mockMSettleSubmit,
   getMachineSettlementSummary: mockMSettleSummary, exportMachineSettlement: mockMSettleExport,
-  getMachineUsagePage: mockUsagePage,
+  getMachineWorkLogPage: mockWorkLogPage,
+  getMachineContractPage: mockContractPage,
 }))
 vi.mock('@/api/purchase', () => ({
   getPurchaseSettlementPage: mockPSettlePage, createPurchaseSettlement: mockPSettleCreate,
@@ -115,16 +117,16 @@ describe('machine/settlement/create.vue 机械结算创建', () => {
     expect(mockProjectList).toHaveBeenCalled()
   })
 
-  it('项目+周期变更触发使用明细预览查询（startDate/endDate 组装）', async () => {
+  it('项目+周期变更触发工作日志预览查询（与后端结算同源 work-log）', async () => {
     const w = await mountPage()
     const st = w.vm.$.setupState
     st.formData.projectId = 1
     st.formData.period = ['2026-08-01', '2026-08-31']
-    mockUsagePage.mockClear()
+    mockWorkLogPage.mockClear()
     await st.handlePeriodChange()
     await flushPromises()
-    expect(mockUsagePage).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 1, startDate: '2026-08-01', endDate: '2026-08-31',
+    expect(mockWorkLogPage).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: 1, page: 1, size: 200,
     }))
     expect(st.previewVisible).toBe(true)
   })
@@ -134,10 +136,10 @@ describe('machine/settlement/create.vue 机械结算创建', () => {
     const st = w.vm.$.setupState
     st.formData.projectId = undefined
     st.formData.period = ['2026-08-01', '2026-08-31']
-    mockUsagePage.mockClear()
+    mockWorkLogPage.mockClear()
     await st.handleProjectChange()
     await flushPromises()
-    expect(mockUsagePage).not.toHaveBeenCalled()
+    expect(mockWorkLogPage).not.toHaveBeenCalled()
     expect(st.previewVisible).toBe(false)
   })
 

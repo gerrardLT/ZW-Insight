@@ -28,6 +28,7 @@
         <el-form-item label="支付状态">
           <el-select v-model="queryParams.payStatus" placeholder="全部" clearable style="width: 120px">
             <el-option label="未支付" value="UNPAID" />
+            <el-option label="部分支付" value="PARTIAL_PAID" />
             <el-option label="已支付" value="PAID" />
           </el-select>
         </el-form-item>

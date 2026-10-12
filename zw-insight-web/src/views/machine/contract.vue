@@ -26,6 +26,13 @@
         <el-table-column prop="contractAmount" label="合同金额(元)" width="140" align="right">
           <template #default="{ row }">{{ row.contractAmount?.toLocaleString() }}</template>
         </el-table-column>
+        <el-table-column label="状态" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'EFFECTIVE' ? 'success' : row.status === 'SUBMITTED' ? 'warning' : 'info'" size="small">
+              {{ row.status === 'EFFECTIVE' ? '生效' : row.status === 'SUBMITTED' ? '审批中' : '草稿' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="rentalType" label="租赁方式" width="100" align="center" />
         <el-table-column prop="startDate" label="开始日期" width="110" />
         <el-table-column prop="endDate" label="结束日期" width="110" />

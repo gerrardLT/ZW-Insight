@@ -2,7 +2,8 @@
  * machine 机械管理 —— 列表页前端展示 vs 后端数据 字段级一致性
  *  A 列表页 /machine/contract  GET /v1/machine/contract/page
  *
- * 机械合同列表无状态列；rentalType 直接展示后端原值。
+ * 机械合同列表状态列（F1c 补列后）：EFFECTIVE→生效 / SUBMITTED→审批中 / 其余→草稿；
+ * rentalType 直接展示后端原值。
  */
 import { test, expect } from '@playwright/test'
 import {
@@ -21,9 +22,10 @@ const LIST_COLUMNS: ColumnSpec[] = [
   { label: '设备供应商', index: 2, field: 'supplierName', type: 'text' },
   { label: '设备名称', index: 3, field: 'machineName', type: 'text' },
   { label: '合同金额', index: 4, field: 'contractAmount', type: 'numeric' },
-  { label: '租赁方式', index: 5, field: 'rentalType', type: 'text' },
-  { label: '开始日期', index: 6, field: 'startDate', type: 'date' },
-  { label: '结束日期', index: 7, field: 'endDate', type: 'date' },
+  { label: '状态', index: 5, field: 'status', expect: (r) => (r.status === 'EFFECTIVE' ? '生效' : r.status === 'SUBMITTED' ? '审批中' : '草稿') },
+  { label: '租赁方式', index: 6, field: 'rentalType', type: 'text' },
+  { label: '开始日期', index: 7, field: 'startDate', type: 'date' },
+  { label: '结束日期', index: 8, field: 'endDate', type: 'date' },
 ]
 
 const results: PageConsistencyResult[] = []

@@ -22,14 +22,14 @@
         <el-table-column prop="entryDate" label="入职日期" width="120" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'APPROVED' ? 'success' : 'info'" size="small">
-              {{ row.status === 'APPROVED' ? '已通过' : '草稿' }}
+            <el-tag :type="row.status === 'APPROVED' ? 'success' : row.status === 'SUBMITTED' ? 'warning' : 'info'" size="small">
+              {{ row.status === 'APPROVED' ? '已通过' : row.status === 'SUBMITTED' ? '审批中' : '草稿' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitApply(row)">提交</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>

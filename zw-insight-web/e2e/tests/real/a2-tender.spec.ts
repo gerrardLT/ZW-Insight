@@ -61,6 +61,11 @@ test.beforeAll(async () => {
   const pg = await apiJson('GET', `/api/v1/project/page?pageNum=1&pageSize=5&projectName=${encodeURIComponent(carrierProjectName)}`)
   carrierProjectId = String(pg.body?.data?.records?.[0]?.id || '')
   expect(carrierProjectId, '承载项目应可定位').toBeTruthy()
+  // 2026-10-12 修复（用例陈旧）：报名联动 TENDERING 的守卫是「项目须为 FILED」
+  // （TenderRegisterService 仅当项目 FILED 时调 goTender）。原用例未先提交立项，
+  // 导致 A5-09 断言「报名后项目 TENDERING」恒失败（拿到 DRAFT）。
+  const sub = await apiJson('POST', `/api/v1/project/${carrierProjectId}/submit`)
+  expect(sub.body?.code, '承载项目提交立项（联动 TENDERING 前置）').toBe(200)
 })
 
 test.afterAll(async () => {

@@ -58,6 +58,24 @@ async function apiJson(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, 
   return { status: resp.status(), body: await resp.json().catch(() => null) }
 }
 
+/**
+ * 循环完成某业务的全部待办（采购合同为 2 级人工 BPMN：项目负责人审批 → 财务审核）。
+ * 2026-10-12 校正：原用例断言「submit 自动完成至 EFFECTIVE」，与当前部署的两级审批实现不符。
+ */
+async function completeAllTodos(businessId: string, maxRounds = 6): Promise<void> {
+  for (let i = 0; i < maxRounds; i++) {
+    const resp = await authed!.get(`${API_BASE}/api/v1/workflow/approval/todo`, { params: { page: 1, size: 50 } })
+    const todos = ((await resp.json()).data?.records || []).filter((t: any) => String(t.businessId) === String(businessId))
+    if (todos.length === 0) return
+    const c = await authed!.post(`${API_BASE}/api/v1/workflow/approval/complete`, {
+      data: { taskId: todos[0].taskId, comment: 'E2E b5-purchase 审批推进' },
+    })
+    expect(c.status(), `完成审批任务 ${todos[0].taskId}`).toBe(200)
+    await new Promise((r) => setTimeout(r, 500))
+  }
+  throw new Error(`businessId=${businessId} 待办 ${maxRounds} 轮未清空`)
+}
+
 test.beforeAll(async () => {
   authed = await authedApiContext()
   const cr = await apiJson('POST', '/api/v1/project', { projectName: `${PREFIX}_采购项目`, projectNature: '新建', projectType: '市政工程', ownerCompanyName: 'E2E测试业主', contactName: '自动化专员', contactPhone: '13800000000' })
@@ -108,8 +126,12 @@ test.describe('B-5 采购合同（BPMN 自动完成至生效）', () => {
     contractId = String(contract.id)
     const sub = await apiJson('POST', `/api/v1/purchase/contract/${contractId}/submit`)
     expect(sub.body?.code, '提交').toBe(200)
-    const detail = await apiJson('GET', `/api/v1/purchase/contract/${contractId}`)
-    expect(detail.body?.data?.status, 'BPMN 自动完成至 EFFECTIVE').toBe('EFFECTIVE')
+    let detail = await apiJson('GET', `/api/v1/purchase/contract/${contractId}`)
+    expect(detail.body?.data?.status, '提交后进入审批中（非自动生效）').toBe('SUBMITTED')
+    // 2026-10-12 校正：采购合同为 2 级人工 BPMN，需完成两级待办才 EFFECTIVE
+    await completeAllTodos(contractId)
+    detail = await apiJson('GET', `/api/v1/purchase/contract/${contractId}`)
+    expect(detail.body?.data?.status, '两级审批通过后 EFFECTIVE').toBe('EFFECTIVE')
     expect(detail.body?.data?.workflowInstanceId, 'BPMN 流程实例非空（区别于劳务/分包直批）').toBeTruthy()
     const sub2 = await apiJson('POST', `/api/v1/purchase/contract/${contractId}/submit`)
     expect(sub2.body?.code, 'EFFECTIVE 重提交应拦截').not.toBe(200)

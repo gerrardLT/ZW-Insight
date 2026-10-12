@@ -147,9 +147,9 @@ describe('hr/entry.vue 入职申请增量（C21）', () => {
     expect(st.formRules.phone[0]).not.toHaveProperty('validator')
   })
 
-  it('@matrix C-21-3 状态两态渲染 APPROVED→已通过 success / 否则草稿 info 源码钉住', () => {
-    expect(entrySrc).toContain("row.status === 'APPROVED' ? '已通过' : '草稿'")
-    expect(entrySrc).toContain(":type=\"row.status === 'APPROVED' ? 'success' : 'info'\"")
+  it('@matrix C-21-3 状态三态渲染 APPROVED→已通过 success / SUBMITTED→审批中 warning / 否则草稿 info 源码钉住', () => {
+    expect(entrySrc).toContain("row.status === 'APPROVED' ? '已通过' : row.status === 'SUBMITTED' ? '审批中' : '草稿'")
+    expect(entrySrc).toContain(":type=\"row.status === 'APPROVED' ? 'success' : row.status === 'SUBMITTED' ? 'warning' : 'info'\"")
   })
 
   it('@matrix C-21-4 提交 confirm 文案「通过后自动创建系统账号」+ 调 submitHrEntry', async () => {

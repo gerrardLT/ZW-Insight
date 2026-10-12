@@ -138,6 +138,10 @@ test.describe('A-1 项目表单与成员链', () => {
     await page.waitForSelector('.el-select-dropdown:visible .el-select-dropdown__item', { timeout: 10_000 })
     await page.locator('.el-select-dropdown:visible .el-select-dropdown__item').first().click()
     await page.waitForTimeout(400)
+    // 2026-10-12 修复（用例陈旧）：后端 ProjectCreateRequest 对 contactName/contactPhone 有 @NotBlank，
+    // 而表单未把这两项标为必填 → 原用例不填会撞 HTTP 400（表单/后端必填口径不一致另案）。
+    await page.locator('input[placeholder="请输入联系人"]').fill('自动化专员')
+    await page.locator('input[placeholder="请输入联系电话"]').fill('13800000000')
     // 保存 → POST /v1/project 硬断言 + 跳列表
     const [saveResp] = await Promise.all([
       page.waitForResponse(

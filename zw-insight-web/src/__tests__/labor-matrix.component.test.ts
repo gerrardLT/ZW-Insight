@@ -124,10 +124,10 @@ describe('labor/contract.vue B14 矩阵', () => {
     expect(contractSrc).toContain('v-model="formData.contractAmount" :min="0" :precision="2"')
   })
 
-  it('B-14-3 状态 tag 映射：EFFECTIVE→生效/success，其他→草稿/info（源码钉住）', async () => {
+  it('B-14-3 状态 tag 映射三态：EFFECTIVE→生效/success、SUBMITTED→审批中/warning、其余→草稿/info（源码钉住）', async () => {
     await mountContract()
-    expect(contractSrc).toContain("row.status === 'EFFECTIVE' ? 'success' : 'info'")
-    expect(contractSrc).toContain("row.status === 'EFFECTIVE' ? '生效' : '草稿'")
+    expect(contractSrc).toContain("row.status === 'EFFECTIVE' ? 'success' : row.status === 'SUBMITTED' ? 'warning' : 'info'")
+    expect(contractSrc).toContain("row.status === 'EFFECTIVE' ? '生效' : row.status === 'SUBMITTED' ? '审批中' : '草稿'")
   })
 
   it('B-14-5 handleReset 恢复默认查询参数并重新加载', async () => {
