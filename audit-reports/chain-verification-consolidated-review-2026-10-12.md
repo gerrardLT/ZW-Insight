@@ -353,4 +353,33 @@
 - 本轮 e2e/探针产生的数据已按 id 精确清理：`E2E_TEST_*` 项目/报名/合同、备用金探针行与其实例（`ACT_RU_TASK` 回落到 217 基线）；种子 90001-90004 状态未变、种子备用金 99071 完好。
 - 仍登记未收口：**2 个 `OUTPUT_REPORT` 滞留任务**（§十 遗留，实例不匹配、API 无路径）。
 
+---
+
+## 十二、第四批修复实施记录（2026-10-12 续）
+
+> 承接 §十一，把「不需产品决策」的剩余项做完。提交：`a9e47d30`（前后端合并）。CI 门禁通过，双机部署成功。
+
+### 已修复（6 项 + 1 迁移）
+
+| # | 缺陷 | 修法 | 部署后验证 |
+|---|---|---|---|
+| 1 | **竣工验收无前端入口**（P1-7，UI 无法把项目推进到 COMPLETED） | 新增 `views/site/completion.vue`（列表+新增+行内提交），接既有但从未被引用的 `getAcceptancePage/createAcceptance/submitAcceptance` + 路由 + 菜单 | **端到端真机**：项目→FILED→合同两级审批→CONSTRUCTION→竣工验收两级审批→**项目 COMPLETED** ✓ |
+| 2 | 竣工验收菜单迁移 | 双轨 `V2026_99`（`sys_menu` 1204 + `sys_role_menu` 93；1201-1203 已被占用，含 1203「质量安全检查」） | 两台机 `2026.99 success=1`，菜单 1204/93 均已建 |
+| 3 | 分包合同列表状态两态 | 改三态（SUBMITTED 原先误显示「草稿」）；同步一致性基线 | `npm test` 131/1340、`build`、菜单覆盖 missing 0 |
+| 4 | 质安检查详情页引用后端不存在的字段 | 按 `BizInspection` 真实列改写（`inspectionContent`/`createdAt`/`hasProblem`/`problemDescription`/`rectificationDate`；明细 `result→checkResult`） | 同上 |
+| 5 | `api/site.ts` 死代码 `getScheduleDetail` | 删除（指向不存在的 `GET /plan/{id}`，全仓无引用） | 同上 |
+| 6 | 产值上报列表项目下拉 `default-first`（挂载即选中他人项目 → 首屏误导） | 移除，改为不默认选中 | 同上 |
+| 7 | 备用金缺 `projectId` 返回通用 409 | `ReserveFundApplyService.save` 补「所属项目不能为空」前置校验（置于金额校验之后，保持既有用例报错优先级） | 静态；单测用例优先级不变 |
+
+### 变更事件 → CBS：一半有结论
+
+- **归集链已确认修复**：`biz_cost_account_txn` 出现 **39 条 `source_type='ROLLUP'` 流水，时间戳 `2026-10-13 02:30`** —— 即每日归集任务在 §十一 的 `CostRollUpMapper` 修复后**首次成功执行**（此前非种子流水为 0）。这是 `CostRollUpService` 之前整体失败、现已恢复的直接证据。
+- **变更事件→CBS 传导仍未验证**：现场复现时我的评估请求体未被接受（后端报「成本影响不为 0 时必须指定受影响的成本账户」，`affectedAccounts` 走 `JacksonTypeHandler`+`normalizeList`，形状需再确认）。**没有继续猜**，如实记录；batch 5 那批 `CHANGE_EVENT_APPROVED` outbox 行现已 DEAD。
+- **一处自我纠正**：曾以为「30 个账户 `current_amount` 与流水合计不符」，实为**查询口径错误**——流水表无 `amount_type='CURRENT'` 的行，该比对恒为 0。
+
+### 数据卫生
+
+- 本轮 e2e/探针数据已按 id 精确清理（项目/合同/竣工验收/备用金与其实例）；`ACT_RU_TASK` 回落 217 基线；种子 90001-90004 未变；`git status` 干净。
+- 仍登记未收口：**2 个 `OUTPUT_REPORT` 滞留任务**（§十 遗留）；另有 2 条我探针产生的 `PENDING` outbox 行（内部表，会自然转 DEAD）。
+
 
