@@ -1,6 +1,7 @@
 package com.zwinsight.common.event;
 
 import com.zwinsight.common.config.SecurityContextHolder;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 
 /**
@@ -26,11 +27,16 @@ public final class SystemEventPublisher {
 
     /**
      * 以系统任务身份同步发布事件；发布后恢复原系统任务标记（若原本已是系统任务则不还原）。
+     * <p>形参类型必须是 {@link ApplicationEvent} 而非 {@code Object}：{@code ApplicationEventPublisher}
+     * 有 {@code publishEvent(ApplicationEvent)} 与 {@code publishEvent(Object)} 两个重载，
+     * 若此处声明为 {@code Object}，调用会绑定到后者，导致既有单测
+     * （`verify(eventPublisher).publishEvent(any(ApprovalRejectEvent.class))` 绑定的是前者）
+     * 报 "Wanted but not invoked"（2026-10-12 CI 实证）。</p>
      *
      * @param publisher Spring 事件发布器
-     * @param event     待发布的事件
+     * @param event     待发布的事件（须为 ApplicationEvent）
      */
-    public static void publishSystemEvent(ApplicationEventPublisher publisher, Object event) {
+    public static void publishSystemEvent(ApplicationEventPublisher publisher, ApplicationEvent event) {
         boolean previousSystemTask = SecurityContextHolder.isSystemTask();
         try {
             SecurityContextHolder.markSystemTask();
