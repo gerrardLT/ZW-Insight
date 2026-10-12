@@ -31,12 +31,16 @@ const INVOICE_COLUMNS: ColumnSpec[] = [
   { label: '状态', index: 4, field: 'status', type: 'enum', enumMap: INVOICE_APPLY_STATUS },
 ]
 
+/** 付款申请列规格（index 与 finance/payment-apply.vue 的 <el-table-column> 顺序一致，0-based；
+ *  首列为 type="selection" 复选框（index 0），故数据列整体后移 1；
+ *  index 6「支付状态」为 status/payStatus 派生的纯展示列，不参与字段比对） */
 const PAYMENT_COLUMNS: ColumnSpec[] = [
-  { label: '项目名称', index: 0, field: 'projectName', type: 'text' },
-  { label: '收款单位', index: 1, field: 'supplierName', type: 'text' },
-  { label: '付款金额', index: 2, field: 'paymentAmount', expect: amountExpect('paymentAmount') },
-  { label: '付款日期', index: 3, field: 'paymentDate', type: 'date' },
-  { label: '状态', index: 4, field: 'status', type: 'enum', enumMap: PAYMENT_APPLY_STATUS },
+  { label: '项目名称', index: 1, field: 'projectName', type: 'text' },
+  { label: '收款单位', index: 2, field: 'supplierName', type: 'text' },
+  { label: '付款金额', index: 3, field: 'paymentAmount', expect: amountExpect('paymentAmount') },
+  { label: '付款日期', index: 4, field: 'paymentDate', type: 'date' },
+  { label: '状态', index: 5, field: 'status', type: 'enum', enumMap: PAYMENT_APPLY_STATUS },
+  // index 0 = selection，index 6 = 支付状态（派生展示列），index 7 = 操作列（fixed right），均不比对
 ]
 
 /** 封账页枚举基线（finance-lock/index.vue lockTypeLabel + 状态 tag 实证） */

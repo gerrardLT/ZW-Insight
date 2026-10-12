@@ -91,9 +91,9 @@ async function completeAllTodos(businessId: string | number, maxRounds = 6): Pro
 
 test.beforeAll(async () => {
   authed = await authedApiContext()
-  const crA = await apiJson('POST', '/api/v1/project', { projectName: `${PREFIX}_材料项目A`, projectNature: '新建', projectType: '市政工程' })
+  const crA = await apiJson('POST', '/api/v1/project', { projectName: `${PREFIX}_材料项目A`, projectNature: '新建', projectType: '市政工程', ownerCompanyName: 'E2E测试业主', contactName: '自动化专员', contactPhone: '13800000000' })
   expect(crA.body?.code, '创建项目A').toBe(200)
-  const crB = await apiJson('POST', '/api/v1/project', { projectName: `${PREFIX}_材料项目B`, projectNature: '新建', projectType: '市政工程' })
+  const crB = await apiJson('POST', '/api/v1/project', { projectName: `${PREFIX}_材料项目B`, projectNature: '新建', projectType: '市政工程', ownerCompanyName: 'E2E测试业主', contactName: '自动化专员', contactPhone: '13800000000' })
   expect(crB.body?.code, '创建项目B').toBe(200)
   const pg = await apiJson('GET', `/api/v1/project/page?pageNum=1&pageSize=20&projectName=${encodeURIComponent(PREFIX)}`)
   const recs = pg.body?.data?.records || []

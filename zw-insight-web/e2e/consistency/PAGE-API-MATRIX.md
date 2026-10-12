@@ -1,8 +1,9 @@
 # 页面-接口一致性测试矩阵（PAGE-API-MATRIX）
 
-> 前端展示 vs 后端数据 字段级一致性测试的施工图。
-> 来源：`src/router/index.ts`（路由）+ `src/api/*.ts`（接口）+ `deploy/db-init/31_V2026_26__seed_demo_data.sql`（种子数据）。
-> 目标服务器：前端 `http://129.204.3.200:18081`，后端 `http://129.204.3.200:18080`，账号 admin/123456。
+> 前端展示 vs 后端数据 字段级一致性测试的施工图。  
+> 来源：`src/router/index.ts`（路由）+ `src/api/*.ts`（接口）+ `deploy/db-init/31_V2026_26__seed_demo_data.sql`（种子数据）。  
+> 目标服务器：前端 `http://129.204.3.200:18081`，后端 `http://129.204.3.200:18080`，账号 admin/123456。  
+> 最后校正：2026-10-12（补齐经营驾驶舱、CBS、变更事件等 8~10 月新增模块映射）
 
 ## 模板说明
 
@@ -153,11 +154,21 @@ biz_project / biz_construction_contract / biz_boq_item / biz_budget(+detail) / b
 | /basedata/supplier-evaluation | basedata/supplier-evaluation.vue | GET /v1/basedata/supplier-evaluation | A | biz_supplier_evaluation | ✅ |
 | /basedata/supplier-blacklist | basedata/supplier-blacklist.vue | GET /v1/basedata/supplier-blacklist | A | biz_supplier_blacklist | ✅ |
 
-### dashboard 看板（2 页）
+### dashboard 看板（3 页）
 | 路由 | view | 主接口 | 模板 | 种子表 | 数据 |
 |---|---|---|---|---|---|
 | /dashboard | dashboard/index.vue | GET /v1/dashboard/company-overview 等 | D | 聚合 | ✅ |
 | /project-dashboard | dashboard/project-dashboard.vue | GET /v1/dashboard/budget-execution 等 | D | 聚合 | ✅ |
+| /project-cost-control | dashboard/project-cost-control.vue | GET /v1/dashboard/project/{id}/cost-control | D | biz_cost_account | ✅ |
+
+### cockpit 经营驾驶舱（5 页，2026-09 上线）
+| 路由 | view | 主接口 | 模板 | 种子表 | 数据 |
+|---|---|---|---|---|---|
+| /cockpit/overview | cockpit/index.vue | GET /v1/dashboard/cockpit/overview | D | 综合快照 | ✅ |
+| /cockpit/fund-center | cockpit/fund-center.vue | GET /v1/finance/fund-plan/rolling/page | D | 滚动预测 | ✅ |
+| /cockpit/risk-center | cockpit/risk-center.vue | GET /v1/dashboard/cockpit/risk/page | A/D | biz_risk_register | ✅ |
+| /cockpit/project-operation | cockpit/project-operation.vue | GET /v1/dashboard/cockpit/project-health | D | 项目健康度 | ✅ |
+| /cockpit/cost-center | cockpit/cost-center.vue | GET /v1/dashboard/project/{id}/cost-control | D | biz_cost_account | ✅ |
 
 ---
 

@@ -179,7 +179,14 @@ async function getBoqFlatItems(cid: string) {
 
 test.beforeAll(async () => {
   authed = await authedApiContext()
-  const cr = await apiJson('POST', '/api/v1/project', { projectName, projectNature: '新建', projectType: '市政工程' })
+  const cr = await apiJson('POST', '/api/v1/project', {
+    projectName,
+    projectNature: '新建',
+    projectType: '市政工程',
+    ownerCompanyName: 'E2E测试业主',
+    contactName: '自动化专员',
+    contactPhone: '13800000000',
+  })
   expect(cr.body?.code, '创建承载项目').toBe(200)
   const pg = await apiJson('GET', `/api/v1/project/page?pageNum=1&pageSize=5&projectName=${encodeURIComponent(projectName)}`)
   projectId = String(pg.body?.data?.records?.[0]?.id || '')

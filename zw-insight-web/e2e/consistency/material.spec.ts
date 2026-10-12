@@ -14,13 +14,16 @@ import {
 } from './consistency-helper'
 import { DOC_APPROVE_STATUS } from './enum-baseline'
 
+/** 列规格（index 与 material/inbound.vue 的 <el-table-column> 顺序一致，0-based；
+ *  首列为 type="selection" 复选框（index 0），故数据列整体后移 1） */
 const LIST_COLUMNS: ColumnSpec[] = [
-  { label: '入库单号', index: 0, field: 'inboundCode', type: 'text' },
-  { label: '入库日期', index: 1, field: 'inboundDate', type: 'date' },
-  { label: '入库总金额', index: 2, field: 'totalAmount', type: 'numeric' },
+  { label: '入库单号', index: 1, field: 'inboundCode', type: 'text' },
+  { label: '入库日期', index: 2, field: 'inboundDate', type: 'date' },
+  { label: '入库总金额', index: 3, field: 'totalAmount', type: 'numeric' },
   // 直接出库：1→是 0→否（数字标志映射，独立声明）
-  { label: '直接出库', index: 3, field: 'directOutbound', expect: (r) => (r.directOutbound === 1 || r.directOutbound === '1' ? '是' : '否') },
-  { label: '状态', index: 4, field: 'status', type: 'enum', enumMap: DOC_APPROVE_STATUS },
+  { label: '直接出库', index: 4, field: 'directOutbound', expect: (r) => (r.directOutbound === 1 || r.directOutbound === '1' ? '是' : '否') },
+  { label: '状态', index: 5, field: 'status', type: 'enum', enumMap: DOC_APPROVE_STATUS },
+  // index 0 = selection 复选框，index 6 = 操作列（fixed right），均不比对
 ]
 
 const results: PageConsistencyResult[] = []

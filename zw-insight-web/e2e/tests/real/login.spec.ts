@@ -1,12 +1,18 @@
 /**
  * 真实模式 E2E 测试：登录流程验证
  *
- * 验证真实服务器上的完整登录流程：
- * 1. 导航到登录页
- * 2. 填写用户名和密码
- * 3. 获取并填写验证码
- * 4. 提交登录表单
- * 5. 验证跳转到首页（dashboard）
+ * 验证真实服务器上的登录页与登录前置约束：
+ * 1. 登录页渲染（密码登录 / 短信登录双 Tab）
+ * 2. TAC 滑块安全验证资源与挑战接口可用
+ * 3. 未完成安全验证时拒绝登录（滑块为强制前置）
+ * 4. 未认证访问受保护页重定向到 /login
+ *
+ * ⚠️ 2026-10-12 校正：登录页已从「图形验证码」改为 **天安 TAC 滑块 + 短信登录双 Tab**
+ * （`views/login/SliderCaptcha.vue`），旧的 `.captcha-img` / `img[alt*="验证码"]` /
+ * `/v1/captcha/image` 断言已失效，本文件按新实现重写。
+ *
+ * 正向「完整登录」不在此文件重复实现——`e2e/fixtures/auth-real.setup.ts` 已通过
+ * 真实 TAC 滑块（挑战目标经 SSH 从 Redis 读取）完成一次完整 UI 登录并落 storageState。
  *
  * 依赖 auth-real.setup.ts 提供的 storageState（已登录状态）。
  * 本文件中的 "未认证登录流程" 测试使用独立上下文（不带 storageState）。
@@ -14,8 +20,6 @@
  * 需求: 6.1, 6.2
  */
 import { test, expect } from '@playwright/test'
-
-const API_BASE = process.env.E2E_API_BASE || 'http://129.204.3.200:18080'
 
 test.describe('真实登录流程验证', () => {
   test('已认证状态 — 访问首页不被重定向到登录页', async ({ page }) => {
@@ -30,18 +34,15 @@ test.describe('真实登录流程验证', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
     // dashboard 页面应包含主布局容器
-    await expect(
-      page.locator('.el-container, .layout-container, .app-wrapper').first()
-    ).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('.layout-container').first()).toBeVisible({ timeout: 20_000 })
   })
 
   test('已认证状态 — 侧边栏菜单可见', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
     // 验证侧边栏菜单渲染
-    await expect(
-      page.locator('.el-menu, .sidebar-container, nav').first()
-    ).toBeVisible({ timeout: 15_000 })
+    // 侧边导航：业务域轨道（DefaultLayout 的 nav.domain-rail）
+    await expect(page.locator('nav.domain-rail').first()).toBeVisible({ timeout: 15_000 })
   })
 })
 
@@ -52,110 +53,73 @@ test.describe('未认证登录流程', () => {
   // 使用空 storageState 模拟未登录用户
   test.use({ storageState: { cookies: [], origins: [] } })
 
-  test('登录页面正常渲染', async ({ page }) => {
+  test('登录页面正常渲染（双 Tab + TAC 安全验证）', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 
-    // 验证登录表单元素存在（容器类名与 src/views/login/index.vue 保持一致）
-    await expect(page.locator('.login-box, .login-page').first()).toBeVisible({ timeout: 15_000 })
+    // 容器与表单元素（类名与 src/views/login/index.vue 保持一致）
+    await expect(page.locator('.login-box').first()).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('input[placeholder*="用户名"]')).toBeVisible()
     await expect(page.locator('input[placeholder*="密码"]')).toBeVisible()
-    await expect(page.locator('input[placeholder*="验证码"]')).toBeVisible()
-    await expect(page.locator('.captcha-img, img[alt*="验证码"]').first()).toBeVisible()
+
+    // 登录方式双 Tab：密码登录 / 短信登录
+    await expect(page.locator('.login-tabs')).toBeVisible()
+    await expect(page.locator('.login-tab')).toHaveCount(2)
+
+    // 安全验证已由「图形验证码」改为 TAC 滑块（views/login/SliderCaptcha.vue）
+    await expect(page.locator('.captcha-trigger')).toBeVisible()
+    await expect(page.locator('.captcha-trigger')).toHaveText('点击完成安全验证')
   })
 
-  test('验证码图片可加载', async ({ page }) => {
+  test('TAC 安全验证资源与挑战接口可用', async ({ page, request }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 
-    // 验证码图片应为 base64 或有效 src
-    const captchaImg = page.locator('.captcha-img, img[alt*="验证码"]').first()
-    await expect(captchaImg).toBeVisible({ timeout: 10_000 })
-    const src = await captchaImg.getAttribute('src')
-    expect(src).toBeTruthy()
-    // base64 图片以 data:image 开头
-    expect(src!.startsWith('data:image') || src!.startsWith('http')).toBeTruthy()
+    // TAC SDK 静态资源（SliderCaptcha 打开时动态注入 /tac/load.min.js）
+    const sdk = await request.get('/tac/load.min.js')
+    expect(sdk.ok()).toBeTruthy()
+
+    // 滑块挑战生成接口真实可用，返回 SLIDER 挑战
+    const challenge = await request.get('/api/v1/captcha/slider')
+    expect(challenge.ok()).toBeTruthy()
+    const body = await challenge.json()
+    expect(body?.code).toBe(200)
+    expect(body?.data?.id).toBeTruthy()
+    expect(body?.data?.type).toBe('SLIDER')
+
+    // 触发控件就绪且可点击（不实际完成校验，避免消费挑战）
+    await expect(page.locator('.captcha-trigger')).toBeEnabled()
   })
 
   test('空表单提交 — 显示验证错误', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 
-    // 点击登录按钮（不填写任何内容）
-    await page.click('button:has-text("登")')
+    // 密码登录表单的「进入系统」按钮（页面两个 Tab 各有一个同名按钮，取首个可见的）
+    await page.locator('.login-btn').first().click()
     // 应出现表单验证错误提示
     await expect(page.locator('.el-form-item__error').first()).toBeVisible({ timeout: 5_000 })
   })
 
-  test('完整登录流程 — 获取验证码并登录成功', async ({ page }) => {
+  test('未完成安全验证时拒绝登录（滑块为强制前置）', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 
-    // 1. 填写用户名和密码
+    // 记录是否发出过登录请求（用于断言「前端已拦截」而非「后端拒绝」）
+    let loginRequested = false
+    page.on('request', (req) => {
+      if (req.url().includes('/v1/auth/login')) loginRequested = true
+    })
+
+    // 填写正确的账号密码，但不完成 TAC 滑块验证
     await page.fill('input[placeholder*="用户名"]', 'admin')
     await page.fill('input[placeholder*="密码"]', '123456')
+    await page.locator('.login-btn').first().click()
 
-    // 2. 等待验证码图片加载（获取 captchaUuid）
-    // 拦截验证码图片请求获取 UUID
-    const captchaResponse = await page.waitForResponse(
-      (resp) => resp.url().includes('/v1/captcha/image') && resp.status() === 200,
-      { timeout: 10_000 }
-    ).catch(() => null)
-
-    if (!captchaResponse) {
-      // 如果已经加载完毕，点击刷新验证码
-      await page.click('.captcha-img, img[alt*="验证码"]')
-    }
-
-    // 3. 通过测试接口获取验证码明文
-    // 先从页面网络请求中获取 captchaUuid
-    // 监听下一次验证码请求
-    const [newCaptchaResp] = await Promise.all([
-      page.waitForResponse(
-        (resp) => resp.url().includes('/v1/captcha/image') && resp.status() === 200,
-        { timeout: 10_000 }
-      ),
-      page.click('.captcha-img, img[alt*="验证码"]'),
-    ]).catch(() => [null])
-
-    if (newCaptchaResp) {
-      const captchaData = await newCaptchaResp.json().catch(() => null)
-      const uuid = captchaData?.data?.uuid
-
-      if (uuid) {
-        // 调用测试专用接口获取验证码明文
-        const codeResp = await page.request.get(
-          `${API_BASE}/api/v1/test/captcha-code/${uuid}`
-        ).catch(() => null)
-
-        if (codeResp && codeResp.ok()) {
-          const codeData = await codeResp.json()
-          const captchaCode = codeData?.data
-
-          if (captchaCode) {
-            // 4. 填写验证码
-            await page.fill('input[placeholder*="验证码"]', captchaCode)
-
-            // 5. 提交登录
-            await page.click('button:has-text("登")')
-
-            // 6. 验证登录成功 — 应跳转离开 /login
-            await page.waitForURL((url) => !url.pathname.includes('/login'), {
-              timeout: 15_000,
-            })
-            expect(page.url()).not.toContain('/login')
-          } else {
-            test.skip(true, '验证码明文接口返回空值，跳过完整登录测试')
-          }
-        } else {
-          test.skip(true, '/api/v1/test/captcha-code 接口不可用，跳过完整登录测试')
-        }
-      } else {
-        test.skip(true, '无法获取 captchaUuid，跳过完整登录测试')
-      }
-    } else {
-      test.skip(true, '验证码图片请求失败，跳过完整登录测试')
-    }
+    // 应提示「请先拖动滑块完成验证」，停留在登录页，且**不发登录请求**
+    await expect(page.locator('.el-message')).toContainText('请先拖动滑块完成验证', { timeout: 5_000 })
+    expect(page.url()).toContain('/login')
+    expect(loginRequested).toBe(false)
   })
 
   test('未认证访问受保护页面 — 重定向到登录页', async ({ page }) => {

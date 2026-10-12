@@ -45,14 +45,15 @@ const VEHICLE_COLUMNS: ColumnSpec[] = [
   { label: '状态', index: 7, field: 'vehicleStatus', expect: (r) => (r.vehicleStatus === 'IN_USE' ? '使用中' : '闲置') },
 ]
 
+// 2026-10-10 对齐页面实际结构：本页对接 /v1/hr/office-supply 办公用品主数据 CRUD，
+// 列序为 物品名称/分类/规格/单位/库存数量/状态（views/hr/office-supply.vue）
 const OFFICE_SUPPLY_COLUMNS: ColumnSpec[] = [
-  { label: '申请单号', index: 0, field: 'applyNo', type: 'text' },
-  { label: '物品名称', index: 1, field: 'itemName', type: 'text' },
+  { label: '物品名称', index: 0, field: 'supplyName', type: 'text' },
+  { label: '分类', index: 1, field: 'categoryName', type: 'text' },
   { label: '规格', index: 2, field: 'specification', type: 'text' },
-  { label: '数量', index: 3, field: 'quantity', type: 'numeric' },
-  { label: '申请人', index: 4, field: 'applicant', type: 'text' },
-  { label: '申请日期', index: 5, field: 'applyDate', type: 'date' },
-  { label: '状态', index: 6, field: 'status', expect: (r) => (r.status === 'APPROVED' ? '已领用' : r.status === 'PENDING' ? '审批中' : '草稿') },
+  { label: '单位', index: 3, field: 'unit', type: 'text' },
+  { label: '库存数量', index: 4, field: 'stockQuantity', type: 'numeric' },
+  { label: '状态', index: 5, field: 'status', expect: (r) => (r.status === 0 ? '停用' : '启用') },
 ]
 
 const results: PageConsistencyResult[] = []

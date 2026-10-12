@@ -54,7 +54,14 @@ async function apiJson(method: 'GET' | 'POST' | 'DELETE', path: string, data?: a
 
 /** API 自置项目并按名称差集定位 id（创建响应 R<Void> 无 id，探测实证） */
 async function createProject(name: string): Promise<string> {
-  const cr = await apiJson('POST', '/api/v1/project', { projectName: name, projectNature: '新建', projectType: '市政工程' })
+  const cr = await apiJson('POST', '/api/v1/project', {
+    projectName: name,
+    projectNature: '新建',
+    projectType: '市政工程',
+    ownerCompanyName: 'E2E测试业主',
+    contactName: '自动化专员',
+    contactPhone: '13800000000',
+  })
   expect(cr.body?.code, `创建项目 ${name}`).toBe(200)
   const pg = await apiJson('GET', `/api/v1/project/page?pageNum=1&pageSize=5&projectName=${encodeURIComponent(name)}`)
   const id = String(pg.body?.data?.records?.[0]?.id || '')

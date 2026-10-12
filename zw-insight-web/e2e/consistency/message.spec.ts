@@ -27,7 +27,8 @@ test.describe.serial('message 一致性', () => {
     const columns: ColumnSpec[] = [
       { label: '标题', index: 0, field: 'title' },
       { label: '发布状态', index: 1, expect: (r) => ANNOUNCE_STATUS[r.status] || r.status },
-      { label: '创建时间', index: 2, field: 'createTime', type: 'datetime' },
+      // 创建时间：页面列 prop=createdAt（views/message/announcement/index.vue:32），实体 BaseEntity.createdAt
+      { label: '创建时间', index: 2, field: 'createdAt', type: 'datetime' },
       { label: '发布时间', index: 3, field: 'publishTime', type: 'datetime' },
     ]
     await runListConsistency(page, {

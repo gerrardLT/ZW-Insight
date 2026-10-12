@@ -5,10 +5,10 @@
     "featureTable": "docs/工程项目管理系统功能表.md",
     "controllers": 126,
     "services": 150,
-    "l1TestClasses": 225,
-    "l3ShellScripts": 8,
-    "l4Phases": 19,
-    "l5Specs": 56
+    "l1TestClasses": 389,
+    "l3ShellScripts": 29,
+    "l4Phases": 26,
+    "l5Specs": 64
   },
   "status": { "OK": "covered", "PARTIAL": "partial coverage", "GAP": "missing", "EXEMPT": "exempted with reason" },
   "l1Gaps": {

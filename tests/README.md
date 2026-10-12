@@ -1,9 +1,11 @@
 # ZW-Insight 测试体系
 
+> 最后校正：2026-10-12（对照代码实证）
+
 ## 架构概览�? 层测试金字塔
 
 ```
-┌─────────────────────────────────────────�?�? L5  前端 E2E (Playwright 双模�?       �? �?最�? 覆盖用户操作场景
+┌─────────────────────────────────────────�?�? L5  前端 E2E (Playwright 全真实模式)       �? �?最�? 覆盖用户操作场景
 ├─────────────────────────────────────────�?�? L4  端到端业务流 (lifecycle-sim-v2.sh) �? �?跨模块全链路验证
 ├─────────────────────────────────────────�?�? L3  API 接口测试 (Shell 脚本)          �? �?验证 REST 契约
 ├─────────────────────────────────────────�?�? L2  集成测试 (@SpringBootTest)         �? �?直连服务器数据库
@@ -12,11 +14,11 @@
 
 | 层级 | 框架 | 目标 | 预期耗时 |
 |------|------|------|---------|
-| L1 | JUnit 5 + Mockito + AssertJ + jqwik | 22 模块 Service 层逻辑；实际生效门槛=coverage-baseline.json 基线只升不降（CI 逐模块比对），pom jacoco check 0.80 为目标门槛（绑定 verify，CI 当前跑 package 未启用） | < 60s |
+| L1 | JUnit 5 + Mockito + AssertJ + jqwik | 22 模块 Service 层逻辑；门禁 = pom jacoco 分档 check（绑定 verify）；push 默认带 -Djacoco.skip=true 不触发，仅 workflow_dispatch run_tests=true 全量时生效；覆盖率基线比对门禁已于 2026-09-16 移除，基线 JSON 留仓供本地自查 | < 60s |
 | L2 | @SpringBootTest + Testcontainers（MySQL 8 + Redis），备选直连服务器 | CRUD 往返、审批流、Flowable 流程 | 3-5min |
 | L3 | Shell 脚本 + verify-base.sh | 每模�?REST 端点 CRUD + 审批 + 分页 | 2-3min |
-| L4 | lifecycle-sim-v2.sh | 19 阶段业务生命周期（立项→投标→合同→预算→收支→竣工→关闭） | 5-8min |
-| L5 | Playwright 1.61 (真实模式/Mock 模式) | 前端登录、项目操作、审批流 UI | 3-5min |
+| L4 | lifecycle-sim-v2.sh | 26 阶段业务生命周期（立项→投标→合同→预算→收支→竣工→关闭） | 5-8min |
+| L5 | Playwright 1.61 全真实模式（e2e-real / consistency-real / visual-real）；Mock 模式已于 2026-08-11 删除 | 前端登录、项目操作、审批流 UI | 3-5min |
 
 ---
 
@@ -57,7 +59,7 @@ bash keys/test-api-machine.sh
 bash keys/test-api-labor.sh
 bash keys/test-api-subcontract.sh
 
-# 所�?L3 脚本
+# 全部 29 个 L3 脚本（下方为常用子集；完整列表见 keys/test-api-*.sh）
 for script in keys/test-api-*.sh; do bash "$script"; done
 ```
 
@@ -150,7 +152,7 @@ class YourServiceTest {
 2. 确认后端容器 `zwi-backend` 运行�?3. 检�?Redis 验证码是否可读取（`docker exec zwi-redis redis-cli keys "captcha:*"`�?
 ### Q: JaCoCo 覆盖率不达标导致构建失败
 
-1. 查看 `target/site/jacoco/index.html` 了解哪些方法未覆盖 2. 重点补充复杂分支逻辑的测试 3. 当前实际生效门槛=coverage-baseline.json 基线只升不降（CI 比对）；pom jacoco check 0.80 为目标门槛，绑定 verify 阶段但 CI 跑 package 不触发（见 `.kiro/specs/test-maturity-upgrade/tasks.md` 3.3 校准说明） 4. CI 的 JaCoCo 报告会上传为 artifact，可直接下载查看
+1. 查看 `target/site/jacoco/index.html` 了解哪些方法未覆盖 2. 重点补充复杂分支逻辑的测试 3. 门禁 = pom jacoco 分档 check（绑定 verify）；push 默认带 -Djacoco.skip=true 不触发，仅 workflow_dispatch run_tests=true 全量时生效；覆盖率基线比对门禁已于 2026-09-16 移除，基线 JSON 留仓供本地自查 4. CI 的 JaCoCo 报告会上传为 artifact，可直接下载查看
 5. **Windows 中文路径注意**：本机采集覆盖率需�?`-Djacoco.destFile=<ASCII路径>`（中文路径导�?agent 无法�?exec 文件�?
 ### Q: 测试数据残留怎么清理
 
@@ -217,8 +219,8 @@ CI 构建完成后，JaCoCo HTML 报告会上传为 GitHub Actions artifact�?1
 ### 覆盖率门�?
 | 阶段 | 行覆盖率要求 | 强制方式 |
 |------|------------|---------|
-| 当前（2026-08-13 实测校准） | 各模块实际行覆盖率 14.9%~85% | coverage-baseline.json 只升不降守护（CI 逐模块比对）；pom jacoco check 0.80 绑定 verify 阶段、CI 当前未启用 |
-| 阶段三目标 | 核心模块 ≥80% | 达标后将 CI backend job 由 package 切换至 verify，正式启用 pom check |
+| 当前（2026-08-13 实测校准） | 各模块实际行覆盖率 41.7‰~88.4‰ | 门禁 = pom jacoco 分档 check（绑定 verify）；push 默认带 -Djacoco.skip=true 不触发，仅 workflow_dispatch run_tests=true 全量时生效；覆盖率基线比对门禁已于 2026-09-16 移除，基线 JSON 留仓供本地自查 |
+| 阶段三目标 | 核心模块 ≥80% | 达标后将 CI backend job 由 package 切换至 verify，正式启用 pom check（已于 2026-08-24 完成切换；2026-10-07 起 push 默认 skip jacoco） |
 
 各模块实测基线见 `tests/TESTING-MATURITY.md` 附录 A；测试受阻处理规则见 AGENTS.md�?
 ---
@@ -264,4 +266,4 @@ bash run-k6.sh
 - **Status**: Script and Docker image are ready on server, cron job disabled until manual execution needed
 
 ### Captcha Bridge
-Captcha bridge script (keys/captcha-bridge.py) ensures real captcha validation during testing.
+Captcha bridge script (tests/performance/captcha-bridge.py) ensures real captcha validation during testing.

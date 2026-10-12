@@ -10,19 +10,25 @@ target/
 *.war
 *.ear
 
+# JVM 崩溃与性能日志
+hs_err_pid*.log
+replay_pid*.log
+
 # ========================
-# IDE
+# IDE & Editors
 # ========================
 .idea/
 *.iws
 *.iml
 *.ipr
 .vscode/
+!.vscode/extensions.json
 .settings/
 .project
 .classpath
 *.swp
 *.swo
+*~
 
 # ========================
 # Node.js / Frontend
@@ -37,14 +43,20 @@ dist/
 unpackage/
 .hbuilderx/
 
-# Vite
+# Vite / Vitest / TypeScript 缓存
 *.local
+.vite/
+.vitest/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
 
-# Auto-generated
+# Auto-generated (unplugin)
 src/auto-imports.d.ts
 src/components.d.ts
 **/src/auto-imports.d.ts
 **/src/components.d.ts
+zw-insight-web/src/components.d.ts
 
 # ========================
 # OS
@@ -62,6 +74,9 @@ ehthumbs.db
 !.env.example
 *.env.local
 
+# 本地开发环境配置（生产凭证经 CI Secret/环境变量注入，配置文件不入库）
+zw-insight-server/zw-app/src/main/resources/application-prod.yml
+
 # ========================
 # Logs
 # ========================
@@ -76,14 +91,27 @@ pnpm-debug.log*
 # Docker Data Volumes
 # ========================
 data/
-# 鍔熻兘娣卞害璐︽湰鏁版嵁闇€鍏ュ簱锛堝惈浜哄伐澶嶆牳鍒ゆ柇锛?
+# 功能深度账本数据需入库（含人工复核判断）
 !tools/feature-ledger/data/
 
 # ========================
-# Build Output
+# Build Output & Archives
 # ========================
 build/
 out/
+*.tar
+*.gz
+*.zip
+*.7z
+*.bak
+*.tmp
+*.temp
+*.pid
+*.seed
+
+# 部署用的大体积可启动 jar（本地构建产物，不入库）
+deploy/zw-insight-app.jar
+_frontend-dist-tmp/
 
 # ========================
 # Test & Coverage
@@ -91,6 +119,14 @@ out/
 coverage/
 *.lcov
 .nyc_output/
+test-results/
+tests/reports/
+playwright-report/
+blob-report/
+
+# jqwik 属性测试运行缓存
+.jqwik-database
+**/.jqwik-database
 
 # ========================
 # Kiro
@@ -98,84 +134,51 @@ coverage/
 .kiro/specs/**/.meta.json
 
 # ========================
-# Misc
+# SSH 私钥 / 凭证 / 敏感信息（严禁提交）
 # ========================
-*.bak
-*.tmp
-*.temp
-*.pid
-*.seed
-
-# jqwik 灞炴€ф祴璇曡繍琛岀紦瀛?
-.jqwik-database
-**/.jqwik-database
-
-# SSH 绉侀挜 / 鍑瘉锛堜弗绂佹彁浜わ級
 keys/*.pem
 keys/*.key
 *.pem
-
-# 娴嬭瘯缁撴灉锛堟湰鍦扮敓鎴愶紝涓嶅叆搴擄級
-test-results/
-tests/reports/
-
-# 閮ㄧ讲鐢ㄧ殑澶т綋绉彲鍚姩 jar锛堟湰鍦版瀯寤轰骇鐗╋紝涓嶅叆搴擄級
-deploy/zw-insight-app.jar
+*.key
+**/.tk.txt
+# 生图 API 凭证与脚本（含密钥，2026-09-16）
+keys/image-api.md
+keys/gen-image.mjs
+# 员工信息收集模板（含个人信息，严禁入库）
+安徽徽颍建设员工信息收集模板.xlsx
 
 # ========================
-# API 娴嬭瘯濂椾欢鏈湴浜х墿锛堟簮鐮佸叆搴擄紝杩愯鎬佷骇鐗╀笉鍏ュ簱锛?
+# E2E 测试登录凭证 / 本地产物（运行态产物不入库）
 # ========================
+zw-insight-web/e2e/.auth/
 zw-insight-web/e2e/api-tests/node_modules/
 zw-insight-web/e2e/api-tests/.auth/
 zw-insight-web/e2e/api-tests/_*.mjs
 zw-insight-web/e2e/api-tests/_*.json
 zw-insight-web/_*.cjs
+zw-insight-web/_*.mjs
 zw-insight-web/_*.json
 zw-insight-web/_ciart/
 zw-insight-web/_ciart2/
-# OCR 璁粌浜岃繘鍒讹紙浣撶Н澶э紝涓嶅叆搴擄紱鏈湴/CI 鑷鎻愪緵锛?
+# OCR 训练二进制（体积大，不入库；本地/CI 自行提供）
 **/eng.traineddata
 
 # ========================
-# 鏈満璇婃柇鑴氭湰 / 涓存椂宸ュ叿锛堜笉鍏ュ簱锛?
+# 本机诊断脚本 / 临时工具 / 截图（AGENTS.md §9 命名约定）
 # ========================
 keys/_*
-# 全局：`_` 前缀临时文件（验证截图/诊断输出，AGENTS.md 命名约定）不得入库
-**/_*.png
-**/_*.jpg
-# 生图 API 凭证与脚本（含密钥，2026-09-16）
-keys/image-api.md
-keys/gen-image.mjs
-# loading 图候选物料库（临时产物，选定后清理）
-_loading_candidates/*
 keys/coldig.*
 tools/login-helper.js
-
-# ========================
-# 鏈湴宸ュ叿缂撳瓨锛堜笉鍏ュ簱锛屽彲闅忔椂閲嶅缓锛?
-# ========================
-.qoder/
-# mimosa hook 鐘舵€佺紦瀛橈紙瀹炴祴 15MB / 1790 鏂囦欢锛屾湰鍦板伐鍏风敓鎴愶紝鍙噸寤猴級
-.mimosa/
-
-# unplugin-vue-components 鑷姩鐢熸垚锛堜笉鍏ュ簱锛屾瀯寤烘椂鐢熸垚锛?
-zw-insight-web/src/components.d.ts
-
-# ========================
-# E2E 娴嬭瘯鐧诲綍鍑瘉 / token锛堜弗绂佹彁浜わ級
-# ========================
-zw-insight-web/e2e/.auth/
-zw-insight-web/.tk.txt
-logo-candidates/
-
-# ========================
-# 临时产物与环境杂项（2026-10-07 治理：仓库根不再堆积未跟踪文件）
-# ========================
-# 根目录 `_` 前缀 SQL/诊断输出（AGENTS.md §9 命名约定的 SQL/OUT 变体）
+**/_*.png
+**/_*.jpg
+**/_*.jpeg
+**/_*.webp
 _*.sql
 _*.out
 _*.log
 zw-insight-server/_*.out
+_loading_candidates/*
+logo-candidates/
 
 # 一次性一致性审计产物（audit-report-<ts>.* 每次运行生成；门B等专项报告仍入库）
 audit-reports/audit-report-*.json
@@ -185,15 +188,19 @@ audit-reports/audit-round7-*
 audit-reports/server2-*
 audit-reports/_*
 
-# 本地开发环境配置（生产凭证经 CI Secret/环境变量注入，配置文件不入库）
-zw-insight-server/zw-app/src/main/resources/application-prod.yml
-
-# pnpm 实验残留（本项目锁文件以 npm package-lock.json 为准）
-zw-insight-web/pnpm-lock.yaml
-zw-insight-web/pnpm-workspace.yaml
-
-# 员工信息收集模板（含个人信息，严禁入库）
-安徽徽颍建设员工信息收集模板.xlsx
-
+# ========================
+# 本地工具缓存与 AI 评审产物（不入库，可随时重建）
+# ========================
+.qoder/
+.zcode/
+.agents/
+# mimosa hook 状态缓存（实测 15MB / 1790 文件，本地工具生成，可重建）
+.mimosa/
 # AI 评审缓存（impeccable 工具本地产物）
 .impeccable/
+
+# ========================
+# 包管理器残留
+# ========================
+zw-insight-web/pnpm-lock.yaml
+zw-insight-web/pnpm-workspace.yaml

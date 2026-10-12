@@ -1,5 +1,7 @@
 # ZW-Insight 测试体系深度解析报告
 
+> 最后校正：2026-10-12（对照代码实证）
+
 **执行摘要**: 本项目已建立五层测试金字塔架构 (L1-L5),覆盖从单元测试到前端 E2E 的完整质量保障体系。核心业务模块 (material/budget/purchase/labor/finance/contract) 覆盖率已达 70%+,但仍有部分模块需提升至 80% CI 门禁门槛。L3/L4 API 契约验证与全生命周期测试采用真实服务器调用，符合项目\"真实接口真实流程\"的核心原则。
 
 ## 一、测试体系架构
@@ -8,13 +10,13 @@
 
 L5: Frontend E2E (Playwright) - 真实模式/一致性模式（Mock 模式已于 2026-08-11 归档删除：假数据违反真实接口原则）
   ↓
-L4: Full Lifecycle Simulation (lifecycle-sim-v2.sh, 1266 行) - 19 阶段业务闭环
+L4: Full Lifecycle Simulation (lifecycle-sim-v2.sh, 1687 行) - 26 阶段业务闭环
   ↓
-L3: API Contract Testing (8 个 Shell 脚本) - RESTful CRUD + jq 断言
+L3: API Contract Testing (29 个 Shell 脚本) - RESTful CRUD + jq 断言
   ↓
 L2: Integration Testing (@SpringBootTest + Testcontainers) - MySQL+Redis 容器化
   ↓
-L1: Unit Testing (JUnit5+Mockito+AssertJ+jqwik) - 158 个测试用例
+L1: Unit Testing (JUnit5+Mockito+AssertJ+jqwik) - 389 个测试类（用例总数未精确统计）
 
 ### 1.2 关键设计原则
 
@@ -25,7 +27,7 @@ L1: Unit Testing (JUnit5+Mockito+AssertJ+jqwik) - 158 个测试用例
 
 ## 二、覆盖率现状分析
 
-### 2.1 当前矩阵 (截至 2026-08-05)
+### 2.1 当前矩阵 (截至 2026-08-05)  【注意：历史快照，已被当前基线取代】
 
  zw-material: 72.0% (? Phase1 Done)
  zw-budget: 71.8% (? Phase1 Done)
@@ -41,15 +43,17 @@ L1: Unit Testing (JUnit5+Mockito+AssertJ+jqwik) - 158 个测试用例
 
 **统计**: Phase1 完成模块 (≥60%):8个，平均 68.0%; Critical 模块 (<30%):5个，平均 17.6%
 
+> 【注意】上表为 2026-08-05 历史快照（已过时，保留供对照）。当前后端 22 模块行覆盖率基线区间为 **417‰~884‰**（zw-system 417‰ ~ zw-archive 884‰），权威值见 `tests/coverage-baseline.json` 与 `tests/TESTING-MATURITY.md` 附录 A。
+
 ### 2.2 CI 门禁要求
 
-- Maven verify 阶段：≥80% 行覆盖率
-- PR Commit: 对比 coverage-baseline.json，不得回落
-- 新模块：必须达到 80% 才允许合并
+- 门禁 = pom jacoco 分档 check（`jacoco.min.coverage`，按基线分档）绑定 verify 阶段
+- 覆盖率基线比对门禁已移除（2026-09-16）；基线 JSON 留仓供本地自查
+- push 默认带 `-Djacoco.skip=true` 不触发 jacoco，仅 workflow_dispatch `run_tests=true` 全量时生效
 
 ## 三、测试脚本工具集详解
 
-### 3.1 verify-base.sh (191 行)
+### 3.1 verify-base.sh (207 行)
 
 核心功能：
 1. 登录认证：从 Redis 读取真实验证码 (禁止 Mock)
@@ -57,7 +61,7 @@ L1: Unit Testing (JUnit5+Mockito+AssertJ+jqwik) - 158 个测试用例
 3. 敏感脱敏:accessToken/password掩码处理
 4. 日志审计:检查 404/Exception堆栈
 
-### 3.2 lifecycle-sim-v2.sh (1266 行)
+### 3.2 lifecycle-sim-v2.sh (1687 行)
 
 关键特性:
 1. strict_assert() 双重断言 (HTTP 2xx + code=200)
@@ -65,7 +69,7 @@ L1: Unit Testing (JUnit5+Mockito+AssertJ+jqwik) - 158 个测试用例
 3. trap EXIT 自动清理机制
 4. SQL 兜底清理 (DELETE WHERE tenant_id=9999)
 
-### 3.3 API 契约测试 (8 个脚本)
+### 3.3 API 契约测试 (共 29 个，代表性子集如下)
 
 | 脚本 | 行数 | 测试重点 |
 |------|------|---------|
@@ -78,7 +82,7 @@ L1: Unit Testing (JUnit5+Mockito+AssertJ+jqwik) - 158 个测试用例
 | test-api-project.sh | 368 | CRUD + 成员管理 |
 | test-api-contract.sh | 329 | 变更签证 + 清单 |
 
-### 3.4 统一编排脚本 (run-all-tests.sh, 718 行)
+### 3.4 统一编排脚本 (run-all-tests.sh, 724 行)
 
 命令行参数：--layers=L1,L2,L3,L4,L5 / --fail-fast / --help  
 执行流程：for layer in  → case 分发 → 汇总报告
@@ -122,5 +126,5 @@ ZW-Insight 测试体系已达到中型敏捷团队良好实践水平 (~70/100),优势在于五层架构完整
 ---
 
 **参考文档**: tests/README.md | tests/TESTING-MATURITY.md | AGENTS.md  
-**数据来源**: tests/coverage-baseline.json (2026-08-05)  
+**数据来源**: tests/coverage-baseline.json (2026-10-12)  
 **文档版本**: v2.0

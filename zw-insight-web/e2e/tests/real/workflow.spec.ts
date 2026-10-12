@@ -176,13 +176,14 @@ test.describe('审批流 — 提交审批', () => {
     const contractId = createdContractIds[0]
 
     // 通过 API 直接提交审批
-    const submitResp = await request.put(
+    // 后端 ContractController 为 @PostMapping("/{id}/submit")（Controller 为 SoT，
+    // src/api/contract.ts submitContract 亦为 POST）；方法错误会返回 405，故断言收紧到 200
+    const submitResp = await request.post(
       `${API_BASE}/api/v1/contract/${contractId}/submit`
     ).catch(() => null)
 
     if (submitResp) {
-      // 验证提交请求被接受（可能因缺少审批流程定义而失败，但 HTTP 应不是 5xx）
-      expect(submitResp.status()).toBeLessThan(500)
+      expect(submitResp.status()).toBe(200)
     }
   })
 })

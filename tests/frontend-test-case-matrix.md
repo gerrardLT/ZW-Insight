@@ -1,7 +1,8 @@
 # ZW-Insight 前端业务模块测试用例枚举矩阵
 
-> 生成日期：2026-08-14（基于 main 分支源码逐页深读实证）
-> 范围：zw-insight-web PC 端 21 个模块 / 104 个页面（router/index.ts 全景），共 **1,123 个测试用例**（页面级 1,048 + 跨模块集成 75）
+> 生成日期：2026-08-14（基于 main 分支源码逐页深读实证）  
+> 最后校正：2026-10-12（校对 147 路由全景、12 项目状态机、开票 SUBMITTED、免审直批等事实）  
+> 范围：zw-insight-web PC 端 21 个核心业务模块 / 104 个核心页面（截至 2026-08-14 基线；全景 router/index.ts 现含 147 页面，新增经营驾驶舱 cockpit 等模块规划见 `tests/frontend-browser-test-plan.md`）  
 > 方法论：每页用例从 view 源码实证枚举（表单 rules、状态条件渲染、按钮禁用条件、金额联动计算、分页/搜索参数、弹窗交互、审批动作），禁止凭空想象；「现有覆盖」列标注实测映射
 > 覆盖图例：**L1**=src/__tests__ 单元测试（99 文件 1062 例）· **L5-API**=e2e/api-tests（32 文件 428 例）· **L5-一致性**=e2e/consistency（22 文件 54 例字段级比对）· **L5-UI**=e2e/tests/real（17 文件 161 例）· **无**=任何层级未覆盖
 > 用例 ID 规则：A=核心主链（项目/投标/合同/预算）、B=支出域（材料/机械/劳务/分包/采购）、C=财务现场域（财务/现场/人事/档案/看板）、D=平台支撑域（登录/系统/基础数据/消息/工作流/平台）
@@ -31,7 +32,7 @@
 
 ## A-1 项目管理（/project，4 页，46+5 例，覆盖≈52%）
 
-**业务概述**：项目全生命周期入口，源码（index.vue statusMap）实证 8 状态机：DRAFT→FILED→TENDERING→WON→CONSTRUCTION→COMPLETED→CLOSING→CLOSED。列表按状态驱动操作可用性（仅 DRAFT 可编辑/提交/删除，仅 COMPLETED 可发起结项）；结项有 close-check 预检门槛，通过后发起 Flowable 审批。表单含业主单位远程搜索与签约公司联动，另含项目成员/角色管理子组件。
+**业务概述**：项目全生命周期入口，源码（`views/project/index.vue` statusMap 及后端 `ProjectStateMachine`）实证 12 状态机：DRAFT→FILED→TENDERING→WON→LOST→CONSTRUCTION→PAUSED→COMPLETED→CLOSING→CLOSED（支持 TERMINATING→TERMINATED）。提交报备为免审直批（DRAFT→FILED 直达生效，不挂待办）；列表按状态驱动操作可用性（仅 DRAFT 可编辑/提交/删除，仅 COMPLETED 可发起结项）；结项有 close-check 预检门槛，通过后发起 Flowable 审批。表单含业主单位远程搜索与签约公司联动，另含项目成员/角色管理子组件。
 
 ### A1 项目列表（/project/list · views/project/index.vue）
 

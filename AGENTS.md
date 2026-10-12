@@ -2,6 +2,8 @@
 
 本项目采用 **Kiro**（AI 开发代理）进行 Spec 驱动开发，覆盖需求分析、设计、任务拆解、代码实现与联调验证全流程。
 
+> 最后校正：2026-10-12（对照仓库实证）
+
 ## Spec 驱动开发
 项目采用 Kiro 的 Spec 工作流：**Requirements → Design → Tasks**，每个 feature 对应一个独立目录，包含 `requirements.md`、`design.md`、`tasks.md` 三个文件。
 
@@ -26,6 +28,15 @@
 | `p2-advanced` | P2 高级功能 |
 | `frontend-backend-integration` | 前后端联调对齐（63 项核心错位） |
 | `consistency-audit` | 一致性审计工具开发 |
+| `cost-control-backbone` | 成本管控骨架（CBS/WBS 层级、变更事件域、跨模块一致性） |
+| `decision-chain-hardening` | 三条决策链加固（付款审批 / 成本变更 / 风险复发） |
+| `dual-server-permission-audit` | 双机业务与审批权限审计修复 |
+| `full-layer-test-suite` | 全层次测试体系（L1-L5 测试金字塔） |
+| `navigation-information-architecture` | 统一导航与信息架构（业务域导航重组） |
+| `p0-gap-closeout` | 功能深度账本 P0 缺口收口（20 项） |
+| `test-maturity-upgrade` | 测试体系成熟度升级（54 → 75 分目标） |
+
+> `.kiro/specs/` 实有 18 个 Spec 目录，上表为全部条目。
 
 ## 联调验证基座
 
@@ -80,8 +91,8 @@ bash keys/verify-l4-clean.sh
 
 ```
 deploy/db-init/31_V2026_26__seed_demo_data.sql                   # 种子主文件（Layer 0-14）
-deploy/db-init/44_V2026_42__seed_negative_profit_settlement.sql  # 负利润结算单 99361（项目 90002）
-deploy/db-init/45_V2026_43__seed_closeable_project.sql           # 可结项项目 90004 + 结算单 93302
+deploy/db-init/44_V2026_42_2__seed_negative_profit_settlement.sql  # 负利润结算单 99361（项目 90002）
+deploy/db-init/45_V2026_43_2__seed_closeable_project.sql           # 可结项项目 90004 + 结算单 93302
 deploy/db-init/52_V2026_50__seed_reconcile_documents.sql         # 勾稽补齐：使累计值 = 单据汇总
 deploy/db-init/68_V2026_66__seed_cbs_entertainment.sql           # CBS 成本账户/WBS/间接费子类字典/招待费报销链路/月度资金计划（2026-09-24）
 ```
@@ -102,7 +113,7 @@ deploy/db-init/68_V2026_66__seed_cbs_entertainment.sql           # CBS 成本账
   - `Σ actual_amount` **按类别逐一等于五类支出合同的 `cumulative_settlement`**（已线上事务内验证：90001 材料 1200万/人工 500万/机械 300万/分包 400万/其他 30万）；间接费部分来自报销单据
   - `actual_amount`/`commitment_amount` **会被 `CostRollUpTask`（每日 02:30）按单据汇总做目标绝对值对账而自动校正**（`CostRollUpService.syncAccount`，幂等键 `ROLLUP:{accountId}:{amountType}:{from}->{to}`）；`baseline`/`current`/`forecast` 属人工编制值不被改
   - 招待费链路覆盖近 4 个月（当月/上月/上上月/3月前），按 §11 逐类布置异常样本（单笔超限/无发票/无事由/无事前审批/同人同日/同人高频/超月度限额），使八类预警均有真实命中数据；当月招待费计划限额 8000 元 vs 实际 13100 元→第 8 类预警可验
-  - 本脚本**不触碰** `biz_project.total_*` / 合同 `cumulative_*` / 付款申请，故 R7 审计基线 PASS=65 不受影响；上线前已用 `START TRANSACTION` + `ROLLBACK` 做**零副作用验证**：
+  - 本脚本**不触碰** `biz_project.total_*` / 合同 `cumulative_*` / 付款申请，故 R7 审计基线 PASS=67 不受影响；上线前已用 `START TRANSACTION` + `ROLLBACK` 做**零副作用验证**：
 
     ```bash
     # 先上传种子与校验脚本，再在事务内执行并回滚（不写库）
@@ -154,7 +165,7 @@ bash keys/verify-seed.sh
 
 经 SSH 上传 `keys/audit-data-round7.sh` 到服务器执行，报告回落 `audit-reports/data-audit-round7-<ts>.md`。**全程只读**，脚本内置写操作关键字拦截。
 
-当前基线（2026-09-24 V2026_71 后）：**PASS=67 FAIL=0 WARN=0 INFO=39**。
+当前基线（2026-10-10 复验，V2026_95 后）：**PASS=67 FAIL=0 WARN=0 INFO=39**。
 
 > ❗ **补数据会让原本 SKIP 的检查项突然生效，从而改变基线 PASS 数**。2026-09-24 实例：
 > Section 3.6 的 CBS 勾稽在 `biz_cost_account` 为 0 行时走 `SKIP` 分支（计入 INFO 不计 PASS），
@@ -183,6 +194,18 @@ bash keys/cleanup-garbage-data.sh --execute    # 真实执行：先 mysqldump �
 - 备份落 `/root/zwi-deploy/backups/`，校验门槛「体积 > 1MB 且 CREATE TABLE ≥ 200」
 
 详细执行记录见 `audit-reports/R7-fix-validation-report.md`。
+
+### 权限一致性审计（2026-10-11）
+
+与上述「数据审计」互补：数据审计评金额勾稽，本节工具评**权限 / 菜单 / 数据范围**三端一致性。三件套脚本均在 `keys/`，运行于目标服务器，全程真实登录、只读（仅 GET / SELECT）。
+
+- `perm-audit-sql.sh`：只读 SQL 面——D4 结构完整性（孤儿/悬空绑定、无角色用户、无菜单角色、跨租户串号、禁用菜单仍绑定、角色码重复）、D1 期望菜单集、D2 期望权限码、D3 支撑数据（有效数据范围 + 部门/项目归属）
+- `perm-audit-http.sh`：真实登录 HTTP 面——将运行时实际下发的菜单集合（`GET /api/v1/system/menu/user`）与权限码集合（登录响应 `permissions[]`），同库中配置（`sys_role_menu ⋈ sys_menu`）推导的期望集合做双向差集比对
+- `perm-audit-data.sh`：D3 行级数据范围面——对每个目标用户 × 每个业务列表接口真实登录取数，检查越权（返回行不满足有效范围判定式）、误杀（与 SUPER_ADMIN 推导的应可见集不等），并严格区分 403 与空集
+- 配套报告：`audit-reports/permission-consistency-2026-10-10.md`（含双机差异与待决策项）
+- 菜单覆盖校验：`keys/check-menu-coverage.cjs`（2026-10-08）——比对前端 router 可见路由与后端 `sys_menu` 种子，有缺口则 `exit 1`
+- CI 新增 workflow `.github/workflows/permission-audit-test.yml`（2026-10-09，`Permission Audit Tests (no deployment)`）——在隔离 MySQL 8 上重复验证权限迁移脚本，不部署
+- **两机审计基线不同属正常**：主环境 R7 数据审计 `PASS=67 FAIL=0 WARN=0 INFO=39`；徽颍（server2）`PASS=64 FAIL=0 WARN=1 INFO=38`——唯一 WARN 为「种子项目数 0（期望 4）」，因徽颍未导入演示种子，属环境差异而非缺陷
 
 ## 一致性审计工具
 
@@ -285,6 +308,8 @@ cd tools/consistency-audit && npm run dev
   1. `zw-insight-server/zw-app/src/main/resources/db/migration/Vxxx__desc.sql` —— Flyway 运行库扫描路径（`spring.flyway.locations`），**已上线库靠这里补列**，启动时自动应用
   2. `deploy/db-init/NN_Vxxx__desc.sql` —— 新环境空库 initdb 编排（按 `NN_` 序号前缀控制执行顺序）
   - 两处文件名 Flyway 版本段必须一致（`V2026_51__xxx.sql`）；只放 db-init 不入 classpath，就是"代码上线、库结构没跟"的直接故障模式
+  - ⚠️ **已知双轨缺口（2026-10-12 核对，待人工决定补法）**：`db-init` 缺 migration 中存在的 **V2026_28**（`supplier_evaluation_type`）与 **V2026_29**（`create_file_storage`）；且 **V2026_27 两轨语义不同**（db-init=`32_V2026_27__performance_indexes.sql`，migration=`V2026_27__labor_subcontract_cumulative_output.sql`）。空库 initdb 与已上线库在此处结构/内容不一致，补法须先人工核对
+- **迁移版本进度（2026-10-12）**：两轨最大版本均为 **V2026_95**；自 V2026_71 后又推进 V2026_72~95（V2026_75 缺号，实为 23 个）。代表：V2026_89 回款登记自动认领、V2026_91 权限码目录补全、V2026_92 角色写权限授权矩阵、V2026_94 子页面菜单下发、V2026_95 项目 dept_id
 - **版本号唯一且有序**：禁止两个脚本共用同一 Flyway 版本（同版本双文件 Flyway 直接拒启）；同版本多脚本用 `V2026_41_1`/`V2026_41_2` 子版本号。低于已应用最高版本的待补脚本依赖 `spring.flyway.out-of-order: true` 乱序补应用（已开启，2026-09-21 治理）
 - **迁移脚本必须幂等**：`CREATE TABLE IF NOT EXISTS` / `INSERT IGNORE` / `information_schema` 检查 + `PREPARE/EXECUTE` 条件 ALTER（裸 `ALTER ADD COLUMN`、`CREATE UNIQUE INDEX` 重复执行会报错）
 - 字段使用规范：`BigDecimal`/`DECIMAL(18,2)`（金额）、`deleted`（逻辑删除）、`version`（乐观锁）、`tenant_id`（租户隔离）
@@ -305,7 +330,7 @@ cd tools/consistency-audit && npm run dev
 
 - 每个新建 Service 类的 public 方法至少编写 1 个正常路径 + 1 个异常路径测试
 - 使用 `@ExtendWith(MockitoExtension.class)` + Mockito Mock 所有外部依赖
-- 覆盖率治理（2026-09-16 用户决策更新）：**CI 基线比对门禁已移除**（后端逐模块基线比对与前端 check-frontend-coverage.mjs 步骤均下线）；保留 pom 内置 jacoco 分档 check（`jacoco.min.coverage` 属性化默认 0.80，22 模块分档，CI `mvn clean verify` 真实触发）。基线 JSON（tests/coverage-baseline.json / tests/frontend-coverage-baseline.json）与检查脚本留仓供本地自查（`node tests/check-frontend-coverage.mjs <project>`），本地棘轮流程仍推荐执行。各模块实际行覆盖率明细见 `tests/TESTING-MATURITY.md` 附录 A
+- 覆盖率治理（2026-09-16 用户决策更新）：**CI 基线比对门禁已移除**（后端逐模块基线比对与前端 check-frontend-coverage.mjs 步骤均下线）；保留 pom 内置 jacoco 分档 check（`jacoco.min.coverage` 属性化默认 0.80，22 模块分档，CI `mvn clean verify` 真实触发；**注：push 事件默认追加 `-Djacoco.skip=true`，该门禁默认不触发（2026-10-07 用户决策），仅 `workflow_dispatch run_tests=true` 全量时生效**）。基线 JSON（tests/coverage-baseline.json / tests/frontend-coverage-baseline.json）与检查脚本留仓供本地自查（`node tests/check-frontend-coverage.mjs <project>`），本地棘轮流程仍推荐执行。各模块实际行覆盖率明细见 `tests/TESTING-MATURITY.md` 附录 A
 
 #### 集成测试使用 tenant_id=9999
 
@@ -317,14 +342,14 @@ cd tools/consistency-audit && npm run dev
 #### PR 前运行 L1 单元测试
 
 - 提交 PR 前必须在本地运行 `mvn test` 确认单元测试通过（注意：勿在本地跑全量并行构建 `mvn -T 1C clean package`，22 模块并行 fork 几十个 JVM 会卡死机器，重型验证一律 CI/服务器执行）
-- CI backend job 执行 `mvn -B -T 1C clean verify`（运行全量单元测试 + JaCoCo 分档 check 真实触发）。注：覆盖率基线比对门禁已于 2026-09-16 用户决策移除；-T 1C 在 2 vCPU runner 上实测无提速效果（510s vs 串行 503s，2026-08-14 run 31762169585），保留仅为多核 runner 兼容；实测提速来自 L2 门控（省 302s）与前端镜像缓存（省 ~50s）
-- **CI 测试套件触发策略（2026-08-13 用户决策，2026-08-14 扩展，2026-09-16 增加 fast_deploy）**：push 默认只跑 Backend Build（L1 单测 + jacoco 分档 check）→ Deploy → 部署冒烟（健康检查 + API 文档收敛断言），**L2 Testcontainers、Integration Test（L3/L4/L5）与 k6 默认不跑**（全量约 40 分钟，L2 单项实测 302s）。全量套件唯一触发入口：手动 workflow_dispatch 选 `run_tests=true`（`gh workflow run deploy.yml -f run_tests=true`）
+- CI backend job 执行 `mvn -B -T 1C clean verify`（运行全量单元测试 + JaCoCo 分档 check 真实触发）。**注（2026-10-07 用户决策）：push 事件默认命令为 `mvn -B -T 1C clean verify -Djacoco.skip=true`，覆盖率门禁默认不触发；仅 `workflow_dispatch run_tests=true` 全量时门禁生效**。注：覆盖率基线比对门禁已于 2026-09-16 用户决策移除；-T 1C 在 2 vCPU runner 上实测无提速效果（510s vs 串行 503s，2026-08-14 run 31762169585），保留仅为多核 runner 兼容；实测提速来自 L2 门控（省 302s）与前端镜像缓存（省 ~50s）
+- **CI 测试套件触发策略（2026-08-13 用户决策，2026-08-14 扩展，2026-09-16 增加 fast_deploy）**：push 默认只跑 Backend Build（L1 单测，默认带 `-Djacoco.skip=true`，覆盖率门禁不触发）→ Deploy → 部署冒烟（健康检查 + API 文档收敛断言），**L2 Testcontainers、Integration Test（L3/L4/L5）与 k6 默认不跑**（全量约 40 分钟，L2 单项实测 302s）。全量套件唯一触发入口：手动 workflow_dispatch 选 `run_tests=true`（`gh workflow run deploy.yml -f run_tests=true`）
 - **日常最小路径部署（fast_deploy，2026-09-16）**：本地已完成测试验证的日常推送，用 `gh workflow run deploy.yml -f fast_deploy=true` —— 跳过后端单测/jacoco 与三端前端测试，仅编译打包+部署+冒烟（约 3-5 分钟 vs 全量 13-15 分钟）；frontend 失败仍不部署（质量门禁保留）；push 事件不受影响仍走全量 verify
-- pom jacoco check（`jacoco.min.coverage` 属性化，默认 0.80，BUNDLE LINE）绑定 verify 阶段，CI 已切 `mvn clean verify` 真实触发（2026-08-24，commit 714e003）；22 模块按基线分档覆盖，棘轮式逐档上调
+- pom jacoco check（`jacoco.min.coverage` 属性化，默认 0.80，BUNDLE LINE）绑定 verify 阶段，CI 已切 `mvn clean verify` 真实触发（2026-08-24，commit 714e003）；**但 push 事件默认追加 `-Djacoco.skip=true`，门禁默认不触发（2026-10-07 用户决策），仅 `run_tests=true` 全量时生效**；22 模块按基线分档覆盖，棘轮式逐档上调
 
 #### L3 API 契约验证
 
-- 9 个独立验证脚本位于 `keys/`：`test-api-{project,labor,machine,subcontract,material,purchase,finance,quote,message}.sh`
+- 29 个独立验证脚本位于 `keys/`，统一命名 `test-api-*.sh`（按模块与批次命名），代表性子集：`project` / `contract` / `finance` / `finance2` / `purchase` / `material` / `machine` / `labor` / `subcontract` / `site` / `tender` / `budget` / `system` / `workflow` / `archive` / `basedata` / `hr` / `cost-control` / `change-event` / `fund-loop` / `risk` / `authz` / `tenant-isolation` / `dashboard` / `file` / `message` 等（另有 `batch2-s4-s9` / `batch3` / `batch4` 批次脚本）
 - 每个脚本使用 `jq` 进行字段结构断言（分页 `.code==200/records 数组/total 数字 + 详情`.data.id 存在）
 - 服务器需预装 `jq`（`apt-get install jq`）
 - 断言不满足一律 FAIL，不静默跳过
@@ -379,7 +404,7 @@ AI 代理在开发、调试、评审过程中产生的临时产物必须遵循�
 
 ### 10. 跨模块级联与反向依赖
 
-`zw-insight-project` 被 14 个业务模块依赖（budget / material / contract / tender / purchase / subcontract / machine / site / labor / finance / archive / dashboard / app），因此它**不能反向注入这些模块的 Service/Mapper**，否则形成 Maven 循环依赖、编译失败。
+`zw-insight-project` 被 13 个业务模块依赖（budget / material / contract / tender / purchase / subcontract / machine / site / labor / finance / archive / dashboard / app），因此它**不能反向注入这些模块的 Service/Mapper**，否则形成 Maven 循环依赖、编译失败。
 
 需要「一个模块的动作触发其他模块跟着做」时，用 **Spring 事件解耦**，契约类放 `zw-common`（Published Language 模式）：
 
@@ -422,6 +447,6 @@ zkiot-admin、unified-auth、influxdb 等），**没有能力同时承载镜像�
 ---
 
 **测试开发约定**：
-- **覆盖率门禁现状（2026-09-16 用户决策）**：CI 基线比对门禁（后端逐模块+前端 check 脚本）已移除；保留 jacoco 分档 check（默认 0.80，按模块分档）随 CI `mvn clean verify` 真实触发（2026-08-24 起）
+- **覆盖率门禁现状（2026-09-16 用户决策）**：CI 基线比对门禁（后端逐模块+前端 check 脚本）已移除；保留 jacoco 分档 check（默认 0.80，按模块分档）随 CI `mvn clean verify` 真实触发（2026-08-24 起）。**注（2026-10-07 用户决策）：push 事件默认命令追加 `-Djacoco.skip=true`，该门禁默认不触发，仅 `workflow_dispatch run_tests=true` 全量时生效**
 - 基线 JSON 与检查脚本留仓，本地自查：`node tests/check-frontend-coverage.mjs <project>`；新模块仍建议登记基线（本地棘轮，不再 CI 强制）
 - 存量模块按分档棘轮逐步提升至 80% 目标（当前各模块 342‰~884‰，明细见 TESTING-MATURITY.md 附录 A）

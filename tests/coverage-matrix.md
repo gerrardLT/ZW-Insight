@@ -1,7 +1,8 @@
 # 功能-测试追溯矩阵（coverage-matrix）
 
 > 生成日期：2026-08-10（阶段 0 盘点产出，git 追踪，每批补全后销项更新）
-> 基准：docs/工程项目管理系统功能表.md（46 个功能模块）× 代码实测（126 Controller / 150 Service / 225 测试类 / L3 8 脚本 / L4 19 阶段 / L5 56 spec）
+> 最后校正：2026-10-12（对照代码实证）
+> 基准：docs/工程项目管理系统功能表.md（46 个功能模块）× 代码实测（161 Controller / 150 Service / 389 测试类 / L3 29 脚本 / L4 26 阶段 / L5 64 spec）
 > 补全定义见 .kiro/specs 批准的 L1-L5 测试补全计划；本文件只回答"哪里缺、缺多少、先补谁"
 
 ## 状态标记
@@ -40,7 +41,7 @@
 
 ## 二、L2 集成测试缺口
 
-现有 12 类（zw-app integration 包）+ 模块直连集成测试（contract/finance/project/system×3/site）。
+现有 21 类（zw-app integration 包）+ 模块直连集成测试（contract/finance/project/system×3/site）。
 批 2 新增 BudgetBlockIntegrationTest（zw-budget）+ TenderFlowIntegrationTest（zw-tender），本地实跑 14/14 全绿、零残留。
 
 | 缺口 | 需验证的核心行为 | 优先级 |
@@ -56,13 +57,13 @@
 
 ## 三、L3 接口契约脚本缺口（最大缺口层）
 
-现有 8 个 shell 脚本仅覆盖 8 个业务模块的部分端点。126 Controller 中约 **70% 无任何 L3 脚本覆盖**。
+现有 29 个 shell 脚本覆盖各业务模块的部分端点。161 Controller 中约 **28% 无任何 L3 脚本覆盖**（估算：按 29 个 test-api 脚本的 base-path 匹配统计，未逐端点核对）。
 
 | 已覆盖（PARTIAL/OK） | 未覆盖模块（需新脚本） |
 |---|---|
 | project（主端点）/ contract / subcontract / purchase（contract+inquiry）/ labor（contract+team+roster+work-order）/ machine（contract+ledger+部分）/ material（inbound+outbound+stock+inventory）/ finance（原 3 组 + **批 1 新增 test-api-finance2.sh：开票/收票/汇总/其他付款/报销/结算/备用金/质保金/税率 CRUD/财务锁**）/ **system+auth（批 1 新增 test-api-system.sh：用户/机构/角色/菜单/岗位/字典 CRUD/运维端点/租户/设备/验证码）** / **tender（批 2 新增 test-api-tender.sh：6 组分页契约 + 登记/费用/人员证书/企业证书 4 条 CRUD 零残留闭环）** / **budget（批 2 新增 test-api-budget.sh：编制/变更/管控配置/控制配置只读契约 + @Valid 负向）** / **workflow（批 2 新增 test-api-workflow.sh：待办/已办/流程定义/业务类型/催办/回滚/委托契约 + 非法流转负向）** / **hr（批 3 新增 test-api-hr.sh：10 组分页契约 + statistics/overview + 7 条 submit 负向 + 入职/车辆/办公用品 3 条 CRUD 零残留闭环）** / **site（批 3 新增 test-api-site.sh：6 组分页契约 + 施工日志/进度计划 2 条 CRUD 零残留闭环 + 签到/催办只读契约 + 8 条不存在负向）** / **basedata（批 4 新增 test-api-basedata.sh：8 组分页契约 + 公司/甲方/检查方案/材料/供应商 5 条 CRUD 闭环 + 评价隔离闭环 + 黑名单只读）** / **message（批 4 新增 test-api-message.sh：4 组分页契约 + 公告全生命周期闭环 + 模板/推送配置 CRUD 闭环 + 站内信/快捷入口只读契约）** / **dashboard（批 4 新增 test-api-dashboard.sh：公司级+项目级看板 18 端点只读契约 + 404 负向）** / **archive（批 4 新增 test-api-archive.sh：4 类实体档案 + 3 组分页档案只读契约）** / **file（批 5 新增 test-api-file.sh：上传真实闭环 + 存储配置/编号规则/模板/打印模板/定时导出 5 条 CRUD 闭环 + 异步导出状态 + 导入模板下载）** | supplier-portal 公开接口 |
 
-补充说明：`zw-insight-web/e2e/api-tests/`（vitest，20 spec 347 用例）已按功能表注释覆盖全部 20 个模块域的 API 功能，但**未接入 CI**——shell 脚本层仍是 CI 内唯一 L3 门禁，缺口照算；api-tests 接入 CI 列入阶段 5 一并评估。
+补充说明：`zw-insight-web/e2e/api-tests/`（vitest，25 spec）已按功能表注释覆盖全部 20 个模块域的 API 功能，**已接入 CI**（见 §五，run 31457602750 首跑全绿）——shell 脚本层与 api-tests 共同构成 CI 内 L3 门禁。
 
 **批 1 L3 CI 实跑验证（run 31399388581）**：test-api-finance2.sh 37/37 通过、test-api-system.sh 43/43 通过，L3 共 10 脚本 通过=10 失败=0。首轮 run 31395791226 的 12 处失败经逐条对照 Controller 定位均为脚本端点写错（非后端缺陷），已按后端为准修正（db2face）。
 
@@ -109,12 +110,12 @@
 
 | 资产 | 规模 | 状态 |
 |---|---|---|
-| e2e/api-tests（vitest API 功能测试） | 20 spec / 356 用例 | ✅ 批 6 修复后 356/356 全绿（23 skip 全部解除）；**已接入 CI，run 31457602750 首跑全绿** |
+| e2e/api-tests（vitest API 功能测试） | 25 spec | ✅ 批 6 修复后 356/356 全绿（23 skip 全部解除）；**已接入 CI，run 31457602750 首跑全绿** |
 | ~~e2e/tests（Playwright UI，mock 模式）~~ | ~~13 spec / 89 用例~~ | ✅ 2026-08-11 归档删除：假 token + route() 拦截假数据，违反「真实接口真实流程」原则且与 real 模式冗余；UI 回归统一走真实模式 |
-| e2e/tests/real（真实模式打服务器） | 3 spec / 30 用例 | ✅ 已接入 CI：run 31484110007 首跑 27 过/3 条件性 skip（UI_REAL_EXIT=0）；中途修复 auth-real.setup SSH 密钥路径（E2E_SSH_KEY 指向 deploy_key） |
+| e2e/tests/real（真实模式打服务器） | 17 spec | ✅ 已接入 CI：run 31484110007 首跑 27 过/3 条件性 skip（UI_REAL_EXIT=0）；中途修复 auth-real.setup SSH 密钥路径（E2E_SSH_KEY 指向 deploy_key） |
 | e2e/consistency（一致性审计） | 20 spec / 54 用例 | ✅ 修复后 54/54 全绿并接入 CI：run 31484110007 首跑 52 过+2 flaky 重试过（dashboard 看板/machine 合同，CONS_EXIT=0）。6+1 处失败全部定性为测试规格漂移（非页面缺陷）：budget 无预算年度/已用金额列、contract/finance 基线缺 SUBMITTED→审批中映射、hr 车牌字段 plateNumber+状态按 vehicleStatus 渲染、site 施工日志列错位+质检列规格整体过时、archive 页面已重构（旧缺陷已在 17ee02c 修复）用例重写 |
 
-缺口（2026-08-11 更新）：①L5 全部接入 CI 并首跑全绿（run 31484110007：api-tests 356 例 + UI real 27 过 + consistency 52 过）②mock 模式已归档删除 ③UI 覆盖缺投标/现场/HR/档案页面（需前端页面开发配合）④real 的 3 个 skip 为运行时数据依赖条件性跳过；consistency 的 dashboard/machine 2 例 flaky 由 retries 覆盖。另：本轮发现并修复后端数据一致性缺陷（收款登记删除不回冲累计金额，PaymentReceivedService.delete 补对称回冲 + 3 单测）。
+缺口（2026-08-11 更新）：①L5 全部接入 CI 并首跑全绿（run 31484110007：api-tests 25 spec 全绿 + UI real 27 过 + consistency 52 过）②mock 模式已归档删除 ③UI 覆盖缺投标/现场/HR/档案页面（需前端页面开发配合）④real 的 3 个 skip 为运行时数据依赖条件性跳过；consistency 的 dashboard/machine 2 例 flaky 由 retries 覆盖。另：本轮发现并修复后端数据一致性缺陷（收款登记删除不回冲累计金额，PaymentReceivedService.delete 补对称回冲 + 3 单测）。
 
 ---
 
@@ -127,7 +128,7 @@
 | 批 3 | L1：zw-hr 7 + zw-site 6 + zw-machine 3；L3：hr + site 新脚本；L4：变更签证 + 质保金分支 | 高频业务 + 金额分支 |
 | 批 4 | L1：zw-system 6 + zw-basedata 3 + zw-message 5；L3：basedata + message + dashboard/archive 新脚本；L2：security 登录链 + hr 审批 | 基础数据与通知 |
 | 批 5 | L1：zw-file 8 + zw-dashboard 1 + zw-archive 1 + zw-app 1 + zw-common 评估；L3：file 新脚本；L4：退货/备用金/保证金退回/到期提醒分支 | 支撑功能收尾 |
-| 批 6 | L5 全量：56 spec 实跑盘点→修复 skip→补核心页面→CI 接入（api-tests 一并评估接入） | 独立阶段 |
+| 批 6 | L5 全量：64 spec 实跑盘点→修复 skip→补核心页面→CI 接入（api-tests 一并评估接入） | 独立阶段 |
 
 每批验收：模块 mvn test 全绿 → CI 全链路绿 → 本矩阵销项 → tasks.md 登记 → coverage-baseline.json 更新。
 

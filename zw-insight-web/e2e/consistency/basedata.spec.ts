@@ -23,7 +23,8 @@ const COMPANY_COLUMNS: ColumnSpec[] = [
   { label: '公司名称', index: 0, field: 'companyName', type: 'text' },
   { label: '简称', index: 1, field: 'shortName', type: 'text' },
   { label: '法人', index: 2, field: 'legalPerson', type: 'text' },
-  { label: '统一社会信用代码', index: 3, field: 'creditCode', type: 'text' },
+  // 统一社会信用代码：页面列 prop=taxNumber（views/basedata/company.vue:22），实体 BdCompany.taxNumber
+  { label: '统一社会信用代码', index: 3, field: 'taxNumber', type: 'text' },
   { label: '联系电话', index: 4, field: 'contactPhone', type: 'text' },
   { label: '注册地址', index: 5, field: 'address', type: 'text' },
 ]
@@ -41,7 +42,8 @@ const OWNER_COLUMNS: ColumnSpec[] = [
   { label: '甲方名称', index: 0, field: 'ownerName', type: 'text' },
   { label: '联系人', index: 1, field: 'contactName', type: 'text' },
   { label: '联系电话', index: 2, field: 'contactPhone', type: 'text' },
-  { label: '统一社会信用代码', index: 3, field: 'creditCode', type: 'text' },
+  // 统一社会信用代码：页面列 prop=taxpayerNo（views/basedata/owner.vue:22），实体 BdOwner.taxpayerNo
+  { label: '统一社会信用代码', index: 3, field: 'taxpayerNo', type: 'text' },
   { label: '地址', index: 4, field: 'address', type: 'text' },
 ]
 
@@ -51,7 +53,8 @@ const SUPPLIER_COLUMNS: ColumnSpec[] = [
   { label: '联系人', index: 2, field: 'contactName', type: 'text' },
   { label: '联系电话', index: 3, field: 'contactPhone', type: 'text' },
   { label: '地址', index: 4, field: 'address', type: 'text' },
-  { label: '统一社会信用代码', index: 5, field: 'creditCode', type: 'text' },
+  // 统一社会信用代码：页面列 prop=taxNumber（views/basedata/supplier.vue:31），实体 BdSupplier.taxNumber
+  { label: '统一社会信用代码', index: 5, field: 'taxNumber', type: 'text' },
 ]
 
 const BLACKLIST_COLUMNS: ColumnSpec[] = [
@@ -60,12 +63,17 @@ const BLACKLIST_COLUMNS: ColumnSpec[] = [
   { label: '加入时间', index: 2, field: 'createTime', type: 'datetime' },
 ]
 
+// 列序对齐 views/basedata/supplier-evaluation.vue:23-31：供应商/综合评分/质量/交期/价格/服务/配合/评价日期/备注
 const EVALUATION_COLUMNS: ColumnSpec[] = [
   { label: '供应商名称', index: 0, field: 'supplierName', type: 'text' },
-  { label: '评分', index: 1, field: 'score', type: 'numeric' },
-  { label: '评价人', index: 2, field: 'evaluator', type: 'text' },
-  { label: '评价时间', index: 3, field: 'evaluateTime', type: 'datetime' },
-  { label: '评价内容', index: 4, field: 'content', type: 'text' },
+  { label: '综合评分', index: 1, field: 'totalScore', type: 'numeric' },
+  { label: '质量', index: 2, field: 'qualityScore', type: 'numeric' },
+  { label: '交期', index: 3, field: 'timelinessScore', type: 'numeric' },
+  { label: '价格', index: 4, field: 'priceScore', type: 'numeric' },
+  { label: '服务', index: 5, field: 'serviceScore', type: 'numeric' },
+  { label: '配合', index: 6, field: 'cooperationScore', type: 'numeric' },
+  { label: '评价日期', index: 7, field: 'evaluationDate', type: 'date' },
+  { label: '备注', index: 8, field: 'remark', type: 'text' },
 ]
 
 const SCHEME_COLUMNS: ColumnSpec[] = [

@@ -23,17 +23,18 @@ import {
 } from './consistency-helper'
 import { PROJECT_STATUS } from './enum-baseline'
 
-/** 列表页列规格（index 与 project/index.vue 的 <el-table-column> 顺序一致，0-based） */
+/** 列表页列规格（index 与 project/index.vue 的 <el-table-column> 顺序一致，0-based；
+ *  首列为 type="selection" 复选框（index 0），故数据列整体后移 1） */
 const LIST_COLUMNS: ColumnSpec[] = [
-  { label: '项目编号', index: 0, field: 'projectCode', type: 'text' },
-  { label: '项目名称', index: 1, field: 'projectName', type: 'text' },
-  { label: '项目性质', index: 2, field: 'projectNature', type: 'text' },
-  { label: '项目类型', index: 3, field: 'projectType', type: 'text' },
-  { label: '业主单位', index: 4, field: 'ownerCompanyName', type: 'text' },
-  { label: '签约公司', index: 5, field: 'signingCompanyName', type: 'text' },
-  { label: '状态', index: 6, field: 'status', type: 'enum', enumMap: PROJECT_STATUS },
-  { label: '创建时间', index: 7, field: 'createdAt', type: 'datetime' },
-  // index 8 = 操作列，不比对
+  { label: '项目编号', index: 1, field: 'projectCode', type: 'text' },
+  { label: '项目名称', index: 2, field: 'projectName', type: 'text' },
+  { label: '项目性质', index: 3, field: 'projectNature', type: 'text' },
+  { label: '项目类型', index: 4, field: 'projectType', type: 'text' },
+  { label: '业主单位', index: 5, field: 'ownerCompanyName', type: 'text' },
+  { label: '签约公司', index: 6, field: 'signingCompanyName', type: 'text' },
+  { label: '状态', index: 7, field: 'status', type: 'enum', enumMap: PROJECT_STATUS },
+  { label: '创建时间', index: 8, field: 'createdAt', type: 'datetime' },
+  // index 0 = selection 复选框，index 9 = 操作列（fixed right），均不比对
 ]
 
 /** 详情页字段规格（project/detail.vue 的 el-descriptions） */

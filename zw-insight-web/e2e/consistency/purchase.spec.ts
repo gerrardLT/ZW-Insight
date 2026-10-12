@@ -12,7 +12,7 @@ import {
   type PageConsistencyResult,
   type PageResult,
 } from './consistency-helper'
-import { SIMPLE_CONTRACT_STATUS } from './enum-baseline'
+import { PURCHASE_CONTRACT_STATUS } from './enum-baseline'
 
 const LIST_COLUMNS: ColumnSpec[] = [
   { label: '合同编号', index: 0, field: 'contractCode', type: 'text' },
@@ -20,7 +20,7 @@ const LIST_COLUMNS: ColumnSpec[] = [
   { label: '供应商', index: 2, field: 'supplierName', type: 'text' },
   { label: '合同金额', index: 3, field: 'contractAmount', type: 'numeric' },
   { label: '签订日期', index: 4, field: 'signingDate', type: 'date' },
-  { label: '状态', index: 5, field: 'status', type: 'enum', enumMap: SIMPLE_CONTRACT_STATUS },
+  { label: '状态', index: 5, field: 'status', type: 'enum', enumMap: PURCHASE_CONTRACT_STATUS },
 ]
 
 const results: PageConsistencyResult[] = []

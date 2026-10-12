@@ -9,16 +9,20 @@
  * 若前端漏翻译（显示原始 code）或翻译错误，断言即失败并暴露不一致。
  */
 
-/** 项目状态 */
+/** 项目状态（project/index.vue 筛选区 el-option + statusMap，共 12 态） */
 export const PROJECT_STATUS: Record<string, string> = {
   DRAFT: '草稿',
   FILED: '已报备',
   TENDERING: '招标中',
   WON: '已中标',
+  LOST: '已落标',
   CONSTRUCTION: '施工中',
+  PAUSED: '已暂停',
   COMPLETED: '已竣工',
   CLOSING: '结项审批中',
   CLOSED: '已关闭',
+  TERMINATING: '终止审批中',
+  TERMINATED: '已终止',
 }
 
 /** 施工合同状态（contract/index.vue 状态列 statusMap + 筛选区 el-option） */
@@ -37,10 +41,21 @@ export const BUDGET_STATUS: Record<string, string> = {
   APPROVED: '已批准',
 }
 
-/** 简单合同生效状态（purchase/subcontract/labor 合同列表：EFFECTIVE→生效，其余→草稿） */
+/**
+ * 简单合同生效状态（subcontract/labor 合同列表：EFFECTIVE→生效，其余→草稿）。
+ * ⚠ 采购合同页渲染口径不同（SUBMITTED→审批中、EFFECTIVE→已生效），
+ * 采购单列 PURCHASE_CONTRACT_STATUS，勿与本常量共用。
+ */
 export const SIMPLE_CONTRACT_STATUS: Record<string, string> = {
   DRAFT: '草稿',
   EFFECTIVE: '生效',
+}
+
+/** 采购合同状态（purchase/contract.vue:36-42 状态列内联三元：EFFECTIVE→已生效、SUBMITTED→审批中、其余→草稿） */
+export const PURCHASE_CONTRACT_STATUS: Record<string, string> = {
+  DRAFT: '草稿',
+  SUBMITTED: '审批中',
+  EFFECTIVE: '已生效',
 }
 
 /** 单据审批状态（material 入/出库等：APPROVED→已审批，其余→草稿） */
@@ -55,14 +70,20 @@ export const PAYMENT_APPLY_STATUS: Record<string, string> = {
   SUBMITTED: '审批中',
   APPROVING: '审批中',
   APPROVED: '已通过',
+  REJECTED: '已驳回',
   PAID: '已付款',
 }
 
-/** 开票申请状态（finance/invoice-apply.vue 筛选区 el-option，无 PAID） */
+/**
+ * 开票申请状态（finance/invoice-apply.vue 筛选区 el-option）。
+ * 后端状态机为 DRAFT → SUBMITTED（提交时置）→ APPROVED/REJECTED，不存在 APPROVING
+ * （2026-10-10 已从 APPROVING 修正为 SUBMITTED）。
+ */
 export const INVOICE_APPLY_STATUS: Record<string, string> = {
   DRAFT: '草稿',
-  APPROVING: '审批中',
+  SUBMITTED: '审批中',
   APPROVED: '已通过',
+  REJECTED: '已驳回',
 }
 
 /** 结算单状态（采购/分包结算） */

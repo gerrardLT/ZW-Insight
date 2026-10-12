@@ -53,12 +53,14 @@ test.describe.serial('system 一致性', () => {
   })
 
   test('岗位管理 /system/post', async ({ page }) => {
+    // 列序对齐 views/system/post/index.vue：岗位名称/岗位编码/状态/排序/备注/创建时间/操作
     const columns: ColumnSpec[] = [
       { label: '岗位名称', index: 0, field: 'postName' },
       { label: '岗位编码', index: 1, field: 'postCode' },
       { label: '状态', index: 2, expect: (r) => (r.status === 1 ? '启用' : '停用') },
-      { label: '排序', index: 3, field: 'sort', type: 'numeric' },
-      { label: '创建时间', index: 4, field: 'createdAt', type: 'datetime' },
+      { label: '排序', index: 3, field: 'sortOrder', type: 'numeric' },
+      { label: '备注', index: 4, field: 'remark' },
+      { label: '创建时间', index: 5, field: 'createdAt', type: 'datetime' },
     ]
     await runListConsistency(page, {
       route: '/system/post', title: '岗位管理', api: 'GET /v1/system/post',
@@ -67,14 +69,16 @@ test.describe.serial('system 一致性', () => {
   })
 
   test('操作日志 /system/log', async ({ page }) => {
+    // 列序对齐 views/system/log/index.vue（操作日志 Tab）：模块/类型/操作人/操作账号/时间/IP/描述
+    // 注意：实体 SysOperLog 无 status 字段，页面亦无「状态」列；操作人字段为 operName（非 operator）
     const columns: ColumnSpec[] = [
       { label: '操作模块', index: 0, field: 'module' },
       { label: '操作类型', index: 1, field: 'operType' },
-      { label: '操作人', index: 2, field: 'operator' },
-      { label: '操作时间', index: 3, field: 'operTime', type: 'datetime' },
-      { label: 'IP', index: 4, field: 'ip' },
-      { label: '操作描述', index: 5, field: 'description' },
-      { label: '状态', index: 6, expect: (r) => (r.status === 1 ? '成功' : '失败') },
+      { label: '操作人', index: 2, field: 'operName' },
+      { label: '操作账号', index: 3, field: 'operAccount' },
+      { label: '操作时间', index: 4, field: 'operTime', type: 'datetime' },
+      { label: 'IP', index: 5, field: 'ipAddress' },
+      { label: '操作描述', index: 6, field: 'description' },
     ]
     await runListConsistency(page, {
       route: '/system/log', title: '操作日志', api: 'GET /v1/system/log/oper',

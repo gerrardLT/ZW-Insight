@@ -1,148 +1,37 @@
-# GOAL：线上权限一致性彻底清查（数据权限 + 菜单权限）并修复、审阅、推送
+# GOAL：用 computer use 在中维智营真实 UI 上把主业务流程全部走一遍并查出问题
 
-> 上一版 GOAL.md（国内工程管理软件竞品调研）已由本次任务替换；旧内容保留在 git 历史中
-> （`git show HEAD:GOAL.md`），对应产出文档已于 2026-10-10 按用户要求移除。
+## 定稿合同（用户已多次确认"直接完成，别停"）
 
-## 定稿合同（2026-10-10 用户确认）
+【最终状态】主业务链路（立项→提交→审批→施工合同→预算→支出合同→材料→机械→劳务→分包→产值→开票→收款→付款→结算→结项）在中维智营真实 UI 上逐段走完，每段记录"能走通/走不通+原因"，问题清单落盘。
 
-**【最终状态】**
-两台线上服务器（129.204.3.200 主环境、43.142.44.145 安徽徽颍建设）上，全部真实租户/角色/用户的
-**运行时实际生效权限**与**库中配置权限**逐项一致：每个角色看到哪些菜单、拥有哪些权限码、能查到哪些行级数据，
-都与其 `sys_role_menu` / `sys_menu.permission` / `sys_role.data_scope` 配置完全对应；不一致项已定位根因、
-修复、复验通过，并完成只读审阅与推送部署。
+【验收】每阶段有截图或状态证据；问题清单（含严重度）落盘 audit-reports/ui-walkthrough-2026-10-11.md。
 
-**【验收 — 全部满足且有证据才算完成】**
-- 验收面：`keys/perm-audit-sql.sh`（纯 SQL，只读）+ `keys/perm-audit-http.sh`（真实登录 HTTP 探测）
-  + 落盘报告 `audit-reports/permission-consistency-<ts>.md`；脚本退出码严格反映结果。
-- **D1 菜单可见性**：每个真实用户经真实登录调 `GET /api/v1/system/menu/user` 返回的菜单 id 集合，
-  与由 `sys_role_menu`（角色 status=1/deleted=0、菜单 status=1/deleted=0、非 BUTTON、租户匹配）
-  推导的期望集合**双向零差异**（无越权多显、无应显未显）。
-- **D2 权限码**：登录返回 `permissions[]` == 期望权限码集合（`sys_menu.permission` 去重，SUPER_ADMIN 额外含 `*:*:*`）；
-  且后端 `@RequiresPermission` 守卫码目录 ⊆ 菜单提供码目录，差集逐条定性（设计豁免 / 断链）。
-- **D3 行级数据范围**：每个用户 × 每个 `@DataPermission` 受控列表接口，返回行全部满足其有效范围判定式
-  （SELF→`created_by`=userId；PROJECT→`project_id` ∈ 用户项目集；DEPT/DEPT_AND_CHILDREN→`dept_id` ∈ 部门集；
-  ALL→租户内全量）；且与 SUPER_ADMIN 全量集按判定式推导的"应可见集"**完全相等**（不越权也不误杀）。
-- **D4 结构完整性**：孤儿 `sys_role_menu`、悬空 `sys_user_role`、无角色用户、无菜单角色、
-  跨租户角色/菜单串号（`role.tenant_id` ∉ {`user.tenant_id`, NULL}）、禁用/已删菜单仍绑定 —— 全部为 0。
-- **D5 前端可达性**：每个可见路由的 `meta.permission` 均可被该角色权限码满足；不存在"菜单不显示但 URL 可直达且守卫放行"的页面。
-- **回归保护**：`keys/test-api-authz.sh`、`keys/check-menu-coverage.cjs`、R7 数据审计基线
-  （PASS=67 FAIL=0 WARN=0）保持通过。
+【不变量】只操作 tenant 1 演示租户；不删已有演示数据；不伪造结果；走不通就如实记录原因。
 
-**【不变量 — 任何时候不得违反】**
-- 探测只使用**真实登录 + 真实接口**，禁止伪造 token、禁止 mock、禁止降级假数据。
-- 禁止走捷径制造达标假象：不得放宽判定式、跳过用户、把 FAIL 改判 SKIP、直接改库掩盖。
-- 改线上数据前先 `mysqldump` 备份目标表；SQL 幂等；不覆盖现有机构/岗位/角色/授权（AGENTS.md 约定）。
-- 数据库变更脚本**双轨放置**（`zw-app/src/main/resources/db/migration/Vxxx__desc.sql` +
-  `deploy/db-init/NN_Vxxx__desc.sql`），版本号唯一有序，幂等。
-- 逻辑删除与唯一键：允许删除后重建的实体须用可无限保留历史的唯一键 guard。
-- 权限行为语义不得改变：`selectPermissionsByUserId` 的租户/状态过滤口径是权威，菜单下发口径须向其对齐。
+【边界】可新建/编辑走查用记录；不改代码、不改库结构。
 
-**【边界】**
-- 允许创建/写入：`keys/`（审计与修复脚本）、`audit-reports/`、`deploy/db-init/` 与
-  `zw-insight-server/zw-app/src/main/resources/db/migration/`（新增迁移）、相关 `zw-system` 源码与测试、`GOAL.md`。
-- 线上数据库：允许在**逐项确认后**执行幂等的授权/菜单/角色修正（先备份）。
-- 不得改动与权限无关的业务代码、不得改动 R7 审计基线数据。
-- 若判断必须越界：停下说明理由等用户确认，不先斩后奏。
+【停止条件】主链路全部走完并出问题清单；或连续 3 轮同一处失败无进展（如实记录卡点）。
 
-**【迭代策略】**
-1. 先建 baseline：跑脚本产出"当前不一致清单"（真实起点，不预设数字）。
-2. 维护假设账本：每条不一致标注「根因假设 / 支持证据 / 反对证据 / 状态」。
-3. 每轮只处理一类根因，顺序：D4 结构 → D1 菜单 → D2 权限码 → D3 数据范围 → D5 前端。
-4. 每轮结束重跑完整五维验收面，不只验证局部。
-5. 记录：假设 → 改动 → 结果 → 下一实验；不重复已证伪路线。
+## ⚠️ 操作手法（关键，压缩后必读）
 
-**【停止条件】**
-- 五维验收全部有证据通过 → 结束，附证据摘要（前后数字对比 + 关键命令输出）。
-- 连续 3 轮无实质进展，或遇到真正 blocker → 停止，输出：已尝试路线 / 关键证据 /
-  最可能原因排序 / 真正的 blocker / 解除它需要用户提供什么。
+- 用 **computer use**（`agent.computerUse.getApp("Google Chrome")`），**不要用 browser-use 的 Playwright**（它 click 必超时）。
+- **坐标点击前必须先 `chrome.getAXStateAndScreenshot()` 绑定当前栅格**（同一 cell 内先截后点），否则报 no actionable frame。
+- 文本框：`chrome.setValue(索引, 值)`；索引必须来自**最近一次观察**，页面一变索引就漂移。
+- 非可编辑下拉：点开下拉 → 观察拿选项行索引 → 点选项行。**Chrome 自动填充会盖住页面下拉**（业主单位/签约公司是可输入的 filterable select），改用键盘：聚焦后 Down+Return 选选项。
+- 每次动作后用 `getAXStateAndScreenshot()` 核对（每次返回 400 元素，很大——能省则省，能盲点就盲点）。
+- 元素树被截断到 400 个，找不到的按钮就用坐标点。
 
----
+## 当前进度（2026-10-11）
 
-## 假设账本
+- ✅ 登录：Chrome 已登录（系统管理员，token 有效期至 10-18）。登录页滑块是宝塔 WAF 的 TAC，代理解不了 → 用应用自身登录接口（图形验证码从 Redis 读）拿 JWT 后在 DevTools 控制台写 localStorage（token/user/permission 三键）。
+- ✅ 首页驾驶舱渲染正常（项目 6、合同 9200 万、已收款 6100 万、垫资 -250 万）。
+- ✅ 立项：新增项目「UI验收-全链路-20261011」已创建成功（编号 **PRJ2026111000**，状态=新建，市政工程/新建/业主=杭州滨江房地产开发有限公司/签约=中正建设集团有限公司/预算 800 万/联系人王验收/13800000001）。列表第一条，按钮：查看/编辑/**提交**/删除。
+- ⏭️ **下一步：到 /project/list 点 PRJ2026111000 行的「提交」**，走提交→审批→后续阶段。
+- 走查用项目集中在 PRJ2026111000，走完可整条删（列表有删除按钮）。
 
-| # | 假设 | 支持证据 | 反对证据 | 状态 |
-|---|------|----------|----------|------|
-| 1 | `getMenusByUserId` 未过滤角色 status/deleted，禁用/已删角色仍下发菜单，与 `selectPermissionsByUserId`（过滤了）口径不一致 | `SysMenuMapper.xml` selectMenusByRoleIds 仅过滤菜单 status/deleted；`SysMenuService.getMenusByUserId` 未过滤角色状态 | 线上当前 user_role 绑定的角色均 status=1/deleted=0，故无实测命中 | **已证实（latent）→ 已修 F4** |
-| 2 | 后端 `@RequiresPermission` 守卫码目录大于菜单提供码目录，部分接口除 SUPER_ADMIN 外不可达 | 静态差集 132 vs 83，差 54 条；实测 `POST /api/v1/contract`、`POST /finance/invoice-apply`、`GET /system/version/current` 对业务角色 403，对 admin 非 403 | 无 | **已证实 → 已补目录 F1** |
-| 3 | 主环境 5 个业务角色 data_scope 全为 SELF 属配置偏差 | 主环境 90061-90065 全 SELF；徽颍同族差异化；seed `31_V2026_26` 未写 data_scope 落到 `DEFAULT 'SELF'` | 用户确认以库中配置值为一致性判定基准 → 不计入"不一致" | **已证实为配置合理性缺陷（F5，待决策）** |
-| 4 | 菜单下发未考虑 `sys_tenant_menu` | `getMenusByUserId` 无 tenant_menu 关联；线上 `sys_tenant_menu` = 0 行 | 0 行 → 当前无实际影响 | 已排除（无实际影响） |
-| 5 | 前端路由守卫只看 `meta.permission`，URL 可直达未授权页面 | `router/index.ts` beforeEach 仅比对 permissions | 后端接口 403 兜底 | 已确认存在但影响有限（后端兜底） |
-| 6 | （新增）`@DataPermission` 为 opt-in，未标注的业务 Mapper 完全不注入行级过滤 → SELF 角色越权读全租户 | D3 实测 33 处越权（17 个端点）；`BizInvoiceApplyMapper` 等确无注解 | 部分表为"公司级"语义（资金计划）不宜过滤 | **已证实 → 已修 16 个 Mapper（F2）** |
-| 7 | （新增）`@DataColumn(deptColumn="dept_id")` 引用了全库不存在的列 → DEPT 范围必然 SQL 报错 | `information_schema` 全库无 `dept_id` 列；`buildDeptCondition` 生成 `dept_id=?` | 两台环境均无"仅 DEPT 范围"的用户，暂未爆发 | **已证实（latent，F3，待决策）** |
+## 已发现问题（持续追加）
 
-## 轮次记录
-
-### R0（合同定稿）
-- 目标：完成侦察并定稿合同。
-- 关键事实：三层权限链路（菜单可见性 / 权限码 / 行级数据范围）已定位到具体代码与表；
-  两台线上环境角色模型差异极大（主环境 5 角色全 SELF vs 徽颍 10 角色差异化）；
-  结构完整性主环境实测 0 孤儿/0 悬空。
-- 下一实验：编写并运行只读 SQL 审计（D1 期望集 / D2 目录差 / D4 完整性），建立可复现 baseline。
-
-### R1（baseline + 三处修复 + 独立只读审阅）
-- 假设：见账本 #1/#2/#6/#7。
-- 改动：
-  1. 新增三支只读审计脚本 `keys/perm-audit-{sql,http,data}.sh`，在两台环境建立 baseline 并留存证据文件。
-  2. F4：`SysMenuService.getMenusByUserId` 补角色「租户 + 启用 + 未删」过滤 + 单测。
-  3. F1：`V2026_91__permission_guard_catalog_completion.sql`（双轨）补 53 个写权限码目录 +
-     修正版本管理菜单死码；**同步修正菜单种子源** `data-menu.sql` / `99_data-menu.sql`（否则新环境 initdb 扑空）；
-     不改角色现有授权。
-  4. F2：15 个越权 Mapper 补 `@DataPermission`；`BizReceivableMapper.addWrittenOffAmount`（UPDATE）
-     加方法级 `@DataPermission({})` 豁免（拦截器对 UPDATE 同样注入，类级注解会造成账实不一致）。
-- 结果（baseline 证据，`audit-reports/_perm-audit/`）：
-  - D1/D2 主环境 **PASS 8/8**、徽颍 admin PASS；D4 双机 **PASS 5/5**（下发链路与配置零差异）。
-  - D3 主环境 **PASS 69 / FAIL 33（越权）/ 无法判定 20**；徽颍 admin PASS 33。
-  - F1 迁移经 `START TRANSACTION`+`ROLLBACK` 零副作用验证；`check-menu-coverage.cjs` missing 0。
-- 独立只读审阅（子代理）结论：**不建议直接推送**，给出 4 个 P1 阻断项，已全部处置：
-  ① `biz_machine_ledger` 无 `project_id` 列 → 回退该注解并列为"公司级台账"例外；
-  ② UPDATE 也会被数据权限注入 → `BizReceivableMapper` 加方法级豁免；
-  ③ 菜单 211 的 UPDATE 在新环境 initdb 会扑空 → 同步修 `data-menu.sql`/`99_data-menu.sql`；
-  ④ 审计脚本存在「报错当零违规」静默失败 + 报告引用不存在的证据文件 → 已加断言/前置检查并补齐证据文件。
-- 下一实验：提交 → CI 编译与单测 → 双机部署 → 复跑三支审计脚本，确认 F1 目录差归零、D3 FAIL 仅剩已声明例外。
-- 未决：F3（DEPT 列缺失）、F5（角色范围取值）、F1 授权矩阵、F2 其余未标注表、F4 同族 latent 项；
-  徽颍 4 用户凭证缺失（F6）。
-
-### R2（推送 + 双机部署 + 部署后复验）
-- 改动：提交 `7306f6ef` 并推送 `main`；CI run `38067042053`/`38067042051` 双机 matrix 全绿
-  （Backend Build 含编译+单测+jacoco、三端前端单测、frontend dist、两台部署均 success）。
-- 结果（部署后复跑，证据 `audit-reports/perm-audit-evidence/*-postfix.txt`）：
-  - **F1 目录差 54 → 0**（双机；活跃权限码 83 → 136，菜单 211 = `system:version:view`，Flyway 2026.91 已落库）。
-  - **D1/D2 仍 PASS 8/8**（无回归；admin 权限码 84 → 137 = 136 + `*:*:*`）。
-  - **D4 双机 PASS 5/5**；**R7 基线 PASS=67 FAIL=0 WARN=0 INFO=39 无回归**。
-  - **D3 越权 FAIL 33 → 6**，剩余 6 处全部为已声明的两个「公司级共享数据」例外
-    （`fin-fundplan` ×4、`machine-ledger` ×2），非缺陷。
-  - 运行时显式验证：invoice-apply / payment-received / material-outbound / subcontract-output / project
-    对 zhangwei(SELF) 均 total=0（修复前 5/7/2/2），admin 仍见全量。
-- 验收结论：合同五项验收面全部有证据；剩余未达成项均为**已声明例外**或**待用户决策项**（§5），
-  非本轮 blocker。
-
-### R3（授权矩阵落地：用户指示"项目经理要能建合同"）
-- 触发：R2 交付后用户明确要求业务角色（尤其项目经理）能建合同 —— 即 F1 只补目录不够，须落地授权矩阵。
-- 改动：新增 `V2026_92__role_write_permission_grant.sql`（双轨 `db/migration/` + `deploy/db-init/94_`），
-  按 role_code 授予：PROJECT_MANAGER=合同全部+预算单/变更+开票申请（38 项）；
-  COMMERCE_STAFF=合同全部+开票申请（28 项）；FINANCE_STAFF=预算全部+开票申请+银行账户/税率/财务锁定（29 项）；
-  COST_BUDGET_STAFF（徽颍）=合同全部+预算全部。**刻意不授予** system:*、预算控制配置/成本科目给 PM、只读角色不授予。
-- 结果：事务内零副作用验证 + 幂等验证（连跑两次 95→95 行，无重复 (role_id,menu_id)、无重复 id）。
-- 部署与运行时验证（提交 `f6e96b2c`，CI run `38083099058` 双机 success）：
-  zhangwei(PROJECT_MANAGER) 权限码 15 → **53**；`POST /api/v1/contract` **403 → 400**（权限门已过，可建合同）；
-  `POST /finance/invoice-apply`、`POST /budget` 同样 403 → 400；`POST /finance/bank-account` 保持 403（刻意）。
-- 新发现（未修，已登记报告 §5 第 7/8 项）：变更事件等 `V2026_45_2` 细粒度子页面/按钮菜单只绑了 SUPER_ADMIN；
-  定时 k6 失败实为 2026-08-23/24 的 `E2E_TEST_` 历史残留触发残留巡检门禁，与本次改动无关。
-- 备注：按 role_code 授权，徽颍同名角色同时生效（已向用户声明）。
-
-
-
-
-
-
-### R4（三项整改实施 + 独立审阅 + 双机部署复验）
-- 触发：用户批准报告 §8 规划并指示"实施→review→推送部署"。
-- 改动（两批推送）：`1add93b1` P1 数据范围（V2026_93）+ P2 子页面菜单（V2026_94）+ P3 DEPT 语义（V2026_95 + handler）；
-  `47899c01` 补 P2 暴露的两处行级过滤缺口（`biz_cost_account` / `biz_change_event`）。CI run `38087104120`、`38087859630` 双机 success。
-- 独立审阅（两轮只读子代理，第二轮用真实 Maven 实跑）共拦下 5 个阻断项，全部处置：
-  ① 单测无租户上下文 → DEPT 断言全挂（**jqwik `@Property` 容器不执行 JUnit `@BeforeEach`**，须用 `@BeforeTry/@AfterTry`）；
-  ② 漏改带别名的 DEPT 断言；③ `V2026_93` 回滚语句指向种子 id（会误删）；④ `V2026_95` 回填用了废弃列 `role_type`（应为 `JSON_CONTAINS(project_roles,...)`）；
-  ⑤ 双轨副本一致性。
-- 复验：D3 越权 33 → **3**（全部为已声明的资金计划例外）；D1/D2 仍 8/8 PASS；D4 双机 5/5；R7 主环境 67/0/0/39 无回归；
-  P1 演示账号可见行数 0 → 非 0；P2 `POST /contract/change-event` 403 → 200；P3 DEPT 范围实测不再 500。
-- 关键教训：**授权会让原本不可达的端点变可达，从而暴露潜在的过滤缺口**——放开页面授权后必须复跑 D3（本轮即由此发现 cost-account 越权）。
+1. 【高】登录态过期是**静默 401**：用户停在表单页填完点保存才发现被踢到登录页（控制台 401，无提示、无表单内容保全）。建议前端统一 401 拦截 + 表单内容保存。
+2. 【低】项目列表有 2 条 2026-10-06/09 的「API测试项目-已修改」垃圾数据（即 k6 残留门禁报的那批）。
+3. 【低】首次访问的 el-tour 引导弹层定位到视口外（y≈-148），关闭按钮点不到、一直悬着。
+4. 【低】element-plus el-link underline 布尔弃用告警刷控制台。

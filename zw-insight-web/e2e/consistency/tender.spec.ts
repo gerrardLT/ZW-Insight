@@ -34,13 +34,19 @@ const CERT_COLUMNS: ColumnSpec[] = [
   } },
 ]
 
+/** 投标报名列规格（index 与 tender/register.vue 的 <el-table-column> 顺序一致，0-based；
+ *  index 0 为「关联项目」projectName，index 7 为「落标原因」派生展示列，index 8 为操作列，均不比对。
+ *  招标方式/保证金列为页面内联格式化，基线按页面真实渲染规则独立复刻） */
 const REGISTER_COLUMNS: ColumnSpec[] = [
-  { label: '业主单位', index: 0, field: 'ownerCompany', type: 'text' },
-  { label: '招标方式', index: 1, field: 'bidMethod', type: 'text' },
-  { label: '报名日期', index: 2, field: 'registerDate', type: 'date' },
-  { label: '开标日期', index: 3, field: 'openDate', type: 'date' },
-  { label: '保证金(元)', index: 4, field: 'depositAmount', type: 'numeric' },
-  { label: '状态', index: 5, field: 'status', type: 'enum', enumMap: TENDER_REGISTER_STATUS },
+  { label: '业主单位', index: 1, field: 'ownerCompany', type: 'text' },
+  { label: '招标方式', index: 2, field: 'bidMethod', expect: (r) =>
+    r.bidMethod === 'PUBLIC' ? '公开招标' : r.bidMethod === 'INVITE' ? '邀请招标' : (r.bidMethod || '-') },
+  { label: '报名日期', index: 3, field: 'registerDate', type: 'date' },
+  { label: '开标日期', index: 4, field: 'openDate', type: 'date' },
+  // 页面渲染 '¥ ' + Number(depositAmount).toLocaleString()，空值显示 '-'
+  { label: '保证金(元)', index: 5, field: 'depositAmount', expect: (r) =>
+    r.depositAmount != null ? '¥ ' + Number(r.depositAmount).toLocaleString() : '-' },
+  { label: '状态', index: 6, field: 'status', type: 'enum', enumMap: TENDER_REGISTER_STATUS },
 ]
 
 const results: PageConsistencyResult[] = []
