@@ -385,14 +385,14 @@ describe('site/inspection/detail.vue 检查详情（C19）', () => {
     return w
   }
 
-  it('@matrix C-19-1 总结果 PASS→合格 success / 否则不合格 danger 源码钉住', () => {
-    expect(inspDetailSrc).toContain(":type=\"detail.result === 'PASS' ? 'success' : 'danger'\"")
-    expect(inspDetailSrc).toContain("detail.result === 'PASS' ? '合格' : '不合格'")
+  it('@matrix C-19-1 总结果按 hasProblem 判定：有问题→danger 存在隐患 / 否则 success 无问题 源码钉住', () => {
+    expect(inspDetailSrc).toContain(":type=\"detail.hasProblem === 1 ? 'danger' : 'success'\"")
+    expect(inspDetailSrc).toContain("detail.hasProblem === 1 ? '存在隐患' : '无问题'")
   })
 
   it('@matrix C-19-2 明细三态 PASS/FAIL/其他（合格/不合格/未检查）+ C-19-4 空明细 el-empty 源码钉住', () => {
-    expect(inspDetailSrc).toContain("v-if=\"row.result === 'PASS'\"")
-    expect(inspDetailSrc).toContain("v-else-if=\"row.result === 'FAIL'\"")
+    expect(inspDetailSrc).toContain("v-if=\"row.checkResult === 'PASS'\"")
+    expect(inspDetailSrc).toContain("v-else-if=\"row.checkResult === 'FAIL'\"")
     expect(inspDetailSrc).toContain('v-if="detailItems.length === 0"')
     expect(inspDetailSrc).toContain('description="暂无检查明细"')
   })

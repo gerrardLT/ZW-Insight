@@ -23,10 +23,6 @@ export function updateSchedulePlanDates(id: number | string, data: { planStartDa
   return request.put(`/v1/site/schedule/plan/${id}`, data)
 }
 
-export function getScheduleDetail(id: number) {
-  return request.get(`/v1/site/schedule/plan/${id}`)
-}
-
 export function createSchedule(data: any) {
   return request.post('/v1/site/schedule/plan', data)
 }

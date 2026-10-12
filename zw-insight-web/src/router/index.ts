@@ -737,6 +737,12 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '施工日志', icon: 'Memo' }
       },
       {
+        path: 'completion',
+        name: 'SiteCompletion',
+        component: () => import('@/views/site/completion.vue'),
+        meta: { title: '竣工验收', icon: 'CircleCheck' }
+      },
+      {
         path: 'inspection',
         name: 'SiteInspection',
         component: () => import('@/views/site/inspection/index.vue'),

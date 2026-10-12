@@ -42,16 +42,10 @@ export const BUDGET_STATUS: Record<string, string> = {
 }
 
 /**
- * 简单合同生效状态（subcontract/labor 合同列表：EFFECTIVE→生效，其余→草稿）。
- * ⚠ 采购合同页渲染口径不同（SUBMITTED→审批中、EFFECTIVE→已生效），
- * 采购单列 PURCHASE_CONTRACT_STATUS，勿与本常量共用。
+ * 采购合同状态（purchase/contract.vue:36-42 状态列内联三元：EFFECTIVE→已生效、SUBMITTED→审批中、其余→草稿）。
+ * 分包/劳务合同列表同为三态内联三元（EFFECTIVE→生效、SUBMITTED→审批中、其余→草稿），
+ * 各自在 spec 内用显式 expect 书写，不再共用常量（2026-10-13 分包页两态改三态）。
  */
-export const SIMPLE_CONTRACT_STATUS: Record<string, string> = {
-  DRAFT: '草稿',
-  EFFECTIVE: '生效',
-}
-
-/** 采购合同状态（purchase/contract.vue:36-42 状态列内联三元：EFFECTIVE→已生效、SUBMITTED→审批中、其余→草稿） */
 export const PURCHASE_CONTRACT_STATUS: Record<string, string> = {
   DRAFT: '草稿',
   SUBMITTED: '审批中',

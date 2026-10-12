@@ -7,14 +7,13 @@
           <div class="plate-eyebrow">Site Quality & Safety // 07-INSPECT</div>
           <div class="plate-title">
             <span>{{ detail.inspectionType === 'QUALITY' ? '质量安全检查明细' : '施工现场巡查明细' }}</span>
-            <el-tag :type="detail.result === 'PASS' ? 'success' : 'danger'" size="small">
-              {{ detail.result === 'PASS' ? '合格' : '需整改' }}
+            <el-tag :type="detail.hasProblem === 1 ? 'danger' : 'success'" size="small">
+              {{ detail.hasProblem === 1 ? '存在隐患' : '无问题' }}
             </el-tag>
           </div>
           <div class="plate-meta">
-            <span>NO: {{ detail.inspectionNo || '-' }}</span>
             <span>PROJECT: {{ detail.projectName || '-' }}</span>
-            <span>DATE: {{ detail.inspectionDate || '-' }}</span>
+            <span>DATE: {{ detail.createdAt || '-' }}</span>
           </div>
         </div>
         <div class="plate-actions">
@@ -28,9 +27,6 @@
     <el-card shadow="never" class="card-corner-marked">
       <div class="section-title">检查指标参数</div>
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="检查编号">
-          <span class="stat-number">{{ detail.inspectionNo }}</span>
-        </el-descriptions-item>
         <el-descriptions-item label="项目名称">{{ detail.projectName }}</el-descriptions-item>
         <el-descriptions-item label="检查类型">
           {{ detail.inspectionType === 'QUALITY' ? '质量检查' : '安全检查' }}
@@ -39,22 +35,25 @@
           <span v-if="schemeName">{{ schemeName }}</span>
           <span v-else class="text-muted">未关联方案</span>
         </el-descriptions-item>
-        <el-descriptions-item label="检查人">{{ detail.inspector }}</el-descriptions-item>
-        <el-descriptions-item label="检查日期">
-          <span class="stat-number">{{ detail.inspectionDate }}</span>
-        </el-descriptions-item>
+        <el-descriptions-item label="检查内容">{{ detail.inspectionContent || '-' }}</el-descriptions-item>
         <el-descriptions-item label="检查结果">
-          <el-tag :type="detail.result === 'PASS' ? 'success' : 'danger'" size="small">
-            {{ detail.result === 'PASS' ? '合格' : '不合格' }}
+          <el-tag :type="detail.hasProblem === 1 ? 'danger' : 'success'" size="small">
+            {{ detail.hasProblem === 1 ? '存在隐患' : '无问题' }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="整改说明">{{ detail.remark || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="检查时间">
+          <span class="stat-number">{{ detail.createdAt || '-' }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="问题描述">{{ detail.problemDescription || '-' }}</el-descriptions-item>
         <el-descriptions-item label="整改状态">
           <el-tag v-if="detail.rectificationStatus" :type="rectTagType(detail.rectificationStatus)" size="small">{{ rectText(detail.rectificationStatus) }}</el-tag>
           <span v-else class="text-muted">无需整改</span>
         </el-descriptions-item>
         <el-descriptions-item label="整改期限">
           <span class="stat-number">{{ detail.rectificationDeadline || '-' }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="整改完成日期">
+          <span class="stat-number">{{ detail.rectificationDate || '-' }}</span>
         </el-descriptions-item>
       </el-descriptions>
 
@@ -70,15 +69,15 @@
         <el-table-column prop="itemName" label="项目名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="checkStandard" label="检查标准" min-width="200" show-overflow-tooltip />
         <el-table-column prop="checkMethod" label="检查方法" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="result" label="检查结果" width="100" align="center">
+        <el-table-column prop="checkResult" label="检查结果" width="100" align="center">
           <template #default="{ row }">
             <el-tag
-              v-if="row.result === 'PASS'"
+              v-if="row.checkResult === 'PASS'"
               type="success"
               size="small"
             >合格</el-tag>
             <el-tag
-              v-else-if="row.result === 'FAIL'"
+              v-else-if="row.checkResult === 'FAIL'"
               type="danger"
               size="small"
             >不合格</el-tag>
@@ -241,7 +240,7 @@ async function loadDetail() {
           itemName: item.itemName || '',
           checkStandard: item.checkStandard || '',
           checkMethod: item.checkMethod || '',
-          result: item.result || 'UNCHECKED'
+          checkResult: item.checkResult || 'NOT_CHECKED'
         }))
       } catch {
         detailItems.value = []
