@@ -1,16 +1,15 @@
 package com.zwinsight.workflow.notify;
 
-import com.zwinsight.common.config.SecurityContextHolder;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.common.event.ApprovalNotifyEvent;
 import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.workflow.domain.WfBusinessType;
 import com.zwinsight.workflow.mapper.WfBusinessTypeMapper;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.TaskService;
-import org.flowable.task.api.Task;
 import org.flowable.identitylink.api.IdentityLink;
+import org.flowable.task.api.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
@@ -35,12 +34,14 @@ import java.util.Set;
  *   <li>{@link #notifyResult}（REJECTED）：驳回/撤回/终止 → 通知发起人</li>
  * </ul>
  * </p>
- * <p><b>为什么由 ApprovalService 显式调用而非监听 Flowable TASK_CREATED</b>：Flowable 在创建用户
- * 任务时先派发 {@code TASK_CREATED}，随后才写入处理人与候选身份链接；在事件回调内解析会拿到空
- * 收件人（实测：发起开票审批后待办通知未落库，而同一发布器的驳回通知正常）。改为在审批服务完成
- * 发起/办理/退回动作后查询该流程实例的**活动任务**，此时 assignee 与身份链接均已落库。</p>
- * <p>所有发布统一延迟到主事务提交后（{@link #runAfterCommit}）：主事务回滚时不发通知，
- * 避免「幽灵消息」。</p>
+ * <p><b>为什么由 ApprovalService 显式调用而非监听 Flowable TASK_CREATED</b>：引擎先派发
+ * {@code TASK_CREATED}，随后才写入处理人与候选身份链接，事件回调内解析会拿到空收件人
+ * （2026-10-13 线上实测：待办通知未落库，而驳回通知正常）。改为审批动作完成后查询该流程实例的
+ * <b>活动任务</b>，此时 assignee 与身份链接均已在当前事务内可见。</p>
+ * <p><b>时序约束</b>：收件人解析（Flowable/MyBatis 读操作）在业务事务<b>内</b>同步完成；仅「发布事件」
+ * 延迟到事务提交后（{@link #publishAfterCommit}）。这样 ① 主事务回滚时不留「幽灵消息」；
+ * ② 提交后阶段不再执行任何数据库访问（该阶段事务资源仍绑定但已不会再提交，不宜做数据访问）。
+ * 通知失败一律吞并记日志，不得影响审批主流程。</p>
  */
 @Slf4j
 @Component
@@ -57,9 +58,9 @@ public class ApprovalNotifyPublisher {
     private TaskService taskService;
 
     /**
-     * 新待办通知：通知流程实例当前的全部活动任务处理人/候选人。
-     * <p>由 {@code ApprovalService} 在发起流程/办理/退回后调用（事务内），此时任务与候选身份
-     * 链接均已落库，收件人可完整解析；实际发布延迟到事务提交后（见 {@link #runAfterCommit}）。</p>
+     * 新待办通知：通知流程实例当前全部活动任务的处理人/候选人。
+     * <p>由 {@code ApprovalService} 在发起流程/办理/退回/转办/委托后调用。流程已结束
+     * （无活动任务）时静默返回，由审批结果通知负责触达。</p>
      *
      * @param processInstanceId 流程实例ID
      */
@@ -67,63 +68,37 @@ public class ApprovalNotifyPublisher {
         if (processInstanceId == null || processInstanceId.isBlank()) {
             return;
         }
-        List<Task> activeTasks;
         try {
-            activeTasks = taskService.createTaskQuery().processInstanceId(processInstanceId).list();
+            List<Task> activeTasks = taskService.createTaskQuery().processInstanceId(processInstanceId).list();
+            // info 级别：上次线上待办通知未落库却无任何日志，跳过分支必须可观测
+            log.info("待办通知：processInstanceId={}, 活动任务数={}", processInstanceId,
+                    activeTasks == null ? 0 : activeTasks.size());
+            if (activeTasks == null || activeTasks.isEmpty()) {
+                return;
+            }
+            for (Task task : activeTasks) {
+                notifyTask(task);
+            }
         } catch (Exception e) {
-            log.warn("待办通知：查询活动任务失败, processInstanceId={}", processInstanceId, e);
-            return;
+            log.error("待办通知失败（不影响审批流程）, processInstanceId={}", processInstanceId, e);
         }
-        if (activeTasks == null || activeTasks.isEmpty()) {
-            // 流程已结束或推进到无用户任务节点：由审批结果通知负责触达
-            return;
-        }
-        log.info("待办通知：解析到 {} 个活动任务, processInstanceId={}", activeTasks.size(), processInstanceId);
-        for (Task task : activeTasks) {
-            notifyTodo(task.getId());
-        }
-    }
-
-    /**
-     * 新待办产生通知（在事务提交后解析收件人并发布）。
-     *
-     * @param taskId 新创建的待办任务ID
-     */
-    public void notifyTodo(String taskId) {
-        if (taskId == null || taskId.isBlank()) {
-            return;
-        }
-        runAfterCommit(() -> doNotifyTodo(taskId));
     }
 
     /**
      * 审批结果通知（通知流程发起人）。
-     * <p>与 {@link #notifyTodo} 一致，统一延迟到事务提交后发布：避免主事务回滚后
-     * 留下「幽灵消息」。发布方在提交后调用 {@link #publish}，消费侧为普通 {@code @Async}
-     * 监听器（不能再用 {@code @TransactionalEventListener}——提交后阶段已无法再登记
-     * 同步回调，事件会被静默丢弃）。</p>
      *
      * @param businessType      业务类型编码
      * @param businessId        业务单据ID
      * @param processInstanceId 流程实例ID
-     * @param initiator         发起人用户ID字符串（来自流程变量，可能为空）
+     * @param initiator         发起人用户ID字符串（来自流程变量/历史实例，可能为空）
      * @param result            APPROVED=通过；其余（REJECT/WITHDRAW）=驳回/撤回
      * @param tenantId          租户ID（异步监听器恢复上下文用）
      */
     public void notifyResult(String businessType, Long businessId, String processInstanceId,
                              String initiator, String result, Long tenantId) {
-        runAfterCommit(() -> doNotifyResult(businessType, businessId, processInstanceId,
-                initiator, result, tenantId));
-    }
-
-    private void doNotifyResult(String businessType, Long businessId, String processInstanceId,
-                                String initiator, String result, Long tenantId) {
         try {
-            if (initiator == null || initiator.isBlank() || tenantId == null) {
-                return;
-            }
             Long initiatorId = parseLong(initiator);
-            if (initiatorId == null) {
+            if (initiatorId == null || tenantId == null) {
                 return;
             }
             boolean approved = ApprovalNotifyEvent.TYPE_APPROVED.equals(result);
@@ -131,43 +106,25 @@ public class ApprovalNotifyPublisher {
             String title = approved ? "【审批通过】" + bizName : "【审批驳回】" + bizName;
             String content = approved
                     ? "您提交的【" + bizName + "】已审批通过。"
-                    : "您提交的【" + bizName + "】已被驳回或撤回，请查看审批意见后修改重提。";
-            publish(Collections.singletonList(initiatorId),
+                    : "您提交的【" + bizName + "】已被驳回、退回或撤回，请在审批记录中查看原因。";
+            publishAfterCommit(new ApprovalNotifyEvent(this, Collections.singletonList(initiatorId),
                     approved ? ApprovalNotifyEvent.TYPE_APPROVED : ApprovalNotifyEvent.TYPE_REJECTED,
-                    title, content, businessType, businessId, processInstanceId, null, tenantId);
+                    title, content, businessType, businessId, processInstanceId, null, tenantId));
         } catch (Exception e) {
-            // 通知失败不得影响审批主流程
-            log.error("审批结果通知发布失败, businessType={}, businessId={}, result={}",
+            log.error("审批结果通知失败（不影响审批流程）, businessType={}, businessId={}, result={}",
                     businessType, businessId, result, e);
         }
     }
 
     // ===== 内部实现 =====
 
-    private void doNotifyTodo(String taskId) {
-        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
-        if (task == null) {
-            // 任务已在同一事务内被推进/删除（如自动完成节点），无需通知
-            return;
-        }
+    /** 解析单个活动任务的收件人并（提交后）发布待办通知 */
+    private void notifyTask(Task task) {
         Long tenantId = parseLong(task.getTenantId());
         if (tenantId == null) {
-            log.warn("待办通知跳过：任务缺少租户, taskId={}", taskId);
+            log.warn("待办通知跳过：任务缺少租户, taskId={}", task.getId());
             return;
         }
-
-        // 提交后回调可能脱离原租户上下文（异步/线程复用），显式设置以保证 wf_business_type
-        // 查询被租户拦截器正确过滤；结束后还原，避免污染线程池复用。
-        Long previousTenantId = SecurityContextHolder.getTenantId();
-        SecurityContextHolder.setTenantId(tenantId);
-        try {
-            doNotifyTodoInTenant(task, tenantId);
-        } finally {
-            SecurityContextHolder.setTenantId(previousTenantId);
-        }
-    }
-
-    private void doNotifyTodoInTenant(Task task, Long tenantId) {
         String taskId = task.getId();
         Map<String, Object> variables = taskService.getVariables(taskId);
         String businessType = variables.get("businessType") == null ? null : String.valueOf(variables.get("businessType"));
@@ -202,7 +159,8 @@ public class ApprovalNotifyPublisher {
 
         if (recipients.isEmpty()) {
             // 候选组尚未配置成员等场景：无收件人即不通知（不伪造发送成功）
-            log.debug("待办通知跳过：无有效收件人, taskId={}, businessType={}", taskId, businessType);
+            log.info("待办通知跳过：无有效收件人, taskId={}, businessType={}, candidateGroups={}",
+                    taskId, businessType, candidateGroups);
             return;
         }
 
@@ -210,17 +168,9 @@ public class ApprovalNotifyPublisher {
         String taskName = task.getName() == null ? "待办任务" : task.getName();
         String title = "【待办提醒】" + bizName;
         String content = "您有一条【" + bizName + "】待办任务（" + taskName + "），请及时办理。";
-        publish(new ArrayList<>(recipients), ApprovalNotifyEvent.TYPE_TODO,
-                title, content, businessType, businessId, task.getProcessInstanceId(), taskId, tenantId);
-    }
-
-    private void publish(List<Long> recipients, String notifyType, String title, String content,
-                         String businessType, Long businessId, String processInstanceId,
-                         String taskId, Long tenantId) {
-        eventPublisher.publishEvent(new ApprovalNotifyEvent(this, recipients, notifyType, title, content,
-                businessType, businessId, processInstanceId, taskId, tenantId));
-        log.info("审批通知已发布, type={}, businessType={}, businessId={}, 收件人数={}",
-                notifyType, businessType, businessId, recipients.size());
+        publishAfterCommit(new ApprovalNotifyEvent(this, new ArrayList<>(recipients),
+                ApprovalNotifyEvent.TYPE_TODO, title, content, businessType, businessId,
+                task.getProcessInstanceId(), taskId, tenantId));
     }
 
     /** 业务类型编码 → 中文名；查不到时回退编码本身（不阻断通知） */
@@ -243,24 +193,32 @@ public class ApprovalNotifyPublisher {
     }
 
     /**
-     * 事务提交后执行；无事务时立即执行。
-     * <p>放在提交后是为了让候选身份链接已落库，同时主事务回滚时不发通知。</p>
+     * 事务提交后发布事件；无事务上下文时立即发布。
+     * <p>提交后阶段只做事件发布（无数据库访问）；主事务回滚则回调不会触发，不留幽灵消息。</p>
      */
-    private void runAfterCommit(Runnable action) {
+    private void publishAfterCommit(ApprovalNotifyEvent event) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            action.run();
+            doPublish(event);
             return;
         }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                try {
-                    action.run();
-                } catch (Exception e) {
-                    log.error("审批通知（提交后）执行失败", e);
-                }
+                doPublish(event);
             }
         });
+    }
+
+    private void doPublish(ApprovalNotifyEvent event) {
+        try {
+            eventPublisher.publishEvent(event);
+            log.info("审批通知已发布, type={}, businessType={}, businessId={}, 收件人数={}",
+                    event.getNotifyType(), event.getBusinessType(), event.getBusinessId(),
+                    event.getTargetUserIds().size());
+        } catch (Exception e) {
+            log.error("审批通知发布失败, type={}, businessType={}, businessId={}",
+                    event.getNotifyType(), event.getBusinessType(), event.getBusinessId(), e);
+        }
     }
 
     private Long parseLong(Object value) {

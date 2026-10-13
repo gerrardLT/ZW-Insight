@@ -1,5 +1,6 @@
 package com.zwinsight.message.websocket;
 
+import com.zwinsight.security.service.AuthService;
 import com.zwinsight.security.util.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,8 +17,11 @@ import java.util.Map;
  * <p><b>背景</b>：{@code WebSocketConfig} 注册的 {@code /ws/message} 不在 {@code AuthInterceptor}
  * 的 {@code /api/**} 保护范围内，原实现直接信任 URL 上的 {@code userId} 查询参数，
  * 任何人都能以任意 userId 建立连接并订阅他人消息（越权订阅）。现要求握手时携带
- * 有效 JWT（{@code ?token=xxx}），校验通过后把 userId 写入会话属性；
+ * 有效 token（{@code ?token=xxx}），校验通过后把 userId 写入会话属性；
  * 处理器只从会话属性读取身份，不再信任查询参数。</p>
+ * <p><b>校验口径与 REST 一致</b>：复用 {@link AuthService#validateToken}（Redis 中存在该 token
+ * 且 JWT 未过期）。仅验 JWT 签名不够——用户登出/被踢后 Redis 里的 token 已删除，
+ * 但 JWT 本身仍在有效期内，旧 token 会继续订阅他人消息。</p>
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -26,6 +30,7 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
     /** 会话属性键：已认证用户ID */
     public static final String ATTR_USER_ID = "userId";
 
+    private final AuthService authService;
     private final JwtUtils jwtUtils;
 
     @Override
@@ -33,10 +38,14 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
                                    WebSocketHandler wsHandler, Map<String, Object> attributes) {
         String token = extractToken(request.getURI());
         if (token == null) {
-            log.warn("WebSocket 握手被拒绝：缺少 token, uri={}", request.getURI());
+            log.warn("WebSocket 握手被拒绝：缺少 token");
             return false;
         }
         try {
+            if (!authService.validateToken(token)) {
+                log.warn("WebSocket 握手被拒绝：token 已登出或已过期");
+                return false;
+            }
             Long userId = jwtUtils.getUserId(token);
             if (userId == null) {
                 log.warn("WebSocket 握手被拒绝：token 缺少 userId");
@@ -45,7 +54,8 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
             attributes.put(ATTR_USER_ID, String.valueOf(userId));
             return true;
         } catch (Exception e) {
-            log.warn("WebSocket 握手被拒绝：token 无效或已过期, reason={}", e.getMessage());
+            // 不在日志里输出 token 与完整 URI（URL 上带凭证）
+            log.warn("WebSocket 握手被拒绝：token 无效, reason={}", e.getMessage());
             return false;
         }
     }
