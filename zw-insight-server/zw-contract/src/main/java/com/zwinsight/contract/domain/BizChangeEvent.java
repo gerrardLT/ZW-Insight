@@ -105,6 +105,9 @@ public class BizChangeEvent extends BaseEntity {
     /** 流程实例ID（仅关联指针，不承载业务状态） */
     private String workflowInstanceId;
 
+    /** 合同累计变更额是否已回写（0-否 1-是，Outbox 重试幂等标记） */
+    private Integer contractChangeWritten;
+
     /** 项目名称（冗余展示字段，不持久化） */
     @TableField(exist = false)
     private String projectName;

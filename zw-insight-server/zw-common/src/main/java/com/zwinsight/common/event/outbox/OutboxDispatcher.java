@@ -195,14 +195,18 @@ public class OutboxDispatcher {
             handleFailure(event, msg);
             return DeliveryResult.FAILED;
         } finally {
-            // 恢复上下文，避免污染线程池中的后续任务
-            if (!previousSystemTask) {
-                SecurityContextHolder.unmarkSystemTask();
-            }
+            // 恢复上下文，避免污染线程池中的后续任务。
+            // 先还原租户（previousTenant 为 null 时 clear 会连系统任务标记一并清掉），
+            // 再按需重新标记系统任务，保证「嵌套在系统任务中投递」时标记也能正确还原。
             if (previousTenant != null) {
                 SecurityContextHolder.setTenantId(previousTenant);
             } else {
                 SecurityContextHolder.clear();
+            }
+            if (previousSystemTask) {
+                SecurityContextHolder.markSystemTask();
+            } else {
+                SecurityContextHolder.unmarkSystemTask();
             }
         }
     }
