@@ -3,6 +3,7 @@ package com.zwinsight.workflow.config;
 import com.zwinsight.workflow.listener.ApprovalRejectListener;
 import com.zwinsight.workflow.listener.DelegateTaskAssignListener;
 import com.zwinsight.workflow.listener.ProcessCompleteListener;
+import com.zwinsight.workflow.listener.TaskCreatedNotifyListener;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
 import org.flowable.spring.SpringProcessEngineConfiguration;
 import org.flowable.spring.boot.EngineConfigurationConfigurer;
@@ -26,7 +27,8 @@ public class FlowableConfig {
     public EngineConfigurationConfigurer<SpringProcessEngineConfiguration> engineConfigurer(
             DelegateTaskAssignListener delegateTaskAssignListener,
             ProcessCompleteListener processCompleteListener,
-            ApprovalRejectListener approvalRejectListener) {
+            ApprovalRejectListener approvalRejectListener,
+            TaskCreatedNotifyListener taskCreatedNotifyListener) {
         return config -> {
             config.setActivityFontName("宋体");
             config.setLabelFontName("宋体");
@@ -35,6 +37,8 @@ public class FlowableConfig {
 
             // 注册全局事件监听器：按事件类型分组
             Map<String, List<FlowableEventListener>> typedListeners = new HashMap<>();
+            typedListeners.put("TASK_CREATED",
+                    Collections.singletonList(taskCreatedNotifyListener));
             typedListeners.put("TASK_ASSIGNED",
                     Collections.singletonList(delegateTaskAssignListener));
             typedListeners.put("PROCESS_COMPLETED",

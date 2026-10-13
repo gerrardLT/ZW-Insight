@@ -53,6 +53,7 @@ class ApprovalServiceTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private WfApprovalRecordMapper approvalRecordMapper;
     @Mock private SysUserMapper sysUserMapper;
+    @Mock private com.zwinsight.workflow.notify.ApprovalNotifyPublisher approvalNotifyPublisher;
     @Mock private org.springframework.jdbc.core.JdbcTemplate jdbc;
     private MockedStatic<SecurityContextHolder> defaultContext;
 

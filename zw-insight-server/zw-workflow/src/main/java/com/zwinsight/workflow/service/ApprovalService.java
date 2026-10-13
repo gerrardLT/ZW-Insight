@@ -46,6 +46,7 @@ public class ApprovalService {
     private final ApplicationEventPublisher eventPublisher;
     private final WfApprovalRecordMapper approvalRecordMapper;
     private final SysUserMapper sysUserMapper;
+    private final com.zwinsight.workflow.notify.ApprovalNotifyPublisher approvalNotifyPublisher;
     private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     /** 超级管理员角色编码，拥有全部审批操作权限，跳过处理人校验 */
@@ -898,6 +899,26 @@ public class ApprovalService {
     private void publishRejectEvent(String processInstanceId, String businessType, Long businessId, String result) {
         SystemEventPublisher.publishSystemEvent(eventPublisher,
                 new ApprovalRejectEvent(this, processInstanceId, businessType, businessId, result));
+
+        // 驳回/撤回/终止通知发起人（站内信）。流程实例在 terminate/withdrawByBusiness 中已被删除，
+        // 故发起人与租户取自历史实例（删除后仍可查）；缺失时通知侧静默跳过，不影响主流程。
+        String initiator = null;
+        Long tenantId = null;
+        try {
+            HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
+                    .processInstanceId(processInstanceId)
+                    .singleResult();
+            if (instance != null) {
+                initiator = instance.getStartUserId();
+                if (instance.getTenantId() != null && !instance.getTenantId().isBlank()) {
+                    tenantId = Long.valueOf(instance.getTenantId().trim());
+                }
+            }
+        } catch (Exception e) {
+            log.debug("驳回通知：历史实例查询失败, processInstanceId={}", processInstanceId, e);
+        }
+        approvalNotifyPublisher.notifyResult(businessType, businessId, processInstanceId,
+                initiator, result, tenantId);
     }
 
     private Task getTaskById(String taskId) {

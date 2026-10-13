@@ -29,9 +29,22 @@ import java.util.Map;
 public class ProcessCompleteListener implements FlowableEventListener {
 
     private final ApplicationEventPublisher eventPublisher;
+    private final com.zwinsight.workflow.notify.ApprovalNotifyPublisher approvalNotifyPublisher;
     @Lazy
     @Autowired
     private RuntimeService runtimeService;
+
+    /** 租户ID字符串 → Long；缺失/非法返回 null（通知侧据此跳过，不伪造归属） */
+    private static Long parseTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(tenantId.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 
     @Override
     public void onEvent(FlowableEvent event) {
@@ -75,6 +88,13 @@ public class ProcessCompleteListener implements FlowableEventListener {
                 // 由 SystemEventPublisher 临时标记系统任务并在发布后还原。
                 SystemEventPublisher.publishSystemEvent(eventPublisher,
                         new ApprovalCompleteEvent(this, businessType, businessId, "APPROVED"));
+
+                // 审批通过通知发起人（站内信）。通知失败不影响审批主流程：
+                // notifyResult 内部已 try/catch，此处不改变原有的异常传播语义。
+                approvalNotifyPublisher.notifyResult(businessType, businessId,
+                        executionEntity.getProcessInstanceId(),
+                        variables.get("initiator") == null ? null : String.valueOf(variables.get("initiator")),
+                        "APPROVED", parseTenantId(executionEntity.getTenantId()));
 
             } catch (com.zwinsight.common.exception.BusinessException e) {
                 // 业务侧可预期约束错误（如「退款失败：退款金额超过合同累计已付款」）原样上抛，

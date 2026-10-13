@@ -36,4 +36,25 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
             "AND m.status = 1 AND m.deleted = 0 AND (m.tenant_id = u.tenant_id OR m.tenant_id IS NULL) " +
             "AND m.permission IS NOT NULL AND m.permission != ''")
     List<String> selectPermissionsByUserId(@Param("userId") Long userId);
+
+    /**
+     * 按角色编码解析租户内的有效用户ID（候选组任务通知用）。
+     * <p>与 {@link #selectRoleCodesByUserId} 同口径：仅统计启用且未删除的用户，
+     * 角色需启用/未删除且属于该租户或为共享角色（tenant_id IS NULL）。</p>
+     */
+    @Select("<script>SELECT DISTINCT u.id FROM sys_user u " +
+            "JOIN sys_user_role ur ON ur.user_id = u.id " +
+            "JOIN sys_role r ON r.id = ur.role_id " +
+            "WHERE u.status = 1 AND u.deleted = 0 AND u.tenant_id = #{tenantId} " +
+            "AND r.status = 1 AND r.deleted = 0 " +
+            "AND (r.tenant_id = #{tenantId} OR r.tenant_id IS NULL) " +
+            "AND r.role_code IN " +
+            "<foreach collection='roleCodes' item='rc' open='(' separator=',' close=')'>#{rc}</foreach>" +
+            "</script>")
+    List<Long> selectUserIdsByRoleCodes(@Param("roleCodes") List<String> roleCodes,
+                                        @Param("tenantId") Long tenantId);
+
+    /** 查询租户内全部启用且未删除的用户ID（通知/公告广播用） */
+    @Select("SELECT id FROM sys_user WHERE tenant_id = #{tenantId} AND status = 1 AND deleted = 0")
+    List<Long> selectActiveUserIds(@Param("tenantId") Long tenantId);
 }

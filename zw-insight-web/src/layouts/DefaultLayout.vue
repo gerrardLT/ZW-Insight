@@ -128,9 +128,17 @@
             </div>
           </el-tooltip>
           <!-- 消息 -->
-          <el-tooltip content="消息通知" placement="bottom">
+          <el-tooltip :content="unreadCount > 0 ? `消息通知（${unreadCount} 条未读）` : '消息通知'" placement="bottom">
             <div class="header-action" role="button" aria-label="消息通知" @click="goMessage">
-              <el-icon><Bell /></el-icon>
+              <el-badge
+                :value="unreadCount"
+                :max="99"
+                :hidden="unreadCount === 0"
+                class="header-message-badge"
+                data-testid="layout-unread-badge"
+              >
+                <el-icon><Bell /></el-icon>
+              </el-badge>
             </div>
           </el-tooltip>
           <!-- 用户 -->
@@ -226,6 +234,7 @@ import defaultLogoLight from '@/assets/logo-light.png'
 // 避免 19 章 Markdown 正文进入主包（CodeReview Major-2）
 import type { GuideChapterMeta } from '@/docs/help/registry'
 import { useBrandStore } from '@/stores/brand'
+import { getUnreadCount } from '@/api/message'
 
 const router = useRouter()
 const route = useRoute()
@@ -235,6 +244,9 @@ const guideStore = useGuideStore()
 // 品牌 Store：Logo 双态（亮底黑字/暗底反白）、系统名称与副标题按部署环境动态取值，
 // 详见 stores/brand.ts；App.vue 已在应用启动时拉取配置
 const brandStore = useBrandStore()
+
+/** 顶栏消息未读数（站内信/审批通知），由 30s 轮询维护 */
+const unreadCount = ref(0)
 
 // 全局键盘快捷键（⌘K / `/` / Ctrl+S / Ctrl+Enter / Esc），注册在布局根组件，全局生效
 useShortcuts()
@@ -372,7 +384,44 @@ function recordRecent(path: string) {
 onMounted(() => {
   loadPersonalNavigation()
   loadUserMenus()
+  startUnreadPolling()
 })
+
+/** 未读消息数轮询句柄（组件卸载时清理，避免重复挂载后多份定时器叠加） */
+let unreadTimer: ReturnType<typeof setInterval> | null = null
+
+/**
+ * 顶栏消息未读数：进入布局立即拉一次，之后每 30s 轮询一次；
+ * 页面重新可见（切回标签页）时立即补拉，避免后台定时器被节流后长时间不刷新。
+ * 接口异常静默保留旧值（未读角标非关键路径，不打扰用户）。
+ */
+async function refreshUnread() {
+  try {
+    const res: any = await getUnreadCount()
+    const value = Number(res?.data ?? 0)
+    unreadCount.value = Number.isFinite(value) && value > 0 ? value : 0
+  } catch {
+    // 忽略：保留上一次已知值
+  }
+}
+
+function startUnreadPolling() {
+  refreshUnread()
+  unreadTimer = setInterval(refreshUnread, 30000)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') refreshUnread()
+}
+
+function stopUnreadPolling() {
+  if (unreadTimer !== null) {
+    clearInterval(unreadTimer)
+    unreadTimer = null
+  }
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+}
 
 watch(() => route.path, (path) => {
   const item = itemByPath.value.get(path)
@@ -521,6 +570,7 @@ onMounted(() => {
     .catch(() => { /* 文档 chunk 加载失败：仅影响命令面板「使用文档」组，不阻断布局 */ })
 })
 onBeforeUnmount(() => {
+  stopUnreadPolling()
   window.removeEventListener(ZW_SHORTCUT_EVENTS.togglePalette, onPaletteToggleEvent)
   window.removeEventListener(ZW_SHORTCUT_EVENTS.escape, onPaletteEscapeEvent)
 })
@@ -689,6 +739,17 @@ onBeforeUnmount(() => {
 .header-action:hover {
   background-color: var(--zw-bg-hover);
   color: var(--zw-brand);
+}
+
+/* 顶栏消息未读角标：内联于铃铛图标，避免溢出 36px 动作区 */
+.header-message-badge {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.header-message-badge :deep(.el-badge__content) {
+  transform: translateY(-2px) translateX(4px);
+  border: none;
 }
 
 /* ===== 顶栏最近访问下拉（popper 为 teleport 元素，样式走全局块） ===== */
