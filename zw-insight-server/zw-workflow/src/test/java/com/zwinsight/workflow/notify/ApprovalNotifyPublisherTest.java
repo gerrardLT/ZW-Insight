@@ -101,6 +101,38 @@ class ApprovalNotifyPublisherTest {
     }
 
     @Test
+    @DisplayName("活动任务通知：解析流程实例下全部活动任务并逐个通知")
+    void notifyActiveTasks_publishesForEachActiveTask() {
+        TaskQuery query = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.processInstanceId("pi-1")).thenReturn(query);
+        Task task = task("777");
+        when(query.list()).thenReturn(List.of(task));
+        when(taskService.getVariables("task-1"))
+                .thenReturn(Map.of("businessType", "PAYMENT_APPLY", "businessId", 55L));
+        when(businessTypeMapper.selectOne(any())).thenReturn(null);
+
+        publisher.notifyActiveTasks("pi-1");
+
+        ApprovalNotifyEvent event = captureEvent();
+        assertThat(event.getNotifyType()).isEqualTo(ApprovalNotifyEvent.TYPE_TODO);
+        assertThat(event.getTargetUserIds()).containsExactly(777L);
+    }
+
+    @Test
+    @DisplayName("活动任务通知：无活动任务（流程已结束）时不发通知")
+    void notifyActiveTasks_noActiveTasks_skips() {
+        TaskQuery query = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.processInstanceId("pi-1")).thenReturn(query);
+        when(query.list()).thenReturn(List.of());
+
+        publisher.notifyActiveTasks("pi-1");
+
+        verify(eventPublisher, never()).publishEvent(any(ApprovalNotifyEvent.class));
+    }
+
+    @Test
     @DisplayName("待办通知：通知已指派处理人")
     void notifyTodo_assignee() {
         Task task = task("777");

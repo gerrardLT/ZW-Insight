@@ -128,6 +128,9 @@ public class ApprovalService {
         log.info("流程发起成功, processInstanceId={}, businessKey={}, userId={}",
                 processInstance.getId(), businessKey, userId);
 
+        // 首个待办通知（事务内解析收件人，提交后发布）
+        approvalNotifyPublisher.notifyActiveTasks(processInstance.getId());
+
         return processInstance.getId();
     }
 
@@ -164,6 +167,9 @@ public class ApprovalService {
 
         // 记录审批记录
         saveApprovalRecord(task, String.valueOf(userId), "APPROVE", comment);
+
+        // 流程推进后的新待办通知（流程结束则无活动任务，由结果通知负责触达）
+        approvalNotifyPublisher.notifyActiveTasks(task.getProcessInstanceId());
 
         log.info("任务办理完成, taskId={}, userId={}", taskId, userId);
     }
@@ -222,6 +228,9 @@ public class ApprovalService {
             publishRejectEvent(task.getProcessInstanceId(), businessType, businessId, "REJECT");
         }
 
+        // 退回后重走的新待办通知
+        approvalNotifyPublisher.notifyActiveTasks(task.getProcessInstanceId());
+
         log.info("任务退回至上一节点, taskId={}, targetActivity={}", taskId, targetActivityId);
     }
 
@@ -276,6 +285,9 @@ public class ApprovalService {
                     ? (Long) businessIdObj : Long.valueOf(businessIdObj.toString());
             publishRejectEvent(task.getProcessInstanceId(), businessType, businessId, "REJECT");
         }
+
+        // 退回发起人后的新待办通知（发起人需修改重提）
+        approvalNotifyPublisher.notifyActiveTasks(task.getProcessInstanceId());
 
         log.info("任务退回至发起人, taskId={}, targetActivity={}", taskId, startActivityId);
     }
@@ -389,6 +401,9 @@ public class ApprovalService {
         // 记录审批记录
         saveApprovalRecord(task, String.valueOf(userId), "TRANSFER", comment);
 
+        // 转办后新处理人的待办通知
+        approvalNotifyPublisher.notifyActiveTasks(task.getProcessInstanceId());
+
         log.info("任务转办, taskId={}, fromUser={}, toUser={}", taskId, userId, targetUserId);
     }
 
@@ -416,6 +431,9 @@ public class ApprovalService {
 
         // 记录审批记录
         saveApprovalRecord(task, String.valueOf(userId), "DELEGATE", comment);
+
+        // 委托后受委托人的待办通知
+        approvalNotifyPublisher.notifyActiveTasks(task.getProcessInstanceId());
 
         log.info("任务委托, taskId={}, fromUser={}, delegateTo={}", taskId, userId, delegateUserId);
     }

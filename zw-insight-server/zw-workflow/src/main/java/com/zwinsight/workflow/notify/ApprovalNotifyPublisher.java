@@ -30,15 +30,17 @@ import java.util.Set;
  * <p>
  * 三类触达：
  * <ul>
- *   <li>{@link #notifyTodo}：新待办产生 → 通知处理人 + 候选人/候选角色成员</li>
+ *   <li>{@link #notifyActiveTasks}：新待办产生 → 通知处理人 + 候选人/候选角色成员</li>
  *   <li>{@link #notifyResult}（APPROVED）：流程审批通过 → 通知发起人</li>
  *   <li>{@link #notifyResult}（REJECTED）：驳回/撤回/终止 → 通知发起人</li>
  * </ul>
  * </p>
- * <p><b>为什么待办通知要等事务提交后再解析收件人</b>：Flowable 在创建用户任务时先派发
- * {@code TASK_CREATED}，随后才写入候选身份链接（candidate user/group）；若在事件回调内立即
- * 查询，候选组任务会解析出空收件人而静默丢通知。这里统一注册 {@code afterCommit} 回调，
- * 事务提交后再查任务与身份链接（此时已落库），且主事务回滚时不发通知（避免幽灵消息）。</p>
+ * <p><b>为什么由 ApprovalService 显式调用而非监听 Flowable TASK_CREATED</b>：Flowable 在创建用户
+ * 任务时先派发 {@code TASK_CREATED}，随后才写入处理人与候选身份链接；在事件回调内解析会拿到空
+ * 收件人（实测：发起开票审批后待办通知未落库，而同一发布器的驳回通知正常）。改为在审批服务完成
+ * 发起/办理/退回动作后查询该流程实例的**活动任务**，此时 assignee 与身份链接均已落库。</p>
+ * <p>所有发布统一延迟到主事务提交后（{@link #runAfterCommit}）：主事务回滚时不发通知，
+ * 避免「幽灵消息」。</p>
  */
 @Slf4j
 @Component
@@ -53,6 +55,34 @@ public class ApprovalNotifyPublisher {
     @Lazy
     @Autowired
     private TaskService taskService;
+
+    /**
+     * 新待办通知：通知流程实例当前的全部活动任务处理人/候选人。
+     * <p>由 {@code ApprovalService} 在发起流程/办理/退回后调用（事务内），此时任务与候选身份
+     * 链接均已落库，收件人可完整解析；实际发布延迟到事务提交后（见 {@link #runAfterCommit}）。</p>
+     *
+     * @param processInstanceId 流程实例ID
+     */
+    public void notifyActiveTasks(String processInstanceId) {
+        if (processInstanceId == null || processInstanceId.isBlank()) {
+            return;
+        }
+        List<Task> activeTasks;
+        try {
+            activeTasks = taskService.createTaskQuery().processInstanceId(processInstanceId).list();
+        } catch (Exception e) {
+            log.warn("待办通知：查询活动任务失败, processInstanceId={}", processInstanceId, e);
+            return;
+        }
+        if (activeTasks == null || activeTasks.isEmpty()) {
+            // 流程已结束或推进到无用户任务节点：由审批结果通知负责触达
+            return;
+        }
+        log.info("待办通知：解析到 {} 个活动任务, processInstanceId={}", activeTasks.size(), processInstanceId);
+        for (Task task : activeTasks) {
+            notifyTodo(task.getId());
+        }
+    }
 
     /**
      * 新待办产生通知（在事务提交后解析收件人并发布）。
