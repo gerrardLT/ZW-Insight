@@ -226,7 +226,7 @@ class InvoiceReceivedServiceTest {
         service.save(invoice);
 
         verify(contractPayableMapper).addPurchaseInvoiceReceived(88L, new BigDecimal("15000"));
-        verify(otherContractMapper, never()).selectById(anyLong());
+        verify(otherContractMapper, never()).selectById(any());
     }
 
     @Test
@@ -242,6 +242,6 @@ class InvoiceReceivedServiceTest {
         service.delete(3L);
 
         verify(contractPayableMapper).addPurchaseInvoiceReceived(88L, new BigDecimal("-15000"));
-        verify(otherContractMapper, never()).selectById(anyLong());
+        verify(otherContractMapper, never()).selectById(any());
     }
 }
