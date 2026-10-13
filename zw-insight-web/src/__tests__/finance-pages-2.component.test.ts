@@ -61,6 +61,19 @@ vi.mock('@/api/project', () => ({
 vi.mock('@/api/contract', () => ({
   getContractPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   getContractList: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+  getOtherContractPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+}))
+vi.mock('@/api/purchase', () => ({
+  getPurchaseContractPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+}))
+vi.mock('@/api/labor', () => ({
+  getLaborContractPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+}))
+vi.mock('@/api/machine', () => ({
+  getMachineContractPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+}))
+vi.mock('@/api/subcontract', () => ({
+  getSubcontractPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
 }))
 vi.mock('vue-router', async (importOriginal) => {
   const actual: any = await importOriginal().catch(() => ({}))

@@ -250,6 +250,31 @@ class ProjectWbsNodeServiceTest {
         }
 
         @Test
+        @DisplayName("getTree：自底向上聚合进度与挂接任务数（X3 贯通）")
+        void getTree_aggregatesScheduleProgressAndTaskCount() {
+            BizProjectWbsNode root = node(10L, PROJECT_ID, null, 1, "PH-001");
+            BizProjectWbsNode child1 = node(11L, PROJECT_ID, 10L, 2, "WP-001");
+            BizProjectWbsNode child2 = node(12L, PROJECT_ID, 10L, 2, "WP-002");
+            when(wbsNodeMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(root, child1, child2));
+
+            // child1 挂 2 个任务，平均 60.00；child2 挂 1 个任务，80.00
+            when(wbsNodeMapper.aggregateScheduleProgressByProject(PROJECT_ID)).thenReturn(List.of(
+                    java.util.Map.of("wbsNodeId", 11L, "avgProgress", "60.00", "taskCount", 2),
+                    java.util.Map.of("wbsNodeId", 12L, "avgProgress", "80.00", "taskCount", 1)
+            ));
+
+            List<BizProjectWbsNode> roots = service.getTree(PROJECT_ID);
+
+            assertThat(roots).hasSize(1);
+            BizProjectWbsNode r = roots.get(0);
+            assertThat(r.getScheduleTaskCount()).isEqualTo(3);
+            // 父节点取子节点的算术平均：(60 + 80) / 2 = 70.00
+            assertThat(r.getProgress()).isEqualByComparingTo("70.00");
+            assertThat(r.getChildren().get(0).getProgress()).isEqualByComparingTo("60.00");
+            assertThat(r.getChildren().get(1).getProgress()).isEqualByComparingTo("80.00");
+        }
+
+        @Test
         @DisplayName("getById：节点不存在时抛业务异常并带出 ID")
         void getById_notFound_throws() {
             when(wbsNodeMapper.selectById(404L)).thenReturn(null);

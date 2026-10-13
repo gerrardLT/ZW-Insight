@@ -58,6 +58,14 @@ public class BizProjectWbsNode extends BaseEntity {
     @TableField(exist = false)
     private String projectName;
 
+    /** 聚合施工进度（0-100，派生自挂接的进度计划任务，不持久化） */
+    @TableField(exist = false)
+    private java.math.BigDecimal progress;
+
+    /** 挂接的进度计划任务数（派生自 biz_schedule_plan，不持久化） */
+    @TableField(exist = false)
+    private Integer scheduleTaskCount;
+
     /** 子节点（树形查询时内存装配，不持久化） */
     @TableField(exist = false)
     private List<BizProjectWbsNode> children = new ArrayList<>();

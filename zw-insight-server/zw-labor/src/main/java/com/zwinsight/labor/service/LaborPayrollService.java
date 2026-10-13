@@ -40,6 +40,8 @@ public class LaborPayrollService {
     private final BizWorkOrderMapper workOrderMapper;
     private final BizTeamMapper teamMapper;
     private final ApprovalService approvalService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /**
      * 分页查询
@@ -188,6 +190,15 @@ public class LaborPayrollService {
 
         payroll.setStatus("APPROVED");
         payrollMapper.updateById(payroll);
+        if (eventPublisher != null) {
+            com.zwinsight.common.event.SystemEventPublisher.publishSystemEvent(
+                    eventPublisher,
+                    new com.zwinsight.common.event.labor.LaborPayrollApprovedEvent(
+                            this, payroll.getId(), payroll.getProjectId(), payroll.getTeamId(),
+                            payroll.getPeriodStart(), payroll.getPeriodEnd(), payroll.getTotalSettlement()
+                    )
+            );
+        }
         log.info("劳务工资单审批通过: id={}", id);
     }
 

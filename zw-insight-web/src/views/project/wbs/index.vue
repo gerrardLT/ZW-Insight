@@ -69,6 +69,9 @@
               <el-tag size="small" :type="statusTagType(data.status)" effect="plain">
                 {{ statusLabel(data.status) }}
               </el-tag>
+              <el-tag v-if="data.progress !== undefined && data.progress !== null" size="small" type="success" effect="light">
+                进度 {{ data.progress }}%<template v-if="data.scheduleTaskCount"> ({{ data.scheduleTaskCount }}任务)</template>
+              </el-tag>
               <span v-if="data.startDate || data.endDate" class="row-dates">
                 {{ data.startDate || '?' }} ~ {{ data.endDate || '?' }}
               </span>

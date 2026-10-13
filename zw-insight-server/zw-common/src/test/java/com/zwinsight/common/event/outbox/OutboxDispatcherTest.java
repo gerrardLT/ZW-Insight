@@ -364,7 +364,7 @@ class OutboxDispatcherTest {
     class TenantContextTests {
 
         @Test
-        @DisplayName("契约：投递期间把 event.tenantId 回填到 SecurityContextHolder，处理器可读到")
+        @DisplayName("契约：投递期间把 event.tenantId 回填到 SecurityContextHolder，处理器可读到，且标记为系统任务放行数据权限")
         void backfillsTenantId_duringDelivery() {
             TenantObservingHandler handler = new TenantObservingHandler(EVENT_TYPE);
             OutboxDispatcher dispatcher = newDispatcher(handler);
@@ -376,6 +376,8 @@ class OutboxDispatcherTest {
             dispatcher.poll();
 
             assertThat(handler.observedTenantId).isEqualTo(9999L);
+            assertThat(handler.observedSystemTask).isTrue();
+            assertThat(SecurityContextHolder.isSystemTask()).isFalse();
         }
 
         @Test
@@ -663,6 +665,7 @@ class OutboxDispatcherTest {
     /** 观察投递期间租户上下文的处理器 */
     private static class TenantObservingHandler implements OutboxEventHandler<Object> {
         volatile Long observedTenantId;
+        volatile boolean observedSystemTask;
         private final String eventType;
 
         TenantObservingHandler(String eventType) {
@@ -677,6 +680,7 @@ class OutboxDispatcherTest {
         @Override
         public void handle(OutboxMessage<Object> message) {
             observedTenantId = SecurityContextHolder.getTenantId();
+            observedSystemTask = SecurityContextHolder.isSystemTask();
         }
     }
 

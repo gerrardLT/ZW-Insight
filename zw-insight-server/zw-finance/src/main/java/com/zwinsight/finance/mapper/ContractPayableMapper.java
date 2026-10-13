@@ -61,6 +61,27 @@ public interface ContractPayableMapper {
             + "WHERE id = #{id} AND deleted = 0")
     int addSubcontractPaid(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
+    // ==================== 进项发票累计收票回写（支持负数回冲） ====================
+    @Update("UPDATE biz_purchase_contract SET cumulative_invoice_received = COALESCE(cumulative_invoice_received, 0) + #{amount} "
+            + "WHERE id = #{id} AND deleted = 0")
+    int addPurchaseInvoiceReceived(@Param("id") Long id, @Param("amount") BigDecimal amount);
+
+    @Update("UPDATE biz_labor_contract SET cumulative_invoice_received = COALESCE(cumulative_invoice_received, 0) + #{amount} "
+            + "WHERE id = #{id} AND deleted = 0")
+    int addLaborInvoiceReceived(@Param("id") Long id, @Param("amount") BigDecimal amount);
+
+    @Update("UPDATE biz_machine_contract SET cumulative_invoice_received = COALESCE(cumulative_invoice_received, 0) + #{amount} "
+            + "WHERE id = #{id} AND deleted = 0")
+    int addMachineInvoiceReceived(@Param("id") Long id, @Param("amount") BigDecimal amount);
+
+    @Update("UPDATE biz_subcontract SET cumulative_invoice_received = COALESCE(cumulative_invoice_received, 0) + #{amount} "
+            + "WHERE id = #{id} AND deleted = 0")
+    int addSubcontractInvoiceReceived(@Param("id") Long id, @Param("amount") BigDecimal amount);
+
+    @Update("UPDATE biz_other_contract SET cumulative_invoice = COALESCE(cumulative_invoice, 0) + #{amount} "
+            + "WHERE id = #{id} AND deleted = 0")
+    int addOtherInvoiceReceived(@Param("id") Long id, @Param("amount") BigDecimal amount);
+
     // ==================== 应付未付聚合（驾驶舱 §9.1/§12，资金流转 §3.1）====================
 
     /**

@@ -39,6 +39,9 @@ public class ChangeEventApprovedEvent {
     /** 项目ID */
     private Long projectId;
 
+    /** 关联合同ID（可空；指定时驱动施工合同累计变更额回写） */
+    private Long contractId;
+
     /** 租户ID（消费方回填上下文用） */
     private Long tenantId;
 

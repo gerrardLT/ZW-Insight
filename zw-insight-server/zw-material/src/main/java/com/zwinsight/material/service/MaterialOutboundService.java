@@ -40,6 +40,8 @@ public class MaterialOutboundService {
     private final BizMaterialRefundMapper refundMapper;
     private final BizProjectMapper projectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.zwinsight.contract.mapper.BizBoqItemMapper boqItemMapper;
 
     /**
      * 分页查询
@@ -88,6 +90,19 @@ public class MaterialOutboundService {
                 throw new BusinessException("材料[" + detail.getMaterialName() + "]暂无库存记录");
             }
             boolean isPick = "PICK".equals(outbound.getOutboundType());
+            // X1 补齐：当领料出库明细关联了 BOQ 工程量清单项时，校验累计领料量不超清单限额（含 20% 合理损耗容差）
+            if (isPick && detail.getBoqItemId() != null && boqItemMapper != null) {
+                com.zwinsight.contract.domain.BizBoqItem boqItem = boqItemMapper.selectById(detail.getBoqItemId());
+                if (boqItem != null && boqItem.getQuantity() != null && boqItem.getQuantity().signum() > 0) {
+                    BigDecimal totalPicked = outboundDetailMapper.sumQuantityByBoqItem(detail.getBoqItemId());
+                    BigDecimal limit = boqItem.getQuantity().multiply(new BigDecimal("1.20"));
+                    if (totalPicked != null && totalPicked.compareTo(limit) > 0) {
+                        throw new BusinessException("材料[" + detail.getMaterialName() + "]关联清单项["
+                                + boqItem.getItemName() + "]累计领料量(" + totalPicked
+                                + ")已超出限额领料上限(" + limit.setScale(2, java.math.RoundingMode.HALF_UP) + ")");
+                    }
+                }
+            }
             int affected = stockMapper.deductStock(stock.getId(), qty, isPick);
             if (affected == 0) {
                 throw new BusinessException("材料[" + detail.getMaterialName() + "]库存不足（当前库存可能已被其他出库占用）");

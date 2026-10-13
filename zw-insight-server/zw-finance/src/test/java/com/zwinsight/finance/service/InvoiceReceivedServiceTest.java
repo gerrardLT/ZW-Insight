@@ -43,6 +43,9 @@ class InvoiceReceivedServiceTest {
     private BizOtherContractMapper otherContractMapper;
 
     @Mock
+    private com.zwinsight.finance.mapper.ContractPayableMapper contractPayableMapper;
+
+    @Mock
     private BizProjectMapper projectMapper;
 
     @InjectMocks
@@ -210,5 +213,35 @@ class InvoiceReceivedServiceTest {
 
         verify(invoiceReceivedMapper).deleteById(2L);
         verify(otherContractMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("save - 指定 PURCHASE 合同分类时路由至采购合同回写")
+    void save_purchaseContract_routesToPurchaseMapper() {
+        BizInvoiceReceived invoice = new BizInvoiceReceived();
+        invoice.setContractId(88L);
+        invoice.setContractCategory("PURCHASE");
+        invoice.setInvoiceAmount(new BigDecimal("15000"));
+
+        service.save(invoice);
+
+        verify(contractPayableMapper).addPurchaseInvoiceReceived(88L, new BigDecimal("15000"));
+        verify(otherContractMapper, never()).selectById(anyLong());
+    }
+
+    @Test
+    @DisplayName("delete - 采购合同类型收票删除时对称负向回冲")
+    void delete_purchaseContract_reverses() {
+        BizInvoiceReceived existing = new BizInvoiceReceived();
+        existing.setId(3L);
+        existing.setContractId(88L);
+        existing.setContractCategory("PURCHASE");
+        existing.setInvoiceAmount(new BigDecimal("15000"));
+        when(invoiceReceivedMapper.selectById(3L)).thenReturn(existing);
+
+        service.delete(3L);
+
+        verify(contractPayableMapper).addPurchaseInvoiceReceived(88L, new BigDecimal("-15000"));
+        verify(otherContractMapper, never()).selectById(anyLong());
     }
 }

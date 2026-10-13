@@ -235,6 +235,9 @@ public class ChangeEventService {
         if (patch.getSupportingDocs() != null) {
             existing.setSupportingDocs(patch.getSupportingDocs());
         }
+        if (patch.getContractId() != null) {
+            existing.setContractId(patch.getContractId());
+        }
         // sourceType/sourceRef 不允许改：改了等于换了业务事实来源，应作废重登
         if (StrUtil.isNotBlank(patch.getSourceType())
                 && !patch.getSourceType().equals(existing.getSourceType())) {
@@ -469,6 +472,7 @@ public class ChangeEventService {
         payload.setEventId(event.getId());
         payload.setEventNumber(event.getEventNumber());
         payload.setProjectId(event.getProjectId());
+        payload.setContractId(event.getContractId());
         payload.setTenantId(event.getTenantId());
         payload.setCostDelta(event.resolveCostDelta());
         payload.setScheduleDelayDays(event.resolveScheduleDelayDays());

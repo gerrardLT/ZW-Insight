@@ -89,6 +89,7 @@ public class ProjectWbsNodeService {
         Page<BizProjectWbsNode> result = wbsNodeMapper.selectPage(pageParam, wrapper);
         ProjectNameFiller.fill(result.getRecords(), projectMapper,
                 BizProjectWbsNode::getProjectId, BizProjectWbsNode::setProjectName);
+        fillDirectScheduleProgress(projectId, result.getRecords());
         return PageResult.of(result);
     }
 
@@ -107,7 +108,80 @@ public class ProjectWbsNodeService {
                         .eq(BizProjectWbsNode::getProjectId, projectId)
                         .orderByAsc(BizProjectWbsNode::getSortOrder)
                         .orderByAsc(BizProjectWbsNode::getNodeCode));
-        return assembleTree(all);
+        fillDirectScheduleProgress(projectId, all);
+        List<BizProjectWbsNode> roots = assembleTree(all);
+        for (BizProjectWbsNode root : roots) {
+            rollupTreeProgress(root);
+        }
+        return roots;
+    }
+
+    /**
+     * 将项目下挂接在各 WBS 节点的进度计划任务统计值回填到节点上（X3 横向联动）。
+     */
+    private void fillDirectScheduleProgress(Long projectId, List<BizProjectWbsNode> nodes) {
+        if (projectId == null || nodes == null || nodes.isEmpty()) {
+            return;
+        }
+        List<Map<String, Object>> stats = wbsNodeMapper.aggregateScheduleProgressByProject(projectId);
+        if (stats == null || stats.isEmpty()) {
+            return;
+        }
+        Map<Long, java.math.BigDecimal> progressMap = new HashMap<>();
+        Map<Long, Integer> countMap = new HashMap<>();
+        for (Map<String, Object> row : stats) {
+            if (row == null || row.get("wbsNodeId") == null) continue;
+            Long wbsId = ((Number) row.get("wbsNodeId")).longValue();
+            Object avgObj = row.get("avgProgress");
+            Object cntObj = row.get("taskCount");
+            if (avgObj != null) {
+                progressMap.put(wbsId, new java.math.BigDecimal(avgObj.toString()));
+            }
+            if (cntObj instanceof Number) {
+                countMap.put(wbsId, ((Number) cntObj).intValue());
+            }
+        }
+        for (BizProjectWbsNode n : nodes) {
+            if (n.getId() != null) {
+                if (progressMap.containsKey(n.getId())) {
+                    n.setProgress(progressMap.get(n.getId()));
+                }
+                if (countMap.containsKey(n.getId())) {
+                    n.setScheduleTaskCount(countMap.get(n.getId()));
+                }
+            }
+        }
+    }
+
+    /**
+     * 自底向上递归汇总 WBS 树节点进度与挂接任务数：
+     * 若子节点有进度数据且父节点自身无直接进度，则父节点进度取有进度子节点的算术平均。
+     */
+    private void rollupTreeProgress(BizProjectWbsNode node) {
+        if (node == null || node.getChildren() == null || node.getChildren().isEmpty()) {
+            return;
+        }
+        java.math.BigDecimal sumProgress = java.math.BigDecimal.ZERO;
+        int progressChildCount = 0;
+        int totalTasks = node.getScheduleTaskCount() != null ? node.getScheduleTaskCount() : 0;
+
+        for (BizProjectWbsNode child : node.getChildren()) {
+            rollupTreeProgress(child);
+            if (child.getProgress() != null) {
+                sumProgress = sumProgress.add(child.getProgress());
+                progressChildCount++;
+            }
+            if (child.getScheduleTaskCount() != null) {
+                totalTasks += child.getScheduleTaskCount();
+            }
+        }
+        if (totalTasks > 0) {
+            node.setScheduleTaskCount(totalTasks);
+        }
+        if (node.getProgress() == null && progressChildCount > 0) {
+            node.setProgress(sumProgress.divide(
+                    java.math.BigDecimal.valueOf(progressChildCount), 2, java.math.RoundingMode.HALF_UP));
+        }
     }
 
     /**

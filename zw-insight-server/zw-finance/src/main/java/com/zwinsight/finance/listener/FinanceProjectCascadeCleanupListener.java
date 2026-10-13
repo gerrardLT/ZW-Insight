@@ -59,6 +59,8 @@ public class FinanceProjectCascadeCleanupListener {
     private final BizProjectReimbursementMapper projectReimbursementMapper;
     private final BizReserveFundApplyMapper reserveFundApplyMapper;
     private final BizFinanceLockMapper financeLockMapper;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.zwinsight.finance.mapper.BizWagePaymentDetailMapper wagePaymentDetailMapper;
 
     @EventListener
     public void onProjectDeleted(ProjectDeletedEvent event) {
@@ -85,11 +87,14 @@ public class FinanceProjectCascadeCleanupListener {
                 new QueryWrapper<BizReserveFundApply>().eq("project_id", projectId));
         int financeLocks = financeLockMapper.delete(
                 new QueryWrapper<BizFinanceLock>().eq("project_id", projectId));
+        int wagePayDetails = wagePaymentDetailMapper != null
+                ? wagePaymentDetailMapper.delete(new QueryWrapper<com.zwinsight.finance.domain.BizWagePaymentDetail>().eq("project_id", projectId))
+                : 0;
 
         log.info("项目删除级联清理[finance]完成, projectId={}, 付款申请={} 收款={} 开票={} "
-                        + "收票={} 最终结算={} 质保金={} 银行账户={} 其他支付={} 报销={} 备用金={} 封账={}",
+                        + "收票={} 最终结算={} 质保金={} 银行账户={} 其他支付={} 报销={} 备用金={} 封账={} 工资代发明细={}",
                 projectId, paymentApplies, paymentReceived, invoiceApplies, invoiceReceived,
                 settlements, retentions, bankAccounts, otherPayments, reimbursements,
-                reserveFunds, financeLocks);
+                reserveFunds, financeLocks, wagePayDetails);
     }
 }

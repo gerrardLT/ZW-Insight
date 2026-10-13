@@ -31,6 +31,8 @@ public class WageSpecialAccountService {
 
     private final BizWageSpecialAccountMapper accountMapper;
     private final BizWageDepositMapper depositMapper;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.zwinsight.finance.mapper.BizWagePaymentDetailMapper wagePaymentDetailMapper;
 
     /**
      * 分页查询专户
@@ -120,6 +122,44 @@ public class WageSpecialAccountService {
         account.setTotalPaid(account.getTotalPaid().add(amount));
         account.setCurrentBalance(account.getCurrentBalance().subtract(amount));
         accountMapper.updateById(recomputeCompliance(account));
+    }
+
+    /**
+     * 查询项目下待代发的劳务工资单明细列表（X2 闭环）
+     */
+    public List<com.zwinsight.finance.domain.BizWagePaymentDetail> pendingPayments(Long projectId) {
+        if (wagePaymentDetailMapper == null) {
+            return List.of();
+        }
+        LambdaQueryWrapper<com.zwinsight.finance.domain.BizWagePaymentDetail> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(projectId != null, com.zwinsight.finance.domain.BizWagePaymentDetail::getProjectId, projectId)
+                .eq(com.zwinsight.finance.domain.BizWagePaymentDetail::getPayStatus, com.zwinsight.finance.domain.BizWagePaymentDetail.STATUS_PENDING)
+                .orderByDesc(com.zwinsight.finance.domain.BizWagePaymentDetail::getCreatedAt);
+        return wagePaymentDetailMapper.selectList(wrapper);
+    }
+
+    /**
+     * 基于来源劳务工资单明细确认总包代发（X2 闭环，双口径保障：实付时才扣减专户）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void confirmWagePaymentDetail(Long detailId, Long accountId, LocalDate payDate) {
+        if (wagePaymentDetailMapper == null) {
+            throw new BusinessException(500, "代发明细服务未初始化");
+        }
+        com.zwinsight.finance.domain.BizWagePaymentDetail detail = wagePaymentDetailMapper.selectById(detailId);
+        if (detail == null) {
+            throw new BusinessException(404, "代发明细不存在");
+        }
+        if (!com.zwinsight.finance.domain.BizWagePaymentDetail.STATUS_PENDING.equals(detail.getPayStatus())) {
+            throw new BusinessException(400, "该明细已代发，不可重复代发");
+        }
+        // 扣减专户余额
+        recordWagePayment(accountId, detail.getAmount(), payDate);
+        // 回写明细
+        detail.setAccountId(accountId);
+        detail.setPayStatus(com.zwinsight.finance.domain.BizWagePaymentDetail.STATUS_PAID);
+        detail.setPayDate(payDate != null ? payDate : LocalDate.now());
+        wagePaymentDetailMapper.updateById(detail);
     }
 
     /**

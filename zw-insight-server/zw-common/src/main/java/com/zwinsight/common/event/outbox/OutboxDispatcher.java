@@ -164,12 +164,17 @@ public class OutboxDispatcher {
         }
 
         Long previousTenant = SecurityContextHolder.getTenantId();
+        boolean previousSystemTask = SecurityContextHolder.isSystemTask();
         try {
-            // 2. 回填租户上下文：处理器写业务表时要过租户拦截器，
-            //    调度线程无上下文会被注入 tenant_id=0 而写错/查空。
+            // 2. 回填租户上下文与系统任务标记：处理器写业务表时要过租户拦截器，
+            //    调度线程无用户身份，须标记为系统任务放行数据权限（按租户全量放行，
+            //    租户隔离仍由 TenantLineInnerInterceptor 依据 tenantId 保证，
+            //    对齐 SystemEventPublisher / TenantTaskRunner 范式，修复 2026-10-11
+            //    成本账户加 @DataPermission 后导致的 MyBatisSystemException 传导崩溃）。
             if (event.getTenantId() != null) {
                 SecurityContextHolder.setTenantId(event.getTenantId());
             }
+            SecurityContextHolder.markSystemTask();
 
             for (HandlerBinding<?> binding : bindings) {
                 invokeHandler(binding, event);
@@ -191,6 +196,9 @@ public class OutboxDispatcher {
             return DeliveryResult.FAILED;
         } finally {
             // 恢复上下文，避免污染线程池中的后续任务
+            if (!previousSystemTask) {
+                SecurityContextHolder.unmarkSystemTask();
+            }
             if (previousTenant != null) {
                 SecurityContextHolder.setTenantId(previousTenant);
             } else {

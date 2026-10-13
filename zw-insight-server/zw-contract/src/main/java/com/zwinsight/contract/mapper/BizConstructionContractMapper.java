@@ -60,4 +60,17 @@ public interface BizConstructionContractMapper extends BaseMapper<BizConstructio
             "SET cumulative_invoice_amount = COALESCE(cumulative_invoice_amount, 0) + #{amount} " +
             "WHERE id = #{contractId} AND deleted = 0")
     int addCumulativeInvoiceAmount(@Param("contractId") Long contractId, @Param("amount") java.math.BigDecimal amount);
+
+    /**
+     * 原子累加合同累计变更金额（变更事件/签证审批通过时回写，避免并发丢失更新）
+     *
+     * @param contractId 合同ID
+     * @param amount     本次变更金额（支持正负）
+     * @return 影响行数
+     */
+    @Update("UPDATE biz_construction_contract " +
+            "SET cumulative_change_amount = COALESCE(cumulative_change_amount, 0) + #{amount} " +
+            "WHERE id = #{contractId} AND deleted = 0")
+    @DataPermission({})
+    int addCumulativeChangeAmount(@Param("contractId") Long contractId, @Param("amount") java.math.BigDecimal amount);
 }

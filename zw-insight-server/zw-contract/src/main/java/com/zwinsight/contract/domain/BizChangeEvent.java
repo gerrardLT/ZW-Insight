@@ -41,6 +41,9 @@ public class BizChangeEvent extends BaseEntity {
     /** 项目ID */
     private Long projectId;
 
+    /** 关联合同ID（可空，通常对应项目下的施工合同） */
+    private Long contractId;
+
     /** 变更事件编号（编号规则 CHANGE_EVENT，如 CHG20260001） */
     private String eventNumber;
 

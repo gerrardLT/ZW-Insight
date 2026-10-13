@@ -35,6 +35,12 @@
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">{{ row.projectName || '-' }}</template>
         </el-table-column>
+        <el-table-column prop="contractCategory" label="合同类型" width="120">
+          <template #default="{ row }">{{ getCategoryLabel(row.contractCategory) }}</template>
+        </el-table-column>
+        <el-table-column prop="contractId" label="关联合同" width="130">
+          <template #default="{ row }">{{ row.contractId ? `合同#${row.contractId}` : '-' }}</template>
+        </el-table-column>
         <el-table-column prop="supplierName" label="供应商" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.supplierName || '-' }}</template>
         </el-table-column>
@@ -79,8 +85,41 @@
             remote
             :remote-method="searchProject"
             style="width: 100%"
+            @change="handleProjectOrCategoryChange"
           >
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="合同类型" prop="contractCategory">
+          <el-select
+            v-model="formData.contractCategory"
+            placeholder="请选择支出合同类型（可选）"
+            clearable
+            style="width: 100%"
+            @change="handleProjectOrCategoryChange"
+          >
+            <el-option label="采购合同" value="PURCHASE" />
+            <el-option label="劳务合同" value="LABOR" />
+            <el-option label="机械合同" value="MACHINE" />
+            <el-option label="分包合同" value="SUBCONTRACT" />
+            <el-option label="其他支出合同" value="OTHER_EXPENSE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关联合同" prop="contractId">
+          <el-select
+            v-model="formData.contractId"
+            placeholder="选择关联合同（回写合同累计收票额）"
+            clearable
+            filterable
+            style="width: 100%"
+            @change="handleContractChange"
+          >
+            <el-option
+              v-for="c in contractOptions"
+              :key="c.id"
+              :label="c.contractName || c.contractCode || ('合同#' + c.id)"
+              :value="c.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="供应商" prop="supplierName">
@@ -110,6 +149,11 @@ import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getInvoiceReceivedPage, createInvoiceReceived } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import { getOtherContractPage } from '@/api/contract'
+import { getPurchaseContractPage } from '@/api/purchase'
+import { getLaborContractPage } from '@/api/labor'
+import { getMachineContractPage } from '@/api/machine'
+import { getSubcontractPage } from '@/api/subcontract'
 import TaxRateSelector from '@/components/TaxRateSelector.vue'
 
 const formRef = ref<FormInstance>()
@@ -117,8 +161,22 @@ const loading = ref(false)
 const tableData = ref<any[]>([])
 const total = ref(0)
 const projectList = ref<any[]>([])
+const contractOptions = ref<any[]>([])
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
+
+const categoryMap: Record<string, string> = {
+  PURCHASE: '采购合同',
+  LABOR: '劳务合同',
+  MACHINE: '机械合同',
+  SUBCONTRACT: '分包合同',
+  OTHER_EXPENSE: '其他支出合同',
+  OTHER: '其他合同'
+}
+
+function getCategoryLabel(category: string) {
+  return categoryMap[category] || category || '-'
+}
 
 const queryParams = ref({
   pageNum: 1,
@@ -128,6 +186,8 @@ const queryParams = ref({
 
 const formData = ref({
   projectId: undefined as number | undefined,
+  contractCategory: '',
+  contractId: undefined as number | undefined,
   supplierName: '',
   invoiceAmount: 0,
   taxRate: undefined as number | undefined,
@@ -155,6 +215,36 @@ async function searchProject(query: string) {
   projectList.value = res.data || []
 }
 
+async function handleProjectOrCategoryChange() {
+  contractOptions.value = []
+  formData.value.contractId = undefined
+  const pid = formData.value.projectId
+  if (!pid) return
+  const params: any = { projectId: pid, page: 1, size: 100, pageNum: 1, pageSize: 100 }
+  let res: any
+  try {
+    switch (formData.value.contractCategory) {
+      case 'PURCHASE': res = await getPurchaseContractPage(params); break
+      case 'LABOR': res = await getLaborContractPage(params); break
+      case 'MACHINE': res = await getMachineContractPage(params); break
+      case 'SUBCONTRACT': res = await getSubcontractPage(params); break
+      case 'OTHER_EXPENSE': res = await getOtherContractPage({ ...params, contractCategory: 'OTHER_EXPENSE' }); break
+      default: res = await getPurchaseContractPage(params)
+    }
+    contractOptions.value = res?.data?.records || res?.data || []
+  } catch (e) {
+    contractOptions.value = []
+  }
+}
+
+function handleContractChange(val: any) {
+  if (!val) return
+  const selected = contractOptions.value.find((c: any) => c.id === val)
+  if (selected) {
+    formData.value.supplierName = selected.partyBName || selected.supplierName || selected.subcontractor || selected.teamName || ''
+  }
+}
+
 async function loadData() {
   loading.value = true
   try {
@@ -177,7 +267,16 @@ function handleReset() {
 }
 
 function handleAdd() {
-  formData.value = { projectId: undefined, supplierName: '', invoiceAmount: 0, taxRate: undefined, invoiceDate: '' }
+  contractOptions.value = []
+  formData.value = {
+    projectId: undefined,
+    contractCategory: '',
+    contractId: undefined,
+    supplierName: '',
+    invoiceAmount: 0,
+    taxRate: undefined,
+    invoiceDate: ''
+  }
   dialogVisible.value = true
 }
 

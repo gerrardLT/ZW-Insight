@@ -59,6 +59,9 @@ public class BizSubcontract extends BaseEntity {
     /** 累计付款金额 */
     private BigDecimal cumulativePaid;
 
+    /** 累计收票金额 */
+    private BigDecimal cumulativeInvoiceReceived;
+
     /** 状态（DRAFT-草稿/EFFECTIVE-生效） */
     private String status;
 
