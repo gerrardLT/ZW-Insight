@@ -110,7 +110,6 @@
         </el-form-item>
         <el-form-item label="关联合同" prop="contractId">
           <ContractSelector v-model="formData.contractId" :project-id="formData.projectId" />
-          <div class="form-hint">关联合同的回款不得超过该合同已开票未收金额；预收款（尚未开票）请清空此项</div>
         </el-form-item>
         <el-form-item label="回款金额" prop="receiveAmount">
           <el-input-number v-model="formData.receiveAmount" :min="0" :precision="2" style="width: 100%" />

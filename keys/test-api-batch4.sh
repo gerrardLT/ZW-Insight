@@ -186,11 +186,11 @@ if [ -n "$INV_ID" ]; then
   case "$INV_CUM" in 10000000|10000000.00|10000000.0000) result PASS "S1f 合同累计开票=10000000" "" ;; *) result FAIL "S1f 累计开票回写" "实际=$INV_CUM" ;; esac
 else result FAIL "S1b 开票单查询" "未找到草稿开票申请"; fi
 
-echo "== S2 收款登记（save 校验≤累计开票-累计已收，回写项目总收入+合同累计收款） =="
-BODY=$(jq -n --argjson pid "$PROJECT_ID" --argjson cid "$CC_ID" '{projectId:$pid,contractId:$cid,receiveDate:"2026-08-20",receiveAmount:10000001,receiveType:"BANK"}')
+echo "== S2 收款登记（save 回写项目总收入+合同累计收款，金额需>0） =="
+BODY=$(jq -n --argjson pid "$PROJECT_ID" --argjson cid "$CC_ID" '{projectId:$pid,contractId:$cid,receiveDate:"2026-08-20",receiveAmount:-100,receiveType:"BANK"}')
 code=$(call2 POST /api/v1/finance/payment-received "$BODY")
 MSG=$(jqget '.message // .msg // ""')
-if ! ok200 "$code" && echo "$MSG" | grep -q "不能超过已开票未收金额"; then result PASS "S2a 超可收金额被拒(1000万零1>1000万)" "msg=$MSG"; else result FAIL "S2a 超可收金额未被拒(缺陷)" "http=$code msg=$MSG"; fi
+if ! ok200 "$code" && echo "$MSG" | grep -q "回款金额必须大于0"; then result PASS "S2a 负数金额收款被拒(-100)" "msg=$MSG"; else result FAIL "S2a 负数金额收款未被拒(缺陷)" "http=$code msg=$MSG"; fi
 BODY=$(jq -n --argjson pid "$PROJECT_ID" --argjson cid "$CC_ID" '{projectId:$pid,contractId:$cid,receiveDate:"2026-08-20",receiveAmount:10000000,receiveType:"BANK"}')
 code=$(call2 POST /api/v1/finance/payment-received "$BODY")
 if ok200 "$code"; then result PASS "S2b 收款登记(1000万)" ""; else result FAIL "S2b 收款登记" "body=$(head -c 300 /tmp/zwi_body4)"; fi

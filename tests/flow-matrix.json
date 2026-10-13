@@ -236,10 +236,10 @@
       },
       {
        "id": "FIN-RCV-02",
-       "name": "回款>已开票未收拒绝",
+       "name": "回款超已开票未收金额允许（不做硬限制）",
        "type": "边界",
        "ev": "PaymentReceivedService.save",
-       "map": "PaymentReceivedServiceTest.save_exceedsCap",
+       "map": "PaymentReceivedServiceTest.save_exceedsInvoiceAmount_allowed",
        "st": "covered"
       },
       {
@@ -292,10 +292,10 @@
       },
       {
        "id": "FIN-RCV-09",
-       "name": "编辑增额超上限拒绝数据不变",
+       "name": "编辑增额超已开票未收金额允许更新",
        "type": "边界",
        "ev": "PaymentReceivedService.update",
-       "map": "PaymentReceivedServiceTest.update_increaseExceedsCap",
+       "map": "PaymentReceivedServiceTest.update_increaseExceedsInvoiceAmount_allowed",
        "st": "covered"
       },
       {

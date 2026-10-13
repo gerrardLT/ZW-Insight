@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * PaymentReceivedService 单元测试
- * 覆盖 P0-4：回款登记金额上限校验（不能超过已开票未收金额）+ 回写项目总收入 & 合同累计收款
+ * 覆盖：回款登记金额校验（大于0）+ 关联合同不限制已开票未收 + 回写项目总收入 & 合同累计收款
  */
 @ExtendWith(MockitoExtension.class)
 class PaymentReceivedServiceTest {
@@ -58,27 +58,26 @@ class PaymentReceivedServiceTest {
     }
 
     @Nested
-    @DisplayName("回款上限校验")
+    @DisplayName("回款金额上限与软限制")
     class CapValidationTests {
         @Test
-        @DisplayName("回款金额超过已开票未收金额：抛异常且不落库")
-        void save_exceedsCap_throwsAndNoInsert() {
-            // 已开票 100000 - 已回款 60000 = 可回款 40000，本次 50000 超限
+        @DisplayName("回款金额超过已开票未收金额（预收款场景）：不做硬限制，允许正常落库")
+        void save_exceedsInvoiceAmount_allowed() {
+            // 已开票 100000 - 已回款 60000 = 已开票未收 40000，本次 50000 超过已开票未收，仍应允许落库
             when(contractMapper.selectById(10L)).thenReturn(contract("100000", "60000"));
+            when(projectMapper.selectById(100L)).thenReturn(null);
 
-            assertThatThrownBy(() -> paymentReceivedService.save(samplePayment))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("回款金额不能超过已开票未收金额");
+            paymentReceivedService.save(samplePayment);
 
-            verify(paymentReceivedMapper, never()).insert(any());
-            verify(projectMapper, never()).updateById(any());
-            verify(contractMapper, never()).updateById(any());
+            verify(paymentReceivedMapper).insert(samplePayment);
+            verify(contractMapper).updateById(argThat(c ->
+                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("110000")) == 0));
         }
 
         @Test
-        @DisplayName("回款金额等于上限：允许通过（边界）")
+        @DisplayName("回款金额等于已开票未收金额：允许通过")
         void save_equalsCap_allowed() {
-            // 可回款 50000，本次 50000 恰好等于上限
+            // 可回款 50000，本次 50000 恰好等于
             when(contractMapper.selectById(10L)).thenReturn(contract("80000", "30000"));
             when(projectMapper.selectById(100L)).thenReturn(null);
 
@@ -322,21 +321,22 @@ class PaymentReceivedServiceTest {
         }
 
         @Test
-        @DisplayName("改大超出可回款额度：拒绝且不更新")
-        void update_increaseExceedsCap_rejected() {
-            // 原额 50000 改 90000，差额 +40000；可回款 = 100000-90000 = 10000 不足
+        @DisplayName("改大金额超过已开票未收金额：不做硬限制，允许更新并累加差额")
+        void update_increaseExceedsInvoiceAmount_allowed() {
+            // 原额 50000 改 90000，差额 +40000；累计开票 100000，累计收款 90000，差额超过已开票未收，仍允许更新
             when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
             when(contractMapper.selectById(10L)).thenReturn(contract("100000", "90000"));
 
             BizPaymentReceived updated = new BizPaymentReceived();
             updated.setId(1L);
+            updated.setProjectId(100L);
             updated.setReceiveAmount(new BigDecimal("90000"));
 
-            assertThatThrownBy(() -> paymentReceivedService.update(updated))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("回款金额不能超过已开票未收金额");
+            paymentReceivedService.update(updated);
 
-            verify(paymentReceivedMapper, never()).updateById(any());
+            verify(paymentReceivedMapper).updateById(updated);
+            verify(contractMapper).updateById(argThat(c ->
+                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("130000")) == 0));
         }
 
         @Test

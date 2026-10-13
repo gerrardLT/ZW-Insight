@@ -54,7 +54,7 @@ public class PaymentReceivedService {
     }
 
     /**
-     * 新增收款（校验回款上限 + 回写项目totalIncome + 合同cumulativeReceivedAmount + 登记即已认领）
+     * 新增收款（回写项目totalIncome + 合同cumulativeReceivedAmount + 登记即已认领）
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizPaymentReceived paymentReceived) {
@@ -67,21 +67,10 @@ public class PaymentReceivedService {
             throw new BusinessException("回款金额必须大于0");
         }
 
-        // 校验回款金额上限：不能超过已开票未收金额（累计开票 - 累计已回款）
+        // 关联合同：不做开票上限硬限制，直接回写合同累计收款金额
         BizConstructionContract contract = null;
         if (paymentReceived.getContractId() != null) {
             contract = contractMapper.selectById(paymentReceived.getContractId());
-            if (contract != null) {
-                BigDecimal invoiced = contract.getCumulativeInvoiceAmount() == null
-                        ? BigDecimal.ZERO : contract.getCumulativeInvoiceAmount();
-                BigDecimal received = contract.getCumulativeReceivedAmount() == null
-                        ? BigDecimal.ZERO : contract.getCumulativeReceivedAmount();
-                BigDecimal maxReceivable = invoiced.subtract(received);
-                if (receiveAmount.compareTo(maxReceivable) > 0) {
-                    throw new BusinessException("回款金额不能超过已开票未收金额，最大可回款金额：" + maxReceivable
-                            + "。请先完成开票申请审批；若为预收款，请清空「关联合同」后登记");
-                }
-            }
         }
 
         paymentReceived.setStatus("APPROVED");
@@ -162,8 +151,7 @@ public class PaymentReceivedService {
 
     /**
      * 更新收款记录（B1 修复，2026-08-11）：原实现直接 updateById 不回冲累计字段，
-     * 改额后项目总收入与合同累计收款永久虚高/虚低。现按差额对称调整，
-     * 增额部分重新校验可回款上限（与 save 口径一致）。
+     * 改额后项目总收入与合同累计收款永久虚高/虚低。现按差额对称调整。
      */
     @Transactional(rollbackFor = Exception.class)
     public void update(BizPaymentReceived paymentReceived) {
@@ -180,22 +168,7 @@ public class PaymentReceivedService {
                 ? BigDecimal.ZERO : existing.getReceiveAmount();
         BigDecimal diff = newAmount.subtract(oldAmount);
 
-        // 增额时校验增量不超过可回款额度（原额已计入累计收款，无需扣回再校）
         BizConstructionContract contract = null;
-        if (diff.signum() > 0 && existing.getContractId() != null) {
-            contract = contractMapper.selectById(existing.getContractId());
-            if (contract != null) {
-                BigDecimal invoiced = contract.getCumulativeInvoiceAmount() == null
-                        ? BigDecimal.ZERO : contract.getCumulativeInvoiceAmount();
-                BigDecimal received = contract.getCumulativeReceivedAmount() == null
-                        ? BigDecimal.ZERO : contract.getCumulativeReceivedAmount();
-                BigDecimal maxReceivable = invoiced.subtract(received);
-                if (diff.compareTo(maxReceivable) > 0) {
-                    throw new BusinessException("回款金额不能超过已开票未收金额，最大可回款金额：" + maxReceivable
-                            + "。请先完成开票申请审批；若为预收款，请清空「关联合同」后登记");
-                }
-            }
-        }
 
         paymentReceivedMapper.updateById(paymentReceived);
 
