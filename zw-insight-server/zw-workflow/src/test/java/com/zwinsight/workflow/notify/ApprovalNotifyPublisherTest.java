@@ -12,6 +12,7 @@ import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,6 +57,18 @@ class ApprovalNotifyPublisherTest {
 
     @InjectMocks
     private ApprovalNotifyPublisher publisher;
+
+    /**
+     * taskService 是 {@code @Lazy @Autowired} 的非 final 字段（延迟注入以打破与
+     * FlowableConfig 的构造期循环依赖）；Mockito 在构造器注入成功后不再做字段注入，
+     * 故此处用反射补注入，否则调用链上会 NPE。
+     */
+    @BeforeEach
+    void injectLazyTaskService() throws Exception {
+        java.lang.reflect.Field field = ApprovalNotifyPublisher.class.getDeclaredField("taskService");
+        field.setAccessible(true);
+        field.set(publisher, taskService);
+    }
 
     private Task task(String assignee) {
         Task task = mock(Task.class);
