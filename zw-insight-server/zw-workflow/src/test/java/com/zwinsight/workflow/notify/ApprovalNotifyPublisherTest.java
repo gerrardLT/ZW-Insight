@@ -10,6 +10,7 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.flowable.engine.TaskService;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
+import org.flowable.task.api.TaskQuery;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,9 +68,17 @@ class ApprovalNotifyPublisherTest {
     }
 
     private void stubTaskAndVariables(Task task) {
-        when(taskService.createTaskQuery().taskId("task-1").singleResult()).thenReturn(task);
+        stubTaskQuery(task);
         when(taskService.getVariables("task-1")).thenReturn(Map.of("businessType", "PAYMENT_APPLY", "businessId", 55L));
         when(businessTypeMapper.selectOne(any())).thenReturn(null);
+    }
+
+    /** 链式查询需逐级打桩：Mockito 对未打桩的 createTaskQuery() 返回 null，直接链式会 NPE */
+    private void stubTaskQuery(Task task) {
+        TaskQuery query = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.taskId("task-1")).thenReturn(query);
+        when(query.singleResult()).thenReturn(task);
     }
 
     private ApprovalNotifyEvent captureEvent() {
@@ -127,7 +136,7 @@ class ApprovalNotifyPublisherTest {
     @Test
     @DisplayName("待办通知：任务已被推进（查不到）时不发通知")
     void notifyTodo_taskGone_skips() {
-        when(taskService.createTaskQuery().taskId("task-1").singleResult()).thenReturn(null);
+        stubTaskQuery(null);
 
         publisher.notifyTodo("task-1");
 
