@@ -20,6 +20,7 @@ import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
 import org.flowable.task.api.history.HistoricTaskInstance;
@@ -59,11 +60,18 @@ public class ApprovalService {
      */
     private static final Set<String> INTERNAL_VARIABLES = Set.of("businessType", "businessId", "initiator", "businessTitle");
 
-    /** 需要防自审的业务类型：发起人不得办理自己的单据 */
+    /** 需要防自审的业务类型：发起人不得办理自己的单据（若存在其他可行审批人） */
     private static final Set<String> SELF_APPROVAL_GUARDED_TYPES = Set.of(
+            // 财务全链路
+            "PAYMENT_APPLY", "PERSONAL_REIMBURSEMENT", "PROJECT_REIMBURSEMENT",
+            "RESERVE_FUND_APPLY", "FUND_TRANSFER", "INVOICE_APPLY", "RETENTION_RETURN",
+            "PROJECT_SETTLEMENT", "DEPOSIT_APPLY",
+            // 机械与合同结算
             "MACHINE_CONTRACT", "machine_settlement", "PURCHASE_SETTLEMENT",
             "FINAL_SETTLEMENT",
+            // 项目生命周期
             "PROJECT_CLOSE", "PROJECT_FILING", "PROJECT_TERMINATE",
+            // 劳务全链路
             "LABOR_CONTRACT", "LABOR_OUTPUT", "LABOR_SETTLEMENT", "LABOR_PAYROLL", "LABOR_REWARD_PUNISH");
 
     /** 办理时客户端不得写入的流程协议变量，防止篡改 initiator/businessId 绕过防自审或回调定位 */
@@ -897,13 +905,104 @@ public class ApprovalService {
         assertNotInitiator(task, targetId);
     }
 
-    /** 防自审：列举的业务类型中，发起人不得办理（含被转办/委托）自己的单据 */
+    /**
+     * 防自审（动态判定）：
+     * 列举的核心业务类型中，发起人不得审批自己的单据。
+     * 为避免单人独占审批环节产生死锁卡单，系统动态检查当前任务是否存在除发起人之外的其他可行审批人：
+     * - 若存在其他审批人（多候选人/候选组有其他成员/转办给发起人）：发起人必须回避，禁止自审（抛 403）；
+     * - 若无其他候选人（当前节点仅发起人一人可办）：为了避免业务卡死，放行自审并记录 WARN 日志。
+     */
     private void assertNotInitiator(Task task, Long userId) {
-        Object initiator = taskService.getVariable(task.getId(), "initiator");
         Object type = taskService.getVariable(task.getId(), "businessType");
-        if (type != null && SELF_APPROVAL_GUARDED_TYPES.contains(String.valueOf(type))
-                && (initiator == null || String.valueOf(userId).equals(String.valueOf(initiator)))) {
+        if (type == null || !SELF_APPROVAL_GUARDED_TYPES.contains(String.valueOf(type))) {
+            return;
+        }
+
+        Object initiator = taskService.getVariable(task.getId(), "initiator");
+        String initiatorStr = initiator == null ? null : String.valueOf(initiator);
+        // 如果当前操作人非发起人，放行
+        if (initiatorStr != null && !String.valueOf(userId).equals(initiatorStr)) {
+            return;
+        }
+
+        Long initiatorId = initiatorStr == null ? userId : parseLong(initiatorStr);
+        if (hasOtherEligibleApprover(task, initiatorId)) {
+            log.warn("防自审拦截：存在其他审批人，发起人不得审批自己的单据, taskId={}, businessType={}, userId={}",
+                    task.getId(), type, userId);
             throw new BusinessException(403, "发起人不能审批自己的单据");
+        } else {
+            log.warn("防自审放行：当前任务无其他可行审批人，避免流程死锁放行自审, taskId={}, businessType={}, userId={}",
+                    task.getId(), type, userId);
+        }
+    }
+
+    /**
+     * 动态检查任务除发起人外，是否还存在其他有效处理人/候选人/候选组成员
+     */
+    private boolean hasOtherEligibleApprover(Task task, Long initiatorId) {
+        try {
+            Long currentOperatorId = SecurityContextHolder.getUserId();
+            // 场景 A：转办/委托场景（当前操作人非发起人，要把任务转给发起人）
+            if (currentOperatorId != null && !currentOperatorId.equals(initiatorId)) {
+                return true;
+            }
+
+            Long tenantId = SecurityContextHolder.getTenantId();
+            if (tenantId == null && task.getTenantId() != null && !task.getTenantId().isBlank()) {
+                tenantId = parseLong(task.getTenantId());
+            }
+
+            // 场景 B：任务已被他人签收（assignee 为非发起人）
+            String assignee = task.getAssignee();
+            if (assignee != null && !assignee.isBlank()) {
+                Long assigneeId = parseLong(assignee);
+                if (assigneeId != null && !assigneeId.equals(initiatorId)) {
+                    return true;
+                }
+            }
+
+            // 场景 C：候选人（candidateUsers）与候选组（candidateGroups）
+            List<String> candidateGroups = new ArrayList<>();
+            List<IdentityLink> links = taskService.getIdentityLinksForTask(task.getId());
+            if (links != null) {
+                for (IdentityLink link : links) {
+                    if (!"candidate".equals(link.getType())) {
+                        continue;
+                    }
+                    Long candidateUserId = parseLong(link.getUserId());
+                    if (candidateUserId != null && !candidateUserId.equals(initiatorId)) {
+                        return true;
+                    }
+                    if (link.getGroupId() != null && !link.getGroupId().isBlank()) {
+                        candidateGroups.add(link.getGroupId());
+                    }
+                }
+            }
+
+            // 场景 D：候选角色组内是否有非发起人的成员
+            if (!candidateGroups.isEmpty() && tenantId != null) {
+                List<Long> groupUsers = sysUserMapper.selectUserIdsByRoleCodes(candidateGroups, tenantId);
+                if (groupUsers != null) {
+                    for (Long uid : groupUsers) {
+                        if (uid != null && !uid.equals(initiatorId)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("获取任务候选人失败, taskId={}", task.getId(), e);
+            return false;
+        }
+        return false;
+    }
+
+    private static Long parseLong(String val) {
+        if (val == null || val.isBlank()) return null;
+        try {
+            return Long.valueOf(val.trim());
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 

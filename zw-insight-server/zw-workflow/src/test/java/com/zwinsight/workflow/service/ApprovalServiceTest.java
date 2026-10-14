@@ -1420,6 +1420,88 @@ class ApprovalServiceTest {
         verifyNoInteractions(runtimeService, eventPublisher, approvalRecordMapper);
         verify(taskService, never()).addComment(anyString(), anyString(), anyString());
     }
+
+    // =====================================================================
+    // 动态防自审测试（包含财务审批）
+    // =====================================================================
+
+    @Test
+    @DisplayName("动态防自审：财务付款审批存在其他候选人时，发起人自审被阻断（403）")
+    void testDynamicSelfApproval_financeBlockedWhenOtherCandidateExists() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(taskService.getVariable("task-001", "businessType")).thenReturn("PAYMENT_APPLY");
+        when(taskService.getVariable("task-001", "initiator")).thenReturn("200");
+
+        // mock 候选人列表中有发起人 200 与另一位候选人 300
+        org.flowable.identitylink.api.IdentityLink link1 = mock(org.flowable.identitylink.api.IdentityLink.class);
+        when(link1.getType()).thenReturn("candidate");
+        when(link1.getUserId()).thenReturn("200");
+        org.flowable.identitylink.api.IdentityLink link2 = mock(org.flowable.identitylink.api.IdentityLink.class);
+        when(link2.getType()).thenReturn("candidate");
+        when(link2.getUserId()).thenReturn("300");
+        when(taskService.getIdentityLinksForTask("task-001")).thenReturn(List.of(link1, link2));
+
+        assertThatThrownBy(() -> approvalService.complete("task-001", "同意", null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("发起人不能审批自己的单据");
+
+        verify(taskService, never()).complete(anyString());
+    }
+
+    @Test
+    @DisplayName("动态防自审：当前节点仅发起人一人（单人独占）时，放行自审以避免死锁")
+    void testDynamicSelfApproval_allowedWhenNoOtherCandidate() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(taskService.getVariable("task-001", "businessType")).thenReturn("PAYMENT_APPLY");
+        when(taskService.getVariable("task-001", "businessId")).thenReturn(100L);
+        when(taskService.getVariable("task-001", "initiator")).thenReturn("200");
+
+        // 候选人只有发起人 200 自己，无其他候选人
+        org.flowable.identitylink.api.IdentityLink link1 = mock(org.flowable.identitylink.api.IdentityLink.class);
+        when(link1.getType()).thenReturn("candidate");
+        when(link1.getUserId()).thenReturn("200");
+        when(taskService.getIdentityLinksForTask("task-001")).thenReturn(List.of(link1));
+
+        // mock 源单检查通过
+        when(jdbc.queryForList(anyString(), anyLong(), anyLong()))
+                .thenReturn(List.of(Map.of("status", "SUBMITTED", "workflow_instance_id", "pi-001")));
+
+        approvalService.complete("task-001", "同意", null);
+
+        verify(taskService).complete("task-001");
+        verify(approvalRecordMapper).insert(any(WfApprovalRecord.class));
+    }
+
+    @Test
+    @DisplayName("动态防自审：候选组中存在其他成员时，发起人自审被阻断")
+    void testDynamicSelfApproval_blockedWhenCandidateGroupHasOthers() {
+        TaskQuery query = mock(TaskQuery.class, RETURNS_SELF);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.singleResult()).thenReturn(mockTask);
+        when(taskService.getVariable("task-001", "businessType")).thenReturn("PERSONAL_REIMBURSEMENT");
+        when(taskService.getVariable("task-001", "initiator")).thenReturn("200");
+
+        // 候选组 FINANCE_STAFF
+        org.flowable.identitylink.api.IdentityLink groupLink = mock(org.flowable.identitylink.api.IdentityLink.class);
+        when(groupLink.getType()).thenReturn("candidate");
+        when(groupLink.getGroupId()).thenReturn("FINANCE_STAFF");
+        when(taskService.getIdentityLinksForTask("task-001")).thenReturn(List.of(groupLink));
+
+        // 组内除 200 外还有 300
+        when(sysUserMapper.selectUserIdsByRoleCodes(List.of("FINANCE_STAFF"), 9999L))
+                .thenReturn(List.of(200L, 300L));
+
+        assertThatThrownBy(() -> approvalService.complete("task-001", "同意", null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("发起人不能审批自己的单据");
+
+        verify(taskService, never()).complete(anyString());
+    }
+
     @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> castList(Object obj) {
         return (List<Map<String, Object>>) obj;
