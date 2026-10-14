@@ -40,10 +40,14 @@ vi.mock('@/api/contract', () => ({
 vi.mock('@/api/project', () => ({
   getProjectList: mockGetProjectList,
 }))
-vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: { id: '90001' }, query: mockRouteQuery.value }),
-  useRouter: () => ({ push: vi.fn() }),
-}))
+vi.mock('vue-router', async (importOriginal) => {
+  const actual: any = await importOriginal()
+  return {
+    ...actual,
+    useRoute: () => ({ params: { id: '90001' }, query: mockRouteQuery.value }),
+    useRouter: () => ({ push: vi.fn() }),
+  }
+})
 
 import ContractForm from '@/views/contract/form.vue'
 

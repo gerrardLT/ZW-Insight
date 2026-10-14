@@ -37,10 +37,14 @@ vi.mock('@/api/contract', () => ({
 vi.mock('@/api/project', () => ({
   getProjectList: mockGetProjectList,
 }))
-vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: mockRouteParams, query: {} }),
-  useRouter: () => ({ push: mockPush }),
-}))
+vi.mock('vue-router', async (importOriginal) => {
+  const actual: any = await importOriginal()
+  return {
+    ...actual,
+    useRoute: () => ({ params: mockRouteParams, query: {} }),
+    useRouter: () => ({ push: mockPush }),
+  }
+})
 
 import ContractForm from '@/views/contract/form.vue'
 import { readFileSync } from 'node:fs'
