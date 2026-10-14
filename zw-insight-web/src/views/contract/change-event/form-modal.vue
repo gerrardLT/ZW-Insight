@@ -92,11 +92,11 @@
                 上传佐证凭证 (PDF / 照片 / 扫描件)
               </el-button>
             </el-upload>
-            <div v-if="supportingDocs.length" style="margin-top: 8px;">
+            <div v-if="supportingDocs.length" style="margin-top: var(--zw-space-sm);">
               <div
                 v-for="(doc, idx) in supportingDocs"
                 :key="idx"
-                style="display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; background: var(--zw-bg-hover); border-radius: 4px; margin-bottom: 4px; font-size: 13px;"
+                style="display: flex; align-items: center; justify-content: space-between; padding: var(--zw-space-xs) var(--zw-space-sm); background: var(--zw-bg-hover); border-radius: var(--zw-radius-sm); margin-bottom: var(--zw-space-xs); font-size: var(--zw-font-size-sm);"
               >
                 <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;">
                   📎 {{ doc.name }}

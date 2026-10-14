@@ -136,8 +136,8 @@
 
         <el-divider content-position="left">合同附件与正本扫描件</el-divider>
 
-        <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 13px; color: var(--zw-text-secondary);">支持上传 PDF 扫描件、签字盖章图片或合同电子档</span>
+        <div style="margin-bottom: var(--zw-space-sm-md); display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: var(--zw-font-size-sm); color: var(--zw-text-secondary);">支持上传 PDF 扫描件、签字盖章图片或合同电子档</span>
           <el-upload
             v-if="!isView"
             :show-file-list="false"
@@ -150,13 +150,13 @@
           </el-upload>
         </div>
 
-        <el-table :data="contractFileList" border size="small" style="width: 100%; margin-bottom: 16px;">
+        <el-table :data="contractFileList" border size="small" style="width: 100%; margin-bottom: var(--zw-space-md);">
           <el-table-column prop="originalName" label="文件名" min-width="200" show-overflow-tooltip />
           <el-table-column prop="fileSize" label="大小 (Bytes)" width="120" align="right" />
           <el-table-column prop="createdAt" label="上传时间" width="160" />
           <el-table-column label="操作" width="120" align="center">
             <template #default="{ row, $index }">
-              <el-link type="primary" :underline="false" style="margin-right: 12px;" @click="openContractFile(row)">预览</el-link>
+              <el-link type="primary" :underline="false" style="margin-right: var(--zw-space-sm-md);" @click="openContractFile(row)">预览</el-link>
               <el-link v-if="!isView" type="danger" :underline="false" @click="removeContractFile(row, $index)">删除</el-link>
             </template>
           </el-table-column>

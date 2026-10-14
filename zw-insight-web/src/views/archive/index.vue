@@ -158,12 +158,12 @@
               type="info"
               show-icon
               :closable="false"
-              style="margin-bottom: 12px;"
+              style="margin-bottom: var(--zw-space-sm-md);"
               title="该项目已竣工结案（封卷），卷宗处于只读保护状态，禁止新增、篡改或删除附件"
             />
-            <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; color: var(--zw-text-secondary);">案卷分类：</span>
+            <div style="margin-bottom: var(--zw-space-sm-md); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--zw-space-sm);">
+              <div style="display: flex; align-items: center; gap: var(--zw-space-sm);">
+                <span style="font-size: var(--zw-font-size-sm); color: var(--zw-text-secondary);">案卷分类：</span>
                 <el-radio-group v-model="selectedCategory" size="small">
                   <el-radio-button label="ALL">全部 ({{ attachments.length }})</el-radio-button>
                   <el-radio-button label="CONTRACT">合同卷</el-radio-button>
@@ -172,7 +172,7 @@
                   <el-radio-button label="OTHER">其他业务卷</el-radio-button>
                 </el-radio-group>
               </div>
-              <div style="display: flex; gap: 8px;">
+              <div style="display: flex; gap: var(--zw-space-sm);">
                 <el-button
                   type="default"
                   size="small"
@@ -205,19 +205,19 @@
               <el-table-column prop="fileSize" label="大小 (Bytes)" width="120" align="right" />
               <el-table-column prop="fileHash" label="SHA-256 指纹" width="140" show-overflow-tooltip>
                 <template #default="{ row }">
-                  <span style="font-family: monospace; font-size: 11px;">{{ row.fileHash || '-' }}</span>
+                  <span style="font-family: monospace; font-size: var(--zw-font-size-xs);">{{ row.fileHash || '-' }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="createdAt" label="上传时间" width="160" />
               <el-table-column label="操作" width="140" align="center">
                 <template #default="{ row }">
-                  <el-link type="primary" :underline="false" style="margin-right: 12px;" @click="openAttachment(row.id)">预览</el-link>
+                  <el-link type="primary" :underline="false" style="margin-right: var(--zw-space-sm-md);" @click="openAttachment(row.id)">预览</el-link>
                   <el-popconfirm v-if="!isProjectSealed" title="确定删除该附件吗？" @confirm="handleDeleteAttachment(row.id)">
                     <template #reference>
                       <el-link type="danger" :underline="false">删除</el-link>
                     </template>
                   </el-popconfirm>
-                  <span v-else style="color: var(--zw-text-secondary); font-size: 12px;">已封卷</span>
+                  <span v-else style="color: var(--zw-text-secondary); font-size: var(--zw-font-size-xs);">已封卷</span>
                 </template>
               </el-table-column>
             </el-table>
