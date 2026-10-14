@@ -76,3 +76,53 @@ export function updateStorage(id: number, data: FileStorage) {
 export function deleteStorage(id: number) {
   return request.delete(`/v1/file/storage/${id}`)
 }
+
+// ======================== 通用文件服务（FileController） ========================
+
+export interface FileInfo {
+  id: number
+  originalName: string
+  fileName: string
+  filePath: string
+  fileSize: number
+  fileType: string
+  storageType: string
+  businessType?: string
+  businessId?: number
+  projectId?: number
+  createdAt?: string
+}
+
+/** 通用文件上传 */
+export function uploadFile(file: File, businessType?: string, businessId?: number | string, projectId?: number | string) {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (businessType) formData.append('businessType', businessType)
+  if (businessId) formData.append('businessId', String(businessId))
+  if (projectId) formData.append('projectId', String(projectId))
+  return request.post<any, { code: number; data: FileInfo }>('/v1/file/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+/** 删除文件 */
+export function deleteFile(id: number | string) {
+  return request.delete(`/v1/file/${id}`)
+}
+
+/** 根据业务类型与业务ID查询文件列表 */
+export function getFileListByBusiness(businessType: string, businessId: number | string) {
+  return request.get<any, { code: number; data: FileInfo[] }>('/v1/file/list', {
+    params: { businessType, businessId }
+  })
+}
+
+/** 批量回填绑定业务主体 */
+export function bindBusinessFiles(data: {
+  fileIds: (number | string)[]
+  businessType: string
+  businessId: number | string
+  projectId?: number | string
+}) {
+  return request.put<any, { code: number; data: number }>('/v1/file/bind-business', data)
+}

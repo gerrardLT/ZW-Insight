@@ -38,9 +38,11 @@ public class FilePreviewService {
      * @return 预览URL（图片返回 presigned URL，其他返回 KKFileView URL）
      */
     public String getPreviewUrl(Long fileId) {
-        // 1. 从文件表获取文件信息
+        // 1. 从文件表获取文件信息并严格核验租户隔离（防 IDOR 遍历越权）
         FileInfo fileInfo = fileInfoMapper.selectById(fileId);
-        if (fileInfo == null) {
+        Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        if (fileInfo == null || (tenantId != null && fileInfo.getTenantId() != null
+                && !tenantId.equals(fileInfo.getTenantId()))) {
             throw new BusinessException("文件不存在");
         }
 

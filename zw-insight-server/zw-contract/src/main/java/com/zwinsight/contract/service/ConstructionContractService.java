@@ -44,6 +44,7 @@ public class ConstructionContractService {
     private final ApprovalService approvalService;
     private final BizProjectMapper projectMapper;
     private final com.zwinsight.project.service.ProjectService projectService;
+    private final com.zwinsight.file.service.FileService fileService;
 
     /**
      * 分页查询（支持按项目、状态、合同编号与甲方名称检索）
@@ -293,6 +294,12 @@ public class ConstructionContractService {
             throw new BusinessException("仅草稿状态可删除");
         }
         contractMapper.deleteById(id);
+        // 级联清理该合同名下已绑定的扫描件与附件，防止形成无主孤儿
+        try {
+            fileService.deleteByBusiness("CONTRACT", id);
+        } catch (Exception e) {
+            log.warn("清理合同附件异常: contractId={}, err={}", id, e.getMessage());
+        }
     }
 
     /**

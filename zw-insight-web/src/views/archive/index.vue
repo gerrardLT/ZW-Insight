@@ -152,15 +152,72 @@
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane :label="`附件卷宗 (${attachments.length})`">
-            <el-table :data="attachments" border size="small">
+          <el-tab-pane :label="`附件卷宗 (${filteredAttachments.length})`">
+            <el-alert
+              v-if="isProjectSealed"
+              type="info"
+              show-icon
+              :closable="false"
+              style="margin-bottom: 12px;"
+              title="该项目已竣工结案（封卷），卷宗处于只读保护状态，禁止新增、篡改或删除附件"
+            />
+            <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; color: var(--zw-text-secondary);">案卷分类：</span>
+                <el-radio-group v-model="selectedCategory" size="small">
+                  <el-radio-button label="ALL">全部 ({{ attachments.length }})</el-radio-button>
+                  <el-radio-button label="CONTRACT">合同卷</el-radio-button>
+                  <el-radio-button label="CHANGE_EVENT">变更签证卷</el-radio-button>
+                  <el-radio-button label="PROJECT">项目综合卷</el-radio-button>
+                  <el-radio-button label="OTHER">其他业务卷</el-radio-button>
+                </el-radio-group>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <el-button
+                  type="default"
+                  size="small"
+                  :disabled="!selectedProjectId || attachments.length === 0"
+                  @click="handleDownloadProjectZip"
+                >
+                  📦 打包下载全卷 (ZIP)
+                </el-button>
+                <el-upload
+                  v-if="!isProjectSealed"
+                  :show-file-list="false"
+                  :before-upload="handleUploadArchiveAttachment"
+                  :disabled="!selectedProjectId || uploadingFile"
+                >
+                  <el-button type="primary" size="small" :loading="uploadingFile" :disabled="!selectedProjectId">
+                    上传附件
+                  </el-button>
+                </el-upload>
+              </div>
+            </div>
+            <el-table :data="filteredAttachments" border size="small">
               <el-table-column prop="originalName" label="文件名" min-width="200" show-overflow-tooltip />
-              <el-table-column prop="businessType" label="业务来源" width="140" />
-              <el-table-column prop="fileSize" label="大小 (Bytes)" width="120" align="right" />
-              <el-table-column prop="createdAt" label="上传时间" width="160" />
-              <el-table-column label="操作" width="100" align="center">
+              <el-table-column prop="businessType" label="业务来源" width="130">
                 <template #default="{ row }">
-                  <el-link type="primary" :underline="false" @click="openAttachment(row.id)">预览</el-link>
+                  <el-tag size="small" :type="getCategoryTagType(row.businessType)">
+                    {{ getCategoryLabel(row.businessType) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="fileSize" label="大小 (Bytes)" width="120" align="right" />
+              <el-table-column prop="fileHash" label="SHA-256 指纹" width="140" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <span style="font-family: monospace; font-size: 11px;">{{ row.fileHash || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createdAt" label="上传时间" width="160" />
+              <el-table-column label="操作" width="140" align="center">
+                <template #default="{ row }">
+                  <el-link type="primary" :underline="false" style="margin-right: 12px;" @click="openAttachment(row.id)">预览</el-link>
+                  <el-popconfirm v-if="!isProjectSealed" title="确定删除该附件吗？" @confirm="handleDeleteAttachment(row.id)">
+                    <template #reference>
+                      <el-link type="danger" :underline="false">删除</el-link>
+                    </template>
+                  </el-popconfirm>
+                  <span v-else style="color: var(--zw-text-secondary); font-size: 12px;">已封卷</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -173,18 +230,21 @@
 
 <script setup lang="ts">
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getProjectList } from '@/api/project'
 import { getProjectArchive } from '@/api/archive'
 import { getFilePreviewUrl } from '@/api/batch'
+import { uploadFile, deleteFile } from '@/api/file'
 import type { Project } from '@/types/project'
 
 const projectLoading = ref(false)
 const loading = ref(false)
+const uploadingFile = ref(false)
 const projectOptions = ref<Project[]>([])
 // 雪花 ID 经 Jackson 序列化为 string，故兼容 number|string
 const selectedProjectId = ref<number | string | undefined>()
+const selectedCategory = ref<string>('ALL')
 
 const project = ref<Record<string, any>>({})
 const members = ref<any[]>([])
@@ -197,6 +257,41 @@ const laborContracts = ref<any[]>([])
 const changeEvents = ref<any[]>([])
 const attachments = ref<any[]>([])
 const fundSummary = ref<Record<string, any>>({})
+
+/** 项目是否已结案封卷（CLOSED 或 TERMINATED）：WORM 语义，封卷后剥夺删除与上传入口 */
+const isProjectSealed = computed(() => {
+  const s = project.value?.status
+  return s === 'CLOSED' || s === 'TERMINATED'
+})
+
+/** 按案卷分类过滤附件 */
+const filteredAttachments = computed(() => {
+  if (selectedCategory.value === 'ALL') return attachments.value
+  return attachments.value.filter(a => {
+    const t = a.businessType || ''
+    if (selectedCategory.value === 'CONTRACT') return t.includes('CONTRACT')
+    if (selectedCategory.value === 'CHANGE_EVENT') return t === 'CHANGE_EVENT'
+    if (selectedCategory.value === 'PROJECT') return t === 'PROJECT' || t === 'PROJECT_DOCUMENT'
+    if (selectedCategory.value === 'OTHER') return !t.includes('CONTRACT') && t !== 'CHANGE_EVENT' && t !== 'PROJECT'
+    return true
+  })
+})
+
+function getCategoryLabel(type?: string): string {
+  if (!type) return '综合卷'
+  if (type.includes('CONTRACT')) return '合同卷'
+  if (type === 'CHANGE_EVENT') return '签证卷'
+  if (type === 'PROJECT') return '立项卷'
+  return type
+}
+
+function getCategoryTagType(type?: string): '' | 'success' | 'warning' | 'info' | 'danger' {
+  if (!type) return 'info'
+  if (type.includes('CONTRACT')) return 'success'
+  if (type === 'CHANGE_EVENT') return 'warning'
+  if (type === 'PROJECT') return ''
+  return 'info'
+}
 
 function formatMoney(val: any) {
   if (val === null || val === undefined || val === '') return '-'
@@ -213,6 +308,43 @@ async function openAttachment(fileId: number | string) {
   } catch (e: any) {
     ElMessage.error('获取预览地址失败：' + (e?.message || '接口异常'))
   }
+}
+
+async function handleUploadArchiveAttachment(file: File) {
+  if (!selectedProjectId.value) {
+    ElMessage.warning('请先选择一个项目')
+    return false
+  }
+  uploadingFile.value = true
+  try {
+    await uploadFile(file, 'PROJECT', selectedProjectId.value, selectedProjectId.value)
+    ElMessage.success('附件上传成功')
+    await handleProjectChange(selectedProjectId.value)
+  } catch (e: any) {
+    ElMessage.error('附件上传失败：' + (e?.message || '网络异常'))
+  } finally {
+    uploadingFile.value = false
+  }
+  return false // 阻止 el-upload 默认行为
+}
+
+async function handleDeleteAttachment(fileId: number | string) {
+  try {
+    await deleteFile(fileId)
+    ElMessage.success('附件删除成功')
+    if (selectedProjectId.value) {
+      await handleProjectChange(selectedProjectId.value)
+    }
+  } catch (e: any) {
+    ElMessage.error('附件删除失败：' + (e?.message || '网络异常'))
+  }
+}
+
+async function handleDownloadProjectZip() {
+  if (!selectedProjectId.value) return
+  const token = localStorage.getItem('token')
+  const downloadUrl = `/api/v1/file/package/project/${selectedProjectId.value}${token ? `?token=${encodeURIComponent(token)}` : ''}`
+  window.open(downloadUrl, '_blank')
 }
 
 function resetArchive() {

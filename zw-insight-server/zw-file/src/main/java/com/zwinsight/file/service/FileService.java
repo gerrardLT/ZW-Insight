@@ -45,6 +45,7 @@ public class FileService {
 
     private final MinioService minioService;
     private final FileInfoMapper fileInfoMapper;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /**
      * 上传文件
@@ -68,6 +69,9 @@ public class FileService {
             throw new BusinessException("不支持的文件类型：." + extension);
         }
 
+        // 计算 SHA-256 内容哈希（电子档案防篡改与完整性校验）
+        String fileHash = calculateSha256(file);
+
         String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd")) + "/";
 
         // 使用MinioService上传
@@ -83,6 +87,7 @@ public class FileService {
         fileInfo.setFilePath(filePath);
         fileInfo.setFileSize(file.getSize());
         fileInfo.setFileType(file.getContentType());
+        fileInfo.setFileHash(fileHash);
         fileInfo.setStorageType("MINIO");
         fileInfo.setBusinessType(businessType);
         fileInfo.setBusinessId(businessId);
@@ -90,6 +95,29 @@ public class FileService {
         fileInfoMapper.insert(fileInfo);
 
         return fileInfo;
+    }
+
+    /**
+     * 计算上传文件内容的 SHA-256 摘要
+     */
+    private String calculateSha256(MultipartFile file) {
+        try (java.io.InputStream is = file.getInputStream()) {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = is.read(buffer)) != -1) {
+                md.update(buffer, 0, read);
+            }
+            byte[] digest = md.digest();
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("计算文件 SHA-256 哈希失败: {}", file.getOriginalFilename(), e);
+            return null;
+        }
     }
 
     /**
@@ -120,6 +148,39 @@ public class FileService {
 
         minioService.delete(fileInfo.getFilePath());
         fileInfoMapper.deleteById(id);
+
+        // 删除留痕审计：将文件被删事件广播到统一审计日志
+        try {
+            eventPublisher.publishEvent(new com.zwinsight.common.event.AuditLogRecordEvent(
+                    this, "file_info", id, "deleted",
+                    fileInfo.getOriginalName() + " (" + fileInfo.getBusinessType() + ":" + fileInfo.getBusinessId() + ")",
+                    "DELETED", fileInfo.getTenantId(),
+                    com.zwinsight.common.config.SecurityContextHolder.getUserId(), null));
+        } catch (Exception ignored) {
+            // 审计写入异常不阻断主流程
+        }
+    }
+
+    /**
+     * 批量回填绑定业务主体（解决表单新建阶段先传文件再生成业务ID的时序断裂）
+     */
+    public int bindBusiness(List<Long> fileIds, String businessType, Long businessId, Long projectId) {
+        if (fileIds == null || fileIds.isEmpty() || businessId == null) {
+            return 0;
+        }
+        Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        int count = 0;
+        for (Long fileId : fileIds) {
+            FileInfo f = fileInfoMapper.selectById(fileId);
+            if (f != null && (tenantId == null || tenantId.equals(f.getTenantId()))) {
+                if (businessType != null) f.setBusinessType(businessType);
+                f.setBusinessId(businessId);
+                if (projectId != null) f.setProjectId(projectId);
+                fileInfoMapper.updateById(f);
+                count++;
+            }
+        }
+        return count;
     }
 
     /**
@@ -131,5 +192,78 @@ public class FileService {
                 .eq(FileInfo::getBusinessId, businessId)
                 .orderByDesc(FileInfo::getCreatedAt);
         return fileInfoMapper.selectList(wrapper);
+    }
+
+    /**
+     * 根据业务主体批量物理清理其附件（用于草稿单据删除时的级联防孤儿）
+     */
+    public int deleteByBusiness(String businessType, Long businessId) {
+        if (businessType == null || businessId == null) {
+            return 0;
+        }
+        List<FileInfo> files = getByBusiness(businessType, businessId);
+        int deleted = 0;
+        for (FileInfo f : files) {
+            try {
+                delete(f.getId());
+                deleted++;
+            } catch (Exception e) {
+                log.warn("级联删除附件失败: fileId={}, err={}", f.getId(), e.getMessage());
+            }
+        }
+        return deleted;
+    }
+
+    /**
+     * 流式打包下载指定项目的全部卷宗附件（ZIP 格式）
+     */
+    public void packageProjectFiles(Long projectId, jakarta.servlet.http.HttpServletResponse response) {
+        if (projectId == null) {
+            throw new BusinessException("项目ID不能为空");
+        }
+        Long tenantId = com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+        LambdaQueryWrapper<FileInfo> wrapper = new LambdaQueryWrapper<FileInfo>()
+                .eq(FileInfo::getProjectId, projectId)
+                .eq(tenantId != null, FileInfo::getTenantId, tenantId)
+                .orderByDesc(FileInfo::getCreatedAt);
+        List<FileInfo> files = fileInfoMapper.selectList(wrapper);
+        if (files.isEmpty()) {
+            throw new BusinessException("该项目暂无归档附件");
+        }
+
+        response.setContentType("application/zip");
+        String zipName = "project-archive-" + projectId + ".zip";
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + zipName + "\"");
+
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(response.getOutputStream())) {
+            java.util.Set<String> entryNames = new java.util.HashSet<>();
+            byte[] buffer = new byte[8192];
+            for (FileInfo f : files) {
+                if (f.getFilePath() == null) continue;
+                String entryName = f.getOriginalName() != null ? f.getOriginalName() : f.getFileName();
+                // 规避重名文件覆盖
+                if (entryNames.contains(entryName)) {
+                    entryName = f.getId() + "_" + entryName;
+                }
+                entryNames.add(entryName);
+
+                try (java.io.InputStream is = minioService.download(f.getFilePath())) {
+                    if (is != null) {
+                        zos.putNextEntry(new java.util.zip.ZipEntry(entryName));
+                        int len;
+                        while ((len = is.read(buffer)) > 0) {
+                            zos.write(buffer, 0, len);
+                        }
+                        zos.closeEntry();
+                    }
+                } catch (Exception e) {
+                    log.warn("打包附件读取失败跳过: fileId={}, path={}, err={}", f.getId(), f.getFilePath(), e.getMessage());
+                }
+            }
+            zos.finish();
+        } catch (java.io.IOException e) {
+            log.error("流式打包下载失败: projectId={}", projectId, e);
+            throw new BusinessException("流式打包附件失败: " + e.getMessage());
+        }
     }
 }

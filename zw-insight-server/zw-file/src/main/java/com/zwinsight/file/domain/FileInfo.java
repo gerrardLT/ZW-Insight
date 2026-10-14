@@ -39,6 +39,11 @@ public class FileInfo extends BaseEntity {
     private String fileType;
 
     /**
+     * 文件内容 SHA-256 哈希值（电子档案防篡改与完整性校验）
+     */
+    private String fileHash;
+
+    /**
      * 存储类型（MINIO/LOCAL）
      */
     private String storageType;

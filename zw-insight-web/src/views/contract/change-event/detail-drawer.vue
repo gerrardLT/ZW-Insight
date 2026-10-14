@@ -196,14 +196,14 @@ import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ZwFileIcon from '@/components/visual/ZwFileIcon.vue'
-import {
-  getChangeEvent, approveChangeEvent, rejectChangeEvent, cancelChangeEvent,
+import { getChangeEvent, approveChangeEvent, rejectChangeEvent, cancelChangeEvent,
   startChangeEventAssessment, reAssessChangeEvent, deleteChangeEvent,
   CHANGE_EVENT_STATUS_LABELS, CHANGE_EVENT_STATUS_TAG_TYPES,
   CHANGE_EVENT_SOURCE_LABELS,
   CHANGE_EVENT_CATEGORY_LABELS, CHANGE_EVENT_CATEGORY_TAG_TYPES,
   type BizChangeEvent
 } from '@/api/change-event'
+import { getFilePreviewUrl } from '@/api/batch'
 import { toWan } from '@/utils/chart-format'
 
 const props = defineProps<{
@@ -418,8 +418,27 @@ async function handleDelete() {
   }
 }
 
-function openDoc(doc: any) {
-  if (doc?.url) window.open(doc.url, '_blank')
+async function openDoc(doc: any) {
+  if (doc?.fileId) {
+    try {
+      const res: any = await getFilePreviewUrl(doc.fileId)
+      if (res.data) {
+        window.open(res.data, '_blank')
+        return
+      }
+    } catch (e: any) {
+      ElMessage.warning('换取预览地址失败，尝试直接打开原始地址')
+    }
+  }
+  if (doc?.url) {
+    if (doc.url.startsWith('http://') || doc.url.startsWith('https://')) {
+      window.open(doc.url, '_blank')
+    } else {
+      ElMessage.warning('非外网直连地址，无法直接打开')
+    }
+  } else {
+    ElMessage.warning('暂无可用的预览地址')
+  }
 }
 </script>
 

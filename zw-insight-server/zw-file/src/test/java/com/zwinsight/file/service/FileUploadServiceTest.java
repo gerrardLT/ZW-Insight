@@ -53,6 +53,9 @@ class FileUploadServiceTest {
     @Mock
     private FileInfoMapper fileInfoMapper;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private FileService fileService;
 
     /**
@@ -66,7 +69,7 @@ class FileUploadServiceTest {
 
     @BeforeEach
     void setUp() {
-        fileService = new FileService(minioService, fileInfoMapper);
+        fileService = new FileService(minioService, fileInfoMapper, eventPublisher);
     }
 
     // ==================== 文件上传测试 ====================
@@ -491,5 +494,41 @@ class FileUploadServiceTest {
         fileInfo.setProjectId(1L);
         fileInfo.setCreatedAt(java.time.LocalDateTime.now());
         return fileInfo;
+    }
+
+    @Nested
+    @DisplayName("业务回填绑定场景")
+    class BindBusinessTests {
+
+        @Test
+        @DisplayName("正常批量回填业务主体信息")
+        void bindBusiness_success() {
+            FileInfo f1 = createFileInfo(1L, null, null);
+            FileInfo f2 = createFileInfo(2L, null, null);
+
+            when(fileInfoMapper.selectById(1L)).thenReturn(f1);
+            when(fileInfoMapper.selectById(2L)).thenReturn(f2);
+
+            int updated = fileService.bindBusiness(List.of(1L, 2L), "CONTRACT", 888L, 999L);
+
+            assertEquals(2, updated);
+            assertEquals("CONTRACT", f1.getBusinessType());
+            assertEquals(888L, f1.getBusinessId());
+            assertEquals(999L, f1.getProjectId());
+            assertEquals("CONTRACT", f2.getBusinessType());
+            assertEquals(888L, f2.getBusinessId());
+            assertEquals(999L, f2.getProjectId());
+            verify(fileInfoMapper).updateById(f1);
+            verify(fileInfoMapper).updateById(f2);
+        }
+
+        @Test
+        @DisplayName("空参数或空集合安全跳过")
+        void bindBusiness_emptyArgs_noOp() {
+            assertEquals(0, fileService.bindBusiness(null, "CONTRACT", 1L, 1L));
+            assertEquals(0, fileService.bindBusiness(List.of(), "CONTRACT", 1L, 1L));
+            assertEquals(0, fileService.bindBusiness(List.of(1L), "CONTRACT", null, 1L));
+            verifyNoInteractions(fileInfoMapper);
+        }
     }
 }

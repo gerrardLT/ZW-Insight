@@ -52,6 +52,8 @@ class ConstructionContractServiceTest {
     private BizProjectMapper projectMapper;
     @Mock
     private com.zwinsight.project.service.ProjectService projectService;
+    @Mock
+    private com.zwinsight.file.service.FileService fileService;
 
     @InjectMocks
     private ConstructionContractService contractService;

@@ -80,6 +80,33 @@
           </el-select>
         </el-form-item>
 
+        <!-- 佐证材料附件上传 -->
+        <el-form-item label="佐证材料">
+          <div style="width: 100%">
+            <el-upload
+              :show-file-list="false"
+              :before-upload="handleUploadSupportingDoc"
+              :disabled="uploadingDoc"
+            >
+              <el-button type="default" size="small" :loading="uploadingDoc">
+                上传佐证凭证 (PDF / 照片 / 扫描件)
+              </el-button>
+            </el-upload>
+            <div v-if="supportingDocs.length" style="margin-top: 8px;">
+              <div
+                v-for="(doc, idx) in supportingDocs"
+                :key="idx"
+                style="display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; background: var(--zw-bg-hover); border-radius: 4px; margin-bottom: 4px; font-size: 13px;"
+              >
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;">
+                  📎 {{ doc.name }}
+                </span>
+                <el-button type="danger" link size="small" @click="removeSupportingDoc(idx)">删除</el-button>
+              </div>
+            </div>
+          </div>
+        </el-form-item>
+
         <!-- 影响评估：仅评估中/审批中阶段填写 -->
         <template v-if="showAssessment">
           <el-divider content-position="left">影响评估</el-divider>
@@ -200,6 +227,7 @@ import {
 } from '@/api/change-event'
 import { getCostAccountPage, type CostAccount } from '@/api/cost-account'
 import { getProjectList } from '@/api/project'
+import { uploadFile } from '@/api/file'
 import { toWan } from '@/utils/chart-format'
 
 const props = defineProps<{
@@ -220,6 +248,8 @@ const projectList = ref<any[]>([])
 const costAccountOptions = ref<CostAccount[]>([])
 const currentStatus = ref<string>('')
 const affectedAccounts = ref<AffectedAccount[]>([])
+const supportingDocs = ref<any[]>([])
+const uploadingDoc = ref(false)
 
 const formData = reactive({
   projectId: null as number | null,
@@ -329,6 +359,7 @@ async function loadEvent(id: number | string) {
       assessment.assessmentNotes = data.impactAssessment.assessmentNotes || ''
     }
     affectedAccounts.value = (data.affectedAccounts || []).map(a => ({ ...a }))
+    supportingDocs.value = (data.supportingDocs || []).map(d => ({ ...d }))
 
     if (data.projectId) await loadCostAccounts(data.projectId)
   } catch (e: any) {
@@ -351,8 +382,33 @@ function resetForm() {
   assessment.rationale = ''
   assessment.assessmentNotes = ''
   affectedAccounts.value = []
+  supportingDocs.value = []
   costAccountOptions.value = []
   formRef.value?.clearValidate()
+}
+
+async function handleUploadSupportingDoc(file: File) {
+  uploadingDoc.value = true
+  try {
+    const res: any = await uploadFile(file, 'CHANGE_EVENT', props.eventId || undefined, formData.projectId || undefined)
+    const fileInfo = res.data
+    supportingDocs.value.push({
+      fileId: fileInfo.id,
+      name: fileInfo.originalName,
+      url: fileInfo.filePath,
+      type: fileInfo.fileType
+    })
+    ElMessage.success('凭证上传成功')
+  } catch (e: any) {
+    ElMessage.error('凭证上传失败：' + (e?.message || '网络异常'))
+  } finally {
+    uploadingDoc.value = false
+  }
+  return false
+}
+
+function removeSupportingDoc(idx: number) {
+  supportingDocs.value.splice(idx, 1)
 }
 
 function addAccount() {
@@ -380,6 +436,7 @@ async function handleSubmit() {
     title: formData.title.trim(),
     description: formData.description.trim(),
     category: formData.category || undefined,
+    supportingDocs: supportingDocs.value,
     affectedAccounts: affectedAccounts.value.filter(a => a.accountId)
   }
 

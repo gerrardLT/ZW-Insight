@@ -39,4 +39,29 @@ public class FileController {
                                   @RequestParam Long businessId) {
         return R.ok(fileService.getByBusiness(businessType, businessId));
     }
+
+    /**
+     * 批量回填绑定业务主体（解决表单新建阶段先传文件再生成业务ID的时序断裂）
+     */
+    @PutMapping("/bind-business")
+    public R<Integer> bindBusiness(@RequestBody BindBusinessRequest request) {
+        return R.ok(fileService.bindBusiness(
+                request.getFileIds(), request.getBusinessType(), request.getBusinessId(), request.getProjectId()));
+    }
+
+    /**
+     * 流式打包下载指定项目的全卷归档附件（ZIP 格式）
+     */
+    @GetMapping("/package/project/{projectId}")
+    public void packageProjectFiles(@PathVariable Long projectId, jakarta.servlet.http.HttpServletResponse response) {
+        fileService.packageProjectFiles(projectId, response);
+    }
+
+    @lombok.Data
+    public static class BindBusinessRequest {
+        private List<Long> fileIds;
+        private String businessType;
+        private Long businessId;
+        private Long projectId;
+    }
 }
