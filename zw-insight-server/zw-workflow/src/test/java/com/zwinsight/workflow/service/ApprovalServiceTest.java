@@ -596,15 +596,15 @@ class ApprovalServiceTest {
             when(taskQuery.singleResult()).thenReturn(mockTask);
 
             SysUser target = new SysUser();
-            target.setId(300L);
+            target.setId(400L);
             target.setStatus(1);
             target.setTenantId(9999L);
-            when(sysUserMapper.selectById(300L)).thenReturn(target);
+            when(sysUserMapper.selectById(400L)).thenReturn(target);
 
-            approvalService.transfer("task-001", "300", "出差代审");
+            approvalService.transfer("task-001", "400", "出差代审");
 
             verify(taskService).addComment("task-001", "pi-001", "【转办】出差代审");
-            verify(taskService).setAssignee("task-001", "300");
+            verify(taskService).setAssignee("task-001", "400");
             verify(approvalRecordMapper).insert(argThat(r -> "TRANSFER".equals(r.getOperationType())));
         }
     }
