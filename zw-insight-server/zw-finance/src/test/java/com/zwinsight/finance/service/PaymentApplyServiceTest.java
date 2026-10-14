@@ -716,6 +716,32 @@ class PaymentApplyServiceTest {
         }
 
         @Test
+        @DisplayName("update 金额变更发布字段留痕事件；数值相等（1000 与 1000.00）不产生噪音记录")
+        void update_amountChange_publishesAuditEvent_onlyWhenValueDiffers() {
+            BizPaymentApply existing = apply(1L, "DRAFT");
+            when(paymentApplyMapper.selectById(1L)).thenReturn(existing);
+
+            BizPaymentApply sameValue = apply(1L, "DRAFT");
+            sameValue.setPaymentAmount(new BigDecimal("1000.00"));
+            paymentApplyService.update(sameValue);
+            verify(eventPublisher, never()).publishEvent(any(com.zwinsight.common.event.AuditLogRecordEvent.class));
+
+            BizPaymentApply changed = apply(1L, "DRAFT");
+            changed.setPaymentAmount(new BigDecimal("2500"));
+            paymentApplyService.update(changed);
+
+            ArgumentCaptor<com.zwinsight.common.event.AuditLogRecordEvent> captor =
+                    ArgumentCaptor.forClass(com.zwinsight.common.event.AuditLogRecordEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            com.zwinsight.common.event.AuditLogRecordEvent event = captor.getValue();
+            assertThat(event.getTableName()).isEqualTo("biz_payment_apply");
+            assertThat(event.getRecordId()).isEqualTo(1L);
+            assertThat(event.getFieldName()).isEqualTo("paymentAmount");
+            assertThat(event.getOldValue()).isEqualTo("1000.00");
+            assertThat(event.getNewValue()).isEqualTo("2500");
+        }
+
+        @Test
         @DisplayName("update 草稿原付款日期落在已封账月份时拒绝，不能靠改日期绕出封账")
         void update_originalPeriodLocked_rejected() {
             BizPaymentApply existing = apply(1L, "DRAFT");

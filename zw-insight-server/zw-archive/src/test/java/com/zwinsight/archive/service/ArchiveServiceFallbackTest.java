@@ -87,6 +87,11 @@ class ArchiveServiceFallbackTest {
     @Mock private BizVehicleMaintenanceMapper vehicleMaintenanceMapper;
     @Mock private BizExpenseContractMapper expenseContractMapper;
     @Mock private ArchiveOfficeSupplyMapper officeSupplyMapper;
+    @Mock private com.zwinsight.system.service.AuditLogService auditLogService;
+    @Mock private com.zwinsight.labor.mapper.BizLaborContractMapper laborContractMapper;
+    @Mock private com.zwinsight.labor.mapper.BizLaborSettlementMapper laborSettlementMapper;
+    @Mock private com.zwinsight.contract.mapper.BizChangeEventMapper changeEventMapper;
+    @Mock private com.zwinsight.file.mapper.FileInfoMapper fileInfoMapper;
 
     @InjectMocks
     private ArchiveService archiveService;
@@ -99,6 +104,9 @@ class ArchiveServiceFallbackTest {
         TableInfoHelper.initTableInfo(assistant, BizConstructionContract.class);
         TableInfoHelper.initTableInfo(assistant, BizBudget.class);
         TableInfoHelper.initTableInfo(assistant, BizBudgetDetail.class);
+        TableInfoHelper.initTableInfo(assistant, com.zwinsight.labor.domain.BizLaborContract.class);
+        TableInfoHelper.initTableInfo(assistant, com.zwinsight.contract.domain.BizChangeEvent.class);
+        TableInfoHelper.initTableInfo(assistant, com.zwinsight.file.domain.FileInfo.class);
     }
 
     @Test
@@ -111,6 +119,9 @@ class ArchiveServiceFallbackTest {
         when(paymentReceivedMapper.selectList(any())).thenReturn(List.of());
         when(subcontractMapper.selectList(any())).thenReturn(List.of());
         when(machineContractMapper.selectList(any())).thenReturn(List.of());
+        when(laborContractMapper.selectList(any())).thenReturn(List.of());
+        when(changeEventMapper.selectList(any())).thenReturn(List.of());
+        when(fileInfoMapper.selectList(any())).thenReturn(List.of());
 
         Map<String, Object> archive = archiveService.getProjectArchive(999L);
 

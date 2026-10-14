@@ -123,6 +123,48 @@
               <el-table-column prop="status" label="状态" width="100" align="center" />
             </el-table>
           </el-tab-pane>
+
+          <el-tab-pane :label="`劳务合同 (${laborContracts.length})`">
+            <el-table :data="laborContracts" border size="small">
+              <el-table-column prop="contractCode" label="合同编号" min-width="150" show-overflow-tooltip />
+              <el-table-column prop="contractName" label="合同名称" min-width="160" show-overflow-tooltip />
+              <el-table-column prop="teamName" label="施工队伍" min-width="140" show-overflow-tooltip />
+              <el-table-column label="合同金额" width="150" align="right">
+                <template #default="{ row }">{{ formatMoney(row.contractAmount) }}</template>
+              </el-table-column>
+              <el-table-column label="累计结算" width="150" align="right">
+                <template #default="{ row }">{{ formatMoney(row.cumulativeSettlement) }}</template>
+              </el-table-column>
+              <el-table-column prop="status" label="状态" width="100" align="center" />
+            </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane :label="`变更签证 (${changeEvents.length})`">
+            <el-table :data="changeEvents" border size="small">
+              <el-table-column prop="eventNumber" label="事件编号" min-width="150" show-overflow-tooltip />
+              <el-table-column prop="title" label="事件标题" min-width="180" show-overflow-tooltip />
+              <el-table-column prop="category" label="变更类别" width="120" />
+              <el-table-column label="成本影响" width="150" align="right">
+                <template #default="{ row }">{{ formatMoney(row.costDelta) }}</template>
+              </el-table-column>
+              <el-table-column prop="status" label="状态" width="100" align="center" />
+              <el-table-column prop="createdAt" label="登记时间" width="160" />
+            </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane :label="`附件卷宗 (${attachments.length})`">
+            <el-table :data="attachments" border size="small">
+              <el-table-column prop="originalName" label="文件名" min-width="200" show-overflow-tooltip />
+              <el-table-column prop="businessType" label="业务来源" width="140" />
+              <el-table-column prop="fileSize" label="大小 (Bytes)" width="120" align="right" />
+              <el-table-column prop="createdAt" label="上传时间" width="160" />
+              <el-table-column label="操作" width="100" align="center">
+                <template #default="{ row }">
+                  <el-link type="primary" :underline="false" @click="openAttachment(row.id)">预览</el-link>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
         </el-tabs>
       </div>
     </el-card>
@@ -135,6 +177,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getProjectList } from '@/api/project'
 import { getProjectArchive } from '@/api/archive'
+import { getFilePreviewUrl } from '@/api/batch'
 import type { Project } from '@/types/project'
 
 const projectLoading = ref(false)
@@ -150,6 +193,9 @@ const payments = ref<any[]>([])
 const receivedPayments = ref<any[]>([])
 const subcontracts = ref<any[]>([])
 const machineContracts = ref<any[]>([])
+const laborContracts = ref<any[]>([])
+const changeEvents = ref<any[]>([])
+const attachments = ref<any[]>([])
 const fundSummary = ref<Record<string, any>>({})
 
 function formatMoney(val: any) {
@@ -157,6 +203,16 @@ function formatMoney(val: any) {
   const num = Number(val)
   if (Number.isNaN(num)) return '-'
   return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+async function openAttachment(fileId: number | string) {
+  try {
+    const res: any = await getFilePreviewUrl(fileId as number)
+    if (res.data) window.open(res.data, '_blank')
+    else ElMessage.warning('暂无可用的预览地址')
+  } catch (e: any) {
+    ElMessage.error('获取预览地址失败：' + (e?.message || '接口异常'))
+  }
 }
 
 function resetArchive() {
@@ -167,6 +223,9 @@ function resetArchive() {
   receivedPayments.value = []
   subcontracts.value = []
   machineContracts.value = []
+  laborContracts.value = []
+  changeEvents.value = []
+  attachments.value = []
   fundSummary.value = {}
 }
 
@@ -198,6 +257,9 @@ async function handleProjectChange(id: number | string | undefined) {
     receivedPayments.value = data.receivedPayments || []
     subcontracts.value = data.subcontracts || []
     machineContracts.value = data.machineContracts || []
+    laborContracts.value = data.laborContracts || []
+    changeEvents.value = data.changeEvents || []
+    attachments.value = data.attachments || []
     fundSummary.value = data.fundSummary || {}
   } catch (e: any) {
     resetArchive()

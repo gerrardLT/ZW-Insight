@@ -55,4 +55,34 @@ public class AuditLogService {
         log.setOperUserId(SecurityContextHolder.getUserId());
         auditLogMapper.insert(log);
     }
+
+    /**
+     * 监听业务模块派发的字段变更事件并落库。
+     * 同步执行于发布方线程；留痕失败只记日志，不得回滚或阻断业务更新。
+     */
+    @org.springframework.context.event.EventListener
+    public void onAuditLogEvent(com.zwinsight.common.event.AuditLogRecordEvent event) {
+        try {
+            SysAuditLog row = new SysAuditLog();
+            row.setTableName(event.getTableName());
+            row.setRecordId(event.getRecordId());
+            row.setFieldName(event.getFieldName());
+            row.setOldValue(truncate(event.getOldValue()));
+            row.setNewValue(truncate(event.getNewValue()));
+            row.setOperTime(LocalDateTime.now());
+            row.setTenantId(event.getTenantId());
+            row.setOperUserId(event.getOperUserId());
+            row.setOperUserName(event.getOperUserName());
+            auditLogMapper.insert(row);
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(AuditLogService.class)
+                    .error("字段变更留痕落库失败: table={}, recordId={}, field={}",
+                            event.getTableName(), event.getRecordId(), event.getFieldName(), e);
+        }
+    }
+
+    /** 列宽 VARCHAR(2000)，超长截断避免整条留痕写入失败 */
+    private static String truncate(String v) {
+        return v != null && v.length() > 2000 ? v.substring(0, 2000) : v;
+    }
 }

@@ -151,4 +151,9 @@ call GET "/api/v1/workflow/delegate/to-me"
 assert_http 2 "委托-委托给我 HTTP"
 assert_jq '.code==200 and (.data|type=="array")' "委托-委托给我为数组"
 
+# ---------- 按业务键聚合审批轨迹（含驳回/重提的历史实例） ----------
+call GET "/api/v1/workflow/approval/traces-by-business?businessType=PAYMENT_APPLY&businessId=1"
+assert_http 2 "审批轨迹-按业务键 HTTP"
+assert_jq '.code==200 and (.data|type=="array")' "审批轨迹-按业务键为数组（无实例返回空数组）"
+
 report_summary

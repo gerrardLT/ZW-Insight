@@ -275,6 +275,10 @@ public class ProjectService {
         // 只更新业务字段，防篡改状态/乐观锁由 @Version 机制承担
         projectMapper.updateById(existing);
         logs.forEach(changeLogMapper::insert);
+        // 同步写入统一字段审计（档案「变更留痕」与系统日志「字段变更」页签的数据源）
+        logs.forEach(l -> eventPublisher.publishEvent(new com.zwinsight.common.event.AuditLogRecordEvent(
+                this, "biz_project", l.getProjectId(), l.getFieldName(),
+                l.getOldValue(), l.getNewValue(), l.getTenantId(), operatorId, null)));
         if (!logs.isEmpty()) {
             log.info("项目关键字段变更留痕, projectId={}, 变更字段数={}", existing.getId(), logs.size());
         }

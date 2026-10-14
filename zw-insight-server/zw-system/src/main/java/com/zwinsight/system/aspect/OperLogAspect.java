@@ -61,10 +61,11 @@ public class OperLogAspect {
                 sysOperLog.setOperTime(LocalDateTime.now());
                 sysOperLog.setResult(resultStr);
 
-                // 获取请求参数
+                // 获取请求参数（过滤敏感字段并做长度截断）
                 Object[] args = joinPoint.getArgs();
                 try {
-                    sysOperLog.setParams(JSONUtil.toJsonStr(args));
+                    String rawParams = JSONUtil.toJsonStr(args);
+                    sysOperLog.setParams(maskAndTruncateParams(rawParams));
                 } catch (Exception e) {
                     sysOperLog.setParams("序列化失败");
                 }
@@ -99,6 +100,25 @@ public class OperLogAspect {
             }
         }
         return result;
+    }
+
+    private static final int MAX_PARAM_LENGTH = 2000;
+    private static final java.util.regex.Pattern SENSITIVE_PATTERN = java.util.regex.Pattern.compile(
+            "\"(password|oldPassword|newPassword|confirmPassword|token|secret|accessToken)\"\\s*:\\s*\"(?:[^\"\\\\]|\\\\.)*\"",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * 脱敏敏感字段并截断超长参数
+     */
+    static String maskAndTruncateParams(String params) {
+        if (params == null || params.isEmpty()) {
+            return params;
+        }
+        String masked = SENSITIVE_PATTERN.matcher(params).replaceAll("\"$1\":\"******\"");
+        if (masked.length() > MAX_PARAM_LENGTH) {
+            return masked.substring(0, MAX_PARAM_LENGTH) + "...[截断]";
+        }
+        return masked;
     }
 
     /**

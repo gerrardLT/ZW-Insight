@@ -171,6 +171,9 @@ public class PaymentApplyService {
         if (paymentApply.getPaymentCategory() != null && !paymentApply.getPaymentCategory().isBlank()) {
             fundCategoryService.getByCode(paymentApply.getPaymentCategory(), "EXPENSE");
         }
+        java.math.BigDecimal oldAmount = existing.getPaymentAmount();
+        String oldCategory = existing.getPaymentCategory();
+        String oldDate = String.valueOf(existing.getPaymentDate());
         // 白名单拷贝：只允许改业务录入字段；status/payStatus/快照/workflowInstanceId 等系统字段不接受请求体
         if (paymentApply.getProjectId() != null) existing.setProjectId(paymentApply.getProjectId());
         if (paymentApply.getContractId() != null) existing.setContractId(paymentApply.getContractId());
@@ -184,6 +187,24 @@ public class PaymentApplyService {
         fundPlanService.validatePaymentAgainstPlan(
                 existing.getProjectId(), existing.getPaymentDate(), existing.getPaymentAmount());
         paymentApplyMapper.updateById(existing);
+        // 关键字段变更留痕：金额按数值比较（100 与 100.00 视为未变），避免噪音记录
+        java.math.BigDecimal newAmount = existing.getPaymentAmount();
+        if (oldAmount == null ? newAmount != null : (newAmount == null || oldAmount.compareTo(newAmount) != 0)) {
+            publishFieldChange(existing.getId(), "paymentAmount", String.valueOf(oldAmount), String.valueOf(newAmount));
+        }
+        if (!java.util.Objects.equals(oldCategory, existing.getPaymentCategory())) {
+            publishFieldChange(existing.getId(), "paymentCategory", oldCategory, existing.getPaymentCategory());
+        }
+        String newDate = String.valueOf(existing.getPaymentDate());
+        if (!oldDate.equals(newDate)) {
+            publishFieldChange(existing.getId(), "paymentDate", oldDate, newDate);
+        }
+    }
+
+    private void publishFieldChange(Long recordId, String field, String oldValue, String newValue) {
+        eventPublisher.publishEvent(new com.zwinsight.common.event.AuditLogRecordEvent(
+                this, "biz_payment_apply", recordId, field, oldValue, newValue,
+                SecurityContextHolder.getTenantId(), SecurityContextHolder.getUserId(), null));
     }
 
     /**

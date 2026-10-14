@@ -113,6 +113,11 @@ class ArchiveServiceAggregateTest {
     @Mock private BizVehicleMaintenanceMapper vehicleMaintenanceMapper;
     @Mock private BizExpenseContractMapper expenseContractMapper;
     @Mock private ArchiveOfficeSupplyMapper officeSupplyMapper;
+    @Mock private com.zwinsight.system.service.AuditLogService auditLogService;
+    @Mock private com.zwinsight.labor.mapper.BizLaborContractMapper laborContractMapper;
+    @Mock private com.zwinsight.labor.mapper.BizLaborSettlementMapper laborSettlementMapper;
+    @Mock private com.zwinsight.contract.mapper.BizChangeEventMapper changeEventMapper;
+    @Mock private com.zwinsight.file.mapper.FileInfoMapper fileInfoMapper;
 
     @InjectMocks
     private ArchiveService archiveService;
@@ -146,6 +151,10 @@ class ArchiveServiceAggregateTest {
         TableInfoHelper.initTableInfo(assistant, BizVehicleMaintenance.class);
         TableInfoHelper.initTableInfo(assistant, BizExpenseContract.class);
         TableInfoHelper.initTableInfo(assistant, BizOfficeSupply.class);
+        TableInfoHelper.initTableInfo(assistant, com.zwinsight.labor.domain.BizLaborContract.class);
+        TableInfoHelper.initTableInfo(assistant, com.zwinsight.labor.domain.BizLaborSettlement.class);
+        TableInfoHelper.initTableInfo(assistant, com.zwinsight.contract.domain.BizChangeEvent.class);
+        TableInfoHelper.initTableInfo(assistant, com.zwinsight.file.domain.FileInfo.class);
     }
 
     @Test
@@ -163,6 +172,9 @@ class ArchiveServiceAggregateTest {
         when(paymentReceivedMapper.selectList(any())).thenReturn(List.of());
         when(subcontractMapper.selectList(any())).thenReturn(List.of());
         when(machineContractMapper.selectList(any())).thenReturn(List.of());
+        when(laborContractMapper.selectList(any())).thenReturn(List.of());
+        when(changeEventMapper.selectList(any())).thenReturn(List.of());
+        when(fileInfoMapper.selectList(any())).thenReturn(List.of());
 
         Map<String, Object> archive = archiveService.getProjectArchive(1L);
 
@@ -415,5 +427,62 @@ class ArchiveServiceAggregateTest {
         assertThat(vo.getCurrentStock()).isEqualByComparingTo("100");
         assertThat(vo.getTotalInbound()).isEqualByComparingTo("150");
         assertThat(vo.getTotalIssued()).isEqualByComparingTo("50");
+    }
+
+    @Test
+    @DisplayName("劳务合同档案：合同存在时包含合同信息、结算单与累计汇总")
+    void getLaborContractArchive_withContract_aggregatesSettlementsAndSummary() {
+        com.zwinsight.labor.domain.BizLaborContract contract = new com.zwinsight.labor.domain.BizLaborContract();
+        contract.setId(88L);
+        contract.setContractAmount(new BigDecimal("500000.00"));
+        contract.setCumulativeSettlement(new BigDecimal("300000.00"));
+        contract.setCumulativePaid(new BigDecimal("250000.00"));
+        when(laborContractMapper.selectById(88L)).thenReturn(contract);
+        when(laborSettlementMapper.selectList(any())).thenReturn(List.of(new com.zwinsight.labor.domain.BizLaborSettlement()));
+
+        Map<String, Object> archive = archiveService.getLaborContractArchive(88L);
+
+        assertThat(archive.get("contract")).isSameAs(contract);
+        assertThat((List<?>) archive.get("settlements")).hasSize(1);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> summary = (Map<String, Object>) archive.get("summary");
+        assertThat((BigDecimal) summary.get("contractAmount")).isEqualByComparingTo("500000.00");
+        assertThat((BigDecimal) summary.get("cumulativeSettlement")).isEqualByComparingTo("300000.00");
+        assertThat((BigDecimal) summary.get("cumulativePaid")).isEqualByComparingTo("250000.00");
+    }
+
+    @Test
+    @DisplayName("变更留痕查询：记录可见时透传 auditLogService.page")
+    void getAuditLogs_visibleRecord_delegatesToAuditLogService() {
+        PageResult<com.zwinsight.system.domain.SysAuditLog> mockPage = new PageResult<>();
+        when(projectMapper.selectById(90001L)).thenReturn(new BizProject());
+        when(auditLogService.page(1, 10, "biz_project", 90001L)).thenReturn(mockPage);
+
+        PageResult<com.zwinsight.system.domain.SysAuditLog> result = archiveService.getAuditLogs("biz_project", 90001L, 1, 10);
+        assertThat(result).isSameAs(mockPage);
+    }
+
+    @Test
+    @DisplayName("变更留痕查询：sys_ 系统表与未接入的表一律拒绝，且不读审计表")
+    void getAuditLogs_unsupportedTable_rejected() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> archiveService.getAuditLogs("sys_user", 1L, 1, 10))
+                .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                .hasMessageContaining("暂不支持");
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> archiveService.getAuditLogs(null, 1L, 1, 10))
+                .isInstanceOf(com.zwinsight.common.exception.BusinessException.class);
+        org.mockito.Mockito.verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    @DisplayName("变更留痕查询：记录不存在或被数据权限过滤（selectById 返回 null）时拒绝")
+    void getAuditLogs_invisibleRecord_rejected() {
+        when(projectMapper.selectById(404L)).thenReturn(null);
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> archiveService.getAuditLogs("biz_project", 404L, 1, 10))
+                .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                .hasMessageContaining("无权查看");
+        org.mockito.Mockito.verifyNoInteractions(auditLogService);
     }
 }

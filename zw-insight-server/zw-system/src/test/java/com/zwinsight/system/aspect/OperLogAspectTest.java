@@ -148,4 +148,19 @@ class OperLogAspectTest {
 
         assertThat(result).isEqualTo("ok");
     }
+
+    @Test
+    @DisplayName("敏感字段自动脱敏，且超长字符串会被截断")
+    void maskAndTruncateParams_masksSensitiveKeysAndTruncates() {
+        String input = "{\"username\":\"admin\",\"password\":\"123456\",\"token\":\"xyz\"}";
+        String masked = OperLogAspect.maskAndTruncateParams(input);
+        assertThat(masked).contains("\"password\":\"******\"");
+        assertThat(masked).contains("\"token\":\"******\"");
+        assertThat(masked).contains("\"username\":\"admin\"");
+
+        String longStr = "x".repeat(2500);
+        String truncated = OperLogAspect.maskAndTruncateParams(longStr);
+        assertThat(truncated).hasSize(2000 + "...[截断]".length());
+        assertThat(truncated).endsWith("...[截断]");
+    }
 }

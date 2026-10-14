@@ -8,7 +8,7 @@ import ElementPlus from 'element-plus'
 const {
   mockPostPage, mockPostCreate, mockPostUpdate, mockPostDelete, mockPostStatus,
   mockVersionList, mockCurrentVersion, mockVersionCreate,
-  mockOperLog, mockLoginLog, mockExceptionLog,
+  mockOperLog, mockLoginLog, mockExceptionLog, mockAuditLog,
 } = vi.hoisted(() => ({
   mockPostPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockPostCreate: vi.fn(async (): Promise<any> => ({ code: 200 })),
@@ -21,12 +21,14 @@ const {
   mockOperLog: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockLoginLog: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockExceptionLog: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockAuditLog: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
 }))
 
 vi.mock('@/api/system', () => ({
   getPostPage: mockPostPage, createPost: mockPostCreate, updatePost: mockPostUpdate,
   deletePost: mockPostDelete, updatePostStatus: mockPostStatus,
   getOperLogPage: mockOperLog, getLoginLogPage: mockLoginLog, getExceptionLogPage: mockExceptionLog,
+  getAuditLogPage: mockAuditLog,
 }))
 vi.mock('@/api/version', () => ({
   getVersionList: mockVersionList, getCurrentVersion: mockCurrentVersion, createVersion: mockVersionCreate,
@@ -174,6 +176,11 @@ describe('system/log/index.vue 日志查询', () => {
     st.handleTabChange()
     await flushPromises()
     expect(mockExceptionLog).toHaveBeenCalled()
+    st.activeTab = 'audit'
+    mockAuditLog.mockClear()
+    st.handleTabChange()
+    await flushPromises()
+    expect(mockAuditLog).toHaveBeenCalled()
   })
 
   it('时间区间参数组装 startTime/endTime、搜索重置页码', async () => {

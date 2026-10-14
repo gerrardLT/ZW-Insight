@@ -65,6 +65,13 @@ export function getApprovalTrace(processInstanceId: string) {
   return request.get('/v1/workflow/approval/trace', { params: { processInstanceId } })
 }
 
+/**
+ * 按业务键查询业务相关的所有历史流程实例审批轨迹（含驳回/重提的历史实例）
+ */
+export function getApprovalTracesByBusiness(businessType: string, businessId: number | string) {
+  return request.get('/v1/workflow/approval/traces-by-business', { params: { businessType, businessId } })
+}
+
 // ======================== 流程定义 ========================
 // ProcessDefinitionController: /api/v1/workflow/process
 

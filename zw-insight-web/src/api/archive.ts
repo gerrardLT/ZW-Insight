@@ -40,6 +40,11 @@ export function getMachineContractArchive(contractId: number) {
   return request.get(`/v1/archive/machine-contract/${contractId}`)
 }
 
+// ======================== 劳务合同档案 ========================
+export function getLaborContractArchive(contractId: number) {
+  return request.get(`/v1/archive/labor-contract/${contractId}`)
+}
+
 // ======================== 人事档案 ========================
 export function getPersonnelArchive(userId: number) {
   return request.get(`/v1/archive/personnel/${userId}`)
@@ -63,4 +68,9 @@ export function getOtherExpenseContractArchive(params: { page?: number; size?: n
 // ======================== 办公用品档案（只读聚合列表） ========================
 export function getOfficeSupplyArchive(params: { page?: number; size?: number; keyword?: string }) {
   return request.get('/v1/archive/office-supply', { params })
+}
+
+// ======================== 档案变更留痕审计记录 ========================
+export function getArchiveAuditLogs(params: { tableName: string; recordId: number; page?: number; size?: number }) {
+  return request.get('/v1/archive/audit-log', { params })
 }

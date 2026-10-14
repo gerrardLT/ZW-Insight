@@ -73,6 +73,14 @@
             <groupId>com.zwinsight</groupId>
             <artifactId>zw-insight-budget</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-system</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zwinsight</groupId>
+            <artifactId>zw-insight-file</artifactId>
+        </dependency>
 
         <!-- Spring Boot Web -->
         <dependency>

@@ -671,6 +671,41 @@ public class ApprovalService {
     }
 
     /**
+     * 按业务键查询业务相关的所有历史流程实例审批轨迹（含驳回/重提的历史实例）
+     *
+     * @param businessType 业务类型
+     * @param businessId   业务ID
+     * @return 审批轨迹列表
+     */
+    public List<Map<String, Object>> listTracesByBusiness(String businessType, Long businessId) {
+        if (businessType == null || businessId == null) {
+            return Collections.emptyList();
+        }
+        String businessKey = businessType + ":" + businessId;
+        Long tenantId = SecurityContextHolder.getTenantId();
+
+        var query = historyService.createHistoricProcessInstanceQuery()
+                .processInstanceBusinessKey(businessKey);
+        if (tenantId != null) {
+            query.processInstanceTenantId(String.valueOf(tenantId));
+        }
+        List<HistoricProcessInstance> instances = query
+                .orderByProcessInstanceStartTime()
+                .desc()
+                .list();
+
+        List<Map<String, Object>> traces = new ArrayList<>();
+        for (HistoricProcessInstance inst : instances) {
+            try {
+                traces.add(getApprovalTrace(inst.getId()));
+            } catch (Exception e) {
+                log.warn("获取流程实例轨迹跳过: id={}, error={}", inst.getId(), e.getMessage());
+            }
+        }
+        return traces;
+    }
+
+    /**
      * 我的已办
      *
      * @param userId 用户ID

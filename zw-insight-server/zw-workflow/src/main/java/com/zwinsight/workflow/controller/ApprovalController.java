@@ -10,6 +10,7 @@ import com.zwinsight.workflow.service.UrgeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -136,6 +137,16 @@ public class ApprovalController {
     @GetMapping("/trace")
     public R<Map<String, Object>> getApprovalTrace(@RequestParam String processInstanceId) {
         return R.ok(approvalService.getApprovalTrace(processInstanceId));
+    }
+
+    /**
+     * 按业务键查询业务相关的所有历史流程实例审批轨迹（含驳回/重提的历史实例）
+     */
+    @GetMapping("/traces-by-business")
+    public R<List<Map<String, Object>>> listTracesByBusiness(
+            @RequestParam String businessType,
+            @RequestParam Long businessId) {
+        return R.ok(approvalService.listTracesByBusiness(businessType, businessId));
     }
 
     /**

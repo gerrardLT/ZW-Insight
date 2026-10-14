@@ -223,6 +223,27 @@ class ProjectServiceTest {
                 "ownerCompanyName".equals(log.getFieldName())
                         && "旧业主".equals(log.getOldValue())
                         && "新业主".equals(log.getNewValue())));
+        // 同步发布统一字段审计事件，供档案「变更留痕」与系统日志消费
+        ArgumentCaptor<com.zwinsight.common.event.AuditLogRecordEvent> captor =
+                ArgumentCaptor.forClass(com.zwinsight.common.event.AuditLogRecordEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().getTableName()).isEqualTo("biz_project");
+        assertThat(captor.getValue().getFieldName()).isEqualTo("ownerCompanyName");
+        assertThat(captor.getValue().getOldValue()).isEqualTo("旧业主");
+        assertThat(captor.getValue().getNewValue()).isEqualTo("新业主");
+    }
+
+    @Test
+    @DisplayName("更新：DRAFT 草稿直接覆盖，不产生台账也不发布字段审计事件")
+    void testUpdate_draftPublishesNoAuditEvent() {
+        when(projectMapper.selectById(1L)).thenReturn(sampleProject);
+        BizProject update = new BizProject();
+        update.setId(1L);
+        update.setProjectName("草稿改名");
+
+        projectService.update(update);
+
+        verify(eventPublisher, never()).publishEvent(any(com.zwinsight.common.event.AuditLogRecordEvent.class));
     }
 
     // =====================================================================

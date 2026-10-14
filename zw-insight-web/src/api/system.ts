@@ -243,6 +243,10 @@ export function getExceptionLogPage(params: any) {
   return request.get('/v1/system/log/oper', { params })
 }
 
+export function getAuditLogPage(params: any) {
+  return request.get('/v1/system/audit', { params })
+}
+
 // ======================== 系统设置 ========================
 export interface SysConfigItem {
   id: number

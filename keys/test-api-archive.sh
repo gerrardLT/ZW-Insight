@@ -106,6 +106,25 @@ if [ -n "$PROJECT_ID" ]; then
   call GET "/api/v1/archive/budget/$PROJECT_ID"
   assert_http 2 "预算档案 HTTP"
   assert_body_code 200 "预算档案业务码"
+
+  # 项目档案新增聚合段：劳务合同 / 变更事件 / 附件卷宗 必须是数组（空数组合法）
+  call GET "/api/v1/archive/project/$PROJECT_ID"
+  assert_jq '(.data.laborContracts|type=="array") and (.data.changeEvents|type=="array") and (.data.attachments|type=="array")' "项目档案-劳务/变更/附件聚合段为数组"
+  assert_jq '(.data.payments|type=="array")' "项目档案-付款记录为数组（含非 APPROVED 状态）"
+
+  # 业务表变更留痕：分页结构契约
+  call GET "/api/v1/archive/audit-log?tableName=biz_project&recordId=$PROJECT_ID&page=1&size=5"
+  assert_http 2 "档案变更留痕 HTTP"
+  assert_jq "$PAGE_EXPR" "档案变更留痕-分页结构"
+fi
+
+# 变更留痕仅开放 biz_ 业务表，sys_ 系统表必须被拒绝（不得返回 200）
+call GET "/api/v1/archive/audit-log?tableName=sys_user&recordId=1&page=1&size=5"
+TOTAL_COUNT=$((TOTAL_COUNT + 1))
+if [ "$(jq -r '.code' /tmp/zwi_body 2>/dev/null)" != "200" ]; then
+  PASS_COUNT=$((PASS_COUNT + 1)); log "  PASS [$TOTAL_COUNT] 变更留痕拒绝 sys_ 系统表"
+else
+  FAIL_COUNT=$((FAIL_COUNT + 1)); log "  FAIL [$TOTAL_COUNT] 变更留痕未拒绝 sys_ 系统表"
 fi
 
 if [ -n "$CONTRACT_ID" ]; then

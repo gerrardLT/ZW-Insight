@@ -92,6 +92,14 @@ public class ArchiveController {
     }
 
     /**
+     * 劳务合同档案
+     */
+    @GetMapping("/labor-contract/{contractId}")
+    public R<Map<String, Object>> getLaborContractArchive(@PathVariable Long contractId) {
+        return R.ok(archiveService.getLaborContractArchive(contractId));
+    }
+
+    /**
      * 人事档案
      */
     @GetMapping("/personnel/{userId}")
@@ -138,5 +146,17 @@ public class ArchiveController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword) {
         return R.ok(archiveService.pageOfficeSupplyArchive(page, size, keyword));
+    }
+
+    /**
+     * 档案实体变更留痕查询
+     */
+    @GetMapping("/audit-log")
+    public R<PageResult<com.zwinsight.system.domain.SysAuditLog>> getAuditLogs(
+            @RequestParam String tableName,
+            @RequestParam Long recordId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return R.ok(archiveService.getAuditLogs(tableName, recordId, page, size));
     }
 }

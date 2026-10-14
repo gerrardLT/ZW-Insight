@@ -4,6 +4,7 @@
       <!-- Tab 切换 -->
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <el-tab-pane label="操作日志" name="oper" />
+        <el-tab-pane label="字段变更日志" name="audit" />
         <el-tab-pane label="登录日志" name="login" />
         <el-tab-pane label="异常日志" name="exception" />
       </el-tabs>
@@ -45,6 +46,17 @@
         <el-table-column prop="description" label="操作描述" min-width="200" show-overflow-tooltip />
       </el-table>
 
+      <!-- 字段变更审计表格（SysAuditLog 实体字段） -->
+      <el-table v-if="activeTab === 'audit'" :data="tableData" v-loading="loading" border>
+        <el-table-column prop="tableName" label="业务表名" width="180" />
+        <el-table-column prop="recordId" label="记录ID" width="140" />
+        <el-table-column prop="fieldName" label="变更字段" width="150" />
+        <el-table-column prop="oldValue" label="变更前旧值" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="newValue" label="变更后新值" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="operUserName" label="操作人" width="120" />
+        <el-table-column prop="operTime" label="操作时间" width="170" />
+      </el-table>
+
       <!-- 登录日志表格（列名对齐后端 SysLoginLog 实体字段） -->
       <el-table v-if="activeTab === 'login'" :data="tableData" v-loading="loading" border>
         <el-table-column prop="loginName" label="登录人" width="150" />
@@ -82,7 +94,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getOperLogPage, getLoginLogPage, getExceptionLogPage } from '@/api/system'
+import { getOperLogPage, getLoginLogPage, getExceptionLogPage, getAuditLogPage } from '@/api/system'
 
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -98,6 +110,7 @@ const queryParams = ref({
 
 const logApis: Record<string, (params: any) => Promise<any>> = {
   oper: getOperLogPage,
+  audit: getAuditLogPage,
   login: getLoginLogPage,
   exception: getExceptionLogPage
 }

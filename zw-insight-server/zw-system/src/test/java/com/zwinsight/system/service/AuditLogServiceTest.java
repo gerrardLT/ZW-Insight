@@ -111,4 +111,42 @@ class AuditLogServiceTest {
             SecurityContextHolder.clear();
         }
     }
+
+    @Test
+    @DisplayName("字段变更事件：监听器按事件内容落库，操作人/租户取自事件而非当前线程")
+    void onAuditLogEvent_persistsFromEvent() {
+        com.zwinsight.common.event.AuditLogRecordEvent event = new com.zwinsight.common.event.AuditLogRecordEvent(
+                this, "biz_payment_apply", 7L, "paymentAmount", "100", "200", 3L, 9L, "张三");
+
+        auditLogService.onAuditLogEvent(event);
+
+        ArgumentCaptor<SysAuditLog> captor = ArgumentCaptor.forClass(SysAuditLog.class);
+        verify(auditLogMapper).insert(captor.capture());
+        SysAuditLog saved = captor.getValue();
+        assertThat(saved.getTableName()).isEqualTo("biz_payment_apply");
+        assertThat(saved.getRecordId()).isEqualTo(7L);
+        assertThat(saved.getFieldName()).isEqualTo("paymentAmount");
+        assertThat(saved.getOldValue()).isEqualTo("100");
+        assertThat(saved.getNewValue()).isEqualTo("200");
+        assertThat(saved.getTenantId()).isEqualTo(3L);
+        assertThat(saved.getOperUserId()).isEqualTo(9L);
+        assertThat(saved.getOperUserName()).isEqualTo("张三");
+    }
+
+    @Test
+    @DisplayName("字段变更事件：超长值截断到 2000 字符；落库异常被吞掉，不影响发布方业务事务")
+    void onAuditLogEvent_truncatesAndSwallowsFailure() {
+        String longValue = "x".repeat(2500);
+        auditLogService.onAuditLogEvent(new com.zwinsight.common.event.AuditLogRecordEvent(
+                this, "biz_project", 1L, "projectOverview", longValue, "短", 1L, 1L, null));
+        ArgumentCaptor<SysAuditLog> captor = ArgumentCaptor.forClass(SysAuditLog.class);
+        verify(auditLogMapper).insert(captor.capture());
+        assertThat(captor.getValue().getOldValue()).hasSize(2000);
+
+        org.mockito.Mockito.doThrow(new RuntimeException("db down")).when(auditLogMapper).insert(any(SysAuditLog.class));
+        org.assertj.core.api.Assertions.assertThatCode(() ->
+                auditLogService.onAuditLogEvent(new com.zwinsight.common.event.AuditLogRecordEvent(
+                        this, "biz_project", 1L, "f", "a", "b", 1L, 1L, null)))
+                .doesNotThrowAnyException();
+    }
 }

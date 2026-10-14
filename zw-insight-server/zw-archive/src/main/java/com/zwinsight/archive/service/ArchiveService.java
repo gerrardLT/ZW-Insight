@@ -44,6 +44,12 @@ import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.domain.BizProjectMember;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.mapper.BizProjectMemberMapper;
+import com.zwinsight.contract.domain.BizChangeEvent;
+import com.zwinsight.contract.mapper.BizChangeEventMapper;
+import com.zwinsight.labor.domain.BizLaborContract;
+import com.zwinsight.labor.domain.BizLaborSettlement;
+import com.zwinsight.labor.mapper.BizLaborContractMapper;
+import com.zwinsight.labor.mapper.BizLaborSettlementMapper;
 import com.zwinsight.purchase.domain.BizPurchaseContract;
 import com.zwinsight.purchase.domain.BizPurchaseContractDetail;
 import com.zwinsight.purchase.mapper.BizPurchaseContractDetailMapper;
@@ -105,6 +111,11 @@ public class ArchiveService {
     private final BizVehicleMaintenanceMapper vehicleMaintenanceMapper;
     private final BizExpenseContractMapper expenseContractMapper;
     private final ArchiveOfficeSupplyMapper officeSupplyMapper;
+    private final com.zwinsight.system.service.AuditLogService auditLogService;
+    private final BizLaborContractMapper laborContractMapper;
+    private final BizLaborSettlementMapper laborSettlementMapper;
+    private final BizChangeEventMapper changeEventMapper;
+    private final com.zwinsight.file.mapper.FileInfoMapper fileInfoMapper;
 
     /**
      * 项目档案（项目信息+成员+合同+资金+施工过程+成本+分包+投标+保证金）
@@ -128,11 +139,11 @@ public class ArchiveService {
                         .eq(BizConstructionContract::getProjectId, projectId));
         archive.put("constructionContracts", contracts);
 
-        // 付款记录
+        // 付款记录（保留审批通过、审核中、驳回等全部状态作为历史留痕）
         List<BizPaymentApply> payments = paymentApplyMapper.selectList(
                 new LambdaQueryWrapper<BizPaymentApply>()
                         .eq(BizPaymentApply::getProjectId, projectId)
-                        .eq(BizPaymentApply::getStatus, "APPROVED"));
+                        .orderByDesc(BizPaymentApply::getCreatedAt));
         archive.put("payments", payments);
 
         // 收款记录
@@ -152,6 +163,26 @@ public class ArchiveService {
                 new LambdaQueryWrapper<BizMachineContract>()
                         .eq(BizMachineContract::getProjectId, projectId));
         archive.put("machineContracts", machineContracts);
+
+        // 劳务合同
+        List<BizLaborContract> laborContracts = laborContractMapper.selectList(
+                new LambdaQueryWrapper<BizLaborContract>()
+                        .eq(BizLaborContract::getProjectId, projectId));
+        archive.put("laborContracts", laborContracts);
+
+        // 变更事件/签证记录
+        List<BizChangeEvent> changeEvents = changeEventMapper.selectList(
+                new LambdaQueryWrapper<BizChangeEvent>()
+                        .eq(BizChangeEvent::getProjectId, projectId)
+                        .orderByDesc(BizChangeEvent::getCreatedAt));
+        archive.put("changeEvents", changeEvents);
+
+        // 项目关联附件卷宗
+        List<com.zwinsight.file.domain.FileInfo> attachments = fileInfoMapper.selectList(
+                new LambdaQueryWrapper<com.zwinsight.file.domain.FileInfo>()
+                        .eq(com.zwinsight.file.domain.FileInfo::getProjectId, projectId)
+                        .orderByDesc(com.zwinsight.file.domain.FileInfo::getCreatedAt));
+        archive.put("attachments", attachments);
 
         // 资金汇总
         Map<String, Object> fundSummary = new HashMap<>();
@@ -363,6 +394,35 @@ public class ArchiveService {
     }
 
     /**
+     * 劳务合同档案（基础+累计结算+结算单明细）
+     */
+    public Map<String, Object> getLaborContractArchive(Long contractId) {
+        Map<String, Object> archive = new HashMap<>();
+
+        // 劳务合同基础信息
+        BizLaborContract contract = laborContractMapper.selectById(contractId);
+        archive.put("contract", contract);
+
+        // 劳务结算记录
+        List<BizLaborSettlement> settlements = laborSettlementMapper.selectList(
+                new LambdaQueryWrapper<BizLaborSettlement>()
+                        .eq(BizLaborSettlement::getContractId, contractId)
+                        .orderByDesc(BizLaborSettlement::getCreatedAt));
+        archive.put("settlements", settlements);
+
+        // 汇总
+        if (contract != null) {
+            Map<String, Object> summary = new HashMap<>();
+            summary.put("contractAmount", contract.getContractAmount());
+            summary.put("cumulativeSettlement", contract.getCumulativeSettlement());
+            summary.put("cumulativePaid", contract.getCumulativePaid());
+            archive.put("summary", summary);
+        }
+
+        return archive;
+    }
+
+    /**
      * 人事档案（入职+转正+离职）
      */
     public Map<String, Object> getPersonnelArchive(Long userId) {
@@ -524,5 +584,22 @@ public class ArchiveService {
 
         return new PageResult<>(voList, resultPage.getTotal(), resultPage.getCurrent(),
                 resultPage.getSize(), resultPage.getPages());
+    }
+
+    /**
+     * 查询指定业务实体的字段变更留痕审计日志
+     */
+    public PageResult<com.zwinsight.system.domain.SysAuditLog> getAuditLogs(String tableName, Long recordId, int page, int size) {
+        // 仅开放已接入留痕的业务表；sys_* 系统表与未接入的表一律拒绝
+        // 记录可见性经带数据权限拦截器的 Mapper 判定，防止凭 ID 枚举读取无权查看记录的变更值
+        boolean visible = switch (tableName == null ? "" : tableName) {
+            case "biz_project" -> projectMapper.selectById(recordId) != null;
+            case "biz_payment_apply" -> paymentApplyMapper.selectById(recordId) != null;
+            default -> throw new com.zwinsight.common.exception.BusinessException("该类型暂不支持变更留痕查询");
+        };
+        if (!visible) {
+            throw new com.zwinsight.common.exception.BusinessException("记录不存在或无权查看");
+        }
+        return auditLogService.page(page, size, tableName, recordId);
     }
 }
