@@ -30,9 +30,7 @@ public class PurchaseProjectCascadeCleanupListener {
 
     private final BizPurchaseContractMapper purchaseContractMapper;
     private final BizPurchaseSettlementMapper purchaseSettlementMapper;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
+    private final com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
 
     @EventListener
     public void onProjectDeleted(ProjectDeletedEvent event) {
