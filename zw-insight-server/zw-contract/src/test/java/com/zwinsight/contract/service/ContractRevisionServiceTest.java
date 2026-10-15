@@ -69,7 +69,8 @@ class ContractRevisionServiceTest {
     }
     @Test void approveOnlyWritesDelta() {
         lock(); ContractRevision v = revision("SUBMITTED"); when(revisions.selectById(4L)).thenReturn(v);
-        when(revisions.selectOne(any(Wrapper.class))).thenReturn(v); when(contracts.update(isNull(), any(Wrapper.class))).thenReturn(1);
+        when(revisions.selectOne(any(Wrapper.class))).thenReturn(v);
+        when(contracts.updateContractAmountWithVersion(anyLong(), anyInt(), any(), any(), any(), any())).thenReturn(1);
         when(projects.addContractAmount(2L, new BigDecimal("20"))).thenReturn(1); when(revisions.updateById(v)).thenReturn(1);
         service.approve(4L); assertEquals("APPROVED", v.getStatus()); verify(projects).addContractAmount(2L, new BigDecimal("20"));
     }
@@ -129,7 +130,8 @@ class ContractRevisionServiceTest {
     }
     @Test void returnedOldProcessCanFinish() {
         lock(); ContractRevision v = revision("REJECTED"); when(revisions.selectById(4L)).thenReturn(v);
-        when(revisions.selectOne(any(Wrapper.class))).thenReturn(v); when(contracts.update(isNull(), any(Wrapper.class))).thenReturn(1);
+        when(revisions.selectOne(any(Wrapper.class))).thenReturn(v);
+        when(contracts.updateContractAmountWithVersion(anyLong(), anyInt(), any(), any(), any(), any())).thenReturn(1);
         when(projects.addContractAmount(2L, new BigDecimal("20"))).thenReturn(1); when(revisions.updateById(v)).thenReturn(1);
         service.approve(4L); assertEquals("APPROVED", v.getStatus()); verifyNoInteractions(approvals);
     }

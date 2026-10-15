@@ -82,12 +82,12 @@ watch(() => props.projectId, load, { immediate: true })
 </script>
 
 <style scoped>
-section { margin-bottom: 24px; }
-h2 { font-size: 18px; }
-h3 { font-size: 15px; }
+section { margin-bottom: var(--zw-space-lg); }
+h2 { font-size: var(--zw-font-size-lg); }
+h3 { font-size: var(--zw-font-size-md); }
 p { color: var(--el-text-color-secondary); }
-.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
-dd { margin: 8px 0; font-variant-numeric: tabular-nums; font-size: 20px; }
-.summary-panel { margin-top: 16px; }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--zw-space-md); }
+dd { margin: var(--zw-space-xs) 0; font-variant-numeric: tabular-nums; font-size: var(--zw-font-size-xl); }
+.summary-panel { margin-top: var(--zw-space-md); }
 button { cursor: pointer; }
 </style>

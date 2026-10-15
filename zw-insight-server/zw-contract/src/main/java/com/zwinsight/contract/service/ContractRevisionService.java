@@ -126,13 +126,9 @@ public class ContractRevisionService {
         if (!List.of("SUBMITTED", "REJECTED").contains(v.getStatus())) throw new BusinessException("修订不在审批中");
         baseline(c, v); validateFloor(c, v.getAfterAmount());
         c.setContractAmount(v.getAfterAmount()); tax(c);
-        int count = contracts.update(null, new LambdaUpdateWrapper<BizConstructionContract>()
-                .eq(BizConstructionContract::getId, c.getId()).eq(BizConstructionContract::getVersion, v.getBaseVersion())
-                .eq(BizConstructionContract::getStatus, "EFFECTIVE").eq(BizConstructionContract::getContractAmount, v.getBeforeAmount())
-                .set(BizConstructionContract::getContractAmount, c.getContractAmount())
-                .set(BizConstructionContract::getAmountWithoutTax, c.getAmountWithoutTax())
-                .set(BizConstructionContract::getTaxAmount, c.getTaxAmount())
-                .set(BizConstructionContract::getVersion, v.getBaseVersion() + 1));
+        int count = contracts.updateContractAmountWithVersion(
+                c.getId(), v.getBaseVersion(), v.getBeforeAmount(),
+                c.getContractAmount(), c.getAmountWithoutTax(), c.getTaxAmount());
         if (count != 1) throw new BusinessException("合同并发修订冲突");
         if (projects.addContractAmount(v.getProjectId(), v.getDeltaAmount()) != 1) throw new BusinessException("项目金额回写失败");
         v.setStatus("APPROVED");

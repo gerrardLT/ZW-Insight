@@ -84,4 +84,18 @@ public interface BizConstructionContractMapper extends BaseMapper<BizConstructio
             "WHERE id = #{contractId} AND deleted = 0")
     @DataPermission({})
     int addCumulativeChangeAmount(@Param("contractId") Long contractId, @Param("amount") java.math.BigDecimal amount);
+
+    /**
+     * 施工合同修订原子回写：校验基准版本号、生效状态及原金额后，更新合同金额、税额并递增版本号。
+     */
+    @Update("UPDATE biz_construction_contract SET contract_amount = #{newAmount}, " +
+            "amount_without_tax = #{amountWithoutTax}, tax_amount = #{taxAmount}, version = version + 1 " +
+            "WHERE id = #{id} AND version = #{baseVersion} AND status = 'EFFECTIVE' " +
+            "AND contract_amount = #{beforeAmount} AND deleted = 0")
+    int updateContractAmountWithVersion(@Param("id") Long id,
+                                        @Param("baseVersion") Integer baseVersion,
+                                        @Param("beforeAmount") java.math.BigDecimal beforeAmount,
+                                        @Param("newAmount") java.math.BigDecimal newAmount,
+                                        @Param("amountWithoutTax") java.math.BigDecimal amountWithoutTax,
+                                        @Param("taxAmount") java.math.BigDecimal taxAmount);
 }

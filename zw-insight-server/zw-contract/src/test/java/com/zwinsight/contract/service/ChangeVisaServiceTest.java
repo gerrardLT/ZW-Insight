@@ -152,7 +152,7 @@ class ChangeVisaServiceTest {
 
         service.onApproved(1L);
 
-        verify(changeVisaMapper).transitionSubmitted(1L, "APPROVED");
+        verify(changeVisaMapper).approvePending(1L);
         verify(contractMapper).addCumulativeChangeAmount(20L, new BigDecimal("8000"));
     }
 
