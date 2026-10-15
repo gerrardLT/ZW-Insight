@@ -49,6 +49,11 @@ public class PurchaseSettlementController {
         return R.ok(purchaseSettlementService.availableInbounds(contractId));
     }
 
+    @GetMapping("/inbound-lines")
+    public R<List<java.util.Map<String,Object>>> inboundLines(@RequestParam Long inboundId) {
+        return R.ok(purchaseSettlementService.inboundLines(inboundId));
+    }
+
     @PostMapping
     public R<Void> create(@RequestBody BizPurchaseSettlement settlement) {
         purchaseSettlementService.create(settlement);

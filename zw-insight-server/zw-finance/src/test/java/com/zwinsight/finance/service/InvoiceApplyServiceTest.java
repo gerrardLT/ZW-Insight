@@ -351,11 +351,15 @@ class InvoiceApplyServiceTest {
 
             when(invoiceApplyMapper.selectById(id)).thenReturn(invoiceApply);
             when(contractMapper.selectById(contractId)).thenReturn(contract);
+            when(invoiceApplyMapper.approvePending(id)).thenReturn(1);
+            when(contractMapper.addCumulativeInvoiceAmountWithinLimit(contractId, invoiceApply.getInvoiceAmount()))
+                    .thenReturn(contract.getCumulativeInvoiceAmount().compareTo(new BigDecimal("90000.00")) < 0 ? 1 : 0);
+            lenient().when(invoiceApplyMapper.updateById(invoiceApply)).thenReturn(1);
 
             invoiceApplyService.onApproved(id);
 
-            assertThat(invoiceApply.getStatus()).isEqualTo("APPROVED");
-            verify(contractMapper).addCumulativeInvoiceAmount(contractId, new BigDecimal("30000.00"));
+            verify(invoiceApplyMapper).transitionSubmitted(id, "APPROVED");
+            verify(contractMapper).addCumulativeInvoiceAmountWithinLimit(contractId, new BigDecimal("30000.00"));
         }
 
         @Test
@@ -373,6 +377,68 @@ class InvoiceApplyServiceTest {
         }
 
         @Test
+        @DisplayName("退回发起人REJECTED原流程重审可生效")
+        void onApproved_rejectedResubmission_isCompatible() {
+            BizInvoiceApply apply = new BizInvoiceApply();
+            apply.setId(1L);
+            apply.setContractId(100L);
+            apply.setInvoiceAmount(BigDecimal.TEN);
+            apply.setStatus("REJECTED");
+            when(invoiceApplyMapper.selectById(1L)).thenReturn(apply);
+            when(contractMapper.selectById(100L)).thenReturn(new BizConstructionContract());
+            when(invoiceApplyMapper.approvePending(1L)).thenReturn(1);
+            when(contractMapper.addCumulativeInvoiceAmountWithinLimit(100L, BigDecimal.TEN)).thenReturn(1);
+            invoiceApplyService.onApproved(1L);
+            verify(contractMapper).addCumulativeInvoiceAmountWithinLimit(100L, BigDecimal.TEN);
+        }
+
+        @Test
+        @DisplayName("DRAFT陈旧回调不占用状态和额度")
+        void onApproved_draft_isIgnored() {
+            BizInvoiceApply apply = new BizInvoiceApply();
+            apply.setStatus("DRAFT");
+            when(invoiceApplyMapper.selectById(1L)).thenReturn(apply);
+            invoiceApplyService.onApproved(1L);
+            verify(invoiceApplyMapper, never()).approvePending(anyLong());
+            verifyNoInteractions(contractMapper);
+        }
+
+        @Test
+        @DisplayName("CAS后合同SQL异常向外传播以回滚状态")
+        void onApproved_contractWriteFailure_propagates() {
+            BizInvoiceApply apply = new BizInvoiceApply();
+            apply.setContractId(100L);
+            apply.setInvoiceAmount(BigDecimal.TEN);
+            apply.setStatus("SUBMITTED");
+            when(invoiceApplyMapper.selectById(1L)).thenReturn(apply);
+            when(contractMapper.selectById(100L)).thenReturn(new BizConstructionContract());
+            when(invoiceApplyMapper.approvePending(1L)).thenReturn(1);
+            when(contractMapper.addCumulativeInvoiceAmountWithinLimit(100L, BigDecimal.TEN))
+                    .thenThrow(new IllegalStateException("DB write failed"));
+            assertThatThrownBy(() -> invoiceApplyService.onApproved(1L))
+                    .isInstanceOf(IllegalStateException.class).hasMessage("DB write failed");
+            var order = inOrder(invoiceApplyMapper, contractMapper);
+            order.verify(invoiceApplyMapper).approvePending(1L);
+            order.verify(contractMapper).addCumulativeInvoiceAmountWithinLimit(100L, BigDecimal.TEN);
+        }
+
+        @Test
+        @DisplayName("并发回调CAS失败不重复累加合同额度")
+        void onApproved_lostCas_doesNotConsumeLimit() {
+            BizInvoiceApply apply = new BizInvoiceApply();
+            apply.setId(1L);
+            apply.setContractId(100L);
+            apply.setStatus("SUBMITTED");
+            when(invoiceApplyMapper.selectById(1L)).thenReturn(apply);
+            when(contractMapper.selectById(100L)).thenReturn(new BizConstructionContract());
+            when(invoiceApplyMapper.approvePending(1L)).thenReturn(0);
+
+            invoiceApplyService.onApproved(1L);
+
+            verify(contractMapper, never()).addCumulativeInvoiceAmountWithinLimit(anyLong(), any());
+        }
+
+        @Test
         @DisplayName("审批驳回 — SUBMITTED 置 REJECTED，不回写金额")
         void onRejected_setsRejected() {
             Long id = 1L;
@@ -381,6 +447,7 @@ class InvoiceApplyServiceTest {
             invoiceApply.setStatus("SUBMITTED");
             when(invoiceApplyMapper.selectById(id)).thenReturn(invoiceApply);
 
+            when(invoiceApplyMapper.transitionSubmitted(id, "REJECTED")).thenReturn(1);
             invoiceApplyService.onRejected(id);
 
             assertThat(invoiceApply.getStatus()).isEqualTo("REJECTED");
@@ -422,6 +489,10 @@ class InvoiceApplyServiceTest {
 
             when(invoiceApplyMapper.selectById(id)).thenReturn(invoiceApply);
             when(contractMapper.selectById(contractId)).thenReturn(contract);
+            when(invoiceApplyMapper.approvePending(id)).thenReturn(1);
+            when(contractMapper.addCumulativeInvoiceAmountWithinLimit(contractId, invoiceApply.getInvoiceAmount()))
+                    .thenReturn(contract.getCumulativeInvoiceAmount().compareTo(new BigDecimal("90000.00")) < 0 ? 1 : 0);
+            lenient().when(invoiceApplyMapper.updateById(invoiceApply)).thenReturn(1);
 
             invoiceApplyService.onApproved(id);
 
@@ -444,7 +515,8 @@ class InvoiceApplyServiceTest {
             invoiceApply.setStatus("SUBMITTED");
             when(invoiceApplyMapper.selectById(2L)).thenReturn(invoiceApply);
             when(contractMapper.selectById(100L)).thenReturn(null);
-            invoiceApplyService.onApproved(2L);
+            assertThatThrownBy(() -> invoiceApplyService.onApproved(2L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("合同不存在");
             verify(invoiceApplyMapper, never()).updateById(any());
             verify(contractMapper, never()).addCumulativeInvoiceAmount(anyLong(), any());
         }

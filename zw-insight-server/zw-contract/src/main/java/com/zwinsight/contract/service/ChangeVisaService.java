@@ -95,23 +95,18 @@ public class ChangeVisaService {
             log.warn("变更签证审批通过回调：记录不存在, id={}", id);
             return;
         }
-        if ("APPROVED".equals(changeVisa.getStatus())) {
+        if (!"SUBMITTED".equals(changeVisa.getStatus()) && !"REJECTED".equals(changeVisa.getStatus())) {
             log.info("变更签证已生效，跳过重复回调, id={}", id);
             return;
         }
 
-        changeVisa.setStatus("APPROVED");
-        changeVisaMapper.updateById(changeVisa);
-
-        // 回写合同累计变更金额（P0 修复 VIS-05，2026-08-12：changeAmount null 时原实现 add NPE）
-        BizConstructionContract contract = contractMapper.selectById(changeVisa.getContractId());
-        if (contract != null) {
-            BigDecimal cumulative = contract.getCumulativeChangeAmount() == null
-                    ? BigDecimal.ZERO : contract.getCumulativeChangeAmount();
-            BigDecimal changeAmount = changeVisa.getChangeAmount() != null
-                    ? changeVisa.getChangeAmount() : BigDecimal.ZERO;
-            contract.setCumulativeChangeAmount(cumulative.add(changeAmount));
-            contractMapper.updateById(contract);
+        if (changeVisaMapper.approvePending(id) != 1) {
+            return;
+        }
+        BigDecimal changeAmount = changeVisa.getChangeAmount() != null
+                ? changeVisa.getChangeAmount() : BigDecimal.ZERO;
+        if (contractMapper.addCumulativeChangeAmount(changeVisa.getContractId(), changeAmount) != 1) {
+            throw new BusinessException("签证关联合同不存在，审批未生效");
         }
         log.info("变更签证审批通过并生效, id={}, changeAmount={}", id, changeVisa.getChangeAmount());
     }
@@ -129,8 +124,10 @@ public class ChangeVisaService {
         if (!"SUBMITTED".equals(changeVisa.getStatus())) {
             return;
         }
+        if (changeVisaMapper.transitionSubmitted(id, "REJECTED") != 1) {
+            return;
+        }
         changeVisa.setStatus("REJECTED");
-        changeVisaMapper.updateById(changeVisa);
         log.info("变更签证审批驳回, id={}", id);
     }
 }

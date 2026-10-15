@@ -68,6 +68,11 @@ public class BusinessDetailService {
                 f("contract_amount", "合同金额", "M"), f("tax_rate", "税率", "P"),
                 f("amount_without_tax", "不含税金额", "M"), f("tax_amount", "税额", "M"),
                 f("signing_date", "签订日期", "D"), f("start_date", "开工日期", "D"), f("end_date", "竣工日期", "D"));
+        spec("CONTRACT_REVISION", "合同修订", "biz_contract_revision",
+                f("contract_id", "施工合同", "REF_CC"), f("base_version", "基准版本", "T"),
+                f("before_amount", "修订前金额", "M"), f("after_amount", "修订后金额", "M"),
+                f("delta_amount", "差额", "M"), f("reason", "修订原因", "T"),
+                f("before_snapshot", "修订前快照", "T"), f("after_snapshot", "修订后快照", "T"));
         spec("CHANGE_VISA", "变更签证", "biz_change_visa",
                 f("project_id", "所属项目", "REF_PROJECT"), f("contract_id", "施工合同", "REF_CC"),
                 f("change_type", "变更类型", "T"), f("change_amount", "变更金额", "M"),

@@ -99,6 +99,20 @@ call GET "/api/v1/finance/invoice-apply/page?page=1&size=5"
 assert_http 2 "开票申请-分页 HTTP"
 assert_jq "$PAGE_EXPR" "开票申请-分页结构"
 
+# D1-D4：只读契约可在任意授权环境执行；写负向仅允许隔离租户9999。
+assert_jq '.code==200 and all(.data.records[]; .status as $s |
+  ($s|type)=="string" and (["DRAFT","SUBMITTED","REJECTED","APPROVED"]|index($s)) != null)' "开票申请-状态枚举契约"
+for resource in payment-apply payment-received; do
+  call GET "/api/v1/finance/$resource/page?page=1&size=5"
+  assert_jq "$PAGE_EXPR" "$resource-分页结构"
+done
+if [ "${ZWI_TENANT_ID:-}" = "9999" ]; then
+  call POST "/api/v1/finance/payment-received" '{"projectId":0,"contractId":0,"receiveAmount":1,"receiveDate":"2026-10-15"}'
+  assert_jq '.code != 200 and .code != 500 and (.message|type=="string")' "D3回款-缺失源拒绝且非500"
+  call POST "/api/v1/finance/payment-received" '{"projectId":0,"receiveAmount":0,"receiveDate":"2026-10-15"}'
+  assert_jq '.code != 200 and .code != 500' "D3回款-零金额拒绝且非500"
+fi
+
 # ---------- 收票登记 / 汇总 / 其他付款 / 报销 / 结算 ----------
 call GET "/api/v1/finance/invoice-received?page=1&size=5"
 assert_http 2 "收票登记-列表 HTTP"

@@ -6,12 +6,16 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
-const { mockRefundPage, mockRefundDetail, mockDevices, mockRevoke } = vi.hoisted(() => ({
+const { mockSourceGet, mockSourcePost, mockRefundPage, mockRefundDetail, mockDevices, mockRevoke } = vi.hoisted(() => ({
+  mockSourceGet: vi.fn(),
+  mockSourcePost: vi.fn(async () => ({ code: 200 })),
   mockRefundPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockRefundDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
   mockDevices: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
   mockRevoke: vi.fn(async (): Promise<any> => ({ code: 200 })),
 }))
+
+vi.mock('@/utils/request', () => ({ default: { get: mockSourceGet, post: mockSourcePost } }))
 
 vi.mock('@/api/material', () => ({
   getMaterialRefundPage: mockRefundPage, getMaterialRefundDetail: mockRefundDetail,
@@ -44,6 +48,21 @@ describe('material/refund.vue 退货退款记录（只读）', () => {
     await flushPromises()
     return wrapper
   }
+
+  it('退货来源行显式加载，保存仅带来源ID与数量', async () => {
+    await mountPage()
+    mockSourceGet.mockResolvedValueOnce({ data: { projectId: '10', contractId: '20' } })
+      .mockResolvedValueOnce({ data: [{ inboundDetailId: '123456789012345678', availableQuantity: 3 }] })
+    const st = wrapper.vm.$.setupState
+    st.inboundId = '5'
+    await st.loadSource()
+    st.returnLines[0].returnQuantity = 2
+    await st.saveReturn()
+    expect(mockSourcePost).toHaveBeenCalledWith('/v1/material/outbound', expect.objectContaining({
+      projectId: '10', contractId: '20', outboundType: 'RETURN',
+      details: [{ inboundDetailId: '123456789012345678', quantity: 2 }]
+    }))
+  })
 
   it('挂载加载并渲染行', async () => {
     const w = await mountPage([{ id: 1, status: 'DRAFT' }, { id: 2, status: 'APPROVED' }])

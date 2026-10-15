@@ -47,11 +47,17 @@ class PaymentReceivedServiceTest {
         samplePayment.setProjectId(100L);
         samplePayment.setContractId(10L);
         samplePayment.setReceiveAmount(new BigDecimal("50000"));
+        lenient().when(projectMapper.selectById(100L)).thenReturn(new BizProject());
+        lenient().when(projectMapper.addTotalIncome(anyLong(), any())).thenReturn(1);
+        lenient().when(contractMapper.addCumulativeReceivedAmount(anyLong(), any())).thenReturn(1);
+        lenient().when(paymentReceivedMapper.updateById(any(BizPaymentReceived.class))).thenReturn(1);
+        lenient().when(paymentReceivedMapper.deleteById(anyLong())).thenReturn(1);
     }
 
     private BizConstructionContract contract(String invoiced, String received) {
         BizConstructionContract c = new BizConstructionContract();
         c.setId(10L);
+        c.setProjectId(100L);
         c.setCumulativeInvoiceAmount(invoiced == null ? null : new BigDecimal(invoiced));
         c.setCumulativeReceivedAmount(received == null ? null : new BigDecimal(received));
         return c;
@@ -65,13 +71,12 @@ class PaymentReceivedServiceTest {
         void save_exceedsInvoiceAmount_allowed() {
             // 已开票 100000 - 已回款 60000 = 已开票未收 40000，本次 50000 超过已开票未收，仍应允许落库
             when(contractMapper.selectById(10L)).thenReturn(contract("100000", "60000"));
-            when(projectMapper.selectById(100L)).thenReturn(null);
+            when(projectMapper.selectById(100L)).thenReturn(new BizProject());
 
             paymentReceivedService.save(samplePayment);
 
             verify(paymentReceivedMapper).insert(samplePayment);
-            verify(contractMapper).updateById(argThat(c ->
-                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("110000")) == 0));
+            verify(contractMapper).addCumulativeReceivedAmount(10L, new BigDecimal("50000"));
         }
 
         @Test
@@ -79,7 +84,7 @@ class PaymentReceivedServiceTest {
         void save_equalsCap_allowed() {
             // 可回款 50000，本次 50000 恰好等于
             when(contractMapper.selectById(10L)).thenReturn(contract("80000", "30000"));
-            when(projectMapper.selectById(100L)).thenReturn(null);
+            when(projectMapper.selectById(100L)).thenReturn(new BizProject());
 
             paymentReceivedService.save(samplePayment);
 
@@ -97,25 +102,23 @@ class PaymentReceivedServiceTest {
             BizProject project = new BizProject();
             project.setId(100L);
             project.setTotalIncome(new BigDecimal("120000"));
-            when(projectMapper.selectById(100L)).thenReturn(project);
+            lenient().when(projectMapper.selectById(100L)).thenReturn(project);
 
             paymentReceivedService.save(samplePayment);
 
             assertThat(samplePayment.getStatus()).isEqualTo("APPROVED");
             verify(paymentReceivedMapper).insert(samplePayment);
             // 项目总收入 120000 + 50000 = 170000
-            verify(projectMapper).updateById(argThat(p ->
-                    p.getTotalIncome().compareTo(new BigDecimal("170000")) == 0));
+            verify(projectMapper).addTotalIncome(100L, new BigDecimal("50000"));
             // 合同累计收款 30000 + 50000 = 80000
-            verify(contractMapper).updateById(argThat(c ->
-                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("80000")) == 0));
+            verify(contractMapper).addCumulativeReceivedAmount(10L, new BigDecimal("50000"));
         }
 
         @Test
         @DisplayName("保存：登记即已认领（claim_status=CLAIMED + 认领人/时间），不再需要人工认领")
         void save_marksClaimedOnRegistration() {
             when(contractMapper.selectById(10L)).thenReturn(contract("200000", "0"));
-            when(projectMapper.selectById(100L)).thenReturn(null);
+            when(projectMapper.selectById(100L)).thenReturn(new BizProject());
 
             try (var sc = mockStatic(SecurityContextHolder.class)) {
                 sc.when(SecurityContextHolder::getUserId).thenReturn(88L);
@@ -136,41 +139,34 @@ class PaymentReceivedServiceTest {
             BizProject project = new BizProject();
             project.setId(100L);
             project.setTotalIncome(null);
-            when(projectMapper.selectById(100L)).thenReturn(project);
+            lenient().when(projectMapper.selectById(100L)).thenReturn(project);
 
             paymentReceivedService.save(samplePayment);
 
             verify(contractMapper, never()).selectById(any());
             verify(contractMapper, never()).updateById(any());
             // 项目总收入 null 从零累加 = 50000
-            verify(projectMapper).updateById(argThat(p ->
-                    p.getTotalIncome().compareTo(new BigDecimal("50000")) == 0));
+            verify(projectMapper).addTotalIncome(100L, new BigDecimal("50000"));
         }
 
         @Test
-        @DisplayName("保存：合同不存在时不校验上限、不回写合同")
-        void save_contractNotFound_skipContract() {
+        @DisplayName("保存：合同不存在拒绝且不写累计")
+        void save_contractNotFound_rejected() {
             when(contractMapper.selectById(10L)).thenReturn(null);
-            when(projectMapper.selectById(100L)).thenReturn(null);
-
-            paymentReceivedService.save(samplePayment);
-
-            verify(paymentReceivedMapper).insert(samplePayment);
-            verify(contractMapper, never()).updateById(any());
+            assertThatThrownBy(() -> paymentReceivedService.save(samplePayment))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("合同不存在");
+            verify(paymentReceivedMapper, never()).insert(any());
         }
 
         @Test
-        @DisplayName("保存：项目不存在时跳过项目回写，仍回写合同")
-        void save_projectNotFound_skipProjectWriteback() {
-            when(contractMapper.selectById(10L)).thenReturn(contract("200000", "0"));
+        @DisplayName("保存：项目不存在拒绝且不写累计")
+        void save_projectNotFound_rejected() {
             when(projectMapper.selectById(100L)).thenReturn(null);
-
-            paymentReceivedService.save(samplePayment);
-
-            verify(projectMapper, never()).updateById(any());
-            verify(contractMapper).updateById(argThat(c ->
-                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("50000")) == 0));
+            assertThatThrownBy(() -> paymentReceivedService.save(samplePayment))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("项目不存在");
+            verify(paymentReceivedMapper, never()).insert(any());
         }
+
     }
 
     @Nested
@@ -193,28 +189,26 @@ class PaymentReceivedServiceTest {
         @Test
         @DisplayName("删除：回冲项目总收入与合同累计收款")
         void delete_rollsBackProjectAndContract() {
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(samplePayment);
             BizProject project = new BizProject();
             project.setId(100L);
             project.setTotalIncome(new BigDecimal("200000"));
-            when(projectMapper.selectById(100L)).thenReturn(project);
-            when(contractMapper.selectById(10L)).thenReturn(contract("300000", "150000"));
+            lenient().when(projectMapper.selectById(100L)).thenReturn(project);
+            lenient().when(contractMapper.selectById(10L)).thenReturn(contract("300000", "150000"));
 
             paymentReceivedService.delete(1L);
 
             verify(paymentReceivedMapper).deleteById(1L);
             // 项目总收入 200000 - 50000 = 150000
-            verify(projectMapper).updateById(argThat(p ->
-                    p.getTotalIncome().compareTo(new BigDecimal("150000")) == 0));
+            verify(projectMapper).addTotalIncome(100L, new BigDecimal("-50000"));
             // 合同累计收款 150000 - 50000 = 100000
-            verify(contractMapper).updateById(argThat(c ->
-                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("100000")) == 0));
+            verify(contractMapper).addCumulativeReceivedAmount(10L, new BigDecimal("-50000"));
         }
 
         @Test
         @DisplayName("删除：记录不存在抛异常且不删除")
         void delete_notFound_throws() {
-            when(paymentReceivedMapper.selectById(999L)).thenReturn(null);
+            when(paymentReceivedMapper.lockById(999L)).thenReturn(null);
 
             assertThatThrownBy(() -> paymentReceivedService.delete(999L))
                     .isInstanceOf(BusinessException.class)
@@ -227,17 +221,16 @@ class PaymentReceivedServiceTest {
         @DisplayName("删除：无合同关联时仅回冲项目收入")
         void delete_noContract_rollsBackProjectOnly() {
             samplePayment.setContractId(null);
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(samplePayment);
             BizProject project = new BizProject();
             project.setId(100L);
             project.setTotalIncome(new BigDecimal("80000"));
-            when(projectMapper.selectById(100L)).thenReturn(project);
+            lenient().when(projectMapper.selectById(100L)).thenReturn(project);
 
             paymentReceivedService.delete(1L);
 
             verify(paymentReceivedMapper).deleteById(1L);
-            verify(projectMapper).updateById(argThat(p ->
-                    p.getTotalIncome().compareTo(new BigDecimal("30000")) == 0));
+            verify(projectMapper).addTotalIncome(100L, new BigDecimal("-50000"));
             verify(contractMapper, never()).updateById(any());
         }
     }
@@ -275,37 +268,35 @@ class PaymentReceivedServiceTest {
         @DisplayName("改大金额：按差额追加项目收入与合同累计收款，增量校验可回款上限")
         void update_increase_addsDiff() {
             // 原额 50000 改 70000，差额 +20000；可回款 = 300000-150000 = 150000 充足
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
-            when(contractMapper.selectById(10L)).thenReturn(contract("300000", "150000"));
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(samplePayment);
+            lenient().when(contractMapper.selectById(10L)).thenReturn(contract("300000", "150000"));
             BizProject project = new BizProject();
             project.setId(100L);
             project.setTotalIncome(new BigDecimal("200000"));
-            when(projectMapper.selectById(100L)).thenReturn(project);
+            lenient().when(projectMapper.selectById(100L)).thenReturn(project);
 
             BizPaymentReceived updated = new BizPaymentReceived();
             updated.setId(1L);
             updated.setReceiveAmount(new BigDecimal("70000"));
             paymentReceivedService.update(updated);
 
-            verify(paymentReceivedMapper).updateById(updated);
+            verify(paymentReceivedMapper).updateById(samplePayment);
             // 项目总收入 200000 + 20000 = 220000
-            verify(projectMapper).updateById(argThat(p ->
-                    p.getTotalIncome().compareTo(new BigDecimal("220000")) == 0));
+            verify(projectMapper).addTotalIncome(100L, new BigDecimal("20000"));
             // 合同累计收款 150000 + 20000 = 170000
-            verify(contractMapper).updateById(argThat(c ->
-                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("170000")) == 0));
+            verify(contractMapper).addCumulativeReceivedAmount(10L, new BigDecimal("20000"));
         }
 
         @Test
         @DisplayName("改小金额：按差额回冲（不校验上限）")
         void update_decrease_subtractsDiff() {
             // 原额 50000 改 30000，差额 -20000
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(samplePayment);
             BizProject project = new BizProject();
             project.setId(100L);
             project.setTotalIncome(new BigDecimal("200000"));
-            when(projectMapper.selectById(100L)).thenReturn(project);
-            when(contractMapper.selectById(10L)).thenReturn(contract("300000", "150000"));
+            lenient().when(projectMapper.selectById(100L)).thenReturn(project);
+            lenient().when(contractMapper.selectById(10L)).thenReturn(contract("300000", "150000"));
 
             BizPaymentReceived updated = new BizPaymentReceived();
             updated.setId(1L);
@@ -313,18 +304,16 @@ class PaymentReceivedServiceTest {
             paymentReceivedService.update(updated);
 
             // 项目总收入 200000 - 20000 = 180000
-            verify(projectMapper).updateById(argThat(p ->
-                    p.getTotalIncome().compareTo(new BigDecimal("180000")) == 0));
+            verify(projectMapper).addTotalIncome(100L, new BigDecimal("-20000"));
             // 合同累计收款 150000 - 20000 = 130000
-            verify(contractMapper).updateById(argThat(c ->
-                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("130000")) == 0));
+            verify(contractMapper).addCumulativeReceivedAmount(10L, new BigDecimal("-20000"));
         }
 
         @Test
         @DisplayName("改大金额超过已开票未收金额：不做硬限制，允许更新并累加差额")
         void update_increaseExceedsInvoiceAmount_allowed() {
             // 原额 50000 改 90000，差额 +40000；累计开票 100000，累计收款 90000，差额超过已开票未收，仍允许更新
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(samplePayment);
             when(contractMapper.selectById(10L)).thenReturn(contract("100000", "90000"));
 
             BizPaymentReceived updated = new BizPaymentReceived();
@@ -334,15 +323,14 @@ class PaymentReceivedServiceTest {
 
             paymentReceivedService.update(updated);
 
-            verify(paymentReceivedMapper).updateById(updated);
-            verify(contractMapper).updateById(argThat(c ->
-                    c.getCumulativeReceivedAmount().compareTo(new BigDecimal("130000")) == 0));
+            verify(paymentReceivedMapper).updateById(samplePayment);
+            verify(contractMapper).addCumulativeReceivedAmount(10L, new BigDecimal("40000"));
         }
 
         @Test
         @DisplayName("编辑金额为负/零拒绝（P1 FIN-RCV-10）")
         void update_invalidAmount_rejected() {
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(samplePayment);
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(samplePayment);
 
             BizPaymentReceived neg = new BizPaymentReceived();
             neg.setId(1L);
@@ -362,7 +350,7 @@ class PaymentReceivedServiceTest {
         @Test
         @DisplayName("记录不存在：拒绝更新")
         void update_notFound_throws() {
-            when(paymentReceivedMapper.selectById(999L)).thenReturn(null);
+            when(paymentReceivedMapper.lockById(999L)).thenReturn(null);
 
             BizPaymentReceived updated = new BizPaymentReceived();
             updated.setId(999L);
@@ -372,6 +360,42 @@ class PaymentReceivedServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("收款记录不存在");
         }
+    }
+
+    @Test
+    @DisplayName("改额锁源记录，累计原子更新失败抛错")
+    void update_atomicWriteFailure_throws() {
+        when(paymentReceivedMapper.lockById(1L)).thenReturn(samplePayment);
+        when(contractMapper.selectById(10L)).thenReturn(contract("100000", "50000"));
+        when(projectMapper.addTotalIncome(100L, new BigDecimal("10000"))).thenReturn(0);
+        BizPaymentReceived body = new BizPaymentReceived();
+        body.setId(1L);
+        body.setReceiveAmount(new BigDecimal("60000"));
+        assertThatThrownBy(() -> paymentReceivedService.update(body))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("操作已回滚");
+        verify(paymentReceivedMapper).lockById(1L);
+    }
+
+    @Test
+    @DisplayName("并发删除已不存在的源记录不得重复反冲")
+    void delete_missingLockedSource_doesNotReverse() {
+        when(paymentReceivedMapper.lockById(1L)).thenReturn(null);
+        assertThatThrownBy(() -> paymentReceivedService.delete(1L)).isInstanceOf(BusinessException.class);
+        verify(projectMapper, never()).addTotalIncome(anyLong(), any());
+        verify(receivableService, never()).reverseWriteOff(anyLong());
+    }
+
+    @Test
+    @DisplayName("已生效回款不得改绑来源造成累计漂移")
+    void update_rebindSource_rejected() {
+        when(paymentReceivedMapper.lockById(1L)).thenReturn(samplePayment);
+        BizPaymentReceived body = new BizPaymentReceived();
+        body.setId(1L);
+        body.setProjectId(101L);
+        body.setReceiveAmount(BigDecimal.TEN);
+        assertThatThrownBy(() -> paymentReceivedService.update(body))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("不得更换项目或合同");
+        verify(paymentReceivedMapper, never()).updateById(any(BizPaymentReceived.class));
     }
 
     @Nested
@@ -390,7 +414,7 @@ class PaymentReceivedServiceTest {
         @DisplayName("认领成功：UNCLAIMED → CLAIMED，记录认领人与时间")
         void claim_unclaimed_success() {
             BizPaymentReceived record = withClaimStatus("UNCLAIMED");
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(record);
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(record);
             try (var sc = mockStatic(SecurityContextHolder.class)) {
                 sc.when(SecurityContextHolder::getUserId).thenReturn(88L);
 
@@ -407,7 +431,7 @@ class PaymentReceivedServiceTest {
         @DisplayName("存量数据 claimStatus 为 null：按待认领处理可认领")
         void claim_nullStatus_treatedAsUnclaimed() {
             BizPaymentReceived record = withClaimStatus(null);
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(record);
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(record);
             try (var sc = mockStatic(SecurityContextHolder.class)) {
                 sc.when(SecurityContextHolder::getUserId).thenReturn(88L);
 
@@ -420,7 +444,7 @@ class PaymentReceivedServiceTest {
         @Test
         @DisplayName("重复认领：CLAIMED 再认领拒绝")
         void claim_alreadyClaimed_rejected() {
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(withClaimStatus("CLAIMED"));
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(withClaimStatus("CLAIMED"));
 
             assertThatThrownBy(() -> paymentReceivedService.claim(1L))
                     .isInstanceOf(BusinessException.class)
@@ -431,7 +455,7 @@ class PaymentReceivedServiceTest {
         @Test
         @DisplayName("已核销再认领：拒绝")
         void claim_writtenOff_rejected() {
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(withClaimStatus("WRITTEN_OFF"));
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(withClaimStatus("WRITTEN_OFF"));
 
             assertThatThrownBy(() -> paymentReceivedService.claim(1L))
                     .isInstanceOf(BusinessException.class)
@@ -443,7 +467,7 @@ class PaymentReceivedServiceTest {
         @DisplayName("核销成功：CLAIMED → WRITTEN_OFF")
         void writeOff_claimed_success() {
             BizPaymentReceived record = withClaimStatus("CLAIMED");
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(record);
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(record);
 
             paymentReceivedService.writeOff(1L);
 
@@ -454,7 +478,7 @@ class PaymentReceivedServiceTest {
         @Test
         @DisplayName("未认领直接核销：拒绝")
         void writeOff_unclaimed_rejected() {
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(withClaimStatus("UNCLAIMED"));
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(withClaimStatus("UNCLAIMED"));
 
             assertThatThrownBy(() -> paymentReceivedService.writeOff(1L))
                     .isInstanceOf(BusinessException.class)
@@ -465,7 +489,7 @@ class PaymentReceivedServiceTest {
         @Test
         @DisplayName("重复核销：拒绝")
         void writeOff_alreadyWrittenOff_rejected() {
-            when(paymentReceivedMapper.selectById(1L)).thenReturn(withClaimStatus("WRITTEN_OFF"));
+            when(paymentReceivedMapper.lockById(1L)).thenReturn(withClaimStatus("WRITTEN_OFF"));
 
             assertThatThrownBy(() -> paymentReceivedService.writeOff(1L))
                     .isInstanceOf(BusinessException.class)
@@ -476,7 +500,7 @@ class PaymentReceivedServiceTest {
         @Test
         @DisplayName("记录不存在：认领/核销均拒绝")
         void claimAndWriteOff_notFound_throws() {
-            when(paymentReceivedMapper.selectById(999L)).thenReturn(null);
+            when(paymentReceivedMapper.lockById(999L)).thenReturn(null);
 
             assertThatThrownBy(() -> paymentReceivedService.claim(999L))
                     .isInstanceOf(BusinessException.class)

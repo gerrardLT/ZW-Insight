@@ -38,6 +38,7 @@ class PurchaseProjectCascadeCleanupListenerTest {
 
     @Mock private BizPurchaseContractMapper purchaseContractMapper;
     @Mock private BizPurchaseSettlementMapper purchaseSettlementMapper;
+    @Mock private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
 
     @InjectMocks
     private PurchaseProjectCascadeCleanupListener listener;
@@ -59,6 +60,7 @@ class PurchaseProjectCascadeCleanupListenerTest {
     void onProjectDeleted_cleansAllOwnedTablesScopedToProject() {
         listener.onProjectDeleted(event());
 
+        verify(sourceMapper).deleteProjectLines(PROJECT_ID);
         verify(purchaseContractMapper).delete(argThat(w -> isProjectScoped(w, PROJECT_ID)));
         verify(purchaseSettlementMapper).delete(argThat(w -> isProjectScoped(w, PROJECT_ID)));
     }
@@ -71,5 +73,11 @@ class PurchaseProjectCascadeCleanupListenerTest {
         assertThatThrownBy(() -> listener.onProjectDeleted(event()))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("DB write timeout");
+    }
+    @Test
+    void detailCleanupFailurePropagatesBeforeHeaders() {
+        when(sourceMapper.deleteProjectLines(PROJECT_ID)).thenThrow(new RuntimeException("detail cleanup failed"));
+        assertThatThrownBy(() -> listener.onProjectDeleted(event())).hasMessageContaining("detail cleanup failed");
+        org.mockito.Mockito.verifyNoInteractions(purchaseContractMapper, purchaseSettlementMapper);
     }
 }

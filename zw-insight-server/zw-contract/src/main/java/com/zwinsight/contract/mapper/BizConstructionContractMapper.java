@@ -14,6 +14,10 @@ import org.apache.ibatis.annotations.Update;
 })
 public interface BizConstructionContractMapper extends BaseMapper<BizConstructionContract> {
 
+    @Update("UPDATE biz_construction_contract SET cumulative_received_amount = COALESCE(cumulative_received_amount, 0) + #{amount} " +
+            "WHERE id = #{contractId} AND deleted = 0 AND COALESCE(cumulative_received_amount, 0) + #{amount} >= 0")
+    int addCumulativeReceivedAmount(@Param("contractId") Long contractId, @Param("amount") java.math.BigDecimal amount);
+
     /**
      * 项目最终结算审批通过后，批量将该项目下生效中的施工合同置为已结算
      *
@@ -60,6 +64,13 @@ public interface BizConstructionContractMapper extends BaseMapper<BizConstructio
             "SET cumulative_invoice_amount = COALESCE(cumulative_invoice_amount, 0) + #{amount} " +
             "WHERE id = #{contractId} AND deleted = 0")
     int addCumulativeInvoiceAmount(@Param("contractId") Long contractId, @Param("amount") java.math.BigDecimal amount);
+
+    @Update("UPDATE biz_construction_contract " +
+            "SET cumulative_invoice_amount = COALESCE(cumulative_invoice_amount, 0) + #{amount} " +
+            "WHERE id = #{contractId} AND deleted = 0 AND status = 'EFFECTIVE' " +
+            "AND #{amount} > 0 AND COALESCE(cumulative_invoice_amount, 0) + #{amount} <= COALESCE(cumulative_output, 0)")
+    int addCumulativeInvoiceAmountWithinLimit(@Param("contractId") Long contractId,
+                                             @Param("amount") java.math.BigDecimal amount);
 
     /**
      * 原子累加合同累计变更金额（变更事件/签证审批通过时回写，避免并发丢失更新）

@@ -31,9 +31,13 @@ public class PurchaseProjectCascadeCleanupListener {
     private final BizPurchaseContractMapper purchaseContractMapper;
     private final BizPurchaseSettlementMapper purchaseSettlementMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
+
     @EventListener
     public void onProjectDeleted(ProjectDeletedEvent event) {
         Long projectId = event.getProjectId();
+        sourceMapper.deleteProjectLines(projectId);
         int contracts = purchaseContractMapper.delete(
                 new QueryWrapper<BizPurchaseContract>().eq("project_id", projectId));
         int settlements = purchaseSettlementMapper.delete(

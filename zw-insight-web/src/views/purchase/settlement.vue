@@ -78,8 +78,16 @@
             <template #prepend>¥</template>
           </el-input>
         </el-form-item>
+        <el-form-item label="分批结算">
+          <el-switch v-model="partial" :disabled="isEdit" @change="handleInboundChange" />
+        </el-form-item>
+        <el-table v-if="partial" :data="sourceLines" border>
+          <el-table-column prop="materialName" label="来源材料" />
+          <el-table-column prop="availableQuantity" label="可用数量" />
+          <el-table-column label="本次数量"><template #default="{ row }"><el-input-number v-model="row.selectedQuantity" :min="0" :max="Number(row.availableQuantity)" :precision="4" @change="calculateTotal" /></template></el-table-column>
+        </el-table>
         <el-form-item label="本次结算金额" prop="settlementAmount">
-          <el-input-number v-model="formData.settlementAmount" :min="0" :max="formData.inboundAmount || undefined" :precision="2" style="width: 100%" />
+          <el-input-number v-model="formData.settlementAmount" :disabled="partial" :min="0" :max="formData.inboundAmount || undefined" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="结算日期">
           <el-date-picker v-model="formData.settlementDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
@@ -98,6 +106,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import request from '@/utils/request'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
@@ -111,6 +120,8 @@ import {
   getAvailableInbounds
 } from '@/api/purchase'
 
+const partial = ref(false)
+const sourceLines = ref<any[]>([])
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -156,12 +167,22 @@ function handleSearch() { queryParams.value.page = 1; loadData() }
 function handleReset() { queryParams.value = { page: 1, size: 10, contractId: undefined, status: '' }; loadData() }
 
 function handleAdd() {
+  partial.value = false
+  sourceLines.value = []
   isEdit.value = false
   formData.value = defaultForm()
   inboundOptions.value = []
   dialogVisible.value = true
 }
-function handleEdit(row: any) {
+async function handleEdit(row: any) {
+  const response: any = await request.get(`/v1/purchase/settlement/${row.id}`)
+  row = response.data
+  partial.value = row.settlementMode === "LINES"
+  sourceLines.value = []
+  if (partial.value) {
+    const lines: any = await request.get("/v1/purchase/settlement/inbound-lines", { params: { inboundId: row.inboundId } })
+    sourceLines.value = lines.data.map((line: any) => ({ ...line, selectedQuantity: row.details.find((d: any) => String(d.inboundDetailId) === String(line.inboundDetailId))?.quantity || 0 }))
+  }
   isEdit.value = true
   formData.value = { id: row.id, contractId: row.contractId, inboundId: row.inboundId, inboundAmount: row.inboundAmount, settlementAmount: row.settlementAmount, settlementDate: row.settlementDate, remark: row.remark }
   dialogVisible.value = true
@@ -169,6 +190,7 @@ function handleEdit(row: any) {
 
 async function handleContractChange() {
   const seq = ++inboundSeq
+  sourceLines.value = []
   formData.value.inboundId = undefined
   formData.value.inboundAmount = 0
   inboundOptions.value = []
@@ -184,9 +206,18 @@ async function handleContractChange() {
     }
   }
 }
-function handleInboundChange() {
+async function handleInboundChange() {
+  sourceLines.value = []
+  if (partial.value && formData.value.inboundId) {
+    const res: any = await request.get("/v1/purchase/settlement/inbound-lines", { params: { inboundId: formData.value.inboundId } })
+    sourceLines.value = res.data.map((line: any) => ({ ...line, selectedQuantity: 0 }))
+  }
   const inbound = inboundOptions.value.find(i => String(i.id) === String(formData.value.inboundId))
   formData.value.inboundAmount = inbound ? Number(inbound.totalAmount || 0) : 0
+}
+
+function calculateTotal() {
+  formData.value.settlementAmount = sourceLines.value.reduce((sum, line) => sum + Math.round(Number(line.selectedQuantity || 0) * Number(line.unitPrice) * 100), 0) / 100
 }
 
 async function handleFormSubmit() {
@@ -197,10 +228,11 @@ async function handleFormSubmit() {
   }
   submitLoading.value = true
   try {
+    const payload = { ...formData.value, ...(partial.value ? { details: sourceLines.value.filter(line => Number(line.selectedQuantity) > 0).map(line => ({ inboundDetailId: line.inboundDetailId, quantity: line.selectedQuantity })) } : {}) }
     if (isEdit.value) {
-      await updatePurchaseSettlement(formData.value)
+      await updatePurchaseSettlement(payload)
     } else {
-      await createPurchaseSettlement(formData.value)
+      await createPurchaseSettlement(payload)
     }
     ElMessage.success(isEdit.value ? '更新成功' : '新增成功')
     dialogVisible.value = false

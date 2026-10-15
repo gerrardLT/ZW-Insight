@@ -338,7 +338,7 @@ public class PaymentApplyService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void onApproved(Long id) {
-        BizPaymentApply paymentApply = paymentApplyMapper.selectById(id);
+        BizPaymentApply paymentApply = paymentApplyMapper.lockById(id);
         if (paymentApply == null) {
             log.warn("付款申请审批通过回调：申请不存在, id={}", id);
             return;
@@ -357,9 +357,7 @@ public class PaymentApplyService {
 
         ContractPayableInfo payable = resolvePayable(paymentApply);
         if (payable == null) {
-            log.error("付款申请审批通过回调：关联合同不存在, id={}, contractId={}, category={}",
-                    id, paymentApply.getContractId(), paymentApply.getContractCategory());
-            return;
+            throw new BusinessException("付款申请关联合同不存在，审批未生效");
         }
 
         // 审批期间上限可能变化，生效前重新校验；不通过则置 REJECTED 并通知发起人
@@ -391,7 +389,9 @@ public class PaymentApplyService {
         paymentApplyMapper.updateById(paymentApply);
 
         // 项目总支出（审批口径，原子累加）
-        projectMapper.addTotalExpense(paymentApply.getProjectId(), paymentApply.getPaymentAmount());
+        if (projectMapper.addTotalExpense(paymentApply.getProjectId(), paymentApply.getPaymentAmount()) != 1) {
+            throw new BusinessException("付款关联项目不存在或更新冲突，审批未生效");
+        }
 
         log.info("付款申请审批通过并生效, id={}, paymentAmount={}", id, paymentApply.getPaymentAmount());
     }
@@ -401,7 +401,7 @@ public class PaymentApplyService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void onRejected(Long id) {
-        BizPaymentApply paymentApply = paymentApplyMapper.selectById(id);
+        BizPaymentApply paymentApply = paymentApplyMapper.lockById(id);
         if (paymentApply == null) {
             log.warn("付款申请驳回回调：申请不存在, id={}", id);
             return;
@@ -642,17 +642,21 @@ public class PaymentApplyService {
     private void addCumulativePaid(BizPaymentApply paymentApply, BigDecimal amount) {
         String category = paymentApply.getContractCategory();
         Long contractId = paymentApply.getContractId();
+        int changed;
         if (category != null && MODULE_CATEGORIES.contains(category)) {
-            switch (category) {
+            changed = switch (category) {
                 case "PURCHASE" -> contractPayableMapper.addPurchasePaid(contractId, amount);
                 case "LABOR" -> contractPayableMapper.addLaborPaid(contractId, amount);
                 case "MACHINE" -> contractPayableMapper.addMachinePaid(contractId, amount);
                 case "SUBCONTRACT" -> contractPayableMapper.addSubcontractPaid(contractId, amount);
-                default -> { /* 不可达 */ }
-            }
-            return;
+                default -> throw new BusinessException("不支持的付款合同类型");
+            };
+        } else {
+            changed = otherContractMapper.addCumulativePaid(contractId, amount);
         }
-        otherContractMapper.addCumulativePaid(contractId, amount);
+        if (changed != 1) {
+            throw new BusinessException("付款关联合同不存在或更新冲突，操作已回滚");
+        }
     }
 
     /**

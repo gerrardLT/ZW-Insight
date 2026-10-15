@@ -27,17 +27,27 @@ ContractStatisticsService.rate 已在分母为零/null 时返回 null，本期�
 - 合同抽屉三率零分母为 null，隐藏不适用进度条并明示；我发起详情按 processInstanceId 读取既有 trace，绝不当 taskId。
 - Excel 新增只读 EasyExcel 解析预览（最多1000行/10MB），不创建业务 Listener。Redis 15分钟一次性凭据绑定租户、用户、模块、项目、额外参数与文件SHA-256，确认原文件才消费凭据并复用既有导入。失败须重新预览；结果按成功/失败行核对，预览不冒充业务校验。
 
-## 经营卡与修订评估
+## 项目经营摘要与独立合同修订（本轮追加实现）
 
-- views/cockpit/project-operation.vue 已含合同收入、预计成本、预计利润、利润率、回款率及利润趋势/回款付款月度卡（约27-188行），并于84行说明成本口径退化；本次不另造经营卡，不重复已有接口。
-- ConstructionContractService.update 约143行严格仅草稿可编辑；onApproved 约177行生效并回写项目。当前无独立 revision 生效事件/版本快照/差额反冲协议，直接开放已生效改价会破坏下游快照与额度。按批准范围仅评估，不实施改价。
+- 项目详情挂载 ProjectBusinessSummary，复用 getProjectOverview/getProjectCostControl，展示施工合同额、开票、回款、上报产值及 CBS 当前预算、承诺、实际、预测完工成本。无成本账户明示不可用，缺失金额显示“—”，分区错误与重试独立；异步 generation 防止切项目后旧响应覆盖。不另算现金余额或预计利润，明确 CBS 实际成本不等于审批支出或银行支付。
+- ContractRevisionService 独立创建/提交/审批/驳回/草稿作废；记录 baseVersion、before/afterSnapshot、原因与 deltaAmount，锁合同及修订单，接 CONTRACT_REVISION / contract_revision_approval。创建、提交及生效校验基准版本与金额；修订额加签证累计不得低于已发生产值、开票、回款。
+- 生效以 EFFECTIVE + 基准 version + 原金额 CAS 更新合同，重算税额、递增业务版本，项目合同额仅原子加差额，重复 APPROVED 回调不重复回写，任一行数失败整体回滚。原生效合同直接编辑限制不放开，修订不记签证累计；项目删除监听器覆盖修订表。
+- V2026_106 双轨新增修订表；已落地 Service/API契约/组件测试代码，后端、SQL与真实审批链未运行，不能据静态代码宣称运行通过。
 
-## 采购安全受限的具体证据与处理
+## 采购来源与分批结算（取代前轮 details 全面拒绝）
 
-- BizMaterialOutboundDetail 只有 outboundId/boqItemId/materialName/specification/unit/quantity/unitPrice，无 inboundId/inboundDetailId。BizMaterialOutbound 只有 contractId、returnType 等，无来源入库单。不能用材料名称或BOQ相同推断退货来源批次。
-- MaterialInboundReadMapper 仅返回头表总额；PurchaseSettlementService 的 create/update 仅校验入库总额，settlementExistsForInbound 为整单排他，无行级已结/在途占用账。存量 APPROVED 结算无数量，不能按金额反推已结数量。
-- 因此不能安全交付可用的行级分批结算。本次实体显式接收 details 并在 create/update 写入前返回409，阻止 JSON 明细被忽略后意外整单入账；原整单路径、审批回写及旧单保留。不创建永远无法可靠结算的子表，也不虚报占用/释放/级联已完成。
-- 解锁条件：业务确认并补录真实退货来源入库行、建立存量结算行数量的人工核对映射，再实现行锁与数量账的占用/审批转换/驳回释放/级联。未取得真实映射前不得启用。
+- V2026_105 双轨增加退货行 inbound_detail_id、结算 settlement_mode 与明细表。退货显式选择来源入库行，后端校验归属与数量，多个来源按稳定顺序加锁；禁止用名称、BOQ或金额猜历史来源。
+- PurchaseSettlementService 支持 LINES details，来源行单价由后端读取，数量校验精度/正数/重复/入库归属，金额由数量乘单价派生。来源入库头/行锁与退货共用；余量扣 SUBMITTED/APPROVED 结算及来源退货，提交/通过复核，驳回/撤回/终止状态退出占用集合，删除与级联清理明细。
+- 存量及无明细请求保留 LEGACY 整单路径，同源 LEGACY/LINES 禁止混用，旧单不能改分批。合同存在无来源历史退货时仅阻止不可靠的分批计量并要求人工核实，不为其反推数量。409 仅用于明确业务冲突，不再全面拒绝分批功能。
+- 已落地 API 来源行接口、前端选择校验、Service与API脚本测试代码；MySQL 8 迁移连跑、真实退货/结算竞态、审批释放及事务回滚均未运行验证。回退前先核对 LINES 新单，不可让旧代码把行级单据当整单重算；保留新增列/表与历史，必要修复经备份和独立数据方案处理。
+
+## D1–D4 财务加固（2026-10-15）
+
+- 开票/签证新增 approvePending CAS，允许 SUBMITTED/REJECTED，重复 APPROVED 与陈旧 DRAFT 在写入前返回；驳回 CAS 仅允许 SUBMITTED。开票合同 SQL 同时校验 EFFECTIVE、正金额与累计开票不超过累计产值；签证用 addCumulativeChangeAmount 原子累加，均检查影响行数。
+- 开票占用状态后额度失败仍在同一事务置 REJECTED 并通知，保留修正重审；源合同缺失抛 BusinessException。签证状态 CAS 后累计回写失败抛异常，Spring @Transactional(rollbackFor=Exception.class) 使状态与累计一并回滚。单元测试验证调用顺序与异常；真实事务/并发回滚须隔离 MySQL 验证，不以 Mockito 代替。
+- 回款锁源记录 SELECT FOR UPDATE，创建/改额/删除通过 addTotalIncome、addCumulativeReceivedAmount 增减（COALESCE、非负守卫、行数=1），FIFO 核销反冲同事务；改额白名单不开放项目/合同/状态改绑，项目合同归属在信任边界验证。认领与核销亦使用同一源锁，避免覆盖并发改额。
+- 付款通过/驳回锁源记录，源合同缺失抛异常；各分类累计付款及项目支出回写检查影响行数，保持审批支出与现金支付字段独立。不新增迁移。
+- 回滚采用代码回退，不改存量业务数据；若已发生业务写入，不删除流水或手改累计，按原单据反冲路径处理。
 
 ## 验证与回滚
 

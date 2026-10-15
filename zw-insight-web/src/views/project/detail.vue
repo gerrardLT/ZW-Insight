@@ -48,6 +48,8 @@
       </div>
     </div>
 
+    <ProjectBusinessSummary :project-id="projectId" />
+
     <!-- 主体内容卡片（蓝图角标） -->
     <el-card shadow="never" class="card-corner-marked">
       <template #header>
@@ -192,6 +194,7 @@ import {
 } from '@/api/project'
 import type { ProjectStatusLog, ProjectChangeLog } from '@/types/project'
 import ProjectMember from './components/ProjectMember.vue'
+import ProjectBusinessSummary from './components/ProjectBusinessSummary.vue'
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
 
 const route = useRoute()

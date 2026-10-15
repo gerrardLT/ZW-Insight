@@ -170,6 +170,27 @@ describe('purchase/settlement.vue 采购结算（B23）', () => {
     return w
   }
 
+  it('分批按来源数量计算并发送明细，不发送零数量行', async () => {
+    const w = await mountSettlement()
+    const st: any = w.vm.$.setupState
+    st.handleAdd()
+    st.dialogVisible = false
+    await flushPromises()
+    st.formRef = { validate: async () => true }
+    st.partial = true
+    st.formData.contractId = 1
+    st.formData.inboundId = 9
+    st.formData.inboundAmount = 1000
+    st.sourceLines = [
+      { inboundDetailId: '123456789012345678', unitPrice: '12.34', selectedQuantity: 2 },
+      { inboundDetailId: '8', unitPrice: '1', selectedQuantity: 0 }
+    ]
+    st.calculateTotal()
+    expect(st.formData.settlementAmount).toBe(24.68)
+    await st.handleFormSubmit()
+    expect(mocks.mockSettleCreate).toHaveBeenCalledWith(expect.objectContaining({ details: [{ inboundDetailId: '123456789012345678', quantity: 2 }] }))
+  })
+
   it('@matrix B-23-1 必填三条 contractId/inboundId/settlementAmount', async () => {
     const w = await mountSettlement()
     const st: any = w.vm.$.setupState

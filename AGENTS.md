@@ -312,7 +312,7 @@ cd tools/consistency-audit && npm run dev
   2. `deploy/db-init/NN_Vxxx__desc.sql` —— 新环境空库 initdb 编排（按 `NN_` 序号前缀控制执行顺序）
   - 两处文件名 Flyway 版本段必须一致（`V2026_51__xxx.sql`）；只放 db-init 不入 classpath，就是"代码上线、库结构没跟"的直接故障模式
   - ⚠️ **已知双轨缺口（2026-10-12 核对，待人工决定补法）**：`db-init` 缺 migration 中存在的 **V2026_28**（`supplier_evaluation_type`）与 **V2026_29**（`create_file_storage`）；且 **V2026_27 两轨语义不同**（db-init=`32_V2026_27__performance_indexes.sql`，migration=`V2026_27__labor_subcontract_cumulative_output.sql`）。空库 initdb 与已上线库在此处结构/内容不一致，补法须先人工核对
-- **迁移版本进度（2026-10-12）**：两轨最大版本均为 **V2026_95**；自 V2026_71 后又推进 V2026_72~95（V2026_75 缺号，实为 23 个）。代表：V2026_89 回款登记自动认领、V2026_91 权限码目录补全、V2026_92 角色写权限授权矩阵、V2026_94 子页面菜单下发、V2026_95 项目 dept_id
+- **仓库迁移版本进度（2026-10-15）**：两轨当前最大版本均为 **V2026_106**。V2026_103 为进项发票有效身份与税额，V2026_104 为签证日期税率与产值部位，V2026_105 为采购退货来源与分批结算，V2026_106 为独立合同修订；105/106 的 Flyway 与 db-init 文件均已落地，**仅代表仓库进度，不代表线上已应用，也无本轮 MySQL 执行或幂等运行证据**。新增迁移须从实际最大版本继续分配。V2026_75 缺号，V2026_27 两轨语义差异及 db-init 缺 V2026_28/29 的历史缺口保持原状，未经人工核对不得顺带补改。
 - **版本号唯一且有序**：禁止两个脚本共用同一 Flyway 版本（同版本双文件 Flyway 直接拒启）；同版本多脚本用 `V2026_41_1`/`V2026_41_2` 子版本号。低于已应用最高版本的待补脚本依赖 `spring.flyway.out-of-order: true` 乱序补应用（已开启，2026-09-21 治理）
 - **迁移脚本必须幂等**：`CREATE TABLE IF NOT EXISTS` / `INSERT IGNORE` / `information_schema` 检查 + `PREPARE/EXECUTE` 条件 ALTER（裸 `ALTER ADD COLUMN`、`CREATE UNIQUE INDEX` 重复执行会报错）
 - 字段使用规范：`BigDecimal`/`DECIMAL(18,2)`（金额）、`deleted`（逻辑删除）、`version`（乐观锁）、`tenant_id`（租户隔离）

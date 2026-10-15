@@ -18,6 +18,9 @@ public class BizMaterialOutboundDetail extends BaseEntity {
     /** 出库单ID */
     private Long outboundId;
 
+    /** 新增退货必须显式选择来源；历史空值不推断。 */
+    private Long inboundDetailId;
+
     /** 关联BOQ工程量清单项ID（可空；用于工程量-材料消耗限额对账） */
     private Long boqItemId;
 

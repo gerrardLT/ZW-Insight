@@ -60,6 +60,16 @@ class PaymentApplyServiceTest {
     @InjectMocks
     private PaymentApplyService paymentApplyService;
 
+    @org.junit.jupiter.api.BeforeEach
+    void atomicWriteDefaults() {
+        lenient().when(otherContractMapper.addCumulativePaid(anyLong(), any())).thenReturn(1);
+        lenient().when(contractPayableMapper.addPurchasePaid(anyLong(), any())).thenReturn(1);
+        lenient().when(contractPayableMapper.addLaborPaid(anyLong(), any())).thenReturn(1);
+        lenient().when(contractPayableMapper.addMachinePaid(anyLong(), any())).thenReturn(1);
+        lenient().when(contractPayableMapper.addSubcontractPaid(anyLong(), any())).thenReturn(1);
+        lenient().when(projectMapper.addTotalExpense(anyLong(), any())).thenReturn(1);
+    }
+
     @Nested
     @DisplayName("submit() 提交付款申请")
     class SubmitTests {
@@ -340,7 +350,7 @@ class PaymentApplyServiceTest {
             contract.setCumulativeSettlement(new BigDecimal("100000.00"));
             contract.setCumulativePaid(new BigDecimal("50000.00"));
 
-            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(paymentApplyMapper.lockById(id)).thenReturn(apply);
             when(otherContractMapper.selectById(contractId)).thenReturn(contract);
             when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
 
@@ -352,13 +362,47 @@ class PaymentApplyServiceTest {
         }
 
         @Test
+        @DisplayName("源合同缺失使审批失败，不静默生效")
+        void onApproved_missingContract_throws() {
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(1L);
+            apply.setContractId(100L);
+            apply.setStatus("REJECTED");
+            when(paymentApplyMapper.lockById(1L)).thenReturn(apply);
+            assertThatThrownBy(() -> paymentApplyService.onApproved(1L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("关联合同不存在");
+            verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("合同原子写零行须抛错，不继续项目回写")
+        void onApproved_contractWriteZero_throws() {
+            BizPaymentApply apply = new BizPaymentApply();
+            apply.setId(1L);
+            apply.setProjectId(10L);
+            apply.setContractId(100L);
+            apply.setPaymentAmount(BigDecimal.TEN);
+            apply.setStatus("SUBMITTED");
+            BizOtherContract contract = new BizOtherContract();
+            contract.setCumulativeSettlement(new BigDecimal("100"));
+            contract.setCumulativePaid(BigDecimal.ZERO);
+            when(paymentApplyMapper.lockById(1L)).thenReturn(apply);
+            when(otherContractMapper.selectById(100L)).thenReturn(contract);
+            when(settlementDataMapper.sumRewardPunishNetByContract(100L)).thenReturn(BigDecimal.ZERO);
+            when(otherContractMapper.addCumulativePaid(100L, BigDecimal.TEN)).thenReturn(0);
+            assertThatThrownBy(() -> paymentApplyService.onApproved(1L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("操作已回滚");
+            verify(projectMapper, never()).addTotalExpense(anyLong(), any());
+        }
+
+        @Test
         @DisplayName("审批通过 — 已生效幂等跳过")
         void onApproved_idempotent() {
             Long id = 1L;
             BizPaymentApply apply = new BizPaymentApply();
             apply.setId(id);
             apply.setStatus("APPROVED");
-            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(paymentApplyMapper.lockById(id)).thenReturn(apply);
 
             paymentApplyService.onApproved(id);
 
@@ -389,7 +433,7 @@ class PaymentApplyServiceTest {
             after.setCumulativeSettlement(new BigDecimal("100000.00"));
             after.setCumulativePaid(new BigDecimal("120000.00"));
 
-            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(paymentApplyMapper.lockById(id)).thenReturn(apply);
             when(otherContractMapper.selectById(contractId)).thenReturn(before, after);
             when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
 
@@ -408,7 +452,7 @@ class PaymentApplyServiceTest {
             BizPaymentApply apply = new BizPaymentApply();
             apply.setId(id);
             apply.setStatus("SUBMITTED");
-            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(paymentApplyMapper.lockById(id)).thenReturn(apply);
 
             paymentApplyService.onRejected(id);
 
@@ -463,7 +507,7 @@ class PaymentApplyServiceTest {
             apply.setPaymentAmount(new BigDecimal("80000.00"));
             apply.setStatus("SUBMITTED");
 
-            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(paymentApplyMapper.lockById(id)).thenReturn(apply);
             when(contractPayableMapper.purchasePayable(contractId))
                     .thenReturn(new ContractPayableInfo(new BigDecimal("100000.00"), BigDecimal.ZERO));
             when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
@@ -614,7 +658,7 @@ class PaymentApplyServiceTest {
             contract.setCumulativeSettlement(new BigDecimal("100000.00"));
             contract.setCumulativePaid(new BigDecimal("80000.00"));
 
-            when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+            when(paymentApplyMapper.lockById(id)).thenReturn(apply);
             when(otherContractMapper.selectById(contractId)).thenReturn(contract);
             when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
 
@@ -800,7 +844,7 @@ class PaymentApplyServiceTest {
         @DisplayName("onApproved 状态非 SUBMITTED（陈旧回调）忽略，不回写累计")
         void onApproved_nonSubmitted_ignored() {
             BizPaymentApply a = apply(30L, "DRAFT");
-            when(paymentApplyMapper.selectById(30L)).thenReturn(a);
+            when(paymentApplyMapper.lockById(30L)).thenReturn(a);
             paymentApplyService.onApproved(30L);
             assertThat(a.getStatus()).isEqualTo("DRAFT");
             verify(projectMapper, never()).addTotalExpense(anyLong(), any());
@@ -817,7 +861,7 @@ class PaymentApplyServiceTest {
             contract.setId(310L);
             contract.setCumulativeSettlement(new BigDecimal("100000.00"));
             contract.setCumulativePaid(BigDecimal.ZERO);
-            when(paymentApplyMapper.selectById(31L)).thenReturn(a);
+            when(paymentApplyMapper.lockById(31L)).thenReturn(a);
             when(otherContractMapper.selectById(310L)).thenReturn(contract);
             when(settlementDataMapper.sumRewardPunishNetByContract(310L)).thenReturn(BigDecimal.ZERO);
 
@@ -961,11 +1005,11 @@ class PaymentApplyServiceTest {
         @Test
         @DisplayName("onRejected 幂等：非 SUBMITTED 静默返回（FIN-PAY-20）")
         void onRejected_idempotent() {
-            when(paymentApplyMapper.selectById(1L)).thenReturn(apply(1L, "REJECTED"));
+            when(paymentApplyMapper.lockById(1L)).thenReturn(apply(1L, "REJECTED"));
             paymentApplyService.onRejected(1L);
             verify(paymentApplyMapper, never()).updateById(any());
 
-            when(paymentApplyMapper.selectById(99L)).thenReturn(null);
+            when(paymentApplyMapper.lockById(99L)).thenReturn(null);
             paymentApplyService.onRejected(99L);
             verify(paymentApplyMapper, never()).updateById(any());
         }

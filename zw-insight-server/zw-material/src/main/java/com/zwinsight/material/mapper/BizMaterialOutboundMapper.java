@@ -11,4 +11,6 @@ import com.zwinsight.common.datapermission.DataPermission;
     @DataColumn(projectColumn = "project_id", userColumn = "created_by", deptColumn = "dept_id")
 })
 public interface BizMaterialOutboundMapper extends BaseMapper<BizMaterialOutbound> {
+    @org.apache.ibatis.annotations.Select("SELECT * FROM biz_material_outbound WHERE id=#{id} AND deleted=0 FOR UPDATE")
+    BizMaterialOutbound lockById(Long id);
 }

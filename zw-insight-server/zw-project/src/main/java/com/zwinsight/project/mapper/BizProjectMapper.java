@@ -17,6 +17,10 @@ import java.math.BigDecimal;
 })
 public interface BizProjectMapper extends BaseMapper<BizProject> {
 
+    @Update("UPDATE biz_project SET total_income = COALESCE(total_income, 0) + #{amount} " +
+            "WHERE id = #{projectId} AND deleted = 0 AND COALESCE(total_income, 0) + #{amount} >= 0")
+    int addTotalIncome(@Param("projectId") Long projectId, @Param("amount") BigDecimal amount);
+
     /**
      * 更新项目预算金额
      *

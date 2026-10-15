@@ -33,8 +33,37 @@ class MaterialOutboundServiceTest {
     @Mock private BizMaterialRefundMapper refundMapper;
     @Mock private ApplicationEventPublisher eventPublisher;
 
+    @Mock private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
+    @Mock private com.zwinsight.purchase.readmodel.MaterialInboundReadMapper inboundReadMapper;
+
     @InjectMocks
     private MaterialOutboundService materialOutboundService;
+
+    @Test
+    void returnMustChooseExplicitSourceBeforeWriting() {
+        var outbound = new BizMaterialOutbound();
+        outbound.setOutboundType("RETURN"); outbound.setContractId(20L);
+        var detail = new BizMaterialOutboundDetail(); detail.setQuantity(BigDecimal.ONE);
+        assertThatThrownBy(() -> materialOutboundService.save(outbound, List.of(detail))).hasMessageContaining("来源行");
+        verifyNoInteractions(outboundMapper, outboundDetailMapper, stockMapper);
+    }
+
+    @Test
+    void returnCannotConsumeQuantityReservedBySettlement() {
+        var outbound = new BizMaterialOutbound();
+        outbound.setOutboundType("RETURN"); outbound.setProjectId(10L); outbound.setContractId(20L);
+        var detail = new BizMaterialOutboundDetail(); detail.setInboundDetailId(11L); detail.setQuantity(new BigDecimal("2"));
+        when(sourceMapper.inboundId(11L)).thenReturn(5L);
+        var inbound = new com.zwinsight.purchase.readmodel.MaterialInboundView();
+        inbound.setId(5L); inbound.setProjectId(10L); inbound.setContractId(20L); inbound.setStatus("APPROVED");
+        when(inboundReadMapper.selectById(5L)).thenReturn(inbound);
+        when(sourceMapper.lines(5L)).thenReturn(List.of(java.util.Map.of("inboundDetailId", 11L, "quantity", new BigDecimal("10"))));
+        when(sourceMapper.settled(11L, -1L)).thenReturn(new BigDecimal("9"));
+        when(sourceMapper.returned(11L)).thenReturn(BigDecimal.ZERO);
+        assertThatThrownBy(() -> materialOutboundService.save(outbound, List.of(detail))).hasMessageContaining("结算占用");
+        verify(sourceMapper).lockInbound(5L);
+        verifyNoInteractions(outboundMapper, outboundDetailMapper, stockMapper);
+    }
 
     @Test
     @DisplayName("保存领料出库：库存充足扣减库存")
@@ -90,7 +119,7 @@ class MaterialOutboundServiceTest {
         BizMaterialOutbound outbound = new BizMaterialOutbound();
         outbound.setId(1L);
         outbound.setStatus("DRAFT");
-        when(outboundMapper.selectById(1L)).thenReturn(outbound);
+        when(outboundMapper.lockById(1L)).thenReturn(outbound);
 
         materialOutboundService.submit(1L);
 
@@ -103,7 +132,7 @@ class MaterialOutboundServiceTest {
         BizMaterialOutbound outbound = new BizMaterialOutbound();
         outbound.setId(1L);
         outbound.setStatus("APPROVED");
-        when(outboundMapper.selectById(1L)).thenReturn(outbound);
+        when(outboundMapper.lockById(1L)).thenReturn(outbound);
 
         assertThatThrownBy(() -> materialOutboundService.submit(1L))
                 .isInstanceOf(BusinessException.class)
@@ -116,7 +145,7 @@ class MaterialOutboundServiceTest {
         BizMaterialOutbound outbound = new BizMaterialOutbound();
         outbound.setId(1L);
         outbound.setStatus("APPROVED");
-        when(outboundMapper.selectById(1L)).thenReturn(outbound);
+        when(outboundMapper.lockById(1L)).thenReturn(outbound);
 
         assertThatThrownBy(() -> materialOutboundService.delete(1L))
                 .isInstanceOf(BusinessException.class)
@@ -130,8 +159,8 @@ class MaterialOutboundServiceTest {
         outbound.setId(1L);
         outbound.setStatus("APPROVED");
         outbound.setProjectName("E2E_TEST_1723900000000_项目");
-        when(outboundMapper.selectById(1L)).thenReturn(outbound);
-        when(outboundDetailMapper.selectList(any())).thenReturn(java.util.Collections.emptyList());
+        when(outboundMapper.lockById(1L)).thenReturn(outbound);
+        when(outboundDetailMapper.lockActiveDetails(anyLong())).thenReturn(java.util.Collections.emptyList());
 
         materialOutboundService.delete(1L);
 
@@ -146,7 +175,7 @@ class MaterialOutboundServiceTest {
         outbound.setProjectId(10L);
         outbound.setStatus("APPROVED");
         outbound.setOutboundType("PICK");
-        when(outboundMapper.selectById(2L)).thenReturn(outbound);
+        when(outboundMapper.lockById(2L)).thenReturn(outbound);
 
         BizMaterialOutboundDetail detail = new BizMaterialOutboundDetail();
         detail.setId(20L);
@@ -154,7 +183,7 @@ class MaterialOutboundServiceTest {
         detail.setMaterialName("E2E_TEST_1723900000000_钢筋");
         detail.setSpecification("HRB400");
         detail.setQuantity(new java.math.BigDecimal("5"));
-        when(outboundDetailMapper.selectList(any())).thenReturn(java.util.List.of(detail));
+        when(outboundDetailMapper.lockActiveDetails(anyLong())).thenReturn(java.util.List.of(detail));
 
         BizProjectMaterialStock stock = new BizProjectMaterialStock();
         stock.setId(88L);
@@ -187,7 +216,7 @@ class MaterialOutboundServiceTest {
         outbound.setStatus("DRAFT");
         outbound.setProjectId(100L);
         outbound.setOutboundType("PICK");
-        when(outboundMapper.selectById(1L)).thenReturn(outbound);
+        when(outboundMapper.lockById(1L)).thenReturn(outbound);
 
         BizMaterialOutboundDetail detail = new BizMaterialOutboundDetail();
         detail.setId(11L);
@@ -195,7 +224,7 @@ class MaterialOutboundServiceTest {
         detail.setMaterialName("钢筋");
         detail.setSpecification("HRB400");
         detail.setQuantity(new java.math.BigDecimal("20"));
-        when(outboundDetailMapper.selectList(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+        when(outboundDetailMapper.lockActiveDetails(anyLong()))
                 .thenReturn(java.util.List.of(detail));
 
         BizProjectMaterialStock stock = new BizProjectMaterialStock();
@@ -222,8 +251,8 @@ class MaterialOutboundServiceTest {
         outbound.setStatus("DRAFT");
         outbound.setProjectId(100L);
         outbound.setOutboundType("RETURN");
-        when(outboundMapper.selectById(2L)).thenReturn(outbound);
-        when(outboundDetailMapper.selectList(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+        when(outboundMapper.lockById(2L)).thenReturn(outbound);
+        when(outboundDetailMapper.lockActiveDetails(anyLong()))
                 .thenReturn(java.util.List.of());
 
         BizMaterialRefund refund = new BizMaterialRefund();
@@ -248,13 +277,97 @@ class MaterialOutboundServiceTest {
         outbound.setStatus("DRAFT");
         outbound.setProjectId(100L);
         outbound.setOutboundType("PICK");
-        when(outboundMapper.selectById(3L)).thenReturn(outbound);
-        when(outboundDetailMapper.selectList(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+        when(outboundMapper.lockById(3L)).thenReturn(outbound);
+        when(outboundDetailMapper.lockActiveDetails(anyLong()))
                 .thenReturn(java.util.List.of());
 
         materialOutboundService.delete(3L);
 
         verify(outboundMapper).deleteById(3L);
         verify(refundMapper, never()).selectList(any());
+    }
+    @Test
+    void secondDeleteAfterLockWaitCannotRestoreStockTwice() {
+        var outbound = new BizMaterialOutbound();
+        outbound.setId(1L); outbound.setStatus("DRAFT"); outbound.setOutboundType("PICK");
+        var detail = new BizMaterialOutboundDetail();
+        detail.setId(11L); detail.setQuantity(BigDecimal.ONE);
+        var stock = new BizProjectMaterialStock(); stock.setId(77L);
+        when(outboundMapper.lockById(1L)).thenReturn(outbound, null);
+        when(outboundDetailMapper.lockActiveDetails(anyLong())).thenReturn(List.of(detail));
+        when(stockMapper.selectOne(any())).thenReturn(stock);
+        materialOutboundService.delete(1L);
+        assertThatThrownBy(() -> materialOutboundService.delete(1L)).hasMessageContaining("不存在");
+        verify(stockMapper, times(1)).revertOutbound(77L, BigDecimal.ONE, true);
+        verify(outboundDetailMapper, times(1)).lockActiveDetails(1L);
+    }
+
+    @Test
+    void deleteAfterSubmitUsesLockedStatusAndCannotRestoreStock() {
+        var outbound = new BizMaterialOutbound(); outbound.setId(1L); outbound.setStatus("DRAFT");
+        when(outboundMapper.lockById(1L)).thenReturn(outbound);
+        when(outboundDetailMapper.lockActiveDetails(anyLong())).thenReturn(List.of());
+        materialOutboundService.submit(1L);
+        assertThatThrownBy(() -> materialOutboundService.delete(1L)).hasMessageContaining("仅草稿");
+        verifyNoInteractions(stockMapper);
+        verify(outboundMapper, never()).deleteById(1L);
+    }
+    @Test
+    void deleteLocksAllSourcesSortedBeforeHeaderAndRereadsDetails() {
+        var outbound = new BizMaterialOutbound();
+        outbound.setId(1L); outbound.setStatus("DRAFT"); outbound.setOutboundType("PICK");
+        when(outboundDetailMapper.discoverInboundIds(1L)).thenReturn(List.of(9L, 5L, 9L));
+        when(outboundMapper.lockById(1L)).thenReturn(outbound);
+        when(outboundDetailMapper.lockActiveDetails(1L)).thenReturn(List.of());
+        materialOutboundService.delete(1L);
+        var order = inOrder(outboundDetailMapper, sourceMapper, outboundMapper);
+        order.verify(outboundDetailMapper).discoverInboundIds(1L);
+        order.verify(sourceMapper).lockInbound(5L);
+        order.verify(sourceMapper).lockInbound(9L);
+        order.verify(outboundMapper).lockById(1L);
+        order.verify(outboundDetailMapper).lockActiveDetails(1L);
+        order.verify(outboundMapper).deleteById(1L);
+    }
+
+    @Test
+    void submitLocksSourcesBeforeHeader() {
+        var outbound = new BizMaterialOutbound(); outbound.setId(1L); outbound.setStatus("DRAFT");
+        when(outboundDetailMapper.discoverInboundIds(1L)).thenReturn(List.of(9L, 5L));
+        when(outboundMapper.lockById(1L)).thenReturn(outbound);
+        materialOutboundService.submit(1L);
+        var order = inOrder(outboundDetailMapper, sourceMapper, outboundMapper);
+        order.verify(outboundDetailMapper).discoverInboundIds(1L);
+        order.verify(sourceMapper).lockInbound(5L);
+        order.verify(sourceMapper).lockInbound(9L);
+        order.verify(outboundMapper).lockById(1L);
+        order.verify(outboundMapper).updateById(outbound);
+    }
+
+    @Test
+    void returnCreateLocksSourcesBeforeInsert() {
+        var outbound = new BizMaterialOutbound(); outbound.setOutboundType("RETURN");
+        outbound.setProjectId(10L); outbound.setContractId(20L);
+        var first = new BizMaterialOutboundDetail(); first.setInboundDetailId(19L); first.setQuantity(BigDecimal.ONE);
+        var second = new BizMaterialOutboundDetail(); second.setInboundDetailId(15L); second.setQuantity(BigDecimal.ONE);
+        when(sourceMapper.inboundId(19L)).thenReturn(9L);
+        when(sourceMapper.inboundId(15L)).thenReturn(5L);
+        for (long id : new long[]{5L,9L}) {
+            var inbound = new com.zwinsight.purchase.readmodel.MaterialInboundView();
+            inbound.setId(id); inbound.setProjectId(10L); inbound.setContractId(20L); inbound.setStatus("APPROVED");
+            when(inboundReadMapper.selectById(id)).thenReturn(inbound);
+            long detailId = id == 5L ? 15L : 19L;
+            when(sourceMapper.lines(id)).thenReturn(List.of(java.util.Map.of("inboundDetailId", detailId,
+                    "quantity", new BigDecimal("10"), "unitPrice", BigDecimal.ONE, "materialName", "steel", "specification", "S", "unit", "kg")));
+            when(sourceMapper.returned(detailId)).thenReturn(BigDecimal.ZERO);
+            when(sourceMapper.settled(detailId, -1L)).thenReturn(BigDecimal.ZERO);
+        }
+        var stock = new BizProjectMaterialStock(); stock.setId(77L);
+        when(stockMapper.selectOne(any())).thenReturn(stock);
+        when(stockMapper.deductStock(77L, BigDecimal.ONE, false)).thenReturn(1);
+        materialOutboundService.save(outbound, List.of(first, second));
+        var order = inOrder(sourceMapper, outboundMapper);
+        order.verify(sourceMapper).lockInbound(5L);
+        order.verify(sourceMapper).lockInbound(9L);
+        order.verify(outboundMapper).insert(outbound);
     }
 }

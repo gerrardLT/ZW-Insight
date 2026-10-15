@@ -147,15 +147,13 @@ class ChangeVisaServiceTest {
     void onApproved_writesBackContract() {
         BizChangeVisa v = visa("SUBMITTED");
         when(changeVisaMapper.selectById(1L)).thenReturn(v);
-        BizConstructionContract contract = new BizConstructionContract();
-        contract.setCumulativeChangeAmount(null);
-        when(contractMapper.selectById(20L)).thenReturn(contract);
+        when(changeVisaMapper.approvePending(1L)).thenReturn(1);
+        when(contractMapper.addCumulativeChangeAmount(20L, new BigDecimal("8000"))).thenReturn(1);
 
         service.onApproved(1L);
 
-        assertThat(v.getStatus()).isEqualTo("APPROVED");
-        verify(contractMapper).updateById(argThat(c ->
-                c.getCumulativeChangeAmount().compareTo(new BigDecimal("8000")) == 0));
+        verify(changeVisaMapper).transitionSubmitted(1L, "APPROVED");
+        verify(contractMapper).addCumulativeChangeAmount(20L, new BigDecimal("8000"));
     }
 
     @Test
@@ -164,15 +162,12 @@ class ChangeVisaServiceTest {
         BizChangeVisa v = visa("SUBMITTED");
         v.setChangeAmount(null);
         when(changeVisaMapper.selectById(1L)).thenReturn(v);
-        BizConstructionContract contract = new BizConstructionContract();
-        contract.setCumulativeChangeAmount(new BigDecimal("500"));
-        when(contractMapper.selectById(20L)).thenReturn(contract);
+        when(changeVisaMapper.approvePending(1L)).thenReturn(1);
+        when(contractMapper.addCumulativeChangeAmount(20L, BigDecimal.ZERO)).thenReturn(1);
 
         service.onApproved(1L);
 
-        // 累计变更 500 + 0 = 500，无 NPE
-        verify(contractMapper).updateById(argThat(c ->
-                c.getCumulativeChangeAmount().compareTo(new BigDecimal("500")) == 0));
+        verify(contractMapper).addCumulativeChangeAmount(20L, BigDecimal.ZERO);
     }
 
     @Test
@@ -180,11 +175,10 @@ class ChangeVisaServiceTest {
     void onApproved_contractMissing_skipsWriteBack() {
         BizChangeVisa v = visa("SUBMITTED");
         when(changeVisaMapper.selectById(1L)).thenReturn(v);
-        when(contractMapper.selectById(20L)).thenReturn(null);
+        when(changeVisaMapper.approvePending(1L)).thenReturn(1);
 
-        service.onApproved(1L);
-
-        assertThat(v.getStatus()).isEqualTo("APPROVED");
+        assertThatThrownBy(() -> service.onApproved(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("合同不存在");
         verify(contractMapper, never()).updateById(any());
     }
 
@@ -202,6 +196,46 @@ class ChangeVisaServiceTest {
     }
 
     @Test
+    @DisplayName("退回发起人后REJECTED重审兼容")
+    void onApproved_rejected_canApprove() {
+        when(changeVisaMapper.selectById(1L)).thenReturn(visa("REJECTED"));
+        when(changeVisaMapper.approvePending(1L)).thenReturn(1);
+        when(contractMapper.addCumulativeChangeAmount(20L, new BigDecimal("8000"))).thenReturn(1);
+        service.onApproved(1L);
+        verify(contractMapper).addCumulativeChangeAmount(20L, new BigDecimal("8000"));
+    }
+
+    @Test
+    @DisplayName("DRAFT陈旧审批不入账")
+    void onApproved_draft_ignored() {
+        when(changeVisaMapper.selectById(1L)).thenReturn(visa("DRAFT"));
+        service.onApproved(1L);
+        verify(changeVisaMapper, never()).approvePending(anyLong());
+        verifyNoInteractions(contractMapper);
+    }
+
+    @Test
+    @DisplayName("CAS后累计SQL异常传播，事务负责回滚")
+    void onApproved_atomicWriteThrows_propagates() {
+        when(changeVisaMapper.selectById(1L)).thenReturn(visa("SUBMITTED"));
+        when(changeVisaMapper.approvePending(1L)).thenReturn(1);
+        when(contractMapper.addCumulativeChangeAmount(20L, new BigDecimal("8000")))
+                .thenThrow(new IllegalStateException("DB write failed"));
+        assertThatThrownBy(() -> service.onApproved(1L)).isInstanceOf(IllegalStateException.class);
+        var order = inOrder(changeVisaMapper, contractMapper);
+        order.verify(changeVisaMapper).approvePending(1L);
+        order.verify(contractMapper).addCumulativeChangeAmount(20L, new BigDecimal("8000"));
+    }
+
+    @Test
+    @DisplayName("并发审批CAS失败不重复回写")
+    void onApproved_lostCas_doesNotWrite() {
+        when(changeVisaMapper.selectById(1L)).thenReturn(visa("SUBMITTED"));
+        service.onApproved(1L);
+        verify(contractMapper, never()).addCumulativeChangeAmount(anyLong(), any());
+    }
+
+    @Test
     @DisplayName("onApproved - 记录不存在：跳过不报错")
     void onApproved_missingRecord_skips() {
         when(changeVisaMapper.selectById(9L)).thenReturn(null);
@@ -216,11 +250,12 @@ class ChangeVisaServiceTest {
     void onRejected_setsRejectedOnlyFromSubmitted() {
         BizChangeVisa submitted = visa("SUBMITTED");
         when(changeVisaMapper.selectById(1L)).thenReturn(submitted);
+        when(changeVisaMapper.transitionSubmitted(1L, "REJECTED")).thenReturn(1);
 
         service.onRejected(1L);
 
         assertThat(submitted.getStatus()).isEqualTo("REJECTED");
-        verify(changeVisaMapper).updateById(submitted);
+        verify(changeVisaMapper).transitionSubmitted(1L, "REJECTED");
 
         BizChangeVisa approved = visa("APPROVED");
         when(changeVisaMapper.selectById(2L)).thenReturn(approved);

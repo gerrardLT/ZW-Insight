@@ -45,6 +45,8 @@ public class PurchaseApprovalListener {
             log.info("收到采购结算审批通过事件: id={}, result={}", businessId, event.getResult());
             if ("APPROVED".equals(event.getResult())) {
                 settlementService.onApproved(businessId);
+            } else {
+                settlementService.onRejected(businessId, event.getResult());
             }
         }
     }
@@ -62,7 +64,7 @@ public class PurchaseApprovalListener {
             contractService.onRejected(bizId);
         } else if (TYPE_SETTLEMENT.equals(bizType)) {
             log.info("收到采购结算审批驳回/撤回事件: id={}, rejectType={}", bizId, event.getRejectType());
-            settlementService.onRejected(bizId);
+            settlementService.onRejected(bizId, event.getRejectType());
         }
     }
 }

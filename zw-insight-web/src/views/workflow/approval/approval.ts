@@ -25,6 +25,7 @@ export function money(value: unknown): string {
   return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(Number(value))
 }
 const BUSINESS_TYPE_NAMES: Record<string, string> = {
+  CONTRACT_REVISION: '合同修订',
   CONSTRUCTION_CONTRACT: '施工合同', CHANGE_VISA: '变更签证', FINAL_SETTLEMENT: '竣工结算', OUTPUT_REPORT: '产值报告',
   BUDGET_CHANGE: '预算变更', INVOICE_APPLY: '开票申请', PAYMENT_APPLY: '付款申请', PROJECT_REIMBURSEMENT: '项目报销',
   PERSONAL_REIMBURSEMENT: '个人报销', RETENTION_RETURN: '质保金退还', RESERVE_FUND_APPLY: '备用金申请',

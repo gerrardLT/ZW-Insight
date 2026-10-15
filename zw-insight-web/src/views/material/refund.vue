@@ -16,13 +16,21 @@
       </el-form>
 
       <el-alert
-        title="退款记录由退货出库审批通过后自动生成，此处仅供查询"
+        title="退款在保存退货出库时自动发起审批；新增退货须明确选择来源入库行"
         type="info"
         show-icon
         :closable="false"
         style="margin-bottom: var(--zw-space-md)"
       />
 
+      <el-button type="primary" @click="returnVisible = true">新增来源退货</el-button>
+      <el-dialog v-model="returnVisible" title="选择来源入库行退货" width="700px">
+        <el-form label-width="110px">
+          <el-form-item label="来源入库单ID"><el-input v-model="inboundId" /><el-button @click="loadSource">加载来源</el-button></el-form-item>
+          <el-table :data="returnLines"><el-table-column prop="materialName" label="材料" /><el-table-column prop="availableQuantity" label="可用数量" /><el-table-column label="退货数量"><template #default="{ row }"><el-input-number v-model="row.returnQuantity" :min="0" :max="Number(row.availableQuantity)" :precision="4" /></template></el-table-column></el-table>
+          <el-button type="primary" :loading="saving" @click="saveReturn">保存并发起退款审批</el-button>
+        </el-form>
+      </el-dialog>
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="refundCode" label="退款单号" width="180" show-overflow-tooltip />
         <el-table-column prop="contractId" label="采购合同ID" width="120" />
@@ -79,7 +87,37 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
 import { getMaterialRefundPage, getMaterialRefundDetail } from '@/api/material'
+
+const returnVisible = ref(false)
+const inboundId = ref('')
+const loadedInbound = ref<any>(null)
+const loadedInboundId = ref('')
+const returnLines = ref<any[]>([])
+const saving = ref(false)
+async function loadSource() {
+  loadedInbound.value = null
+  returnLines.value = []
+  const source: any = await request.get(`/v1/material/inbound/${inboundId.value}`)
+  const lines: any = await request.get('/v1/purchase/settlement/inbound-lines', { params: { inboundId: inboundId.value } })
+  loadedInboundId.value = inboundId.value
+  loadedInbound.value = source.data
+  returnLines.value = lines.data.map((line: any) => ({ ...line, returnQuantity: 0 }))
+}
+async function saveReturn() {
+  if (!loadedInbound.value || loadedInboundId.value !== inboundId.value) { ElMessage.warning('请重新加载来源入库单'); return }
+  const details = returnLines.value.filter(line => Number(line.returnQuantity) > 0).map(line => ({ inboundDetailId: line.inboundDetailId, quantity: line.returnQuantity }))
+  if (!details.length) { ElMessage.warning('请选择来源行并填写退货数量'); return }
+  saving.value = true
+  try {
+    await request.post('/v1/material/outbound', { outboundType: 'RETURN', projectId: loadedInbound.value.projectId, contractId: loadedInbound.value.contractId, outboundDate: new Date().toISOString().slice(0, 10), details })
+    returnVisible.value = false
+    ElMessage.success('退货已保存，退款已发起审批')
+    await loadData()
+  } finally { saving.value = false }
+}
 
 const loading = ref(false)
 const tableData = ref<any[]>([])

@@ -233,6 +233,8 @@
 
 ## 受阻项登记表
 
+| 2026-10-15 | L1 前端静态 | `vue-tsc --noEmit -p D:/tem_projects/ZW-Insight/zw-insight-web/tsconfig.json` | OTHER | 退出码2；`src/__tests__/contract-form-view.component.test.ts(82,37): TS2339 Property 'setupState' does not exist on type 'ComponentInternalInstance'`；`finance-matrix.component.test.ts(130,28)/(141,28)/(153,18)/(169,28)/(177,28)/(207,28)/(227,18)/(235,28)/(266,28)/(280,18)/(293,18)` 同错，完整输出约34.2KB，未核实是否全部为存量 | 全量前端TypeScript静态门禁未通过，合同表单及财务矩阵组件测试类型受影响；不能据局部测试宣称整体通过 | 待用户决策：修复类型错误 / 延期 / 缩减静态检查范围；不自行降级 | 受阻，未通过 |
+
 | 2026-10-15 | L1/L3/DB | competitor-feature-enrichment 后端单测、真实接口及 V2026_103/104 MySQL 验证 | OTHER | 原登记：用户禁止本地 Java/mvn 与推送部署。2026-10-15 用户授权推送后已补验（见右） | 已验：CI run 38678075232 后端构建与单测通过（jacoco 默认跳过）；129 的 MySQL 8.0.37 临时库迁移连跑两遍幂等、防重用例 T1-T7 符合预期（临时库已删）；双机 Flyway 2026.103/104 success=1、8 列与唯一索引在位、存量行 identity 为 NULL；只读登录 GET 8 项均 code=200。未验：并发插入竞态走应用层的实测、经应用写入发票/签证的完整链路、L3/L4 脚本（Integration Test 默认跳过） | 防重并发与写路径仍缺运行实证 | 待下次授权跑 `gh workflow run deploy.yml -f run_tests=true` 或隔离租户 9999 写路径验证 | 部分已验 |
 
 > 测试受阻汇报规则（AGENTS.md §8）：受阻即停、登记本表、向用户汇报三选项（修复环境/延期/缩减范围），禁止静默跳过与假数据降级。

@@ -38,6 +38,8 @@ import java.util.Map;
 public class PurchaseSettlementService {
 
     private final BizPurchaseSettlementMapper settlementMapper;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
     private final BizPurchaseContractMapper contractMapper;
     private final MaterialInboundReadMapper materialInboundReadMapper;
     private final SerialNumberService serialNumberService;
@@ -67,6 +69,7 @@ public class PurchaseSettlementService {
             throw new BusinessException("采购结算不存在");
         }
         fillDisplayFields(settlement);
+        if ("LINES".equals(settlement.getSettlementMode())) settlement.setDetails(sourceMapper.settlementLines(id));
         return settlement;
     }
 
@@ -79,8 +82,22 @@ public class PurchaseSettlementService {
         }
         List<MaterialInboundView> inbounds = materialInboundReadMapper.selectApprovedByContract(contractId);
         // 剔除已存在结算记录的入库单（一张入库单只结算一次）
-        inbounds.removeIf(inbound -> settlementExistsForInbound(inbound.getId(), null));
+        inbounds.removeIf(inbound -> sourceMapper.incompatible(inbound.getId(), -1L, 0) > 0);
         return inbounds;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public List<Map<String,Object>> inboundLines(Long inboundId) {
+        sourceMapper.lockInbound(inboundId);
+        var inbound = materialInboundReadMapper.selectById(inboundId);
+        if (inbound == null || !"APPROVED".equals(inbound.getStatus())) throw new BusinessException("来源入库单不存在或未审批");
+        var lines = sourceMapper.lines(inboundId);
+        for (var line : lines) {
+            Long id = Long.valueOf(line.get("inboundDetailId").toString());
+            line.put("availableQuantity", new BigDecimal(line.get("quantity").toString())
+                    .subtract(sourceMapper.settled(id, -1L)).subtract(sourceMapper.returned(id)));
+        }
+        return lines;
     }
 
     /**
@@ -92,14 +109,16 @@ public class PurchaseSettlementService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void create(BizPurchaseSettlement settlement) {
-        rejectUnsafePartialSettlement(settlement);
+
         if (settlement.getInboundId() == null) {
             throw new BusinessException("采购结算必须关联入库单");
         }
-        if (settlement.getSettlementAmount() == null || settlement.getSettlementAmount().signum() <= 0) {
+        if (settlement.getDetails() == null && (settlement.getSettlementAmount() == null || settlement.getSettlementAmount().signum() <= 0)) {
             throw new BusinessException("结算金额必须大于0");
         }
 
+        settlement.setId(null);
+        settlement.setTenantId(null);
         // 加载入库单作为结算依据
         MaterialInboundView inbound = materialInboundReadMapper.selectById(settlement.getInboundId());
         if (inbound == null) {
@@ -111,8 +130,12 @@ public class PurchaseSettlementService {
         if (inbound.getContractId() == null) {
             throw new BusinessException("该入库单未关联采购合同，无法结算");
         }
+        sourceMapper.lockInbound(inbound.getId());
+        settlement.setSettlementMode(settlement.getDetails() == null ? "LEGACY" : "LINES");
+        checkMode(settlement, -1L);
+        if ("LINES".equals(settlement.getSettlementMode())) calculateLines(settlement, -1L);
         // 一张入库单只能结算一次
-        if (settlementExistsForInbound(inbound.getId(), null)) {
+        if ("LEGACY".equals(settlement.getSettlementMode()) && settlementExistsForInbound(inbound.getId(), null)) {
             throw new BusinessException("该入库单已存在结算记录，不可重复结算");
         }
 
@@ -135,21 +158,74 @@ public class PurchaseSettlementService {
         settlement.setStatus("DRAFT");
         settlement.setWorkflowInstanceId(null);
         settlementMapper.insert(settlement);
+        saveLines(settlement);
     }
 
     /**
      * 更新采购结算（仅草稿可编辑；仅允许修改结算金额/日期/备注，结算依据不可改）
      */
-    private void rejectUnsafePartialSettlement(BizPurchaseSettlement settlement) {
-        // ponytail: outbound detail has no inbound_detail_id; enable only after explicit source linkage and quantity ledger exist.
-        if (settlement.getDetails() != null) {
-            throw new BusinessException(409, "暂不支持行级分批结算：退货明细缺少来源入库行关联，无法安全核定可结数量；请使用既有整单结算");
+    private void checkMode(BizPurchaseSettlement s, Long excludeId) {
+        if (!"LINES".equals(s.getSettlementMode())) {
+            var inbound = materialInboundReadMapper.selectById(s.getInboundId());
+            if (inbound == null) throw new BusinessException("来源入库单不存在");
+            if (sourceMapper.unlinkedReturns(inbound.getContractId()) > 0)
+                throw new BusinessException(409, "合同存在未关联来源的历史退货，请人工核实");
+            for (var line : sourceMapper.lines(s.getInboundId())) {
+                Long lineId = Long.valueOf(line.get("inboundDetailId").toString());
+                if (sourceMapper.returned(lineId).signum() > 0)
+                    throw new BusinessException(409, "来源入库单已有明确来源退货，请改用分批结算");
+            }
+        }
+        if (sourceMapper.incompatible(s.getInboundId(), excludeId, "LINES".equals(s.getSettlementMode()) ? 0 : 1) > 0)
+            throw new BusinessException(409, "同一入库单整单与分批结算不得混用");
+    }
+
+    private void calculateLines(BizPurchaseSettlement s, Long excludeId) {
+        var inbound = materialInboundReadMapper.selectById(s.getInboundId());
+        if (inbound == null || !"APPROVED".equals(inbound.getStatus())) throw new BusinessException("来源入库单未审批");
+        if (sourceMapper.unlinkedReturns(inbound.getContractId()) > 0)
+            throw new BusinessException(409, "合同存在未关联来源入库行的历史退货，须人工核实，不可自动推断");
+        if (s.getDetails() == null || s.getDetails().isEmpty()) throw new BusinessException("请选择结算明细");
+        s.setDetails(s.getDetails().stream().map(x -> (Map<String,Object>) new HashMap<String,Object>(x)).collect(java.util.stream.Collectors.toList()));
+        var sources = sourceMapper.lines(s.getInboundId());
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (var line : s.getDetails()) {
+            Long id;
+            BigDecimal quantity;
+            try {
+                id = new BigDecimal(String.valueOf(line.get("inboundDetailId"))).longValueExact();
+                quantity = new BigDecimal(String.valueOf(line.get("quantity")));
+            } catch (RuntimeException e) { throw new BusinessException("来源行或数量格式错误"); }
+            if (!seen.add(id) || quantity.signum() <= 0 || quantity.scale() > 4) throw new BusinessException("来源行重复或数量无效");
+            final Long sourceId = id;
+            var source = sources.stream().filter(x -> String.valueOf(x.get("inboundDetailId")).equals(sourceId.toString())).findFirst()
+                    .orElseThrow(() -> new BusinessException("明细不属于所选入库单"));
+            BigDecimal available = new BigDecimal(source.get("quantity").toString())
+                    .subtract(sourceMapper.settled(id, excludeId)).subtract(sourceMapper.returned(id));
+            if (quantity.compareTo(available) > 0) throw new BusinessException(409, "数量超过可结算余量（含审批中占用及退货）");
+            BigDecimal price = new BigDecimal(source.get("unitPrice").toString());
+            BigDecimal amount = quantity.multiply(price).setScale(2, java.math.RoundingMode.HALF_UP);
+            line.put("unitPrice", price); line.put("amount", amount); line.put("inboundDetailId", id);
+            total = total.add(amount);
+        }
+        if (total.signum() <= 0) throw new BusinessException("结算金额必须大于0");
+        s.setSettlementAmount(total);
+    }
+
+    private void saveLines(BizPurchaseSettlement s) {
+        if (!"LINES".equals(s.getSettlementMode())) return;
+        sourceMapper.deleteLines(s.getId());
+        for (var line : s.getDetails()) {
+            line.put("id", com.baomidou.mybatisplus.core.toolkit.IdWorker.getId());
+            line.put("tenantId", s.getTenantId()); line.put("projectId", s.getProjectId()); line.put("settlementId", s.getId());
+            sourceMapper.insertLine(line);
         }
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void update(BizPurchaseSettlement settlement) {
-        rejectUnsafePartialSettlement(settlement);
+
         BizPurchaseSettlement existing = settlementMapper.selectById(settlement.getId());
         if (existing == null) {
             throw new BusinessException("采购结算不存在");
@@ -157,9 +233,14 @@ public class PurchaseSettlementService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
-        if (settlement.getSettlementAmount() == null || settlement.getSettlementAmount().signum() <= 0) {
-            throw new BusinessException("结算金额必须大于0");
-        }
+        sourceMapper.lockInbound(existing.getInboundId());
+        existing = settlementMapper.lockById(existing.getId());
+        if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException(409, "单据状态已变更");
+        if ("LINES".equals(existing.getSettlementMode())) {
+            existing.setDetails(settlement.getDetails()); calculateLines(existing, existing.getId());
+            settlement.setSettlementAmount(existing.getSettlementAmount());
+        } else if (settlement.getDetails() != null) throw new BusinessException(409, "旧整单不可改为分批");
+        if (settlement.getSettlementAmount() == null || settlement.getSettlementAmount().signum() <= 0) throw new BusinessException("结算金额必须大于0");
         BigDecimal inboundAmount = existing.getInboundAmount() != null ? existing.getInboundAmount() : BigDecimal.ZERO;
         if (settlement.getSettlementAmount().compareTo(inboundAmount) > 0) {
             throw new BusinessException("结算金额不能大于入库金额");
@@ -172,6 +253,7 @@ public class PurchaseSettlementService {
         existing.setCumulativeSettlement(
                 sumApprovedSettlement(existing.getContractId()).add(settlement.getSettlementAmount()));
         settlementMapper.updateById(existing);
+        saveLines(existing);
     }
 
     /**
@@ -190,6 +272,10 @@ public class PurchaseSettlementService {
         }
         BigDecimal amount = existing.getSettlementAmount() == null
                 ? BigDecimal.ZERO : existing.getSettlementAmount();
+        sourceMapper.lockInbound(existing.getInboundId());
+        existing = settlementMapper.lockById(id);
+        if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) throw new BusinessException(409, "单据状态已变更");
+        sourceMapper.deleteLines(id);
         settlementMapper.deleteById(id);
 
         if ("APPROVED".equals(existing.getStatus())) {
@@ -211,6 +297,13 @@ public class PurchaseSettlementService {
             throw new BusinessException("仅草稿状态可提交");
         }
 
+        sourceMapper.lockInbound(settlement.getInboundId());
+        settlement = settlementMapper.lockById(id);
+        if (!"DRAFT".equals(settlement.getStatus())) throw new BusinessException(409, "单据已提交");
+        checkMode(settlement, id);
+        if ("LINES".equals(settlement.getSettlementMode())) {
+            settlement.setDetails(sourceMapper.settlementLines(id)); calculateLines(settlement, id);
+        }
         // 发起审批流程
         Map<String, Object> variables = new HashMap<>();
         variables.put("settlementAmount", settlement.getSettlementAmount());
@@ -235,6 +328,8 @@ public class PurchaseSettlementService {
             log.warn("采购结算审批通过回调：单据不存在, id={}", id);
             return;
         }
+        sourceMapper.lockInbound(settlement.getInboundId());
+        settlement = settlementMapper.lockById(id);
         if ("APPROVED".equals(settlement.getStatus())) {
             log.info("采购结算已生效，跳过重复回调, id={}", id);
             return;
@@ -256,23 +351,24 @@ public class PurchaseSettlementService {
     }
 
     /**
-     * 审批驳回/撤回回调（仅 SUBMITTED 可回退 DRAFT）
+     * 审批退回保留在途占用；撤回/终止才由 SUBMITTED 回退 DRAFT
      */
     @Transactional(rollbackFor = Exception.class)
     public void onRejected(Long id) {
-        BizPurchaseSettlement settlement = settlementMapper.selectById(id);
-        if (settlement == null) {
-            log.warn("采购结算审批驳回回调：单据不存在, id={}", id);
-            return;
-        }
-        if (!"SUBMITTED".equals(settlement.getStatus())) {
-            log.warn("采购结算当前状态非 SUBMITTED，忽略驳回回调: id={}, status={}", id, settlement.getStatus());
-            return;
-        }
+        // REJECT means a live process moved to an earlier node; keep SUBMITTED and its reservation.
+        onRejected(id, "REJECT");
+    }
 
+    @Transactional(rollbackFor = Exception.class)
+    public void onRejected(Long id, String rejectType) {
+        if (!java.util.Set.of("WITHDRAW", "TERMINATE").contains(rejectType == null ? "" : rejectType)) return;
+        BizPurchaseSettlement settlement = settlementMapper.selectById(id);
+        if (settlement == null) return;
+        sourceMapper.lockInbound(settlement.getInboundId());
+        settlement = settlementMapper.lockById(id);
+        if (settlement == null || !"SUBMITTED".equals(settlement.getStatus())) return;
         settlement.setStatus("DRAFT");
         settlementMapper.updateById(settlement);
-        log.info("采购结算审批驳回回退草稿: id={}", id);
     }
 
     // ===== 私有方法 =====

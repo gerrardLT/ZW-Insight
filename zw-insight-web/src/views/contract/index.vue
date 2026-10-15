@@ -111,6 +111,7 @@
                 <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmitContract(row)">提交</el-button>
                 <el-button v-if="row.status === 'SUBMITTED'" link type="warning" @click="handleWithdrawContract(row)">撤回</el-button>
                 <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
+                <el-button v-if="row.status === 'EFFECTIVE'" link type="warning" @click="revisionDialog?.open(row.id)">修订</el-button>
                 <el-button v-if="row.status === 'EFFECTIVE'" link type="info" @click="handleGoBoq(row)">清单</el-button>
                 <PrintButton
                   link
@@ -161,6 +162,7 @@
       :params="queryParams.projectId ? { projectId: queryParams.projectId } : undefined"
     />
 
+    <ContractRevisionDialog ref="revisionDialog" @changed="loadData" />
     <!-- 合同履约全景综合抽屉 (P1-M3 A1) -->
     <ContractDetailDrawer
       v-model="drawerVisible"
@@ -186,6 +188,8 @@ import StatChartPanel from '@/components/StatChartPanel.vue'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
 import ContractDetailDrawer from './components/ContractDetailDrawer.vue'
+import ContractRevisionDialog from './components/ContractRevisionDialog.vue'
+const revisionDialog = ref<InstanceType<typeof ContractRevisionDialog>>()
 
 // 列显隐配置（S2.1）：按 contract-table 持久化 localStorage
 const contractColumns = [

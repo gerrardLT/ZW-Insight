@@ -35,6 +35,10 @@ import java.util.List;
 public class MaterialOutboundService {
 
     private final BizMaterialOutboundMapper outboundMapper;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.zwinsight.purchase.readmodel.MaterialInboundReadMapper inboundReadMapper;
     private final BizMaterialOutboundDetailMapper outboundDetailMapper;
     private final BizProjectMaterialStockMapper stockMapper;
     private final BizMaterialRefundMapper refundMapper;
@@ -63,6 +67,9 @@ public class MaterialOutboundService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void save(BizMaterialOutbound outbound, List<BizMaterialOutboundDetail> details) {
+        outbound.setId(null);
+        outbound.setTenantId(null);
+        if ("RETURN".equals(outbound.getOutboundType())) validateReturn(outbound, details);
         outbound.setStatus("DRAFT");
         outboundMapper.insert(outbound);
 
@@ -115,6 +122,34 @@ public class MaterialOutboundService {
         }
     }
 
+    private void validateReturn(BizMaterialOutbound outbound, List<BizMaterialOutboundDetail> details) {
+        if (details == null || details.isEmpty() || outbound.getContractId() == null) throw new BusinessException("退货必须选择合同和来源明细");
+        java.util.Map<Long,Long> sources = new java.util.HashMap<>();
+        for (var d : details) {
+            if (d.getInboundDetailId() == null || sources.containsKey(d.getInboundDetailId())) throw new BusinessException("退货来源行缺失或重复");
+            Long inboundId = sourceMapper.inboundId(d.getInboundDetailId());
+            if (inboundId == null) throw new BusinessException("来源入库行不存在");
+            sources.put(d.getInboundDetailId(), inboundId);
+        }
+        sources.values().stream().distinct().sorted().forEach(sourceMapper::lockInbound);
+        for (var d : details) {
+            Long inboundId = sources.get(d.getInboundDetailId());
+            var inbound = inboundReadMapper.selectById(inboundId);
+            if (inbound == null || !"APPROVED".equals(inbound.getStatus())
+                    || !java.util.Objects.equals(inbound.getContractId(), outbound.getContractId())
+                    || !java.util.Objects.equals(inbound.getProjectId(), outbound.getProjectId())) throw new BusinessException("退货来源项目、合同或审批状态不符");
+            if (sourceMapper.incompatible(inboundId, -1L, 0) > 0) throw new BusinessException(409, "来源已存在整单结算，须先处理原结算");
+            var source = sourceMapper.lines(inboundId).stream().filter(x -> String.valueOf(x.get("inboundDetailId")).equals(d.getInboundDetailId().toString())).findFirst()
+                    .orElseThrow(() -> new BusinessException("来源入库行不存在"));
+            BigDecimal available = new BigDecimal(source.get("quantity").toString())
+                    .subtract(sourceMapper.returned(d.getInboundDetailId())).subtract(sourceMapper.settled(d.getInboundDetailId(), -1L));
+            if (d.getQuantity() == null || d.getQuantity().signum() <= 0 || d.getQuantity().scale() > 4 || d.getQuantity().compareTo(available) > 0)
+                throw new BusinessException(409, "退货数量超过来源可用数量（含结算占用）");
+            d.setMaterialName((String) source.get("materialName")); d.setSpecification((String) source.get("specification"));
+            d.setUnit((String) source.get("unit")); d.setUnitPrice(new BigDecimal(source.get("unitPrice").toString()));
+        }
+    }
+
     /**
      * 发布退货出库事件
      */
@@ -164,28 +199,38 @@ public class MaterialOutboundService {
         return outbound;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void update(BizMaterialOutbound outbound) {
-        BizMaterialOutbound existing = outboundMapper.selectById(outbound.getId());
+        lockSources(outbound.getId());
+        BizMaterialOutbound existing = outboundMapper.lockById(outbound.getId());
         if (existing == null) throw new BusinessException("出库单不存在");
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
         // PI-5: 白名单防篡改：状态保持 DRAFT
         existing.setOutboundDate(outbound.getOutboundDate());
-        existing.setOutboundType(outbound.getOutboundType());
+        if (!java.util.Objects.equals(existing.getOutboundType(), outbound.getOutboundType())
+                || !java.util.Objects.equals(existing.getContractId(), outbound.getContractId())) throw new BusinessException("已保存出库单不可修改类型或合同");
         existing.setReturnType(outbound.getReturnType());
-        existing.setContractId(outbound.getContractId());
         outboundMapper.updateById(existing);
+    }
+
+    /**
+     * 全部写入口统一：来源入库主单按 ID 排序锁 → 出库主单锁 → 有效明细当前读。
+     * 来源关联保存后不可修改；发现查询仅决定锁目标，绝不用于库存回填。
+     * create 在插入出库主单之前已由 validateReturn 排序锁定全部来源。
+     */
+    private void lockSources(Long id) {
+        outboundDetailMapper.discoverInboundIds(id).stream().distinct().sorted().forEach(sourceMapper::lockInbound);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        BizMaterialOutbound existing = outboundMapper.selectById(id);
+        lockSources(id);
+        BizMaterialOutbound existing = outboundMapper.lockById(id);
         if (existing == null) throw new BusinessException("出库单不存在");
 
         // B3 修复（2026-08-11）：save 时已扣减库存，删除必须对称回填，
         // 否则删除草稿出库单即永久丢失库存
-        LambdaQueryWrapper<BizMaterialOutboundDetail> detailWrapper = new LambdaQueryWrapper<>();
-        detailWrapper.eq(BizMaterialOutboundDetail::getOutboundId, id);
-        List<BizMaterialOutboundDetail> details = outboundDetailMapper.selectList(detailWrapper);
+        List<BizMaterialOutboundDetail> details = outboundDetailMapper.lockActiveDetails(id);
         // 主表无可控命名字段，E2E 测试前缀落在明细 materialName → 连同明细扫描
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing, details)) throw new BusinessException("仅草稿状态可删除");
         for (BizMaterialOutboundDetail detail : details) {
@@ -224,8 +269,10 @@ public class MaterialOutboundService {
         outboundMapper.deleteById(id);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
-        BizMaterialOutbound outbound = outboundMapper.selectById(id);
+        lockSources(id);
+        BizMaterialOutbound outbound = outboundMapper.lockById(id);
         if (outbound == null) throw new BusinessException("出库单不存在");
         if (!"DRAFT".equals(outbound.getStatus())) throw new BusinessException("仅草稿状态可提交");
         outbound.setStatus("APPROVED");

@@ -77,7 +77,7 @@ public class ApprovalService {
     /** 办理时客户端不得写入的流程协议变量，防止篡改 initiator/businessId 绕过防自审或回调定位 */
     private static final Set<String> PROTECTED_VARIABLES = Set.of("businessType", "businessId", "initiator",
             // 金额分档路由变量：BPMN 排他网关按 approvalTier 选择后续审批节点，审批人不得在办理时改写
-            "approvalTier", "tierName");
+            "approvalTier", "tierName", "revisionManagers", "revisionFinance");
 
     /**
      * 发起流程
@@ -830,6 +830,7 @@ public class ApprovalService {
                 case "PROJECT_REIMBURSEMENT", "PERSONAL_REIMBURSEMENT", "RESERVE_FUND_APPLY",
                      "RETENTION_RETURN", "FUND_TRANSFER", "CHANGE_VISA" ->
                         Set.of("SUBMITTED", "REJECTED", "APPROVED");
+                case "CONTRACT_REVISION" -> Set.of("SUBMITTED", "REJECTED");
                 case "BUDGET_CHANGE", "OUTPUT_REPORT", "INVOICE_APPLY", "PAYMENT_APPLY",
                      "PROJECT_SETTLEMENT", "MATERIAL_TRANSFER" -> Set.of("SUBMITTED", "REJECTED");
                 default -> Set.of("SUBMITTED");
@@ -949,6 +950,13 @@ public class ApprovalService {
      */
     private void assertNotInitiator(Task task, Long userId) {
         Object type = taskService.getVariable(task.getId(), "businessType");
+        if ("CONTRACT_REVISION".equals(String.valueOf(type))) {
+            Object revisionInitiator = taskService.getVariable(task.getId(), "initiator");
+            if (revisionInitiator == null || Objects.equals(String.valueOf(userId), String.valueOf(revisionInitiator))) {
+                throw new BusinessException(403, "合同修订禁止发起人自审，请配置其他有效审批人");
+            }
+            return;
+        }
         if (type == null || !SELF_APPROVAL_GUARDED_TYPES.contains(String.valueOf(type))) {
             return;
         }

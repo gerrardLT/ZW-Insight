@@ -301,6 +301,27 @@ class ApprovalServiceTest {
     }
 
     @Test
+    @DisplayName("合同修订候选变量不可被首节点办理人覆盖")
+    void testComplete_revisionCandidatesNotOverridable() {
+        try (var sc = context()) {
+            sc.when(SecurityContextHolder::getUserId).thenReturn(200L);
+            TaskQuery taskQuery = mock(TaskQuery.class);
+            when(taskService.createTaskQuery()).thenReturn(taskQuery);
+            when(taskQuery.taskId("task-001")).thenReturn(taskQuery);
+            when(taskQuery.singleResult()).thenReturn(mockTask);
+            Map<String, Object> original = new HashMap<>(Map.of("revisionManagers", "200", "revisionFinance", "300"));
+            doAnswer(invocation -> { original.putAll(invocation.getArgument(1)); return null; })
+                    .when(taskService).complete(eq("task-001"), anyMap());
+            Map<String, Object> malicious = new HashMap<>(Map.of("revisionManagers", "200", "revisionFinance", "200", "approved", true));
+            approvalService.complete("task-001", null, malicious);
+            verify(taskService).complete("task-001", Map.of("approved", true));
+            org.junit.jupiter.api.Assertions.assertEquals("300", original.get("revisionFinance"));
+            org.junit.jupiter.api.Assertions.assertEquals("200", original.get("revisionManagers"));
+            org.junit.jupiter.api.Assertions.assertEquals("200", malicious.get("revisionFinance"));
+        }
+    }
+
+    @Test
     @DisplayName("我的待办：缺失租户时拒绝查询，不以本人签收降级")
     void testGetMyTodoTasks_noTenantContext_rejected() {
         try (var sc = context()) {

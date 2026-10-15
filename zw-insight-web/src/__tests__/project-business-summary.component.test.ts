@@ -1,0 +1,78 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import Summary from '@/views/project/components/ProjectBusinessSummary.vue'
+
+const api = vi.hoisted(() => ({ getProjectOverview: vi.fn(), getProjectCostControl: vi.fn() }))
+vi.mock('@/api/dashboard', () => api)
+const id = '9223372036854775806'
+const overview = (amount = 123) => ({ code: 200, data: { contract: { contractTotal: amount, receivedAmount: 0 }, output: {} } })
+const cost = (projectId = id, accountCount = 1) => ({ code: 200, data: { projectId, accountCount, totals: { actualTotal: 45 } } })
+beforeEach(() => {
+  vi.resetAllMocks()
+  api.getProjectOverview.mockResolvedValue(overview())
+  api.getProjectCostControl.mockResolvedValue(cost())
+})
+describe('项目经营摘要', () => {
+  it('setup 即时加载，雪花 ID 原样透传；真实零与缺失金额分开', async () => {
+    const w = mount(Summary, { props: { projectId: id } })
+    expect(w.attributes('aria-busy')).toBe('true')
+    await flushPromises()
+    expect(api.getProjectOverview).toHaveBeenCalledWith(id)
+    expect(api.getProjectCostControl).toHaveBeenCalledWith(id)
+    expect(w.text()).toContain('123.00')
+    expect(w.text()).toContain('0.00')
+    expect(w.findAll('dd').map(x => x.text())).toContain('—')
+    expect(w.text()).toContain('不等于审批支出或银行现金支付')
+    w.unmount()
+  })
+  it('项目切换先清旧值，旧请求晚到不得覆盖新项目', async () => {
+    let resolve!: (value: unknown) => void
+    api.getProjectOverview.mockReturnValueOnce(new Promise(r => { resolve = r }))
+    const w = mount(Summary, { props: { projectId: id } })
+    api.getProjectCostControl.mockResolvedValue(cost('2'))
+    api.getProjectOverview.mockResolvedValue(overview(456))
+    await w.setProps({ projectId: '2' })
+    await flushPromises()
+    resolve(overview(999))
+    await flushPromises()
+    expect(w.text()).toContain('456.00')
+    expect(w.text()).not.toContain('999.00')
+    w.unmount()
+  })
+  it('单源失败保留另一源，原生按钮可重试', async () => {
+    api.getProjectOverview.mockRejectedValueOnce(new Error('403'))
+    const w = mount(Summary, { props: { projectId: id } })
+    await flushPromises()
+    expect(w.find('[role="alert"]').text()).toContain('加载失败')
+    expect(w.text()).toContain('45.00')
+    await w.get('button').trigger('click')
+    await flushPromises()
+    expect(w.find('[role="alert"]').exists()).toBe(false)
+    w.unmount()
+  })
+  it('无 CBS 账户不伪造成本零；空响应展示空态', async () => {
+    api.getProjectOverview.mockResolvedValue({ code: 200, data: null })
+    api.getProjectCostControl.mockResolvedValue(cost(id, 0))
+    const w = mount(Summary, { props: { projectId: id } })
+    await flushPromises()
+    expect(w.text()).toContain('暂无合同与产值数据')
+    expect(w.text()).toContain('尚未编制 CBS 成本账户')
+    expect(w.findAll('dd')).toHaveLength(0)
+    w.unmount()
+  })
+  it('不允许错项目成本或业务错误伪装为成功', async () => {
+    api.getProjectOverview.mockResolvedValue({ code: 403, data: {} })
+    api.getProjectCostControl.mockResolvedValue(cost('3'))
+    const w = mount(Summary, { props: { projectId: id } })
+    await flushPromises()
+    expect(w.findAll('[role="alert"]')).toHaveLength(2)
+    w.unmount()
+  })
+  it('无合法项目 ID 不请求全局汇总', async () => {
+    const w = mount(Summary, { props: { projectId: '' } })
+    await flushPromises()
+    expect(api.getProjectOverview).not.toHaveBeenCalled()
+    expect(api.getProjectCostControl).not.toHaveBeenCalled()
+    w.unmount()
+  })
+})

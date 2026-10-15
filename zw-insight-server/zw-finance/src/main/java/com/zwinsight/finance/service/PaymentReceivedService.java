@@ -9,7 +9,6 @@ import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.finance.domain.BizPaymentReceived;
 import com.zwinsight.finance.mapper.BizPaymentReceivedMapper;
-import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
@@ -67,11 +66,7 @@ public class PaymentReceivedService {
             throw new BusinessException("回款金额必须大于0");
         }
 
-        // 关联合同：不做开票上限硬限制，直接回写合同累计收款金额
-        BizConstructionContract contract = null;
-        if (paymentReceived.getContractId() != null) {
-            contract = contractMapper.selectById(paymentReceived.getContractId());
-        }
+        validateSource(paymentReceived.getProjectId(), paymentReceived.getContractId());
 
         paymentReceived.setStatus("APPROVED");
         // 登记即已认领（2026-10-10）：登记时项目/合同已绑定，且业务效果（项目总收入、合同累计收款、
@@ -82,22 +77,7 @@ public class PaymentReceivedService {
         paymentReceived.setClaimedAt(LocalDateTime.now());
         paymentReceivedMapper.insert(paymentReceived);
 
-        // 回写项目总收入
-        BizProject project = projectMapper.selectById(paymentReceived.getProjectId());
-        if (project != null) {
-            BigDecimal totalIncome = project.getTotalIncome() == null
-                    ? BigDecimal.ZERO : project.getTotalIncome();
-            project.setTotalIncome(totalIncome.add(receiveAmount));
-            projectMapper.updateById(project);
-        }
-
-        // 回写合同累计收款金额（复用已查询的 contract）
-        if (contract != null) {
-            BigDecimal cumulativeReceived = contract.getCumulativeReceivedAmount() == null
-                    ? BigDecimal.ZERO : contract.getCumulativeReceivedAmount();
-            contract.setCumulativeReceivedAmount(cumulativeReceived.add(receiveAmount));
-            contractMapper.updateById(contract);
-        }
+        adjustTotals(paymentReceived.getProjectId(), paymentReceived.getContractId(), receiveAmount);
 
         // 应收台账核销（V2026_57）：回款登记即生效（status=APPROVED），FIFO 冲减 OPEN 应收；
         // 无台账/不足额部分为预收事实，不冲减不报错（日志可见）
@@ -124,7 +104,10 @@ public class PaymentReceivedService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void claim(Long id) {
-        BizPaymentReceived record = getById(id);
+        BizPaymentReceived record = paymentReceivedMapper.lockById(id);
+        if (record == null) {
+            throw new BusinessException("收款记录不存在");
+        }
         String current = record.getClaimStatus() == null ? CLAIM_UNCLAIMED : record.getClaimStatus();
         if (!CLAIM_UNCLAIMED.equals(current)) {
             throw new BusinessException("当前状态不允许认领：仅待认领的回款可以认领");
@@ -141,7 +124,10 @@ public class PaymentReceivedService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void writeOff(Long id) {
-        BizPaymentReceived record = getById(id);
+        BizPaymentReceived record = paymentReceivedMapper.lockById(id);
+        if (record == null) {
+            throw new BusinessException("收款记录不存在");
+        }
         if (!CLAIM_CLAIMED.equals(record.getClaimStatus())) {
             throw new BusinessException("当前状态不允许核销：仅已认领的回款可以核销");
         }
@@ -155,7 +141,7 @@ public class PaymentReceivedService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void update(BizPaymentReceived paymentReceived) {
-        BizPaymentReceived existing = paymentReceivedMapper.selectById(paymentReceived.getId());
+        BizPaymentReceived existing = paymentReceivedMapper.lockById(paymentReceived.getId());
         if (existing == null) {
             throw new BusinessException("收款记录不存在");
         }
@@ -168,9 +154,21 @@ public class PaymentReceivedService {
                 ? BigDecimal.ZERO : existing.getReceiveAmount();
         BigDecimal diff = newAmount.subtract(oldAmount);
 
-        BizConstructionContract contract = null;
-
-        paymentReceivedMapper.updateById(paymentReceived);
+        if ((paymentReceived.getProjectId() != null && !paymentReceived.getProjectId().equals(existing.getProjectId()))
+                || (paymentReceived.getContractId() != null && !paymentReceived.getContractId().equals(existing.getContractId()))) {
+            throw new BusinessException("已生效回款不得更换项目或合同，请删除后重新登记");
+        }
+        validateSource(existing.getProjectId(), existing.getContractId());
+        // 更新白名单，禁止请求体改写认领、审批状态及来源。
+        existing.setReceiveAmount(newAmount);
+        existing.setReceiveDate(paymentReceived.getReceiveDate());
+        existing.setReceiveCategory(paymentReceived.getReceiveCategory());
+        existing.setReceiver(paymentReceived.getReceiver());
+        existing.setReceiveType(paymentReceived.getReceiveType());
+        existing.setReceiveBankAccount(paymentReceived.getReceiveBankAccount());
+        if (paymentReceivedMapper.updateById(existing) != 1) {
+            throw new BusinessException("回款记录更新冲突，请重试");
+        }
 
         // 应收核销对称调整（V2026_57）：先按旧核销明细全额反冲，再按新金额重新 FIFO 核销，
         // 避免差额近似回滚导致的台账漂移
@@ -181,18 +179,7 @@ public class PaymentReceivedService {
 
         // 按差额回冲/追加项目总收入
         if (diff.signum() != 0) {
-            BizProject project = projectMapper.selectById(existing.getProjectId());
-            if (project != null && project.getTotalIncome() != null) {
-                project.setTotalIncome(project.getTotalIncome().add(diff));
-                projectMapper.updateById(project);
-            }
-            if (contract == null && existing.getContractId() != null) {
-                contract = contractMapper.selectById(existing.getContractId());
-            }
-            if (contract != null && contract.getCumulativeReceivedAmount() != null) {
-                contract.setCumulativeReceivedAmount(contract.getCumulativeReceivedAmount().add(diff));
-                contractMapper.updateById(contract);
-            }
+            adjustTotals(existing.getProjectId(), existing.getContractId(), diff);
         }
     }
 
@@ -202,32 +189,39 @@ public class PaymentReceivedService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        BizPaymentReceived existing = paymentReceivedMapper.selectById(id);
+        BizPaymentReceived existing = paymentReceivedMapper.lockById(id);
         if (existing == null) {
             throw new BusinessException("收款记录不存在");
         }
         BigDecimal receiveAmount = existing.getReceiveAmount() == null
                 ? BigDecimal.ZERO : existing.getReceiveAmount();
-        paymentReceivedMapper.deleteById(id);
-
-        // 回冲项目总收入
-        BizProject project = projectMapper.selectById(existing.getProjectId());
-        if (project != null && project.getTotalIncome() != null) {
-            project.setTotalIncome(project.getTotalIncome().subtract(receiveAmount));
-            projectMapper.updateById(project);
+        if (paymentReceivedMapper.deleteById(id) != 1) {
+            throw new BusinessException("回款记录删除冲突，请重试");
         }
-
-        // 回冲合同累计收款金额
-        if (existing.getContractId() != null) {
-            BizConstructionContract contract = contractMapper.selectById(existing.getContractId());
-            if (contract != null && contract.getCumulativeReceivedAmount() != null) {
-                contract.setCumulativeReceivedAmount(
-                        contract.getCumulativeReceivedAmount().subtract(receiveAmount));
-                contractMapper.updateById(contract);
-            }
-        }
+        adjustTotals(existing.getProjectId(), existing.getContractId(), receiveAmount.negate());
 
         // 反冲应收核销（V2026_57，与 save 核销对称）：台账余额回加、CLOSED 恢复 OPEN
         receivableService.reverseWriteOff(id);
+    }
+
+    private void validateSource(Long projectId, Long contractId) {
+        if (projectId == null || projectMapper.selectById(projectId) == null) {
+            throw new BusinessException("回款关联项目不存在");
+        }
+        if (contractId != null) {
+            BizConstructionContract contract = contractMapper.selectById(contractId);
+            if (contract == null || !projectId.equals(contract.getProjectId())) {
+                throw new BusinessException("回款关联合同不存在或不属于当前项目");
+            }
+        }
+    }
+
+    private void adjustTotals(Long projectId, Long contractId, BigDecimal delta) {
+        if (projectMapper.addTotalIncome(projectId, delta) != 1) {
+            throw new BusinessException("回款关联项目不存在或累计收入不足，操作已回滚");
+        }
+        if (contractId != null && contractMapper.addCumulativeReceivedAmount(contractId, delta) != 1) {
+            throw new BusinessException("回款关联合同不存在或累计回款不足，操作已回滚");
+        }
     }
 }

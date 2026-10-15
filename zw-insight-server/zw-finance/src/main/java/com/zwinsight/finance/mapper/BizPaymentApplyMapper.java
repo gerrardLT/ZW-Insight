@@ -17,6 +17,9 @@ import java.util.Collection;
 })
 public interface BizPaymentApplyMapper extends BaseMapper<BizPaymentApply> {
 
+    @Select("SELECT * FROM biz_payment_apply WHERE id = #{id} AND deleted = 0 FOR UPDATE")
+    BizPaymentApply lockById(@Param("id") Long id);
+
     /**
      * 已批未付的「剩余未付额」合计（驾驶舱 §9.1「已批未付」卡，口径见资金流转 §3.1）。
      * <p><b>为何用剩余未付额而非 payment_amount 全额</b>：银行流水支持部分勾稽

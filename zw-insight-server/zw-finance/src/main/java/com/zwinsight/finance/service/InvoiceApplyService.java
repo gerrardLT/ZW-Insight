@@ -179,33 +179,30 @@ public class InvoiceApplyService {
             log.warn("开票申请审批通过回调：申请不存在, id={}", id);
             return;
         }
-        if ("APPROVED".equals(invoiceApply.getStatus())) {
+        if (!"SUBMITTED".equals(invoiceApply.getStatus()) && !"REJECTED".equals(invoiceApply.getStatus())) {
             log.info("开票申请已生效，跳过重复回调, id={}", id);
             return;
         }
 
         BizConstructionContract contract = contractMapper.selectById(invoiceApply.getContractId());
         if (contract == null) {
-            log.error("开票申请审批通过回调：关联合同不存在, id={}, contractId={}", id, invoiceApply.getContractId());
-            return;
+            throw new BusinessException("开票申请关联合同不存在，审批未生效");
         }
 
-        // 审批期间上限可能变化，生效前重新校验；不通过则置 REJECTED 并通知发起人
-        try {
-            validateInvoiceLimit(contract, invoiceApply.getInvoiceAmount());
-        } catch (BusinessException e) {
+        // 先占用源记录状态；重复回调不得再次占用合同额度。事务异常整体回滚。
+        if (invoiceApplyMapper.approvePending(id) != 1) {
+            return;
+        }
+        if (contractMapper.addCumulativeInvoiceAmountWithinLimit(
+                invoiceApply.getContractId(), invoiceApply.getInvoiceAmount()) != 1) {
             invoiceApply.setStatus("REJECTED");
-            invoiceApplyMapper.updateById(invoiceApply);
-            notifyInitiator(invoiceApply.getCreatedBy(), "开票申请生效失败", e.getMessage(), invoiceApply.getWorkflowInstanceId());
-            log.warn("开票申请生效校验失败已驳回, id={}, reason={}", id, e.getMessage());
+            if (invoiceApplyMapper.updateById(invoiceApply) != 1) {
+                throw new BusinessException("开票申请状态更新冲突，请重试");
+            }
+            notifyInitiator(invoiceApply.getCreatedBy(), "开票申请生效失败",
+                    "合同未生效或可开票额度不足，请修改后重新提交", invoiceApply.getWorkflowInstanceId());
             return;
         }
-
-        invoiceApply.setStatus("APPROVED");
-        invoiceApplyMapper.updateById(invoiceApply);
-
-        // 回写合同累计开票金额（原子累加）
-        contractMapper.addCumulativeInvoiceAmount(invoiceApply.getContractId(), invoiceApply.getInvoiceAmount());
 
         log.info("开票申请审批通过并生效, id={}, invoiceAmount={}", id, invoiceApply.getInvoiceAmount());
     }
@@ -223,9 +220,10 @@ public class InvoiceApplyService {
         if (!"SUBMITTED".equals(invoiceApply.getStatus())) {
             return;
         }
-        invoiceApply.setStatus("REJECTED");
-        invoiceApplyMapper.updateById(invoiceApply);
-        log.info("开票申请审批驳回, id={}", id);
+        if (invoiceApplyMapper.transitionSubmitted(id, "REJECTED") == 1) {
+            invoiceApply.setStatus("REJECTED");
+            log.info("开票申请审批驳回, id={}", id);
+        }
     }
 
     /**

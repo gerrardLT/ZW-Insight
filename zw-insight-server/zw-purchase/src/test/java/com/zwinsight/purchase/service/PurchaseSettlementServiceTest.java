@@ -55,16 +55,42 @@ class PurchaseSettlementServiceTest {
     @Mock
     private ApprovalService approvalService;
 
+    @Mock
+    private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
+
     @InjectMocks
     private PurchaseSettlementService service;
 
+    @org.junit.jupiter.api.BeforeEach
+    void lockingReads() {
+        lenient().when(materialInboundReadMapper.selectById(5L)).thenReturn(inbound(5L, "APPROVED", "10000"));
+        lenient().when(settlementMapper.lockById(anyLong())).thenAnswer(inv -> settlementMapper.selectById(inv.getArgument(0)));
+    }
+
     @Test
-    void partialRequestsFailClosedWithoutAnyWrites() {
-        BizPurchaseSettlement request = new BizPurchaseSettlement();
-        request.setDetails(java.util.List.of(java.util.Map.of("inboundDetailId", 1L, "quantity", 1)));
-        assertThatThrownBy(() -> service.create(request)).hasMessageContaining("来源入库行关联");
-        assertThatThrownBy(() -> service.update(request)).hasMessageContaining("来源入库行关联");
-        verifyNoInteractions(settlementMapper, contractMapper, materialInboundReadMapper, approvalService);
+    void partialCreateComputesAmountFromSource() {
+        var request = settlement("DRAFT", "1");
+        request.setDetails(java.util.List.of(java.util.Map.of("inboundDetailId", 11L, "quantity", 2)));
+        when(materialInboundReadMapper.selectById(5L)).thenReturn(inbound(5L, "APPROVED", "10000"));
+        when(sourceMapper.lines(5L)).thenReturn(java.util.List.of(java.util.Map.of("inboundDetailId", 11L, "quantity", new BigDecimal("10"), "unitPrice", new BigDecimal("12.34"))));
+        when(sourceMapper.settled(11L, -1L)).thenReturn(BigDecimal.ONE);
+        when(sourceMapper.returned(11L)).thenReturn(BigDecimal.ONE);
+        when(settlementMapper.selectList(any())).thenReturn(java.util.List.of());
+        doAnswer(inv -> { ((BizPurchaseSettlement) inv.getArgument(0)).setId(1L); return 1; }).when(settlementMapper).insert(any(BizPurchaseSettlement.class));
+        service.create(request);
+        assertThat(request.getSettlementAmount()).isEqualByComparingTo("24.68");
+        assertThat(request.getSettlementMode()).isEqualTo("LINES");
+        verify(sourceMapper).insertLine(any());
+    }
+
+    @Test
+    void partialRejectsUnlinkedHistoricalReturnsWithoutWrites() {
+        var request = settlement("DRAFT", "1");
+        request.setDetails(java.util.List.of(java.util.Map.of("inboundDetailId", 11L, "quantity", 1)));
+        when(materialInboundReadMapper.selectById(5L)).thenReturn(inbound(5L, "APPROVED", "10000"));
+        when(sourceMapper.unlinkedReturns(20L)).thenReturn(1L);
+        assertThatThrownBy(() -> service.create(request)).hasMessageContaining("历史退货");
+        verify(settlementMapper, never()).insert(any(BizPurchaseSettlement.class));
     }
 
     private MaterialInboundView inbound(Long id, String status, String amount) {
@@ -142,7 +168,8 @@ class PurchaseSettlementServiceTest {
         when(materialInboundReadMapper.selectApprovedByContract(20L))
                 .thenReturn(new ArrayList<>(Arrays.asList(free, settled)));
         // 顺序调用：入库单 5 无结算记录，入库单 6 已有结算记录
-        when(settlementMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L, 1L);
+        when(sourceMapper.incompatible(5L, -1L, 0)).thenReturn(0L);
+        when(sourceMapper.incompatible(6L, -1L, 0)).thenReturn(1L);
 
         List<MaterialInboundView> result = service.availableInbounds(20L);
 
@@ -352,14 +379,61 @@ class PurchaseSettlementServiceTest {
     }
 
     @Test
-    @DisplayName("onRejected - SUBMITTED 回退 DRAFT")
+    @DisplayName("onRejected - 撤回释放占用并回退 DRAFT")
     void onRejected_submittedToDraft() {
         BizPurchaseSettlement s = settlement("SUBMITTED", "3000");
         when(settlementMapper.selectById(1L)).thenReturn(s);
 
-        service.onRejected(1L);
+        service.onRejected(1L, "WITHDRAW");
 
         assertThat(s.getStatus()).isEqualTo("DRAFT");
         verify(settlementMapper).updateById(s);
+    }
+    @Test
+    void activeRejectKeepsReservationAndRemainsApprovable() {
+        var s = settlement("SUBMITTED", "3000");
+        when(settlementMapper.selectById(1L)).thenReturn(s);
+        service.onRejected(1L, "REJECT");
+        assertThat(s.getStatus()).isEqualTo("SUBMITTED");
+        verify(settlementMapper, never()).updateById(any(BizPurchaseSettlement.class));
+        service.onApproved(1L);
+        assertThat(s.getStatus()).isEqualTo("APPROVED");
+        verify(contractMapper).addSettlement(20L, new BigDecimal("3000"));
+    }
+
+    @Test
+    void legacyCreateAndSubmitRejectExplicitSourceReturns() {
+        when(materialInboundReadMapper.selectById(5L)).thenReturn(inbound(5L, "APPROVED", "10000"));
+        when(sourceMapper.lines(5L)).thenReturn(java.util.List.of(java.util.Map.of("inboundDetailId", 11L)));
+        when(sourceMapper.returned(11L)).thenReturn(BigDecimal.ONE);
+        assertThatThrownBy(() -> service.create(settlement("DRAFT", "1000"))).hasMessageContaining("分批结算");
+        var draft = settlement("DRAFT", "1000");
+        when(settlementMapper.selectById(1L)).thenReturn(draft);
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("分批结算");
+        verifyNoInteractions(approvalService);
+    }
+
+    @Test
+    void legacyCreateAndSubmitRejectUnlinkedHistoricalReturns() {
+        when(materialInboundReadMapper.selectById(5L)).thenReturn(inbound(5L, "APPROVED", "10000"));
+        when(sourceMapper.unlinkedReturns(20L)).thenReturn(1L);
+        assertThatThrownBy(() -> service.create(settlement("DRAFT", "1000"))).hasMessageContaining("人工核实");
+        when(settlementMapper.selectById(1L)).thenReturn(settlement("DRAFT", "1000"));
+        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("人工核实");
+        verifyNoInteractions(approvalService);
+    }
+    @Test
+    void submitLocksInboundBeforeReturnCurrentReads() {
+        var draft = settlement("DRAFT", "1000");
+        when(settlementMapper.selectById(1L)).thenReturn(draft);
+        when(sourceMapper.lines(5L)).thenReturn(java.util.List.of(java.util.Map.of("inboundDetailId", 11L)));
+        when(sourceMapper.returned(11L)).thenReturn(BigDecimal.ZERO);
+        service.submit(1L);
+        var order = inOrder(sourceMapper, settlementMapper, approvalService);
+        order.verify(sourceMapper).lockInbound(5L);
+        order.verify(settlementMapper).lockById(1L);
+        order.verify(sourceMapper).unlinkedReturns(20L);
+        order.verify(sourceMapper).lines(5L);
+        order.verify(sourceMapper).returned(11L);
     }
 }
