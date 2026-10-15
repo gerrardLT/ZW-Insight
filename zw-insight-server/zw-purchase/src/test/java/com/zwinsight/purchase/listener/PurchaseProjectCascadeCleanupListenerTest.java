@@ -76,7 +76,7 @@ class PurchaseProjectCascadeCleanupListenerTest {
     }
     @Test
     void detailCleanupFailurePropagatesBeforeHeaders() {
-        doThrow(new RuntimeException("detail cleanup failed")).when(sourceMapper).deleteProjectLines(PROJECT_ID);
+        org.mockito.Mockito.doThrow(new RuntimeException("detail cleanup failed")).when(sourceMapper).deleteProjectLines(PROJECT_ID);
         assertThatThrownBy(() -> listener.onProjectDeleted(event())).hasMessageContaining("detail cleanup failed");
         org.mockito.Mockito.verifyNoInteractions(purchaseContractMapper, purchaseSettlementMapper);
     }
