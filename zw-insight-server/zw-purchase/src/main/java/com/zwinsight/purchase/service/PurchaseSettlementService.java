@@ -38,8 +38,7 @@ import java.util.Map;
 public class PurchaseSettlementService {
 
     private final BizPurchaseSettlementMapper settlementMapper;
-    @org.springframework.beans.factory.annotation.Autowired
-    private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
+    private final com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
     private final BizPurchaseContractMapper contractMapper;
     private final MaterialInboundReadMapper materialInboundReadMapper;
     private final SerialNumberService serialNumberService;
