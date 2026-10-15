@@ -232,8 +232,12 @@ describe('workflow/approval/index.vue 审批中心补盲（D-32）', () => {
     expect(s).not.toContain('delegateTask')
     expect(s).not.toContain('transferTask')
     expect(s).not.toMatch(/撤回|withdraw/)
-    expect(s).not.toMatch(/我发起|myStart/i)
+    // 「我发起的」已于 2026-10-15 补齐（接 /my-initiated，按流程实例查轨迹，不当 taskId 用）
+    expect(s).toContain('我发起的')
+    expect(s).toContain('getMyInitiatedProcesses')
+    expect(s).toContain('processInstanceId')
     const api = norm(src('api/workflow.ts'))
+    expect(api).toContain('export function getMyInitiatedProcesses')
     expect(api).toContain('export function delegateTask')
     expect(api).toContain('export function transferTask')
     expect(api).not.toMatch(/withdraw/)
