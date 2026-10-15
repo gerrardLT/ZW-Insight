@@ -134,6 +134,7 @@
                 :value="unreadCount"
                 :max="99"
                 :hidden="unreadCount === 0"
+                :offset="[-4, 2]"
                 class="header-message-badge"
                 data-testid="layout-unread-badge"
               >
@@ -741,15 +742,10 @@ onBeforeUnmount(() => {
   color: var(--zw-brand);
 }
 
-/* 顶栏消息未读角标：内联于铃铛图标，避免溢出 36px 动作区 */
+/* 顶栏消息未读角标：遵循 Element Plus 原生右上悬浮与裁切 */
 .header-message-badge {
   display: inline-flex;
   line-height: 1;
-}
-
-.header-message-badge :deep(.el-badge__content) {
-  transform: translateY(-2px) translateX(4px);
-  border: none;
 }
 
 /* ===== 顶栏最近访问下拉（popper 为 teleport 元素，样式走全局块） ===== */
