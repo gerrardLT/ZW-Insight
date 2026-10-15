@@ -40,12 +40,27 @@ class MaterialOutboundServiceTest {
     private MaterialOutboundService materialOutboundService;
 
     @Test
-    void returnMustChooseExplicitSourceBeforeWriting() {
+    void returnMixingSourcedAndUnsourcedLinesRejectedBeforeWriting() {
         var outbound = new BizMaterialOutbound();
         outbound.setOutboundType("RETURN"); outbound.setContractId(20L);
-        var detail = new BizMaterialOutboundDetail(); detail.setQuantity(BigDecimal.ONE);
-        assertThatThrownBy(() -> materialOutboundService.save(outbound, List.of(detail))).hasMessageContaining("来源行");
+        var unsourced = new BizMaterialOutboundDetail(); unsourced.setQuantity(BigDecimal.ONE);
+        var sourced = new BizMaterialOutboundDetail(); sourced.setInboundDetailId(11L); sourced.setQuantity(BigDecimal.ONE);
+        assertThatThrownBy(() -> materialOutboundService.save(outbound, List.of(unsourced, sourced))).hasMessageContaining("来源行");
         verifyNoInteractions(outboundMapper, outboundDetailMapper, stockMapper);
+    }
+
+    @Test
+    void returnWithoutAnySourceKeepsLegacyFlowAndSkipsRowChecks() {
+        var outbound = new BizMaterialOutbound();
+        outbound.setOutboundType("RETURN"); outbound.setProjectId(10L);
+        var detail = new BizMaterialOutboundDetail();
+        detail.setMaterialName("瓷砖"); detail.setSpecification("800"); detail.setQuantity(BigDecimal.ONE);
+        var stock = new BizProjectMaterialStock(); stock.setId(77L);
+        when(stockMapper.selectOne(any())).thenReturn(stock);
+        when(stockMapper.deductStock(77L, BigDecimal.ONE, false)).thenReturn(1);
+        materialOutboundService.save(outbound, List.of(detail));
+        verify(outboundMapper).insert(outbound);
+        verifyNoInteractions(sourceMapper, inboundReadMapper);
     }
 
     @Test

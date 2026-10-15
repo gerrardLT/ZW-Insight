@@ -167,8 +167,8 @@ public class PurchaseSettlementService {
         if (!"LINES".equals(s.getSettlementMode())) {
             var inbound = materialInboundReadMapper.selectById(s.getInboundId());
             if (inbound == null) throw new BusinessException("来源入库单不存在");
-            if (sourceMapper.unlinkedReturns(inbound.getContractId()) > 0)
-                throw new BusinessException(409, "合同存在未关联来源的历史退货，请人工核实");
+            // 整单模式不因「无来源的历史退货」拦截：沿用既有行为；只拦已明确指向本入库单的来源退货。
+            // 无来源退货只影响分批模式（见 calculateLines），因其无法推断扣减哪一行。
             for (var line : sourceMapper.lines(s.getInboundId())) {
                 Long lineId = Long.valueOf(line.get("inboundDetailId").toString());
                 if (sourceMapper.returned(lineId).signum() > 0)

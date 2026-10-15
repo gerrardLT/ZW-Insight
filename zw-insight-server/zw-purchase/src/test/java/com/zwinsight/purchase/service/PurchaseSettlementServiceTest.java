@@ -414,15 +414,6 @@ class PurchaseSettlementServiceTest {
     }
 
     @Test
-    void legacyCreateAndSubmitRejectUnlinkedHistoricalReturns() {
-        when(materialInboundReadMapper.selectById(5L)).thenReturn(inbound(5L, "APPROVED", "10000"));
-        when(sourceMapper.unlinkedReturns(20L)).thenReturn(1L);
-        assertThatThrownBy(() -> service.create(settlement("DRAFT", "1000"))).hasMessageContaining("人工核实");
-        when(settlementMapper.selectById(1L)).thenReturn(settlement("DRAFT", "1000"));
-        assertThatThrownBy(() -> service.submit(1L)).hasMessageContaining("人工核实");
-        verifyNoInteractions(approvalService);
-    }
-    @Test
     void submitLocksInboundBeforeReturnCurrentReads() {
         var draft = settlement("DRAFT", "1000");
         when(settlementMapper.selectById(1L)).thenReturn(draft);
@@ -432,8 +423,9 @@ class PurchaseSettlementServiceTest {
         var order = inOrder(sourceMapper, settlementMapper, approvalService);
         order.verify(sourceMapper).lockInbound(5L);
         order.verify(settlementMapper).lockById(1L);
-        order.verify(sourceMapper).unlinkedReturns(20L);
         order.verify(sourceMapper).lines(5L);
         order.verify(sourceMapper).returned(11L);
+        // 整单模式不再因「无来源的历史退货」拦截（该规则仅保留给分批模式）
+        verify(sourceMapper, never()).unlinkedReturns(org.mockito.ArgumentMatchers.anyLong());
     }
 }

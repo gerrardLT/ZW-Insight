@@ -358,7 +358,7 @@ class InvoiceApplyServiceTest {
 
             invoiceApplyService.onApproved(id);
 
-            verify(invoiceApplyMapper).transitionSubmitted(id, "APPROVED");
+            verify(invoiceApplyMapper).approvePending(id);
             verify(contractMapper).addCumulativeInvoiceAmountWithinLimit(contractId, new BigDecimal("30000.00"));
         }
 

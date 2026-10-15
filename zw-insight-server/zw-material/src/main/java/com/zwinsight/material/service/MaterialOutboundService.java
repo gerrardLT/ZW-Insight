@@ -35,10 +35,8 @@ import java.util.List;
 public class MaterialOutboundService {
 
     private final BizMaterialOutboundMapper outboundMapper;
-    @org.springframework.beans.factory.annotation.Autowired
-    private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
-    @org.springframework.beans.factory.annotation.Autowired
-    private com.zwinsight.purchase.readmodel.MaterialInboundReadMapper inboundReadMapper;
+    private final com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
+    private final com.zwinsight.purchase.readmodel.MaterialInboundReadMapper inboundReadMapper;
     private final BizMaterialOutboundDetailMapper outboundDetailMapper;
     private final BizProjectMaterialStockMapper stockMapper;
     private final BizMaterialRefundMapper refundMapper;
@@ -122,8 +120,14 @@ public class MaterialOutboundService {
         }
     }
 
+    /**
+     * 来源入库行为可选：全部明细都不带来源 = 沿用既有退货流程（PC/移动端/L4 均如此），不做行级校验；
+     * 只要有一行带来源，就必须每行都带，并走行级数量/占用校验。
+     * 无来源的退货会令该合同无法再做分批结算（见 PurchaseSettlementService#calculateLines），属已知限制。
+     */
     private void validateReturn(BizMaterialOutbound outbound, List<BizMaterialOutboundDetail> details) {
-        if (details == null || details.isEmpty() || outbound.getContractId() == null) throw new BusinessException("退货必须选择合同和来源明细");
+        if (details == null || details.stream().noneMatch(d -> d.getInboundDetailId() != null)) return;
+        if (outbound.getContractId() == null) throw new BusinessException("指定来源入库行的退货必须选择采购合同");
         java.util.Map<Long,Long> sources = new java.util.HashMap<>();
         for (var d : details) {
             if (d.getInboundDetailId() == null || sources.containsKey(d.getInboundDetailId())) throw new BusinessException("退货来源行缺失或重复");
