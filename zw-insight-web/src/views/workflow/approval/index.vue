@@ -2,7 +2,7 @@
   <div class="approval-container">
     <el-card shadow="never">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-        <el-tab-pane label="待办任务" name="todo" /><el-tab-pane label="已办任务" name="done" />
+        <el-tab-pane label="待办任务" name="todo" /><el-tab-pane label="已办任务" name="done" /><el-tab-pane label="我发起的" name="initiated" />
       </el-tabs>
       <div class="table-toolbar">
         <el-button v-if="activeTab === 'todo'" :disabled="!selectedRows.length || loading || submitLoading" @click="handleBatchApprove">核对批量通过</el-button>
@@ -11,19 +11,22 @@
       <div v-if="listError" role="alert">{{ listError }} <el-button @click="loadData">重新加载列表</el-button></div>
       <div ref="tableRegion" tabindex="0" aria-label="审批任务表格，方向键导航，空格勾选，Enter查看详情" @keydown="handleTableKeydown">
         <el-skeleton :loading="loading" :rows="5" animated>
-          <el-table ref="tableRef" :data="tableData" row-key="taskId" border highlight-current-row @selection-change="selectedRows = $event">
+          <el-table ref="tableRef" :data="tableData" :row-key="activeTab === 'initiated' ? 'processInstanceId' : 'taskId'" border highlight-current-row @selection-change="selectedRows = $event">
             <el-table-column v-if="activeTab === 'todo'" type="selection" width="50" />
             <el-table-column v-if="columnVisible[0]" prop="taskName" label="任务名称" min-width="150" />
             <el-table-column v-if="columnVisible[1]" prop="businessType" label="业务类型" width="150" :formatter="(row: any) => businessTypeName(row.businessType)" />
             <el-table-column v-if="columnVisible[2]" prop="startUserName" label="发起人" width="110" :formatter="(row: any) => row.startUserName || row.initiator || '—'" />
             <el-table-column v-if="columnVisible[3]" prop="createTime" label="创建时间" width="170" :formatter="(row: any) => formatTime(row.createTime)" />
-            <el-table-column label="操作" width="130" fixed="right"><template #default="{ row }"><el-button link type="primary" @click="openDetail(row)">查看详情 / 审批</el-button></template></el-table-column>
+            <el-table-column v-if="activeTab === 'initiated'" prop="status" label="流程状态" width="130" :formatter="(row: any) => row.status === 'RUNNING' ? '进行中' : row.status === 'COMPLETED' ? '已结束' : '—'" />
+            <el-table-column v-if="activeTab === 'initiated'" label="流程详情" width="130"><template #default="{ row }"><el-button link @click="openInitiatedTrace(row)">查看流程轨迹</el-button></template></el-table-column>
+            <el-table-column v-if="activeTab !== 'initiated'" label="操作" width="130" fixed="right"><template #default="{ row }"><el-button link type="primary" @click="openDetail(row)">查看详情 / 审批</el-button></template></el-table-column>
           </el-table>
         </el-skeleton>
       </div>
       <div class="pagination-wrap"><el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.size" :page-sizes="[10, 20, 50, 100]" :total="total" layout="total, sizes, prev, pager, next" @size-change="loadData" @current-change="loadData" /></div>
     </el-card>
 
+    <el-dialog v-model="traceVisible" title="我发起的流程轨迹"><p v-if="traceLoading" role="status">加载中</p><p v-else-if="traceError" role="alert">{{ traceError }}</p><pre v-else>{{ JSON.stringify(initiatedTrace, null, 2) }}</pre></el-dialog>
     <el-drawer v-model="drawerVisible" title="审批详情与意见" size="min(680px, 100vw)" @closed="invalidateDetail">
       <template #header>
         <div class="drawer-head">
@@ -112,7 +115,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
-import { getTodoTasks, getDoneTasks, getApprovalDetail, getBusinessDetail, claimTask, completeTask, rejectToPrevious, rejectToStart, terminateProcess, batchApprove } from '@/api/workflow'
+import { getApprovalTrace, getTodoTasks, getDoneTasks, getMyInitiatedProcesses, getApprovalDetail, getBusinessDetail, claimTask, completeTask, rejectToPrevious, rejectToStart, terminateProcess, batchApprove } from '@/api/workflow'
 import { getPaymentApplyDetail } from '@/api/finance'
 import { getProjectDetail } from '@/api/project'
 import { approvalBlock, batchBlock, money, validId, businessTypeName, formatTime, PAYMENT_TYPE } from './approval'
@@ -123,16 +126,28 @@ const queryParams = ref({ page: 1, size: 10 }), tableRef = ref<any>(), tableRegi
 const drawerVisible = ref(false), detailLoading = ref(false), detailError = ref(''), detail = ref<any>(null), payment = ref<any>(null), projectName = ref(''), currentTaskId = ref(''), comment = ref(''), rejectType = ref('previous'), submitLoading = ref(false)
 const biz = ref<any>(null), bizLoading = ref(false), bizError = ref('')
 const batchVisible = ref(false), batchLoading = ref(false), batchError = ref(''), batchDetails = ref<any[]>([])
+const traceVisible = ref(false), traceLoading = ref(false), traceError = ref(''), initiatedTrace = ref<any>(null)
+let traceVersion = 0
+async function openInitiatedTrace(row: any) {
+  const version = ++traceVersion
+  traceVisible.value = true; traceLoading.value = true; traceError.value = ''; initiatedTrace.value = null
+  try {
+    if (!row.processInstanceId) throw new Error('missing process')
+    const res: any = await getApprovalTrace(row.processInstanceId)
+    if (version === traceVersion) initiatedTrace.value = res.data
+  } catch { if (version === traceVersion) traceError.value = '流程轨迹加载失败，请关闭后重试' }
+  finally { if (version === traceVersion) traceLoading.value = false }
+}
 let listVersion = 0, detailVersion = 0, batchVersion = 0
 const blocked = computed(() => detailLoading.value || bizLoading.value ? '详情尚未加载完成' : detailError.value || bizError.value || (detail.value?.businessType !== PAYMENT_TYPE && (!biz.value?.supported || !biz.value?.found) ? '业务源单未成功加载，不可审批' : '') || approvalBlock(detail.value, currentTaskId.value, payment.value))
 async function loadData() {
   const version = ++listVersion
   loading.value = true; listError.value = ''; selectedRows.value = []; currentRowIndex.value = -1
   try {
-    const res: any = await (activeTab.value === 'todo' ? getTodoTasks : getDoneTasks)({ ...queryParams.value })
+    const res: any = await (activeTab.value === 'todo' ? getTodoTasks : activeTab.value === 'initiated' ? getMyInitiatedProcesses : getDoneTasks)({ ...queryParams.value })
     if (version !== listVersion) return
     if (!Array.isArray(res.data?.records) || typeof res.data?.total !== 'number') throw new Error('invalid response')
-    tableData.value = res.data.records; total.value = res.data.total
+    tableData.value = activeTab.value === 'initiated' ? res.data.records.map((row: any) => ({ ...row, taskName: row.processName, createTime: row.startTime })) : res.data.records; total.value = res.data.total
   } catch { if (version === listVersion) { tableData.value = []; total.value = 0; listError.value = '审批列表加载失败，请重试。' } }
   finally { if (version === listVersion) loading.value = false }
 }

@@ -58,6 +58,15 @@ class PurchaseSettlementServiceTest {
     @InjectMocks
     private PurchaseSettlementService service;
 
+    @Test
+    void partialRequestsFailClosedWithoutAnyWrites() {
+        BizPurchaseSettlement request = new BizPurchaseSettlement();
+        request.setDetails(java.util.List.of(java.util.Map.of("inboundDetailId", 1L, "quantity", 1)));
+        assertThatThrownBy(() -> service.create(request)).hasMessageContaining("来源入库行关联");
+        assertThatThrownBy(() -> service.update(request)).hasMessageContaining("来源入库行关联");
+        verifyNoInteractions(settlementMapper, contractMapper, materialInboundReadMapper, approvalService);
+    }
+
     private MaterialInboundView inbound(Long id, String status, String amount) {
         MaterialInboundView v = new MaterialInboundView();
         v.setId(id);

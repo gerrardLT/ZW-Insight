@@ -64,7 +64,7 @@
 
       <!-- 首屏骨架屏：loading 期间显示骨架，完成后渲染表格（感知性能优化 S1.4） -->
       <el-skeleton :loading="loading" :rows="5" animated>
-        <el-table :data="tableData" border>
+        <el-table :data="tableData" border show-summary :summary-method="pageSummary">
             <el-table-column v-if="columnVisible[0]" prop="contractCode" label="合同编号" width="150">
               <template #default="{ row }">
                 <span class="stat-number">{{ row.contractCode }}</span>
@@ -96,6 +96,12 @@
                   {{ checkExpiryTag(row.endDate)!.label }}
                 </el-tag>
               </template>
+            </el-table-column>
+            <el-table-column v-for="item in cumulativeColumns" :key="item.key" :prop="item.key" :label="item.label" width="150" align="right">
+              <template #default="{ row }">{{ formatMoney(row[item.key]) }}</template>
+            </el-table-column>
+            <el-table-column prop="unreceivedAmount" label="合同未收（合同额－回款）" width="210" align="right">
+              <template #default="{ row }">{{ formatMoney(Number(row.contractAmount || 0) - Number(row.cumulativeReceivedAmount || 0)) }}</template>
             </el-table-column>
             <el-table-column label="操作" width="320" fixed="right">
               <template #default="{ row }">
@@ -195,6 +201,18 @@ const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSet
 const router = useRouter()
 const loading = ref(false)
 const tableData = ref<any[]>([])
+const cumulativeColumns = [
+  { key: 'cumulativeOutput', label: '累计产值' },
+  { key: 'cumulativeInvoiceAmount', label: '累计开票' },
+  { key: 'cumulativeReceivedAmount', label: '累计回款' }
+]
+function pageSummary({ columns, data }: { columns: { property: string }[]; data: any[] }) {
+  const amounts = ['contractAmount', ...cumulativeColumns.map(item => item.key), 'unreceivedAmount']
+  return columns.map((column, index) => index === 0 ? '本页合计（非全部）' : amounts.includes(column.property)
+    ? formatMoney(data.reduce((sum, row) => sum + (column.property === 'unreceivedAmount'
+      ? Number(row.contractAmount || 0) - Number(row.cumulativeReceivedAmount || 0)
+      : Number(row[column.property] || 0)), 0)) : '')
+}
 const total = ref(0)
 const projectList = ref<any[]>([])
 const importVisible = ref(false)

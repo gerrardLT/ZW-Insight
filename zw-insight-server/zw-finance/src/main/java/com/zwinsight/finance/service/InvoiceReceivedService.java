@@ -56,8 +56,47 @@ public class InvoiceReceivedService {
                 || invoiceReceived.getInvoiceAmount().signum() <= 0) {
             throw new BusinessException("收票金额必须大于0");
         }
+        String number = invoiceReceived.getInvoiceNumber();
+        if (number != null && !number.isBlank()) {
+            number = number.trim();
+            if (!number.matches("[0-9]{8}|[0-9]{20}")) {
+                throw new BusinessException("发票号码须为8位或20位数字");
+            }
+            invoiceReceived.setInvoiceNumber(number);
+        } else {
+            number = null;
+            invoiceReceived.setInvoiceNumber(null);
+        }
+        String code = invoiceReceived.getInvoiceCode();
+        code = code == null ? "" : code.trim();
+        if (!code.isEmpty() && !code.matches("[0-9]{10}|[0-9]{12}")) {
+            throw new BusinessException("发票代码须为10位或12位数字");
+        }
+        if (number != null && number.length() == 8 && code.isEmpty()) {
+            throw new BusinessException(400, "传统8位发票号码必须提供10位或12位发票代码");
+        }
+        // 数电票以20位号码为身份；可输入合法代码，但不让它改变唯一身份。
+        if (number != null && number.length() == 20) code = "";
+        invoiceReceived.setInvoiceCode(code);
+        BigDecimal rate = invoiceReceived.getTaxRate();
+        if (rate != null) {
+            if (rate.signum() < 0 || rate.compareTo(BigDecimal.valueOf(100)) > 0) {
+                throw new BusinessException("税率须在0至100之间");
+            }
+            BigDecimal net = invoiceReceived.getInvoiceAmount().divide(
+                    BigDecimal.ONE.add(rate.movePointLeft(2)), 2, java.math.RoundingMode.HALF_UP);
+            invoiceReceived.setAmountWithoutTax(net);
+            invoiceReceived.setTaxAmount(invoiceReceived.getInvoiceAmount().subtract(net));
+        } else {
+            invoiceReceived.setAmountWithoutTax(null);
+            invoiceReceived.setTaxAmount(null);
+        }
         invoiceReceived.setStatus("APPROVED");
-        invoiceReceivedMapper.insert(invoiceReceived);
+        try {
+            invoiceReceivedMapper.insert(invoiceReceived);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            throw new BusinessException(409, "发票号码与代码已登记，请核对后重试", e);
+        }
 
         // 回写支出类合同累计收票
         if (invoiceReceived.getContractId() != null) {

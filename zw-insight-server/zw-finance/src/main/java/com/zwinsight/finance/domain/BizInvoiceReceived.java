@@ -39,6 +39,18 @@ public class BizInvoiceReceived extends BaseEntity {
     /** 发票金额 */
     private BigDecimal invoiceAmount;
 
+    /** 发票代码（数电票可为空） */
+    private String invoiceCode;
+
+    /** 发票号码 */
+    private String invoiceNumber;
+
+    /** 不含税金额，由含税金额及税率计算 */
+    private BigDecimal amountWithoutTax;
+
+    /** 税额 */
+    private BigDecimal taxAmount;
+
     /** 税率(%)，引用税率字典或手动输入 */
     private BigDecimal taxRate;
 

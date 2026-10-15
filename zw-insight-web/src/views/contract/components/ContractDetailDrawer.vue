@@ -55,10 +55,12 @@
 
         <!-- 履约四率进度条 (产值率 / 开票率 / 回款率) -->
         <div class="progress-section mt-3">
+          <p v-if="!Number(contract?.contractAmount)">履约率：—（合同金额为零或未知，比例不适用）</p>
           <div class="progress-row">
             <span class="progress-label">产值率 (¥ {{ Number(contract?.cumulativeOutput || 0).toLocaleString() }})</span>
             <el-progress
-              :percentage="calcRate(contract?.cumulativeOutput, contract?.contractAmount)"
+              v-if="calcRate(contract?.cumulativeOutput, contract?.contractAmount) !== null"
+              :percentage="calcRate(contract?.cumulativeOutput, contract?.contractAmount)!"
               status="success"
               class="flex-1 ml-2"
             />
@@ -66,14 +68,16 @@
           <div class="progress-row mt-2">
             <span class="progress-label">开票率 (¥ {{ Number(contract?.cumulativeInvoiceAmount || 0).toLocaleString() }})</span>
             <el-progress
-              :percentage="calcRate(contract?.cumulativeInvoiceAmount, contract?.contractAmount)"
+              v-if="calcRate(contract?.cumulativeInvoiceAmount, contract?.contractAmount) !== null"
+              :percentage="calcRate(contract?.cumulativeInvoiceAmount, contract?.contractAmount)!"
               class="flex-1 ml-2"
             />
           </div>
           <div class="progress-row mt-2">
             <span class="progress-label">回款率 (¥ {{ Number(contract?.cumulativeReceivedAmount || 0).toLocaleString() }})</span>
             <el-progress
-              :percentage="calcRate(contract?.cumulativeReceivedAmount, contract?.contractAmount)"
+              v-if="calcRate(contract?.cumulativeReceivedAmount, contract?.contractAmount) !== null"
+              :percentage="calcRate(contract?.cumulativeReceivedAmount, contract?.contractAmount)!"
               status="warning"
               class="flex-1 ml-2"
             />
@@ -82,6 +86,12 @@
       </div>
 
       <!-- Tab 页签 -->
+      <section aria-label="盖章附件">
+        <p v-if="sealError" role="alert">{{ sealError }} <el-button @click="loadSealedFiles">重试</el-button></p>
+        <el-tag v-else>{{ sealedFiles.length ? '已上传盖章件' : '未上传盖章件' }}</el-tag>
+        <el-upload :auto-upload="false" :show-file-list="false" :on-change="uploadSeal" :disabled="sealUploading"><el-button :loading="sealUploading">上传盖章件</el-button></el-upload>
+        <ul><li v-for="file in sealedFiles" :key="file.id">{{ file.originalName || file.fileName }}</li></ul>
+      </section>
       <el-tabs v-model="activeTab" class="contract-tabs">
         <!-- Tab 1: 基本条款与清单明细 -->
         <el-tab-pane label="基本要素与清单明细" name="details">
@@ -134,6 +144,8 @@
                 {{ row.changeType === 'DESIGN_CHANGE' ? '设计变更' : row.changeType === 'SITE_VISA' ? '现场签证' : row.changeType }}
               </template>
             </el-table-column>
+            <el-table-column prop="visaDate" label="签证日期" width="120" />
+            <el-table-column prop="taxAmount" label="税额" width="120" />
             <el-table-column prop="changeAmount" label="增减金额(元)" width="130" align="right">
               <template #default="{ row }">
                 <span :class="Number(row.changeAmount) >= 0 ? 'text-success' : 'text-danger'">
@@ -233,6 +245,8 @@
             placeholder="正数调增，负数调减"
           />
         </el-form-item>
+        <el-form-item label="签证日期" prop="visaDate"><el-date-picker v-model="visaForm.visaDate" value-format="YYYY-MM-DD" /></el-form-item>
+        <el-form-item label="税率(%)"><el-input-number v-model="visaForm.taxRate" :min="0" :max="100" :precision="2" /></el-form-item>
         <el-form-item label="变更原因" prop="changeReason">
           <el-input v-model="visaForm.changeReason" placeholder="如：业主设计调整、地质变动" />
         </el-form-item>
@@ -252,6 +266,27 @@
 import { ref, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
+import { getContractSealedFiles, uploadContractSealedFile } from '@/api/contract'
+const sealedFiles = ref<any[]>([])
+const sealError = ref('')
+const sealUploading = ref(false)
+async function loadSealedFiles() {
+  sealedFiles.value = []; sealError.value = ''
+  try {
+    const res = await getContractSealedFiles(props.contract.id)
+    if (!Array.isArray(res.data)) throw new Error('invalid files')
+    sealedFiles.value = res.data
+  } catch { sealError.value = '盖章附件状态未知，加载失败，请重试' }
+}
+async function uploadSeal(file: any) {
+  if (!file.raw || sealUploading.value) return
+  sealUploading.value = true
+  try {
+    await uploadContractSealedFile(props.contract.id, file.raw)
+    await loadSealedFiles()
+  } catch { ElMessage.error('盖章附件上传失败') }
+  finally { sealUploading.value = false }
+}
 import {
   getContractDetails,
   getChangeVisaPage,
@@ -295,8 +330,9 @@ function statusTagType(status?: string) {
   return 'info'
 }
 
-function calcRate(amount?: number, total?: number): number {
-  if (!amount || !total || total <= 0) return 0
+function calcRate(amount?: number, total?: number): number | null {
+  if (total == null || Number(total) === 0) return null
+  if (amount == null) return null
   const rate = Math.round((Number(amount) / Number(total)) * 100)
   return Math.min(rate, 100)
 }
@@ -329,10 +365,13 @@ const visaFormRef = ref<FormInstance>()
 const visaForm = ref({
   changeType: 'DESIGN_CHANGE',
   changeAmount: undefined as number | undefined,
+  visaDate: '',
+  taxRate: undefined as number | undefined,
   changeReason: '',
   changeContent: ''
 })
 const visaRules = {
+  visaDate: [{ required: true, message: '请选择签证日期', trigger: 'change' }],
   changeType: [{ required: true, message: '请选择变更类型', trigger: 'change' }],
   changeAmount: [{ required: true, message: '请输入变更金额', trigger: 'blur' }],
   changeReason: [{ required: true, message: '请输入变更原因', trigger: 'blur' }]
@@ -353,6 +392,7 @@ async function loadAllData() {
   if (!props.contract?.id) return
   loading.value = true
   const cid = props.contract.id
+  await loadSealedFiles()
   try {
     // 1. 合同明细
     try {
@@ -399,6 +439,8 @@ function handleAddVisa() {
   visaForm.value = {
     changeType: 'DESIGN_CHANGE',
     changeAmount: undefined,
+    visaDate: '',
+    taxRate: undefined,
     changeReason: '',
     changeContent: ''
   }
@@ -416,6 +458,8 @@ async function submitVisa() {
       contractId: props.contract.id,
       changeType: visaForm.value.changeType,
       changeAmount: visaForm.value.changeAmount,
+      visaDate: visaForm.value.visaDate,
+      taxRate: visaForm.value.taxRate,
       changeReason: visaForm.value.changeReason,
       changeContent: visaForm.value.changeContent
     })

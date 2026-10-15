@@ -15,6 +15,7 @@ vi.mock('element-plus', async (importOriginal) => {
   return { ...actual, ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }
 })
 vi.mock('@/api/batch', () => ({
+  previewImport: vi.fn().mockResolvedValue({ data: { previewToken: 'receipt', rows: [{ name: '待核对' }], totalRows: 1 } }),
   importData: vi.fn(),
   downloadTemplate: vi.fn()
 }))
@@ -49,8 +50,11 @@ function pickFile(wrapper: any) {
 }
 
 async function clickImport(wrapper: any) {
-  const btn = wrapper.findAll('button').find((b: any) => b.text().includes('开始导入'))
-  await btn!.trigger('click')
+  await wrapper.findAll('button').find((b: any) => b.text().includes('解析预览'))!.trigger('click')
+  await flushPromises()
+  expect(mockImport).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('请逐行核对后确认')
+  await wrapper.findAll('button').find((b: any) => b.text().includes('已核对，确认入账'))!.trigger('click')
   await flushPromises()
 }
 
@@ -68,7 +72,7 @@ describe('BatchImportDialog 组件', () => {
 
     await clickImport(wrapper)
 
-    expect(mockImport).toHaveBeenCalledWith('LABOR_ROSTER', file, { teamId: 88, projectId: 10 })
+    expect(mockImport).toHaveBeenCalledWith('LABOR_ROSTER', file, { teamId: 88, projectId: 10, previewToken: 'receipt' })
     expect(wrapper.emitted('success')).toBeTruthy()
     wrapper.unmount()
   })
@@ -81,7 +85,7 @@ describe('BatchImportDialog 组件', () => {
 
     await clickImport(wrapper)
 
-    expect(mockImport).toHaveBeenCalledWith('LABOR_ROSTER', file, { projectId: 5 })
+    expect(mockImport).toHaveBeenCalledWith('LABOR_ROSTER', file, { projectId: 5, previewToken: 'receipt' })
     wrapper.unmount()
   })
 
@@ -114,7 +118,7 @@ describe('BatchImportDialog 组件', () => {
 
   it('未选择文件：导入按钮禁用，不发起请求', async () => {
     const wrapper = await openDialog()
-    const btn = wrapper.findAll('button').find((b: any) => b.text().includes('开始导入'))
+    const btn = wrapper.findAll('button').find((b: any) => b.text().includes('解析预览'))
     expect(btn!.attributes('disabled')).toBeDefined()
     expect(mockImport).not.toHaveBeenCalled()
     wrapper.unmount()

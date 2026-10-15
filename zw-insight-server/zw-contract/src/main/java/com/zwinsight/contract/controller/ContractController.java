@@ -24,6 +24,21 @@ import java.util.List;
 public class ContractController {
 
     private final ConstructionContractService contractService;
+    private final com.zwinsight.file.service.FileService fileService;
+
+    @PostMapping("/{id}/sealed-files")
+    @RequiresPermission("contract:contract:edit")
+    public R<com.zwinsight.file.domain.FileInfo> uploadSealedFile(@PathVariable Long id,
+            @RequestParam org.springframework.web.multipart.MultipartFile file) {
+        BizConstructionContract contract = contractService.getById(id);
+        return R.ok(fileService.uploadContractSeal(file, id, contract.getProjectId()));
+    }
+
+    @GetMapping("/{id}/sealed-files")
+    public R<List<com.zwinsight.file.domain.FileInfo>> sealedFiles(@PathVariable Long id) {
+        contractService.getById(id);
+        return R.ok(fileService.getByBusiness("CONTRACT_SEALED", id));
+    }
 
     @GetMapping("/page")
     public R<PageResult<BizConstructionContract>> page(

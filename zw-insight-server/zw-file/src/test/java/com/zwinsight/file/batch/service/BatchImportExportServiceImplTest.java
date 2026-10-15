@@ -48,6 +48,28 @@ class BatchImportExportServiceImplTest {
     }
 
     @Test
+    void expiredReceiptNeverCreatesBusinessListener() {
+        BatchModuleHandler handler = org.mockito.Mockito.mock(BatchModuleHandler.class);
+        when(handler.supports(any())).thenReturn(true);
+        service = new BatchImportExportServiceImpl(redisTemplate, minioService, java.util.List.of(handler));
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.getAndDelete(anyString())).thenReturn(null);
+        assertThatThrownBy(() -> service.importData("SUPPLIER",
+                new MockMultipartFile("file", "a.xlsx", null, new byte[]{1}), 9999L,
+                Map.of("previewToken", "expired"))).hasMessageContaining("预览已过期");
+        verify(handler, org.mockito.Mockito.never()).createImportListener(any(), any());
+        org.mockito.Mockito.verifyNoInteractions(minioService);
+    }
+
+    @Test
+    void previewRejectsUnknownModuleWithoutWriting() {
+        MockMultipartFile file = new MockMultipartFile("file", "a.xlsx", null, new byte[]{1});
+        assertThatThrownBy(() -> service.previewImport("UNKNOWN_MODULE", file, 9999L, Map.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.mockito.Mockito.verifyNoInteractions(redisTemplate, minioService);
+    }
+
+    @Test
     @DisplayName("导入：空文件被拒绝")
     void testImportData_emptyFile() {
         MockMultipartFile empty = new MockMultipartFile("file", "a.xlsx", null, new byte[0]);

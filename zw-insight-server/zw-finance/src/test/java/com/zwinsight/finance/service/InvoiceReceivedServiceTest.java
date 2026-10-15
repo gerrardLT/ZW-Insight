@@ -52,6 +52,62 @@ class InvoiceReceivedServiceTest {
     private InvoiceReceivedService service;
 
     @Test
+    void save_calculatesTaxAndNormalizesIdentity() {
+        BizInvoiceReceived invoice = new BizInvoiceReceived();
+        invoice.setInvoiceAmount(new BigDecimal("109.00"));
+        invoice.setTaxRate(new BigDecimal("9"));
+        invoice.setInvoiceNumber(" 12345678 ");
+        invoice.setInvoiceCode(" 1234567890 ");
+        service.save(invoice);
+        assertThat(invoice.getInvoiceNumber()).isEqualTo("12345678");
+        assertThat(invoice.getAmountWithoutTax()).isEqualByComparingTo("100.00");
+        assertThat(invoice.getTaxAmount()).isEqualByComparingTo("9.00");
+    }
+
+    @Test
+    void save_traditionalNumberRequiresCodeBeforeInsert() {
+        BizInvoiceReceived invoice = new BizInvoiceReceived();
+        invoice.setInvoiceAmount(BigDecimal.TEN);
+        invoice.setInvoiceNumber("12345678");
+        invoice.setInvoiceCode(" ");
+        assertThatThrownBy(() -> service.save(invoice)).hasMessageContaining("必须提供");
+        invoice.setInvoiceCode("123");
+        assertThatThrownBy(() -> service.save(invoice)).hasMessageContaining("10位或12位");
+        verify(invoiceReceivedMapper, never()).insert(any());
+    }
+
+    @Test
+    void save_digitalNumberHasSameIdentityWithOrWithoutCode() {
+        for (String code : new String[]{"", "1234567890"}) {
+            BizInvoiceReceived invoice = new BizInvoiceReceived();
+            invoice.setInvoiceAmount(BigDecimal.TEN);
+            invoice.setInvoiceNumber("12345678901234567890");
+            invoice.setInvoiceCode(code);
+            service.save(invoice);
+            assertThat(invoice.getInvoiceCode()).isEmpty();
+        }
+    }
+
+    @Test
+    void save_duplicateIdentityIsBusinessConflict() {
+        BizInvoiceReceived invoice = new BizInvoiceReceived();
+        invoice.setInvoiceAmount(BigDecimal.TEN);
+        when(invoiceReceivedMapper.insert(invoice)).thenThrow(new org.springframework.dao.DuplicateKeyException("duplicate"));
+        assertThatThrownBy(() -> service.save(invoice)).isInstanceOf(BusinessException.class)
+                .hasMessageContaining("发票号码与代码已登记");
+        verify(contractPayableMapper, never()).addPurchaseInvoiceReceived(any(), any());
+    }
+
+    @Test
+    void save_rejectsInvalidTaxRate() {
+        BizInvoiceReceived invoice = new BizInvoiceReceived();
+        invoice.setInvoiceAmount(BigDecimal.TEN);
+        invoice.setTaxRate(new BigDecimal("-1"));
+        assertThatThrownBy(() -> service.save(invoice)).isInstanceOf(BusinessException.class);
+        verify(invoiceReceivedMapper, never()).insert(any());
+    }
+
+    @Test
     @DisplayName("page - 记录回填项目名称")
     void page_fillsProjectName() {
         BizInvoiceReceived record = new BizInvoiceReceived();

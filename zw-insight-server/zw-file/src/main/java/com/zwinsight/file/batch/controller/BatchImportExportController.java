@@ -38,6 +38,26 @@ public class BatchImportExportController {
      * @param allParams  全部表单参数（含额外业务参数）
      * @return 导入结果
      */
+    @PostMapping("/import/preview")
+    public R<Map<String, Object>> previewImport(@RequestParam String moduleCode,
+            @RequestParam MultipartFile file, @RequestParam(required = false) Long projectId,
+            @RequestParam Map<String, Object> allParams) {
+        Map<String, Object> params = new java.util.HashMap<>(allParams);
+        params.keySet().removeAll(java.util.Set.of("moduleCode", "file", "projectId"));
+        return R.ok(batchImportExportService.previewImport(moduleCode, file, projectId, params));
+    }
+
+    @PostMapping("/import/confirm")
+    public R<ImportResult> confirmImport(@RequestParam String moduleCode,
+            @RequestParam MultipartFile file, @RequestParam(required = false) Long projectId,
+            @RequestParam Map<String, Object> allParams) {
+        Object token = allParams.get("previewToken");
+        if (token == null || token.toString().isBlank()) {
+            throw new com.zwinsight.common.exception.BusinessException(400, "请先预览并人工确认导入文件");
+        }
+        return importData(moduleCode, file, projectId, allParams);
+    }
+
     @PostMapping("/import")
     public R<ImportResult> importData(
             @RequestParam("moduleCode") String moduleCode,
@@ -48,6 +68,7 @@ public class BatchImportExportController {
         extraParams.remove("moduleCode");
         extraParams.remove("file");
         extraParams.remove("projectId");
+        // Legacy /import consumers remain compatible. Any supplied receipt is still verified by the service.
         ImportResult result = batchImportExportService.importData(moduleCode, file, projectId, extraParams);
         if (result.isAllSuccess()) {
             return R.ok("导入成功，共导入 " + result.getSuccessRows() + " 条数据", result);

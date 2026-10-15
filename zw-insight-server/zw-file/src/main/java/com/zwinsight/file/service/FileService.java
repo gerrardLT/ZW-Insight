@@ -51,6 +51,18 @@ public class FileService {
      * 上传文件
      */
     public FileInfo upload(MultipartFile file, String businessType, Long businessId, Long projectId) {
+        if ("CONTRACT_SEALED".equals(businessType)) {
+            throw new BusinessException(403, "盖章件须经合同宿主接口登记");
+        }
+        return uploadInternal(file, businessType, businessId, projectId);
+    }
+
+    /** Only called by the contract host after its write permission and ownership checks. */
+    public FileInfo uploadContractSeal(MultipartFile file, Long contractId, Long projectId) {
+        return uploadInternal(file, "CONTRACT_SEALED", contractId, projectId);
+    }
+
+    private FileInfo uploadInternal(MultipartFile file, String businessType, Long businessId, Long projectId) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("上传文件不能为空");
         }
@@ -146,6 +158,9 @@ public class FileService {
             throw new BusinessException("文件不存在");
         }
 
+        if ("CONTRACT_SEALED".equals(fileInfo.getBusinessType())) {
+            throw new BusinessException(403, "盖章件不得经公共接口删除，须由合同归档流程处理");
+        }
         minioService.delete(fileInfo.getFilePath());
         fileInfoMapper.deleteById(id);
 
@@ -165,6 +180,7 @@ public class FileService {
      * 批量回填绑定业务主体（解决表单新建阶段先传文件再生成业务ID的时序断裂）
      */
     public int bindBusiness(List<Long> fileIds, String businessType, Long businessId, Long projectId) {
+        if ("CONTRACT_SEALED".equals(businessType)) throw new BusinessException(403, "盖章件须经合同宿主接口登记");
         if (fileIds == null || fileIds.isEmpty() || businessId == null) {
             return 0;
         }
@@ -172,6 +188,9 @@ public class FileService {
         int count = 0;
         for (Long fileId : fileIds) {
             FileInfo f = fileInfoMapper.selectById(fileId);
+            if (f != null && "CONTRACT_SEALED".equals(f.getBusinessType())) {
+                throw new BusinessException(403, "盖章件不得经公共接口改绑");
+            }
             if (f != null && (tenantId == null || tenantId.equals(f.getTenantId()))) {
                 if (businessType != null) f.setBusinessType(businessType);
                 f.setBusinessId(businessId);

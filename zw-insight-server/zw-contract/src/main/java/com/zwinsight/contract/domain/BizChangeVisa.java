@@ -45,6 +45,20 @@ public class BizChangeVisa extends BaseEntity {
      */
     private BigDecimal changeAmount;
 
+    /** 签证业务日期，不用创建时间冒充。 */
+    @jakarta.validation.constraints.NotNull
+    private java.time.LocalDate visaDate;
+
+    @jakarta.validation.constraints.DecimalMin("0")
+    @jakarta.validation.constraints.DecimalMax("100")
+    private BigDecimal taxRate;
+
+    public BigDecimal getTaxAmount() {
+        if (changeAmount == null || taxRate == null) return null;
+        return changeAmount.subtract(changeAmount.divide(BigDecimal.ONE.add(taxRate.movePointLeft(2)),
+                2, java.math.RoundingMode.HALF_UP));
+    }
+
     /**
      * 状态（DRAFT/APPROVED）
      */

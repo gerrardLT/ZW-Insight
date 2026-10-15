@@ -37,6 +37,10 @@ public class BizPurchaseSettlement extends BaseEntity {
      */
     private BigDecimal settlementAmount;
 
+    /** 行级分批请求须显式拒绝，不得因未知JSON字段被忽略而退化为整单结算。 */
+    @TableField(exist = false)
+    private java.util.List<java.util.Map<String, Object>> details;
+
     /**
      * 累计结算金额
      */

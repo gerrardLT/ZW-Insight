@@ -10,6 +10,14 @@ import type {
   OutputReport
 } from '@/types/contract'
 
+export function getContractSealedFiles(id: number | string) {
+  return request.get(`/v1/contract/${id}/sealed-files`)
+}
+export function uploadContractSealedFile(id: number | string, file: File) {
+  const data = new FormData(); data.append('file', file)
+  return request.post(`/v1/contract/${id}/sealed-files`, data)
+}
+
 // ======================== 施工合同 ========================
 export function getContractPage(params: ContractPageQuery) {
   return request.get<R<PageResult<ConstructionContract>>>('/v1/contract/page', { params })

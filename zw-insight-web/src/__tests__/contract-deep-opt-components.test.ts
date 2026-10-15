@@ -20,7 +20,14 @@ const {
   mockGetFinalSettlementPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } }))
 }))
 
+vi.mock('@/api/file', () => ({
+  getFileListByBusiness: vi.fn(async () => ({ data: [] })),
+  uploadFile: vi.fn(async () => ({ data: { id: '123' } }))
+}))
+
 vi.mock('@/api/contract', () => ({
+  getContractSealedFiles: vi.fn(async () => ({ data: [] })),
+  uploadContractSealedFile: vi.fn(async () => ({ data: { id: '123' } })),
   getContractDetails: mockGetDetails,
   getChangeVisaPage: mockGetChangeVisaPage,
   createChangeVisa: mockCreateChangeVisa,
@@ -108,6 +115,8 @@ describe('ContractDetailDrawer 合同履约全息抽屉 (P1-M3 A1/B1)', () => {
     const vm = wrapper.vm as any
     expect(vm.calcRate(500000, 1000000)).toBe(50)
     expect(vm.calcRate(0, 1000000)).toBe(0)
+    expect(vm.calcRate(100, 0)).toBeNull()
+    expect(vm.calcRate(100, undefined)).toBeNull()
     expect(vm.calcRate(1200000, 1000000)).toBe(100) // 上限截断
   })
 
@@ -124,6 +133,8 @@ describe('ContractDetailDrawer 合同履约全息抽屉 (P1-M3 A1/B1)', () => {
     const vm = wrapper.vm as any
     vm.visaForm.changeType = 'SITE_VISA'
     vm.visaForm.changeAmount = 30000
+    vm.visaForm.visaDate = '2026-10-15'
+    vm.visaForm.taxRate = 9
     vm.visaForm.changeReason = '土方换填'
     vm.visaForm.changeContent = '现场签证确认换填工程量'
 
@@ -135,6 +146,8 @@ describe('ContractDetailDrawer 合同履约全息抽屉 (P1-M3 A1/B1)', () => {
       contractId: 91001,
       changeType: 'SITE_VISA',
       changeAmount: 30000,
+      visaDate: '2026-10-15',
+      taxRate: 9,
       changeReason: '土方换填',
       changeContent: '现场签证确认换填工程量'
     })

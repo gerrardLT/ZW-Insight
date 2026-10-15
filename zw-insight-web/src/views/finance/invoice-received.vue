@@ -47,6 +47,10 @@
         <el-table-column prop="invoiceAmount" label="发票金额" width="130" align="right">
           <template #default="{ row }">{{ formatMoney(row.invoiceAmount) }}</template>
         </el-table-column>
+        <el-table-column prop="invoiceNumber" label="发票号码" min-width="180" />
+        <el-table-column prop="invoiceCode" label="发票代码" min-width="130" />
+        <el-table-column prop="amountWithoutTax" label="不含税金额" width="140" />
+        <el-table-column prop="taxAmount" label="税额" width="120" />
         <el-table-column prop="taxRate" label="税率" width="90" align="right">
           <template #default="{ row }">{{ formatTaxRate(row.taxRate) }}</template>
         </el-table-column>
@@ -125,6 +129,8 @@
         <el-form-item label="供应商" prop="supplierName">
           <el-input v-model="formData.supplierName" placeholder="请输入供应商名称" />
         </el-form-item>
+        <el-form-item label="发票号码"><el-input v-model="formData.invoiceNumber" maxlength="20" placeholder="8位或20位数字" /></el-form-item>
+        <el-form-item label="发票代码"><el-input v-model="formData.invoiceCode" maxlength="12" placeholder="数电票可空" /></el-form-item>
         <el-form-item label="发票金额" prop="invoiceAmount">
           <el-input-number v-model="formData.invoiceAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
@@ -190,6 +196,8 @@ const formData = ref({
   contractId: undefined as number | undefined,
   supplierName: '',
   invoiceAmount: 0,
+  invoiceNumber: '',
+  invoiceCode: '',
   taxRate: undefined as number | undefined,
   invoiceDate: ''
 })
@@ -274,6 +282,8 @@ function handleAdd() {
     contractId: undefined,
     supplierName: '',
     invoiceAmount: 0,
+  invoiceNumber: '',
+  invoiceCode: '',
     taxRate: undefined,
     invoiceDate: ''
   }

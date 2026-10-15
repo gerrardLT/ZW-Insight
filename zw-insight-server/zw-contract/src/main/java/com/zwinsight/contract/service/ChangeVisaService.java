@@ -49,6 +49,11 @@ public class ChangeVisaService {
      * 新增变更签证
      */
     public void save(BizChangeVisa changeVisa) {
+        if (changeVisa.getVisaDate() == null) throw new BusinessException(400, "签证日期不能为空");
+        if (changeVisa.getTaxRate() != null && (changeVisa.getTaxRate().signum() < 0
+                || changeVisa.getTaxRate().compareTo(BigDecimal.valueOf(100)) > 0)) {
+            throw new BusinessException(400, "税率须在0至100之间");
+        }
         changeVisa.setStatus("DRAFT");
         changeVisaMapper.insert(changeVisa);
     }

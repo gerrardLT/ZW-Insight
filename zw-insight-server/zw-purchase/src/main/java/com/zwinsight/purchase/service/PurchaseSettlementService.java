@@ -92,6 +92,7 @@ public class PurchaseSettlementService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void create(BizPurchaseSettlement settlement) {
+        rejectUnsafePartialSettlement(settlement);
         if (settlement.getInboundId() == null) {
             throw new BusinessException("采购结算必须关联入库单");
         }
@@ -139,8 +140,16 @@ public class PurchaseSettlementService {
     /**
      * 更新采购结算（仅草稿可编辑；仅允许修改结算金额/日期/备注，结算依据不可改）
      */
+    private void rejectUnsafePartialSettlement(BizPurchaseSettlement settlement) {
+        // ponytail: outbound detail has no inbound_detail_id; enable only after explicit source linkage and quantity ledger exist.
+        if (settlement.getDetails() != null) {
+            throw new BusinessException(409, "暂不支持行级分批结算：退货明细缺少来源入库行关联，无法安全核定可结数量；请使用既有整单结算");
+        }
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void update(BizPurchaseSettlement settlement) {
+        rejectUnsafePartialSettlement(settlement);
         BizPurchaseSettlement existing = settlementMapper.selectById(settlement.getId());
         if (existing == null) {
             throw new BusinessException("采购结算不存在");

@@ -38,6 +38,8 @@ public interface BatchImportExportService {
         return importData(moduleCode, file, projectId);
     }
 
+    Map<String, Object> previewImport(String moduleCode, MultipartFile file, Long projectId, Map<String, Object> params);
+
     /**
      * 发起异步导出
      *

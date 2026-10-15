@@ -48,6 +48,10 @@ export function getBusinessDetail(taskId: string) {
   return request.get(`/v1/workflow/approval/detail/${encodeURIComponent(taskId)}/business`)
 }
 
+export function getMyInitiatedProcesses(params: { page: number; size: number }) {
+  return request.get('/v1/workflow/approval/my-initiated', { params })
+}
+
 export function getDoneTasks(params: any) {
   return request.get('/v1/workflow/approval/done', { params })
 }

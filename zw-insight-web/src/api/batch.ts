@@ -11,9 +11,19 @@ export function importData(moduleCode: string, file: File, params?: Record<strin
       if (value !== undefined && value !== null && value !== '') formData.append(key, String(value))
     })
   }
-  return request.post('/v1/batch/import', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+  const config = { headers: { 'Content-Type': 'multipart/form-data' } }
+  if (params?.previewToken) return request.post('/v1/batch/import/confirm', formData, config)
+  return request.post('/v1/batch/import', formData, config)
+}
+
+export function previewImport(moduleCode: string, file: File, params?: Record<string, any>) {
+  const data = new FormData()
+  data.append('file', file)
+  data.append('moduleCode', moduleCode)
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') data.append(key, String(value))
   })
+  return request.post('/v1/batch/import/preview', data)
 }
 
 export function startExport(moduleCode: string, params?: any) {

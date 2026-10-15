@@ -1312,7 +1312,7 @@ stage_9f_change_visa() {
   phase "9F" "变更签证"
   CURRENT_STAGE="9F:变更签证"
 
-  api_call POST "/api/v1/contract/change-visa" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"changeType\":\"SITE_VISA\",\"changeReason\":\"L4现场签证-工程量变更\",\"changeContent\":\"新增墙面基层处理\",\"changeAmount\":50000.00}"
+  api_call POST "/api/v1/contract/change-visa" "{\"projectId\":$PROJECT_ID,\"contractId\":$CONTRACT_ID,\"changeType\":\"SITE_VISA\",\"visaDate\":\"$(date +%F)\",\"changeReason\":\"L4现场签证-工程量变更\",\"changeContent\":\"新增墙面基层处理\",\"changeAmount\":50000.00}"
   strict_assert "创建变更签证"
   sleep 1
 

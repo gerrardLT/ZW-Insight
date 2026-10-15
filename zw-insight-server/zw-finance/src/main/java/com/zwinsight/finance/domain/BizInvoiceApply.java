@@ -36,6 +36,19 @@ public class BizInvoiceApply extends BaseEntity {
     /** 税率(%)，引用税率字典或手动输入 */
     private BigDecimal taxRate;
 
+    /** 按含税金额派生，缺税率时不伪造零税额。 */
+    public BigDecimal getAmountWithoutTax() {
+        if (invoiceAmount == null || taxRate == null || taxRate.signum() < 0
+                || taxRate.compareTo(BigDecimal.valueOf(100)) > 0) return null;
+        return invoiceAmount.divide(BigDecimal.ONE.add(taxRate.movePointLeft(2)),
+                2, java.math.RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal getTaxAmount() {
+        BigDecimal net = getAmountWithoutTax();
+        return net == null ? null : invoiceAmount.subtract(net);
+    }
+
     /** 发票抬头 */
     private String invoiceTitle;
 

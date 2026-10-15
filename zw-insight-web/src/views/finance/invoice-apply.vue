@@ -130,6 +130,8 @@
           <el-descriptions-item label="申请日期">{{ detailData.applyDate || '-' }}</el-descriptions-item>
           <el-descriptions-item label="发票类型">{{ detailData.invoiceType || '-' }}</el-descriptions-item>
           <el-descriptions-item label="开票金额">{{ formatMoney(detailData.invoiceAmount) }}</el-descriptions-item>
+          <el-descriptions-item label="不含税金额">{{ detailData.amountWithoutTax == null ? '—' : formatMoney(detailData.amountWithoutTax) }}</el-descriptions-item>
+          <el-descriptions-item label="税额">{{ detailData.taxAmount == null ? '—' : formatMoney(detailData.taxAmount) }}</el-descriptions-item>
           <el-descriptions-item label="税率">{{ detailData.taxRate != null ? detailData.taxRate + '%' : '-' }}</el-descriptions-item>
           <el-descriptions-item label="发票抬头">{{ detailData.invoiceTitle || '-' }}</el-descriptions-item>
           <el-descriptions-item label="纳税人识别号">{{ detailData.taxpayerId || '-' }}</el-descriptions-item>

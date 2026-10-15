@@ -74,10 +74,22 @@ public class BatchImportExportServiceImpl implements BatchImportExportService {
         }
 
         BatchModuleHandler handler = getHandler(module);
+        Map<String, Object> confirmedParams = new java.util.HashMap<>(extraParams == null ? Map.of() : extraParams);
+        Object receipt = confirmedParams.remove("previewToken");
+        if (receipt != null) {
+            try {
+                String digest = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(file.getBytes()));
+                String expected = moduleCode + ":" + projectId + ":" + new java.util.TreeMap<>(confirmedParams) + ":" + digest;
+                Object actual = redisTemplate.opsForValue().getAndDelete("import:preview:" + SecurityContextHolder.getTenantId()
+                    + ":" + SecurityContextHolder.getUserId() + ":" + receipt);
+                if (!expected.equals(actual)) throw new BusinessException(409, "预览已过期、已使用或文件/参数已变更，请重新预览");
+            } catch (BusinessException e) { throw e; }
+            catch (Exception e) { throw new BusinessException(409, "无法核验预览，请重新预览"); }
+        }
 
         try {
             AbstractImportListener<?> listener = handler.createImportListener(projectId,
-                    extraParams == null ? java.util.Collections.emptyMap() : extraParams);
+                    confirmedParams);
             Class<?> dtoClass = handler.getImportDtoClass();
 
             EasyExcel.read(file.getInputStream(), dtoClass, listener)
@@ -91,6 +103,37 @@ public class BatchImportExportServiceImpl implements BatchImportExportService {
             log.error("导入失败: moduleCode={}", moduleCode, e);
             throw new BusinessException("导入失败: " + e.getMessage());
         }
+    }
+
+    @Override
+    public Map<String, Object> previewImport(String moduleCode, MultipartFile file, Long projectId, Map<String, Object> params) {
+        BatchModuleHandler handler = getHandler(ModuleCode.fromCode(moduleCode));
+        if (file == null || file.isEmpty() || file.getSize() > 10 * 1024 * 1024) {
+            throw new BusinessException(400, "请选择不超过10MB的Excel文件");
+        }
+        try {
+            // Deliberately no business import listener: preview must never write business rows.
+            List<Object> rows = new java.util.ArrayList<>();
+            EasyExcel.read(file.getInputStream(), handler.getImportDtoClass(),
+                new com.alibaba.excel.event.AnalysisEventListener<Object>() {
+                    public void invoke(Object row, com.alibaba.excel.context.AnalysisContext context) {
+                        if (rows.size() >= 1000) throw new BusinessException(400, "预览最多1000行，请拆分文件");
+                        rows.add(row);
+                    }
+                    public void doAfterAllAnalysed(com.alibaba.excel.context.AnalysisContext context) { }
+                }).sheet().doRead();
+            if (rows.isEmpty()) throw new BusinessException(400, "Excel无数据行");
+            String token = java.util.UUID.randomUUID().toString();
+            String digest = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(file.getBytes()));
+            Map<String, Object> scope = new java.util.HashMap<>(params);
+            scope.remove("previewToken");
+            String binding = moduleCode + ":" + projectId + ":" + new java.util.TreeMap<>(scope) + ":" + digest;
+            redisTemplate.opsForValue().set("import:preview:" + SecurityContextHolder.getTenantId() + ":"
+                + SecurityContextHolder.getUserId() + ":" + token, binding, 15, TimeUnit.MINUTES);
+            return Map.of("previewToken", token, "rows", rows, "totalRows", rows.size(),
+                "note", "仅解析预览，尚未业务校验或入账；确认后重新校验，结果须核对成功与失败行");
+        } catch (BusinessException e) { throw e; }
+        catch (Exception e) { throw new BusinessException(400, "Excel预览解析失败"); }
     }
 
     @Override

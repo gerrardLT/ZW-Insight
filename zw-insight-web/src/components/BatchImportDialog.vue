@@ -16,6 +16,7 @@
           <div class="el-upload__tip">仅支持 .xlsx / .xls 格式</div>
         </template>
       </el-upload>
+      <div v-if="preview" role="status"><p>{{ preview.note }}；共 {{ preview.totalRows }} 行，请逐行核对后确认。</p><el-table :data="preview.rows" max-height="300" border><el-table-column v-for="key in Object.keys(preview.rows[0] || {})" :key="key" :prop="key" :label="key" min-width="130" /></el-table></div>
       <div style="margin-top: 12px">
         <el-button link type="primary" @click="handleDownloadTemplate">下载导入模板</el-button>
       </div>
@@ -37,7 +38,7 @@
     <template #footer>
       <el-button @click="dialogVisible = false">{{ importResult ? '关闭' : '取消' }}</el-button>
       <el-button v-if="!importResult" type="primary" :loading="uploading" :disabled="!selectedFile" @click="handleImport">
-        开始导入
+        {{ preview ? '已核对，确认入账' : '解析预览（不入账）' }}
       </el-button>
     </template>
   </el-dialog>
@@ -47,7 +48,7 @@
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@/components/icons/registry'
-import { importData, downloadTemplate } from '@/api/batch'
+import { importData, previewImport, downloadTemplate } from '@/api/batch'
 
 const props = defineProps<{ visible: boolean; moduleCode: string; projectId?: number; extraQuery?: Record<string, string | number> }>()
 const emit = defineEmits<{ (e: 'update:visible', v: boolean): void; (e: 'success'): void }>()
@@ -56,11 +57,13 @@ const dialogVisible = ref(false)
 const uploading = ref(false)
 const selectedFile = ref<File | null>(null)
 const importResult = ref<any>(null)
+const preview = ref<any>(null)
+watch(() => [props.visible, props.projectId, props.extraQuery, props.moduleCode], () => { preview.value = null }, { deep: true })
 
 watch(() => props.visible, v => { dialogVisible.value = v; if (v) { selectedFile.value = null; importResult.value = null } })
 watch(dialogVisible, v => emit('update:visible', v))
 
-function handleFileChange(file: any) { selectedFile.value = file.raw }
+function handleFileChange(file: any) { selectedFile.value = file.raw; preview.value = null }
 function handleClose() { emit('update:visible', false) }
 
 async function handleImport() {
@@ -69,7 +72,19 @@ async function handleImport() {
   try {
     const params: Record<string, any> = { ...props.extraQuery }
     if (props.projectId) params.projectId = props.projectId
-    const res: any = await importData(props.moduleCode, selectedFile.value, params)
+    if (!preview.value) {
+      const res: any = await previewImport(props.moduleCode, selectedFile.value, params)
+      if (!res.data?.previewToken || !Array.isArray(res.data.rows)) throw new Error('预览响应无效')
+      preview.value = res.data
+      return
+    }
+    const token = preview.value.previewToken
+    preview.value = null
+    const res: any = await importData(props.moduleCode, selectedFile.value, { ...params, previewToken: token })
+    if (!res.data || !Number.isInteger(res.data.totalRows) || !Number.isInteger(res.data.successRows)
+      || !Number.isInteger(res.data.failedRows) || res.data.successRows + res.data.failedRows !== res.data.totalRows) {
+      throw new Error('导入结果行数不平，请到业务列表核对，勿直接重试入账')
+    }
     importResult.value = res.data
     if (res.data?.successRows > 0) emit('success')
   } catch (e: any) { ElMessage.error(e?.response?.data?.message || e?.message || '导入失败') } finally { uploading.value = false }

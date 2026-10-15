@@ -288,6 +288,9 @@ public class OutputReportService {
             return;
         }
         for (BizOutputReportDetail detail : details) {
+            if (detail.getPart() != null && detail.getPart().length() > 200) {
+                throw new BusinessException(400, "施工部位不能超过200字");
+            }
             detail.setId(null);
             detail.setReportId(reportId);
             reportDetailMapper.insert(detail);

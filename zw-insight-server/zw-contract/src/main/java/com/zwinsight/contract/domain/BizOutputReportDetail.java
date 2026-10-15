@@ -21,6 +21,10 @@ public class BizOutputReportDetail extends BaseEntity {
     /** 工程量清单条目ID */
     private Long boqItemId;
 
+    /** 本次施工部位；存量允许为空。 */
+    @jakarta.validation.constraints.Size(max = 200)
+    private String part;
+
     /** 本期完成工程量 */
     private BigDecimal quantity;
 

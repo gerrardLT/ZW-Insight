@@ -41,6 +41,18 @@ class ContractControllerTest {
     @MockBean
     private ConstructionContractService contractService;
 
+    @MockBean
+    private com.zwinsight.file.service.FileService fileService;
+
+    @Test
+    void sealedFilesUseHostContractLookup() throws Exception {
+        when(contractService.getById(9999L)).thenReturn(new BizConstructionContract());
+        when(fileService.getByBusiness("CONTRACT_SEALED", 9999L)).thenReturn(List.of());
+        mockMvc.perform(get("/api/v1/contract/9999/sealed-files"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isArray());
+        verify(contractService).getById(9999L);
+    }
+
     @BeforeEach
     void setUp() {
         SecurityContextHolder.setTenantId(1L);

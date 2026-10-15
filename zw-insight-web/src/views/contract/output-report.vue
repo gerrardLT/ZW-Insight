@@ -104,6 +104,7 @@
             <template #default="{ row }">{{ formatMoney(row.unitPrice) }}</template>
           </el-table-column>
           <el-table-column prop="quantity" label="清单量" width="90" align="right" />
+          <el-table-column label="施工部位" min-width="180"><template #default="{ row }"><el-input v-model="row.part" maxlength="200" placeholder="实际施工部位" /></template></el-table-column>
           <el-table-column label="本期完成量" width="130" align="center">
             <template #default="scope">
               <el-input-number v-model="(scope.row as BoqRow).reportQuantity" :min="0" :precision="2" :controls="false" size="small" style="width: 110px" @change="recalcFromBoq" />
@@ -157,6 +158,7 @@ interface BoqRow {
   unitPrice?: number
   quantity?: number
   reportQuantity?: number
+  part?: string
 }
 
 const loading = ref(false)
@@ -327,6 +329,7 @@ async function handleCreateSubmit() {
       .filter(row => (row.reportQuantity || 0) > 0)
       .map(row => ({
         boqItemId: row.id,
+        part: row.part?.trim(),
         quantity: row.reportQuantity as number,
         amount: lineAmount(row)
       }))

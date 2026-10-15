@@ -10,6 +10,8 @@ export interface InvoiceApply {
   contractId: ID
   invoiceType?: string
   invoiceAmount: number
+  amountWithoutTax?: number | null
+  taxAmount?: number | null
   invoiceTitle?: string
   taxpayerId?: string
   bankAccount?: string
@@ -28,6 +30,8 @@ export interface InvoiceApplyCreateRequest {
   contractId: ID
   invoiceType?: string
   invoiceAmount: number
+  amountWithoutTax?: number | null
+  taxAmount?: number | null
   taxRate?: number
   applyDate?: string
   invoiceTitle?: string
@@ -101,6 +105,8 @@ export interface InvoiceReceived {
   contractId?: ID
   invoiceCode?: string
   invoiceAmount: number
+  amountWithoutTax?: number | null
+  taxAmount?: number | null
   invoiceDate?: string
   supplierName?: string
   status: string

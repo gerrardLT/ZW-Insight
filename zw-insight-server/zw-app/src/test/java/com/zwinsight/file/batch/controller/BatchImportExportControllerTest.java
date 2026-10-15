@@ -54,6 +54,39 @@ class BatchImportExportControllerTest {
         verify(batchImportExportService).importData(eq("MACHINE_LEDGER"), any(), eq(100L), eq(java.util.Map.of()));
     }
 
+    @Test
+    void should_confirm_with_preview_receipt() throws Exception {
+        ImportResult result = new ImportResult();
+        when(batchImportExportService.importData(eq("MACHINE_LEDGER"), any(), any(), anyMap())).thenReturn(result);
+        mockMvc.perform(multipart("/api/v1/batch/import/confirm")
+                .file(new MockMultipartFile("file", "test.xlsx", null, new byte[]{1}))
+                .param("moduleCode", "MACHINE_LEDGER").param("projectId", "100")
+                .param("previewToken", "receipt"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200));
+        verify(batchImportExportService).importData(eq("MACHINE_LEDGER"), any(), eq(100L),
+                eq(java.util.Map.of("previewToken", "receipt")));
+    }
+
+    @Test
+    void confirmation_without_receipt_is_rejected() {
+        BatchImportExportController controller = new BatchImportExportController(batchImportExportService);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.confirmImport("MACHINE_LEDGER",
+                new MockMultipartFile("file", new byte[]{1}), 100L, java.util.Map.of()))
+                .isInstanceOf(com.zwinsight.common.exception.BusinessException.class)
+                .hasMessageContaining("请先预览");
+        verifyNoInteractions(batchImportExportService);
+    }
+
+    @Test
+    void confirmation_invalid_receipt_is_not_reported_as_success() {
+        when(batchImportExportService.importData(anyString(), any(), any(), anyMap()))
+                .thenThrow(new com.zwinsight.common.exception.BusinessException(409, "预览已过期"));
+        BatchImportExportController controller = new BatchImportExportController(batchImportExportService);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.confirmImport("MACHINE_LEDGER",
+                new MockMultipartFile("file", new byte[]{1}), 100L, java.util.Map.of("previewToken", "expired")))
+                .hasMessageContaining("预览已过期");
+    }
+
     @Test @DisplayName("POST /api/v1/batch/export - 发起异步导出")
     void should_async_export() throws Exception {
         when(batchImportExportService.asyncExport(eq("MACHINE_LEDGER"), any())).thenReturn(42L);

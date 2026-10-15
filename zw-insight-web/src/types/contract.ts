@@ -104,6 +104,7 @@ export interface OtherContract {
 
 /** 产值报告明细（按 BOQ 清单行填报，可选） */
 export interface OutputReportDetail {
+  part?: string
   boqItemId: ID
   itemCode?: string
   itemName?: string

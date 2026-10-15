@@ -83,7 +83,15 @@ public class InvoiceApplyService {
     /**
      * 新增开票申请
      */
+    private void validateTax(BizInvoiceApply invoice) {
+        if (invoice.getTaxRate() != null && (invoice.getTaxRate().signum() < 0
+                || invoice.getTaxRate().compareTo(BigDecimal.valueOf(100)) > 0)) {
+            throw new BusinessException(400, "税率须在0至100之间");
+        }
+    }
+
     public void save(BizInvoiceApply invoiceApply) {
+        validateTax(invoiceApply);
         invoiceApply.setStatus("DRAFT");
         invoiceApplyMapper.insert(invoiceApply);
     }
@@ -103,6 +111,7 @@ public class InvoiceApplyService {
      * 更新开票申请
      */
     public void update(BizInvoiceApply invoiceApply) {
+        validateTax(invoiceApply);
         BizInvoiceApply existing = invoiceApplyMapper.selectById(invoiceApply.getId());
         if (existing == null) {
             throw new BusinessException("开票申请不存在");

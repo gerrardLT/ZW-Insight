@@ -53,8 +53,28 @@ class ChangeVisaServiceTest {
         v.setProjectId(10L);
         v.setContractId(20L);
         v.setChangeAmount(new BigDecimal("8000"));
+        v.setVisaDate(java.time.LocalDate.of(2026, 10, 15));
         v.setStatus(status);
         return v;
+    }
+
+    @Test
+    void save_rejectsMissingDateAndNegativeRate() {
+        BizChangeVisa v = visa(null);
+        v.setVisaDate(null);
+        assertThatThrownBy(() -> service.save(v)).hasMessageContaining("签证日期");
+        v.setVisaDate(java.time.LocalDate.of(2026, 10, 15));
+        v.setTaxRate(new BigDecimal("-1"));
+        assertThatThrownBy(() -> service.save(v)).hasMessageContaining("税率");
+    }
+
+    @Test
+    void taxAmount_preservesUnknownAndNegativeChange() {
+        BizChangeVisa v = visa(null);
+        assertThat(v.getTaxAmount()).isNull();
+        v.setChangeAmount(new BigDecimal("-109"));
+        v.setTaxRate(new BigDecimal("9"));
+        assertThat(v.getTaxAmount()).isEqualByComparingTo("-9");
     }
 
     @Test
