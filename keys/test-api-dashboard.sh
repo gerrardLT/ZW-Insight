@@ -172,6 +172,12 @@ if [ -n "$PROJECT_ID" ]; then
   call GET "/api/v1/dashboard/project/$PROJECT_ID/cost-control"
   assert_http 2 "项目看板-成本控制 HTTP"
   assert_jq '.code==200 and (.data|type=="object")' "项目看板-成本控制为对象"
+
+  # C5（V2026_110 后批次）：回款率四口径+双毛利+人工对照，指标须带元数据
+  call GET "/api/v1/dashboard/project/$PROJECT_ID/receipt-ratios"
+  assert_http 2 "项目看板-回款比率 HTTP"
+  assert_jq '.code==200 and (.data.collectionRateByContract|has("numerator")) and (.data.collectionRateByContract|has("basis"))' "回款比率含分子分母与basis"
+  assert_jq '(.data.laborCostCompare|has("wageLikeTotal"))' "人工对照组存在"
 fi
 
 # 负向：项目不存在时看板返回 404（Controller checkProjectExists）

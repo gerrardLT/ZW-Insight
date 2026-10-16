@@ -48,11 +48,13 @@
 - [x] 前端：LINES 表格加入库单价/结算单价/价差/原因列（价差高亮、无价差禁填原因）、编辑态回填已存单价与原因、金额按结算价预览；payload 携带单价与原因。
 - [x] 测试：PurchaseSettlementServiceTest 新增 3 例（零容差拒绝/有原因按结算价+行字段断言/容差内免原因）+ purchase-matrix 组件 1 例（26/26）+ purchase shell 负向守卫段；vue-tsc 143 基线；EOL clean。
 
-## 批次 6：C5 只读指标
+## 批次 6：C5 只读指标与口径治理
 
-- [ ] 工资点工 vs 劳务结算并列只读组（含未入 CBS 声明）。
-- [ ] 四回款率 + 双毛利 + 元数据（numerator/denominator/basis/asOf）；CBS 不可用明示。
-- [ ] ProjectBusinessSummary 组件测试更新；本地 commit。
+- [x] 新端点 GET /api/v1/dashboard/project/{id}/receipt-ratios：回款率四口径（/合同额、/累计产值、/累计开票、/累计结算）统一 value/numerator/denominator/basis/available/unavailableReason（零分母明示 DENOMINATOR_ZERO，不用 0% 冒充）。
+- [x] 双毛利（产值−CBS实际、结算−CBS实际）：仅 CBS 可用（根账户口径与 ProfitSnapshot 同源防层级重复计数）；无账户明示 CBS_UNAVAILABLE 不回退审批口径。
+- [x] 人工对照只读组：工资单+点工已批 vs 劳务累计结算并列 + 差额 + 「未入 CBS 权责成本（会计政策待定）」声明；跨模块只读 SQL（LaborCostReadMapper，沿 countTenderRegisters 只读惯例），不动 CostRollUp。
+- [x] 前端：ProjectBusinessSummary 新增「回款与毛利」面板（后端值直显、不可算明示）与人工对照条；比率接口失败不影响既有两组。
+- [x] 测试：ProjectDashboardServiceTest 2 例（四口径元数据/零分母、双毛利根账户去重+人工对照）+ 组件 3 例新增（9/9 通过）+ dashboard shell 只读断言；EOL 修复 3 处；TS 错误集与 HEAD 完全一致零新增。
 
 ## 收尾
 

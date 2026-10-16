@@ -158,6 +158,43 @@ export function getProjectCostControl(projectId: number | string) {
   return request.get(`/v1/dashboard/project/${projectId}/cost-control`)
 }
 
+/**
+ * 回款率四口径 + 双毛利 + 人工成本对照（C5 口径治理）。
+ * 每指标带 value/numerator/denominator/basis/available；分母为零或 CBS 不可用明示不可算。
+ */
+export interface ReceiptRatioMetric {
+  value: number | null
+  numerator?: number
+  denominator?: number
+  basis: string
+  available: boolean
+  unavailableReason?: string
+  note?: string
+}
+
+export interface ReceiptRatiosDTO {
+  asOf: string
+  collectionRateByContract: ReceiptRatioMetric
+  collectionRateByOutput: ReceiptRatioMetric
+  collectionRateByInvoice: ReceiptRatioMetric
+  collectionRateBySettlement: ReceiptRatioMetric
+  outputGrossMargin: ReceiptRatioMetric
+  settlementGrossMargin: ReceiptRatioMetric
+  laborCostCompare: {
+    wagePayrollApproved: number
+    pointWorkApproved: number
+    wageLikeTotal: number
+    laborSettlementTotal: number
+    difference: number
+    basis: string
+    note: string
+  }
+}
+
+export function getProjectReceiptRatios(projectId: number | string) {
+  return request.get(`/v1/dashboard/project/${projectId}/receipt-ratios`)
+}
+
 // ======================================================================
 // 项目成本控制看板（Project Cost 360） - Cost Control Backbone
 // 后端：ProjectDashboardController.getCostControl()

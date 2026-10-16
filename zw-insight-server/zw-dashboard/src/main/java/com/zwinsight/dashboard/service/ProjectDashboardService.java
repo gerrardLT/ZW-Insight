@@ -3,8 +3,10 @@ package com.zwinsight.dashboard.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zwinsight.budget.domain.BizBudget;
 import com.zwinsight.budget.domain.BizBudgetDetail;
+import com.zwinsight.budget.domain.BizCostAccount;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BizBudgetMapper;
+import com.zwinsight.budget.mapper.BizCostAccountMapper;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.domain.BizOutputReport;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
@@ -51,6 +53,8 @@ public class ProjectDashboardService {
     private final BizInvoiceApplyMapper invoiceApplyMapper;
     private final BizPaymentReceivedMapper paymentReceivedMapper;
     private final BizOutputReportMapper outputReportMapper;
+    private final com.zwinsight.budget.mapper.BizCostAccountMapper costAccountMapper;
+    private final com.zwinsight.dashboard.mapper.LaborCostReadMapper laborCostReadMapper;
 
     /**
      * 获取项目预算执行数据
@@ -302,5 +306,119 @@ public class ProjectDashboardService {
             return BigDecimal.ZERO;
         }
         return numerator.divide(denominator, 4, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 回款率四口径 + 双毛利 + 人工成本对照（C5，口径治理：分子分母随值下发，前端不自算）。
+     * <p>
+     * 每个指标统一为 {@code value/numerator/denominator/basis/available/unavailableReason}：
+     * 分母为 0 时 available=false 并给出原因，不用 0% 冒充；毛利仅在 CBS 可用时提供
+     * （无账户回退 total_expense 会混审批口径，明示不可算而非降级）。
+     * 人工对照：工资性支出（工资单+点工，审批口径）未入 CBS 权责成本，只读并列呈现。
+     * </p>
+     */
+    public Map<String, Object> getReceiptRatios(Long projectId) {
+        List<BizConstructionContract> contracts = constructionContractMapper.selectList(
+                new LambdaQueryWrapper<BizConstructionContract>()
+                        .eq(BizConstructionContract::getProjectId, projectId)
+                        .in(BizConstructionContract::getStatus, "EFFECTIVE", "SETTLED"));
+        BigDecimal contractTotal = BigDecimal.ZERO;
+        BigDecimal received = BigDecimal.ZERO;
+        BigDecimal outputTotal = BigDecimal.ZERO;
+        BigDecimal invoiced = BigDecimal.ZERO;
+        BigDecimal settled = BigDecimal.ZERO;
+        for (BizConstructionContract c : contracts) {
+            contractTotal = contractTotal.add(nvl(c.getContractAmount()));
+            received = received.add(nvl(c.getCumulativeReceivedAmount()));
+            outputTotal = outputTotal.add(nvl(c.getCumulativeOutput()));
+            invoiced = invoiced.add(nvl(c.getCumulativeInvoiceAmount()));
+            settled = settled.add(nvl(c.getCumulativeSettlement()));
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("asOf", java.time.LocalDate.now().toString());
+        result.put("collectionRateByContract", ratio(received, contractTotal, "RECEIVED_DIV_CONTRACT_AMOUNT"));
+        result.put("collectionRateByOutput", ratio(received, outputTotal, "RECEIVED_DIV_CUMULATIVE_OUTPUT"));
+        result.put("collectionRateByInvoice", ratio(received, invoiced, "RECEIVED_DIV_CUMULATIVE_INVOICE"));
+        result.put("collectionRateBySettlement", ratio(received, settled, "RECEIVED_DIV_CUMULATIVE_SETTLEMENT"));
+
+        // 双毛利：仅 CBS 可用（根账户防层级重复计数，与 ProfitSnapshotService 同口径）
+        List<com.zwinsight.budget.domain.BizCostAccount> accounts = costAccountMapper.selectList(
+                new LambdaQueryWrapper<com.zwinsight.budget.domain.BizCostAccount>()
+                        .eq(com.zwinsight.budget.domain.BizCostAccount::getProjectId, projectId));
+        if (accounts.isEmpty()) {
+            result.put("outputGrossMargin", unavailable("CBS_UNAVAILABLE",
+                    "项目未建成本账户，毛利不可算（不回退审批口径支出冒充成本）"));
+            result.put("settlementGrossMargin", unavailable("CBS_UNAVAILABLE",
+                    "项目未建成本账户，毛利不可算（不回退审批口径支出冒充成本）"));
+        } else {
+            Set<Long> ids = new HashSet<>();
+            for (com.zwinsight.budget.domain.BizCostAccount a : accounts) {
+                ids.add(a.getId());
+            }
+            BigDecimal actual = BigDecimal.ZERO;
+            for (com.zwinsight.budget.domain.BizCostAccount a : accounts) {
+                boolean root = a.getParentId() == null || !ids.contains(a.getParentId());
+                if (root) {
+                    actual = actual.add(nvl(a.getActualAmount()));
+                }
+            }
+            result.put("outputGrossMargin", grossMargin(outputTotal, actual, "CUMULATIVE_OUTPUT_MINUS_CBS_ACTUAL"));
+            result.put("settlementGrossMargin", grossMargin(settled, actual, "CUMULATIVE_SETTLEMENT_MINUS_CBS_ACTUAL"));
+        }
+
+        // 人工成本对照（只读，不写 CBS）
+        Map<String, Object> laborCompare = new LinkedHashMap<>();
+        BigDecimal payroll = nvl(laborCostReadMapper.sumApprovedPayroll(projectId));
+        BigDecimal workOrders = nvl(laborCostReadMapper.sumApprovedWorkOrders(projectId));
+        BigDecimal laborSettlement = nvl(laborCostReadMapper.sumLaborSettlement(projectId));
+        laborCompare.put("wagePayrollApproved", payroll);
+        laborCompare.put("pointWorkApproved", workOrders);
+        laborCompare.put("wageLikeTotal", payroll.add(workOrders));
+        laborCompare.put("laborSettlementTotal", laborSettlement);
+        laborCompare.put("difference", payroll.add(workOrders).subtract(laborSettlement));
+        laborCompare.put("basis", "WAGE_LIKE_NOT_IN_CBS");
+        laborCompare.put("note", "工资性支出（工资单+点工，审批口径）未入 CBS 权责成本，会计政策待定；此处只读对照，不写成本账户");
+        result.put("laborCostCompare", laborCompare);
+        return result;
+    }
+
+    private Map<String, Object> ratio(BigDecimal numerator, BigDecimal denominator, String basis) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("numerator", numerator);
+        m.put("denominator", denominator);
+        m.put("basis", basis);
+        if (denominator.signum() == 0) {
+            m.put("available", false);
+            m.put("unavailableReason", "DENOMINATOR_ZERO");
+            m.put("value", null);
+        } else {
+            m.put("available", true);
+            m.put("value", numerator.divide(denominator, 4, RoundingMode.HALF_UP));
+        }
+        return m;
+    }
+
+    private Map<String, Object> grossMargin(BigDecimal basisAmount, BigDecimal actualCost, String basisLabel) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("numerator", basisAmount.subtract(actualCost));
+        m.put("denominator", basisAmount);
+        m.put("basis", basisLabel);
+        m.put("available", true);
+        m.put("value", basisAmount.subtract(actualCost));
+        return m;
+    }
+
+    private Map<String, Object> unavailable(String reason, String note) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("available", false);
+        m.put("unavailableReason", reason);
+        m.put("note", note);
+        m.put("value", null);
+        return m;
+    }
+
+    private static BigDecimal nvl(BigDecimal v) {
+        return v != null ? v : BigDecimal.ZERO;
     }
 }

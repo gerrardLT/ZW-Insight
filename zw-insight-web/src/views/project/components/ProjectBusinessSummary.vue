@@ -21,18 +21,41 @@
       </div>
     </template>
     <p>缺失金额显示“—”，不按零处理；此处不推算现金余额或预计利润。</p>
+    <template v-if="ratios">
+      <div class="summary-panel">
+        <h3>回款与毛利（口径带分子分母，前端不自算）</h3>
+        <dl class="summary-grid">
+          <div v-for="m in ratioRows" :key="m.label">
+            <dt>{{ m.label }}</dt>
+            <dd>
+              <template v-if="m.metric?.available && m.metric.value != null">{{ m.text }}</template>
+              <template v-else>
+                <span class="unavailable">不可算</span>
+                <small v-if="m.metric?.unavailableReason === 'CBS_UNAVAILABLE'">未建 CBS 成本账户</small>
+                <small v-else-if="m.metric?.unavailableReason === 'DENOMINATOR_ZERO'">分母为零</small>
+              </template>
+            </dd>
+          </div>
+        </dl>
+        <div v-if="ratios.laborCostCompare" class="labor-compare">
+          人工对照（只读）：工资单+点工已批 {{ amount(ratios.laborCostCompare.wageLikeTotal) }} vs 劳务累计结算
+          {{ amount(ratios.laborCostCompare.laborSettlementTotal) }}；工资性支出未入 CBS 权责成本（会计政策待定），不写成本账户。
+        </div>
+      </div>
+    </template>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { getProjectOverview, getProjectCostControl } from '@/api/dashboard'
-import type { ProjectDashboardDTO, ProjectCostControlDTO } from '@/api/dashboard'
+import { getProjectOverview, getProjectCostControl, getProjectReceiptRatios } from '@/api/dashboard'
+import type { ProjectDashboardDTO, ProjectCostControlDTO, ReceiptRatiosDTO, ReceiptRatioMetric } from '@/api/dashboard'
 
 const props = defineProps<{ projectId: string }>()
 const loading = ref(false)
 const data = ref<{ overview: ProjectDashboardDTO | null; cost: ProjectCostControlDTO | null }>({ overview: null, cost: null })
 const errors = ref({ overview: '', cost: '' })
+const ratios = ref<ReceiptRatiosDTO | null>(null)
 const hasAccounts = computed(() => Number(data.value.cost?.accountCount) > 0)
 let generation = 0
 const panels = [
@@ -53,11 +76,30 @@ function amount(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value)
     ? value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
 }
+
+// C5 回款率四口径 + 双毛利（value 已由后端算好，前端仅展示）
+const ratioRows = computed(() => {
+  const r = ratios.value
+  if (!r) return []
+  const pct = (m: ReceiptRatioMetric) =>
+    m.available && m.value != null ? `${(Number(m.value) * 100).toFixed(2)}%` : ''
+  const amt = (m?: ReceiptRatioMetric) =>
+    m && typeof m.numerator === 'number' ? amount(m.numerator) : '—'
+  return [
+    { label: '回款率 /合同额', metric: r.collectionRateByContract, text: pct(r.collectionRateByContract) },
+    { label: '回款率 /累计产值', metric: r.collectionRateByOutput, text: pct(r.collectionRateByOutput) },
+    { label: '回款率 /累计开票', metric: r.collectionRateByInvoice, text: pct(r.collectionRateByInvoice) },
+    { label: '回款率 /累计结算', metric: r.collectionRateBySettlement, text: pct(r.collectionRateBySettlement) },
+    { label: '产值毛利（产值−CBS实际）', metric: r.outputGrossMargin, text: amt(r.outputGrossMargin) },
+    { label: '结算毛利（结算−CBS实际）', metric: r.settlementGrossMargin, text: amt(r.settlementGrossMargin) },
+  ]
+})
 async function load() {
   const current = ++generation
   const id = props.projectId
   data.value = { overview: null, cost: null }
   errors.value = { overview: '', cost: '' }
+  ratios.value = null
   loading.value = false
   if (!/^\d+$/.test(id)) return
   loading.value = true
@@ -75,6 +117,13 @@ async function load() {
       if (current === generation) errors.value[key] = `${key === 'overview' ? '合同与产值' : 'CBS 成本'}加载失败，请重试。`
     }
   }))
+  // C5 回款与毛利（独立失败不影响既有两组）
+  try {
+    const response: any = await getProjectReceiptRatios(id)
+    if (current === generation && response.code === 200) ratios.value = response.data
+  } catch {
+    if (current === generation) ratios.value = null
+  }
   if (current === generation) loading.value = false
 }
 // All state and loaders exist before the immediate watcher runs.
@@ -89,5 +138,7 @@ p { color: var(--el-text-color-secondary); }
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--zw-space-md); }
 dd { margin: var(--zw-space-xs) 0; font-variant-numeric: tabular-nums; font-size: var(--zw-font-size-xl); }
 .summary-panel { margin-top: var(--zw-space-md); }
+.unavailable { color: var(--el-text-color-secondary); font-size: var(--zw-font-size-lg); }
+.labor-compare { color: var(--el-text-color-secondary); font-size: var(--zw-font-size-sm); margin-top: var(--zw-space-sm); }
 button { cursor: pointer; }
 </style>

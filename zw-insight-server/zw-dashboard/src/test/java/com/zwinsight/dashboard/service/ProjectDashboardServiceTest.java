@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +70,8 @@ class ProjectDashboardServiceTest {
     @Mock private BizInvoiceApplyMapper invoiceApplyMapper;
     @Mock private BizPaymentReceivedMapper paymentReceivedMapper;
     @Mock private BizOutputReportMapper outputReportMapper;
+    @Mock private com.zwinsight.budget.mapper.BizCostAccountMapper costAccountMapper;
+    @Mock private com.zwinsight.dashboard.mapper.LaborCostReadMapper laborCostReadMapper;
 
     @InjectMocks
     private ProjectDashboardService dashboardService;
@@ -203,5 +206,68 @@ class ProjectDashboardServiceTest {
         assertThat(dto.getProgress()).isNotNull();
         assertThat(dto.getContract()).isNotNull();
         assertThat(dto.getOutput()).isNotNull();
+    }
+
+    // ==================== C5 回款率四口径 + 双毛利 + 人工对照 ====================
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("C5 - 四口径回款率带分子分母；零分母明示不可算")
+    void getReceiptRatios_fourRatesWithMetadata() {
+        com.zwinsight.contract.domain.BizConstructionContract c = new com.zwinsight.contract.domain.BizConstructionContract();
+        c.setProjectId(10L); c.setStatus("EFFECTIVE");
+        c.setContractAmount(new java.math.BigDecimal("1000000"));
+        c.setCumulativeReceivedAmount(new java.math.BigDecimal("300000"));
+        c.setCumulativeOutput(new java.math.BigDecimal("500000"));
+        c.setCumulativeInvoiceAmount(new java.math.BigDecimal("400000"));
+        c.setCumulativeSettlement(new java.math.BigDecimal("0"));
+        when(constructionContractMapper.selectList(any())).thenReturn(java.util.List.of(c));
+        when(costAccountMapper.selectList(any())).thenReturn(java.util.List.of());
+
+        java.util.Map<String, Object> result = service.getReceiptRatios(10L);
+
+        var byContract = (java.util.Map<String, Object>) result.get("collectionRateByContract");
+        assertEquals(true, byContract.get("available"));
+        assertEquals(0, ((java.math.BigDecimal) byContract.get("value")).compareTo(new java.math.BigDecimal("0.3")));
+        assertEquals(0, ((java.math.BigDecimal) byContract.get("denominator")).compareTo(new java.math.BigDecimal("1000000")));
+
+        var bySettlement = (java.util.Map<String, Object>) result.get("collectionRateBySettlement");
+        assertEquals(false, bySettlement.get("available"));
+        assertEquals("DENOMINATOR_ZERO", bySettlement.get("unavailableReason"));
+
+        var margin = (java.util.Map<String, Object>) result.get("outputGrossMargin");
+        assertEquals(false, margin.get("available"));
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("C5 - CBS 可用时给双毛利；人工对照只读并列")
+    void getReceiptRatios_marginsAndLaborCompare() {
+        com.zwinsight.contract.domain.BizConstructionContract c = new com.zwinsight.contract.domain.BizConstructionContract();
+        c.setProjectId(10L); c.setStatus("EFFECTIVE");
+        c.setContractAmount(new java.math.BigDecimal("1000000"));
+        c.setCumulativeOutput(new java.math.BigDecimal("800000"));
+        c.setCumulativeSettlement(new java.math.BigDecimal("600000"));
+        when(constructionContractMapper.selectList(any())).thenReturn(java.util.List.of(c));
+        com.zwinsight.budget.domain.BizCostAccount root = new com.zwinsight.budget.domain.BizCostAccount();
+        root.setId(1L); root.setParentId(null);
+        root.setActualAmount(new java.math.BigDecimal("500000"));
+        com.zwinsight.budget.domain.BizCostAccount child = new com.zwinsight.budget.domain.BizCostAccount();
+        child.setId(2L); child.setParentId(1L);
+        child.setActualAmount(new java.math.BigDecimal("999999")); // 子账户不得重复计入
+        when(costAccountMapper.selectList(any())).thenReturn(java.util.List.of(root, child));
+        when(laborCostReadMapper.sumApprovedPayroll(10L)).thenReturn(new java.math.BigDecimal("120000"));
+        when(laborCostReadMapper.sumApprovedWorkOrders(10L)).thenReturn(new java.math.BigDecimal("30000"));
+        when(laborCostReadMapper.sumLaborSettlement(10L)).thenReturn(new java.math.BigDecimal("100000"));
+
+        java.util.Map<String, Object> result = service.getReceiptRatios(10L);
+
+        var outputMargin = (java.util.Map<String, Object>) result.get("outputGrossMargin");
+        assertEquals(0, ((java.math.BigDecimal) outputMargin.get("value")).compareTo(new java.math.BigDecimal("300000")));
+        var settleMargin = (java.util.Map<String, Object>) result.get("settlementGrossMargin");
+        assertEquals(0, ((java.math.BigDecimal) settleMargin.get("value")).compareTo(new java.math.BigDecimal("100000")));
+
+        var labor = (java.util.Map<String, Object>) result.get("laborCostCompare");
+        assertEquals(0, ((java.math.BigDecimal) labor.get("wageLikeTotal")).compareTo(new java.math.BigDecimal("150000")));
+        assertEquals(0, ((java.math.BigDecimal) labor.get("difference")).compareTo(new java.math.BigDecimal("50000")));
+        assertEquals("WAGE_LIKE_NOT_IN_CBS", labor.get("basis"));
     }
 }

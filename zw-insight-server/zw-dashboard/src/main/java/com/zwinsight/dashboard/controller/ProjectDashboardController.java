@@ -122,6 +122,22 @@ public class ProjectDashboardController {
     }
 
     /**
+     * 回款率四口径 + 双毛利 + 人工成本对照（C5 口径治理，V2026_110 后批次）。
+     * <p>
+     * 指标统一携带分子/分母/basis/available；分母为零或 CBS 不可用时明示不可算，不用 0 冒充。
+     * 工资性支出（工资单+点工）未入 CBS 权责成本，只读对照呈现。
+     * </p>
+     */
+    @GetMapping("/{projectId}/receipt-ratios")
+    public R<java.util.Map<String, Object>> getReceiptRatios(@PathVariable Long projectId) {
+        R<java.util.Map<String, Object>> notFound = checkProjectExists(projectId);
+        if (notFound != null) {
+            return notFound;
+        }
+        return R.ok(projectDashboardService.getReceiptRatios(projectId));
+    }
+
+    /**
      * 项目成本控制看板数据（Project Cost 360）
      * <p>
      * 聚合 CBS 成本账户数据，提供 Baseline / Current / Commitment / Actual / Forecast / Variance
