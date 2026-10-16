@@ -30,6 +30,7 @@ public class ContractRevisionService {
     private final ApprovalService approvals;
     private final ObjectMapper json;
     private final JdbcTemplate jdbc;
+    private final ContractPayTermService payTermService;
 
     public ContractRevision detail(Long id) {
         ContractRevision revision = revisions.selectById(id);
@@ -55,7 +56,13 @@ public class ContractRevisionService {
         return c;
     }
     private String snapshot(BizConstructionContract c) {
-        try { return json.writeValueAsString(c); }
+        try {
+            // V2026_109：快照纳入收付款条款（修订前后条款变化可追溯，防无痕篡改支付约定）
+            java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("contract", c);
+            body.put("payTerms", payTermService.list(BizContractPayTerm.CATEGORY_CONSTRUCTION, c.getId()));
+            return json.writeValueAsString(body);
+        }
         catch (JsonProcessingException e) { throw new IllegalStateException("合同快照序列化失败", e); }
     }
     static BigDecimal value(BigDecimal n) { return n == null ? BigDecimal.ZERO : n; }

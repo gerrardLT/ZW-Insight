@@ -40,6 +40,10 @@ import {
   getAvailableSettlementSources,
   createFinalSettlement,
   submitFinalSettlement,
+  getPayTerms,
+  createPayTerm,
+  updatePayTerm,
+  deletePayTerm,
   getOutputReportPage,
   createOutputReport,
   submitOutputReport,
@@ -221,6 +225,28 @@ describe('contract API 模块', () => {
     it('V2026_108 getAvailableSettlementSources 调用 GET /v1/contract/settlement/available-sources', () => {
       getAvailableSettlementSources(33)
       expect(mockRequest.get).toHaveBeenCalledWith('/v1/contract/settlement/available-sources', { params: { contractId: 33 } })
+    })
+  })
+
+  // ======================== 收付款条款（V2026_109） ========================
+
+  describe('收付款条款', () => {
+    it('getPayTerms 调用 GET /v1/contract/pay-term', () => {
+      getPayTerms('CONSTRUCTION', 9)
+      expect(mockRequest.get).toHaveBeenCalledWith('/v1/contract/pay-term', { params: { contractCategory: 'CONSTRUCTION', contractId: 9 } })
+    })
+
+    it('createPayTerm 调用 POST /v1/contract/pay-term', () => {
+      const data = { contractCategory: 'CONSTRUCTION', contractId: 9, termType: 'RETENTION' as const, ratio: 3 }
+      createPayTerm(data)
+      expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract/pay-term', data)
+    })
+
+    it('updatePayTerm 调用 PUT /v1/contract/pay-term/:id；deletePayTerm 调用 DELETE', () => {
+      updatePayTerm(5, { ratio: 2 })
+      expect(mockRequest.put).toHaveBeenCalledWith('/v1/contract/pay-term/5', { ratio: 2 })
+      deletePayTerm(5)
+      expect(mockRequest.delete).toHaveBeenCalledWith('/v1/contract/pay-term/5')
     })
   })
 

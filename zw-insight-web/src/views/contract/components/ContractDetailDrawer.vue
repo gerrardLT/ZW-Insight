@@ -202,7 +202,40 @@
           <ZwEmptyState v-if="!outputReports.length" description="暂无产值上报记录" />
         </el-tab-pane>
 
-        <!-- Tab 4: 过程结算（V2026_108，财建〔2022〕183 号过程结算） -->
+        <!-- Tab 4: 收付款条款（V2026_109） -->
+        <el-tab-pane name="payTerms">
+          <template #label>收付款条款</template>
+          <div class="section-header mb-2 font-medium flex items-center justify-between">
+            <span>价款支付约定（预付款/进度款/竣工款/质保金）</span>
+            <el-button size="small" type="primary" @click="openTermDialog()">新增条款</el-button>
+          </div>
+          <el-table :data="payTerms" border size="small">
+            <el-table-column prop="termType" label="类型" width="90">
+              <template #default="{ row }">{{ termTypeLabel(row.termType) }}</template>
+            </el-table-column>
+            <el-table-column label="比例/金额" width="150" align="right">
+              <template #default="{ row }">
+                {{ row.ratio != null ? row.ratio + '%' : '' }}{{ row.ratio != null && row.amount != null ? ' / ' : '' }}{{ row.amount != null ? '¥' + Number(row.amount).toLocaleString() : '' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="triggerCondition" label="触发条件" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="planDate" label="计划日期" width="100" />
+            <el-table-column label="质保期/扣回" width="130">
+              <template #default="{ row }">
+                {{ row.retentionMonths ? row.retentionMonths + '个月' : '' }}{{ row.deductRule ? ' / ' + row.deductRule : '' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="110" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" type="primary" link @click="openTermDialog(row)">编辑</el-button>
+                <el-button size="small" type="danger" link @click="removeTerm(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <ZwEmptyState v-if="!payTerms.length" description="暂无收付款条款；过程结算的质保金计提与预付款扣回建议将引用此处条款" />
+        </el-tab-pane>
+
+        <!-- Tab 5: 过程结算（V2026_108，财建〔2022〕183 号过程结算） -->
         <el-tab-pane name="processSettlement">
           <template #label>
             过程结算
@@ -392,11 +425,67 @@
         </el-row>
         <div class="text-xs text-gray-400">
           审定净额（服务端重算）≈ ¥ {{ psNetPreview.toLocaleString() }}；超合同额（含变更）会被后端驳回。
+          <template v-if="payTerms.find((t: any) => t.termType === 'RETENTION')">
+            合同约定质保金 {{ payTerms.find((t: any) => t.termType === 'RETENTION')?.ratio ?? '—' }}%{{ payTerms.find((t: any) => t.termType === 'RETENTION')?.retentionMonths ? `，质保期 ${payTerms.find((t: any) => t.termType === 'RETENTION').retentionMonths} 个月` : '' }}，请按审定额扣留；生效后自动计提台账。
+          </template>
         </div>
       </el-form>
       <template #footer>
         <el-button @click="psDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="psSubmitting" @click="submitProcessSettlementCreate">保存草稿</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 弹窗：收付款条款（V2026_109） -->
+    <el-dialog v-model="termDialogVisible" :title="termForm.id ? '编辑收付款条款' : '新增收付款条款'" width="560px" append-to-body>
+      <el-form ref="termFormRef" :model="termForm" :rules="termRules" label-width="110px">
+        <el-form-item label="条款类型" prop="termType">
+          <el-select v-model="termForm.termType" style="width: 100%">
+            <el-option label="预付款" value="PREPAY" />
+            <el-option label="进度款" value="PROGRESS" />
+            <el-option label="竣工结算款" value="FINAL" />
+            <el-option label="质保金" value="RETENTION" />
+          </el-select>
+        </el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="比例(%)">
+              <el-input-number v-model="termForm.ratio" :min="0" :max="100" :precision="2" style="width: 100%" :disabled="termForm.termType === 'RETENTION' && (termForm.ratio ?? 0) > 3" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="金额(元)">
+              <el-input-number v-model="termForm.amount" :min="0" :precision="2" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="触发条件">
+          <el-input v-model="termForm.triggerCondition" placeholder="如：进场且报验合格后支付；并网后付至80%" />
+        </el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="计划日期"><el-date-picker v-model="termForm.planDate" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item v-if="termForm.termType === 'RETENTION'" label="质保期(月)">
+              <el-input-number v-model="termForm.retentionMonths" :min="0" :max="120" style="width: 100%" />
+            </el-form-item>
+            <el-form-item v-else-if="termForm.termType === 'PREPAY'" label="扣回规则">
+              <el-select v-model="termForm.deductRule" clearable style="width: 100%">
+                <el-option label="按期均扣" value="PER_STAGE" />
+                <el-option label="付至80%后扣回" value="AFTER_80" />
+                <el-option label="不自动扣回" value="NONE" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <div v-if="termForm.termType === 'RETENTION'" class="text-xs text-gray-400">
+          质量保证金比例不得超过工程价款总额的 3%（财建〔2022〕183号）。
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="termDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="termSubmitting" @click="submitTerm">保存</el-button>
       </template>
     </el-dialog>
   </el-drawer>
@@ -436,7 +525,11 @@ import {
   getFinalSettlementPage,
   createFinalSettlement,
   submitFinalSettlement,
-  getAvailableSettlementSources
+  getAvailableSettlementSources,
+  getPayTerms,
+  createPayTerm,
+  updatePayTerm,
+  deletePayTerm
 } from '@/api/contract'
 import { listChangeEvents } from '@/api/change-event'
 
@@ -571,6 +664,9 @@ async function loadAllData() {
 
     // 5. 过程结算（V2026_108）
     await loadProcessSettlements()
+
+    // 6. 收付款条款（V2026_109）
+    await loadPayTerms()
   } finally {
     loading.value = false
   }
@@ -743,6 +839,9 @@ async function openProcessSettlementDialog() {
     psAvailable.value = { outputReports: [], visas: [] }
     ElMessage.warning('可选来源加载失败，仍可手工行录入')
   }
+  // V2026_109：按合同条款预填预付款扣回建议；质保金条款作提示（v1 人工确认）
+  const prepayTerm = payTerms.value.find((t: any) => t.termType === 'PREPAY' && t.amount)
+  if (prepayTerm) psForm.value.prepayDeduct = Number(prepayTerm.amount)
   if (!psForm.value.sources.length) addPsSource()
 }
 
@@ -799,6 +898,82 @@ async function loadProcessSettlements() {
   } catch {
     processSettlements.value = []
   }
+}
+
+// ==================== 收付款条款（V2026_109） ====================
+
+const payTerms = ref<any[]>([])
+const termDialogVisible = ref(false)
+const termSubmitting = ref(false)
+const termFormRef = ref<FormInstance>()
+const termForm = ref<any>({})
+const termRules = {
+  termType: [{ required: true, message: '请选择条款类型', trigger: 'change' }]
+}
+
+function termTypeLabel(type: string) {
+  const map: Record<string, string> = { PREPAY: '预付款', PROGRESS: '进度款', FINAL: '竣工款', RETENTION: '质保金' }
+  return map[type] || type
+}
+
+async function loadPayTerms() {
+  if (!props.contract?.id) return
+  try {
+    const res: any = await getPayTerms('CONSTRUCTION', props.contract.id)
+    payTerms.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    payTerms.value = []
+  }
+}
+
+function openTermDialog(row?: any) {
+  termForm.value = row
+    ? { ...row }
+    : { termType: 'PROGRESS', ratio: undefined, amount: undefined, triggerCondition: '', planDate: '', retentionMonths: undefined, deductRule: undefined }
+  termDialogVisible.value = true
+}
+
+async function submitTerm() {
+  await termFormRef.value?.validate()
+  if (termForm.value.ratio == null && termForm.value.amount == null) {
+    ElMessage.warning('比例与金额至少填一项')
+    return
+  }
+  termSubmitting.value = true
+  try {
+    const payload = {
+      contractCategory: 'CONSTRUCTION',
+      contractId: props.contract.id,
+      termType: termForm.value.termType,
+      ratio: termForm.value.ratio,
+      amount: termForm.value.amount,
+      triggerCondition: termForm.value.triggerCondition,
+      planDate: termForm.value.planDate || undefined,
+      retentionMonths: termForm.value.retentionMonths,
+      deductRule: termForm.value.deductRule
+    }
+    if (termForm.value.id) {
+      await updatePayTerm(Number(termForm.value.id), payload)
+    } else {
+      await createPayTerm(payload)
+    }
+    ElMessage.success('条款已保存')
+    termDialogVisible.value = false
+    await loadPayTerms()
+  } finally {
+    termSubmitting.value = false
+  }
+}
+
+async function removeTerm(row: any) {
+  try {
+    await ElMessageBox.confirm('确定删除该收付款条款？历史计提不受影响。', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
+  await deletePayTerm(Number(row.id))
+  ElMessage.success('已删除')
+  await loadPayTerms()
 }
 </script>
 

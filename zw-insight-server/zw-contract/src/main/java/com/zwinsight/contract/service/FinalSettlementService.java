@@ -185,6 +185,7 @@ public class FinalSettlementService {
             event.setProjectId(settlement.getProjectId());
             event.setContractId(settlement.getContractId());
             event.setNetAmount(settlement.getSettlementAmount());
+            event.setRetentionDeduct(settlement.getRetentionDeduct());
             event.setPeriodEnd(settlement.getPeriodEnd());
             event.setSettlementDate(settlement.getSettlementDate());
             // 同步事件：在本次事务内生成应收，失败整体回滚

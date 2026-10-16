@@ -36,6 +36,9 @@ public class ProcessSettlementApprovedEvent {
     /** 本期审定净额（Σ来源审定 − Σ扣款；应收金额基准） */
     private BigDecimal netAmount;
 
+    /** 本期质保金扣留额（>0 时质保金监听器按单据事实计提） */
+    private BigDecimal retentionDeduct;
+
     /** 结算期间止（应收到期日基准：期间末 + 信用天数） */
     private LocalDate periodEnd;
 

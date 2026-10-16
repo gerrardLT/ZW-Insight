@@ -345,6 +345,36 @@ test_process_settlement_guards() {
 }
 
 # ===========================================================================
+# C2 收付款条款守卫（V2026_109，2026-10-16）
+# ===========================================================================
+
+test_pay_term_guards() {
+  log "▶ 测试：收付款条款守卫"
+
+  # 1) 比例与金额全空 → 业务码 400
+  call POST "/api/v1/contract/pay-term" '{"contractCategory":"CONSTRUCTION","contractId":1,"termType":"PROGRESS"}'
+  assert_http 2 "POST pay-term 全空 HTTP 200(业务异常承载于body)"
+  assert_body_code 400 "比例金额全空业务码 400"
+  assert_jq '.message | contains("至少填一项")' "错误文案含「至少填一项」"
+
+  # 2) 质保金比例超 3% → 业务码 400（财建183号）
+  call POST "/api/v1/contract/pay-term" '{"contractCategory":"CONSTRUCTION","contractId":1,"termType":"RETENTION","ratio":5}'
+  assert_http 2 "质保金超3% HTTP 200(业务异常承载于body)"
+  assert_body_code 400 "质保金超3%业务码 400"
+  assert_jq '.message | contains("3%")' "错误文案含「3%」"
+
+  # 3) 施工合同不存在 → 业务码 404
+  call POST "/api/v1/contract/pay-term" '{"contractCategory":"CONSTRUCTION","contractId":999999999999,"termType":"RETENTION","ratio":3}'
+  assert_http 2 "施工合同不存在 HTTP 200(业务异常承载于body)"
+  assert_body_code 404 "施工合同不存在业务码 404"
+
+  # 4) 列表（只读）
+  call GET "/api/v1/contract/pay-term?contractCategory=CONSTRUCTION&contractId=1"
+  assert_http 2 "GET pay-term 状态码"
+  assert_body_code 200 "GET pay-term 业务码"
+}
+
+# ===========================================================================
 # 主流程
 # ===========================================================================
 main() {
@@ -370,6 +400,7 @@ main() {
   test_get_nonexistent
   test_change_visa_event_link_guards
   test_process_settlement_guards
+  test_pay_term_guards
 
   # 日志核对
   echo ""

@@ -25,9 +25,12 @@
 
 ## 批次 3：C2 条款 + V2026_109
 
-- [ ] biz_contract_pay_term + biz_retention_money.contract_id；条款 CRUD 与修订快照纳入。
-- [ ] PROCESS 审批触发质保金幂等计提 + 预付款建议扣回。
-- [ ] 前端条款区块 + 结算单引用展示；单测；本地 commit。
+- [x] V2026_109 双轨：biz_contract_pay_term 表（四型条款/比例金额二选一/质保期月数/扣回规则/宽限）；biz_retention_money 补 source_type/source_id + active_retention_source 生成列唯一 guard（**落差表"retention 缺 contract_id"结论过期：实体与 DDL 已有该列，本轮未加**）。
+- [x] ContractPayTermService/Controller：CRUD + 归属不可改绑 + 质保金比例 3% 上限（财建183号）+ 施工合同 projectId 后端反查；calcRetentionAmount（封顶审定额）/suggestPrepayDeduct。
+- [x] 修订快照纳入条款（ContractRevisionService.snapshot 扩展 contract+payTerms 结构）。
+- [x] ProcessSettlementRetentionListener（zw-finance）：按结算单 retentionDeduct 单据事实计提，幂等双保险，质保期取条款无则留空不猜；事件契约补 retentionDeduct 字段。
+- [x] 前端：抽屉「收付款条款」页签（CRUD 弹窗）+ 过程结算弹窗按 PREPAY 条款预填扣回并提示质保金条款；级联清理登记 biz_contract_pay_term。
+- [x] 测试：ContractPayTermServiceTest 7 例 + ProcessSettlementRetentionListenerTest 3 例 + 组件 3 例（43/43）+ api-contract 3 例（38/38）+ shell 守卫段；行尾体检 1 处修复；vue-tsc 143 维持基线。
 
 ## 批次 4：C3 税务事实链 + V2026_110
 

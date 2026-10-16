@@ -42,4 +42,10 @@ public class BizRetentionMoney extends BaseEntity {
 
     /** 状态（ACTIVE-有效/EXPIRED-到期/RETURNED-已返还） */
     private String status;
+
+    /** 来源类型（V2026_109：PROCESS_SETTLEMENT=过程结算扣留自动计提；NULL=人工录入存量） */
+    private String sourceType;
+
+    /** 来源单据ID（与 sourceType 联合幂等：同一过程结算至多计提一条） */
+    private Long sourceId;
 }

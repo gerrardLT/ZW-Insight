@@ -16,7 +16,9 @@ const {
   mockCreateFinalSettlement,
   mockSubmitFinalSettlement,
   mockGetAvailableSources,
-  mockListChangeEvents
+  mockListChangeEvents,
+  mockGetPayTerms,
+  mockCreatePayTerm
 } = vi.hoisted(() => ({
   mockGetDetails: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
   mockGetChangeVisaPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
@@ -32,7 +34,9 @@ const {
       visas: [{ sourceId: 401, label: '签证 SITE_VISA（30000）', suggestedAmount: 30000 }]
     }
   })),
-  mockListChangeEvents: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } }))
+  mockListChangeEvents: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockGetPayTerms: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
+  mockCreatePayTerm: vi.fn(async (): Promise<any> => ({ code: 200 }))
 }))
 
 vi.mock('@/api/file', () => ({
@@ -52,7 +56,11 @@ vi.mock('@/api/contract', () => ({
   getFinalSettlementDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
   createFinalSettlement: mockCreateFinalSettlement,
   submitFinalSettlement: mockSubmitFinalSettlement,
-  getAvailableSettlementSources: mockGetAvailableSources
+  getAvailableSettlementSources: mockGetAvailableSources,
+  getPayTerms: mockGetPayTerms,
+  createPayTerm: mockCreatePayTerm,
+  updatePayTerm: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  deletePayTerm: vi.fn(async (): Promise<any> => ({ code: 200 }))
 }))
 
 vi.mock('@/api/change-event', () => ({
@@ -260,5 +268,61 @@ describe('ContractDetailDrawer 合同履约全息抽屉 (P1-M3 A1/B1)', () => {
 
     expect(mockSubmitFinalSettlement).toHaveBeenCalledWith(77)
     expect(mockGetFinalSettlementPage).toHaveBeenCalledWith({ contractId: 91001, settlementType: 'PROCESS', pageNum: 1, pageSize: 50 })
+  })
+
+  it('V2026_109 - 打开抽屉加载收付款条款；新增条款调用 createPayTerm', async () => {
+    mockGetPayTerms.mockResolvedValue({
+      code: 200,
+      data: [
+        { id: 61, termType: 'PREPAY', ratio: 20, amount: 1000000, deductRule: 'AFTER_80' },
+        { id: 62, termType: 'RETENTION', ratio: 3, retentionMonths: 24 }
+      ]
+    })
+    wrapper = mount(ContractDetailDrawer, {
+      props: { modelValue: true, contract: { id: 91001, projectId: 90001, status: 'EFFECTIVE' } },
+      global: { plugins: [ElementPlus] }
+    })
+    await flushPromises()
+
+    expect(mockGetPayTerms).toHaveBeenCalledWith('CONSTRUCTION', 91001)
+    const vm = wrapper.vm as any
+    expect(vm.payTerms).toHaveLength(2)
+
+    vm.openTermDialog()
+    vm.termForm.termType = 'RETENTION'
+    vm.termForm.ratio = 3
+    vm.termForm.retentionMonths = 24
+    await vm.submitTerm()
+    await flushPromises()
+
+    expect(mockCreatePayTerm).toHaveBeenCalledWith({
+      contractCategory: 'CONSTRUCTION',
+      contractId: 91001,
+      termType: 'RETENTION',
+      ratio: 3,
+      amount: undefined,
+      triggerCondition: '',
+      planDate: undefined,
+      retentionMonths: 24,
+      deductRule: undefined
+    })
+  })
+
+  it('V2026_109 - 过程结算弹窗按 PREPAY 条款预填扣回建议', async () => {
+    mockGetPayTerms.mockResolvedValue({
+      code: 200,
+      data: [{ id: 61, termType: 'PREPAY', ratio: 20, amount: 200000 }]
+    })
+    wrapper = mount(ContractDetailDrawer, {
+      props: { modelValue: true, contract: { id: 91001, projectId: 90001, status: 'EFFECTIVE' } },
+      global: { plugins: [ElementPlus] }
+    })
+    await flushPromises()
+
+    const vm = wrapper.vm as any
+    await vm.openProcessSettlementDialog()
+    await flushPromises()
+
+    expect(vm.psForm.prepayDeduct).toBe(200000)
   })
 })

@@ -161,6 +161,39 @@ export function getAvailableSettlementSources(contractId: number) {
   return request.get<R<{ outputReports: Array<{ sourceId: number; label: string; suggestedAmount: number }>; visas: Array<{ sourceId: number; label: string; suggestedAmount: number }> }>>('/v1/contract/settlement/available-sources', { params: { contractId } })
 }
 
+// ======================== 合同收付款条款（V2026_109） ========================
+export interface ContractPayTerm {
+  id?: number
+  projectId?: number
+  contractCategory: string
+  contractId: number
+  termType: 'PREPAY' | 'PROGRESS' | 'FINAL' | 'RETENTION'
+  triggerCondition?: string
+  planDate?: string
+  ratio?: number
+  amount?: number
+  deductRule?: string
+  retentionMonths?: number
+  graceDays?: number
+  status?: string
+}
+
+export function getPayTerms(contractCategory: string, contractId: number) {
+  return request.get<R<ContractPayTerm[]>>('/v1/contract/pay-term', { params: { contractCategory, contractId } })
+}
+
+export function createPayTerm(data: Partial<ContractPayTerm>) {
+  return request.post<R<void>>('/v1/contract/pay-term', data)
+}
+
+export function updatePayTerm(id: number, data: Partial<ContractPayTerm>) {
+  return request.put<R<void>>(`/v1/contract/pay-term/${id}`, data)
+}
+
+export function deletePayTerm(id: number) {
+  return request.delete<R<void>>(`/v1/contract/pay-term/${id}`)
+}
+
 // ======================== 产值报告 ========================
 export function getOutputReportPage(params: PageQuery & { projectId?: number; contractId?: number }) {
   return request.get<R<PageResult<OutputReport>>>('/v1/contract/output', { params })

@@ -8,12 +8,14 @@ import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.domain.BizExpenseContract;
 import com.zwinsight.contract.domain.BizFinalSettlement;
 import com.zwinsight.contract.domain.BizOtherContract;
+import com.zwinsight.contract.domain.BizContractPayTerm;
 import com.zwinsight.contract.domain.BizOutputReport;
 import com.zwinsight.contract.domain.BizQuantityList;
 import com.zwinsight.contract.domain.BizSettlementSource;
 import com.zwinsight.contract.mapper.BizChangeEventMapper;
 import com.zwinsight.contract.mapper.BizChangeVisaMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
+import com.zwinsight.contract.mapper.BizContractPayTermMapper;
 import com.zwinsight.contract.mapper.BizExpenseContractMapper;
 import com.zwinsight.contract.mapper.BizFinalSettlementMapper;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
@@ -74,6 +76,7 @@ public class ContractProjectCascadeCleanupListener {
     private final BizOtherContractMapper otherContractMapper;
     private final BizFinalSettlementMapper finalSettlementMapper;
     private final BizSettlementSourceMapper settlementSourceMapper;
+    private final BizContractPayTermMapper payTermMapper;
 
     @EventListener
     public void onProjectDeleted(ProjectDeletedEvent event) {
@@ -96,10 +99,12 @@ public class ContractProjectCascadeCleanupListener {
                 new QueryWrapper<BizFinalSettlement>().eq("project_id", projectId));
         int settlementSources = settlementSourceMapper.delete(
                 new QueryWrapper<BizSettlementSource>().eq("project_id", projectId));
+        int payTerms = payTermMapper.delete(
+                new QueryWrapper<BizContractPayTerm>().eq("project_id", projectId));
 
         log.info("项目删除级联清理[contract]完成, projectId={}, 施工合同={} 产值={} 工程量={} "
-                        + "签证={} 变更事件={} 支出合同={} 其他合同={} 最终结算={} 结算来源={}",
+                        + "签证={} 变更事件={} 支出合同={} 其他合同={} 最终结算={} 结算来源={} 收付款条款={}",
                 projectId, contracts, outputReports, quantityLists, changeVisas,
-                changeEvents, expenseContracts, otherContracts, finalSettlements, settlementSources);
+                changeEvents, expenseContracts, otherContracts, finalSettlements, settlementSources, payTerms);
     }
 }
