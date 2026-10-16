@@ -39,6 +39,7 @@ public class PurchaseSettlementService {
 
     private final BizPurchaseSettlementMapper settlementMapper;
     private final com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
+    private final com.zwinsight.purchase.mapper.BizSettlementToleranceMapper toleranceMapper;
     private final BizPurchaseContractMapper contractMapper;
     private final MaterialInboundReadMapper materialInboundReadMapper;
     private final SerialNumberService serialNumberService;
@@ -203,13 +204,63 @@ public class PurchaseSettlementService {
             BigDecimal available = new BigDecimal(source.get("quantity").toString())
                     .subtract(sourceMapper.settled(id, excludeId)).subtract(sourceMapper.returned(id));
             if (quantity.compareTo(available) > 0) throw new BusinessException(409, "数量超过可结算余量（含审批中占用及退货）");
-            BigDecimal price = new BigDecimal(source.get("unitPrice").toString());
-            BigDecimal amount = quantity.multiply(price).setScale(2, java.math.RoundingMode.HALF_UP);
-            line.put("unitPrice", price); line.put("amount", amount); line.put("inboundDetailId", id);
+            BigDecimal sourcePrice = new BigDecimal(source.get("unitPrice").toString());
+            // C4（V2026_111）：结算单价可偏离入库单价，超容差必须填修订原因（调价/折扣/扣款/运费等）
+            BigDecimal settlementPrice = sourcePrice;
+            Object inputPrice = line.get("settlementUnitPrice");
+            if (inputPrice != null && !String.valueOf(inputPrice).isBlank()) {
+                try {
+                    settlementPrice = new BigDecimal(String.valueOf(inputPrice));
+                } catch (NumberFormatException e) {
+                    throw new BusinessException("结算单价格式错误");
+                }
+                if (settlementPrice.signum() < 0 || settlementPrice.scale() > 4) throw new BusinessException("结算单价无效");
+            }
+            BigDecimal sourceAmount = quantity.multiply(sourcePrice);
+            BigDecimal difference = quantity.multiply(settlementPrice.subtract(sourcePrice)).setScale(2, java.math.RoundingMode.HALF_UP);
+            String reason = line.get("differenceReason") == null ? "" : String.valueOf(line.get("differenceReason")).trim();
+            // create() 会在校验前清空客户端 tenantId（由 MyBatis-Plus 插入时自动填充），
+            // 容差读取回退登录上下文租户
+            Long tenantId = s.getTenantId() != null ? s.getTenantId()
+                    : com.zwinsight.common.config.SecurityContextHolder.getTenantId();
+            if (exceedsTolerance(tenantId, sourceAmount, difference)) {
+                if (reason.isEmpty()) {
+                    throw new BusinessException(409, "结算单价偏离入库单价超过容差，必须填写修订原因（明细 #" + id + "）");
+                }
+            } else if (difference.signum() == 0) {
+                reason = "";
+            }
+            BigDecimal amount = quantity.multiply(settlementPrice).setScale(2, java.math.RoundingMode.HALF_UP);
+            line.put("unitPrice", sourcePrice);
+            line.put("amount", amount);
+            line.put("inboundDetailId", id);
+            line.put("sourceUnitPrice", sourcePrice);
+            line.put("settlementUnitPrice", settlementPrice);
+            line.put("priceDifference", difference);
+            line.put("differenceReason", reason);
             total = total.add(amount);
         }
         if (total.signum() <= 0) throw new BusinessException("结算金额必须大于0");
         s.setSettlementAmount(total);
+    }
+
+    /** 容差上限 = max(来源金额 × pct%, abs)；无配置行默认 0（任何价差都须填原因） */
+    private boolean exceedsTolerance(Long tenantId, BigDecimal sourceAmount, BigDecimal difference) {
+        if (difference == null || difference.signum() == 0) {
+            return false;
+        }
+        BigDecimal pct = BigDecimal.ZERO;
+        BigDecimal abs = BigDecimal.ZERO;
+        if (tenantId != null) {
+            var config = toleranceMapper.tolerance(tenantId);
+            if (config != null) {
+                if (config.get("pctTolerance") != null) pct = new BigDecimal(config.get("pctTolerance").toString());
+                if (config.get("absTolerance") != null) abs = new BigDecimal(config.get("absTolerance").toString());
+            }
+        }
+        BigDecimal ceiling = sourceAmount.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP)
+                .max(abs);
+        return difference.abs().compareTo(ceiling) > 0;
     }
 
     private void saveLines(BizPurchaseSettlement s) {
@@ -336,6 +387,13 @@ public class PurchaseSettlementService {
         if (!"SUBMITTED".equals(settlement.getStatus())) {
             log.warn("采购结算当前状态非 SUBMITTED，忽略生效回调: id={}, status={}", id, settlement.getStatus());
             return;
+        }
+
+        // C4（V2026_111）：生效前第三处重算——存储明细按最新来源单价与容差复核，
+        // 超容差而无原因的存量/篡改数据在此拦截，不生效。
+        if ("LINES".equals(settlement.getSettlementMode())) {
+            settlement.setDetails(sourceMapper.settlementLines(id));
+            calculateLines(settlement, id);
         }
 
         settlement.setStatus("APPROVED");

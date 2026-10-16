@@ -34,15 +34,19 @@
 
 ## 批次 4：C3 税务事实链 + V2026_110
 
-- [ ] 四合同税三件套（派生持久化、导入导出、前端表单）。
-- [ ] biz_invoice_issued 台账（防重/红冲挂原票/查验与入账状态）+ biz_invoice_received 状态列。
-- [ ] 驾驶舱真税额指标（销项税/进项税/估算税差，basis 注明）。
-- [ ] 单测 + 组件测试 + api 脚本；本地 commit。
+- [x] 四类支出合同（采购/劳务/机械/分包）补税三件套列与实体字段；save/update 服务端派生（zw-common 新增 TaxAmounts 差额法工具，税率未知置空不猜填）；四前端表单加税率输入。
+- [x] biz_invoice_issued 销项发票台账：数电/传统号码规则与 V2026_103 同源身份 guard（DB 生成列唯一）、红字挂原票（同项目同合同+剩余可红冲额封顶+税额取负）、查验/入账状态流转、删除防红冲悬空；权限复用 finance:invoiceapply:*（避免新码无菜单承载）。
+- [x] biz_invoice_received 补 verify/use/bookkeep 状态列与流转接口（纯登记不动金额）；进项页加查验/入账列与操作。
+- [x] 驾驶舱 getInvoiceLedger 补真税额指标：salesTaxAmount（台账净额蓝正红负）/inputTaxAmount/taxAmountDifference + taxMetricsBasis 注明估算口径。
+- [x] 前端：销项台账新页面（登记/查验/入账/删除，红字选原票）+ 路由 + sys_menu 种子（508）与迁移内幂等菜单；菜单覆盖校验 missing 0。
+- [x] 测试：InvoiceIssuedServiceTest 9 例 + DashboardServiceTest 补 mock + 组件测试 3 例（17/17 发票族通过）+ finance shell 守卫段；行尾修复 3 处；vue-tsc 143 基线。
 
 ## 批次 5：C4 价差 + V2026_111
 
-- [ ] 明细价差字段 + 容差表 + calculateLines 扩展（三处重算、超容差强制原因）。
-- [ ] 审批端偏离标识；单测（阈值内/超阈/重算）；本地 commit。
+- [x] V2026_111 双轨：biz_purchase_settlement_detail 补 source/settlement 单价、价差、原因四列；biz_settlement_tolerance 租户级容差表（默认 0=任何偏离须原因）。
+- [x] calculateLines 扩展：结算单价可输入（缺省=入库价）、价差=（结算−入库）×数量、超 max(来源额×pct%,abs) 强制原因 409；create/update/submit（既有）/onApproved（新增）四处服务端重算；容差租户回退登录上下文（create 前置清空实体租户）。
+- [x] 前端：LINES 表格加入库单价/结算单价/价差/原因列（价差高亮、无价差禁填原因）、编辑态回填已存单价与原因、金额按结算价预览；payload 携带单价与原因。
+- [x] 测试：PurchaseSettlementServiceTest 新增 3 例（零容差拒绝/有原因按结算价+行字段断言/容差内免原因）+ purchase-matrix 组件 1 例（26/26）+ purchase shell 负向守卫段；vue-tsc 143 基线；EOL clean。
 
 ## 批次 6：C5 只读指标
 

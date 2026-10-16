@@ -29,10 +29,10 @@ public interface PurchaseSourceMapper {
     @Select("SELECT COUNT(*) FROM biz_purchase_settlement WHERE inbound_id=#{inboundId} AND deleted=0 AND id != #{excludeId} AND (#{legacy}=1 OR settlement_mode='LEGACY') AND status IN ('DRAFT','SUBMITTED','APPROVED') FOR UPDATE")
     long incompatible(@Param("inboundId") Long inboundId,@Param("excludeId") Long excludeId,@Param("legacy") int legacy);
 
-    @Insert("INSERT INTO biz_purchase_settlement_detail(id,tenant_id,project_id,settlement_id,inbound_detail_id,quantity,unit_price,amount,deleted,version) VALUES(#{id},#{tenantId},#{projectId},#{settlementId},#{inboundDetailId},#{quantity},#{unitPrice},#{amount},0,0)")
+    @Insert("INSERT INTO biz_purchase_settlement_detail(id,tenant_id,project_id,settlement_id,inbound_detail_id,quantity,unit_price,amount,source_unit_price,settlement_unit_price,price_difference,difference_reason,deleted,version) VALUES(#{id},#{tenantId},#{projectId},#{settlementId},#{inboundDetailId},#{quantity},#{unitPrice},#{amount},#{sourceUnitPrice},#{settlementUnitPrice},#{priceDifference},#{differenceReason},0,0)")
     void insertLine(Map<String,Object> line);
 
-    @Select("SELECT inbound_detail_id AS inboundDetailId,quantity,unit_price AS unitPrice,amount FROM biz_purchase_settlement_detail WHERE settlement_id=#{id} AND deleted=0 ORDER BY inbound_detail_id")
+    @Select("SELECT inbound_detail_id AS inboundDetailId,quantity,unit_price AS unitPrice,amount,source_unit_price AS sourceUnitPrice,settlement_unit_price AS settlementUnitPrice,price_difference AS priceDifference,difference_reason AS differenceReason FROM biz_purchase_settlement_detail WHERE settlement_id=#{id} AND deleted=0 ORDER BY inbound_detail_id")
     List<Map<String,Object>> settlementLines(Long id);
 
     @Update("UPDATE biz_purchase_settlement_detail SET deleted=1 WHERE settlement_id=#{id} AND deleted=0")

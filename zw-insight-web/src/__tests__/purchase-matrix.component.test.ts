@@ -191,6 +191,36 @@ describe('purchase/settlement.vue 采购结算（B23）', () => {
     expect(mocks.mockSettleCreate).toHaveBeenCalledWith(expect.objectContaining({ details: [{ inboundDetailId: '123456789012345678', quantity: 2 }] }))
   })
 
+  it('V2026_111 - 结算单价缺省按入库价；填结算单价按其计价并发送价差原因', async () => {
+    const w = await mountSettlement()
+    const st: any = w.vm.$.setupState
+    st.handleAdd()
+    st.dialogVisible = false
+    await flushPromises()
+    st.formRef = { validate: async () => true }
+    st.partial = true
+    st.formData.contractId = 1
+    st.formData.inboundId = 9
+    st.formData.inboundAmount = 1000
+    st.sourceLines = [
+      { inboundDetailId: '123456789012345678', unitPrice: 12.34, selectedQuantity: 2, settlementUnitPrice: undefined, differenceReason: '' }
+    ]
+    // 缺省结算单价 = 入库单价 → 价差 0
+    expect(st.lineDifference(st.sourceLines[0])).toBe(0)
+    st.calculateTotal()
+    expect(st.formData.settlementAmount).toBe(24.68)
+    // 填结算单价 15 → 价差 = 2 × (15 − 12.34) = 5.32，金额 = 30
+    st.sourceLines[0].settlementUnitPrice = 15
+    st.sourceLines[0].differenceReason = '供应商调价 8%'
+    expect(st.lineDifference(st.sourceLines[0])).toBe(5.32)
+    st.calculateTotal()
+    expect(st.formData.settlementAmount).toBe(30)
+    await st.handleFormSubmit()
+    expect(mocks.mockSettleCreate).toHaveBeenCalledWith(expect.objectContaining({
+      details: [{ inboundDetailId: '123456789012345678', quantity: 2, settlementUnitPrice: 15, differenceReason: '供应商调价 8%' }]
+    }))
+  })
+
   it('@matrix B-23-1 必填三条 contractId/inboundId/settlementAmount', async () => {
     const w = await mountSettlement()
     const st: any = w.vm.$.setupState

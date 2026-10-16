@@ -58,8 +58,14 @@ class PurchaseSettlementServiceTest {
     @Mock
     private com.zwinsight.purchase.mapper.PurchaseSourceMapper sourceMapper;
 
+    @Mock
+    private com.zwinsight.purchase.mapper.BizSettlementToleranceMapper toleranceMapper;
+
     @InjectMocks
     private PurchaseSettlementService service;
+
+    @org.junit.jupiter.api.AfterEach
+    void clearTenant() { com.zwinsight.common.config.SecurityContextHolder.clear(); }
 
     @org.junit.jupiter.api.BeforeEach
     void lockingReads() {
@@ -91,6 +97,74 @@ class PurchaseSettlementServiceTest {
         when(sourceMapper.unlinkedReturns(20L)).thenReturn(1L);
         assertThatThrownBy(() -> service.create(request)).hasMessageContaining("历史退货");
         verify(settlementMapper, never()).insert(any(BizPurchaseSettlement.class));
+    }
+
+    // ── C4 价差与容差（V2026_111）──────────────────────
+
+    @Test
+    @DisplayName("C4 - 结算单价偏离入库价且无原因：默认零容差下 409 拒绝")
+    void priceVariance_overToleranceWithoutReason_rejected() {
+        var request = settlement("DRAFT", "1");
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(9L);
+        request.setDetails(java.util.List.of(java.util.Map.of(
+                "inboundDetailId", 11L, "quantity", 2, "settlementUnitPrice", new BigDecimal("15"))));
+        when(sourceMapper.lines(5L)).thenReturn(java.util.List.of(java.util.Map.of(
+                "inboundDetailId", 11L, "quantity", new BigDecimal("10"), "unitPrice", new BigDecimal("12.34"))));
+        when(sourceMapper.settled(11L, -1L)).thenReturn(BigDecimal.ZERO);
+        when(sourceMapper.returned(11L)).thenReturn(BigDecimal.ZERO);
+        when(toleranceMapper.tolerance(9L)).thenReturn(null); // 无配置行 = 零容差
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("修订原因");
+        verify(settlementMapper, never()).insert(any(BizPurchaseSettlement.class));
+    }
+
+    @Test
+    @DisplayName("C4 - 偏离超容差但有原因：按结算单价计价，价差字段随行落库")
+    void priceVariance_withReason_settlesAtCustomPrice() {
+        var request = settlement("DRAFT", "1");
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(9L);
+        request.setDetails(java.util.List.of(java.util.Map.of(
+                "inboundDetailId", 11L, "quantity", 2,
+                "settlementUnitPrice", new BigDecimal("15"),
+                "differenceReason", "供应商调价 8%")));
+        when(sourceMapper.lines(5L)).thenReturn(java.util.List.of(java.util.Map.of(
+                "inboundDetailId", 11L, "quantity", new BigDecimal("10"), "unitPrice", new BigDecimal("12.34"))));
+        when(sourceMapper.settled(11L, -1L)).thenReturn(BigDecimal.ZERO);
+        when(sourceMapper.returned(11L)).thenReturn(BigDecimal.ZERO);
+        when(settlementMapper.selectList(any())).thenReturn(java.util.List.of());
+        doAnswer(inv -> { ((BizPurchaseSettlement) inv.getArgument(0)).setId(1L); return 1; }).when(settlementMapper).insert(any(BizPurchaseSettlement.class));
+
+        service.create(request);
+
+        // 金额按结算单价 15 × 2 = 30
+        assertThat(request.getSettlementAmount()).isEqualByComparingTo("30.00");
+        verify(sourceMapper).insertLine(org.mockito.ArgumentMatchers.argThat(line ->
+                new BigDecimal(line.get("sourceUnitPrice").toString()).compareTo(new BigDecimal("12.34")) == 0
+                        && new BigDecimal(line.get("settlementUnitPrice").toString()).compareTo(new BigDecimal("15")) == 0
+                        && new BigDecimal(line.get("priceDifference").toString()).compareTo(new BigDecimal("5.32")) == 0
+                        && "供应商调价 8%".equals(line.get("differenceReason"))));
+    }
+
+    @Test
+    @DisplayName("C4 - 配置容差内的小偏离：无须原因，正常按结算价计价")
+    void priceVariance_withinTolerance_noReasonNeeded() {
+        var request = settlement("DRAFT", "1");
+        com.zwinsight.common.config.SecurityContextHolder.setTenantId(9L);
+        request.setDetails(java.util.List.of(java.util.Map.of(
+                "inboundDetailId", 11L, "quantity", 2, "settlementUnitPrice", new BigDecimal("12.5"))));
+        when(sourceMapper.lines(5L)).thenReturn(java.util.List.of(java.util.Map.of(
+                "inboundDetailId", 11L, "quantity", new BigDecimal("10"), "unitPrice", new BigDecimal("12.34"))));
+        when(sourceMapper.settled(11L, -1L)).thenReturn(BigDecimal.ZERO);
+        when(sourceMapper.returned(11L)).thenReturn(BigDecimal.ZERO);
+        when(toleranceMapper.tolerance(9L)).thenReturn(java.util.Map.of(
+                "pctTolerance", new BigDecimal("5"), "absTolerance", new BigDecimal("100")));
+        when(settlementMapper.selectList(any())).thenReturn(java.util.List.of());
+        doAnswer(inv -> { ((BizPurchaseSettlement) inv.getArgument(0)).setId(1L); return 1; }).when(settlementMapper).insert(any(BizPurchaseSettlement.class));
+
+        service.create(request);
+
+        assertThat(request.getSettlementAmount()).isEqualByComparingTo("25.00");
     }
 
     private MaterialInboundView inbound(Long id, String status, String amount) {

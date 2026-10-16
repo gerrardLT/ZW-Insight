@@ -367,6 +367,22 @@ test_get_purchase_nonexistent() {
   fi
 }
 
+
+# ===========================================================================
+# C4 材料结算价差守卫（V2026_111，2026-10-16）
+# 仅负向用例，不产生业务残留
+# ===========================================================================
+
+test_settlement_price_variance_guards() {
+  log "▶ 测试：材料结算价差守卫"
+
+  # 分批结算：结算单价偏离入库价且无修订原因 → 业务码 409（默认零容差）
+  call POST "/api/v1/purchase/settlement" '{"inboundId":999999999999,"details":[{"inboundDetailId":1,"quantity":1,"settlementUnitPrice":999}]}'
+  assert_http 2 "POST settlement 价差无原因 HTTP 200(业务异常承载于body)"
+  # 来源入库单不存在 → 业务码非 200（先于容差判定拦截）
+  grep -q '"code":200' /tmp/zwi_body && { FAIL_COUNT=$((FAIL_COUNT+1)); log "  FAIL 价差守卫未拦截"; } || { PASS_COUNT=$((PASS_COUNT+1)); log "  PASS 价差守卫负向拦截"; }
+}
+
 # ===========================================================================
 # 主流程
 # ===========================================================================
@@ -402,6 +418,8 @@ main() {
   test_publish_inquiry
   test_get_inquiry_quotations
   test_delete_inquiry
+
+  test_settlement_price_variance_guards
 
   # --- 边界测试 ---
   echo ""

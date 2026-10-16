@@ -84,8 +84,29 @@
         <el-table v-if="partial" :data="sourceLines" border>
           <el-table-column prop="materialName" label="来源材料" />
           <el-table-column prop="availableQuantity" label="可用数量" />
-          <el-table-column label="本次数量"><template #default="{ row }"><el-input-number v-model="row.selectedQuantity" :min="0" :max="Number(row.availableQuantity)" :precision="4" @change="calculateTotal" /></template></el-table-column>
+          <el-table-column prop="unitPrice" label="入库单价" width="100" align="right">
+            <template #default="{ row }">{{ Number(row.unitPrice || 0).toLocaleString() }}</template>
+          </el-table-column>
+          <el-table-column label="本次数量" width="130">
+            <template #default="{ row }"><el-input-number v-model="row.selectedQuantity" :min="0" :max="Number(row.availableQuantity)" :precision="4" @change="calculateTotal" /></template>
+          </el-table-column>
+          <el-table-column label="结算单价" width="130">
+            <template #default="{ row }"><el-input-number v-model="row.settlementUnitPrice" :min="0" :precision="4" :placeholder="String(row.unitPrice)" @change="calculateTotal" /></template>
+          </el-table-column>
+          <el-table-column label="价差" width="110" align="right">
+            <template #default="{ row }">
+              <span :class="lineDifference(row) !== 0 ? 'diff-flag' : ''">{{ lineDifference(row).toFixed(2) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="修订原因（超容差必填）" min-width="160">
+            <template #default="{ row }">
+              <el-input v-model="row.differenceReason" size="small" :disabled="lineDifference(row) === 0" placeholder="调价/折扣/扣款/运费等" />
+            </template>
+          </el-table-column>
         </el-table>
+        <div v-if="partial" class="text-xs text-gray-400 mt-1">
+          结算单价缺省按入库单价；偏离入库单价超过租户容差时必须填写修订原因（保存/提交/审批三处服务端重算）。
+        </div>
         <el-form-item label="本次结算金额" prop="settlementAmount">
           <el-input-number v-model="formData.settlementAmount" :disabled="partial" :min="0" :max="formData.inboundAmount || undefined" :precision="2" style="width: 100%" />
         </el-form-item>
@@ -181,7 +202,15 @@ async function handleEdit(row: any) {
   sourceLines.value = []
   if (partial.value) {
     const lines: any = await request.get("/v1/purchase/settlement/inbound-lines", { params: { inboundId: row.inboundId } })
-    sourceLines.value = lines.data.map((line: any) => ({ ...line, selectedQuantity: row.details.find((d: any) => String(d.inboundDetailId) === String(line.inboundDetailId))?.quantity || 0 }))
+    sourceLines.value = lines.data.map((line: any) => {
+      const stored = row.details.find((d: any) => String(d.inboundDetailId) === String(line.inboundDetailId))
+      return {
+        ...line,
+        selectedQuantity: stored?.quantity || 0,
+        settlementUnitPrice: stored?.settlementUnitPrice != null ? Number(stored.settlementUnitPrice) : undefined,
+        differenceReason: stored?.differenceReason || ''
+      }
+    })
   }
   isEdit.value = true
   formData.value = { id: row.id, contractId: row.contractId, inboundId: row.inboundId, inboundAmount: row.inboundAmount, settlementAmount: row.settlementAmount, settlementDate: row.settlementDate, remark: row.remark }
@@ -210,14 +239,24 @@ async function handleInboundChange() {
   sourceLines.value = []
   if (partial.value && formData.value.inboundId) {
     const res: any = await request.get("/v1/purchase/settlement/inbound-lines", { params: { inboundId: formData.value.inboundId } })
-    sourceLines.value = res.data.map((line: any) => ({ ...line, selectedQuantity: 0 }))
+    sourceLines.value = res.data.map((line: any) => ({ ...line, selectedQuantity: 0, settlementUnitPrice: undefined as number | undefined, differenceReason: '' }))
   }
   const inbound = inboundOptions.value.find(i => String(i.id) === String(formData.value.inboundId))
   formData.value.inboundAmount = inbound ? Number(inbound.totalAmount || 0) : 0
 }
 
+/** C4（V2026_111）：结算单价缺省按入库单价；价差 =（结算−入库）×数量 */
+function effectivePrice(line: any): number {
+  return line.settlementUnitPrice != null ? Number(line.settlementUnitPrice) : Number(line.unitPrice || 0)
+}
+
+function lineDifference(line: any): number {
+  const qty = Number(line.selectedQuantity || 0)
+  return Math.round(qty * (effectivePrice(line) - Number(line.unitPrice || 0)) * 100) / 100
+}
+
 function calculateTotal() {
-  formData.value.settlementAmount = sourceLines.value.reduce((sum, line) => sum + Math.round(Number(line.selectedQuantity || 0) * Number(line.unitPrice) * 100), 0) / 100
+  formData.value.settlementAmount = sourceLines.value.reduce((sum, line) => sum + Math.round(Number(line.selectedQuantity || 0) * effectivePrice(line) * 100), 0) / 100
 }
 
 async function handleFormSubmit() {
@@ -228,7 +267,12 @@ async function handleFormSubmit() {
   }
   submitLoading.value = true
   try {
-    const payload = { ...formData.value, ...(partial.value ? { details: sourceLines.value.filter(line => Number(line.selectedQuantity) > 0).map(line => ({ inboundDetailId: line.inboundDetailId, quantity: line.selectedQuantity })) } : {}) }
+    const payload = { ...formData.value, ...(partial.value ? { details: sourceLines.value.filter(line => Number(line.selectedQuantity) > 0).map(line => ({
+      inboundDetailId: line.inboundDetailId,
+      quantity: line.selectedQuantity,
+      settlementUnitPrice: line.settlementUnitPrice != null ? Number(line.settlementUnitPrice) : undefined,
+      differenceReason: line.differenceReason?.trim() || undefined
+    })) } : {}) }
     if (isEdit.value) {
       await updatePurchaseSettlement(payload)
     } else {
@@ -278,4 +322,5 @@ onMounted(() => { loadContracts(); loadData() })
 .table-toolbar { margin-bottom: var(--zw-space-md); }
 .pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 .empty-tip { color: var(--zw-warning); font-size: var(--zw-font-size-xs); line-height: 1.5; margin-top: var(--zw-space-xs); }
+.diff-flag { color: var(--zw-warning, #e6a23c); font-weight: 600; }
 </style>
