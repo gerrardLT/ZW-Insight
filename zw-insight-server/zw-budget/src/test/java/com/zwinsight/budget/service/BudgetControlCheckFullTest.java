@@ -45,6 +45,13 @@ class BudgetControlCheckFullTest {
     @Mock
     private BizProjectMapper projectMapper;
 
+    // F1b（2026-10-16）：预警带会走真实站内信事件，需补齐新依赖
+    @Mock
+    private com.zwinsight.project.mapper.BizProjectMemberMapper projectMemberMapper;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private BudgetControlConfigService service;
 

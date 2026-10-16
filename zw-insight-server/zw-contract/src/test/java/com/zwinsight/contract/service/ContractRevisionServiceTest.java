@@ -23,6 +23,7 @@ class ContractRevisionServiceTest {
     @Mock BizProjectMapper projects;
     @Mock ApprovalService approvals;
     @Mock JdbcTemplate jdbc;
+    @Mock com.zwinsight.contract.service.ContractPayTermService payTermService;
     @Spy ObjectMapper json = new ObjectMapper();
     @InjectMocks ContractRevisionService service;
     private BizConstructionContract contract() {

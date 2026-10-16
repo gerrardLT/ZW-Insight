@@ -387,6 +387,9 @@ class ProjectDashboardPropertyTest {
 
         return new ProjectDashboardService(
                 budgetMapper, budgetDetailMapper, paymentApplyMapper, schedulePlanMapper,
-                constructionContractMapper, invoiceApplyMapper, paymentReceivedMapper, outputReportMapper);
+                constructionContractMapper, invoiceApplyMapper, paymentReceivedMapper, outputReportMapper,
+                // C5（2026-10-16）新增依赖：属性测试路径不触达 CBS 与回款比率，空实现即可
+                Mockito.mock(com.zwinsight.budget.mapper.BizCostAccountMapper.class),
+                Mockito.mock(com.zwinsight.dashboard.mapper.LaborCostReadMapper.class));
     }
 }
