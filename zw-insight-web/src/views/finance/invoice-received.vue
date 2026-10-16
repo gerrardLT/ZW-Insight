@@ -62,6 +62,29 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="查验" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.verifyStatus === 'VERIFIED' ? 'success' : row.verifyStatus === 'MISMATCH' ? 'danger' : 'info'" size="small">
+              {{ row.verifyStatus === 'VERIFIED' ? '已查验' : row.verifyStatus === 'MISMATCH' ? '查验不符' : '未查验' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="入账" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.bookkeepStatus === 'BOOKED' ? 'success' : 'info'" size="small">
+              {{ row.bookkeepStatus === 'BOOKED' ? '已入账' : '未入账' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="{ row }">
+            <el-button v-if="row.verifyStatus !== 'VERIFIED'" size="small" type="success" link @click="markVerify(row, 'VERIFIED')">查验通过</el-button>
+            <el-button v-if="row.verifyStatus !== 'MISMATCH'" size="small" type="danger" link @click="markVerify(row, 'MISMATCH')">查验不符</el-button>
+            <el-button size="small" link @click="toggleBookkeep(row)">
+              {{ row.bookkeepStatus === 'BOOKED' ? '取消入账' : '标记入账' }}
+            </el-button>
+          </template>
+        </el-table-column>
         <el-table-column prop="createdAt" label="登记时间" width="170" />
       </el-table>
 
@@ -153,7 +176,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getInvoiceReceivedPage, createInvoiceReceived } from '@/api/finance'
+import { getInvoiceReceivedPage, createInvoiceReceived, verifyInvoiceReceived, markInvoiceReceivedBookkeep } from '@/api/finance'
 import { getProjectList } from '@/api/project'
 import { getOtherContractPage } from '@/api/contract'
 import { getPurchaseContractPage } from '@/api/purchase'
@@ -262,6 +285,18 @@ async function loadData() {
   } finally {
     loading.value = false
   }
+}
+
+// V2026_110：查验/入账状态流转（人工核对税务平台后如实标记）
+async function markVerify(row: any, verifyStatus: 'VERIFIED' | 'MISMATCH') {
+  await verifyInvoiceReceived(Number(row.id), verifyStatus)
+  ElMessage.success(verifyStatus === 'VERIFIED' ? '已标记查验通过' : '已标记查验不符')
+  await loadData()
+}
+
+async function toggleBookkeep(row: any) {
+  await markInvoiceReceivedBookkeep(Number(row.id), row.bookkeepStatus !== 'BOOKED')
+  await loadData()
 }
 
 function handleSearch() {

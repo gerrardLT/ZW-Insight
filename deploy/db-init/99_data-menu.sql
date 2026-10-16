@@ -90,6 +90,7 @@ INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon
 -- 收票登记（p2-business-enhance 需求6.2 新增，parent_id=5）
 INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden) VALUES
 (507, '收票登记', 'MENU', 5, 'invoice-received', 'views/finance/invoice-received', 'Tickets', 4, 1, 0);
+(508, '销项发票台账', 'MENU', 5, 'invoice-issued', 'views/finance/invoice-issued', 'Ticket', 5, 1, 0);
 
 -- ============================================================
 -- 二级菜单：预算管理 (parent_id=6)

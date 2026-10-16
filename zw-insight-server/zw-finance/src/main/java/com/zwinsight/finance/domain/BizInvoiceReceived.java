@@ -59,4 +59,19 @@ public class BizInvoiceReceived extends BaseEntity {
 
     /** 状态（APPROVED） */
     private String status;
+
+    /** 查验状态（V2026_110：UNVERIFIED 未查验 / VERIFIED 已人工核对税务平台 / MISMATCH 查验不符） */
+    private String verifyStatus;
+
+    /** 查验时间 */
+    private java.time.LocalDateTime verifyTime;
+
+    /** 查验人 */
+    private Long verifiedBy;
+
+    /** 用途确认状态（UNCONFIRMED 未确认 / CONFIRMED 已确认抵扣用途） */
+    private String useStatus;
+
+    /** 入账状态（UNBOOKED 未入账 / BOOKED 已入账） */
+    private String bookkeepStatus;
 }

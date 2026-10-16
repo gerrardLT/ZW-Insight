@@ -126,6 +126,47 @@ public class InvoiceReceivedService {
     }
 
     /**
+     * 查验状态流转（V2026_110）：UNVERIFIED → VERIFIED/MISMATCH，记录查验人与时间，可复核重验。
+     * 语义如实：VERIFIED 表示人工核对税务平台一致，不冒充税局接口直连。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void verify(Long id, String verifyStatus) {
+        if (!"VERIFIED".equals(verifyStatus) && !"MISMATCH".equals(verifyStatus)) {
+            throw new BusinessException(400, "查验状态仅支持 VERIFIED/MISMATCH");
+        }
+        BizInvoiceReceived existing = invoiceReceivedMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException(404, "收票记录不存在");
+        }
+        int moved = invoiceReceivedMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizInvoiceReceived>()
+                        .eq(BizInvoiceReceived::getId, id)
+                        .set(BizInvoiceReceived::getVerifyStatus, verifyStatus)
+                        .set(BizInvoiceReceived::getVerifyTime, java.time.LocalDateTime.now())
+                        .set(BizInvoiceReceived::getVerifiedBy,
+                                com.zwinsight.common.config.SecurityContextHolder.getUserId()));
+        if (moved != 1) {
+            throw new BusinessException("收票记录状态已变更，请刷新重试");
+        }
+    }
+
+    /** 入账状态流转（V2026_110）：纯登记，不动金额与合同累计收票 */
+    @Transactional(rollbackFor = Exception.class)
+    public void markBookkeep(Long id, boolean booked) {
+        BizInvoiceReceived existing = invoiceReceivedMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException(404, "收票记录不存在");
+        }
+        int moved = invoiceReceivedMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<BizInvoiceReceived>()
+                        .eq(BizInvoiceReceived::getId, id)
+                        .set(BizInvoiceReceived::getBookkeepStatus, booked ? "BOOKED" : "UNBOOKED"));
+        if (moved != 1) {
+            throw new BusinessException("收票记录状态已变更，请刷新重试");
+        }
+    }
+
+    /**
      * 按合同类型将收票金额累加到对应的支出类合同（支持负数回冲）
      */
     private void routeInvoiceReceived(String category, Long contractId, BigDecimal amount) {

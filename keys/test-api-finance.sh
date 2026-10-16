@@ -529,6 +529,31 @@ test_get_settlement_nonexistent() {
 }
 
 # ===========================================================================
+# C3 销项发票台账守卫（V2026_110，2026-10-16）
+# 仅负向/只读用例，不产生业务残留
+# ===========================================================================
+
+test_invoice_issued_guards() {
+  log "▶ 测试：销项发票台账守卫"
+
+  # 1) 号码规则：非 8/20 位 → 业务码 400
+  call POST "/api/v1/finance/invoice-issued" '{"invoiceNumber":"12345","issueDate":"2026-10-16","direction":"BLUE","amount":100}'
+  assert_http 2 "POST invoice-issued 非法号码 HTTP 200(业务异常承载于body)"
+  assert_body_code 400 "非法号码业务码 400"
+
+  # 2) 红字不挂原票 → 业务码 400
+  call POST "/api/v1/finance/invoice-issued" '{"invoiceNumber":"24331000000012345678","issueDate":"2026-10-16","direction":"RED","amount":-100}'
+  assert_http 2 "红字无原票 HTTP 200(业务异常承载于body)"
+  assert_body_code 400 "红字无原票业务码 400"
+
+  # 3) 分页（只读）
+  call GET "/api/v1/finance/invoice-issued?page=1&size=10"
+  assert_http 2 "GET invoice-issued 状态码"
+  assert_body_code 200 "GET invoice-issued 业务码"
+  assert_has_field "records" "分页结果含 records 字段"
+}
+
+# ===========================================================================
 # 主流程
 # ===========================================================================
 main() {
@@ -573,6 +598,7 @@ main() {
   echo ""
   log "─── 项目结算汇总查询测试 ───"
   test_get_settlement_nonexistent
+  test_invoice_issued_guards
 
   # --- 月度经营分析表（V2026_67，资金流转 §9：10 类×6 列）---
   echo ""

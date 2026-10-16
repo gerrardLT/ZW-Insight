@@ -55,6 +55,15 @@ public class BizLaborContract extends BaseEntity {
     /** 合同金额 */
     private BigDecimal contractAmount;
 
+    /** 税率(%)（V2026_110：历史合同未知保持 null，不猜填） */
+    private BigDecimal taxRate;
+
+    /** 不含税金额（服务端按含税额+税率派生，不接受客户端值） */
+    private BigDecimal amountWithoutTax;
+
+    /** 税额（差额法派生） */
+    private BigDecimal taxAmount;
+
     /** 付款条款 */
     private String paymentTerms;
 

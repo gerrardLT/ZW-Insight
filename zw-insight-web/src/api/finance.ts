@@ -53,6 +53,65 @@ export function createInvoiceReceived(data: Partial<InvoiceReceived>) {
   return request.post<R<void>>('/v1/finance/invoice-received', data)
 }
 
+/** 进项发票查验状态流转（V2026_110：人工核对税务平台后标记） */
+export function verifyInvoiceReceived(id: number, verifyStatus: 'VERIFIED' | 'MISMATCH') {
+  return request.post<R<void>>(`/v1/finance/invoice-received/${id}/verify`, { verifyStatus })
+}
+
+/** 进项发票入账状态流转（纯登记） */
+export function markInvoiceReceivedBookkeep(id: number, booked: boolean) {
+  return request.post<R<void>>(`/v1/finance/invoice-received/${id}/bookkeep`, { booked })
+}
+
+// ======================== 销项发票台账（V2026_110，真实票据事实层） ========================
+export interface InvoiceIssued {
+  id?: number
+  projectId?: number
+  contractId?: number
+  applyId?: number
+  invoiceNumber: string
+  invoiceCode?: string
+  issueDate: string
+  invoiceType?: string
+  direction: 'BLUE' | 'RED'
+  originalId?: number
+  amount: number
+  taxRate?: number
+  taxAmount?: number
+  amountWithoutTax?: number
+  verifyStatus?: string
+  verifyTime?: string
+  verifiedBy?: number
+  bookkeepStatus?: string
+}
+
+export function getInvoiceIssuedPage(params: {
+  page?: number
+  size?: number
+  projectId?: number
+  contractId?: number
+  direction?: string
+  applyId?: number
+}) {
+  return request.get<R<PageResult<InvoiceIssued>>>('/v1/finance/invoice-issued', { params })
+}
+
+export function createInvoiceIssued(data: Partial<InvoiceIssued>) {
+  return request.post<R<void>>('/v1/finance/invoice-issued', data)
+}
+
+export function verifyInvoiceIssued(id: number, verifyStatus: 'VERIFIED' | 'MISMATCH') {
+  return request.post<R<void>>(`/v1/finance/invoice-issued/${id}/verify`, { verifyStatus })
+}
+
+export function markInvoiceIssuedBookkeep(id: number, booked: boolean) {
+  return request.post<R<void>>(`/v1/finance/invoice-issued/${id}/bookkeep`, { booked })
+}
+
+export function deleteInvoiceIssued(id: number) {
+  return request.delete<R<void>>(`/v1/finance/invoice-issued/${id}`)
+}
+
 // ======================== 发票明细汇总 ========================
 export function getInvoiceSummary(params: InvoiceSummaryQuery) {
   return request.get<R<InvoiceSummary[]>>('/v1/finance/invoice-summary', { params })

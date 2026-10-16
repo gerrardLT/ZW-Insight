@@ -84,6 +84,15 @@ public class SubcontractService {
         if (contract.getCumulativeSettlement() == null) contract.setCumulativeSettlement(BigDecimal.ZERO);
         if (contract.getCumulativePaid() == null) contract.setCumulativePaid(BigDecimal.ZERO);
         contract.setStatus("DRAFT");
+        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
+        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
+
         subcontractMapper.insert(contract);
     }
 
@@ -136,6 +145,15 @@ public class SubcontractService {
         contract.setStatus(null);
         contract.setCumulativeOutput(null);
         contract.setCumulativeSettlement(null);
+        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
+        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
+
         contract.setCumulativePaid(null);
         subcontractMapper.updateById(contract);
     }

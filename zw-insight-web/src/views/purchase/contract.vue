@@ -68,6 +68,7 @@
         <el-form-item label="合同金额" prop="contractAmount">
           <el-input-number v-model="formData.contractAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
+        <el-form-item label="税率(%)"><el-input-number v-model="formData.taxRate" :min="0" :max="100" :precision="2" style="width: 100%" placeholder="未知留空" /></el-form-item>
         <el-form-item label="签订日期" prop="signingDate">
           <el-date-picker v-model="formData.signingDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
@@ -101,7 +102,7 @@ const submitLoading = ref(false)
 const isEdit = ref(false)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, contractName: '', supplierName: '', status: '' })
-const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', paymentTerms: '' })
+const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', supplierName: '', contractAmount: 0, taxRate: undefined as number | undefined, signingDate: '', paymentTerms: '' })
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   contractName: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
@@ -120,7 +121,7 @@ async function loadData() {
 
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, contractName: '', supplierName: '', status: '' }; loadData() }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', supplierName: '', contractAmount: 0, signingDate: '', paymentTerms: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', supplierName: '', contractAmount: 0, taxRate: undefined as number | undefined, signingDate: '', paymentTerms: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 
 async function handleFormSubmit() {

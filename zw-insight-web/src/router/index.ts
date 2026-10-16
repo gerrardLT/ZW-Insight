@@ -300,6 +300,12 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '收票登记', icon: 'Tickets' }
       },
       {
+        path: 'invoice-issued',
+        name: 'InvoiceIssued',
+        component: () => import('@/views/finance/invoice-issued.vue'),
+        meta: { title: '销项发票台账', icon: 'Ticket' }
+      },
+      {
         path: 'invoice-summary',
         name: 'InvoiceSummary',
         component: () => import('@/views/finance/invoice-summary.vue'),

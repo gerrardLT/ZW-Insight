@@ -44,4 +44,24 @@ public class InvoiceReceivedController {
         invoiceReceivedService.delete(id);
         return R.ok();
     }
+
+    /**
+     * 查验状态流转（V2026_110：人工核对税务平台后如实标记，不冒充税局直连）。
+     */
+    @PostMapping("/{id}/verify")
+    public R<Void> verify(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        invoiceReceivedService.verify(id, body.get("verifyStatus"));
+        return R.ok();
+    }
+
+    /** 入账状态流转（纯登记，不动金额与合同累计） */
+    @PostMapping("/{id}/bookkeep")
+    public R<Void> markBookkeep(@PathVariable Long id, @RequestBody java.util.Map<String, Boolean> body) {
+        Boolean booked = body.get("booked");
+        if (booked == null) {
+            return R.fail(400, "booked 不能为空");
+        }
+        invoiceReceivedService.markBookkeep(id, booked);
+        return R.ok();
+    }
 }

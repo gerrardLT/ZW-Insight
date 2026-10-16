@@ -57,6 +57,7 @@ public class DashboardService {
     private final BizSchedulePlanMapper schedulePlanMapper;
     private final BizInvoiceApplyMapper invoiceApplyMapper;
     private final BizInvoiceReceivedMapper invoiceReceivedMapper;
+    private final com.zwinsight.finance.mapper.BizInvoiceIssuedMapper invoiceIssuedMapper;
 
     /**
      * 公司概览（项目总数、各状态分布、合同总额、累计结算、已收款、垫资、利润）
@@ -862,6 +863,23 @@ public class DashboardService {
         // F3（2026-10-16 正名）：这是「销项开票申请金额 − 进项收票金额」的发票金额差，不是税额差，
         // 旧名 taxDifference 会被误读为应交增值税。真实税额指标须基于销项发票台账的税额字段（C3 落地）。
         result.put("invoiceAmountDifference", totalInvoiced.subtract(totalReceived));
+
+        // C3（2026-10-16）：基于真实票据事实的税额指标。
+        // 销项税 = 销项发票台账税额净额（蓝正红负）；进项税 = 已登记收票税额合计；
+        // taxAmountDifference 为估算口径（basis 注明），非申报口径的应交增值税。
+        java.math.BigDecimal salesTax = invoiceIssuedMapper.selectList(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.zwinsight.finance.domain.BizInvoiceIssued>()
+                                .eq(projectId != null, com.zwinsight.finance.domain.BizInvoiceIssued::getProjectId, projectId))
+                .stream()
+                .map(i -> i.getTaxAmount() != null ? i.getTaxAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        java.math.BigDecimal inputTax = received.stream()
+                .map(r -> r.getTaxAmount() != null ? r.getTaxAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        result.put("salesTaxAmount", salesTax);
+        result.put("inputTaxAmount", inputTax);
+        result.put("taxAmountDifference", salesTax.subtract(inputTax));
+        result.put("taxMetricsBasis", "SALES_ISSUED_NET_MINUS_INPUT_REGISTERED");
 
         // 按项目汇总销项（NPE 防护，2026-08-11：projectId 为 null 的开票单无法归类，过滤跳过）
         Map<Long, BigDecimal> invoiceByProject = invoices.stream()

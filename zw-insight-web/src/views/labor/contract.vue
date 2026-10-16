@@ -81,6 +81,7 @@
         <el-form-item label="合同名称" prop="contractName"><el-input v-model="formData.contractName" /></el-form-item>
         <el-form-item label="施工队伍" prop="teamName"><el-input v-model="formData.teamName" /></el-form-item>
         <el-form-item label="合同金额" prop="contractAmount"><el-input-number v-model="formData.contractAmount" :min="0" :precision="2" style="width: 100%" /></el-form-item>
+        <el-form-item label="税率(%)"><el-input-number v-model="formData.taxRate" :min="0" :max="100" :precision="2" style="width: 100%" placeholder="未知留空" /></el-form-item>
         <el-form-item label="开始日期"><el-date-picker v-model="formData.startDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
         <el-form-item label="结束日期"><el-date-picker v-model="formData.endDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
         <el-form-item label="备注"><el-input v-model="formData.remark" type="textarea" :rows="2" /></el-form-item>
@@ -113,7 +114,7 @@ const isEdit = ref(false)
 const importVisible = ref(false)
 
 const queryParams = ref({ page: 1, size: 10, projectId: undefined as number | undefined, contractName: '', teamName: '', status: '' })
-const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', teamName: '', contractAmount: 0, startDate: '', endDate: '', remark: '' })
+const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', teamName: '', contractAmount: 0, taxRate: undefined as number | undefined, startDate: '', endDate: '', remark: '' })
 const formRules = { projectId: [{ required: true, message: '请选择项目', trigger: 'change' }], contractName: [{ required: true, message: '请输入合同名称', trigger: 'blur' }], teamName: [{ required: true, message: '请输入施工队伍', trigger: 'blur' }] }
 
 async function loadData() { loading.value = true; try { const res: any = await getLaborContractPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
@@ -126,7 +127,7 @@ function handleOpenImport() {
   }
   importVisible.value = true
 }
-function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', teamName: '', contractAmount: 0, startDate: '', endDate: '', remark: '' }; dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', teamName: '', contractAmount: 0, taxRate: undefined as number | undefined, startDate: '', endDate: '', remark: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateLaborContract(formData.value) : await createLaborContract(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteLaborContract(row.id); ElMessage.success('删除成功'); loadData() }

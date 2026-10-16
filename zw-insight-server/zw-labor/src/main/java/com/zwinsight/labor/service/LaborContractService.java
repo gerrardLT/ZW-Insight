@@ -72,6 +72,15 @@ public class LaborContractService {
             contract.setCumulativePaid(BigDecimal.ZERO);
         }
         contract.setStatus("DRAFT");
+        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
+        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
+
         laborContractMapper.insert(contract);
     }
 
@@ -113,6 +122,15 @@ public class LaborContractService {
 
         contract.setWorkflowInstanceId(processInstanceId);
         contract.setStatus("SUBMITTED");
+        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
+        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
+
         laborContractMapper.updateById(contract);
     }
 
@@ -187,6 +205,15 @@ public class LaborContractService {
         contract.setCumulativeOutput(null);
         contract.setCumulativeSettlement(null);
         contract.setCumulativePaid(null);
+        // V2026_110：税额三件套服务端派生（编辑草稿后重算）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
+        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
+
         contract.setWorkflowInstanceId(null);
         laborContractMapper.updateById(contract);
     }

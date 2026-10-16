@@ -113,6 +113,15 @@ public class PurchaseContractService {
             contract.setCumulativeInvoiceReceived(BigDecimal.ZERO);
         }
 
+        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
+        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
+
         purchaseContractMapper.insert(contract);
     }
 
@@ -136,7 +145,17 @@ public class PurchaseContractService {
         existing.setSigningDate(contract.getSigningDate());
         existing.setBudgetId(contract.getBudgetId());
         existing.setContractAmount(contract.getContractAmount());
+        existing.setTaxRate(contract.getTaxRate());
         existing.setPaymentTerms(contract.getPaymentTerms());
+        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(existing.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        existing.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(existing.getContractAmount(), existing.getTaxRate()));
+        existing.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(existing.getContractAmount(), existing.getTaxRate()));
+
         purchaseContractMapper.updateById(existing);
     }
 

@@ -51,6 +51,8 @@ class DashboardServiceTest {
     @Mock private BizTenderRegisterMapper tenderRegisterMapper;
     @Mock private BizDepositApplyMapper depositApplyMapper;
     @Mock private BizSchedulePlanMapper schedulePlanMapper;
+    // C3（V2026_110）：发票台账真税额指标依赖销项发票 Mapper
+    @Mock private com.zwinsight.finance.mapper.BizInvoiceIssuedMapper invoiceIssuedMapper;
 
     @InjectMocks
     private DashboardService dashboardService;

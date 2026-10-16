@@ -69,6 +69,15 @@ public class MachineContractService {
     }
 
     private void transition(Long id, String from, String to, String processId) {
+        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
+        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
+
         LambdaUpdateWrapper<BizMachineContract> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizMachineContract::getId, id)
                 .eq(BizMachineContract::getTenantId, SecurityContextHolder.getTenantId())
@@ -144,6 +153,15 @@ public class MachineContractService {
         contract.setCumulativeSettlement(BigDecimal.ZERO);
         contract.setCumulativePaid(BigDecimal.ZERO);
         contract.setStatus("DRAFT");
+        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
+        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
+
         machineContractMapper.insert(contract);
     }
 
@@ -207,7 +225,10 @@ public class MachineContractService {
                 .set(BizMachineContract::getEndDate, contract.getEndDate())
                 .set(BizMachineContract::getContractAmount, contract.getContractAmount())
                 .set(BizMachineContract::getUnitPrice, contract.getUnitPrice())
-                .set(BizMachineContract::getPaymentTerms, contract.getPaymentTerms());
+                .set(BizMachineContract::getPaymentTerms, contract.getPaymentTerms())
+                .set(BizMachineContract::getTaxRate, contract.getTaxRate())
+                .set(BizMachineContract::getAmountWithoutTax, contract.getAmountWithoutTax())
+                .set(BizMachineContract::getTaxAmount, contract.getTaxAmount());
         if (machineContractMapper.update(null, wrapper) != 1) throw new BusinessException("合同状态已变更，请刷新重试");
     }
 
