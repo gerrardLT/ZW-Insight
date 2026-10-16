@@ -223,7 +223,7 @@ class ProjectDashboardServiceTest {
         when(constructionContractMapper.selectList(any())).thenReturn(java.util.List.of(c));
         when(costAccountMapper.selectList(any())).thenReturn(java.util.List.of());
 
-        java.util.Map<String, Object> result = service.getReceiptRatios(10L);
+        java.util.Map<String, Object> result = dashboardService.getReceiptRatios(10L);
 
         var byContract = (java.util.Map<String, Object>) result.get("collectionRateByContract");
         assertEquals(true, byContract.get("available"));
@@ -258,7 +258,7 @@ class ProjectDashboardServiceTest {
         when(laborCostReadMapper.sumApprovedWorkOrders(10L)).thenReturn(new java.math.BigDecimal("30000"));
         when(laborCostReadMapper.sumLaborSettlement(10L)).thenReturn(new java.math.BigDecimal("100000"));
 
-        java.util.Map<String, Object> result = service.getReceiptRatios(10L);
+        java.util.Map<String, Object> result = dashboardService.getReceiptRatios(10L);
 
         var outputMargin = (java.util.Map<String, Object>) result.get("outputGrossMargin");
         assertEquals(0, ((java.math.BigDecimal) outputMargin.get("value")).compareTo(new java.math.BigDecimal("300000")));
