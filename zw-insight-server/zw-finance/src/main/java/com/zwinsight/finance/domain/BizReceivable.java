@@ -28,6 +28,8 @@ public class BizReceivable extends BaseEntity {
     public static final String SOURCE_SETTLEMENT = "SETTLEMENT";
     /** 来源类型：质保金到期转应收 */
     public static final String SOURCE_RETENTION = "RETENTION";
+    /** 来源类型：合同过程结算（V2026_108，按期间净额逐期生成） */
+    public static final String SOURCE_PROCESS_SETTLEMENT = "PROCESS_SETTLEMENT";
 
     /** 状态：未结清 */
     public static final String STATUS_OPEN = "OPEN";

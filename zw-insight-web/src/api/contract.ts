@@ -128,9 +128,24 @@ export function importQuantityList(data: FormData) {
   })
 }
 
-// ======================== 竣工结算 ========================
-export function getFinalSettlementPage(params: PageQuery & { contractId?: number }) {
+// ======================== 竣工结算 / 过程结算 ========================
+export interface SettlementSource {
+  id?: number
+  sourceType: 'OUTPUT_REPORT' | 'VISA' | 'MANUAL'
+  sourceId?: number
+  description?: string
+  declaredAmount: number
+  confirmedAmount: number
+  disputedAmount: number
+  reduceReason?: string
+}
+
+export function getFinalSettlementPage(params: PageQuery & { contractId?: number; projectId?: number; settlementType?: string }) {
   return request.get<R<PageResult<Record<string, unknown>>>>('/v1/contract/settlement', { params })
+}
+
+export function getFinalSettlementDetail(id: number) {
+  return request.get<R<Record<string, unknown>>>(`/v1/contract/settlement/${id}`)
 }
 
 export function createFinalSettlement(data: Record<string, unknown>) {
@@ -139,6 +154,11 @@ export function createFinalSettlement(data: Record<string, unknown>) {
 
 export function submitFinalSettlement(id: number) {
   return request.post<R<void>>(`/v1/contract/settlement/${id}/submit`)
+}
+
+// 过程结算可选来源（本合同下已审批且未被占用的产值/签证）
+export function getAvailableSettlementSources(contractId: number) {
+  return request.get<R<{ outputReports: Array<{ sourceId: number; label: string; suggestedAmount: number }>; visas: Array<{ sourceId: number; label: string; suggestedAmount: number }> }>>('/v1/contract/settlement/available-sources', { params: { contractId } })
 }
 
 // ======================== 产值报告 ========================

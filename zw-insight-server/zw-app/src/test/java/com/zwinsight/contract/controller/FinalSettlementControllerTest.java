@@ -36,15 +36,17 @@ class FinalSettlementControllerTest {
     @BeforeEach void setUp() { SecurityContextHolder.setTenantId(1L); SecurityContextHolder.setUserId(1L); }
     @AfterEach void tearDown() { SecurityContextHolder.clear(); }
 
-    @Test @DisplayName("GET /api/v1/contract/settlement - 返回结算分页列表")
+    @Test @DisplayName("GET /api/v1/contract/settlement - 返回结算分页列表（支持 contractId/settlementType 过滤）")
     void should_return_page() throws Exception {
         BizFinalSettlement s = new BizFinalSettlement();
         s.setId(1L); s.setSettlementAmount(new BigDecimal("2000000")); s.setStatus("DRAFT");
         PageResult<BizFinalSettlement> page = new PageResult<>(List.of(s), 1, 1, 10, 1);
-        when(finalSettlementService.page(anyInt(), anyInt(), any())).thenReturn(page);
+        when(finalSettlementService.page(anyInt(), anyInt(), any(), any(), any())).thenReturn(page);
 
-        mockMvc.perform(get("/api/v1/contract/settlement").param("page","1").param("size","10"))
+        mockMvc.perform(get("/api/v1/contract/settlement").param("page","1").param("size","10")
+                        .param("settlementType", "PROCESS"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200));
+        verify(finalSettlementService).page(anyInt(), anyInt(), any(), any(), eq("PROCESS"));
     }
 
     @Test @DisplayName("POST /api/v1/contract/settlement - 新增结算")

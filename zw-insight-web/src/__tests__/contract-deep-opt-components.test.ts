@@ -1,6 +1,7 @@
 /**
  * P1-M3 施工合同深挖组件单元测试
  * 覆盖 ContractDetailDrawer（四率计算/明细/变更签证/产值/结算）与 index 撤回/抽屉调用
+ * V2026_108 追加：过程结算页签（加载/新建/提交）与签证关联变更事件选择
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -11,13 +12,27 @@ const {
   mockGetChangeVisaPage,
   mockCreateChangeVisa,
   mockGetOutputReportPage,
-  mockGetFinalSettlementPage
+  mockGetFinalSettlementPage,
+  mockCreateFinalSettlement,
+  mockSubmitFinalSettlement,
+  mockGetAvailableSources,
+  mockListChangeEvents
 } = vi.hoisted(() => ({
   mockGetDetails: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
   mockGetChangeVisaPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
   mockCreateChangeVisa: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockGetOutputReportPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
-  mockGetFinalSettlementPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } }))
+  mockGetFinalSettlementPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockCreateFinalSettlement: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  mockSubmitFinalSettlement: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  mockGetAvailableSources: vi.fn(async (): Promise<any> => ({
+    code: 200,
+    data: {
+      outputReports: [{ sourceId: 301, label: '产值报告 2026-09（本期 100000）', suggestedAmount: 100000 }],
+      visas: [{ sourceId: 401, label: '签证 SITE_VISA（30000）', suggestedAmount: 30000 }]
+    }
+  })),
+  mockListChangeEvents: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } }))
 }))
 
 vi.mock('@/api/file', () => ({
@@ -33,7 +48,15 @@ vi.mock('@/api/contract', () => ({
   createChangeVisa: mockCreateChangeVisa,
   submitChangeVisa: vi.fn(async (): Promise<any> => ({ code: 200 })),
   getOutputReportPage: mockGetOutputReportPage,
-  getFinalSettlementPage: mockGetFinalSettlementPage
+  getFinalSettlementPage: mockGetFinalSettlementPage,
+  getFinalSettlementDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
+  createFinalSettlement: mockCreateFinalSettlement,
+  submitFinalSettlement: mockSubmitFinalSettlement,
+  getAvailableSettlementSources: mockGetAvailableSources
+}))
+
+vi.mock('@/api/change-event', () => ({
+  listChangeEvents: mockListChangeEvents
 }))
 
 vi.mock('element-plus', async (importOriginal) => {
@@ -77,7 +100,7 @@ describe('ContractDetailDrawer 合同履约全息抽屉 (P1-M3 A1/B1)', () => {
     }
   })
 
-  it('打开抽屉时自动加载明细、变更签证、产值记录与结算', async () => {
+  it('打开抽屉时自动加载明细、变更签证、产值记录与结算（FINAL 与 PROCESS 分开取）', async () => {
     wrapper = mount(ContractDetailDrawer, {
       props: {
         modelValue: true,
@@ -99,7 +122,9 @@ describe('ContractDetailDrawer 合同履约全息抽屉 (P1-M3 A1/B1)', () => {
     expect(mockGetDetails).toHaveBeenCalledWith(91001)
     expect(mockGetChangeVisaPage).toHaveBeenCalledWith({ contractId: 91001, pageNum: 1, pageSize: 50 })
     expect(mockGetOutputReportPage).toHaveBeenCalledWith({ contractId: 91001, pageNum: 1, pageSize: 50 })
-    expect(mockGetFinalSettlementPage).toHaveBeenCalledWith({ contractId: 91001, pageNum: 1, pageSize: 1 })
+    // 竣工结算页签只取 FINAL 型；过程结算页签单独取 PROCESS 型
+    expect(mockGetFinalSettlementPage).toHaveBeenCalledWith({ contractId: 91001, settlementType: 'FINAL', pageNum: 1, pageSize: 1 })
+    expect(mockGetFinalSettlementPage).toHaveBeenCalledWith({ contractId: 91001, settlementType: 'PROCESS', pageNum: 1, pageSize: 50 })
   })
 
   it('履约四率计算逻辑正确', async () => {
@@ -151,5 +176,89 @@ describe('ContractDetailDrawer 合同履约全息抽屉 (P1-M3 A1/B1)', () => {
       changeReason: '土方换填',
       changeContent: '现场签证确认换填工程量'
     })
+  })
+
+  it('V2026_108 - 打开签证弹窗时加载可选关联的已审批变更事件', async () => {
+    mockListChangeEvents.mockResolvedValue({
+      code: 200,
+      data: {
+        records: [
+          { id: 501, eventNumber: 'CHG20260001', title: '基坑支护变更', costDelta: 80000, contractId: 91001 },
+          { id: 502, eventNumber: 'CHG20260002', title: '他合同事件', costDelta: 100, contractId: 999 }
+        ],
+        total: 2
+      }
+    })
+    wrapper = mount(ContractDetailDrawer, {
+      props: { modelValue: true, contract: { id: 91001, projectId: 90001, status: 'EFFECTIVE' } },
+      global: { plugins: [ElementPlus] }
+    })
+    await flushPromises()
+
+    const vm = wrapper.vm as any
+    vm.handleAddVisa()
+    await flushPromises()
+
+    expect(mockListChangeEvents).toHaveBeenCalledWith({ page: 1, size: 50, projectId: 90001, status: 'APPROVED' })
+    // 非本合同的事件（已显式指定 contractId）不进入候选
+    expect(vm.visaEventOptions).toHaveLength(1)
+    expect(vm.visaEventOptions[0].id).toBe(501)
+  })
+
+  it('V2026_108 - 新建过程结算：拉取可选来源并保存草稿（含期间/扣款/来源明细）', async () => {
+    wrapper = mount(ContractDetailDrawer, {
+      props: { modelValue: true, contract: { id: 91001, projectId: 90001, status: 'EFFECTIVE' } },
+      global: { plugins: [ElementPlus] }
+    })
+    await flushPromises()
+
+    const vm = wrapper.vm as any
+    vm.openProcessSettlementDialog()
+    await flushPromises()
+
+    expect(mockGetAvailableSources).toHaveBeenCalledWith(91001)
+    expect(vm.psAvailable.outputReports).toHaveLength(1)
+
+    vm.psForm.periodStart = '2026-09-01'
+    vm.psForm.periodEnd = '2026-09-30'
+    vm.psForm.retentionDeduct = 5000
+    vm.psForm.sources = [
+      { sourceType: 'OUTPUT_REPORT', sourceId: 301, declaredAmount: 100000, confirmedAmount: 95000, disputedAmount: 5000, reduceReason: '计量核减' }
+    ]
+
+    await vm.submitProcessSettlementCreate()
+    await flushPromises()
+
+    expect(mockCreateFinalSettlement).toHaveBeenCalledWith({
+      projectId: 90001,
+      contractId: 91001,
+      settlementType: 'PROCESS',
+      periodStart: '2026-09-01',
+      periodEnd: '2026-09-30',
+      settlementDate: undefined,
+      prepayDeduct: 0,
+      retentionDeduct: 5000,
+      otherDeduct: 0,
+      sources: [
+        { sourceType: 'OUTPUT_REPORT', sourceId: 301, declaredAmount: 100000, confirmedAmount: 95000, disputedAmount: 5000, reduceReason: '计量核减' }
+      ]
+    })
+    // 净额预览 = 95000 − 5000
+    expect(vm.psNetPreview).toBe(90000)
+  })
+
+  it('V2026_108 - 提交过程结算审批调用 submitFinalSettlement 并刷新列表', async () => {
+    wrapper = mount(ContractDetailDrawer, {
+      props: { modelValue: true, contract: { id: 91001, projectId: 90001, status: 'EFFECTIVE' } },
+      global: { plugins: [ElementPlus] }
+    })
+    await flushPromises()
+
+    const vm = wrapper.vm as any
+    await vm.submitProcessSettlement({ id: 77, status: 'DRAFT' })
+    await flushPromises()
+
+    expect(mockSubmitFinalSettlement).toHaveBeenCalledWith(77)
+    expect(mockGetFinalSettlementPage).toHaveBeenCalledWith({ contractId: 91001, settlementType: 'PROCESS', pageNum: 1, pageSize: 50 })
   })
 })

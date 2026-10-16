@@ -202,7 +202,53 @@
           <ZwEmptyState v-if="!outputReports.length" description="暂无产值上报记录" />
         </el-tab-pane>
 
-        <!-- Tab 4: 竣工结算单 -->
+        <!-- Tab 4: 过程结算（V2026_108，财建〔2022〕183 号过程结算） -->
+        <el-tab-pane name="processSettlement">
+          <template #label>
+            过程结算
+            <el-tag v-if="processSettlements.length" size="small" type="warning" class="ml-1">{{ processSettlements.length }}</el-tag>
+          </template>
+          <div class="section-header mb-2 font-medium flex items-center justify-between">
+            <span>过程结算单（按节点确认无争议价款）</span>
+            <el-button size="small" type="primary" @click="openProcessSettlementDialog">新建过程结算</el-button>
+          </div>
+          <el-table :data="processSettlements" border size="small">
+            <el-table-column prop="periodStart" label="期间起" width="100" />
+            <el-table-column prop="periodEnd" label="期间止" width="100" />
+            <el-table-column prop="declaredAmount" label="申报合计(元)" width="120" align="right">
+              <template #default="{ row }">¥ {{ Number(row.declaredAmount || 0).toLocaleString() }}</template>
+            </el-table-column>
+            <el-table-column prop="settlementAmount" label="审定净额(元)" width="120" align="right">
+              <template #default="{ row }">¥ {{ Number(row.settlementAmount || 0).toLocaleString() }}</template>
+            </el-table-column>
+            <el-table-column label="扣款(预付/质保/其他)" width="150" align="right">
+              <template #default="{ row }">
+                ¥ {{ Number(row.prepayDeduct || 0).toLocaleString() }} / {{ Number(row.retentionDeduct || 0).toLocaleString() }} / {{ Number(row.otherDeduct || 0).toLocaleString() }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="disputedAmount" label="争议(元)" width="100" align="right">
+              <template #default="{ row }">¥ {{ Number(row.disputedAmount || 0).toLocaleString() }}</template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="90" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'APPROVED' ? 'success' : row.status === 'SUBMITTED' ? 'warning' : 'info'" size="small">
+                  {{ row.status === 'APPROVED' ? '已生效' : row.status === 'SUBMITTED' ? '审批中' : '草稿' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="90" fixed="right">
+              <template #default="{ row }">
+                <el-button v-if="row.status === 'DRAFT'" size="small" type="primary" link @click="submitProcessSettlement(row)">提交审批</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <ZwEmptyState v-if="!processSettlements.length" description="暂无过程结算，按月/节点新建以确认本期无争议价款" />
+          <div class="mt-2 text-xs text-gray-400">
+            审定净额 = Σ来源审定 − Σ扣款；生效后原子回写合同累计结算并按期间末+账期生成应收。
+          </div>
+        </el-tab-pane>
+
+        <!-- Tab 5: 竣工结算单 -->
         <el-tab-pane label="竣工结算" name="settlement">
           <div v-if="finalSettlement" class="settlement-info">
             <el-descriptions :column="2" border>
@@ -227,7 +273,12 @@
 
     <!-- 弹窗：登记变更签证 (B1) -->
     <el-dialog v-model="visaDialogVisible" title="登记变更签证" width="500px" append-to-body>
-      <el-form ref="visaFormRef" :model="visaForm" :rules="visaRules" label-width="90px">
+      <el-form ref="visaFormRef" :model="visaForm" :rules="visaRules" label-width="110px">
+        <el-form-item label="关联变更事件">
+          <el-select v-model="visaForm.changeEventId" clearable placeholder="可选：事件为事实，签证为价款确认（防双计）" style="width: 100%" :loading="visaEventsLoading">
+            <el-option v-for="ev in visaEventOptions" :key="ev.id" :label="ev.label" :value="ev.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="变更类型" prop="changeType">
           <el-select v-model="visaForm.changeType" placeholder="选择类型" style="width: 100%">
             <el-option label="设计变更" value="DESIGN_CHANGE" />
@@ -257,6 +308,95 @@
       <template #footer>
         <el-button @click="visaDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="visaSubmitting" @click="submitVisa">确认提交</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 弹窗：新建过程结算（V2026_108） -->
+    <el-dialog v-model="psDialogVisible" title="新建过程结算" width="860px" append-to-body>
+      <el-form ref="psFormRef" :model="psForm" :rules="psRules" label-width="100px">
+        <el-row :gutter="12">
+          <el-col :span="8">
+            <el-form-item label="结算期间起" prop="periodStart">
+              <el-date-picker v-model="psForm.periodStart" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="结算期间止" prop="periodEnd">
+              <el-date-picker v-model="psForm.periodEnd" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="结算日期">
+              <el-date-picker v-model="psForm.settlementDate" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <div class="section-header mb-2 font-medium">来源明细（已批产值 / 已批签证 / 手工行）</div>
+        <el-table :data="psForm.sources" border size="small">
+          <el-table-column label="类型" width="120">
+            <template #default="{ row, $index }">
+              <el-select v-model="row.sourceType" size="small" @change="onSourceTypeChange()">
+                <el-option label="产值报告" value="OUTPUT_REPORT" :disabled="!psAvailable.outputReports.length" />
+                <el-option label="变更签证" value="VISA" :disabled="!psAvailable.visas.length" />
+                <el-option label="手工行" value="MANUAL" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="来源/描述" min-width="200">
+            <template #default="{ row }">
+              <el-select v-if="row.sourceType !== 'MANUAL'" v-model="row.sourceId" size="small" placeholder="选择来源" style="width: 100%">
+                <el-option v-for="s in psSourceOptions(row.sourceType)" :key="s.sourceId" :label="s.label" :value="s.sourceId" />
+              </el-select>
+              <el-input v-else v-model="row.description" size="small" placeholder="索赔/奖罚/其他事项描述" />
+            </template>
+          </el-table-column>
+          <el-table-column label="申报" width="130" align="right">
+            <template #default="{ row }">
+              <el-input-number v-model="row.declaredAmount" :precision="2" :min="0" size="small" controls-position="right" style="width: 120px" @change="prefillConfirmed(row)" />
+            </template>
+          </el-table-column>
+          <el-table-column label="审定" width="130" align="right">
+            <template #default="{ row }">
+              <el-input-number v-model="row.confirmedAmount" :precision="2" :min="0" size="small" controls-position="right" style="width: 120px" />
+            </template>
+          </el-table-column>
+          <el-table-column label="争议" width="130" align="right">
+            <template #default="{ row }">
+              <el-input-number v-model="row.disputedAmount" :precision="2" :min="0" size="small" controls-position="right" style="width: 120px" />
+            </template>
+          </el-table-column>
+          <el-table-column label="核减原因" min-width="140">
+            <template #default="{ row }">
+              <el-input v-model="row.reduceReason" size="small" placeholder="审定<申报时必填" :disabled="Number(row.confirmedAmount || 0) >= Number(row.declaredAmount || 0)" />
+            </template>
+          </el-table-column>
+          <el-table-column width="60" align="center">
+            <template #default="{ $index }">
+              <el-button type="danger" link size="small" @click="psForm.sources.splice($index, 1)">删</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-button size="small" class="mt-1" @click="addPsSource">+ 添加来源</el-button>
+
+        <el-row :gutter="12" class="mt-2">
+          <el-col :span="8">
+            <el-form-item label="预付款扣回"><el-input-number v-model="psForm.prepayDeduct" :precision="2" :min="0" size="small" controls-position="right" style="width: 100%" /></el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="质保金扣留"><el-input-number v-model="psForm.retentionDeduct" :precision="2" :min="0" size="small" controls-position="right" style="width: 100%" /></el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="其他扣款"><el-input-number v-model="psForm.otherDeduct" :precision="2" :min="0" size="small" controls-position="right" style="width: 100%" /></el-form-item>
+          </el-col>
+        </el-row>
+        <div class="text-xs text-gray-400">
+          审定净额（服务端重算）≈ ¥ {{ psNetPreview.toLocaleString() }}；超合同额（含变更）会被后端驳回。
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="psDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="psSubmitting" @click="submitProcessSettlementCreate">保存草稿</el-button>
       </template>
     </el-dialog>
   </el-drawer>
@@ -293,8 +433,12 @@ import {
   createChangeVisa,
   submitChangeVisa,
   getOutputReportPage,
-  getFinalSettlementPage
+  getFinalSettlementPage,
+  createFinalSettlement,
+  submitFinalSettlement,
+  getAvailableSettlementSources
 } from '@/api/contract'
+import { listChangeEvents } from '@/api/change-event'
 
 const props = defineProps<{
   modelValue: boolean
@@ -357,18 +501,22 @@ const details = ref<any[]>([])
 const changeVisas = ref<any[]>([])
 const outputReports = ref<any[]>([])
 const finalSettlement = ref<any>(null)
+const processSettlements = ref<any[]>([])
 
 // 变更签证弹窗
 const visaDialogVisible = ref(false)
 const visaSubmitting = ref(false)
 const visaFormRef = ref<FormInstance>()
+const visaEventOptions = ref<Array<{ id: number; label: string }>>([])
+const visaEventsLoading = ref(false)
 const visaForm = ref({
   changeType: 'DESIGN_CHANGE',
   changeAmount: undefined as number | undefined,
   visaDate: '',
   taxRate: undefined as number | undefined,
   changeReason: '',
-  changeContent: ''
+  changeContent: '',
+  changeEventId: undefined as number | undefined
 })
 const visaRules = {
   visaDate: [{ required: true, message: '请选择签证日期', trigger: 'change' }],
@@ -413,13 +561,16 @@ async function loadAllData() {
       outputReports.value = []
     }
 
-    // 4. 竣工结算
+    // 4. 竣工结算（仅 FINAL 型；PROCESS 型在过程结算页签展示）
     try {
-      const sRes: any = await getFinalSettlementPage({ contractId: cid, pageNum: 1, pageSize: 1 })
+      const sRes: any = await getFinalSettlementPage({ contractId: cid, settlementType: 'FINAL', pageNum: 1, pageSize: 1 })
       finalSettlement.value = sRes.data?.records?.[0] || null
     } catch {
       finalSettlement.value = null
     }
+
+    // 5. 过程结算（V2026_108）
+    await loadProcessSettlements()
   } finally {
     loading.value = false
   }
@@ -442,9 +593,35 @@ function handleAddVisa() {
     visaDate: '',
     taxRate: undefined,
     changeReason: '',
-    changeContent: ''
+    changeContent: '',
+    changeEventId: undefined
   }
   visaDialogVisible.value = true
+  loadVisaEventOptions()
+}
+
+/** 签证可选关联的已审批变更事件（单一生效源：事件=事实，签证=价款确认） */
+async function loadVisaEventOptions() {
+  visaEventsLoading.value = true
+  try {
+    const res: any = await listChangeEvents({
+      page: 1,
+      size: 50,
+      projectId: props.contract?.projectId,
+      status: 'APPROVED'
+    })
+    const records = res.data?.records || []
+    visaEventOptions.value = records
+      .filter((e: any) => e.contractId == null || Number(e.contractId) === Number(props.contract.id))
+      .map((e: any) => ({
+        id: Number(e.id),
+        label: `${e.eventNumber || e.id} ${e.title || ''}（成本影响 ${Number(e.costDelta || 0).toLocaleString()}）`
+      }))
+  } catch {
+    visaEventOptions.value = []
+  } finally {
+    visaEventsLoading.value = false
+  }
 }
 
 async function submitVisa() {
@@ -461,7 +638,8 @@ async function submitVisa() {
       visaDate: visaForm.value.visaDate,
       taxRate: visaForm.value.taxRate,
       changeReason: visaForm.value.changeReason,
-      changeContent: visaForm.value.changeContent
+      changeContent: visaForm.value.changeContent,
+      changeEventId: visaForm.value.changeEventId
     })
     ElMessage.success('变更签证登记成功')
     visaDialogVisible.value = false
@@ -481,6 +659,146 @@ async function handleSubmitVisa(row: any) {
   await submitChangeVisa(row.id)
   ElMessage.success('已提交审批，审批通过后生效')
   await loadChangeVisas()
+}
+
+// ==================== 过程结算（V2026_108） ====================
+
+const psDialogVisible = ref(false)
+const psSubmitting = ref(false)
+const psFormRef = ref<FormInstance>()
+const psAvailable = ref<{ outputReports: any[]; visas: any[] }>({ outputReports: [], visas: [] })
+const psForm = ref({
+  periodStart: '',
+  periodEnd: '',
+  settlementDate: '',
+  prepayDeduct: 0,
+  retentionDeduct: 0,
+  otherDeduct: 0,
+  sources: [] as Array<{
+    sourceType: 'OUTPUT_REPORT' | 'VISA' | 'MANUAL'
+    sourceId?: number
+    description?: string
+    declaredAmount: number
+    confirmedAmount: number
+    disputedAmount: number
+    reduceReason?: string
+  }>
+})
+const psRules = {
+  periodStart: [{ required: true, message: '请选择期间起', trigger: 'change' }],
+  periodEnd: [{ required: true, message: '请选择期间止', trigger: 'change' }]
+}
+
+const psNetPreview = computed(() => {
+  const confirmed = psForm.value.sources.reduce((s, r) => s + Number(r.confirmedAmount || 0), 0)
+  const deduct = Number(psForm.value.prepayDeduct || 0) + Number(psForm.value.retentionDeduct || 0) + Number(psForm.value.otherDeduct || 0)
+  return confirmed - deduct
+})
+
+function psSourceOptions(type: string) {
+  if (type === 'OUTPUT_REPORT') return psAvailable.value.outputReports
+  if (type === 'VISA') return psAvailable.value.visas
+  return []
+}
+
+function onSourceTypeChange() {
+  // 切换类型后清空来源选择，保留金额
+}
+
+function prefillConfirmed(row: any) {
+  if (row.confirmedAmount == null) row.confirmedAmount = row.declaredAmount
+}
+
+function addPsSource() {
+  const hasReports = psAvailable.value.outputReports.length > 0
+  psForm.value.sources.push({
+    sourceType: hasReports ? 'OUTPUT_REPORT' : 'MANUAL',
+    sourceId: undefined,
+    description: '',
+    declaredAmount: 0,
+    confirmedAmount: 0,
+    disputedAmount: 0,
+    reduceReason: ''
+  })
+}
+
+async function openProcessSettlementDialog() {
+  psForm.value = {
+    periodStart: '',
+    periodEnd: '',
+    settlementDate: '',
+    prepayDeduct: 0,
+    retentionDeduct: 0,
+    otherDeduct: 0,
+    sources: []
+  }
+  psDialogVisible.value = true
+  try {
+    const res: any = await getAvailableSettlementSources(props.contract.id)
+    psAvailable.value = {
+      outputReports: (res.data?.outputReports || []).map((r: any) => ({ ...r, sourceId: Number(r.sourceId) })),
+      visas: (res.data?.visas || []).map((v: any) => ({ ...v, sourceId: Number(v.sourceId) }))
+    }
+  } catch {
+    psAvailable.value = { outputReports: [], visas: [] }
+    ElMessage.warning('可选来源加载失败，仍可手工行录入')
+  }
+  if (!psForm.value.sources.length) addPsSource()
+}
+
+async function submitProcessSettlementCreate() {
+  await psFormRef.value?.validate()
+  if (!psForm.value.sources.length) {
+    ElMessage.warning('至少一条来源明细')
+    return
+  }
+  psSubmitting.value = true
+  try {
+    await createFinalSettlement({
+      projectId: props.contract.projectId,
+      contractId: props.contract.id,
+      settlementType: 'PROCESS',
+      periodStart: psForm.value.periodStart,
+      periodEnd: psForm.value.periodEnd,
+      settlementDate: psForm.value.settlementDate || undefined,
+      prepayDeduct: psForm.value.prepayDeduct,
+      retentionDeduct: psForm.value.retentionDeduct,
+      otherDeduct: psForm.value.otherDeduct,
+      sources: psForm.value.sources
+    })
+    ElMessage.success('过程结算草稿已保存，请核对后提交审批')
+    psDialogVisible.value = false
+    await loadProcessSettlements()
+    emit('refresh')
+  } finally {
+    psSubmitting.value = false
+  }
+}
+
+async function submitProcessSettlement(row: any) {
+  try {
+    await ElMessageBox.confirm('确定提交该过程结算进入审批流程吗？生效后将回写合同累计结算并生成应收。', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
+  await submitFinalSettlement(row.id)
+  ElMessage.success('已提交审批')
+  await loadProcessSettlements()
+}
+
+async function loadProcessSettlements() {
+  if (!props.contract?.id) return
+  try {
+    const res: any = await getFinalSettlementPage({
+      contractId: props.contract.id,
+      settlementType: 'PROCESS',
+      pageNum: 1,
+      pageSize: 50
+    })
+    processSettlements.value = res.data?.records || []
+  } catch {
+    processSettlements.value = []
+  }
 }
 </script>
 

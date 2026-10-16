@@ -98,4 +98,14 @@ public interface BizConstructionContractMapper extends BaseMapper<BizConstructio
                                         @Param("newAmount") java.math.BigDecimal newAmount,
                                         @Param("amountWithoutTax") java.math.BigDecimal amountWithoutTax,
                                         @Param("taxAmount") java.math.BigDecimal taxAmount);
+
+    /**
+     * 原子累加合同累计结算额（过程/竣工结算审批通过时回写，V2026_108）。
+     * <p>带上限守卫：累计结算 ≤ 合同额 + 累计变更额，越限命中 0 行由调用方驳回。</p>
+     */
+    @Update("UPDATE biz_construction_contract " +
+            "SET cumulative_settlement = COALESCE(cumulative_settlement, 0) + #{amount} " +
+            "WHERE id = #{contractId} AND deleted = 0 AND #{amount} > 0 " +
+            "AND COALESCE(cumulative_settlement, 0) + #{amount} <= contract_amount + COALESCE(cumulative_change_amount, 0)")
+    int addCumulativeSettlement(@Param("contractId") Long contractId, @Param("amount") java.math.BigDecimal amount);
 }

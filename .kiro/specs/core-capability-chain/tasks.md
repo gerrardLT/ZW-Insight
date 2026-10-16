@@ -16,10 +16,12 @@
 
 ## 批次 2：C1 过程结算 + V2026_108
 
-- [ ] 迁移：settlement_type/period、biz_settlement_source（活跃 guard）、cumulative_settlement；级联 Listener 登记。
-- [ ] Service：来源占用校验、原子回写、应收生成、驳回/终止释放、删除反冲、FINAL 汇总。
-- [ ] 前端：合同抽屉「过程结算」页签（列表+新建+来源选择）；合同列表累计结算列。
-- [ ] 单测（通过/释放/重复来源 409/FINAL 汇总）+ 组件测试 + api 脚本；本地 commit。
+- [x] 迁移：settlement_type/period/扣款三列/申报争议合计；biz_settlement_source 表（占用由应用层 JOIN 状态校验，登记为实现边界）；cumulative_settlement 列（COALESCE 容忍 NULL）；级联 Listener 登记 biz_settlement_source。
+- [x] Service：PROCESS 保存/提交/生效三处校验来源（存在/已审批/同合同/占用 409/审定+争议≤申报/核减原因）；净额服务端重算；生效 CAS→addCumulativeSettlement（上限守卫）→发布 ProcessSettlementApprovedEvent（同步事务内）；FINAL 保留原行为并追加累计结算回写；驳回自动释放占用。
+- [x] 应收：zw-common 事件契约 + zw-finance ProcessSettlementReceivableListener（同步监听不吞异常）+ generateFromProcessSettlement（幂等/期间末+账期到期/非正不生成）。
+- [x] 前端：抽屉「过程结算」页签（列表/新建弹窗含来源选择与净额预览/提交）；竣工结算页签改只取 FINAL；签证表单补关联事件选择器（批次 1 遗留项）；api/types 契约扩展。
+- [x] 测试：FinalSettlementServiceTest 重写（20 用例含 PROCESS 全路径）+ ControllerTest 签名适配 + ReceivableServiceTest 过程结算 3 例 + 组件测试 3 例新增（41/41 通过）+ api-contract 2 例 + shell 脚本负向守卫段。
+- [x] 行尾体检：9 个 LF 文件误转 CRLF 已还原，全量复检 clean；vue-tsc 143（较存量 144 净减 1）。
 
 ## 批次 3：C2 条款 + V2026_109
 

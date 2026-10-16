@@ -106,6 +106,55 @@ public class ReceivableService {
         return receivable;
     }
 
+    /**
+     * 过程结算生效生成应收记录（V2026_108，幂等：同 settlementId 已存在则跳过）。
+     * <p>
+     * 与项目级 {@link #generateFromSettlement(BizProjectSettlement)} 的口径区别：
+     * 过程结算按<b>期间净额</b>逐期生成（申报−争议−扣款已在事件生产方算好），
+     * 不做「累计结算−累计收款」差额（那是项目级竣工口径）。到期日 = 期间末 + 信用天数。
+     * 由 {@code ProcessSettlementReceivableListener} 在结算审批事务内同步调用。
+     * </p>
+     *
+     * @param event 过程结算生效事件
+     * @return 生成的应收记录；净额≤0 或已存在时返回 null
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public BizReceivable generateFromProcessSettlement(
+            com.zwinsight.common.event.contract.ProcessSettlementApprovedEvent event) {
+        if (event == null || event.getSettlementId() == null || event.getNetAmount() == null) {
+            throw new BusinessException("过程结算事件负载不完整");
+        }
+        Long exists = receivableMapper.selectCount(new LambdaQueryWrapper<BizReceivable>()
+                .eq(BizReceivable::getSourceType, BizReceivable.SOURCE_PROCESS_SETTLEMENT)
+                .eq(BizReceivable::getSourceId, event.getSettlementId()));
+        if (exists != null && exists > 0) {
+            log.info("过程结算应收记录已存在，跳过生成, settlementId={}", event.getSettlementId());
+            return null;
+        }
+        BigDecimal amount = event.getNetAmount();
+        if (amount.signum() <= 0) {
+            log.info("过程结算净额非正，不生成应收台账, settlementId={}", event.getSettlementId());
+            return null;
+        }
+        BizReceivable receivable = new BizReceivable();
+        receivable.setProjectId(event.getProjectId());
+        receivable.setSourceType(BizReceivable.SOURCE_PROCESS_SETTLEMENT);
+        receivable.setSourceId(event.getSettlementId());
+        receivable.setReceivableAmount(amount);
+        // 到期日：期间末 + 信用天数（期间缺失时回退结算日，再回退当天，不猜更远）
+        LocalDate basis = event.getPeriodEnd() != null ? event.getPeriodEnd()
+                : (event.getSettlementDate() != null ? event.getSettlementDate() : LocalDate.now());
+        receivable.setDueDate(basis.plusDays(defaultCreditDays));
+        receivable.setWrittenOffAmount(BigDecimal.ZERO);
+        receivable.setStatus(BizReceivable.STATUS_OPEN);
+        receivable.setRemark("过程结算单 " + event.getSettlementId() + " 审批通过生成");
+        receivableMapper.insert(receivable);
+        projectMapper.addReceivableAmount(event.getProjectId(), amount);
+        log.info("过程结算生成应收台账, settlementId={}, projectId={}, amount={}, dueDate={}",
+                event.getSettlementId(), event.getProjectId(), amount, receivable.getDueDate());
+        return receivable;
+    }
+
     // ==================== 核销 ====================
 
     /**

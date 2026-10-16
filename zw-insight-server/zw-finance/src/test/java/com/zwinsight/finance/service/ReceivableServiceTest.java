@@ -145,6 +145,65 @@ class ReceivableServiceTest {
     }
 
     @Nested
+    @DisplayName("generateFromProcessSettlement() 过程结算生成应收（V2026_108）")
+    class GenerateProcessTests {
+
+        private com.zwinsight.common.event.contract.ProcessSettlementApprovedEvent event(
+                Long id, String net, LocalDate periodEnd) {
+            com.zwinsight.common.event.contract.ProcessSettlementApprovedEvent e =
+                    new com.zwinsight.common.event.contract.ProcessSettlementApprovedEvent();
+            e.setSettlementId(id);
+            e.setProjectId(10L);
+            e.setContractId(20L);
+            e.setNetAmount(new BigDecimal(net));
+            e.setPeriodEnd(periodEnd);
+            return e;
+        }
+
+        @Test
+        @DisplayName("正常路径 — 期间净额入台账，到期日=期间末+30天，双写项目应收")
+        void generate_process_insertsWithPeriodDueDate() {
+            when(receivableMapper.selectCount(any())).thenReturn(0L);
+
+            receivableService.generateFromProcessSettlement(event(500L, "450000", LocalDate.of(2026, 9, 30)));
+
+            ArgumentCaptor<BizReceivable> captor = ArgumentCaptor.forClass(BizReceivable.class);
+            verify(receivableMapper).insert(captor.capture());
+            assertThat(captor.getValue().getReceivableAmount()).isEqualByComparingTo("450000");
+            assertThat(captor.getValue().getSourceType()).isEqualTo(BizReceivable.SOURCE_PROCESS_SETTLEMENT);
+            assertThat(captor.getValue().getDueDate()).isEqualTo(LocalDate.of(2026, 10, 30));
+            verify(projectMapper).addReceivableAmount(10L, new BigDecimal("450000"));
+        }
+
+        @Test
+        @DisplayName("幂等守卫 — 同 settlementId 已有台账跳过")
+        void generate_process_alreadyExists_skipped() {
+            when(receivableMapper.selectCount(any())).thenReturn(1L);
+
+            receivableService.generateFromProcessSettlement(event(500L, "450000", LocalDate.of(2026, 9, 30)));
+
+            verify(receivableMapper, never()).insert(any());
+            verify(projectMapper, never()).addReceivableAmount(any(), any());
+        }
+
+        @Test
+        @DisplayName("边界 — 净额非正不生成；期间缺失回退结算日基准")
+        void generate_process_nonPositiveOrMissingPeriod() {
+            when(receivableMapper.selectCount(any())).thenReturn(0L);
+
+            receivableService.generateFromProcessSettlement(event(501L, "0", null));
+            verify(receivableMapper, never()).insert(any());
+
+            com.zwinsight.common.event.contract.ProcessSettlementApprovedEvent noPeriod = event(502L, "1000", null);
+            noPeriod.setSettlementDate(LocalDate.of(2026, 10, 1));
+            receivableService.generateFromProcessSettlement(noPeriod);
+            ArgumentCaptor<BizReceivable> captor = ArgumentCaptor.forClass(BizReceivable.class);
+            verify(receivableMapper).insert(captor.capture());
+            assertThat(captor.getValue().getDueDate()).isEqualTo(LocalDate.of(2026, 10, 31));
+        }
+    }
+
+    @Nested
     @DisplayName("writeOff() FIFO 核销")
     class WriteOffTests {
 

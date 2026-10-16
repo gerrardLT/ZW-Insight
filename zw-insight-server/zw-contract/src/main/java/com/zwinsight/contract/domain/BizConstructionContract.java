@@ -107,6 +107,11 @@ public class BizConstructionContract extends BaseEntity {
     private BigDecimal cumulativeReceivedAmount;
 
     /**
+     * 累计结算金额（过程+竣工结算审批通过原子回写，V2026_108）
+     */
+    private BigDecimal cumulativeSettlement;
+
+    /**
      * 状态（DRAFT/EFFECTIVE/SETTLED/CLOSED）
      */
     private String status;

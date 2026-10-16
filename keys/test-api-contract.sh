@@ -314,6 +314,37 @@ test_change_visa_event_link_guards() {
 }
 
 # ===========================================================================
+# C1 过程结算守卫（V2026_108，2026-10-16）
+# 仅负向用例：不产生业务残留
+# ===========================================================================
+
+test_process_settlement_guards() {
+  log "▶ 测试：过程结算守卫"
+
+  # 1) PROCESS 无来源明细 → 业务码 400
+  call POST "/api/v1/contract/settlement" '{"projectId":1,"contractId":1,"settlementType":"PROCESS","periodStart":"2026-09-01","periodEnd":"2026-09-30"}'
+  assert_http 2 "POST /api/v1/contract/settlement PROCESS 无来源 HTTP 200(业务异常承载于body)"
+  assert_body_code 400 "PROCESS 无来源业务码 400"
+  assert_jq '.message | contains("来源明细")' "错误文案含「来源明细」"
+
+  # 2) PROCESS 缺结算期间 → 业务码 400
+  call POST "/api/v1/contract/settlement" '{"projectId":1,"contractId":1,"settlementType":"PROCESS","sources":[{"sourceType":"MANUAL","description":"补充索赔","declaredAmount":100,"confirmedAmount":100,"disputedAmount":0}]}'
+  assert_http 2 "PROCESS 缺结算期间 HTTP 200(业务异常承载于body)"
+  assert_body_code 400 "PROCESS 缺结算期间业务码 400"
+
+  # 3) 分页支持 settlementType 过滤（只读）
+  call GET "/api/v1/contract/settlement?page=1&size=10&settlementType=PROCESS"
+  assert_http 2 "GET settlement?settlementType=PROCESS 状态码"
+  assert_body_code 200 "GET settlement?settlementType=PROCESS 业务码"
+  assert_has_field "records" "分页结果含 records 字段"
+
+  # 4) 可选来源接口（只读）
+  call GET "/api/v1/contract/settlement/available-sources?contractId=1"
+  assert_http 2 "GET available-sources 状态码"
+  assert_body_code 200 "GET available-sources 业务码"
+}
+
+# ===========================================================================
 # 主流程
 # ===========================================================================
 main() {
@@ -338,6 +369,7 @@ main() {
   test_delete_contract
   test_get_nonexistent
   test_change_visa_event_link_guards
+  test_process_settlement_guards
 
   # 日志核对
   echo ""

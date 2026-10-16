@@ -10,6 +10,7 @@ import com.zwinsight.contract.domain.BizFinalSettlement;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.domain.BizOutputReport;
 import com.zwinsight.contract.domain.BizQuantityList;
+import com.zwinsight.contract.domain.BizSettlementSource;
 import com.zwinsight.contract.mapper.BizChangeEventMapper;
 import com.zwinsight.contract.mapper.BizChangeVisaMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
@@ -18,6 +19,7 @@ import com.zwinsight.contract.mapper.BizFinalSettlementMapper;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.contract.mapper.BizOutputReportMapper;
 import com.zwinsight.contract.mapper.BizQuantityListMapper;
+import com.zwinsight.contract.mapper.BizSettlementSourceMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -71,6 +73,7 @@ public class ContractProjectCascadeCleanupListener {
     private final BizExpenseContractMapper expenseContractMapper;
     private final BizOtherContractMapper otherContractMapper;
     private final BizFinalSettlementMapper finalSettlementMapper;
+    private final BizSettlementSourceMapper settlementSourceMapper;
 
     @EventListener
     public void onProjectDeleted(ProjectDeletedEvent event) {
@@ -91,10 +94,12 @@ public class ContractProjectCascadeCleanupListener {
                 new QueryWrapper<BizOtherContract>().eq("project_id", projectId));
         int finalSettlements = finalSettlementMapper.delete(
                 new QueryWrapper<BizFinalSettlement>().eq("project_id", projectId));
+        int settlementSources = settlementSourceMapper.delete(
+                new QueryWrapper<BizSettlementSource>().eq("project_id", projectId));
 
         log.info("项目删除级联清理[contract]完成, projectId={}, 施工合同={} 产值={} 工程量={} "
-                        + "签证={} 变更事件={} 支出合同={} 其他合同={} 最终结算={}",
+                        + "签证={} 变更事件={} 支出合同={} 其他合同={} 最终结算={} 结算来源={}",
                 projectId, contracts, outputReports, quantityLists, changeVisas,
-                changeEvents, expenseContracts, otherContracts, finalSettlements);
+                changeEvents, expenseContracts, otherContracts, finalSettlements, settlementSources);
     }
 }

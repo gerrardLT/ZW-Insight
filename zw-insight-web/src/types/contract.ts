@@ -71,10 +71,16 @@ export interface ContractDetail {
 /** 变更签证 */
 export interface ChangeVisa {
   id: ID
+  projectId: ID
   contractId: ID
   changeType: string
   changeContent?: string
+  changeReason?: string
   changeAmount?: number
+  visaDate?: string
+  taxRate?: number
+  /** 关联变更事件（可选，V2026_107 单一生效源：事件=事实，签证=价款确认） */
+  changeEventId?: ID
   status: string
   createdAt?: string
 }

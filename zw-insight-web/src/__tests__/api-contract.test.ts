@@ -36,6 +36,8 @@ import {
   deleteQuantityList,
   importQuantityList,
   getFinalSettlementPage,
+  getFinalSettlementDetail,
+  getAvailableSettlementSources,
   createFinalSettlement,
   submitFinalSettlement,
   getOutputReportPage,
@@ -192,7 +194,7 @@ describe('contract API 模块', () => {
     })
   })
 
-  // ======================== 竣工结算 ========================
+  // ======================== 竣工结算 / 过程结算 ========================
 
   describe('竣工结算', () => {
     it('getFinalSettlementPage 调用 GET /v1/contract/settlement', () => {
@@ -209,6 +211,16 @@ describe('contract API 模块', () => {
     it('submitFinalSettlement 调用 POST /v1/contract/settlement/:id/submit', () => {
       submitFinalSettlement(12)
       expect(mockRequest.post).toHaveBeenCalledWith('/v1/contract/settlement/12/submit')
+    })
+
+    it('V2026_108 getFinalSettlementDetail 调用 GET /v1/contract/settlement/:id', () => {
+      getFinalSettlementDetail(9)
+      expect(mockRequest.get).toHaveBeenCalledWith('/v1/contract/settlement/9')
+    })
+
+    it('V2026_108 getAvailableSettlementSources 调用 GET /v1/contract/settlement/available-sources', () => {
+      getAvailableSettlementSources(33)
+      expect(mockRequest.get).toHaveBeenCalledWith('/v1/contract/settlement/available-sources', { params: { contractId: 33 } })
     })
   })
 
