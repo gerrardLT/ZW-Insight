@@ -198,7 +198,8 @@ class InvoiceIssuedServiceTest {
     @Test
     @DisplayName("sumTaxAmount - 蓝正红负净额；空台账为 0")
     void sumTaxAmount_net() {
-        BizInvoiceIssued blueRow = blue(); // taxAmount 9000
+        BizInvoiceIssued blueRow = blue();
+        blueRow.setTaxAmount(new BigDecimal("9000")); // 蓝字税额（save 派生结果，此处显式构造）
         BizInvoiceIssued redRow = blue();
         redRow.setTaxAmount(new BigDecimal("-412.84"));
         when(issuedMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(blueRow, redRow));
