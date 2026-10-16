@@ -69,15 +69,6 @@ public class MachineContractService {
     }
 
     private void transition(Long id, String from, String to, String processId) {
-        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
-        try {
-            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
-        } catch (IllegalArgumentException e) {
-            throw new BusinessException(400, e.getMessage());
-        }
-        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
-        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
-
         LambdaUpdateWrapper<BizMachineContract> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizMachineContract::getId, id)
                 .eq(BizMachineContract::getTenantId, SecurityContextHolder.getTenantId())
@@ -211,6 +202,14 @@ public class MachineContractService {
         if (!"DRAFT".equals(existing.getStatus())) throw new BusinessException("仅草稿状态可编辑");
         contract.setProjectId(existing.getProjectId());
         validate(contract);
+        // V2026_110：税额三件套服务端派生（税率未知则派生值置空，不信任客户端值）
+        try {
+            com.zwinsight.common.util.TaxAmounts.validateRate(contract.getTaxRate());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(400, e.getMessage());
+        }
+        contract.setAmountWithoutTax(com.zwinsight.common.util.TaxAmounts.withoutTax(contract.getContractAmount(), contract.getTaxRate()));
+        contract.setTaxAmount(com.zwinsight.common.util.TaxAmounts.taxAmount(contract.getContractAmount(), contract.getTaxRate()));
         LambdaUpdateWrapper<BizMachineContract> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizMachineContract::getId, existing.getId())
                 .eq(BizMachineContract::getTenantId, SecurityContextHolder.getTenantId())
