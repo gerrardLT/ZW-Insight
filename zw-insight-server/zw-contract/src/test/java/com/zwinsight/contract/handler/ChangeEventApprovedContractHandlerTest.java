@@ -5,6 +5,7 @@ import com.zwinsight.common.event.outbox.OutboxMessage;
 import com.zwinsight.contract.domain.BizChangeEvent;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.mapper.BizChangeEventMapper;
+import com.zwinsight.contract.mapper.BizChangeVisaMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class ChangeEventApprovedContractHandlerTest {
 
     @Mock
     private BizChangeEventMapper changeEventMapper;
+
+    @Mock
+    private BizChangeVisaMapper changeVisaMapper;
 
     @InjectMocks
     private ChangeEventApprovedContractHandler handler;
@@ -151,5 +155,25 @@ class ChangeEventApprovedContractHandlerTest {
 
         verify(contractMapper, never()).addCumulativeChangeAmount(anyLong(), any());
         verify(changeEventMapper, never()).selectById(eq(1004L));
+    }
+
+    @Test
+    @DisplayName("单一生效源：存在关联的有效签证时事件侧跳过合同回写，且不置幂等位")
+    void handle_withLinkedVisa_skipsContractWriteBack() {
+        ChangeEventApprovedEvent payload = new ChangeEventApprovedEvent();
+        payload.setEventId(1006L);
+        payload.setEventNumber("CHG20260006");
+        payload.setProjectId(90001L);
+        payload.setContractId(91001L);
+        payload.setCostDelta(new BigDecimal("50000.00"));
+
+        when(changeEventMapper.selectById(1006L)).thenReturn(eventRow(1006L, 0));
+        when(changeVisaMapper.countActiveByChangeEvent(1006L)).thenReturn(1);
+
+        handler.handle(message(payload));
+
+        verify(contractMapper, never()).addCumulativeChangeAmount(anyLong(), any());
+        // 不置 contract_change_written：签证驳回/作废后可换新签证，事件仍只经签证路径入账
+        verify(changeEventMapper, never()).updateById(any(BizChangeEvent.class));
     }
 }

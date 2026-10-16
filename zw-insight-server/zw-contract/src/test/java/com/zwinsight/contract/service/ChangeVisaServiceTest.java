@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.contract.domain.BizChangeEvent;
 import com.zwinsight.contract.domain.BizChangeVisa;
 import com.zwinsight.contract.domain.BizConstructionContract;
+import com.zwinsight.contract.mapper.BizChangeEventMapper;
 import com.zwinsight.contract.mapper.BizChangeVisaMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.workflow.service.ApprovalService;
@@ -40,6 +42,9 @@ class ChangeVisaServiceTest {
 
     @Mock
     private BizConstructionContractMapper contractMapper;
+
+    @Mock
+    private BizChangeEventMapper changeEventMapper;
 
     @Mock
     private ApprovalService approvalService;
@@ -94,6 +99,93 @@ class ChangeVisaServiceTest {
     @DisplayName("save - 置 DRAFT")
     void save_setsDraft() {
         BizChangeVisa v = visa(null);
+
+        service.save(v);
+
+        assertThat(v.getStatus()).isEqualTo("DRAFT");
+        verify(changeVisaMapper).insert(v);
+    }
+
+    @Test
+    @DisplayName("save - 无关联事件时不触碰事件校验（向后兼容独立签证）")
+    void save_withoutEventLink_skipsValidation() {
+        BizChangeVisa v = visa(null);
+
+        service.save(v);
+
+        verifyNoInteractions(changeEventMapper);
+        verify(changeVisaMapper, never()).countActiveByChangeEvent(anyLong());
+    }
+
+    @Test
+    @DisplayName("save - 关联事件不存在拒绝（404）")
+    void save_eventMissing_rejected() {
+        BizChangeVisa v = visa(null);
+        v.setChangeEventId(77L);
+        when(changeEventMapper.selectById(77L)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.save(v))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("变更事件不存在");
+        verify(changeVisaMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("save - 事件与签证不同合同/项目拒绝；事件未指定合同拒绝")
+    void save_eventMismatch_rejected() {
+        BizChangeVisa v = visa(null);
+        v.setChangeEventId(77L);
+        BizChangeEvent event = new BizChangeEvent();
+        event.setProjectId(10L);
+        event.setContractId(999L); // 不同合同
+        when(changeEventMapper.selectById(77L)).thenReturn(event);
+        assertThatThrownBy(() -> service.save(v)).hasMessageContaining("同一合同");
+
+        BizChangeEvent noContract = new BizChangeEvent();
+        noContract.setProjectId(10L); // 未指定合同
+        when(changeEventMapper.selectById(77L)).thenReturn(noContract);
+        assertThatThrownBy(() -> service.save(v)).hasMessageContaining("同一合同");
+    }
+
+    @Test
+    @DisplayName("save - 事件已直接回写过合同累计（标记=1）拒绝关联，防双计（409）")
+    void save_eventAlreadyWritten_rejected() {
+        BizChangeVisa v = visa(null);
+        v.setChangeEventId(77L);
+        BizChangeEvent event = new BizChangeEvent();
+        event.setProjectId(10L);
+        event.setContractId(20L);
+        event.setContractChangeWritten(1);
+        when(changeEventMapper.selectById(77L)).thenReturn(event);
+
+        assertThatThrownBy(() -> service.save(v))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("双计");
+    }
+
+    @Test
+    @DisplayName("save - 事件已被其他有效签证占用拒绝（409）")
+    void save_eventOccupied_rejected() {
+        BizChangeVisa v = visa(null);
+        v.setChangeEventId(77L);
+        BizChangeEvent event = new BizChangeEvent();
+        event.setProjectId(10L);
+        event.setContractId(20L);
+        when(changeEventMapper.selectById(77L)).thenReturn(event);
+        when(changeVisaMapper.countActiveByChangeEvent(77L)).thenReturn(1);
+
+        assertThatThrownBy(() -> service.save(v))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("其他有效签证");
+    }
+
+    @Test
+    @DisplayName("save - 关联校验全部通过后正常入库")
+    void save_validEventLink_inserted() {
+        BizChangeVisa v = visa(null);
+        v.setChangeEventId(77L);
+        BizChangeEvent event = new BizChangeEvent();
+        event.setProjectId(10L);
+        event.setContractId(20L);
+        when(changeEventMapper.selectById(77L)).thenReturn(event);
+        when(changeVisaMapper.countActiveByChangeEvent(77L)).thenReturn(0);
 
         service.save(v);
 
@@ -233,6 +325,39 @@ class ChangeVisaServiceTest {
         when(changeVisaMapper.selectById(1L)).thenReturn(visa("SUBMITTED"));
         service.onApproved(1L);
         verify(contractMapper, never()).addCumulativeChangeAmount(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("onApproved - 单一生效源终检：关联事件已直接回写（标记=1）时抛 409，不双计")
+    void onApproved_linkedEventAlreadyWritten_throws409() {
+        BizChangeVisa v = visa("SUBMITTED");
+        v.setChangeEventId(77L);
+        when(changeVisaMapper.selectById(1L)).thenReturn(v);
+        when(changeVisaMapper.approvePending(1L)).thenReturn(1);
+        BizChangeEvent event = new BizChangeEvent();
+        event.setContractChangeWritten(1);
+        when(changeEventMapper.selectById(77L)).thenReturn(event);
+
+        assertThatThrownBy(() -> service.onApproved(1L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("不得重复回写");
+        verify(contractMapper, never()).addCumulativeChangeAmount(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("onApproved - 关联事件未回写时正常由签证累加（签证为唯一生效源）")
+    void onApproved_linkedEventNotWritten_writesBackViaVisa() {
+        BizChangeVisa v = visa("SUBMITTED");
+        v.setChangeEventId(77L);
+        when(changeVisaMapper.selectById(1L)).thenReturn(v);
+        when(changeVisaMapper.approvePending(1L)).thenReturn(1);
+        BizChangeEvent event = new BizChangeEvent();
+        event.setContractChangeWritten(0);
+        when(changeEventMapper.selectById(77L)).thenReturn(event);
+        when(contractMapper.addCumulativeChangeAmount(20L, new BigDecimal("8000"))).thenReturn(1);
+
+        service.onApproved(1L);
+
+        verify(contractMapper).addCumulativeChangeAmount(20L, new BigDecimal("8000"));
     }
 
     @Test

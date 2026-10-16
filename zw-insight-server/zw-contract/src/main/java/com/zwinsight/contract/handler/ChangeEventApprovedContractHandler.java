@@ -7,6 +7,7 @@ import com.zwinsight.common.event.outbox.OutboxMessage;
 import com.zwinsight.contract.domain.BizChangeEvent;
 import com.zwinsight.contract.domain.BizConstructionContract;
 import com.zwinsight.contract.mapper.BizChangeEventMapper;
+import com.zwinsight.contract.mapper.BizChangeVisaMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class ChangeEventApprovedContractHandler
 
     private final BizConstructionContractMapper contractMapper;
     private final BizChangeEventMapper changeEventMapper;
+    private final BizChangeVisaMapper changeVisaMapper;
 
     @Override
     public String supports() {
@@ -72,6 +74,14 @@ public class ChangeEventApprovedContractHandler
         }
         if (Integer.valueOf(1).equals(entity.getContractChangeWritten())) {
             log.info("变更事件[{}]合同累计变更额已回写，跳过重复处理", event.getEventNumber());
+            return;
+        }
+
+        // 单一生效源（2026-10-16 F2）：存在有效关联签证时，合同累计变更额由签证审批回写，
+        // 事件侧跳过且不置幂等位（签证驳回/作废后可换新签证，事件仍只经签证这一条路径入账）。
+        if (changeVisaMapper.countActiveByChangeEvent(event.getEventId()) > 0) {
+            log.info("变更事件[{}]存在关联的有效签证，合同累计变更额由签证审批回写（单一生效源），事件侧跳过",
+                    event.getEventNumber());
             return;
         }
 

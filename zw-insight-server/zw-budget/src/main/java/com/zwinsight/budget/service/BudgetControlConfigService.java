@@ -9,13 +9,18 @@ import com.zwinsight.budget.dto.BudgetControlConfigDTO;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BudgetOccupiedMapper;
 import com.zwinsight.budget.mapper.SysBudgetControlConfigMapper;
+import com.zwinsight.common.config.SecurityContextHolder;
+import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.project.domain.BizProject;
+import com.zwinsight.project.domain.BizProjectMember;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.mapper.BizProjectMemberMapper;
 import com.zwinsight.project.util.ProjectNameFiller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -36,6 +41,8 @@ public class BudgetControlConfigService {
     private final BizBudgetDetailMapper budgetDetailMapper;
     private final BudgetOccupiedMapper budgetOccupiedMapper;
     private final BizProjectMapper projectMapper;
+    private final BizProjectMemberMapper projectMemberMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 合法的控制模式枚举值 */
     private static final List<String> VALID_CONTROL_MODES = Arrays.asList("WARN_ONLY", "BLOCK", "EXEMPT");
@@ -346,18 +353,49 @@ public class BudgetControlConfigService {
     /**
      * 发送预算预警站内信通知
      * <p>
-     * 通过 MessageService 向项目负责人发送预警。
-     * 如果 MessageService 暂时不可用，使用日志记录避免编译依赖问题。
+     * F1b（2026-10-16）：旧实现仅 {@code log.warn} 即返回，属"谎报成功"式静默失效——
+     * 现经 {@link UrgeNotifyEvent} 真实落库站内信，收件人为项目 {@code PROJECT_MANAGER} 成员
+     * （与质保金/应收逾期催办同口径）。无收件人记 error 并返回失败，不伪造送达；
+     * 通知异常不改变校验结果（PASS/WARN/BLOCK 由金额与配置决定），但必须留痕。
      * </p>
      */
     private void sendWarningNotification(Long projectId, String costCategory, int executionRate) {
-        try {
-            // 尝试通过 Spring ApplicationContext 获取 MessageService（避免强依赖 message 模块）
-            // 当前使用日志记录，后续集成 MessageService 时替换
-            log.warn("【预算预警】项目ID={}, 科目={}, 预算执行率={}%, 已达预警阈值，请关注预算使用情况",
+        List<Long> managerIds = findProjectManagerIds(projectId);
+        if (managerIds.isEmpty()) {
+            log.error("【预算预警】无收件人：项目 {} 未配置 PROJECT_MANAGER 成员，预警未送达, 科目={}, 执行率={}%",
                     projectId, costCategory, executionRate);
-        } catch (Exception e) {
-            log.error("发送预算预警通知失败, projectId={}, costCategory={}", projectId, costCategory, e);
+            return;
         }
+        String title = "预算执行预警";
+        String content = String.format("项目ID=%s 的科目[%s]预算执行率已达 %d%%，请关注预算使用情况",
+                projectId, costCategory, executionRate);
+        Long tenantId = SecurityContextHolder.getTenantId();
+        for (Long managerId : managerIds) {
+            try {
+                // UrgeNotifyEvent 监听为 @Async，必须显式携带租户，否则写入被租户防护拒绝
+                eventPublisher.publishEvent(new UrgeNotifyEvent(
+                        this, managerId, title, content, null, null, tenantId));
+            } catch (Exception e) {
+                log.error("发送预算预警通知失败, projectId={}, costCategory={}, managerId={}",
+                        projectId, costCategory, managerId, e);
+            }
+        }
+        log.info("【预算预警】站内信已发出, projectId={}, 科目={}, 执行率={}%, 收件人数={}",
+                projectId, costCategory, executionRate, managerIds.size());
+    }
+
+    /**
+     * 查询项目的 PROJECT_MANAGER 成员用户ID（状态正常，去重）
+     */
+    private List<Long> findProjectManagerIds(Long projectId) {
+        if (projectId == null) {
+            return List.of();
+        }
+        List<BizProjectMember> members = projectMemberMapper.selectList(
+                new LambdaQueryWrapper<BizProjectMember>()
+                        .eq(BizProjectMember::getProjectId, projectId)
+                        .eq(BizProjectMember::getStatus, 1)
+                        .like(BizProjectMember::getProjectRoles, "PROJECT_MANAGER"));
+        return members.stream().map(BizProjectMember::getUserId).distinct().toList();
     }
 }

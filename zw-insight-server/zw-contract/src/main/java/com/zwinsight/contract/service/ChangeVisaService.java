@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
+import com.zwinsight.contract.domain.BizChangeEvent;
 import com.zwinsight.contract.domain.BizChangeVisa;
 import com.zwinsight.contract.domain.BizConstructionContract;
+import com.zwinsight.contract.mapper.BizChangeEventMapper;
 import com.zwinsight.contract.mapper.BizChangeVisaMapper;
 import com.zwinsight.contract.mapper.BizConstructionContractMapper;
 import com.zwinsight.workflow.service.ApprovalService;
@@ -18,9 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 变更签证服务
+ * <p>
+ * 单一生效源模型（2026-10-16，F2）：变更事件表达"发生了什么"（CBS/WBS 传导），
+ * 签证表达"确认了多少合同价款"。签证可选关联变更事件（{@code changeEventId}）；
+ * 有关联时合同累计变更额<b>仅由本签证审批回写</b>，事件侧跳过，防止同一事项双录双计。
+ * </p>
  */
 @Slf4j
 @Service
@@ -29,6 +37,7 @@ public class ChangeVisaService {
 
     private final BizChangeVisaMapper changeVisaMapper;
     private final BizConstructionContractMapper contractMapper;
+    private final BizChangeEventMapper changeEventMapper;
     private final ApprovalService approvalService;
 
     /**
@@ -54,8 +63,34 @@ public class ChangeVisaService {
                 || changeVisa.getTaxRate().compareTo(BigDecimal.valueOf(100)) > 0)) {
             throw new BusinessException(400, "税率须在0至100之间");
         }
+        validateChangeEventLink(changeVisa);
         changeVisa.setStatus("DRAFT");
         changeVisaMapper.insert(changeVisa);
+    }
+
+    /**
+     * 关联变更事件的业务校验：事件存在、同项目同合同、未直接回写过合同累计、未被其他有效签证占用。
+     * 并发双录由 DB 唯一 guard（uk_active_visa_event）兜底为唯一键冲突。
+     */
+    private void validateChangeEventLink(BizChangeVisa changeVisa) {
+        Long eventId = changeVisa.getChangeEventId();
+        if (eventId == null) {
+            return;
+        }
+        BizChangeEvent event = changeEventMapper.selectById(eventId);
+        if (event == null) {
+            throw new BusinessException(404, "关联的变更事件不存在");
+        }
+        if (event.getContractId() == null || !Objects.equals(event.getContractId(), changeVisa.getContractId())
+                || !Objects.equals(event.getProjectId(), changeVisa.getProjectId())) {
+            throw new BusinessException(400, "变更事件与签证必须属于同一合同的同一项目，且事件须已指定合同");
+        }
+        if (Integer.valueOf(1).equals(event.getContractChangeWritten())) {
+            throw new BusinessException(409, "该变更事件已直接回写合同累计变更额，不能再关联签证（会双计）");
+        }
+        if (changeVisaMapper.countActiveByChangeEvent(eventId) > 0) {
+            throw new BusinessException(409, "该变更事件已被其他有效签证关联，请编辑既有签证");
+        }
     }
 
     /**
@@ -102,6 +137,15 @@ public class ChangeVisaService {
 
         if (changeVisaMapper.approvePending(id) != 1) {
             return;
+        }
+        // 单一生效源终检：关联事件若已直接回写过合同累计（极窄并发窗口下链接先于事件提交 commit 建立），
+        // 签证不得再写，否则双计；抛异常使本次审批整体回滚，状态 CAS 一并撤销。
+        if (changeVisa.getChangeEventId() != null) {
+            BizChangeEvent event = changeEventMapper.selectById(changeVisa.getChangeEventId());
+            if (event != null && Integer.valueOf(1).equals(event.getContractChangeWritten())) {
+                throw new BusinessException(409,
+                        "关联的变更事件已直接回写合同累计变更额，本签证不得重复回写，请作废后重新发起独立签证");
+            }
         }
         BigDecimal changeAmount = changeVisa.getChangeAmount() != null
                 ? changeVisa.getChangeAmount() : BigDecimal.ZERO;

@@ -5,6 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import cn.hutool.core.util.StrUtil;
 import com.zwinsight.basedata.annotation.BlacklistCheck;
 import com.zwinsight.budget.annotation.BudgetCheck;
+import com.zwinsight.budget.context.BudgetWarningContext;
+import com.zwinsight.budget.dto.BudgetCheckResult;
+import com.zwinsight.budget.service.BudgetControlConfigService;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.util.E2eTestGuard;
 import com.zwinsight.common.result.PageResult;
@@ -32,6 +35,7 @@ public class LaborContractService {
     private final BizLaborContractMapper laborContractMapper;
     private final SerialNumberService serialNumberService;
     private final ApprovalService approvalService;
+    private final BudgetControlConfigService budgetControlConfigService;
 
     /**
      * 分页查询
@@ -73,6 +77,11 @@ public class LaborContractService {
 
     /**
      * 提交审批
+     * <p>
+     * F1a（2026-10-16）：save 的 {@code @BudgetCheck} 只在保存时校验，草稿改额后提交可绕过拦截；
+     * 提交时按最新金额重新复核预算，BLOCK 拒绝、WARN 写入线程上下文（与切面语义一致）。
+     * 注解切面无法从 {@code submit(Long id)} 提取项目/金额，故显式调用。
+     * </p>
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
@@ -82,6 +91,18 @@ public class LaborContractService {
         }
         if (!"DRAFT".equals(contract.getStatus())) {
             throw new BusinessException("仅草稿状态可提交");
+        }
+
+        if (contract.getProjectId() != null && contract.getContractAmount() != null
+                && contract.getContractAmount().signum() > 0) {
+            BudgetCheckResult result = budgetControlConfigService.checkBudget(
+                    contract.getProjectId(), "LABOR", contract.getContractAmount());
+            if (result.getStatus() == BudgetCheckResult.Status.BLOCK) {
+                throw new BusinessException(result.getMessage());
+            }
+            if (result.getStatus() == BudgetCheckResult.Status.WARN) {
+                BudgetWarningContext.setWarning(result.getMessage());
+            }
         }
 
         Map<String, Object> variables = new HashMap<>();

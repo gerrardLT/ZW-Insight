@@ -2,10 +2,14 @@ package com.zwinsight.labor.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zwinsight.budget.context.BudgetWarningContext;
+import com.zwinsight.budget.dto.BudgetCheckResult;
+import com.zwinsight.budget.service.BudgetControlConfigService;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.labor.domain.BizLaborContract;
 import com.zwinsight.labor.mapper.BizLaborContractMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -22,13 +26,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
  * LaborContractService 单元测试
  * 覆盖：劳务合同 CRUD + DRAFT 状态约束
- * <p>预算校验已统一由 @BudgetCheck 切面（BudgetControlAspect + BudgetControlConfigService）承担，
- * 相关校验逻辑在 zw-budget 模块测试中覆盖。</p>
+ * <p>save 的预算校验由 @BudgetCheck 切面承担（zw-budget 模块测试覆盖）；
+ * submit 的预算复核（F1a，草稿改额后重新拦截）在本类覆盖。</p>
  */
 @ExtendWith(MockitoExtension.class)
 class LaborContractServiceTest {
@@ -41,6 +46,9 @@ class LaborContractServiceTest {
 
     @Mock
     private com.zwinsight.workflow.service.ApprovalService approvalService;
+
+    @Mock
+    private BudgetControlConfigService budgetControlConfigService;
 
     @InjectMocks
     private LaborContractService laborContractService;
@@ -58,6 +66,11 @@ class LaborContractServiceTest {
         sampleContract.setCumulativeSettlement(BigDecimal.ZERO);
         sampleContract.setCumulativePaid(BigDecimal.ZERO);
         sampleContract.setStatus("DRAFT");
+    }
+
+    @AfterEach
+    void clearWarningContext() {
+        BudgetWarningContext.clear();
     }
 
     // =====================================================================
@@ -347,10 +360,12 @@ class LaborContractServiceTest {
     class SubmitTests {
 
         @Test
-        @DisplayName("提交 DRAFT 合同 - 状态变更为 SUBMITTED 并发起审批流程")
+        @DisplayName("提交 DRAFT 合同 - 预算复核 PASS 后状态变更为 SUBMITTED 并发起审批流程")
         void submit_draftContract_becomesEffective() {
             // given
             when(laborContractMapper.selectById(1L)).thenReturn(sampleContract);
+            when(budgetControlConfigService.checkBudget(eq(100L), eq("LABOR"),
+                    eq(new BigDecimal("200000.00")))).thenReturn(BudgetCheckResult.pass());
             when(approvalService.startProcess(eq("LABOR_CONTRACT"), eq(1L), eq("labor_contract_approval"), any()))
                     .thenReturn("proc-inst-123");
             when(laborContractMapper.updateById(any(BizLaborContract.class))).thenReturn(1);
@@ -362,6 +377,48 @@ class LaborContractServiceTest {
             verify(laborContractMapper).updateById(argThat(c ->
                     "SUBMITTED".equals(c.getStatus()) && "proc-inst-123".equals(c.getWorkflowInstanceId())
             ));
+        }
+
+        @Test
+        @DisplayName("F1a - 提交时预算复核 BLOCK：拒绝提交，不发起审批（草稿改额绕过路径封堵）")
+        void submit_budgetBlock_rejected() {
+            when(laborContractMapper.selectById(1L)).thenReturn(sampleContract);
+            when(budgetControlConfigService.checkBudget(eq(100L), eq("LABOR"),
+                    eq(new BigDecimal("200000.00")))).thenReturn(BudgetCheckResult.block("科目[LABOR]预算执行率120.00%，已超预算"));
+
+            assertThatThrownBy(() -> laborContractService.submit(1L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("已超预算");
+
+            verify(approvalService, never()).startProcess(any(), anyLong(), any(), any());
+            verify(laborContractMapper, never()).updateById(any());
+        }
+
+        @Test
+        @DisplayName("F1a - 提交时预算复核 WARN：放行并写入线程警告上下文（与切面语义一致）")
+        void submit_budgetWarn_passesWithWarningContext() {
+            when(laborContractMapper.selectById(1L)).thenReturn(sampleContract);
+            when(budgetControlConfigService.checkBudget(eq(100L), eq("LABOR"),
+                    eq(new BigDecimal("200000.00")))).thenReturn(BudgetCheckResult.warn("科目[LABOR]预算执行率85%"));
+            when(approvalService.startProcess(eq("LABOR_CONTRACT"), eq(1L), eq("labor_contract_approval"), any()))
+                    .thenReturn("proc-inst-124");
+
+            laborContractService.submit(1L);
+
+            assertThat(BudgetWarningContext.getWarning()).contains("85%");
+            verify(approvalService).startProcess(eq("LABOR_CONTRACT"), eq(1L), eq("labor_contract_approval"), any());
+        }
+
+        @Test
+        @DisplayName("F1a - 金额为空或非正时跳过复核（与切面跳过条件一致），不误杀")
+        void submit_zeroOrNullAmount_skipsBudgetRecheck() {
+            sampleContract.setContractAmount(null);
+            when(laborContractMapper.selectById(1L)).thenReturn(sampleContract);
+            when(approvalService.startProcess(any(), anyLong(), any(), any())).thenReturn("proc-inst-125");
+
+            laborContractService.submit(1L);
+
+            verifyNoInteractions(budgetControlConfigService);
         }
 
         @Test

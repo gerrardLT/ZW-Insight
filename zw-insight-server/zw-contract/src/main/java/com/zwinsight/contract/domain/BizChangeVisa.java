@@ -45,6 +45,12 @@ public class BizChangeVisa extends BaseEntity {
      */
     private BigDecimal changeAmount;
 
+    /**
+     * 关联的变更事件ID（可选）。单一生效源模型：有关联时事件侧不回写合同累计变更额，
+     * 由本签证审批作为唯一价款确认写入；同一事件至多一张有效签证（DB 唯一 guard）。
+     */
+    private Long changeEventId;
+
     /** 签证业务日期，不用创建时间冒充。 */
     @jakarta.validation.constraints.NotNull
     private java.time.LocalDate visaDate;

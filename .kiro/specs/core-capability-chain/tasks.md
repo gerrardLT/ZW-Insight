@@ -7,11 +7,12 @@
 
 ## 批次 1：F1–F3 + V2026_107
 
-- [ ] F1a 劳务 submit 预算复核（BLOCK 拒绝）+ 单测（BLOCK 拒绝 / WARN 放行 / 无预算科目按模式处理）。
-- [ ] F1b 预算 WARN 真实通知（UrgeNotifyEvent → PROJECT_MANAGER，无收件人失败）+ 单测。
-- [ ] F2 签证关联变更事件：V2026_107 双轨迁移；save 校验（存在/同合同同项目/未被占用）；Handler 有关联跳过合同回写；重复关联 409；单测四路径。
-- [ ] F3 taxDifference → invoiceAmountDifference + 注释修正。
-- [ ] API 脚本与组件测试增补；本地 commit。
+- [x] F1a 劳务 submit 预算复核（BLOCK 拒绝、WARN 入线程上下文、金额非正跳过）+ 单测 4 例。
+- [x] F1b 预算 WARN 真实通知（UrgeNotifyEvent → PROJECT_MANAGER，无收件人 log.error 不谎报）+ 单测 2 例。
+- [x] F2 签证关联变更事件：V2026_107 双轨迁移（change_event_id + active_visa_event_link 生成列唯一 guard）；save 四重校验（存在/同合同同项目/事件未直写/未被占用）；Handler 有关联跳过且不置幂等位；onApproved 终检封窄并发窗口；单测 9 例新增。
+- [x] F3 taxDifference → invoiceAmountDifference（前端零消费已核）+ JavaDoc 正名。
+- [x] API 脚本 keys/test-api-contract.sh 增关联守卫负向段（HTTP 200 + body 业务码断言，与 GlobalExceptionHandler 语义一致）。
+- [ ] 签证表单前端关联选择器：并入批次 2 合同抽屉改造，不在本批。
 
 ## 批次 2：C1 过程结算 + V2026_108
 

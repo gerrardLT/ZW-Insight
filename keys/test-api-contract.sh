@@ -30,6 +30,8 @@ PASS_COUNT=0
 FAIL_COUNT=0
 TOTAL_COUNT=0
 CREATED_CONTRACT_ID=""
+# F2 关联事件守卫用：指向必然不存在的变更事件（负向用例，不产生业务残留）
+NONEXISTENT_EVENT_ID=999999999999
 
 # ===========================================================================
 # 公共测试函数（复用 test-api-project.sh 模式）
@@ -292,6 +294,26 @@ test_get_nonexistent() {
 }
 
 # ===========================================================================
+# F2 签证↔变更事件单一生效源守卫（2026-10-16）
+# 仅负向用例：不产生业务残留，不依赖既有变更事件数据
+# ===========================================================================
+
+test_change_visa_event_link_guards() {
+  log "▶ 测试：变更签证关联事件守卫"
+
+  # 1) 关联不存在的变更事件 → 业务码 404（不落库；BusinessException 走 HTTP 200 + body code）
+  call POST "/api/v1/contract/change-visa" '{"projectId":1,"contractId":1,"changeType":"SITE_VISA","changeAmount":1000.00,"visaDate":"2026-10-16","changeEventId":'"$NONEXISTENT_EVENT_ID"'}'
+  assert_http 2 "POST /api/v1/contract/change-visa 关联不存在事件 HTTP 200(业务异常承载于body)"
+  assert_body_code 404 "关联不存在事件业务码 404"
+  assert_jq '.message | contains("变更事件不存在")' "错误文案含「变更事件不存在」"
+
+  # 2) 缺签证日期（V2026_104 既有守卫，回归）→ 业务码 400
+  call POST "/api/v1/contract/change-visa" '{"projectId":1,"contractId":1,"changeType":"SITE_VISA","changeAmount":1000.00}'
+  assert_http 2 "缺签证日期 HTTP 200(业务异常承载于body)"
+  assert_body_code 400 "缺签证日期业务码 400"
+}
+
+# ===========================================================================
 # 主流程
 # ===========================================================================
 main() {
@@ -315,6 +337,7 @@ main() {
   test_submit_contract
   test_delete_contract
   test_get_nonexistent
+  test_change_visa_event_link_guards
 
   # 日志核对
   echo ""

@@ -824,7 +824,7 @@ public class DashboardService {
      * 汇总展示：
      * - 销项（已开票）：开票总额、本月开票额、各项目开票明细
      * - 进项（已收票）：收票总额、本月收票额、各供应商收票明细
-     * - 税负率参考 = (销项税 - 进项税) / 销售额
+     * - 发票金额差参考 = 销项开票金额 − 进项收票金额（非税额差；真实税额指标待销项发票台账 C3 落地）
      * </p>
      */
     public Map<String, Object> getInvoiceLedger(Long projectId, String month) {
@@ -859,8 +859,9 @@ public class DashboardService {
         result.put("totalReceived", totalReceived);
         result.put("receivedCount", received.size());
 
-        // 税负参考（简化：销项-进项）
-        result.put("taxDifference", totalInvoiced.subtract(totalReceived));
+        // F3（2026-10-16 正名）：这是「销项开票申请金额 − 进项收票金额」的发票金额差，不是税额差，
+        // 旧名 taxDifference 会被误读为应交增值税。真实税额指标须基于销项发票台账的税额字段（C3 落地）。
+        result.put("invoiceAmountDifference", totalInvoiced.subtract(totalReceived));
 
         // 按项目汇总销项（NPE 防护，2026-08-11：projectId 为 null 的开票单无法归类，过滤跳过）
         Map<Long, BigDecimal> invoiceByProject = invoices.stream()

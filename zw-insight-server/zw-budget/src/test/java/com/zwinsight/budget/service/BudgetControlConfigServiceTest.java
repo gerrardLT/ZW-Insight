@@ -7,8 +7,11 @@ import com.zwinsight.budget.dto.BudgetControlConfigDTO;
 import com.zwinsight.budget.mapper.BizBudgetDetailMapper;
 import com.zwinsight.budget.mapper.BudgetOccupiedMapper;
 import com.zwinsight.budget.mapper.SysBudgetControlConfigMapper;
+import com.zwinsight.common.event.UrgeNotifyEvent;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.project.domain.BizProjectMember;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.project.mapper.BizProjectMemberMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 
@@ -42,6 +46,12 @@ class BudgetControlConfigServiceTest {
 
     @Mock
     private BizProjectMapper projectMapper;
+
+    @Mock
+    private BizProjectMemberMapper projectMemberMapper;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private BudgetControlConfigService budgetControlConfigService;
@@ -149,6 +159,54 @@ class BudgetControlConfigServiceTest {
 
         // 恰 100% 不超 → PASS
         assertEquals(BudgetCheckResult.Status.PASS, result.getStatus());
+    }
+
+    @Test
+    @DisplayName("F1b - 预警带内（阈值≤执行率<100）向 PROJECT_MANAGER 发真实站内信事件")
+    void testCheckBudget_warnBand_publishesRealNotification() {
+        SysBudgetControlConfig warnConfig = buildConfig(PROJECT_ID, "BLOCK", 80, 0);
+        when(configMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(warnConfig);
+        // 预算 100000，已签 40000 + 已付 0 + 本次 45000 = 85000 → 85%，落在 [80,100) 预警带
+        when(budgetDetailMapper.sumBudgetByProjectAndCategory(eq(PROJECT_ID), eq(COST_CATEGORY)))
+                .thenReturn(new BigDecimal("100000"));
+        when(budgetOccupiedMapper.sumContractAmountForMaterial(eq(PROJECT_ID)))
+                .thenReturn(new BigDecimal("40000"));
+        when(budgetOccupiedMapper.sumApprovedPaymentByCategory(eq(PROJECT_ID), eq(COST_CATEGORY)))
+                .thenReturn(BigDecimal.ZERO);
+        BizProjectMember manager = new BizProjectMember();
+        manager.setUserId(66L);
+        when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(java.util.Collections.singletonList(manager));
+
+        BudgetCheckResult result = budgetControlConfigService.checkBudget(
+                PROJECT_ID, COST_CATEGORY, new BigDecimal("45000"));
+
+        assertEquals(BudgetCheckResult.Status.PASS, result.getStatus());
+        verify(eventPublisher).publishEvent(argThat(e -> e instanceof UrgeNotifyEvent
+                && Long.valueOf(66L).equals(((UrgeNotifyEvent) e).getTargetUserId())
+                && ((UrgeNotifyEvent) e).getContent().contains("85%")));
+    }
+
+    @Test
+    @DisplayName("F1b - 无 PROJECT_MANAGER 收件人时不发事件不谎报（记 error 返回）")
+    void testCheckBudget_warnBand_noRecipient_noFakeSuccess() {
+        SysBudgetControlConfig warnConfig = buildConfig(PROJECT_ID, "BLOCK", 80, 0);
+        when(configMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(warnConfig);
+        when(budgetDetailMapper.sumBudgetByProjectAndCategory(eq(PROJECT_ID), eq(COST_CATEGORY)))
+                .thenReturn(new BigDecimal("100000"));
+        when(budgetOccupiedMapper.sumContractAmountForMaterial(eq(PROJECT_ID)))
+                .thenReturn(new BigDecimal("40000"));
+        when(budgetOccupiedMapper.sumApprovedPaymentByCategory(eq(PROJECT_ID), eq(COST_CATEGORY)))
+                .thenReturn(BigDecimal.ZERO);
+        when(projectMemberMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(java.util.Collections.emptyList());
+
+        BudgetCheckResult result = budgetControlConfigService.checkBudget(
+                PROJECT_ID, COST_CATEGORY, new BigDecimal("45000"));
+
+        // 校验结果不受通知影响，但事件必须一条都不发
+        assertEquals(BudgetCheckResult.Status.PASS, result.getStatus());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     // ======================== getEffectiveConfig 测试 ========================
