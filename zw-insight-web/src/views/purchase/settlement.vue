@@ -322,5 +322,5 @@ onMounted(() => { loadContracts(); loadData() })
 .table-toolbar { margin-bottom: var(--zw-space-md); }
 .pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 .empty-tip { color: var(--zw-warning); font-size: var(--zw-font-size-xs); line-height: 1.5; margin-top: var(--zw-space-xs); }
-.diff-flag { color: var(--zw-warning, #e6a23c); font-weight: 600; }
+.diff-flag { color: var(--zw-warning); font-weight: 600; }
 </style>

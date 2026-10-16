@@ -74,13 +74,12 @@ class ContractPayTermServiceTest {
         BizContractPayTerm empty = term(BizContractPayTerm.TYPE_PROGRESS, null, null);
         assertThatThrownBy(() -> service.save(empty)).hasMessageContaining("至少填一项");
 
+        // 3% 与扣回规则校验发生在施工合同反查之前，无须 stub contractMapper
         BizContractPayTerm over = term(BizContractPayTerm.TYPE_RETENTION, new BigDecimal("5"), null);
-        when(contractMapper.selectById(20L)).thenReturn(contract());
         assertThatThrownBy(() -> service.save(over)).hasMessageContaining("3%");
 
         BizContractPayTerm badRule = term(BizContractPayTerm.TYPE_PREPAY, null, new BigDecimal("100"));
         badRule.setDeductRule("WHENEVER");
-        when(contractMapper.selectById(20L)).thenReturn(contract());
         assertThatThrownBy(() -> service.save(badRule)).hasMessageContaining("扣回规则");
 
         verify(termMapper, never()).insert(any(BizContractPayTerm.class));
@@ -93,6 +92,7 @@ class ContractPayTermServiceTest {
         existing.setId(5L);
         existing.setProjectId(10L);
         when(termMapper.selectById(5L)).thenReturn(existing);
+        when(contractMapper.selectById(20L)).thenReturn(contract());
 
         BizContractPayTerm forged = new BizContractPayTerm();
         forged.setId(5L);
@@ -120,14 +120,20 @@ class ContractPayTermServiceTest {
     }
 
     @Test
-    @DisplayName("calcRetentionAmount - 按比例计提并封顶审定额；无条款/无参数返回 null")
+    @DisplayName("calcRetentionAmount - 按比例计提、超审定额封顶；无条款/无参数返回 null")
     void calcRetention_various() {
         when(termMapper.selectList(any(LambdaQueryWrapper.class)))
                 .thenReturn(List.of(term(BizContractPayTerm.TYPE_RETENTION, new BigDecimal("3"), null)));
 
         assertThat(service.calcRetentionAmount("CONSTRUCTION", 20L, new BigDecimal("100000")))
                 .isEqualByComparingTo("3000.00");
-        // 计提超审定额 → 封顶
+        // 比例 3% × 审定 100 = 3.00，未超审定额不触发封顶
+        assertThat(service.calcRetentionAmount("CONSTRUCTION", 20L, new BigDecimal("100")))
+                .isEqualByComparingTo("3.00");
+
+        // 固定金额 500 > 审定 100 → 封顶到审定额
+        when(termMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(term(BizContractPayTerm.TYPE_RETENTION, null, new BigDecimal("500"))));
         assertThat(service.calcRetentionAmount("CONSTRUCTION", 20L, new BigDecimal("100")))
                 .isEqualByComparingTo("100.00");
 

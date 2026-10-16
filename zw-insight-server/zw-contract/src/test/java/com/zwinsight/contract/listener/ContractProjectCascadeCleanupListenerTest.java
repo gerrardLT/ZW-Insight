@@ -10,6 +10,8 @@ import com.zwinsight.contract.mapper.BizFinalSettlementMapper;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.contract.mapper.BizOutputReportMapper;
 import com.zwinsight.contract.mapper.BizQuantityListMapper;
+import com.zwinsight.contract.mapper.BizSettlementSourceMapper;
+import com.zwinsight.contract.mapper.BizContractPayTermMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +57,8 @@ class ContractProjectCascadeCleanupListenerTest {
     @Mock private BizChangeVisaMapper changeVisaMapper;
     @Mock private BizChangeEventMapper changeEventMapper;
     @Mock private BizExpenseContractMapper expenseContractMapper;
+    @Mock private BizSettlementSourceMapper settlementSourceMapper;
+    @Mock private BizContractPayTermMapper payTermMapper;
     @Mock private BizOtherContractMapper otherContractMapper;
     @Mock private BizFinalSettlementMapper finalSettlementMapper;
 

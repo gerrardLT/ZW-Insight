@@ -201,11 +201,10 @@ class FinalSettlementServiceTest {
     @DisplayName("save - 审定低于申报未填核减原因拒绝；审定+争议超申报拒绝")
     void save_processReduceReasonRequired() {
         BizFinalSettlement s = processSettlement(null);
+        // 两条路径均在来源单据反查之前拦截，无须 stub outputReport/sourceMapper
         BizSettlementSource noReason = outputSource();
         noReason.setReduceReason(" ");
         s.setSources(List.of(noReason));
-        when(outputReportMapper.selectById(300L)).thenReturn(approvedReport());
-        when(sourceMapper.countSourceOccupied(eq("OUTPUT_REPORT"), eq(300L), eq(-1L))).thenReturn(0);
         assertThatThrownBy(() -> service.save(s)).hasMessageContaining("核减原因");
 
         BizSettlementSource overflow = outputSource();

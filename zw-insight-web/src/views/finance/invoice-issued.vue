@@ -246,7 +246,7 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.finance-container { padding: 12px; }
-.table-toolbar { margin-bottom: 8px; }
-.pagination-wrap { display: flex; justify-content: flex-end; margin-top: 10px; }
+.finance-container { padding: var(--zw-space-md); }
+.table-toolbar { margin-bottom: var(--zw-space-sm); }
+.pagination-wrap { display: flex; justify-content: flex-end; margin-top: var(--zw-space-sm); }
 </style>
