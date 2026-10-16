@@ -1,0 +1,56 @@
+# 实施任务与验收边界
+
+## 批次 0：Spec 与文档
+
+- [x] requirements/design/tasks 三件套建立。
+- [ ] `docs/deep-opt/真正需要补充的核心能力清单-2026-10-16.md` 入库（已核不含第三方名称）；其余竞品 untracked 文档保持不入库。
+
+## 批次 1：F1–F3 + V2026_107
+
+- [ ] F1a 劳务 submit 预算复核（BLOCK 拒绝）+ 单测（BLOCK 拒绝 / WARN 放行 / 无预算科目按模式处理）。
+- [ ] F1b 预算 WARN 真实通知（UrgeNotifyEvent → PROJECT_MANAGER，无收件人失败）+ 单测。
+- [ ] F2 签证关联变更事件：V2026_107 双轨迁移；save 校验（存在/同合同同项目/未被占用）；Handler 有关联跳过合同回写；重复关联 409；单测四路径。
+- [ ] F3 taxDifference → invoiceAmountDifference + 注释修正。
+- [ ] API 脚本与组件测试增补；本地 commit。
+
+## 批次 2：C1 过程结算 + V2026_108
+
+- [ ] 迁移：settlement_type/period、biz_settlement_source（活跃 guard）、cumulative_settlement；级联 Listener 登记。
+- [ ] Service：来源占用校验、原子回写、应收生成、驳回/终止释放、删除反冲、FINAL 汇总。
+- [ ] 前端：合同抽屉「过程结算」页签（列表+新建+来源选择）；合同列表累计结算列。
+- [ ] 单测（通过/释放/重复来源 409/FINAL 汇总）+ 组件测试 + api 脚本；本地 commit。
+
+## 批次 3：C2 条款 + V2026_109
+
+- [ ] biz_contract_pay_term + biz_retention_money.contract_id；条款 CRUD 与修订快照纳入。
+- [ ] PROCESS 审批触发质保金幂等计提 + 预付款建议扣回。
+- [ ] 前端条款区块 + 结算单引用展示；单测；本地 commit。
+
+## 批次 4：C3 税务事实链 + V2026_110
+
+- [ ] 四合同税三件套（派生持久化、导入导出、前端表单）。
+- [ ] biz_invoice_issued 台账（防重/红冲挂原票/查验与入账状态）+ biz_invoice_received 状态列。
+- [ ] 驾驶舱真税额指标（销项税/进项税/估算税差，basis 注明）。
+- [ ] 单测 + 组件测试 + api 脚本；本地 commit。
+
+## 批次 5：C4 价差 + V2026_111
+
+- [ ] 明细价差字段 + 容差表 + calculateLines 扩展（三处重算、超容差强制原因）。
+- [ ] 审批端偏离标识；单测（阈值内/超阈/重算）；本地 commit。
+
+## 批次 6：C5 只读指标
+
+- [ ] 工资点工 vs 劳务结算并列只读组（含未入 CBS 声明）。
+- [ ] 四回款率 + 双毛利 + 元数据（numerator/denominator/basis/asOf）；CBS 不可用明示。
+- [ ] ProjectBusinessSummary 组件测试更新；本地 commit。
+
+## 收尾
+
+- [ ] AGENTS.md 迁移进度更新（V2026_107–111，双轨缺口说明保留）。
+- [ ] `node tests/check-test-sync.mjs --last` 无 UNSYNCED；一致性审计无新增 Critical；前端相关 vitest 通过。
+- [ ] 受阻登记（test-maturity-upgrade/tasks.md）：后端编译/单测/MySQL 幂等/真实审批链/双机部署未运行。
+- [ ] 完成报告：批次清单、commit 列表、未验证项。
+
+## 验收边界（强制）
+
+完成指代码与测试落地，非运行通过；后端/MySQL/线上验证依用户禁令未执行，不标通过、不虚报。不推送；推送与部署另行授权。
