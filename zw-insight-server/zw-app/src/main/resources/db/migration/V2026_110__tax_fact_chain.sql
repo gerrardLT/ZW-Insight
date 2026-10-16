@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS biz_invoice_issued (
  tax_amount DECIMAL(18,2) NULL, amount_without_tax DECIMAL(18,2) NULL,
  verify_status VARCHAR(12) NOT NULL DEFAULT 'UNVERIFIED', verify_time DATETIME NULL, verified_by BIGINT NULL,
  bookkeep_status VARCHAR(12) NOT NULL DEFAULT 'UNBOOKED',
- active_issued_invoice_identity VARCHAR(33) GENERATED ALWAYS AS (CASE WHEN deleted=0 AND NULLIF(TRIM(invoice_number),'''') IS NOT NULL THEN CASE WHEN CHAR_LENGTH(TRIM(invoice_number))=20 THEN CONCAT(''D:'',TRIM(invoice_number)) ELSE CONCAT(COALESCE(TRIM(invoice_code),''''),'':'',TRIM(invoice_number)) END ELSE NULL END) STORED,
+ active_issued_invoice_identity VARCHAR(33) GENERATED ALWAYS AS (CASE WHEN deleted=0 AND NULLIF(TRIM(invoice_number),'') IS NOT NULL THEN CASE WHEN CHAR_LENGTH(TRIM(invoice_number))=20 THEN CONCAT('D:',TRIM(invoice_number)) ELSE CONCAT(COALESCE(TRIM(invoice_code),''),':',TRIM(invoice_number)) END ELSE NULL END) STORED,
  deleted TINYINT NOT NULL DEFAULT 0, version INT NOT NULL DEFAULT 0,
  created_by BIGINT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
