@@ -103,6 +103,15 @@
 - 修复：种子 id 改 900001-900999 段内 MAX+1 + business_type/id 双守卫（f176127a）；
   失败迁移未被记录 checksum 可安全改写；补列 DDL 已生效、回填因失败未跑，重放幂等。
 - 教训固化：**任何固定数字 id 种子，push 前必须对双机真库各跑一次占用探针**（写入部署检查单）。
+### 阶段二部署事故与处置（2026-10-18，最终 run 39145071175 全绿）
+- 推送共 4 轮全绿（本机代理/出口多次中断 + CI 三连红叠加）：
+  ① payment-apply 样式插入切断 .pay-status-na 规则（vite Unexpected }）——教训：脚本插样式禁止 rfind('</style>') 盲插，必须锚定具体规则边界（fe3f6bf1 修）；
+  ② 四结算服务测试类 @InjectMocks 缺 eventPublisher mock（9 用例 NPE）——教训：新增构造依赖必须同时穷举 'new X(' 与 '@InjectMocks+类名' 两类形态（fe3f6bf1 修）；
+  ③ PayableServiceTest dueDate 断言错日（@Value 纯单测不注入）——教训：@Value 字段单测必须 ReflectionTestUtils 显式注入（f3e70d1f 修）；
+  ④ 徽颍 V2026_116 绑定公式雪花 role_id 溢出（同 HOTFIX-001 根因族）→ SSH 预插绑定热修恢复，台账 ENV-HOTFIX-002。
+- 部署后双机核验：flyway 113-116 全 success；910063 菜单双机在场；应付 BACKFILL 主 6 行/徽颍 2 行，OPEN 余额与项目 payable_amount 由迁移第 5 步重算自洽。
+- 待办：audit-data 脚本可增补「biz_project.payable_amount = biz_payable OPEN 余额合计」勾稽项（审阅 §8 建议，R7 基线变更需按「新生效 vs 新失败」辨析）。
+
 ## 受阻项登记表
 
 | 日期 | 层级 | 任务项 | 分类 | 原因 | 影响范围 | 处置决策/决策人 | 状态 |
