@@ -27,6 +27,7 @@ class MachineWorkSettlementOnApprovedTest {
     @Mock BizMachineLedgerMapper ledgerMapper;
     @Mock BizMachineContractMapper contractMapper;
     @Mock ApprovalService approvalService;
+    @Mock org.springframework.context.ApplicationEventPublisher eventPublisher;
     @InjectMocks MachineWorkSettlementService service;
     @BeforeEach void setup() {
         SecurityContextHolder.setTenantId(9999L);

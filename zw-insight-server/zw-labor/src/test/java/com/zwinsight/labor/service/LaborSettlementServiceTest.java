@@ -28,6 +28,7 @@ class LaborSettlementServiceTest {
     @Mock private BizLaborSettlementMapper settlementMapper;
     @Mock private BizLaborContractMapper laborContractMapper;
     @Mock private com.zwinsight.workflow.service.ApprovalService approvalService;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private LaborSettlementService laborSettlementService;

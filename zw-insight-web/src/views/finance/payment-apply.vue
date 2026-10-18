@@ -742,6 +742,7 @@ function buildFundPlanOption(list: any[]) {
 }
 .in-flight-amount { color: var(--el-color-warning); font-weight: 600; }
 
+.pay-status-na {
   color: var(--el-text-color-placeholder);
 }
 .pay-date-text {

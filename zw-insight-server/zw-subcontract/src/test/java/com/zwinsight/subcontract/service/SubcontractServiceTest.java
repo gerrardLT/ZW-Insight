@@ -736,6 +736,10 @@ class SubcontractServiceTest {
         @Mock
         private com.zwinsight.file.service.SerialNumberService serialNumberService;
 
+        /** V2026_115：应付事件发布（submit 生效路径），缺 mock 则 @InjectMocks 注 null 致 NPE */
+        @Mock
+        private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
         @InjectMocks
         private SubcontractSettlementService settlementService;
 
