@@ -166,7 +166,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'list',
         name: 'ProjectList',
         component: () => import('@/views/project/index.vue'),
-        meta: { title: '项目报备', icon: 'Document' }
+        meta: { title: '项目台账', icon: 'Document' }
       },
       {
         path: 'create',
@@ -190,7 +190,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'wbs',
         name: 'ProjectWbs',
         component: () => import('@/views/project/wbs/index.vue'),
-        meta: { title: 'WBS结构', icon: 'Share', permission: 'project:wbs:view' }
+        meta: { title: '工作分解结构（WBS）', icon: 'Share', permission: 'project:wbs:view' }
       }
     ]
   },
@@ -205,7 +205,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'list',
         name: 'ContractList',
         component: () => import('@/views/contract/index.vue'),
-        meta: { title: '施工合同', icon: 'Document' }
+        meta: { title: '施工总承包合同', icon: 'Document' }
       },
       {
         path: 'create',
@@ -287,175 +287,182 @@ const constantRoutes: RouteRecordRaw[] = [
     redirect: '/finance/invoice-apply',
     meta: { title: '财务管理', icon: 'Money', permission: 'finance:view' },
     children: [
+      // —— 收入 ——（meta.group 由 utils/navigation.ts 读取，作侧边栏分组标题）
       {
         path: 'invoice-apply',
         name: 'InvoiceApply',
         component: () => import('@/views/finance/invoice-apply.vue'),
-        meta: { title: '开票申请', icon: 'Ticket' }
-      },
-      {
-        path: 'invoice-received',
-        name: 'InvoiceReceived',
-        component: () => import('@/views/finance/invoice-received.vue'),
-        meta: { title: '收票登记', icon: 'Tickets' }
-      },
-      {
-        path: 'invoice-issued',
-        name: 'InvoiceIssued',
-        component: () => import('@/views/finance/invoice-issued.vue'),
-        meta: { title: '销项发票台账', icon: 'Ticket' }
-      },
-      {
-        path: 'invoice-summary',
-        name: 'InvoiceSummary',
-        component: () => import('@/views/finance/invoice-summary.vue'),
-        meta: { title: '发票汇总', icon: 'DataAnalysis' }
+        meta: { title: '开票申请', icon: 'Ticket', group: '收入' }
       },
       {
         path: 'payment-received',
         name: 'PaymentReceived',
         component: () => import('@/views/finance/payment-received.vue'),
-        meta: { title: '回款登记', icon: 'WalletFilled' }
-      },
-      {
-        path: 'payment-apply',
-        name: 'PaymentApply',
-        component: () => import('@/views/finance/payment-apply.vue'),
-        meta: { title: '付款申请', icon: 'CreditCard' }
-      },
-      {
-        path: 'other-payment',
-        name: 'OtherPayment',
-        component: () => import('@/views/finance/other-payment.vue'),
-        meta: { title: '其他费用付款', icon: 'Coin' }
-      },
-      {
-        path: 'project-reimbursement',
-        name: 'ProjectReimbursement',
-        component: () => import('@/views/finance/project-reimbursement.vue'),
-        meta: { title: '项目报销', icon: 'Document' }
-      },
-      {
-        path: 'reserve-fund',
-        name: 'ReserveFund',
-        component: () => import('@/views/finance/reserve-fund.vue'),
-        meta: { title: '备用金管理', icon: 'Wallet' }
-      },
-      {
-        path: 'personal-reimbursement',
-        name: 'PersonalReimbursement',
-        component: () => import('@/views/finance/personal-reimbursement.vue'),
-        meta: { title: '个人报销', icon: 'User' }
-      },
-      {
-        path: 'retention',
-        name: 'Retention',
-        component: () => import('@/views/finance/retention.vue'),
-        meta: { title: '质保金管理', icon: 'GoldMedal' }
+        meta: { title: '回款登记', icon: 'WalletFilled', group: '收入' }
       },
       {
         path: 'settlement',
         name: 'SettlementList',
         component: () => import('@/views/finance/settlement/index.vue'),
-        meta: { title: '项目最终结算', icon: 'Money' }
-      },
-      {
-        path: 'finance-lock',
-        name: 'FinanceLock',
-        component: () => import('@/views/finance/finance-lock/index.vue'),
-        meta: { title: '财务封账', icon: 'Lock' }
-      },
-      {
-        path: 'tax-rate',
-        name: 'TaxRate',
-        component: () => import('@/views/finance/tax-rate/index.vue'),
-        meta: { title: '税率管理', icon: 'Histogram' }
-      },
-      {
-        path: 'fund-category',
-        name: 'FundCategory',
-        component: () => import('@/views/finance/fund-category/index.vue'),
-        meta: { title: '资金分类科目', icon: 'Collection' }
-      },
-      {
-        path: 'security-bond',
-        name: 'SecurityBond',
-        component: () => import('@/views/finance/security-bond/index.vue'),
-        meta: { title: '保证金台账', icon: 'Lock' }
-      },
-      {
-        path: 'wage-account',
-        name: 'WageAccount',
-        component: () => import('@/views/finance/wage-account/index.vue'),
-        meta: { title: '工资专户', icon: 'Wallet' }
-      },
-      {
-        path: 'fund-plan',
-        name: 'FundPlan',
-        component: () => import('@/views/finance/fund-plan/index.vue'),
-        meta: { title: '资金计划', icon: 'Calendar' }
-      },
-      {
-        path: 'fund-dashboard',
-        name: 'FundDashboard',
-        component: () => import('@/views/finance/fund-dashboard/index.vue'),
-        meta: { title: '资金看板', icon: 'DataLine' }
-      },
-      {
-        path: 'bill',
-        name: 'BillLedger',
-        component: () => import('@/views/finance/bill/index.vue'),
-        meta: { title: '票据台账', icon: 'Tickets' }
-      },
-      {
-        path: 'financing',
-        name: 'FinancingLedger',
-        component: () => import('@/views/finance/financing/index.vue'),
-        meta: { title: '融资借贷', icon: 'CreditCard' }
-      },
-      {
-        path: 'bank-account-group',
-        name: 'BankAccountGroup',
-        component: () => import('@/views/finance/bank-account-group/index.vue'),
-        meta: { title: '账户分组', icon: 'Grid' }
-      },
-      {
-        path: 'bank-flow',
-        name: 'BankFlow',
-        component: () => import('@/views/finance/bank-flow/index.vue'),
-        meta: { title: '银行流水', icon: 'Sort' }
-      },
-      {
-        path: 'balance-reconciliation',
-        name: 'BalanceReconciliation',
-        component: () => import('@/views/finance/balance-reconciliation/index.vue'),
-        meta: { title: '余额调节表', icon: 'Operation' }
-      },
-      {
-        path: 'daily-cash-report',
-        name: 'DailyCashReport',
-        component: () => import('@/views/finance/daily-cash-report/index.vue'),
-        meta: { title: '资金日报', icon: 'Calendar' }
+        meta: { title: '竣工结算', icon: 'Money', group: '收入' }
       },
       {
         path: 'receivable',
         name: 'ReceivableLedger',
         component: () => import('@/views/finance/receivable/index.vue'),
-        meta: { title: '应收台账', icon: 'Money' }
+        meta: { title: '应收账款台账', icon: 'Money', group: '收入' }
+      },
+      // —— 支出 ——
+      {
+        path: 'payment-apply',
+        name: 'PaymentApply',
+        component: () => import('@/views/finance/payment-apply.vue'),
+        meta: { title: '付款申请', icon: 'CreditCard', group: '支出' }
+      },
+      {
+        path: 'other-payment',
+        name: 'OtherPayment',
+        component: () => import('@/views/finance/other-payment.vue'),
+        meta: { title: '其他支出', icon: 'Coin', group: '支出' }
+      },
+      {
+        path: 'project-reimbursement',
+        name: 'ProjectReimbursement',
+        component: () => import('@/views/finance/project-reimbursement.vue'),
+        meta: { title: '项目报销', icon: 'Document', group: '支出' }
+      },
+      {
+        path: 'personal-reimbursement',
+        name: 'PersonalReimbursement',
+        component: () => import('@/views/finance/personal-reimbursement.vue'),
+        meta: { title: '个人报销', icon: 'User', group: '支出' }
+      },
+      // —— 发票税务 ——
+      {
+        path: 'invoice-received',
+        name: 'InvoiceReceived',
+        component: () => import('@/views/finance/invoice-received.vue'),
+        meta: { title: '进项发票', icon: 'Tickets', group: '发票税务' }
+      },
+      {
+        path: 'invoice-issued',
+        name: 'InvoiceIssued',
+        component: () => import('@/views/finance/invoice-issued.vue'),
+        meta: { title: '销项发票', icon: 'Ticket', group: '发票税务' }
+      },
+      {
+        path: 'invoice-summary',
+        name: 'InvoiceSummary',
+        component: () => import('@/views/finance/invoice-summary.vue'),
+        meta: { title: '发票汇总', icon: 'DataAnalysis', group: '发票税务' }
+      },
+      {
+        path: 'tax-rate',
+        name: 'TaxRate',
+        component: () => import('@/views/finance/tax-rate/index.vue'),
+        meta: { title: '税率管理', icon: 'Histogram', group: '发票税务' }
+      },
+      // —— 资金 ——
+      {
+        path: 'fund-category',
+        name: 'FundCategory',
+        component: () => import('@/views/finance/fund-category/index.vue'),
+        meta: { title: '资金科目', icon: 'Collection', group: '资金' }
+      },
+      {
+        path: 'bank-account-group',
+        name: 'BankAccountGroup',
+        component: () => import('@/views/finance/bank-account-group/index.vue'),
+        meta: { title: '账户分组', icon: 'Grid', group: '资金' }
+      },
+      {
+        path: 'bank-flow',
+        name: 'BankFlow',
+        component: () => import('@/views/finance/bank-flow/index.vue'),
+        meta: { title: '银行流水', icon: 'Sort', group: '资金' }
+      },
+      {
+        path: 'fund-plan',
+        name: 'FundPlan',
+        component: () => import('@/views/finance/fund-plan/index.vue'),
+        meta: { title: '资金计划', icon: 'Calendar', group: '资金' }
+      },
+      {
+        path: 'daily-cash-report',
+        name: 'DailyCashReport',
+        component: () => import('@/views/finance/daily-cash-report/index.vue'),
+        meta: { title: '资金日报', icon: 'Calendar', group: '资金' }
+      },
+      {
+        path: 'balance-reconciliation',
+        name: 'BalanceReconciliation',
+        component: () => import('@/views/finance/balance-reconciliation/index.vue'),
+        meta: { title: '余额调节表', icon: 'Operation', group: '资金' }
+      },
+      {
+        path: 'bill',
+        name: 'BillLedger',
+        component: () => import('@/views/finance/bill/index.vue'),
+        meta: { title: '票据台账', icon: 'Tickets', group: '资金' }
+      },
+      {
+        path: 'financing',
+        name: 'FinancingLedger',
+        component: () => import('@/views/finance/financing/index.vue'),
+        meta: { title: '融资借款', icon: 'CreditCard', group: '资金' }
+      },
+      // —— 专项 ——
+      {
+        path: 'reserve-fund',
+        name: 'ReserveFund',
+        component: () => import('@/views/finance/reserve-fund.vue'),
+        meta: { title: '备用金', icon: 'Wallet', group: '专项' }
+      },
+      {
+        path: 'retention',
+        name: 'Retention',
+        component: () => import('@/views/finance/retention.vue'),
+        meta: { title: '质保金台账', icon: 'GoldMedal', group: '专项' }
+      },
+      {
+        path: 'security-bond',
+        name: 'SecurityBond',
+        component: () => import('@/views/finance/security-bond/index.vue'),
+        meta: { title: '保证金台账', icon: 'Lock', group: '专项' }
+      },
+      {
+        path: 'wage-account',
+        name: 'WageAccount',
+        component: () => import('@/views/finance/wage-account/index.vue'),
+        meta: { title: '工资专户', icon: 'Wallet', group: '专项' }
+      },
+      // —— 分析 ——
+      {
+        path: 'fund-dashboard',
+        name: 'FundDashboard',
+        component: () => import('@/views/finance/fund-dashboard/index.vue'),
+        meta: { title: '资金看板', icon: 'DataLine', group: '分析' }
       },
       {
         // 招待费分析（资金流转 §6.3 分析维度 + §8.1 老板默认看异常）
         path: 'entertainment-analysis',
         name: 'EntertainmentAnalysis',
         component: () => import('@/views/finance/entertainment-analysis/index.vue'),
-        meta: { title: '招待费分析', icon: 'DataAnalysis' }
+        meta: { title: '招待费分析', icon: 'DataAnalysis', group: '分析' }
       },
       {
         // 月度经营分析表（资金流转 §9：10 类费用 × 6 列，项目管理层“最终只看一张表”）
         path: 'monthly-analysis',
         name: 'MonthlyOperationAnalysis',
         component: () => import('@/views/finance/monthly-analysis/index.vue'),
-        meta: { title: '月度经营分析', icon: 'Tickets' }
+        meta: { title: '月度经营分析', icon: 'Tickets', group: '分析' }
+      },
+      // —— 治理 ——
+      {
+        path: 'finance-lock',
+        name: 'FinanceLock',
+        component: () => import('@/views/finance/finance-lock/index.vue'),
+        meta: { title: '财务封账', icon: 'Lock', group: '治理' }
       },
       {
         path: 'settlement/:id',
@@ -476,13 +483,13 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'list',
         name: 'BudgetList',
         component: () => import('@/views/budget/index.vue'),
-        meta: { title: '预算编制', icon: 'Document' }
+        meta: { title: '项目预算', icon: 'Document' }
       },
       {
         path: 'change',
         name: 'BudgetChangeList',
         component: () => import('@/views/budget/change/index.vue'),
-        meta: { title: '目标成本变更', icon: 'Switch' }
+        meta: { title: '成本变更单', icon: 'Switch' }
       },
       {
         path: 'change/form',
@@ -500,7 +507,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'cost-account',
         name: 'CostAccountList',
         component: () => import('@/views/budget/cost-account/index.vue'),
-        meta: { title: '成本账户CBS', icon: 'Coin', permission: 'budget:costaccount:view' }
+        meta: { title: '成本科目（CBS）', icon: 'Coin', permission: 'budget:costaccount:view' }
       }
     ]
   },
@@ -560,7 +567,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'work-order',
         name: 'LaborWorkOrder',
         component: () => import('@/views/labor/work-order.vue'),
-        meta: { title: '用工单', icon: 'Memo' }
+        meta: { title: '点工单', icon: 'Memo' }
       },
       {
         path: 'payroll',
@@ -605,13 +612,13 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'inbound',
         name: 'MaterialInbound',
         component: () => import('@/views/material/inbound.vue'),
-        meta: { title: '到货入库', icon: 'Download' }
+        meta: { title: '入库单', icon: 'Download' }
       },
       {
         path: 'outbound',
         name: 'MaterialOutbound',
         component: () => import('@/views/material/outbound.vue'),
-        meta: { title: '领料出库', icon: 'Upload' }
+        meta: { title: '领料单', icon: 'Upload' }
       },
       {
         path: 'transfer',
@@ -623,7 +630,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'stock',
         name: 'MaterialStock',
         component: () => import('@/views/material/stock.vue'),
-        meta: { title: '库存查询', icon: 'Search' }
+        meta: { title: '库存台账', icon: 'Search' }
       },
       {
         path: 'inventory',
@@ -650,7 +657,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'contract',
         name: 'MachineContract',
         component: () => import('@/views/machine/contract.vue'),
-        meta: { title: '机械合同', icon: 'Document' }
+        meta: { title: '机械租赁合同', icon: 'Document' }
       },
       {
         path: 'ledger',
@@ -752,7 +759,14 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'inspection',
         name: 'SiteInspection',
         component: () => import('@/views/site/inspection/index.vue'),
-        meta: { title: '质量安全检查', icon: 'CircleCheck' }
+        meta: { title: '质量检查', icon: 'CircleCheck' }
+      },
+      {
+        // 安全检查：与质量检查同组件，进入页默认定位“安全”页签（按路由名判定）
+        path: 'safety-inspection',
+        name: 'SiteSafetyInspection',
+        component: () => import('@/views/site/inspection/index.vue'),
+        meta: { title: '安全检查', icon: 'Warning' }
       },
       {
         path: 'inspection/form',
@@ -785,7 +799,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'register',
         name: 'TenderRegister',
         component: () => import('@/views/tender/register.vue'),
-        meta: { title: '投标报名', icon: 'EditPen' }
+        meta: { title: '投标记录', icon: 'EditPen' }
       },
       {
         path: 'certificate',

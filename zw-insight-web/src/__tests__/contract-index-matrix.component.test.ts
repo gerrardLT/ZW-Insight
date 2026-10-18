@@ -114,7 +114,7 @@ describe('contract/index.vue A7 矩阵', () => {
     expect(st.getStatusLabel('SUBMITTED')).toBe('审批中')
     expect(st.getStatusLabel('EFFECTIVE')).toBe('已生效')
     expect(st.getStatusLabel('SETTLED')).toBe('已结算')
-    expect(st.getStatusLabel('CLOSED')).toBe('已关闭')
+    expect(st.getStatusLabel('CLOSED')).toBe('已结项')
     expect(st.getStatusType('EFFECTIVE')).toBe('success')
     expect(st.getStatusType('CLOSED')).toBe('danger')
     expect(st.getStatusLabel('UNKNOWN')).toBe('UNKNOWN')

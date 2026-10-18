@@ -22,7 +22,9 @@
       </div>
 
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="id" label="结算单ID" width="100" />
+        <el-table-column prop="settlementCode" label="结算单编号" width="150">
+          <template #default="{ row }">{{ row.settlementCode || '—' }}</template>
+        </el-table-column>
         <el-table-column prop="settlementAmount" label="本次结算金额(元)" width="160" align="right">
           <template #default="{ row }">{{ row.settlementAmount?.toLocaleString() }}</template>
         </el-table-column>

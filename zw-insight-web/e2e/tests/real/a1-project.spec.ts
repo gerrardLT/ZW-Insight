@@ -293,7 +293,7 @@ test.describe('A-1 项目状态流转', () => {
     expect((await submitResp.json()).code, 'POST submit（直批）').toBe(200)
     expect(closeCount, '提交请求仅一次').toBe(1)
     // 刷新后状态 FILED，操作列无编辑/提交/删除（A1-08 UI 面）
-    await expect(row.locator('.el-tag')).toContainText('已报备', { timeout: 15_000 })
+    await expect(row.locator('.el-tag')).toContainText('已立项', { timeout: 15_000 })
     await expect(row.locator('button:has-text("编辑")')).toHaveCount(0)
     await expect(row.locator('button:has-text("提交")')).toHaveCount(0)
     await expect(row.locator('button:has-text("删除")')).toHaveCount(0)

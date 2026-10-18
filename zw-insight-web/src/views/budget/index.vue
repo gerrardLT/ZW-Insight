@@ -106,7 +106,7 @@
               </span>
             </div>
             <el-table :data="formData.details" border size="small">
-              <el-table-column label="费用类别" width="150">
+              <el-table-column label="成本类别" width="150">
                 <template #default="{ row }">
                   <el-select v-model="row.costCategory" placeholder="选择类别" style="width: 100%">
                     <el-option v-for="c in COST_CATEGORIES" :key="c.value" :label="c.label" :value="c.value" />
@@ -166,7 +166,7 @@ import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import { toWan, clampPercent } from '@/utils/chart-format'
 
-// 费用类别（与后端 BizBudgetDetail.costCategory 枚举一致）
+// 成本类别（与后端 BizBudgetDetail.costCategory 枚举一致）
 const COST_CATEGORIES = [
   { label: '材料', value: 'MATERIAL' },
   { label: '人工', value: 'LABOR' },

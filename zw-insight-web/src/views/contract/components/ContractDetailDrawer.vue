@@ -495,6 +495,7 @@
 import { ref, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
+import { CONTRACT_STATUS } from '@/constants/biz-labels'
 import { getContractSealedFiles, uploadContractSealedFile } from '@/api/contract'
 const sealedFiles = ref<any[]>([])
 const sealError = ref('')
@@ -551,13 +552,10 @@ const visible = computed({
 const loading = ref(false)
 const activeTab = ref('details')
 
-const statusLabelMap: Record<string, string> = {
-  DRAFT: '草稿',
-  SUBMITTED: '审批中',
-  EFFECTIVE: '执行中',
-  SETTLED: '已结算',
-  CLOSED: '已关闭'
-}
+// 状态显示名唯一源：@/constants/biz-labels（术语表 §四；CLOSED 统一“已结项”）
+const statusLabelMap: Record<string, string> = Object.fromEntries(
+  Object.entries(CONTRACT_STATUS).map(([k, v]) => [k, v.label])
+)
 
 function statusTagType(status?: string) {
   if (status === 'EFFECTIVE') return 'success'

@@ -1,0 +1,79 @@
+# 实施任务与验收边界
+
+## 执行约定（每个执行者必读）
+
+- 状态显示名只改前端常量层（biz-labels.ts），禁止改 DB 枚举值与后端状态机。
+- 菜单/路由标题改名必须三处同步：sys_menu 迁移、router meta.title、相关测试断言（见各任务）。
+- 换壳只动模板层；新增/修改 api/*.ts 路径一律禁止（一致性审计 Critical=0 基线）。
+- 迁移双轨镜像、幂等；绑定按 sys_role.role_code 查 id。
+- 测试受阻：登记本文件末尾"受阻项登记表"，禁止静默跳过。
+
+## 交付物 0：立约地基
+
+- [x] 0.1 spec 三件套落盘（本文件） _需求: 全部_
+- [x] 0.2 `docs/术语表.md`（菜单名词典/状态显示名/金额口径/禁用词）+ AGENTS.md 开发约定引用（§0 业务术语基准） _需求: R1_
+- [x] 0.3 `zw-insight-web/src/constants/biz-labels.ts`（PROJECT_STATUS/PROJECT_EVENT/CONTRACT_STATUS/APPROVAL_STATUS/PAY_STATUS/CLAIM_STATUS/COST_CATEGORY/CONTRACT_CATEGORY/LEDGER_STATUS + labelOf/typeOf） _需求: R1_
+- [x] 0.4 `zw-insight-web/scripts/check-labels.mjs` + package.json `check:labels`（warn-only）；基线：violations=49 / debt=20 / hint=20（2026-10-18 采集，A/B 线目标归零） _需求: R1_
+
+## 阶段一（P0-1）
+
+### A 线 术语与菜单
+
+- [x] 1.1 V2026_113 双轨菜单改名迁移（22 条改名 + 安全检查 910100 新菜单 + role_code 绑定/1203 绑定复制；migration + db-init 116_） _需求: R1/R2_
+- [x] 1.2 router meta.title 同步改名 + 新增 /site/safety-inspection 路由（同组件按路由名定初始页签）+ vue-router-augment 补 group 类型 _需求: R1/R2_
+- [x] 1.3 /finance 28 子路由加 meta.group 七分组 + navigation.ts section 优先取 meta.group + navigation.test.ts 更新（新增分组用例，6/6 绿） _需求: R2_
+- [x] 1.4 状态显示名唯一源接入：project/index+detail、contract/index+Drawer+boq-upload、dashboard 两页、检查页；大事记事件中文化（PROJECT_EVENT）；violation 49→0 _需求: R1_
+- [x] 1.5 测试基线同步：enum-baseline.ts、a1-project.spec（已立项）、workflow.spec+approval.ts+BusinessDetailService（项目立项/施工总承包合同/机械租赁合同）、4 个 matrix/use-dict 测试 _需求: R1_
+
+### B 线 列表契约
+
+- [ ] 1.6 `ZwListPage.vue`（五件套+状态首列+ZwStatusBadge+空态/骨架/密度+分页 20/50/100）——顺延阶段三第二批（builder 通道故障改串行后，本阶段优先保术语/链路列/单号交付；组件契约已在 design.md §4 定稿） _需求: R5_
+- [ ] 1.7 `useRowNavigation.ts` composable（去重 4 处内联）——同 1.6 顺延阶段三第二批 _需求: R5_
+- [ ] 1.8 样板 8 页换壳：施工合同/付款申请/回款登记/应收账款台账/项目台账/分包合同/进项发票/销项发票——同 1.6 顺延阶段三第二批 _需求: R5_
+
+### C 线 钱链展示
+
+- [x] 1.9 施工合同列表六段链路列（补签证/结算两段）+ 未收=合同额+签证−回款 + 汇总行改用新口径 _需求: R3_
+- [x] 1.10 采购/劳务/机械合同四段列 + show-summary 本页合计（分包四段列随 8 样板页换壳时补——分包实体字段已核齐） _需求: R3_
+- [x] 1.11 V2026_114 双轨（列+FBJS 种子 900010+NULL 行回填）+ Service 生成（编辑不改号）+ pom 加 zw-file 依赖 + 单测 3 用例（生成/异常/不改号，未运行——禁本地 mvn）+ 前端列改 settlementCode _需求: R3_
+- [x] 1.12 首页四计数卡（复用 todo/done/my-initiated/unreadCount，独立失败降级 "—"）+ 审批中心 ?tab= 直达（route 可选链防御） _需求: R5_
+
+### 阶段一验收
+
+> 验收口径：check-menu-coverage exit 0；check-labels 新口径违例 0；vitest 全绿；vue-tsc 改动文件 0 error；check-test-sync --last 无 UNSYNCED；8 样板页人工抽验五件套；合同六段列与结算单详情互证一笔（容差 0.01）。
+
+- [x] 1.13 验收：vitest 1378/1378 绿；check-labels violations=0/debt=20/hint=15；check-menu-coverage exit 0；vue-tsc 144=基线（改动文件 0 新增）。互证说明：六段列与结算单详情同源字段（constructionContractAmount/cumulativeOutput/cumulativeReceived/cumulativeInvoiced 均取自同一合同累计列快照），真实数据互证待双机部署后抽查 _需求: R3/R5_
+- [ ] 1.14 zwi-reviewer 独立审阅 → 提交（push 前向用户复述代价） _需求: 全部_
+
+## 阶段二（P0-2）应付侧
+
+- [ ] 2.1 V2026_115 双轨：biz_payable + biz_payable_write_off + biz_project.payable_amount _需求: R4_
+- [ ] 2.2 PayableService（generate 幂等/FIFO writeOff/反冲/aging 五桶/项目双写不变量）+ 单测 4 类路径 _需求: R4_
+- [ ] 2.3 存量回填（sumPayableOutstanding 合同粒度转台账粒度，幂等可重跑） _需求: R4_
+- [ ] 2.4 在途占用：SUM(SUBMITTED) 聚合 + validatePaymentLimit 三段硬拦截 + 付款申请列表三列 _需求: R4_
+- [ ] 2.5 应付台账页（复刻 receivable + ZwListPage）+ V2026_116 菜单（role_code 绑定） _需求: R4_
+- [ ] 2.6 进项发票页台账化（税额四件套/查验状态列 + 汇总行） _需求: R3_
+- [ ] 2.7 项目详情临时"项目经营"页签（嵌 cockpit/project-operation 按 projectId 过滤） _需求: R3_
+- [ ] 2.8 验收：CI mvn + L4 9999 应付断言 + R7 只读复核（新生效 vs 新失败辨析）+ 审阅门 + 双机部署验证 _需求: R4_
+
+## 阶段三（P1）一本账 + 表单契约 + 抄送/OCR
+
+- [ ] 3.1 ProjectOnebookService 只读聚合端点（六条线） _需求: R3_
+- [ ] 3.2 项目详情页签接 onebook；驾驶舱项目经营补落袋口径 _需求: R3_
+- [ ] 3.3 ZwFormPane 契约组件 + 样板 3 表单（付款申请/分包合同/分包结算） _需求: R5_
+- [ ] 3.4 ZwDetailTable（模板导入/重置/行合计）自 budget/index 上提 _需求: R5_
+- [ ] 3.5 修订行操作（合同/成本变更单/支出合同族，对接 V2026_106 修订机制） _需求: R5_
+- [ ] 3.6 抄送功能（cc 记录表 + 审批弹窗选抄送人 + 站内信真实链路 + 审批中心第四页签） _需求: R5_
+- [ ] 3.7 发票 OCR 选型决策 + 进项发票三入口 _需求: R3_
+- [ ] 3.8 ZwListPage 第二批 ~20 页铺设 + 验收 _需求: R5_
+
+## 阶段四（P2，仅条目）
+
+- [ ] 4.1 sys_menu 二级目录方案 B + 权限三件套 + 双机台账
+- [ ] 4.2 剩余列表页铺设 / 大表单路由化 / 供应商七档页签 / 月度经营分析迁域
+
+## 受阻项登记表
+
+| 日期 | 层级 | 任务项 | 分类 | 原因 | 影响范围 | 处置决策/决策人 | 状态 |
+|---|---|---|---|---|---|---|---|
+| 2026-10-18 | 阶段一 | A/B/C 三线并行施工 | DEP | 子智能体模型通道 127.0.0.1:8790 拒连，三个 zwi-builder 全部中断（零写入，git 干净） | 阶段一编排（并行→串行） | 主会话接手按 A→B→C 串行实施/主会话 | 进行中 |

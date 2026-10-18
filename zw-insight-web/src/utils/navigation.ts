@@ -120,7 +120,9 @@ export function buildNavigation(routes: readonly RouteRecordRaw[], menus: readon
         title,
         icon: typeof route.meta?.icon === 'string' ? route.meta.icon : undefined,
         domain: domain.key,
-        section: section || '经营概览',
+        // 侧边栏分组标题：优先取路由自身 meta.group（如财务域 收入/支出/资金 七分组），
+        // 无 group 时沿用父路由标题（模块名）作 section（术语表 §三）。
+        section: (typeof route.meta?.group === 'string' && route.meta.group.trim()) || section || '经营概览',
         order: routeOrder++
       })
     }

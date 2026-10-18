@@ -8,18 +8,7 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 140px">
-            <el-option label="草稿" value="DRAFT" />
-            <el-option label="已报备" value="FILED" />
-            <el-option label="招标中" value="TENDERING" />
-            <el-option label="已中标" value="WON" />
-            <el-option label="已落标" value="LOST" />
-            <el-option label="施工中" value="CONSTRUCTION" />
-            <el-option label="已暂停" value="PAUSED" />
-            <el-option label="已竣工" value="COMPLETED" />
-            <el-option label="结项审批中" value="CLOSING" />
-            <el-option label="已关闭" value="CLOSED" />
-            <el-option label="终止审批中" value="TERMINATING" />
-            <el-option label="已终止" value="TERMINATED" />
+            <el-option v-for="(s, key) in PROJECT_STATUS" :key="key" :label="s.label" :value="key" />
           </el-select>
         </el-form-item>
         <el-form-item label="项目类型">
@@ -71,8 +60,8 @@
             <el-table-column v-if="columnVisible[1]" prop="projectName" label="项目名称" min-width="200" show-overflow-tooltip />
             <el-table-column v-if="columnVisible[2]" prop="projectNature" label="项目性质" width="100" />
             <el-table-column v-if="columnVisible[3]" prop="projectType" label="项目类型" width="100" />
-            <el-table-column v-if="columnVisible[4]" prop="ownerCompanyName" label="业主单位" width="150" show-overflow-tooltip />
-            <el-table-column v-if="columnVisible[5]" prop="signingCompanyName" label="签约公司" width="150" show-overflow-tooltip />
+            <el-table-column v-if="columnVisible[4]" prop="ownerCompanyName" label="建设单位" width="150" show-overflow-tooltip />
+            <el-table-column v-if="columnVisible[5]" prop="signingCompanyName" label="施工单位" width="150" show-overflow-tooltip />
             <el-table-column v-if="columnVisible[6]" label="状态" width="90" align="center">
               <template #default="{ row }">
                 <el-tag :type="getStatusType(row.status)" size="small">
@@ -121,6 +110,7 @@ import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
+import { PROJECT_STATUS, labelOf, typeOf } from '@/constants/biz-labels'
 import { toWan } from '@/utils/chart-format'
 
 // 列显隐配置（S2.1）：按 project-table 持久化 localStorage
@@ -129,8 +119,8 @@ const projectColumns = [
   { key: 'projectName', label: '项目名称' },
   { key: 'projectNature', label: '项目性质' },
   { key: 'projectType', label: '项目类型' },
-  { key: 'ownerCompanyName', label: '业主单位' },
-  { key: 'signingCompanyName', label: '签约公司' },
+  { key: 'ownerCompanyName', label: '建设单位' },
+  { key: 'signingCompanyName', label: '施工单位' },
   { key: 'status', label: '状态' },
   { key: 'createdAt', label: '创建时间' },
 ]
@@ -151,27 +141,12 @@ const queryParams = ref({
   projectType: ''
 })
 
-const statusMap: Record<string, { label: string; type: string }> = {
-  DRAFT: { label: '草稿', type: 'info' },
-  FILED: { label: '已报备', type: 'primary' },
-  TENDERING: { label: '招标中', type: 'warning' },
-  WON: { label: '已中标', type: 'success' },
-  LOST: { label: '已落标', type: 'info' },
-  CONSTRUCTION: { label: '施工中', type: '' },
-  PAUSED: { label: '已暂停', type: 'warning' },
-  COMPLETED: { label: '已竣工', type: 'success' },
-  CLOSING: { label: '结项审批中', type: 'warning' },
-  CLOSED: { label: '已关闭', type: 'danger' },
-  TERMINATING: { label: '终止审批中', type: 'warning' },
-  TERMINATED: { label: '已终止', type: 'danger' }
-}
-
 function getStatusLabel(status: string) {
-  return statusMap[status]?.label || status
+  return labelOf(PROJECT_STATUS, status)
 }
 
 function getStatusType(status: string) {
-  return (statusMap[status]?.type || 'info') as any
+  return typeOf(PROJECT_STATUS, status)
 }
 
 async function loadData() {

@@ -14,6 +14,8 @@ declare module 'vue-router' {
     hidden?: boolean
     /** 访问该路由所需的权限标识（单个或多个，满足其一即可） */
     permission?: string | string[]
+    /** 侧边栏分组标题（utils/navigation.ts 的 section 优先取此值，如财务域 收入/支出/资金） */
+    group?: string
   }
 }
 

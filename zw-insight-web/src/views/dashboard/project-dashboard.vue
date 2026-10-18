@@ -272,6 +272,7 @@ import { toAmount2, toWan, clampPercent, nonNegativeRemaining, formatWan } from 
 import { useAppStore } from '@/stores/app'
 import ZwStateIllustration from '@/components/visual/ZwStateIllustration.vue'
 import { pickChartTheme, applyChartTheme } from '@/constants/chart-theme'
+import { PROJECT_STATUS as PROJECT_STATUS_MAP, labelOf, typeOf } from '@/constants/biz-labels'
 
 const appStore = useAppStore()
 const route = useRoute()
@@ -290,33 +291,24 @@ const selectedProjectId = ref<number | string | undefined>(initialProjectId)
 
 // ======================== 项目墙（L1）：卡片网格即看板入口 ========================
 
-// 项目状态映射：与 views/project/index.vue statusMap 同源镜像（8 态）
-const PROJECT_STATUS: Record<string, { label: string; type: string }> = {
-  DRAFT: { label: '草稿', type: 'info' },
-  FILED: { label: '已报备', type: 'primary' },
-  TENDERING: { label: '招标中', type: 'warning' },
-  WON: { label: '已中标', type: 'success' },
-  CONSTRUCTION: { label: '施工中', type: '' },
-  COMPLETED: { label: '已竣工', type: 'success' },
-  CLOSING: { label: '结项审批中', type: 'warning' },
-  CLOSED: { label: '已关闭', type: 'danger' }
-}
+// 项目状态映射：唯一源 @/constants/biz-labels（与 views/project/index.vue 同源）
+const PROJECT_STATUS = PROJECT_STATUS_MAP
 function statusLabel(status: string) {
-  return PROJECT_STATUS[status]?.label || status
+  return labelOf(PROJECT_STATUS, status) || status
 }
 function statusType(status: string) {
-  return (PROJECT_STATUS[status]?.type || 'info') as any
+  return typeOf(PROJECT_STATUS, status) as any
 }
 
 // 状态筛选 chips（高频业务态优先；全部 = 空）
 const WALL_STATUS = [
   { value: '', label: '全部' },
-  { value: 'CONSTRUCTION', label: '施工中' },
+  { value: 'CONSTRUCTION', label: '在建' },
   { value: 'COMPLETED', label: '已竣工' },
-  { value: 'TENDERING', label: '招标中' },
-  { value: 'WON', label: '已中标' },
-  { value: 'FILED', label: '已报备' },
-  { value: 'CLOSED', label: '已关闭' }
+  { value: 'TENDERING', label: '投标中' },
+  { value: 'WON', label: '待开工' },
+  { value: 'FILED', label: '已立项' },
+  { value: 'CLOSED', label: '已结项' }
 ]
 
 const wallLoading = ref(false)

@@ -112,16 +112,19 @@
 </template>
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
 import { getApprovalTrace, getTodoTasks, getDoneTasks, getMyInitiatedProcesses, getApprovalDetail, getBusinessDetail, claimTask, completeTask, rejectToPrevious, rejectToStart, terminateProcess, batchApprove } from '@/api/workflow'
 import { getPaymentApplyDetail } from '@/api/finance'
+const route = useRoute()
 import { getProjectDetail } from '@/api/project'
 import { approvalBlock, batchBlock, money, validId, businessTypeName, formatTime, PAYMENT_TYPE } from './approval'
 const approvalColumns = [{ key: 'taskName', label: '任务名称' }, { key: 'businessType', label: '业务类型' }, { key: 'initiator', label: '发起人' }, { key: 'createTime', label: '创建时间' }]
 const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('approval-table', approvalColumns)
-const activeTab = ref('todo'), loading = ref(false), listError = ref(''), tableData = ref<any[]>([]), total = ref(0), selectedRows = ref<any[]>([])
+// 支持 ?tab=todo|done|initiated 直达（首页工作台卡点击跳入）；route 防御式访问（无 router plugin 环境为 undefined）
+const activeTab = ref(['todo', 'done', 'initiated'].includes(route?.query?.tab as string) ? (route.query.tab as string) : 'todo'), loading = ref(false), listError = ref(''), tableData = ref<any[]>([]), total = ref(0), selectedRows = ref<any[]>([])
 const queryParams = ref({ page: 1, size: 10 }), tableRef = ref<any>(), tableRegion = ref<HTMLElement>(), currentRowIndex = ref(-1)
 const drawerVisible = ref(false), detailLoading = ref(false), detailError = ref(''), detail = ref<any>(null), payment = ref<any>(null), projectName = ref(''), currentTaskId = ref(''), comment = ref(''), rejectType = ref('previous'), submitLoading = ref(false)
 const biz = ref<any>(null), bizLoading = ref(false), bizError = ref('')

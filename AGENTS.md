@@ -269,6 +269,10 @@ npm test                # 规则/评分/合并单元测试
 
 以下约定在 AI 代理协作开发中必须遵守：
 
+### 0. 业务术语基准（2026-10-18 起）
+
+菜单名、页面标题、状态标签、金额列名必须与 [`docs/术语表.md`](docs/术语表.md) 一致；前端状态/类别枚举显示一律取 `zw-insight-web/src/constants/biz-labels.ts`（唯一源），禁止在 `.vue` 模板内手写状态映射。状态改名只动显示层，不动 DB 枚举值。改动后运行 `cd zw-insight-web && npm run check:labels` 自查（warn-only）。spec：`.kiro/specs/finance-clarity-terminology-ui/`。
+
 ### 1. 真实接口，不用假数据
 
 所有业务开发必须对接真实后端接口。禁止使用 mock 数据或静默 fallback。可以有备选方案，但不能用完全不真实的数据来实现功能。

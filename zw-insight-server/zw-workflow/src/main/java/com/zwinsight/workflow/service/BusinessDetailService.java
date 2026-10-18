@@ -62,7 +62,7 @@ public class BusinessDetailService {
         REFS.put("REF_POST", new String[]{"sys_post", "post_name"});
         REFS.put("REF_TEAM", new String[]{"biz_team", "team_name"});
 
-        spec("CONSTRUCTION_CONTRACT", "施工合同", "biz_construction_contract",
+        spec("CONSTRUCTION_CONTRACT", "施工总承包合同", "biz_construction_contract",
                 f("contract_code", "合同编号", "T"), f("project_name", "所属项目", "T"),
                 f("contract_type", "合同类型", "T"), f("party_a_name", "甲方", "T"),
                 f("contract_amount", "合同金额", "M"), f("tax_rate", "税率", "P"),
@@ -144,7 +144,7 @@ public class BusinessDetailService {
         spec("LABOR_REWARD_PUNISH", "劳务奖惩", "biz_labor_reward_punish",
                 f("project_id", "所属项目", "REF_PROJECT"), f("contract_id", "劳务合同", "REF_LC"),
                 f("rp_type", "奖惩类型", "T"), f("amount", "金额", "M"), f("reason", "原因", "T"));
-        spec("MACHINE_CONTRACT", "机械合同", "biz_machine_contract",
+        spec("MACHINE_CONTRACT", "机械租赁合同", "biz_machine_contract",
                 f("contract_code", "合同编号", "T"), f("contract_name", "合同名称", "T"),
                 f("project_id", "所属项目", "REF_PROJECT"), f("supplier_name", "出租方", "T"),
                 f("machine_name", "机械名称", "T"), f("rental_type", "计价方式", "T"),
@@ -167,7 +167,7 @@ public class BusinessDetailService {
                 f("project_id", "所属项目", "REF_PROJECT"), f("deposit_amount", "保证金金额", "M"),
                 f("payment_date", "缴纳日期", "D"));
         spec("PROJECT_CLOSE", "项目结项", "biz_project", projectFields());
-        spec("PROJECT_FILING", "项目报备", "biz_project", projectFields());
+        spec("PROJECT_FILING", "项目立项", "biz_project", projectFields());
         spec("PROJECT_TERMINATE", "项目终止", "biz_project", projectFields());
         spec("ENTRY_APPLY", "入职申请", "biz_entry_apply",
                 f("real_name", "姓名", "T"), f("username", "登录账号", "T"), f("gender", "性别", "T"),

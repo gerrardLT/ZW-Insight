@@ -45,6 +45,7 @@ public class SubcontractSettlementService {
     private final BizSubcontractSettlementMapper settlementMapper;
     private final SubcontractSettlementDetailMapper detailMapper;
     private final BizSubcontractMapper subcontractMapper;
+    private final com.zwinsight.file.service.SerialNumberService serialNumberService;
 
     public PageResult<BizSubcontractSettlement> page(int page, int size, Long projectId, Long contractId, String status) {
         Page<BizSubcontractSettlement> pageParam = new Page<>(page, size);
@@ -69,10 +70,11 @@ public class SubcontractSettlementService {
     public Long createSettlement(SubcontractSettlementCreateRequest request) {
         // 审计缺陷 D5 修复（2026-08-17）：校验结算单项目与合同归属一致，防跨项目错挂污染支出台账
         validateContractProjectMatch(request.getContractId(), request.getProjectId());
-        // 1. 创建结算单主表
+        // 1. 创建结算单主表（单号 V2026_114：新建生成，编辑不改号）
         BizSubcontractSettlement settlement = new BizSubcontractSettlement();
         settlement.setContractId(request.getContractId());
         settlement.setProjectId(request.getProjectId());
+        settlement.setSettlementCode(serialNumberService.generate("SUBCONTRACT_SETTLEMENT"));
         settlement.setStatus("DRAFT");
         settlement.setSettlementAmount(BigDecimal.ZERO);
         settlementMapper.insert(settlement);

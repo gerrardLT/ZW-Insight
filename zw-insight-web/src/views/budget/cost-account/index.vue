@@ -17,7 +17,7 @@
             <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="费用类别">
+        <el-form-item label="成本类别">
           <el-select v-model="queryParams.costCategory" placeholder="全部" clearable style="width: 140px">
             <el-option v-for="(label, value) in CATEGORY_LABELS" :key="value" :label="label" :value="value" />
           </el-select>
@@ -113,8 +113,8 @@
       >
         <el-table-column type="selection" width="46" :selectable="isSelectable" />
         <el-table-column prop="accountCode" label="编码" width="140" fixed="left" />
-        <el-table-column prop="accountName" label="账户名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="costCategory" label="费用类别" width="110" align="center">
+        <el-table-column prop="accountName" label="成本科目名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="costCategory" label="成本类别" width="110" align="center">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{ CATEGORY_LABELS[row.costCategory] || row.costCategory }}</el-tag>
           </template>
@@ -198,10 +198,10 @@
         <el-form-item label="账户编码" prop="accountCode">
           <el-input v-model="formData.accountCode" placeholder="如 01 / 01.02 / 01.02.03" maxlength="50" />
         </el-form-item>
-        <el-form-item label="账户名称" prop="accountName">
+        <el-form-item label="成本科目名称" prop="accountName">
           <el-input v-model="formData.accountName" placeholder="如 主体结构-混凝土" maxlength="200" />
         </el-form-item>
-        <el-form-item label="费用类别" prop="costCategory">
+        <el-form-item label="成本类别" prop="costCategory">
           <el-select v-model="formData.costCategory" placeholder="请选择" style="width: 100%">
             <el-option v-for="(label, value) in CATEGORY_LABELS" :key="value" :label="label" :value="value" />
           </el-select>
@@ -385,7 +385,7 @@ import { toWan, clampPercent } from '@/utils/chart-format'
 // 路由实例（承接外部跳转携带的 projectId 查询参数）
 const route = useRoute()
 
-/** 费用类别：与后端 biz_cost_account.cost_category 枚举严格一致 */
+/** 成本类别：与后端 biz_cost_account.cost_category 枚举严格一致 */
 const CATEGORY_LABELS: Record<string, string> = {
   MATERIAL: '材料费',
   LABOR: '人工费',
@@ -478,8 +478,8 @@ const formData = reactive({
 
 const formRules: FormRules = {
   accountCode: [{ required: true, message: '请输入账户编码', trigger: 'blur' }],
-  accountName: [{ required: true, message: '请输入账户名称', trigger: 'blur' }],
-  costCategory: [{ required: true, message: '请选择费用类别', trigger: 'change' }]
+  accountName: [{ required: true, message: '请输入成本科目名称', trigger: 'blur' }],
+  costCategory: [{ required: true, message: '请选择成本类别', trigger: 'change' }]
 }
 
 const dialogTitle = computed(() => (editingId.value ? '编辑成本账户' : '新增成本账户'))

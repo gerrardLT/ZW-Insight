@@ -179,8 +179,8 @@ describe('project/detail.vue 账本补测（@matrix A3）', () => {
     const w = await mountDetail({ id: 3, projectName: 'P3', status: 'DRAFT', budgetAmount: 0 })
     // el-descriptions 渲染为 table：label/content 均为 .el-descriptions__cell
     const cells = w.findAll('.el-descriptions__cell')
-    const idx = cells.findIndex((c: any) => c.text().includes('预算金额'))
-    expect(idx, '应存在预算金额描述项').toBeGreaterThanOrEqual(0)
+    const idx = cells.findIndex((c: any) => c.text().includes('项目预算（目标成本）'))
+    expect(idx, '应存在项目预算（目标成本）描述项').toBeGreaterThanOrEqual(0)
     expect(cells[idx + 1].text()).toContain('0')
   })
 

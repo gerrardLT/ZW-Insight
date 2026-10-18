@@ -69,12 +69,12 @@
             <el-descriptions-item label="项目名称">{{ projectInfo.projectName }}</el-descriptions-item>
             <el-descriptions-item label="项目性质">{{ projectInfo.projectNature }}</el-descriptions-item>
             <el-descriptions-item label="项目类型">{{ projectInfo.projectType }}</el-descriptions-item>
-            <el-descriptions-item label="业主单位">{{ projectInfo.ownerCompanyName }}</el-descriptions-item>
-            <el-descriptions-item label="签约公司">{{ projectInfo.signingCompanyName }}</el-descriptions-item>
-            <el-descriptions-item label="项目地址">{{ projectInfo.projectAddress }}</el-descriptions-item>
+            <el-descriptions-item label="建设单位（发包人）">{{ projectInfo.ownerCompanyName }}</el-descriptions-item>
+            <el-descriptions-item label="施工单位（承包人）">{{ projectInfo.signingCompanyName }}</el-descriptions-item>
+            <el-descriptions-item label="工程地点">{{ projectInfo.projectAddress }}</el-descriptions-item>
             <el-descriptions-item label="联系人">{{ projectInfo.contactName }}</el-descriptions-item>
             <el-descriptions-item label="联系电话">{{ projectInfo.contactPhone }}</el-descriptions-item>
-            <el-descriptions-item label="预算金额">
+            <el-descriptions-item label="项目预算（目标成本）">
               <span class="stat-number text-brand font-semibold">{{ projectInfo.budgetAmount != null ? (projectInfo.budgetAmount === 0 ? '0' : '¥ ' + projectInfo.budgetAmount) : '-' }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="状态">
@@ -111,7 +111,7 @@
               <span class="text-danger">{{ projectInfo.terminateReason }}</span>
             </el-descriptions-item>
 
-            <el-descriptions-item label="项目概述" :span="2">{{ projectInfo.projectOverview || '暂无描述' }}</el-descriptions-item>
+            <el-descriptions-item label="工程概况" :span="2">{{ projectInfo.projectOverview || '暂无描述' }}</el-descriptions-item>
           </el-descriptions>
         </el-tab-pane>
 
@@ -135,7 +135,7 @@
                     <el-tag size="small" type="info">{{ getStatusLabel(log.fromStatus || '') || '起点' }}</el-tag>
                     <span class="timeline-arrow">➔</span>
                     <el-tag size="small" :type="getStatusType(log.toStatus)">{{ getStatusLabel(log.toStatus) }}</el-tag>
-                    <span class="timeline-event">事件：{{ log.event }}</span>
+                    <span class="timeline-event">事件：{{ getEventLabel(log.event) }}</span>
                   </div>
                   <div v-if="log.remark" class="timeline-remark">
                     备注：{{ log.remark }}
@@ -196,6 +196,7 @@ import type { ProjectStatusLog, ProjectChangeLog } from '@/types/project'
 import ProjectMember from './components/ProjectMember.vue'
 import ProjectBusinessSummary from './components/ProjectBusinessSummary.vue'
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
+import * as bizLabels from '@/constants/biz-labels'
 
 const route = useRoute()
 const router = useRouter()
@@ -212,30 +213,22 @@ const changeLogsLoading = ref(false)
 
 const fieldNameMap: Record<string, string> = {
   projectName: '项目名称',
-  ownerCompanyId: '业主单位ID',
-  ownerCompanyName: '业主单位名称',
-  signingCompanyId: '签约公司ID',
-  signingCompanyName: '签约公司名称',
-  budgetAmount: '预算金额',
-  contractAmount: '合同金额',
+  ownerCompanyId: '建设单位ID',
+  ownerCompanyName: '建设单位名称',
+  signingCompanyId: '施工单位ID',
+  signingCompanyName: '施工单位名称',
+  budgetAmount: '项目预算（目标成本）',
+  contractAmount: '签约合同价',
   plannedStartDate: '计划开工日期',
   plannedEndDate: '计划竣工日期',
-  needTender: '是否招标'
+  needTender: '是否需要招标'
 }
 
-const statusMap: Record<string, { label: string; type: string }> = {
-  DRAFT: { label: '草稿', type: 'info' },
-  FILED: { label: '已报备', type: 'primary' },
-  TENDERING: { label: '招标中', type: 'warning' },
-  WON: { label: '已中标', type: 'success' },
-  LOST: { label: '已落标', type: 'info' },
-  CONSTRUCTION: { label: '施工中', type: '' },
-  PAUSED: { label: '已暂停', type: 'warning' },
-  COMPLETED: { label: '已竣工', type: 'success' },
-  CLOSING: { label: '结项审批中', type: 'warning' },
-  CLOSED: { label: '已关闭', type: 'danger' },
-  TERMINATING: { label: '终止审批中', type: 'warning' },
-  TERMINATED: { label: '已终止', type: 'danger' }
+// 状态显示名与徽章色唯一源：@/constants/biz-labels（术语表 §四）
+const { PROJECT_STATUS, PROJECT_EVENT, labelOf, typeOf } = bizLabels
+
+function getEventLabel(event: string) {
+  return PROJECT_EVENT[event] ?? event
 }
 
 const canTerminate = computed(() => {
@@ -244,11 +237,11 @@ const canTerminate = computed(() => {
 })
 
 function getStatusLabel(status: string) {
-  return statusMap[status]?.label || status || ''
+  return labelOf(PROJECT_STATUS, status) || status || ''
 }
 
 function getStatusType(status: string) {
-  return (statusMap[status]?.type || 'info') as any
+  return typeOf(PROJECT_STATUS, status) as any
 }
 
 async function loadDetail() {

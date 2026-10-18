@@ -56,6 +56,7 @@ vi.mock('@/stores/app', () => ({
   useAppStore: () => ({ isDark: false }),
 }))
 import ProjectIndex from '@/views/project/index.vue'
+import { PROJECT_STATUS } from '@/constants/biz-labels'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -101,13 +102,15 @@ describe('project/index.vue 账本补测（@matrix A1）', () => {
     expect((mockProjectPage.mock.calls[0] as any[])[0].status).toBe('CONSTRUCTION')
   })
 
-  it('@matrix A1-03 状态下拉提供 8 枚举选项', async () => {
-    // el-option teleport 到 body，happy-dom 下容器外不可见；从模板源码静态钉住
-    // 8 枚举与下拉渲染成对出现（源码 index.vue 筛选区状态 select）
+  it('@matrix A1-03 状态下拉由唯一源 biz-labels 渲染（12 枚举）', async () => {
+    // el-option teleport 到 body，happy-dom 下不可见；源码钉住：状态下拉 v-for 唯一源
+    // @/constants/biz-labels 的 PROJECT_STATUS（12 态），模板内不得再手写枚举选项
     const tpl = readFileSync(resolve(__testDir, '../views/project/index.vue'), 'utf-8')
     const statusSelect = tpl.match(/<el-select v-model="queryParams\.status"[\s\S]*?<\/el-select>/)?.[0] || ''
-    for (const s of ['DRAFT', 'FILED', 'TENDERING', 'WON', 'CONSTRUCTION', 'COMPLETED', 'CLOSING', 'CLOSED']) {
-      expect(statusSelect, `状态下拉应含 ${s}`).toContain(`value="${s}"`)
+    expect(statusSelect).toContain('v-for="(s, key) in PROJECT_STATUS"')
+    const labels = Object.values(PROJECT_STATUS).map((v: any) => v.label)
+    for (const label of ['草稿', '已立项', '投标中', '待开工', '未中标', '在建', '停工', '已竣工', '结项审批中', '已结项', '终止审批中', '已终止']) {
+      expect(labels, `PROJECT_STATUS 应含 ${label}`).toContain(label)
     }
   })
 
@@ -187,7 +190,7 @@ describe('project/index.vue 账本补测（@matrix A1）', () => {
     ]
     const w = await mountPage(rows)
     const tags = w.findAll('.el-table__row .el-tag').map((t: any) => t.text())
-    expect(tags).toEqual(['草稿', '已报备', '招标中', '已中标', '施工中', '已竣工', '结项审批中', '已关闭'])
+    expect(tags).toEqual(['草稿', '已立项', '投标中', '待开工', '在建', '已竣工', '结项审批中', '已结项'])
   })
 
   it('@matrix A-X4 删除失败（引用拦截）时前端不吞错——delete reject 向外抛出', async () => {

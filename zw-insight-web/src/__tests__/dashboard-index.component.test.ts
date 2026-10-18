@@ -47,6 +47,18 @@ const {
 vi.mock('@/api/dashboard', () => ({
   getCompanyOverview: mockGetCompanyOverview,
 }))
+// 今日工作台四计数（C 线新增）：空数据 total=0，不让组件打真实网络
+vi.mock('@/api/workflow', () => ({
+  getTodoTasks: vi.fn().mockResolvedValue({ code: 200, data: { records: [], total: 0 } }),
+  getDoneTasks: vi.fn().mockResolvedValue({ code: 200, data: { records: [], total: 0 } }),
+  getMyInitiatedProcesses: vi.fn().mockResolvedValue({ code: 200, data: { records: [], total: 0 } }),
+}))
+vi.mock('@/api/message', () => ({
+  getUnreadCount: vi.fn().mockResolvedValue({ code: 200, data: 0 }),
+}))
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
 vi.mock('@/api/finance', () => ({
   getOverdueRetention: mockGetOverdueRetention,
 }))
@@ -145,14 +157,14 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
   it('饼图将 statusDistribution Map 转为 [{name,value}]', async () => {
     mockGetCompanyOverview.mockResolvedValue({
       code: 200,
-      data: { statusDistribution: { '施工中': 3, '已竣工': 2, '报备中': 1 } },
+      data: { statusDistribution: { '在建': 3, '已竣工': 2, '报备中': 1 } },
     })
     await mountPage()
     const pie = chartInstances[0]
     const opt = pie.setOption.mock.calls[pie.setOption.mock.calls.length - 1][0]
     expect(opt.series[0].type).toBe('pie')
     expect(opt.series[0].data).toEqual([
-      { name: '施工中', value: 3 },
+      { name: '在建', value: 3 },
       { name: '已竣工', value: 2 },
       { name: '报备中', value: 1 },
     ])
@@ -191,7 +203,7 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
     expect(pie).toBeDefined()
     const opt = pie.setOption.mock.calls[pie.setOption.mock.calls.length - 1][0]
     expect(opt.series[0].type).toBe('pie')
-    // 空图兜底：草稿/施工中/已竣工 value 全 0
+    // 空图兜底：草稿/在建/已竣工 value 全 0
     expect(opt.series[0].data.every((d: any) => d.value === 0)).toBe(true)
   })
 

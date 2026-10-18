@@ -65,12 +65,12 @@ describe('composables/useDict', () => {
   })
 
   it('getLabel：命中返回 label / 未命中原样字符串化 / null 返回空串', async () => {
-    mockDictApi.mockResolvedValue({ data: [{ itemName: '施工中', itemValue: 1 }] } as any)
+    mockDictApi.mockResolvedValue({ data: [{ itemName: '在建', itemValue: 1 }] } as any)
     const { getLabel, load } = useDict('x', false)
     await load()
 
-    expect(getLabel(1)).toBe('施工中')
-    expect(getLabel('1')).toBe('施工中')   // 字符串宽松匹配
+    expect(getLabel(1)).toBe('在建')
+    expect(getLabel('1')).toBe('在建')   // 字符串宽松匹配
     expect(getLabel(999)).toBe('999')       // 未命中原样返回
     expect(getLabel(null)).toBe('')
     expect(getLabel(undefined)).toBe('')

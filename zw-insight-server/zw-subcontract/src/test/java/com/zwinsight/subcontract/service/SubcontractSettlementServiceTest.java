@@ -37,12 +37,13 @@ class SubcontractSettlementServiceTest {
     @Mock private BizSubcontractSettlementMapper settlementMapper;
     @Mock private SubcontractSettlementDetailMapper detailMapper;
     @Mock private BizSubcontractMapper subcontractMapper;
+    @Mock private com.zwinsight.file.service.SerialNumberService serialNumberService;
 
     private SubcontractSettlementService subSettlementService;
 
     @BeforeEach
     void setUp() {
-        subSettlementService = new SubcontractSettlementService(settlementMapper, detailMapper, subcontractMapper);
+        subSettlementService = new SubcontractSettlementService(settlementMapper, detailMapper, subcontractMapper, serialNumberService);
     }
 
     @Test
@@ -71,12 +72,69 @@ class SubcontractSettlementServiceTest {
             return 1;
         }).when(settlementMapper).insert(any(BizSubcontractSettlement.class));
 
+        when(serialNumberService.generate("SUBCONTRACT_SETTLEMENT")).thenReturn("FBJS202601010001");
+
         Long id = subSettlementService.createSettlement(request);
 
         assertThat(id).isNotNull();
-        verify(settlementMapper).insert(any());
+        verify(serialNumberService).generate("SUBCONTRACT_SETTLEMENT");
+        org.mockito.ArgumentCaptor<BizSubcontractSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BizSubcontractSettlement.class);
+        verify(settlementMapper).insert(captor.capture());
+        assertThat(captor.getValue().getSettlementCode()).isEqualTo("FBJS202601010001");
         verify(detailMapper).insert(any());
         verify(settlementMapper).updateById(any()); // 更新总金额
+    }
+
+    @Test
+    @DisplayName("创建结算单：编号服务抛异常时创建整体失败（单号是创建必要条件）")
+    void testCreateSettlement_serialFailFailsCreation() {
+        SubcontractSettlementCreateRequest request = new SubcontractSettlementCreateRequest();
+        request.setContractId(1L);
+        request.setProjectId(10L);
+        request.setDetails(List.of());
+
+        BizSubcontract contract = new BizSubcontract();
+        contract.setId(1L);
+        contract.setProjectId(10L);
+        when(subcontractMapper.selectById(1L)).thenReturn(contract);
+        when(serialNumberService.generate("SUBCONTRACT_SETTLEMENT"))
+                .thenThrow(new BusinessException("编号规则未配置"));
+
+        assertThatThrownBy(() -> subSettlementService.createSettlement(request))
+                .isInstanceOf(BusinessException.class);
+        verify(settlementMapper, never()).insert(any(BizSubcontractSettlement.class));
+    }
+
+    @Test
+    @DisplayName("更新结算单：单号保持不变（编辑不改号）")
+    void testUpdateSettlement_keepsCode() {
+        SubcontractSettlementCreateRequest request = new SubcontractSettlementCreateRequest();
+        request.setContractId(1L);
+        request.setProjectId(10L);
+        request.setDetails(List.of());
+
+        BizSubcontract contract = new BizSubcontract();
+        contract.setId(1L);
+        contract.setProjectId(10L);
+        when(subcontractMapper.selectById(1L)).thenReturn(contract);
+
+        BizSubcontractSettlement existing = new BizSubcontractSettlement();
+        existing.setId(5L);
+        existing.setContractId(1L);
+        existing.setProjectId(10L);
+        existing.setStatus("DRAFT");
+        existing.setSettlementCode("FBJS202601010009");
+        when(settlementMapper.selectById(5L)).thenReturn(existing);
+        when(detailMapper.selectList(any())).thenReturn(List.of());
+
+        subSettlementService.updateSettlement(5L, request);
+
+        verify(serialNumberService, never()).generate(anyString());
+        org.mockito.ArgumentCaptor<BizSubcontractSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BizSubcontractSettlement.class);
+        verify(settlementMapper).updateById(captor.capture());
+        assertThat(captor.getValue().getSettlementCode()).isEqualTo("FBJS202601010009");
     }
 
     @Test

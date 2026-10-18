@@ -18,13 +18,24 @@
         <el-button type="primary" @click="handleAdd">新增机械合同</el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
+      <el-table :data="tableData" v-loading="loading" border show-summary :summary-method="sumFourColumns"><template #append><div class="sum-note">本页合计（非全量）</div></template>
         <el-table-column prop="contractCode" label="合同编号" width="150" />
         <el-table-column prop="contractName" label="合同名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="supplierName" label="设备供应商" width="150" />
         <el-table-column prop="machineName" label="设备名称" width="130" />
-        <el-table-column prop="contractAmount" label="合同金额(元)" width="140" align="right">
+        <el-table-column prop="contractAmount" label="合同金额(元)" width="130" align="right">
           <template #default="{ row }">{{ row.contractAmount?.toLocaleString() }}</template>
+        </el-table-column>
+        <el-table-column prop="cumulativeSettlement" label="累计结算" width="120" align="right">
+          <template #default="{ row }">{{ row.cumulativeSettlement?.toLocaleString() ?? '—' }}</template>
+        </el-table-column>
+        <el-table-column prop="cumulativePaid" label="已付" width="120" align="right">
+          <template #default="{ row }">{{ row.cumulativePaid?.toLocaleString() ?? '—' }}</template>
+        </el-table-column>
+        <el-table-column label="应付未付" width="120" align="right">
+          <template #default="{ row }">{{
+            ((row.cumulativeSettlement ?? 0) - (row.cumulativePaid ?? 0)).toLocaleString()
+          }}</template>
         </el-table-column>
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
@@ -103,6 +114,26 @@ const formRules = { projectId: [{ required: true, message: '请选择项目', tr
 async function loadData() { loading.value = true; try { const res: any = await getMachineContractPage(queryParams.value); tableData.value = res.data?.records || []; total.value = res.data?.total || 0 } finally { loading.value = false } }
 function handleSearch() { queryParams.value.pageNum = 1; loadData() }
 function handleReset() { queryParams.value = { pageNum: 1, pageSize: 10, contractName: '', supplierName: '' }; loadData() }
+
+// 四段金额列本页合计（非全量）：合同额/累计结算/已付/应付未付
+const AMOUNT_KEYS = ['contractAmount', 'cumulativeSettlement', 'cumulativePaid']
+const sum = (rows: any[], key: string) => rows.reduce((acc, r) => acc + Number(r[key] ?? 0), 0)
+function sumFourColumns({ columns }: { columns: any[] }) {
+  const result: string[] = ['本页合计']
+  columns.forEach((col: any, i: number) => {
+    if (i === 0) return
+    const key = col.property && AMOUNT_KEYS.includes(col.property)
+      ? col.property
+      : col.label === '应付未付' ? 'OUTSTANDING' : ''
+    if (!key) { result[i] = ''; return }
+    const val = key === 'OUTSTANDING'
+      ? sum(tableData.value, 'cumulativeSettlement') - sum(tableData.value, 'cumulativePaid')
+      : sum(tableData.value, key)
+    result[i] = val.toLocaleString()
+  })
+  return result
+}
+
 function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', supplierName: '', machineName: '', contractAmount: 0, taxRate: undefined as number | undefined, unitPrice: 0.01, rentalType: '月租', startDate: '', endDate: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateMachineContract(formData.value) : await createMachineContract(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
@@ -129,4 +160,6 @@ onMounted(() => { loadData() })
 .machine-contract-container { padding: var(--zw-space-md); }
 .table-toolbar { margin-bottom: var(--zw-space-md); }
 .pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
+
+.sum-note { padding: 4px 12px; font-size: 12px; color: var(--el-text-color-secondary); }
 </style>

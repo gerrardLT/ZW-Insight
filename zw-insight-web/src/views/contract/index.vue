@@ -45,11 +45,7 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 140px">
-            <el-option label="草稿" value="DRAFT" />
-            <el-option label="审批中" value="SUBMITTED" />
-            <el-option label="已生效" value="EFFECTIVE" />
-            <el-option label="已结算" value="SETTLED" />
-            <el-option label="已关闭" value="CLOSED" />
+            <el-option v-for="(s, key) in CONTRACT_STATUS" :key="key" :label="s.label" :value="key" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -100,8 +96,8 @@
             <el-table-column v-for="item in cumulativeColumns" :key="item.key" :prop="item.key" :label="item.label" width="150" align="right">
               <template #default="{ row }">{{ formatMoney(row[item.key]) }}</template>
             </el-table-column>
-            <el-table-column prop="unreceivedAmount" label="合同未收（合同额－回款）" width="210" align="right">
-              <template #default="{ row }">{{ formatMoney(Number(row.contractAmount || 0) - Number(row.cumulativeReceivedAmount || 0)) }}</template>
+            <el-table-column prop="unreceivedAmount" label="未收" width="140" align="right">
+              <template #default="{ row }">{{ formatMoney(unreceivedOf(row)) }}</template>
             </el-table-column>
             <el-table-column label="操作" width="320" fixed="right">
               <template #default="{ row }">
@@ -187,6 +183,7 @@ import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
+import { CONTRACT_STATUS, labelOf, typeOf } from '@/constants/biz-labels'
 import ContractDetailDrawer from './components/ContractDetailDrawer.vue'
 import ContractRevisionDialog from './components/ContractRevisionDialog.vue'
 const revisionDialog = ref<InstanceType<typeof ContractRevisionDialog>>()
@@ -205,16 +202,21 @@ const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSet
 const router = useRouter()
 const loading = ref(false)
 const tableData = ref<any[]>([])
+// 收入六段链（术语表 §五）：签证→产值→结算→开票→回款；未收=合同额+签证−回款
 const cumulativeColumns = [
+  { key: 'cumulativeChangeAmount', label: '累计签证' },
   { key: 'cumulativeOutput', label: '累计产值' },
+  { key: 'cumulativeSettlement', label: '累计结算' },
   { key: 'cumulativeInvoiceAmount', label: '累计开票' },
   { key: 'cumulativeReceivedAmount', label: '累计回款' }
 ]
+const unreceivedOf = (row: any) =>
+  Number(row.contractAmount || 0) + Number(row.cumulativeChangeAmount || 0) - Number(row.cumulativeReceivedAmount || 0)
 function pageSummary({ columns, data }: { columns: { property: string }[]; data: any[] }) {
   const amounts = ['contractAmount', ...cumulativeColumns.map(item => item.key), 'unreceivedAmount']
   return columns.map((column, index) => index === 0 ? '本页合计（非全部）' : amounts.includes(column.property)
     ? formatMoney(data.reduce((sum, row) => sum + (column.property === 'unreceivedAmount'
-      ? Number(row.contractAmount || 0) - Number(row.cumulativeReceivedAmount || 0)
+      ? unreceivedOf(row)
       : Number(row[column.property] || 0)), 0)) : '')
 }
 const total = ref(0)
@@ -251,20 +253,12 @@ const queryParams = ref({
   partyAName: ''
 })
 
-const statusMap: Record<string, { label: string; type: string }> = {
-  DRAFT: { label: '草稿', type: 'info' },
-  SUBMITTED: { label: '审批中', type: 'warning' },
-  EFFECTIVE: { label: '已生效', type: 'success' },
-  SETTLED: { label: '已结算', type: 'primary' },
-  CLOSED: { label: '已关闭', type: 'danger' }
-}
-
 function getStatusLabel(status: string) {
-  return statusMap[status]?.label || status
+  return labelOf(CONTRACT_STATUS, status) || status
 }
 
 function getStatusType(status: string) {
-  return (statusMap[status]?.type || 'info') as any
+  return typeOf(CONTRACT_STATUS, status) as any
 }
 
 function formatMoney(val: number) {

@@ -5,22 +5,22 @@
  * 「独立事实基线」用于校验前端翻译是否正确。基线来源于各页面筛选区
  * <el-option> 的产品声明（与表格内 statusMap 是独立声明），并对照种子数据核对。
  *
- * 断言逻辑：后端返回 record.status = 'CONSTRUCTION' → 表格单元格应显示 '施工中'。
+ * 断言逻辑：后端返回 record.status = 'CONSTRUCTION' → 表格单元格应显示 '在建'。
  * 若前端漏翻译（显示原始 code）或翻译错误，断言即失败并暴露不一致。
  */
 
 /** 项目状态（project/index.vue 筛选区 el-option + statusMap，共 12 态） */
 export const PROJECT_STATUS: Record<string, string> = {
   DRAFT: '草稿',
-  FILED: '已报备',
-  TENDERING: '招标中',
-  WON: '已中标',
-  LOST: '已落标',
-  CONSTRUCTION: '施工中',
-  PAUSED: '已暂停',
+  FILED: '已立项',
+  TENDERING: '投标中',
+  WON: '待开工',
+  LOST: '未中标',
+  CONSTRUCTION: '在建',
+  PAUSED: '停工',
   COMPLETED: '已竣工',
   CLOSING: '结项审批中',
-  CLOSED: '已关闭',
+  CLOSED: '已结项',
   TERMINATING: '终止审批中',
   TERMINATED: '已终止',
 }
@@ -31,7 +31,7 @@ export const CONTRACT_STATUS: Record<string, string> = {
   SUBMITTED: '审批中',
   EFFECTIVE: '已生效',
   SETTLED: '已结算',
-  CLOSED: '已关闭',
+  CLOSED: '已结项',
 }
 
 /** 预算状态（budget/index.vue 筛选区 el-option） */
@@ -109,7 +109,7 @@ export const APPROVAL_STATUS: Record<string, string> = {
   APPROVED: '已通过',
   REJECTED: '已驳回',
   PAID: '已付款',
-  CLOSED: '已关闭',
+  CLOSED: '已结项',
 }
 
 /** 投标报名状态（tender/register.vue statusLabelMap，缺失 code 回退原值） */

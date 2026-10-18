@@ -282,6 +282,7 @@
 
 <script setup lang="ts">
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
+import { CONTRACT_STATUS, PAY_STATUS } from '@/constants/biz-labels'
 import { reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { InfoFilled, QuestionFilled } from '@element-plus/icons-vue'
@@ -557,10 +558,11 @@ function formatDateTime(value: unknown): string {
   return String(value).replace('T', ' ').slice(0, 19)
 }
 
+// 状态显示唯一源 @/constants/biz-labels（CLOSED 统一“已结项”）；组件特有态本地补充
 const STATUS_LABELS: Record<string, string> = {
-  DRAFT: '草稿', SUBMITTED: '审批中', APPROVED: '已审批', REJECTED: '已驳回',
-  EFFECTIVE: '生效', SETTLED: '已结算', CLOSED: '已关闭', TERMINATED: '已终止',
-  RUNNING: '进行中', COMPLETED: '已完成'
+  ...Object.fromEntries(Object.entries(CONTRACT_STATUS).map(([k, v]) => [k, v.label])),
+  APPROVED: '已审批', REJECTED: '已驳回',
+  TERMINATED: '已终止', RUNNING: '进行中', COMPLETED: '已完成'
 }
 
 function statusLabel(status: string | null | undefined): string {
@@ -572,9 +574,10 @@ function traceStatusLabel(status: string): string {
   return status === 'COMPLETED' ? '已完成' : status === 'RUNNING' ? '进行中' : '未知'
 }
 
-const PAY_STATUS_LABELS: Record<string, string> = {
-  UNPAID: '未支付', PARTIAL_PAID: '部分支付', PAID: '已支付'
-}
+// 支付状态显示唯一源 @/constants/biz-labels（未付/部分支付/已付）
+const PAY_STATUS_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(PAY_STATUS).map(([k, v]) => [k, v.label])
+)
 
 function payStatusLabel(v: string): string {
   return PAY_STATUS_LABELS[v] || v

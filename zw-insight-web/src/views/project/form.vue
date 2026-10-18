@@ -53,15 +53,15 @@
           </el-row>
         </div>
 
-        <!-- 单位信息 -->
+        <!-- 参建单位 -->
         <div class="form-section">
-          <div class="section-title"><span class="section-bar"></span>单位信息</div>
+          <div class="section-title"><span class="section-bar"></span>参建单位</div>
           <el-row :gutter="16">
             <el-col :span="12">
-              <el-form-item label="业主单位" prop="ownerCompanyId">
+              <el-form-item label="建设单位（发包人）" prop="ownerCompanyId">
                 <el-select
                   v-model="formData.ownerCompanyId"
-                  placeholder="请选择业主单位"
+                  placeholder="请选择建设单位（发包人）"
                   filterable
                   remote
                   :remote-method="searchOwner"
@@ -74,10 +74,10 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="签约公司" prop="signingCompanyId">
+              <el-form-item label="施工单位（承包人）" prop="signingCompanyId">
                 <el-select
                   v-model="formData.signingCompanyId"
-                  placeholder="请选择签约公司"
+                  placeholder="请选择施工单位（承包人）"
                   filterable
                   style="width: 100%"
                   @change="handleCompanyChange"
@@ -101,25 +101,25 @@
           </el-row>
         </div>
 
-        <!-- 项目详情 -->
+        <!-- 工程概况 -->
         <div class="form-section">
-          <div class="section-title"><span class="section-bar"></span>项目详情</div>
-          <el-form-item label="项目概述">
-            <el-input v-model="formData.projectOverview" type="textarea" :rows="3" placeholder="请输入项目概述" />
+          <div class="section-title"><span class="section-bar"></span>工程概况</div>
+          <el-form-item label="工程概况">
+            <el-input v-model="formData.projectOverview" type="textarea" :rows="3" placeholder="请输入工程概况" />
           </el-form-item>
 
-          <el-form-item label="项目地址">
-            <el-input v-model="formData.projectAddress" placeholder="请输入项目地址" />
+          <el-form-item label="工程地点">
+            <el-input v-model="formData.projectAddress" placeholder="请输入工程地点" />
           </el-form-item>
 
           <el-row :gutter="16">
             <el-col :span="12">
-              <el-form-item label="预算金额">
-                <el-input-number v-model="formData.budgetAmount" :min="0" :precision="2" style="width: 100%" placeholder="请输入预算金额" />
+              <el-form-item label="项目预算（目标成本）">
+                <el-input-number v-model="formData.budgetAmount" :min="0" :precision="2" style="width: 100%" placeholder="请输入项目预算" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="是否招标">
+              <el-form-item label="是否需要招标">
                 <el-radio-group v-model="formData.needTender">
                   <el-radio :value="1">是</el-radio>
                   <el-radio :value="0">否</el-radio>
@@ -207,8 +207,8 @@ const formRules = {
   projectName: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
   projectNature: [{ required: true, message: '请选择项目性质', trigger: 'change' }],
   projectType: [{ required: true, message: '请选择项目类型', trigger: 'change' }],
-  ownerCompanyId: [{ required: true, message: '请选择业主单位', trigger: 'change' }],
-  signingCompanyId: [{ required: true, message: '请选择签约公司', trigger: 'change' }]
+  ownerCompanyId: [{ required: true, message: '请选择建设单位（发包人）', trigger: 'change' }],
+  signingCompanyId: [{ required: true, message: '请选择施工单位（承包人）', trigger: 'change' }]
 }
 
 async function searchOwner(query?: string) {

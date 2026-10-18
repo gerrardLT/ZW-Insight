@@ -111,7 +111,9 @@ const router = useRouter()
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const total = ref(0)
-const activeTab = ref('quality')
+// 双入口共用本页：/site/inspection 默认质量页签，/site/safety-inspection 默认安全页签
+// （currentRoute 防御式访问：单测 mock useRouter 可能不含 currentRoute）
+const activeTab = ref(router.currentRoute?.value?.name === 'SiteSafetyInspection' ? 'safety' : 'quality')
 
 const RECT_MAP: Record<string, { text: string; type: 'success' | 'warning' | 'info' | 'danger' }> = {
   PENDING: { text: '待整改', type: 'warning' },

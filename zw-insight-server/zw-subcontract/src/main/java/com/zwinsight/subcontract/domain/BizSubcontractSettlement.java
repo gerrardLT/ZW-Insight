@@ -21,6 +21,9 @@ public class BizSubcontractSettlement extends BaseEntity {
     /** 合同ID */
     private Long contractId;
 
+    /** 结算单编号（serial_number_rule: SUBCONTRACT_SETTLEMENT/FBJS；V2026_114） */
+    private String settlementCode;
+
     /** 本次结算金额 */
     private BigDecimal settlementAmount;
 

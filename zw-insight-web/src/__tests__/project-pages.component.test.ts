@@ -150,8 +150,8 @@ describe('project/form.vue 项目表单', () => {
     expect(msgs).toContain('请输入项目名称')
     expect(msgs).toContain('请选择项目性质')
     expect(msgs).toContain('请选择项目类型')
-    expect(msgs).toContain('请选择业主单位')
-    expect(msgs).toContain('请选择签约公司')
+    expect(msgs).toContain('请选择建设单位（发包人）')
+    expect(msgs).toContain('请选择施工单位（承包人）')
   })
 })
 

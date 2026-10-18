@@ -14,7 +14,7 @@ const routes: RouteRecordRaw[] = [
     path: '/project',
     meta: { title: '项目管理' },
     children: [
-      { path: 'list', name: 'ProjectList', component: {}, meta: { title: '项目报备', icon: 'Document' } },
+      { path: 'list', name: 'ProjectList', component: {}, meta: { title: '项目台账', icon: 'Document' } },
       { path: 'secret', name: 'Secret', component: {}, meta: { title: '隐藏页', hidden: true } }
     ]
   },
@@ -70,7 +70,7 @@ describe('统一导航纯函数', () => {
       menu({ id: 4, path: '/project/unknown' })
     ])
     expect(result.items.map((item) => item.path)).toEqual(['/project/list'])
-    expect(result.items[0]).toMatchObject({ title: '项目报备', domain: 'business', section: '项目管理' })
+    expect(result.items[0]).toMatchObject({ title: '项目台账', domain: 'business', section: '项目管理' })
     expect(result.domains).toHaveLength(1)
     expect(result.domains[0].sections[0].items).toEqual(result.items)
   })
@@ -83,6 +83,29 @@ describe('统一导航纯函数', () => {
     ])
     expect(result.items[0]).toMatchObject({ path: '/finance/fund/plan', domain: 'finance', section: '资金中心' })
     expect(result.domains[0].sections[0].title).toBe('资金中心')
+  })
+
+  it('路由 meta.group 优先于父级标题作为侧边栏分组（财务域七分组）', () => {
+    const groupedRoutes: RouteRecordRaw[] = [
+      {
+        path: '/finance',
+        meta: { title: '财务管理' },
+        children: [
+          { path: 'invoice-apply', name: 'InvoiceApply', component: {}, meta: { title: '开票申请', group: '收入' } },
+          { path: 'payment-apply', name: 'PaymentApply', component: {}, meta: { title: '付款申请', group: '支出' } },
+          { path: 'fund-plan2', name: 'FundPlan2', component: {}, meta: { title: '资金计划' } }
+        ]
+      }
+    ]
+    const result = buildNavigation(groupedRoutes, [
+      menu({ id: 1, menuType: 'DIR', path: '/finance' }),
+      menu({ id: 2, parentId: 1, path: 'invoice-apply' }),
+      menu({ id: 3, parentId: 1, path: 'payment-apply' }),
+      menu({ id: 4, parentId: 1, path: 'fund-plan2' })
+    ])
+    expect(result.domains[0].sections.map((s) => s.title)).toEqual(['收入', '支出', '财务管理'])
+    expect(result.domains[0].sections[0].items[0].title).toBe('开票申请')
+    expect(result.domains[0].sections[2].items[0].title).toBe('资金计划')
   })
 
   it('系统监控即使授权亦隐藏；所有现有模块根映射到不超过九个业务域', () => {

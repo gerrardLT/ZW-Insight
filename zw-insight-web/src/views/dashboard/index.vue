@@ -32,6 +32,14 @@
       </div>
     </div>
 
+    <!-- 今日工作台（C 线：待办/已办/我发起/未读 计数直达；失败显示 -- 不静默） -->
+    <div class="workbench-row" data-testid="workbench-row">
+      <button v-for="card in workbenchCards" :key="card.label" type="button" class="workbench-card" @click="card.go()">
+        <span class="workbench-value">{{ card.value ?? '—' }}</span>
+        <span class="workbench-label">{{ card.label }}</span>
+      </button>
+    </div>
+
     <!-- 统计卡片（加载态：骨架屏；落定后逐卡错峰入场） -->
     <ZwSkeleton v-if="!statsLoaded" variant="cards" :count="4" />
     <div v-else class="stat-grid">
@@ -121,10 +129,34 @@ import { pickChartTheme, chartAxisStyle, chartTooltipStyle } from '@/constants/c
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import { usePermission } from '@/composables/usePermission'
+import { PROJECT_STATUS as PROJECT_STATUS_MAP, labelOf } from '@/constants/biz-labels'
+import { getTodoTasks, getDoneTasks, getMyInitiatedProcesses } from '@/api/workflow'
+import { getUnreadCount } from '@/api/message'
+import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
 const guideStore = useGuideStore()
+const routeRouter = useRouter()
+
+/* ================= 今日工作台（todo/done/my-initiated/unread，点击直达） ================= */
+const workbench = ref<{ todo: number | null; done: number | null; initiated: number | null; unread: number | null }>({
+  todo: null, done: null, initiated: null, unread: null
+})
+const workbenchCards = computed(() => [
+  { label: '待我审批', value: workbench.value.todo, go: () => routeRouter.push('/workflow/approval?tab=todo') },
+  { label: '我已审批', value: workbench.value.done, go: () => routeRouter.push('/workflow/approval?tab=done') },
+  { label: '我发起的', value: workbench.value.initiated, go: () => routeRouter.push('/workflow/approval?tab=initiated') },
+  { label: '未读消息', value: workbench.value.unread, go: () => routeRouter.push('/message') }
+])
+async function loadWorkbench() {
+  // 各计数独立取数：单个失败只置 null 显示 “—”，不阻断其他卡
+  const totalOf = (res: any) => Number(res?.data?.total ?? res?.data?.data?.total ?? NaN)
+  getTodoTasks({ page: 1, size: 1 }).then((r: any) => { workbench.value.todo = totalOf(r) }).catch(() => { workbench.value.todo = null })
+  getDoneTasks({ page: 1, size: 1 }).then((r: any) => { workbench.value.done = totalOf(r) }).catch(() => { workbench.value.done = null })
+  getMyInitiatedProcesses({ page: 1, size: 1 }).then((r: any) => { workbench.value.initiated = totalOf(r) }).catch(() => { workbench.value.initiated = null })
+  getUnreadCount().then((r: any) => { workbench.value.unread = Number(r?.data ?? NaN) }).catch(() => { workbench.value.unread = null })
+}
 
 /* ================= 核心链路引导条（可关闭） ================= */
 const GUIDE_BANNER_KEY = 'zw-guide-banner-dismissed'
@@ -222,17 +254,10 @@ async function loadOverdue() {
   }
 }
 
-// 项目状态英文枚举→中文（与项目列表 statusMap 同口径；未命中回退原值）
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: '草稿',
-  FILED: '已报备',
-  TENDERING: '招标中',
-  WON: '已中标',
-  CONSTRUCTION: '施工中',
-  COMPLETED: '已竣工',
-  CLOSING: '结项审批中',
-  CLOSED: '已关闭'
-}
+// 项目状态英文枚举→中文（唯一源 @/constants/biz-labels；未命中回退原值）
+const STATUS_LABEL: Record<string, string> = Object.fromEntries(
+  Object.entries(PROJECT_STATUS_MAP).map(([k, v]) => [k, v.label])
+)
 
 async function loadStats() {
   try {
@@ -277,7 +302,7 @@ function buildPieEmptyOption() {
       radius: ['40%', '70%'],
       data: [
         { name: '草稿', value: 0 },
-        { name: '施工中', value: 0 },
+        { name: '在建', value: 0 },
         { name: '已竣工', value: 0 }
       ]
     }]
@@ -366,6 +391,7 @@ watch(() => appStore.isDark, () => {
 
 onMounted(() => {
   loadStats()
+  loadWorkbench()
   if (canViewFinance.value) loadOverdue()
   loadPieChart()
   loadBarChart()
@@ -383,6 +409,17 @@ onBeforeUnmount(() => {
 .dashboard-container {
   padding: var(--zw-content-padding);
 }
+
+/* 今日工作台：四张计数卡横排（点击直达） */
+.workbench-row { display: flex; gap: var(--zw-space-sm); margin-bottom: var(--zw-space-md); }
+.workbench-card {
+  flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 10px 16px; border: 1px solid var(--el-border-color-light); border-radius: 6px;
+  background: var(--el-bg-color); cursor: pointer; text-align: left;
+}
+.workbench-card:hover { border-color: var(--el-color-primary); }
+.workbench-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.workbench-label { font-size: 12px; color: var(--el-text-color-secondary); }
 
 /* 欢迎区：石墨铭牌（无渐变无光斑，左侧橙定位条） */
 /* 核心链路引导条：紧凑一行，视觉弱于欢迎区（信息条而非内容卡） */

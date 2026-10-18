@@ -126,6 +126,7 @@ import { uploadBoq, getBoqTree, deleteBoq } from '@/api/boq'
 import { getContractDetail } from '@/api/contract'
 import { isXlsxFile } from './boq-utils'
 import { listToTree } from '@/utils/tree'
+import { CONTRACT_STATUS } from '@/constants/biz-labels'
 
 const route = useRoute()
 // 雪花 ID 超出 Number 安全整数范围，必须以字符串传递避免精度丢失
@@ -150,12 +151,10 @@ const boqTreeData = ref<any[]>([])
 const treeLoading = ref(false)
 const boqLoaded = computed(() => boqTreeData.value.length > 0)
 
+// 状态显示名唯一源：@/constants/biz-labels；本页特有的 CHANGING 态本地补充
 const statusMap: Record<string, { label: string; type: string }> = {
-  DRAFT: { label: '草稿', type: 'info' },
-  EFFECTIVE: { label: '已生效', type: 'success' },
-  CHANGING: { label: '变更中', type: 'warning' },
-  SETTLED: { label: '已结算', type: 'primary' },
-  CLOSED: { label: '已关闭', type: 'danger' }
+  ...Object.fromEntries(Object.entries(CONTRACT_STATUS).map(([k, v]) => [k, { label: v.label, type: v.badgeType }])),
+  CHANGING: { label: '变更中', type: 'warning' }
 }
 
 function getStatusLabel(status: string) {

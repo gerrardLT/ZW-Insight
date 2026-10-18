@@ -46,7 +46,9 @@ describe('competitor enrichment contracts', () => {
   it('labels contract totals as current page and derives unreceived amount', () => {
     const source = readFileSync('src/views/contract/index.vue', 'utf8')
     expect(source).toContain('本页合计（非全部）')
-    expect(source).toContain('Number(row.contractAmount || 0) - Number(row.cumulativeReceivedAmount || 0)')
+    // 未收口径升级（术语表 §五）：未收 = 合同额 + 签证 − 回款
+    expect(source).toContain('unreceivedOf')
+    expect(source).toContain("Number(row.contractAmount || 0) + Number(row.cumulativeChangeAmount || 0) - Number(row.cumulativeReceivedAmount || 0)")
     expect(source).toContain('cumulativeInvoiceAmount')
     expect(source).toContain(':summary-method="pageSummary"')
   })
