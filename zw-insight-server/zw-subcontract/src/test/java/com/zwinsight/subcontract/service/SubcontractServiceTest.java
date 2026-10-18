@@ -732,6 +732,10 @@ class SubcontractServiceTest {
         @Mock
         private BizProjectMapper projectMapper;
 
+        /** V2026_114：结算单号生成（createSettlement 必经，缺 mock 则 @InjectMocks 注 null 致 NPE） */
+        @Mock
+        private com.zwinsight.file.service.SerialNumberService serialNumberService;
+
         @InjectMocks
         private SubcontractSettlementService settlementService;
 

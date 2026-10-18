@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { getQualityInspectionPage, getSafetyInspectionPage, deleteQualityInspection, deleteSafetyInspection, assignRectification } from '@/api/site'
@@ -114,6 +114,18 @@ const total = ref(0)
 // 双入口共用本页：/site/inspection 默认质量页签，/site/safety-inspection 默认安全页签
 // （currentRoute 防御式访问：单测 mock useRouter 可能不含 currentRoute）
 const activeTab = ref(router.currentRoute?.value?.name === 'SiteSafetyInspection' ? 'safety' : 'quality')
+// 同组件双路由记录：菜单间切换时组件原地 patch 不重跑 setup，须 watch 路由名联动页签（code-review H1）
+watch(
+  () => router.currentRoute?.value?.name,
+  (name) => {
+    const target = name === 'SiteSafetyInspection' ? 'safety' : 'quality'
+    if (target !== activeTab.value) {
+      activeTab.value = target
+      queryParams.value.page = 1
+      loadData()
+    }
+  }
+)
 
 const RECT_MAP: Record<string, { text: string; type: 'success' | 'warning' | 'info' | 'danger' }> = {
   PENDING: { text: '待整改', type: 'warning' },

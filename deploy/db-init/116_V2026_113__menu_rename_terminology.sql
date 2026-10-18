@@ -35,7 +35,7 @@ UPDATE sys_menu SET menu_name = '质量检查'          WHERE menu_name = '质�
 -- 2) 新增「安全检查」菜单（原质量安全检查页内本就有质量/安全两个页签，拆为双入口；
 --    path=safety-inspection 复用同一组件，initial 页签由前端按路由判定）
 INSERT INTO sys_menu (id, menu_name, menu_type, parent_id, path, component, icon, sort_order, status, hidden, permission, created_at, updated_at, deleted, version)
-SELECT 910100, '安全检查', 'MENU', 12, 'safety-inspection', 'views/site/inspection', 'Warning', 4, 1, 0, NULL, NOW(), NOW(), 0, 0
+SELECT 910100, '安全检查', 'MENU', 12, 'safety-inspection', 'views/site/inspection', 'Warning', 5, 1, 0, NULL, NOW(), NOW(), 0, 0
 WHERE NOT EXISTS (
     SELECT 1 FROM sys_menu
     WHERE id = 910100 OR (parent_id = 12 AND path = 'safety-inspection' AND deleted = 0));

@@ -72,6 +72,22 @@
 - [ ] 4.1 sys_menu 二级目录方案 B + 权限三件套 + 双机台账
 - [ ] 4.2 剩余列表页铺设 / 大表单路由化 / 供应商七档页签 / 月度经营分析迁域
 
+## 阶段一审阅与修复记录（2026-10-18）
+
+- 双门审阅：zwi-reviewer=PASS-WITH-NOTES（P2 breadcrumb 已收敛、P3 未收口径 Tooltip 移阶段三）；code-reviewer=REQUEST-CHANGES（3 必修）→ 已全部修复：
+  - C1 `SubcontractServiceTest` 嵌套类补 `SerialNumberService` @Mock（否则 createSettlement 两用例 NPE，CI 必红）
+  - C2 `SubcontractSettlementServiceTest` 删无用 `detailMapper.selectList` stub（STRICT_STUBS 必炸）
+  - H1 `site/inspection/index.vue` 加 route.name watch（双入口菜单间切换页签联动；回归 42/42 绿）
+  - L5 顺手修：910100 sort_order 4→5（避免与竣工验收并列）
+- code-reviewer 判为设计取舍/非缺陷：编号跳号（全仓统一语义）、update/save 不改号、`save()` 无生产调用方、zw-file 无循环依赖、迁移双轨幂等、六段列字段实存、状态层无丢失、导航回退不变、无敏感信息。
+
+### 部署前检查单（push 前执行）
+1. 【必须】L4 依赖：**部署后须重跑 `bash keys/init-test-tenant.sh`** —— V2026_114 的 SUBCONTRACT_SETTLEMENT 编号规则只种租户 1，9999 租户靠该脚本运行时复制；不重跑则 `lifecycle-sim-v2.sh` 分包结算阶段必失败（code-review M1）。
+2. 【建议】只读探查 `sys_role_menu` 重复行（防 V2026_113 3b 复制绑定主键冲突）：
+   `SELECT role_id, COUNT(*) FROM sys_role_menu WHERE menu_id=1203 GROUP BY role_id HAVING COUNT(*)>1;`
+   任一环境有行即先清理再升级（现网双机预计为空）。
+3. 部署后核验：flyway_schema_history 出现 2026_113/2026_114 两行；双机菜单名抽查（项目台账/进项发票/竣工结算）；分包结算新建出 FBJS 单号。
+
 ## 受阻项登记表
 
 | 日期 | 层级 | 任务项 | 分类 | 原因 | 影响范围 | 处置决策/决策人 | 状态 |

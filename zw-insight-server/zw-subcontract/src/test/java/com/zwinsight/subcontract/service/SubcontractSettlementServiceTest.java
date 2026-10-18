@@ -126,7 +126,7 @@ class SubcontractSettlementServiceTest {
         existing.setStatus("DRAFT");
         existing.setSettlementCode("FBJS202601010009");
         when(settlementMapper.selectById(5L)).thenReturn(existing);
-        when(detailMapper.selectList(any())).thenReturn(List.of());
+        // updateSettlement 走 detailMapper.delete 全删重插（非 selectList），此处不 stub selectList（STRICT_STUBS）
 
         subSettlementService.updateSettlement(5L, request);
 
