@@ -48,7 +48,6 @@
       </div>
     </div>
 
-    <ProjectBusinessSummary :project-id="projectId" />
 
     <!-- 主体内容卡片（蓝图角标） -->
     <el-card shadow="never" class="card-corner-marked">
@@ -60,6 +59,16 @@
       </template>
 
       <el-tabs v-model="activeTab" class="custom-tabs">
+        <el-tab-pane label="项目经营" name="operation">
+          <div class="operation-tab">
+            <div class="operation-toolbar">
+              <el-button link type="primary" @click="router.push('/cockpit/project-operation?projectId=' + projectId)">
+                在经营驾驶舱中查看完整项目经营（含健康度/成本执行率/穿透）→
+              </el-button>
+            </div>
+            <ProjectBusinessSummary :project-id="projectId" />
+          </div>
+        </el-tab-pane>
         <el-tab-pane label="基本信息" name="info">
           <div class="section-title">工程基本概况</div>
           <el-descriptions :column="2" border>
@@ -418,4 +427,6 @@ onMounted(() => {
   font-weight: 500;
   color: var(--zw-brand);
 }
+.operation-tab { margin-top: var(--zw-space-sm); }
+.operation-toolbar { margin-bottom: var(--zw-space-sm); }
 </style>

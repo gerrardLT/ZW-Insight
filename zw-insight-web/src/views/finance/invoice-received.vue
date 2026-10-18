@@ -31,7 +31,8 @@
         </el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" border>
+      <el-table :data="tableData" v-loading="loading" border show-summary :summary-method="pageSummary">
+        <el-table-column type="index" label="#" width="50" />
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">{{ row.projectName || '-' }}</template>
         </el-table-column>
@@ -49,8 +50,8 @@
         </el-table-column>
         <el-table-column prop="invoiceNumber" label="发票号码" min-width="180" />
         <el-table-column prop="invoiceCode" label="发票代码" min-width="130" />
-        <el-table-column prop="amountWithoutTax" label="不含税金额" width="140" />
-        <el-table-column prop="taxAmount" label="税额" width="120" />
+        <el-table-column prop="amountWithoutTax" label="不含税金额" width="140" align="right" />
+        <el-table-column prop="taxAmount" label="税额" width="120" align="right" />
         <el-table-column prop="taxRate" label="税率" width="90" align="right">
           <template #default="{ row }">{{ formatTaxRate(row.taxRate) }}</template>
         </el-table-column>
@@ -342,6 +343,19 @@ onMounted(() => {
   loadData()
   searchProject('')
 })
+
+// 本页合计（非全量）：发票金额/不含税/税额三列（进项台账化 V2026_115 配套）
+function pageSummary({ columns, data }: { columns: Array<{ property?: string }>; data: any[] }) {
+  const keys = ['invoiceAmount', 'amountWithoutTax', 'taxAmount']
+  return columns.map((col, i) => {
+    if (i === 0) return '本页合计'
+    if (col.property && keys.includes(col.property)) {
+      const v = data.reduce((acc, r) => acc + Number(r[col.property!] || 0), 0)
+      return v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    }
+    return ''
+  })
+}
 </script>
 
 <style scoped>

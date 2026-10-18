@@ -38,9 +38,13 @@ const PAYMENT_COLUMNS: ColumnSpec[] = [
   { label: '项目名称', index: 1, field: 'projectName', type: 'text' },
   { label: '收款单位', index: 2, field: 'supplierName', type: 'text' },
   { label: '付款金额', index: 3, field: 'paymentAmount', expect: amountExpect('paymentAmount') },
-  { label: '付款日期', index: 4, field: 'paymentDate', type: 'date' },
-  { label: '状态', index: 5, field: 'status', type: 'enum', enumMap: PAYMENT_APPLY_STATUS },
-  // index 0 = selection，index 6 = 支付状态（派生展示列），index 7 = 操作列（fixed right），均不比对
+  // V2026_115 在途两列：applyingAmount/availableAmount 为 Service.page 组装的展示字段，
+  // consistency 采集的 records 无该键 → amountExpect 对 undefined 会软跳过（softCollect），仍保留金额断言形态
+  { label: '申请中(在途)', index: 4, field: 'applyingAmount', expect: amountExpect('applyingAmount') },
+  { label: '可申请余额', index: 5, field: 'availableAmount', expect: amountExpect('availableAmount') },
+  { label: '付款日期', index: 6, field: 'paymentDate', type: 'date' },
+  { label: '状态', index: 7, field: 'status', type: 'enum', enumMap: PAYMENT_APPLY_STATUS },
+  // index 0 = selection，index 8 = 支付状态（派生展示列），index 9 = 操作列（fixed right），均不比对
 ]
 
 /** 封账页枚举基线（finance-lock/index.vue lockTypeLabel + 状态 tag 实证） */

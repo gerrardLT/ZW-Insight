@@ -133,6 +133,11 @@ public class BizProject extends BaseEntity {
     private BigDecimal receivableAmount;
 
     /**
+     * 应付账款（台账口径：biz_payable OPEN 余额合计；PayableService 同事务双写，V2026_115 新增）
+     */
+    private BigDecimal payableAmount;
+
+    /**
      * 结算金额
      */
     private BigDecimal settlementAmount;

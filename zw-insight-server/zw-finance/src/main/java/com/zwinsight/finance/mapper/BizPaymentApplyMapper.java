@@ -65,4 +65,27 @@ public interface BizPaymentApplyMapper extends BaseMapper<BizPaymentApply> {
             + "AND p.project_id IN <foreach collection='projectIds' item='pid' open='(' separator=',' close=')'>#{pid}</foreach>"
             + "</script>")
     BigDecimal sumApprovedUnpaidRemainingByProjects(@Param("projectIds") Collection<Long> projectIds);
+
+    /**
+     * 同合同「审批中」付款申请合计（在途额度占用，V2026_115 对标竞品四段占用模型）。
+     * <p>口径：status = SUBMITTED 的 payment_amount 全额合计（审批中即冻结额度，
+     * 不扣银行勾稽——在途单尚未进入现金语义）。excludeId 用于生效前复核时排除本单
+     * （本单在生效前仍为 SUBMITTED，若不排除会把自己算进在途导致双重扣减）。</p>
+     * <p>数据权限：行级过滤由调用方上下文决定，额度校验必须看到<b>全租户</b>在途单
+     * （否则他人提交的在途单不占额度，并发超付防线失效），故方法级空
+     * {@code @DataPermission} 显式豁免（写操作访问控制由接口层负责，同
+     * BizReceivableMapper.addWrittenOffAmount 的豁免纪律）。</p>
+     *
+     * @param contractId 支出合同ID
+     * @param excludeId  排除的付款申请ID（可空）
+     * @return 在途合计（无单据时 0）
+     */
+    @DataPermission({})
+    @Select("<script>"
+            + "SELECT IFNULL(SUM(payment_amount), 0) FROM biz_payment_apply "
+            + "WHERE deleted = 0 AND status = 'SUBMITTED' AND contract_id = #{contractId} "
+            + "<if test='excludeId != null'> AND id &lt;&gt; #{excludeId}</if>"
+            + "</script>")
+    BigDecimal sumApplyingByContract(@Param("contractId") Long contractId,
+                                     @Param("excludeId") Long excludeId);
 }

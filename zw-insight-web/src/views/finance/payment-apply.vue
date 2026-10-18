@@ -78,15 +78,28 @@
         <el-table-column v-if="columnVisible[2]" prop="paymentAmount" label="付款金额" width="130" align="right">
           <template #default="{ row }">{{ formatMoney(row.paymentAmount) }}</template>
         </el-table-column>
-        <el-table-column v-if="columnVisible[3]" prop="paymentDate" label="付款日期" width="110" />
-        <el-table-column v-if="columnVisible[4]" label="状态" width="90" align="center">
+        <!-- 在途占用（V2026_115）：同合同审批中申请合计（含本单），生效前冻结额度 -->
+        <el-table-column v-if="columnVisible[3]" label="申请中(在途)" width="130" align="right">
+          <template #default="{ row }">
+            <span v-if="row.applyingAmount != null" :class="{ 'in-flight-amount': Number(row.applyingAmount) > 0 }">{{ formatMoney(row.applyingAmount) }}</span>
+            <span v-else>—</span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columnVisible[4]" label="可申请余额" width="130" align="right">
+          <template #default="{ row }">
+            <span v-if="row.availableAmount != null">{{ formatMoney(row.availableAmount) }}</span>
+            <span v-else>—</span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columnVisible[5]" prop="paymentDate" label="付款日期" width="110" />
+        <el-table-column v-if="columnVisible[6]" label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column v-if="columnVisible[5]" label="支付状态" width="110" align="center">
+        <el-table-column v-if="columnVisible[7]" label="支付状态" width="110" align="center">
           <template #default="{ row }">
             <!-- 支付态仅对已审批单据有意义（V2026_56：审批≠已付，现金口径）；
                  用原生 title 提示而非 el-tooltip 组件实例，避免每行额外组件开销 -->
@@ -284,6 +297,8 @@ const paymentColumns = [
   { key: 'projectName', label: '项目名称' },
   { key: 'supplierName', label: '收款单位' },
   { key: 'paymentAmount', label: '付款金额' },
+  { key: 'applyingAmount', label: '申请中(在途)' },
+  { key: 'availableAmount', label: '可申请余额' },
   { key: 'paymentDate', label: '付款日期' },
   { key: 'status', label: '状态' },
   { key: 'payStatus', label: '支付状态' },
@@ -725,7 +740,8 @@ function buildFundPlanOption(list: any[]) {
   border-left: 3px solid var(--el-color-warning);
   padding-left: var(--zw-space-sm);
 }
-.pay-status-na {
+.in-flight-amount { color: var(--el-color-warning); font-weight: 600; }
+
   color: var(--el-text-color-placeholder);
 }
 .pay-date-text {

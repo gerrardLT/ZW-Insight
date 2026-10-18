@@ -46,6 +46,7 @@ public class SubcontractSettlementService {
     private final SubcontractSettlementDetailMapper detailMapper;
     private final BizSubcontractMapper subcontractMapper;
     private final com.zwinsight.file.service.SerialNumberService serialNumberService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public PageResult<BizSubcontractSettlement> page(int page, int size, Long projectId, Long contractId, String status) {
         Page<BizSubcontractSettlement> pageParam = new Page<>(page, size);
@@ -206,6 +207,17 @@ public class SubcontractSettlementService {
 
         if ("APPROVED".equals(existing.getStatus())) {
             subcontractMapper.addSettlement(existing.getContractId(), amount.negate());
+            // 应付台账对称冲减（V2026_115）：删除已生效结算时冲回其应付行
+            com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent reversal =
+                    new com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent();
+            reversal.setSourceType("SUBCONTRACT_SETTLEMENT");
+            reversal.setSourceId(existing.getId());
+            reversal.setProjectId(existing.getProjectId());
+            reversal.setContractId(existing.getContractId());
+            reversal.setContractCategory("SUBCONTRACT");
+            reversal.setAmount(amount);
+            reversal.setReversed(true);
+            eventPublisher.publishEvent(reversal);
             log.info("分包结算删除并冲销累计值, id={}, amount={}", id, amount);
         }
     }
@@ -251,6 +263,18 @@ public class SubcontractSettlementService {
             throw new BusinessException("结算单状态已变更，请刷新后重试");
         }
         settlement.setStatus("APPROVED");
+
+        // 应付台账（V2026_115）：结算生效生成应付行，事件消费方 zw-finance 同事务内执行
+        com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent payableEvent =
+                new com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent();
+        payableEvent.setSourceType("SUBCONTRACT_SETTLEMENT");
+        payableEvent.setSourceId(settlement.getId());
+        payableEvent.setProjectId(settlement.getProjectId());
+        payableEvent.setContractId(settlement.getContractId());
+        payableEvent.setContractCategory("SUBCONTRACT");
+        payableEvent.setAmount(settlement.getSettlementAmount());
+        payableEvent.setRemark("分包结算单 " + settlement.getSettlementCode() + " 审批通过生成");
+        eventPublisher.publishEvent(payableEvent);
 
         // 注：不在结算时回写项目 totalExpense。
         // totalExpense 统一为“付款口径”（实际现金流出），仅由付款申请审批通过

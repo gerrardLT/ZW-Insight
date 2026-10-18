@@ -30,6 +30,7 @@ public class LaborSettlementService {
     private final BizLaborSettlementMapper settlementMapper;
     private final BizLaborContractMapper laborContractMapper;
     private final ApprovalService approvalService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /**
      * 分页查询
@@ -110,6 +111,17 @@ public class LaborSettlementService {
 
         if ("APPROVED".equals(existing.getStatus()) && existing.getContractId() != null) {
             laborContractMapper.addSettlement(existing.getContractId(), amount.negate());
+            // 应付台账对称冲减（V2026_115，code-review NOTE-2）：与分包/采购删除行为一致
+            com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent reversal =
+                    new com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent();
+            reversal.setSourceType("LABOR_SETTLEMENT");
+            reversal.setSourceId(existing.getId());
+            reversal.setProjectId(existing.getProjectId());
+            reversal.setContractId(existing.getContractId());
+            reversal.setContractCategory("LABOR");
+            reversal.setAmount(amount);
+            reversal.setReversed(true);
+            eventPublisher.publishEvent(reversal);
             log.info("劳务结算删除并冲销合同累计结算值, id={}, amount={}", id, amount);
         }
     }
@@ -179,6 +191,17 @@ public class LaborSettlementService {
 
         if (settlement.getContractId() != null && settlement.getSettlementAmount() != null) {
             laborContractMapper.addSettlement(settlement.getContractId(), settlement.getSettlementAmount());
+            // 应付台账（V2026_115）：结算生效生成应付行，事件消费方 zw-finance 同事务内执行
+            com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent payableEvent =
+                    new com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent();
+            payableEvent.setSourceType("LABOR_SETTLEMENT");
+            payableEvent.setSourceId(settlement.getId());
+            payableEvent.setProjectId(settlement.getProjectId());
+            payableEvent.setContractId(settlement.getContractId());
+            payableEvent.setContractCategory("LABOR");
+            payableEvent.setAmount(settlement.getSettlementAmount());
+            payableEvent.setRemark("劳务结算单 " + settlement.getId() + " 审批通过生成");
+            eventPublisher.publishEvent(payableEvent);
             log.info("劳务结算审批通过并原子回写合同累计结算值: settlementId={}, contractId={}, amount={}",
                     id, settlement.getContractId(), settlement.getSettlementAmount());
         }

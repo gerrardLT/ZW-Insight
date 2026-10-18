@@ -38,12 +38,13 @@ class SubcontractSettlementServiceTest {
     @Mock private SubcontractSettlementDetailMapper detailMapper;
     @Mock private BizSubcontractMapper subcontractMapper;
     @Mock private com.zwinsight.file.service.SerialNumberService serialNumberService;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private SubcontractSettlementService subSettlementService;
 
     @BeforeEach
     void setUp() {
-        subSettlementService = new SubcontractSettlementService(settlementMapper, detailMapper, subcontractMapper, serialNumberService);
+        subSettlementService = new SubcontractSettlementService(settlementMapper, detailMapper, subcontractMapper, serialNumberService, eventPublisher);
     }
 
     @Test

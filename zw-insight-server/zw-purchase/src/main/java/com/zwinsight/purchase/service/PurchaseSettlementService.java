@@ -44,6 +44,7 @@ public class PurchaseSettlementService {
     private final MaterialInboundReadMapper materialInboundReadMapper;
     private final SerialNumberService serialNumberService;
     private final ApprovalService approvalService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /**
      * 分页查询（附合同名称/供应商名称/入库单号展示字段）
@@ -330,6 +331,17 @@ public class PurchaseSettlementService {
 
         if ("APPROVED".equals(existing.getStatus())) {
             contractMapper.addSettlement(existing.getContractId(), amount.negate());
+            // 应付台账对称冲减（V2026_115）
+            com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent reversal =
+                    new com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent();
+            reversal.setSourceType("PURCHASE_SETTLEMENT");
+            reversal.setSourceId(existing.getId());
+            reversal.setProjectId(existing.getProjectId());
+            reversal.setContractId(existing.getContractId());
+            reversal.setContractCategory("PURCHASE");
+            reversal.setAmount(amount);
+            reversal.setReversed(true);
+            eventPublisher.publishEvent(reversal);
             log.info("采购结算删除并冲销累计值, id={}, amount={}", id, amount);
         }
     }
@@ -402,6 +414,17 @@ public class PurchaseSettlementService {
         // PI-2: 改用原子 addSettlement SQL 累加，杜绝读改写并发丢失
         if (settlement.getContractId() != null && settlement.getSettlementAmount() != null) {
             contractMapper.addSettlement(settlement.getContractId(), settlement.getSettlementAmount());
+            // 应付台账（V2026_115）：结算生效生成应付行，事件消费方 zw-finance 同事务内执行
+            com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent payableEvent =
+                    new com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent();
+            payableEvent.setSourceType("PURCHASE_SETTLEMENT");
+            payableEvent.setSourceId(settlement.getId());
+            payableEvent.setProjectId(settlement.getProjectId());
+            payableEvent.setContractId(settlement.getContractId());
+            payableEvent.setContractCategory("PURCHASE");
+            payableEvent.setAmount(settlement.getSettlementAmount());
+            payableEvent.setRemark("采购结算单 " + settlement.getSettlementNo() + " 审批通过生成");
+            eventPublisher.publishEvent(payableEvent);
             log.info("采购结算审批通过并原子回写合同结算额: settlementId={}, contractId={}, amount={}",
                     id, settlement.getContractId(), settlement.getSettlementAmount());
         }

@@ -40,6 +40,7 @@ class MachineWorkSettlementServiceTest {
     @Mock private BizMachineLedgerMapper ledgerMapper;
     @Mock private BizMachineContractMapper contractMapper;
     @Mock private ApprovalService approvalService;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private MachineWorkSettlementService settlementService;
 
@@ -51,7 +52,7 @@ class MachineWorkSettlementServiceTest {
         // JDK 21 下 Mockito @InjectMocks 对本服务的 6 个 private final 依赖会回退到字段注入并静默失败，
         // 导致 stub 的 mock 与 service 实际使用的不是同一实例，故改用构造注入。
         settlementService = new MachineWorkSettlementService(
-                settlementMapper, detailMapper, workLogMapper, ledgerMapper, contractMapper, approvalService);
+                settlementMapper, detailMapper, workLogMapper, ledgerMapper, contractMapper, approvalService, eventPublisher);
         securityContextMock = mockStatic(SecurityContextHolder.class);
         securityContextMock.when(SecurityContextHolder::getTenantId).thenReturn(9999L);
     }

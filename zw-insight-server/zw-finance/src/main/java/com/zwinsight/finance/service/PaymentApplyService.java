@@ -36,6 +36,10 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.Map;
 
 /**
  * 付款申请服务
@@ -62,6 +66,7 @@ public class PaymentApplyService {
     private final AmountTierService amountTierService;
     private final BudgetControlConfigService budgetControlConfigService;
     private final FinanceLockService financeLockService;
+    private final PayableService payableService;
 
     /** 走各模块合同表（biz_purchase_contract 等）的合同类型；其余（OTHER_EXPENSE/OTHER_INCOME/空）走 biz_other_contract */
     private static final java.util.Set<String> MODULE_CATEGORIES =
@@ -82,7 +87,44 @@ public class PaymentApplyService {
         Page<BizPaymentApply> result = paymentApplyMapper.selectPage(pageParam, wrapper);
         ProjectNameFiller.fill(result.getRecords(), projectMapper,
                 BizPaymentApply::getProjectId, BizPaymentApply::setProjectName);
+        fillInFlightAmounts(result.getRecords());
         return PageResult.of(result);
+    }
+
+    /**
+     * 组装在途占用展示字段（V2026_115）：申请中 = 同合同 SUBMITTED 合计（含本单）；
+     * 可申请余额 = 未付快照 − 在途。快照仅提交后存在，DRAFT 行两字段保持 null（前端显示 —）。
+     * 每页一次聚合查询（按 contractId 分组），不逐行查库。
+     */
+    private void fillInFlightAmounts(List<BizPaymentApply> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        Set<Long> contractIds = records.stream()
+                .map(BizPaymentApply::getContractId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (contractIds.isEmpty()) {
+            return;
+        }
+        Map<Long, BigDecimal> applyingByContract = new HashMap<>();
+        for (BizPaymentApply r : records) {
+            if (r.getContractId() == null || applyingByContract.containsKey(r.getContractId())) {
+                continue;
+            }
+            applyingByContract.put(r.getContractId(),
+                    paymentApplyMapper.sumApplyingByContract(r.getContractId(), null));
+        }
+        for (BizPaymentApply r : records) {
+            if (r.getContractId() == null || r.getUnpaidAmountSnapshot() == null) {
+                continue;
+            }
+            BigDecimal applying = applyingByContract.getOrDefault(r.getContractId(), BigDecimal.ZERO);
+            // getOrDefault 对「显式 null 值」不回退默认值，先兜底再算（code-review NOTE-1）
+            applying = applying != null ? applying : BigDecimal.ZERO;
+            r.setApplyingAmount(applying);
+            r.setAvailableAmount(r.getUnpaidAmountSnapshot().subtract(applying));
+        }
     }
 
     /**
@@ -255,12 +297,12 @@ public class PaymentApplyService {
         // 预算控制：BLOCK 拦截提交，WARN 经 BudgetWarningContext 透传 X-Budget-Warning 响应头
         enforceBudgetControl(paymentApply);
 
-        // 校验付款金额（按合同类型路由到对应合同表）
+        // 校验付款金额（按合同类型路由到对应合同表）；提交时点本单尚未入在途，excludeId 传 null
         ContractPayableInfo payable = resolvePayable(paymentApply);
         if (payable == null) {
             throw new BusinessException("关联合同不存在");
         }
-        validatePaymentLimit(payable, paymentApply.getContractId(), paymentApply.getPaymentAmount());
+        validatePaymentLimit(payable, paymentApply.getContractId(), paymentApply.getPaymentAmount(), null);
 
         // 提交时点回填可付快照（详情抽屉「累计结算快照/未付金额快照」数据源，提交后不再变化）：
         // 累计结算快照取合同原值；未付金额快照 = 可付余额，与 validatePaymentLimit 同口径（含净奖惩）。
@@ -360,9 +402,10 @@ public class PaymentApplyService {
             throw new BusinessException("付款申请关联合同不存在，审批未生效");
         }
 
-        // 审批期间上限可能变化，生效前重新校验；不通过则置 REJECTED 并通知发起人
+        // 审批期间上限可能变化，生效前重新校验（在途排除本单：本单此时仍为 SUBMITTED）；
+        // 不通过则置 REJECTED 并通知发起人
         try {
-            validatePaymentLimit(payable, paymentApply.getContractId(), paymentApply.getPaymentAmount());
+            validatePaymentLimit(payable, paymentApply.getContractId(), paymentApply.getPaymentAmount(), id);
         } catch (BusinessException e) {
             paymentApply.setStatus("REJECTED");
             paymentApplyMapper.updateById(paymentApply);
@@ -392,6 +435,11 @@ public class PaymentApplyService {
         if (projectMapper.addTotalExpense(paymentApply.getProjectId(), paymentApply.getPaymentAmount()) != 1) {
             throw new BusinessException("付款关联项目不存在或更新冲突，审批未生效");
         }
+
+        // 应付台账 FIFO 核销（V2026_115）：付款生效即冲减同合同 OPEN 应付，
+        // 超出部分为预付不冲减（如实记日志）；核销失败随事务整体回滚，不会「付款已批、应付未减」。
+        payableService.writeOffForContract(id, paymentApply.getProjectId(),
+                paymentApply.getContractId(), paymentApply.getPaymentAmount());
 
         log.info("付款申请审批通过并生效, id={}, paymentAmount={}", id, paymentApply.getPaymentAmount());
     }
@@ -545,12 +593,16 @@ public class PaymentApplyService {
     }
 
     /**
-     * 校验付款金额不超过（累计结算 + 净奖惩）减已付金额
+     * 校验付款金额不超过（累计结算 + 净奖惩）减已付金额，再扣同合同「审批中」在途占用
      * <p>奖励增加可付、处罚减少可付（净奖惩：奖励为正、处罚为负）。
      * 净奖惩仅劳务/分包合同适用（sumRewardPunishNetByContract 仅覆盖这两张奖惩表），
      * 其余类型返回 0。</p>
+     * <p><b>在途占用（V2026_115，对标竞品四段占用）</b>：status=SUBMITTED 的申请即冻结
+     * 同合同额度——否则同一合同可并发提交多张申请，每张单独校验都通过而合计超付
+     * （工程审计高频问题）。excludeId 供生效前复核排除本单（本单彼时仍为 SUBMITTED）。</p>
      */
-    private void validatePaymentLimit(ContractPayableInfo payable, Long contractId, BigDecimal paymentAmount) {
+    private void validatePaymentLimit(ContractPayableInfo payable, Long contractId,
+                                      BigDecimal paymentAmount, Long excludeApplyId) {
         BigDecimal cumulativeSettlement = payable.getCumulativeSettlement() == null
                 ? BigDecimal.ZERO : payable.getCumulativeSettlement();
         BigDecimal cumulativePaid = payable.getCumulativePaid() == null
@@ -559,10 +611,14 @@ public class PaymentApplyService {
         if (rewardPunishNet == null) {
             rewardPunishNet = BigDecimal.ZERO;
         }
-        BigDecimal maxPayment = cumulativeSettlement.add(rewardPunishNet).subtract(cumulativePaid);
+        BigDecimal applying = paymentApplyMapper.sumApplyingByContract(contractId, excludeApplyId);
+        if (applying == null) {
+            applying = BigDecimal.ZERO;
+        }
+        BigDecimal maxPayment = cumulativeSettlement.add(rewardPunishNet).subtract(cumulativePaid).subtract(applying);
 
         if (paymentAmount.compareTo(maxPayment) > 0) {
-            throw new BusinessException("付款金额不能超过（累计结算含奖惩）减已付金额，最大可付金额：" + maxPayment);
+            throw new BusinessException("付款金额不能超过（累计结算含奖惩）减已付减在途申请，最大可付金额：" + maxPayment);
         }
     }
 

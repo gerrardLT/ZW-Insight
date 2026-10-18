@@ -60,6 +60,7 @@ public class MachineWorkSettlementService {
     private final BizMachineLedgerMapper ledgerMapper;
     private final BizMachineContractMapper contractMapper;
     private final ApprovalService approvalService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     /**
      * 创建结算单
@@ -353,6 +354,17 @@ public class MachineWorkSettlementService {
             if (updated <= 0) {
                 throw new BusinessException("累计结算超出合同总额或合同不存在/非生效，审批已回滚");
             }
+            // 应付台账（V2026_115）：机械结算按明细合同逐条生成应付行，事件消费方 zw-finance 同事务内执行
+            com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent payableEvent =
+                    new com.zwinsight.common.event.finance.ExpenseSettlementPayableEvent();
+            payableEvent.setSourceType("MACHINE_SETTLEMENT");
+            payableEvent.setSourceId(settlementId);
+            payableEvent.setProjectId(project);
+            payableEvent.setContractId(increment.getKey());
+            payableEvent.setContractCategory("MACHINE");
+            payableEvent.setAmount(increment.getValue());
+            payableEvent.setRemark("机械结算单 " + settlementId + " 审批通过生成");
+            eventPublisher.publishEvent(payableEvent);
         }
 
         log.info("机械结算单审批通过, settlementId={}, totalAmount={}", settlementId, settlement.getTotalAmount());

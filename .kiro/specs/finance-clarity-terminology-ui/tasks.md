@@ -47,14 +47,14 @@
 
 ## 阶段二（P0-2）应付侧
 
-- [ ] 2.1 V2026_115 双轨：biz_payable + biz_payable_write_off + biz_project.payable_amount _需求: R4_
-- [ ] 2.2 PayableService（generate 幂等/FIFO writeOff/反冲/aging 五桶/项目双写不变量）+ 单测 4 类路径 _需求: R4_
-- [ ] 2.3 存量回填（sumPayableOutstanding 合同粒度转台账粒度，幂等可重跑） _需求: R4_
-- [ ] 2.4 在途占用：SUM(SUBMITTED) 聚合 + validatePaymentLimit 三段硬拦截 + 付款申请列表三列 _需求: R4_
-- [ ] 2.5 应付台账页（复刻 receivable + ZwListPage）+ V2026_116 菜单（role_code 绑定） _需求: R4_
-- [ ] 2.6 进项发票页台账化（税额四件套/查验状态列 + 汇总行） _需求: R3_
-- [ ] 2.7 项目详情临时"项目经营"页签（嵌 cockpit/project-operation 按 projectId 过滤） _需求: R3_
-- [ ] 2.8 验收：CI mvn + L4 9999 应付断言 + R7 只读复核（新生效 vs 新失败辨析）+ 审阅门 + 双机部署验证 _需求: R4_
+- [x] 2.1 V2026_115 双轨（118_）：两表 + payable_amount 列 + 五表 BACKFILL 回填（id=710 段基值+ROW_NUMBER，供应商列统一 NULL 防撞列）+ 项目单值重算 _需求: R4_
+- [x] 2.2 PayableService + PayableServiceTest 10 用例（生成正常/幂等/非正/负载不完整/拒绝冲销事件、FIFO 部分/超上限截断/非正拒绝、反冲超额按实际、结算冲减正常/无行幂等）——未本地运行（禁 mvn），CI 验证 _需求: R4_
+- [x] 2.3 存量回填并入 V2026_115（五表 UNION，NOT EXISTS 幂等；列名已对 00_schema 逐一核验） _需求: R4_
+- [x] 2.4 sumApplyingByContract(excludeId) + validatePaymentLimit 扣在途（提交 excludeId=null/生效排除本单）+ 列表申请中(在途)/可申请余额两列（page 组装，每页一次聚合查询） _需求: R4_
+- [x] 2.5 应付台账页（账龄卡+台账列表+本页合计）+ V2026_116 双轨（910063 挂支出组，SUPER_ADMIN/FINANCE_STAFF role_code 绑定） _需求: R4_
+- [x] 2.6 进项发票页 show-summary 本页合计（发票金额/不含税/税额）+ 金额列右对齐 _需求: R3_
+- [x] 2.7 项目详情新增「项目经营」首页签（复用 ProjectBusinessSummary + 驾驶舱完整版跳转链接；嵌整页方案否决——cockpit/project-operation 是公司级页面无法按 projectId 过滤嵌入） _需求: R3_
+- [ ] 2.8 验收：本地 vitest 1378 绿 / tsc 144 持平 / menu-coverage 0 / labels 0；CI mvn 与 L4/R7 待部署后执行 _需求: R4_
 
 ## 阶段三（P1）一本账 + 表单契约 + 抄送/OCR
 

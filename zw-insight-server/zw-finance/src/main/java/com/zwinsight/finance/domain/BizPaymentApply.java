@@ -85,4 +85,12 @@ public class BizPaymentApply extends BaseEntity {
 
     /** 流程实例ID */
     private String workflowInstanceId;
+
+    /** 同合同「审批中」在途合计（V2026_115 列表展示字段，Service.page 组装，不持久化） */
+    @TableField(exist = false)
+    private BigDecimal applyingAmount;
+
+    /** 可申请余额 = 未付快照 − 在途（V2026_115 列表展示字段，不持久化；无快照时为 null 显示 —） */
+    @TableField(exist = false)
+    private BigDecimal availableAmount;
 }

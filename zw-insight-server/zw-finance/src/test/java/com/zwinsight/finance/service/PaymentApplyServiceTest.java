@@ -56,6 +56,8 @@ class PaymentApplyServiceTest {
     @Mock private AmountTierService amountTierService;
     @Mock private FinanceLockService financeLockService;
     @Mock private com.zwinsight.budget.service.BudgetControlConfigService budgetControlConfigService;
+    /** V2026_115：应付核销（onApproved 生效后 FIFO 冲减；mock 空实现即可） */
+    @Mock private PayableService payableService;
 
     @InjectMocks
     private PaymentApplyService paymentApplyService;

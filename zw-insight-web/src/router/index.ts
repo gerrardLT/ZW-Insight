@@ -320,6 +320,12 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '付款申请', icon: 'CreditCard', group: '支出' }
       },
       {
+        path: 'payable',
+        name: 'PayableLedger',
+        component: () => import('@/views/finance/payable/index.vue'),
+        meta: { title: '应付账款台账', icon: 'Money', group: '支出' }
+      },
+      {
         path: 'other-payment',
         name: 'OtherPayment',
         component: () => import('@/views/finance/other-payment.vue'),

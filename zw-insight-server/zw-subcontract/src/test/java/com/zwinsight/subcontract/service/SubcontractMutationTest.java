@@ -63,6 +63,7 @@ class SubcontractMutationTest {
     @Mock
     private BizSubcontractMapper subcontractMapper;
     @Mock private com.zwinsight.file.service.SerialNumberService serialNumberService;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @Mock
     private BizSubcontractOutputReportMapper outputReportMapper;
     @Mock
@@ -351,7 +352,7 @@ class SubcontractMutationTest {
     @DisplayName("更新结算单：汇总字段为 null 时回退默认值")
     void updateSettlement_nullFallbackDefault() {
         SubcontractSettlementService service = new SubcontractSettlementService(
-                settlementMapper, detailMapper, subcontractMapper, serialNumberService);
+                settlementMapper, detailMapper, subcontractMapper, serialNumberService, eventPublisher);
 
         BizSubcontractSettlement draft = new BizSubcontractSettlement();
         draft.setId(1L);
