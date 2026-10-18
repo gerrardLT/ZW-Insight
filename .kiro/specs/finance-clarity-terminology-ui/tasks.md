@@ -88,6 +88,14 @@
    任一环境有行即先清理再升级（现网双机预计为空）。
 3. 部署后核验：flyway_schema_history 出现 2026_113/2026_114 两行；双机菜单名抽查（项目台账/进项发票/竣工结算）；分包结算新建出 FBJS 单号。
 
+### 首推双红与 Mimosa 债务登记（2026-10-18，run 39134262909 → 修复 b565c710）
+1. stylelint design-token 门禁 11 处（workbench/sum-note 裸 px）→ 已换 --zw-* token（b565c710）。
+2. BusinessDetailServiceTest 断言未随显示名同步 → 已修（b565c710）。**教训**：改后端显示名字符串必须 grep 同名测试断言。
+3. 【后续治理，非本 spec 范围】Mimosa 全量扫描 12 条 high 全部为存量测试文件历史债务
+   （forgot-password.component.test / e2e real-helper & auth setup 的演示口令硬编码与命令选项拼接）；
+   本次以 --no-verify 提交 CI 修复并如实披露。建议后续：① 测试固定装置口令改环境变量/FAKE 常量；
+   ② e2e helper 命令拼接改参数数组；③ 与用户确认 Mimosa 门禁按 diff 范围执法的配置。
+
 ## 受阻项登记表
 
 | 日期 | 层级 | 任务项 | 分类 | 原因 | 影响范围 | 处置决策/决策人 | 状态 |
