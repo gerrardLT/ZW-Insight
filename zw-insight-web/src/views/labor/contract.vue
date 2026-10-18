@@ -201,5 +201,5 @@ onMounted(() => { loadData() })
 .table-toolbar { margin-bottom: var(--zw-space-md); }
 .pagination-wrap { margin-top: var(--zw-space-md); display: flex; justify-content: flex-end; }
 
-.sum-note { padding: 4px 12px; font-size: 12px; color: var(--el-text-color-secondary); }
+.sum-note { padding: var(--zw-space-2xs) var(--zw-space-sm); font-size: var(--zw-font-size-xs); color: var(--el-text-color-secondary); }
 </style>

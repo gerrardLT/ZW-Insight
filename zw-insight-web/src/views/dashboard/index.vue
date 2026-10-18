@@ -413,13 +413,13 @@ onBeforeUnmount(() => {
 /* 今日工作台：四张计数卡横排（点击直达） */
 .workbench-row { display: flex; gap: var(--zw-space-sm); margin-bottom: var(--zw-space-md); }
 .workbench-card {
-  flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  padding: 10px 16px; border: 1px solid var(--el-border-color-light); border-radius: 6px;
+  flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: var(--zw-space-2xs);
+  padding: var(--zw-space-sm) var(--zw-space-md); border: 1px solid var(--el-border-color-light); border-radius: var(--zw-radius-sm);
   background: var(--el-bg-color); cursor: pointer; text-align: left;
 }
 .workbench-card:hover { border-color: var(--el-color-primary); }
-.workbench-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.workbench-label { font-size: 12px; color: var(--el-text-color-secondary); }
+.workbench-value { font-size: var(--zw-font-size-2xl); font-weight: 600; font-variant-numeric: tabular-nums; }
+.workbench-label { font-size: var(--zw-font-size-xs); color: var(--el-text-color-secondary); }
 
 /* 欢迎区：石墨铭牌（无渐变无光斑，左侧橙定位条） */
 /* 核心链路引导条：紧凑一行，视觉弱于欢迎区（信息条而非内容卡） */

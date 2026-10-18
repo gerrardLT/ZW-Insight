@@ -77,7 +77,7 @@ class BusinessDetailServiceTest {
 
             assertThat(r.get("supported")).isEqualTo(true);
             assertThat(r.get("found")).isEqualTo(true);
-            assertThat(r.get("typeName")).isEqualTo("施工合同");
+            assertThat(r.get("typeName")).isEqualTo("施工总承包合同");
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> fields = (List<Map<String, Object>>) r.get("fields");
             assertThat(fields).anySatisfy(f -> {
