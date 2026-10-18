@@ -42,6 +42,8 @@ class PayableServiceTest {
     @BeforeEach
     void setUp() {
         payableService = new PayableService(payableMapper, writeOffMapper, projectMapper);
+        // 纯单测无 Spring 上下文：@Value 不注入（默认 int=0），显式注入与生产默认一致的账期
+        org.springframework.test.util.ReflectionTestUtils.setField(payableService, "defaultCreditDays", 30);
     }
 
     private ExpenseSettlementPayableEvent event(long sourceId, long contractId, String amount, boolean reversed) {
