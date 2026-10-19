@@ -119,6 +119,13 @@
 - 双机核验：部署 run 全绿；主/徽颍真库直跑 onebook 关键 SQL（收入链/保证金/银行现金/销项税/支出 UNION）全部通过；双机后端 Up。
 - 3b 待办（下轮）：ZwListPage 契约+8 页换壳（1.6-1.8 并入）、ZwFormPane+3 样板、抄送、发票 OCR、支出族修订、驾驶舱落袋口径、L4 应付断言段。
 
+### 3e 批量换壳回退（2026-10-19）
+- 四页批量接 ZwListToolbar 后 19 用例红：部分页（payment-received/subcontract/invoice-*）无 useColumnSetting setup，
+  模板 setVisible/resetColumns 未定义。git checkout 回退后 1378 全绿。
+- **教训**：ZwListToolbar 依赖页面的 columnVisible/setVisible/resetColumns，批量换壳前必须逐页确认
+  已有 useColumnSetting setup；无列设置的页需先补 setup 或让 toolbar props 可选。
+- 补录：db-init/120_V2026_117 双轨镜像入库（此前漏 add，线上 classpath 轨未受影响）。
+
 ## 受阻项登记表
 
 | 日期 | 层级 | 任务项 | 分类 | 原因 | 影响范围 | 处置决策/决策人 | 状态 |
