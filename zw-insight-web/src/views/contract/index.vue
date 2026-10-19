@@ -97,6 +97,9 @@
               <template #default="{ row }">{{ formatMoney(row[item.key]) }}</template>
             </el-table-column>
             <el-table-column prop="unreceivedAmount" label="未收" width="140" align="right">
+              <template #header>
+                <span title="未收 =（合同额 + 累计签证）− 累计回款；含签证口径，故与竣工结算单「施工合同总额」（不含签证）存在口径差异">未收 ⓘ</span>
+              </template>
               <template #default="{ row }">{{ formatMoney(unreceivedOf(row)) }}</template>
             </el-table-column>
             <el-table-column label="操作" width="320" fixed="right">

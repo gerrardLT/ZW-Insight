@@ -66,6 +66,8 @@
                 在经营驾驶舱中查看完整项目经营（含健康度/成本执行率/穿透）→
               </el-button>
             </div>
+            <ProjectOnebookPanel :project-id="projectId" />
+            <el-divider />
             <ProjectBusinessSummary :project-id="projectId" />
           </div>
         </el-tab-pane>
@@ -204,6 +206,7 @@ import {
 import type { ProjectStatusLog, ProjectChangeLog } from '@/types/project'
 import ProjectMember from './components/ProjectMember.vue'
 import ProjectBusinessSummary from './components/ProjectBusinessSummary.vue'
+import ProjectOnebookPanel from './components/ProjectOnebookPanel.vue'
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import * as bizLabels from '@/constants/biz-labels'
 

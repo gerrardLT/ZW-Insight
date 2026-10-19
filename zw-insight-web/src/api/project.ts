@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { R, PageResult } from '@/types/api'
+import type { R, PageResult, ID } from '@/types/api'
 import type {
   Project,
   ProjectCreateRequest,
@@ -153,3 +153,67 @@ export function getProjectPortfolio() {
   return request.get<R<any>>('/v1/project/portfolio')
 }
 
+
+// ======================== 项目一本账（V2026_117 只读聚合） ========================
+
+/** 一本账六条线（后端 ProjectOnebookController /v1/project/{id}/onebook） */
+export interface ProjectOnebook {
+  projectId: ID
+  projectName: string
+  status: string
+  income: {
+    contractAmount: number
+    visaAmount: number
+    outputAmount: number
+    settlementAmount: number
+    invoicedAmount: number
+    receivedAmount: number
+    unreceived: number
+    receivableOpen: number
+  }
+  expense: {
+    categories: Array<{ category: string; contractAmount: number; settled: number; paid: number; outstanding: number; invoiceReceived: number }>
+    totalSettled: number
+    totalPaid: number
+    totalOutstanding: number
+    applying: number
+    reimbursementApproved: number
+    reserveOutstanding: number
+    wageUnpaid: number
+    otherPayment: number
+  }
+  cost: {
+    baseline: number
+    currentBudget: number
+    commitment: number
+    actual: number
+    forecast: number
+    hasCbs: boolean
+  }
+  profit: {
+    forecastProfit: number | null
+    forecastBasis: string
+    realizedProfit: number
+    realizedBasis: string
+    pocketProfit: number
+    pocketBasis: string
+    cashIn: number
+    cashOut: number
+  }
+  fund: {
+    cashIn: number
+    cashOut: number
+    advance: number
+    retentionOutstanding: number
+    bondOccupied: number
+    billHeld: number
+    payableOpen: number
+    receivableOpen: number
+  }
+  tax: { saleTax: number; inputTax: number; vatPayable: number }
+}
+
+/** 项目一本账（只读聚合，六条线一次取全） */
+export function getProjectOnebook(projectId: number | string) {
+  return request.get<R<ProjectOnebook>>(`/v1/project/${projectId}/onebook`)
+}

@@ -58,14 +58,14 @@
 
 ## 阶段三（P1）一本账 + 表单契约 + 抄送/OCR
 
-- [ ] 3.1 ProjectOnebookService 只读聚合端点（六条线） _需求: R3_
-- [ ] 3.2 项目详情页签接 onebook；驾驶舱项目经营补落袋口径 _需求: R3_
+- [x] 3.1 ProjectOnebookService + ProjectOnebookMapper + GET /v1/project/{id}/onebook（project:view；只读不落库；全部数字溯源单据表累计列/台账行）+ ProjectOnebookServiceTest 8 用例 _需求: R3_
+- [x] 3.2 项目详情「项目经营」页签接入 ProjectOnebookPanel（六条线全渲染）；驾驶舱落袋口径沿驾驶舱自身迭代（本阶段未动，如实登记） _需求: R3_
 - [ ] 3.3 ZwFormPane 契约组件 + 样板 3 表单（付款申请/分包合同/分包结算） _需求: R5_
 - [ ] 3.4 ZwDetailTable（模板导入/重置/行合计）自 budget/index 上提 _需求: R5_
 - [ ] 3.5 修订行操作（合同/成本变更单/支出合同族，对接 V2026_106 修订机制） _需求: R5_
 - [ ] 3.6 抄送功能（cc 记录表 + 审批弹窗选抄送人 + 站内信真实链路 + 审批中心第四页签） _需求: R5_
-- [ ] 3.7 发票 OCR 选型决策 + 进项发票三入口 _需求: R3_
-- [ ] 3.8 ZwListPage 第二批 ~20 页铺设 + 验收 _需求: R5_
+- [ ] 3.7 发票 OCR 选型决策 + 进项发票三入口（移 3b） _需求: R3_
+- [ ] 3.8 ZwListPage 第二批 ~20 页铺设 + 验收（并入 3b，连同 1.6-1.8 契约组件） _需求: R5_
 
 ## 阶段四（P2，仅条目）
 
