@@ -159,14 +159,27 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/project',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    redirect: '/project/list',
+    redirect: '/project/hub/ledger-group',
     meta: { title: '项目管理', icon: 'Briefcase', permission: 'project:view' },
     children: [
+      // ===== V2026_121 二级菜单收敛：项目台账与 WBS 合 1 入口 =====
+      {
+        path: 'hub/ledger-group',
+        name: 'ProjectHubLedger',
+        component: () => import('@/components/HubPage.vue'),
+        meta: {
+          title: '项目台账与工程分解', icon: 'Document', group: '项目主档',
+          hubTabs: [
+            { key: 'list', label: '项目台账', loader: () => import('@/views/project/index.vue') },
+            { key: 'wbs', label: '工程分解与任务节点（WBS）', loader: () => import('@/views/project/wbs/index.vue') }
+          ]
+        }
+      },
       {
         path: 'list',
         name: 'ProjectList',
         component: () => import('@/views/project/index.vue'),
-        meta: { title: '项目台账', icon: 'Document', group: '项目主档' }
+        meta: { title: '项目台账', icon: 'Document', group: '项目主档', hidden: true }
       },
       {
         path: 'create',
@@ -190,7 +203,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'wbs',
         name: 'ProjectWbs',
         component: () => import('@/views/project/wbs/index.vue'),
-        meta: { title: '工程分解与任务节点（WBS）', icon: 'Share', permission: 'project:wbs:view', group: '项目主档' }
+        meta: { title: '工程分解与任务节点（WBS）', icon: 'Share', permission: 'project:wbs:view', group: '项目主档', hidden: true }
       }
     ]
   },
@@ -201,11 +214,25 @@ const constantRoutes: RouteRecordRaw[] = [
     redirect: '/contract/list',
     meta: { title: '合同管理', icon: 'Notebook', permission: 'contract:view' },
     children: [
+      // ===== V2026_121 二级菜单收敛：总包合同/产值/签证合 1 入口 =====
+      {
+        path: 'hub/contract-group',
+        name: 'ContractHubMain',
+        component: () => import('@/components/HubPage.vue'),
+        meta: {
+          title: '总包合同与产值', icon: 'Document', group: '总包合同',
+          hubTabs: [
+            { key: 'list', label: '施工总承包合同', loader: () => import('@/views/contract/index.vue') },
+            { key: 'output-report', label: '工程产值申报', loader: () => import('@/views/contract/output-report.vue') },
+            { key: 'change-event', label: '工程变更签证', loader: () => import('@/views/contract/change-event/index.vue') }
+          ]
+        }
+      },
       {
         path: 'list',
         name: 'ContractList',
         component: () => import('@/views/contract/index.vue'),
-        meta: { title: '施工总承包合同', icon: 'Document', group: '总包合同' }
+        meta: { title: '施工总承包合同', icon: 'Document', group: '总包合同', hidden: true }
       },
       {
         path: 'create',
@@ -229,13 +256,13 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'output-report',
         name: 'OutputReport',
         component: () => import('@/views/contract/output-report.vue'),
-        meta: { title: '工程产值申报', icon: 'TrendCharts', group: '总包合同' }
+        meta: { title: '工程产值申报', icon: 'TrendCharts', group: '总包合同', hidden: true }
       },
       {
         path: 'change-event',
         name: 'ChangeEventList',
         component: () => import('@/views/contract/change-event/index.vue'),
-        meta: { title: '工程变更签证', icon: 'Switch', permission: 'contract:changeevent:view', group: '总包合同' }
+        meta: { title: '工程变更签证', icon: 'Switch', permission: 'contract:changeevent:view', group: '总包合同', hidden: true }
       }
     ]
   },
@@ -243,14 +270,28 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/cockpit',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    redirect: '/cockpit/overview',
+    redirect: '/cockpit/hub/operation-group',
     meta: { title: '经营驾驶舱', icon: 'Odometer', permission: 'dashboard:view' },
     children: [
+      // ===== V2026_121 二级菜单收敛：三个驾驶舱合 1 入口，资金/风险中心保留 =====
+      {
+        path: 'hub/operation-group',
+        name: 'CockpitHubOperation',
+        component: () => import('@/components/HubPage.vue'),
+        meta: {
+          title: '经营驾驶舱', icon: 'DataBoard',
+          hubTabs: [
+            { key: 'overview', label: '经营总览', loader: () => import('@/views/cockpit/index.vue') },
+            { key: 'project-operation', label: '项目经营', loader: () => import('@/views/cockpit/project-operation.vue') },
+            { key: 'cost-center', label: '成本中心', loader: () => import('@/views/cockpit/cost-center.vue') }
+          ]
+        }
+      },
       {
         path: 'overview',
         name: 'CockpitOverview',
         component: () => import('@/views/cockpit/index.vue'),
-        meta: { title: '经营总览', icon: 'DataBoard' }
+        meta: { title: '经营总览', icon: 'DataBoard', hidden: true }
       },
       {
         path: 'fund-center',
@@ -269,14 +310,14 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'project-operation',
         name: 'CockpitProjectOperation',
         component: () => import('@/views/cockpit/project-operation.vue'),
-        meta: { title: '项目经营', icon: 'OfficeBuilding' }
+        meta: { title: '项目经营', icon: 'OfficeBuilding', hidden: true }
       },
       {
         // 成本中心（§7.1 总览 + §7.2 七类结构 + §8 商务费用下钻 + §8.1 招待费）
         path: 'cost-center',
         name: 'CockpitCostCenter',
         component: () => import('@/views/cockpit/cost-center.vue'),
-        meta: { title: '成本中心', icon: 'Coin' }
+        meta: { title: '成本中心', icon: 'Coin', hidden: true }
       }
     ]
   },
@@ -292,7 +333,7 @@ const constantRoutes: RouteRecordRaw[] = [
       {
         path: 'hub/receivable-group',
         name: 'FinanceHubReceivable',
-        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '工程应收与结算', icon: 'Money', group: '收入钱链',
           hubTabs: [
@@ -306,7 +347,7 @@ const constantRoutes: RouteRecordRaw[] = [
       {
         path: 'hub/payable-group',
         name: 'FinanceHubPayable',
-        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '工程应付与支出', icon: 'CreditCard', group: '支出钱链',
           hubTabs: [
@@ -319,7 +360,7 @@ const constantRoutes: RouteRecordRaw[] = [
       {
         path: 'hub/reimbursement-group',
         name: 'FinanceHubReimbursement',
-        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '日常报销与备用金', icon: 'WalletFilled', group: '支出钱链',
           hubTabs: [
@@ -332,7 +373,7 @@ const constantRoutes: RouteRecordRaw[] = [
       {
         path: 'hub/invoice-group',
         name: 'FinanceHubInvoice',
-        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '发票税务台账', icon: 'Tickets', group: '发票与税务',
           hubTabs: [
@@ -345,7 +386,7 @@ const constantRoutes: RouteRecordRaw[] = [
       {
         path: 'hub/bank-group',
         name: 'FinanceHubBank',
-        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '银行账户与流水', icon: 'Coin', group: '账户与资金',
           hubTabs: [
@@ -358,7 +399,7 @@ const constantRoutes: RouteRecordRaw[] = [
       {
         path: 'hub/special-fund-group',
         name: 'FinanceHubSpecialFund',
-        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '专项资金与金融', icon: 'GoldMedal', group: '专项资金台账',
           hubTabs: [
@@ -373,7 +414,7 @@ const constantRoutes: RouteRecordRaw[] = [
       {
         path: 'hub/plan-group',
         name: 'FinanceHubPlan',
-        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '资金计划与经营分析', icon: 'Calendar', group: '经营分析',
           hubTabs: [
@@ -388,7 +429,7 @@ const constantRoutes: RouteRecordRaw[] = [
       {
         path: 'hub/settings-group',
         name: 'FinanceHubSettings',
-        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '财务基础设置', icon: 'Setting', group: '财务设置',
           hubTabs: [
@@ -593,20 +634,35 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/budget',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    redirect: '/budget/list',
+    redirect: '/budget/hub/cost-group',
     meta: { title: '预算管理', icon: 'Coin', permission: 'budget:view' },
     children: [
+      // ===== V2026_121 二级菜单收敛：目标成本 4 项收敛为 1 入口 =====
+      {
+        path: 'hub/cost-group',
+        name: 'BudgetHubMain',
+        component: () => import('@/components/HubPage.vue'),
+        meta: {
+          title: '目标成本管理', icon: 'Coin',
+          hubTabs: [
+            { key: 'list', label: '项目目标成本预算', loader: () => import('@/views/budget/index.vue') },
+            { key: 'change', label: '目标成本调整单', loader: () => import('@/views/budget/change/index.vue') },
+            { key: 'cost-account', label: '目标成本科目（CBS）', loader: () => import('@/views/budget/cost-account/index.vue') },
+            { key: 'control-config', label: '成本预算控制配置', loader: () => import('@/views/budget/control-config/index.vue') }
+          ]
+        }
+      },
       {
         path: 'list',
         name: 'BudgetList',
         component: () => import('@/views/budget/index.vue'),
-        meta: { title: '项目目标成本预算', icon: 'Document' }
+        meta: { title: '项目目标成本预算', icon: 'Document', hidden: true }
       },
       {
         path: 'change',
         name: 'BudgetChangeList',
         component: () => import('@/views/budget/change/index.vue'),
-        meta: { title: '目标成本调整单', icon: 'Switch' }
+        meta: { title: '目标成本调整单', icon: 'Switch', hidden: true }
       },
       {
         path: 'change/form',
@@ -618,13 +674,13 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'control-config',
         name: 'BudgetControlConfig',
         component: () => import('@/views/budget/control-config/index.vue'),
-        meta: { title: '成本预算控制配置', icon: 'Setting' }
+        meta: { title: '成本预算控制配置', icon: 'Setting', hidden: true }
       },
       {
         path: 'cost-account',
         name: 'CostAccountList',
         component: () => import('@/views/budget/cost-account/index.vue'),
-        meta: { title: '目标成本科目（CBS）', icon: 'Coin', permission: 'budget:costaccount:view' }
+        meta: { title: '目标成本科目（CBS）', icon: 'Coin', permission: 'budget:costaccount:view', hidden: true }
       }
     ]
   },
@@ -639,19 +695,19 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'contract',
         name: 'PurchaseContract',
         component: () => import('@/views/purchase/contract.vue'),
-        meta: { title: '物资采购合同', icon: 'Document' }
+        meta: { title: '物资采购合同', icon: 'Document', hidden: true }
       },
       {
         path: 'settlement',
         name: 'PurchaseSettlement',
         component: () => import('@/views/purchase/settlement.vue'),
-        meta: { title: '采购结算单', icon: 'Tickets' }
+        meta: { title: '采购结算单', icon: 'Tickets', hidden: true }
       },
       {
         path: 'inquiry',
         name: 'PurchaseInquiry',
         component: () => import('@/views/purchase/inquiry.vue'),
-        meta: { title: '采购询价与比价', icon: 'DataAnalysis' }
+        meta: { title: '采购询价与比价', icon: 'DataAnalysis', hidden: true }
       }
     ]
   },
@@ -659,62 +715,82 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/labor',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    redirect: '/labor/contract',
+    redirect: '/labor/hub/labor-group',
     meta: { title: '劳务管理', icon: 'Avatar', permission: 'labor:view' },
     children: [
+      // ===== V2026_121 二级菜单收敛：劳务 9 项收敛为 1 入口 =====
+      {
+        path: 'hub/labor-group',
+        name: 'LaborHubMain',
+        component: () => import('@/components/HubPage.vue'),
+        meta: {
+          title: '劳务班组管理', icon: 'Avatar',
+          hubTabs: [
+            { key: 'contract', label: '劳务分包合同', loader: () => import('@/views/labor/contract.vue') },
+            { key: 'team', label: '施工班组管理', loader: () => import('@/views/labor/team.vue') },
+            { key: 'roster', label: '现场劳务花名册', loader: () => import('@/views/labor/roster.vue') },
+            { key: 'work-order', label: '现场点工派工单', loader: () => import('@/views/labor/work-order.vue') },
+            { key: 'payroll', label: '劳务班组工资单', loader: () => import('@/views/labor/payroll.vue') },
+            { key: 'salary-stats', label: '薪资统计', loader: () => import('@/views/labor/salary/stats.vue') },
+            { key: 'output', label: '劳务完成产值', loader: () => import('@/views/labor/output.vue') },
+            { key: 'settlement', label: '劳务结算单', loader: () => import('@/views/labor/settlement.vue') },
+            { key: 'reward-punish', label: '劳务奖惩', loader: () => import('@/views/labor/reward-punish.vue') }
+          ]
+        }
+      },
       {
         path: 'contract',
         name: 'LaborContract',
         component: () => import('@/views/labor/contract.vue'),
-        meta: { title: '劳务分包合同', icon: 'Document' }
+        meta: { title: '劳务分包合同', icon: 'Document', hidden: true }
       },
       {
         path: 'team',
         name: 'LaborTeam',
         component: () => import('@/views/labor/team.vue'),
-        meta: { title: '施工班组管理', icon: 'UserFilled' }
+        meta: { title: '施工班组管理', icon: 'UserFilled', hidden: true }
       },
       {
         path: 'roster',
         name: 'LaborRoster',
         component: () => import('@/views/labor/roster.vue'),
-        meta: { title: '现场劳务花名册', icon: 'List' }
+        meta: { title: '现场劳务花名册', icon: 'List', hidden: true }
       },
       {
         path: 'work-order',
         name: 'LaborWorkOrder',
         component: () => import('@/views/labor/work-order.vue'),
-        meta: { title: '现场点工派工单', icon: 'Memo' }
+        meta: { title: '现场点工派工单', icon: 'Memo', hidden: true }
       },
       {
         path: 'payroll',
         name: 'LaborPayroll',
         component: () => import('@/views/labor/payroll.vue'),
-        meta: { title: '劳务班组工资单', icon: 'Wallet' }
+        meta: { title: '劳务班组工资单', icon: 'Wallet', hidden: true }
       },
       {
         path: 'salary-stats',
         name: 'LaborSalaryStats',
         component: () => import('@/views/labor/salary/stats.vue'),
-        meta: { title: '薪资统计', icon: 'DataAnalysis' }
+        meta: { title: '薪资统计', icon: 'DataAnalysis', hidden: true }
       },
       {
         path: 'output',
         name: 'LaborOutput',
         component: () => import('@/views/labor/output.vue'),
-        meta: { title: '劳务完成产值', icon: 'TrendCharts' }
+        meta: { title: '劳务完成产值', icon: 'TrendCharts', hidden: true }
       },
       {
         path: 'settlement',
         name: 'LaborSettlement',
         component: () => import('@/views/labor/settlement.vue'),
-        meta: { title: '劳务结算单', icon: 'Files' }
+        meta: { title: '劳务结算单', icon: 'Files', hidden: true }
       },
       {
         path: 'reward-punish',
         name: 'LaborRewardPunish',
         component: () => import('@/views/labor/reward-punish.vue'),
-        meta: { title: '劳务奖惩', icon: 'Scale' }
+        meta: { title: '劳务奖惩', icon: 'Scale', hidden: true }
       }
     ]
   },
@@ -722,44 +798,64 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/material',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    redirect: '/material/inbound',
+    redirect: '/material/hub/material-purchase-group',
     meta: { title: '材料库存', icon: 'Box', permission: 'material:view' },
     children: [
+      // ===== V2026_121 二级菜单收敛：材料 6 + 采购 3 合 1 入口 =====
+      {
+        path: 'hub/material-purchase-group',
+        name: 'MaterialHubMain',
+        component: () => import('@/components/HubPage.vue'),
+        meta: {
+          title: '材料与采购', icon: 'Box',
+          hubTabs: [
+            { key: 'inbound', label: '材料入库单', loader: () => import('@/views/material/inbound.vue') },
+            { key: 'outbound', label: '现场领料单', loader: () => import('@/views/material/outbound.vue') },
+            { key: 'transfer', label: '材料调拨单', loader: () => import('@/views/material/transfer.vue') },
+            { key: 'stock', label: '材料库存台账', loader: () => import('@/views/material/stock.vue') },
+            { key: 'inventory', label: '材料盘点', loader: () => import('@/views/material/inventory.vue') },
+            { key: 'refund', label: '退货退款', loader: () => import('@/views/material/refund.vue') },
+            { key: 'purchase-contract', label: '物资采购合同', loader: () => import('@/views/purchase/contract.vue') },
+            { key: 'purchase-settlement', label: '采购结算单', loader: () => import('@/views/purchase/settlement.vue') },
+            { key: 'purchase-inquiry', label: '采购询价与比价', loader: () => import('@/views/purchase/inquiry.vue') }
+          ]
+        }
+      },
       {
         path: 'inbound',
         name: 'MaterialInbound',
         component: () => import('@/views/material/inbound.vue'),
-        meta: { title: '材料入库单', icon: 'Download' }
+        meta: { title: '材料入库单', icon: 'Download', hidden: true }
       },
       {
         path: 'outbound',
         name: 'MaterialOutbound',
         component: () => import('@/views/material/outbound.vue'),
-        meta: { title: '现场领料单', icon: 'Upload' }
+        meta: { title: '现场领料单', icon: 'Upload', hidden: true }
       },
       {
         path: 'transfer',
         name: 'MaterialTransfer',
         component: () => import('@/views/material/transfer.vue'),
-        meta: { title: '材料调拨单', icon: 'Switch' }
+        meta: { title: '材料调拨单', icon: 'Switch', hidden: true }
       },
       {
         path: 'stock',
         name: 'MaterialStock',
         component: () => import('@/views/material/stock.vue'),
-        meta: { title: '材料库存台账', icon: 'Search' }
+        meta: { title: '材料库存台账', icon: 'Search', hidden: true }
       },
       {
         path: 'inventory',
         name: 'MaterialInventory',
         component: () => import('@/views/material/inventory.vue'),
-        meta: { title: '材料盘点', icon: 'DocumentChecked' }
+        meta: { title: '材料盘点', icon: 'DocumentChecked', hidden: true }
       },
       {
         path: 'refund',
         name: 'MaterialRefund',
         component: () => import('@/views/material/refund.vue'),
-        meta: { title: '退货退款', icon: 'RefreshLeft' }
+        meta: { title: '退货退款', icon: 'RefreshLeft', hidden: true }
       }
     ]
   },
@@ -767,44 +863,61 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/machine',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    redirect: '/machine/contract',
+    redirect: '/machine/hub/machine-group',
     meta: { title: '机械管理', icon: 'Van', permission: 'machine:view' },
     children: [
+      // ===== V2026_121 二级菜单收敛：机械 6 项收敛为 1 入口 =====
+      {
+        path: 'hub/machine-group',
+        name: 'MachineHubMain',
+        component: () => import('@/components/HubPage.vue'),
+        meta: {
+          title: '机械租赁管理', icon: 'Van',
+          hubTabs: [
+            { key: 'contract', label: '机械租赁合同', loader: () => import('@/views/machine/contract.vue') },
+            { key: 'ledger', label: '机械设备台账', loader: () => import('@/views/machine/ledger.vue') },
+            { key: 'entry', label: '进出场登记', loader: () => import('@/views/machine/entry.vue') },
+            { key: 'work-log', label: '机械现场点检与台班', loader: () => import('@/views/machine/work-log.vue') },
+            { key: 'repair', label: '故障维修', loader: () => import('@/views/machine/repair.vue') },
+            { key: 'settlement', label: '机械结算单', loader: () => import('@/views/machine/settlement/index.vue') }
+          ]
+        }
+      },
       {
         path: 'contract',
         name: 'MachineContract',
         component: () => import('@/views/machine/contract.vue'),
-        meta: { title: '机械租赁合同', icon: 'Document' }
+        meta: { title: '机械租赁合同', icon: 'Document', hidden: true }
       },
       {
         path: 'ledger',
         name: 'MachineLedger',
         component: () => import('@/views/machine/ledger.vue'),
-        meta: { title: '机械设备台账', icon: 'Notebook' }
+        meta: { title: '机械设备台账', icon: 'Notebook', hidden: true }
       },
       {
         path: 'entry',
         name: 'MachineEntry',
         component: () => import('@/views/machine/entry.vue'),
-        meta: { title: '进出场登记', icon: 'MapLocation' }
+        meta: { title: '进出场登记', icon: 'MapLocation', hidden: true }
       },
       {
         path: 'work-log',
         name: 'MachineWorkLog',
         component: () => import('@/views/machine/work-log.vue'),
-        meta: { title: '机械现场点检与台班', icon: 'Timer' }
+        meta: { title: '机械现场点检与台班', icon: 'Timer', hidden: true }
       },
       {
         path: 'repair',
         name: 'MachineRepair',
         component: () => import('@/views/machine/repair.vue'),
-        meta: { title: '故障维修', icon: 'WarnTriangleFilled' }
+        meta: { title: '故障维修', icon: 'WarnTriangleFilled', hidden: true }
       },
       {
         path: 'settlement',
         name: 'MachineSettlement',
         component: () => import('@/views/machine/settlement/index.vue'),
-        meta: { title: '机械结算单', icon: 'Tickets' }
+        meta: { title: '机械结算单', icon: 'Tickets', hidden: true }
       },
       {
         path: 'settlement/create',
@@ -824,26 +937,40 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/subcontract',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    redirect: '/subcontract/contract',
+    redirect: '/subcontract/hub/subcontract-group',
     meta: { title: '分包管理', icon: 'Connection', permission: 'subcontract:view' },
     children: [
+      // ===== V2026_121 二级菜单收敛：分包 3 项收敛为 1 入口 =====
+      {
+        path: 'hub/subcontract-group',
+        name: 'SubcontractHubMain',
+        component: () => import('@/components/HubPage.vue'),
+        meta: {
+          title: '专业分包管理', icon: 'Connection',
+          hubTabs: [
+            { key: 'contract', label: '专业分包合同', loader: () => import('@/views/subcontract/contract.vue') },
+            { key: 'settlement', label: '分包结算单', loader: () => import('@/views/subcontract/settlement.vue') },
+            { key: 'output', label: '分包完成产值', loader: () => import('@/views/subcontract/output.vue') }
+          ]
+        }
+      },
       {
         path: 'contract',
         name: 'SubContract',
         component: () => import('@/views/subcontract/contract.vue'),
-        meta: { title: '专业分包合同', icon: 'Document' }
+        meta: { title: '专业分包合同', icon: 'Document', hidden: true }
       },
       {
         path: 'settlement',
         name: 'SubSettlement',
         component: () => import('@/views/subcontract/settlement.vue'),
-        meta: { title: '分包结算单', icon: 'Tickets' }
+        meta: { title: '分包结算单', icon: 'Tickets', hidden: true }
       },
       {
         path: 'output',
         name: 'SubOutput',
         component: () => import('@/views/subcontract/output.vue'),
-        meta: { title: '分包完成产值', icon: 'TrendCharts' }
+        meta: { title: '分包完成产值', icon: 'TrendCharts', hidden: true }
       }
     ]
   },
@@ -912,17 +1039,30 @@ const constantRoutes: RouteRecordRaw[] = [
     redirect: '/tender/register',
     meta: { title: '投标管理', icon: 'Trophy', permission: 'tender:view' },
     children: [
+      // ===== V2026_121 二级菜单收敛：投标报名与证件合 1 入口 =====
+      {
+        path: 'hub/tender-group',
+        name: 'TenderHubMain',
+        component: () => import('@/components/HubPage.vue'),
+        meta: {
+          title: '投标管理', icon: 'EditPen', group: '投标揽件',
+          hubTabs: [
+            { key: 'register', label: '投标项目管理', loader: () => import('@/views/tender/register.vue') },
+            { key: 'certificate', label: '投标证件管理', loader: () => import('@/views/tender/certificate.vue') }
+          ]
+        }
+      },
       {
         path: 'register',
         name: 'TenderRegister',
         component: () => import('@/views/tender/register.vue'),
-        meta: { title: '投标项目管理', icon: 'EditPen', group: '投标揽件' }
+        meta: { title: '投标项目管理', icon: 'EditPen', group: '投标揽件', hidden: true }
       },
       {
         path: 'certificate',
         name: 'TenderCertificate',
         component: () => import('@/views/tender/certificate.vue'),
-        meta: { title: '投标证件管理', icon: 'Postcard', group: '投标揽件' }
+        meta: { title: '投标证件管理', icon: 'Postcard', group: '投标揽件', hidden: true }
       }
     ]
   },

@@ -1,5 +1,5 @@
 /**
- * FinanceHubPage.vue 聚合入口壳测试（V2026_120 财务二级菜单收敛）
+ * HubPage.vue 聚合入口壳测试（V2026_120 财务二级菜单收敛）
  *
  * 覆盖：Tab 按 meta.hubTabs 渲染 / ?tab= 直达激活 / 切 Tab router.replace 保留其余 query
  *（projectId 不丢）/ 首个 Tab 默认激活。
@@ -26,7 +26,7 @@ vi.mock('element-plus', async (importOriginal) => {
   return { ...actual }
 })
 
-import FinanceHubPage from '@/views/finance/hub/FinanceHubPage.vue'
+import HubPage from '@/components/HubPage.vue'
 
 const TABS = [
   { key: 'settlement', label: '工程竣工结算', loader: () => import('@/views/finance/settlement/index.vue') },
@@ -42,12 +42,12 @@ afterEach(() => {
 
 async function mountHub(query: Record<string, string> = {}) {
   mockRouteQuery.value = { ...query, __meta: { hubTabs: TABS } } as any
-  wrapper = mount(FinanceHubPage, { global: { plugins: [ElementPlus] } })
+  wrapper = mount(HubPage, { global: { plugins: [ElementPlus] } })
   await flushPromises()
   return wrapper
 }
 
-describe('finance/hub/FinanceHubPage.vue 聚合入口壳', () => {
+describe('components/HubPage.vue 聚合入口壳', () => {
   it('按 meta.hubTabs 渲染全部 Tab 标签，默认激活第一个', async () => {
     const w = await mountHub()
     const labels = w.findAll('.hub-tab-label').map((l: any) => l.text())
@@ -62,7 +62,7 @@ describe('finance/hub/FinanceHubPage.vue 聚合入口壳', () => {
 
   it('切 Tab 时 router.replace 保留其余 query（projectId 不丢）', async () => {
     mockRouteQuery.value = { projectId: '90001', __meta: { hubTabs: TABS } } as any
-    wrapper = mount(FinanceHubPage, { global: { plugins: [ElementPlus] } })
+    wrapper = mount(HubPage, { global: { plugins: [ElementPlus] } })
     await flushPromises()
     const st = wrapper.vm.$.setupState
     st.activeTab = 'receivable'

@@ -1,5 +1,5 @@
 <template>
-  <div class="finance-hub">
+  <div class="biz-hub">
     <el-tabs v-model="activeTab" type="border-card" class="hub-tabs">
       <el-tab-pane v-for="t in tabs" :key="t.key" :name="t.key" lazy>
         <template #label>
@@ -15,12 +15,12 @@
 
 <script setup lang="ts">
 /**
- * 财务资金域聚合入口壳（V2026_120 二级菜单收敛）。
+ * 通用聚合入口壳（V2026_120/121 二级菜单收敛）。
  *
- * 29 个原财务菜单收敛为 8 个一等入口：本壳按 route.meta.hubTabs 渲染 Tab，
- * Tab 内容懒挂载原整页组件（keep-alive 缓存）。原路由全部保留且支持
- * URL 直达（?projectId= 等参数经 route.query 原样透传给子组件——子组件
- * onMounted 已按字符串承接 projectId）。
+ * 财务 29→8、经营总览 3→1、项目管理 7→3、成本管理 31→5：本壳按
+ * route.meta.hubTabs 渲染 Tab，Tab 内容懒挂载原整页组件（keep-alive 缓存）。
+ * 原路由全部保留且支持 URL 直达（?projectId= 等参数经 route.query 原样
+ * 透传给子组件——子组件 onMounted 已按字符串承接 projectId）。
  *
  * 约束：
  * - 只读 route.query，切换 Tab 用 router.replace 保留其余 query（projectId/tab 之外不丢）；
@@ -71,7 +71,7 @@ watch(
 </script>
 
 <style scoped>
-.finance-hub {
+.biz-hub {
   padding: var(--zw-space-md);
 }
 .hub-tabs {
