@@ -178,3 +178,20 @@ export function getRollbackLogs(params: {
 export function confirmRollbackConflict(id: number, data: { resolution: string }) {
   return request.post(`/v1/workflow/rollback/${id}/confirm`, data)
 }
+
+// ==================== 抄送（V2026_117） ====================
+
+/** 抄送我的列表 */
+export function getCcMeList(params: { page: number; size: number; readStatus?: number }) {
+  return request.get<R<any>>('/v1/workflow/approval/cc-me', { params })
+}
+
+/** 标记抄送已读 */
+export function markCcRead(id: number | string) {
+  return request.put<R<void>>(`/v1/workflow/approval/cc/${id}/read`)
+}
+
+/** 未读抄送计数 */
+export function getCcUnreadCount() {
+  return request.get<R<number>>('/v1/workflow/approval/cc/unread-count')
+}

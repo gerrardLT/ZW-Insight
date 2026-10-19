@@ -25,6 +25,7 @@ public class ApprovalController {
     private final ApprovalService approvalService;
     private final UrgeService urgeService;
     private final BusinessDetailService businessDetailService;
+    private final com.zwinsight.workflow.service.WorkflowCcService ccService;
 
     /**
      * 发起流程
@@ -196,5 +197,29 @@ public class ApprovalController {
     @GetMapping("/urge/count/{taskId}")
     public R<Integer> getUrgeCount(@PathVariable String taskId) {
         return R.ok(urgeService.getUrgeCount(taskId));
+    }
+    // ==================== 抄送（V2026_117） ====================
+
+    /** 抄送我的（分页，readStatus 0=未读/1=已读/null=全部） */
+    @GetMapping("/cc-me")
+    public R<com.zwinsight.common.result.PageResult<com.zwinsight.workflow.domain.BizWorkflowCc>> ccMe(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Integer readStatus) {
+        return R.ok(ccService.pageByUser(page, size, readStatus));
+    }
+
+    /** 标记抄送已读 */
+    @PutMapping("/cc/{id}/read")
+    @com.zwinsight.common.annotation.OperLog(module = "审批中心", operType = "UPDATE", description = "标记抄送已读")
+    public R<Void> markCcRead(@PathVariable Long id) {
+        ccService.markRead(id);
+        return R.ok();
+    }
+
+    /** 未读抄送计数 */
+    @GetMapping("/cc/unread-count")
+    public R<Long> ccUnreadCount() {
+        return R.ok(ccService.unreadCount());
     }
 }

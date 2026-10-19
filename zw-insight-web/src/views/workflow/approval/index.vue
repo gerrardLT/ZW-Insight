@@ -2,7 +2,7 @@
   <div class="approval-container">
     <el-card shadow="never">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-        <el-tab-pane label="待办任务" name="todo" /><el-tab-pane label="已办任务" name="done" /><el-tab-pane label="我发起的" name="initiated" />
+        <el-tab-pane label="待办任务" name="todo" /><el-tab-pane label="已办任务" name="done" /><el-tab-pane label="我发起的" name="initiated" /><el-tab-pane label="抄送我的" name="ccMe" />
       </el-tabs>
       <div class="table-toolbar">
         <el-button v-if="activeTab === 'todo'" :disabled="!selectedRows.length || loading || submitLoading" @click="handleBatchApprove">核对批量通过</el-button>
@@ -116,6 +116,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
+import { getCcMeList } from '@/api/workflow'
 import { getApprovalTrace, getTodoTasks, getDoneTasks, getMyInitiatedProcesses, getApprovalDetail, getBusinessDetail, claimTask, completeTask, rejectToPrevious, rejectToStart, terminateProcess, batchApprove } from '@/api/workflow'
 import { getPaymentApplyDetail } from '@/api/finance'
 const route = useRoute()
@@ -124,7 +125,7 @@ import { approvalBlock, batchBlock, money, validId, businessTypeName, formatTime
 const approvalColumns = [{ key: 'taskName', label: '任务名称' }, { key: 'businessType', label: '业务类型' }, { key: 'initiator', label: '发起人' }, { key: 'createTime', label: '创建时间' }]
 const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('approval-table', approvalColumns)
 // 支持 ?tab=todo|done|initiated 直达（首页工作台卡点击跳入）；route 防御式访问（无 router plugin 环境为 undefined）
-const activeTab = ref(['todo', 'done', 'initiated'].includes(route?.query?.tab as string) ? (route.query.tab as string) : 'todo'), loading = ref(false), listError = ref(''), tableData = ref<any[]>([]), total = ref(0), selectedRows = ref<any[]>([])
+const activeTab = ref(['todo', 'done', 'initiated', 'ccMe'].includes(route?.query?.tab as string) ? (route.query.tab as string) : 'todo'), loading = ref(false), listError = ref(''), tableData = ref<any[]>([]), total = ref(0), selectedRows = ref<any[]>([])
 const queryParams = ref({ page: 1, size: 10 }), tableRef = ref<any>(), tableRegion = ref<HTMLElement>(), currentRowIndex = ref(-1)
 const drawerVisible = ref(false), detailLoading = ref(false), detailError = ref(''), detail = ref<any>(null), payment = ref<any>(null), projectName = ref(''), currentTaskId = ref(''), comment = ref(''), rejectType = ref('previous'), submitLoading = ref(false)
 const biz = ref<any>(null), bizLoading = ref(false), bizError = ref('')
@@ -144,6 +145,15 @@ async function openInitiatedTrace(row: any) {
 let listVersion = 0, detailVersion = 0, batchVersion = 0
 const blocked = computed(() => detailLoading.value || bizLoading.value ? '详情尚未加载完成' : detailError.value || bizError.value || (detail.value?.businessType !== PAYMENT_TYPE && (!biz.value?.supported || !biz.value?.found) ? '业务源单未成功加载，不可审批' : '') || approvalBlock(detail.value, currentTaskId.value, payment.value))
 async function loadData() {
+  if (activeTab.value === 'ccMe') {
+    loading.value = true; listError.value = ''
+    try {
+      const res: any = await getCcMeList({ page: queryParams.value.page, size: queryParams.value.size, readStatus: undefined })
+      tableData.value = res.data?.records || []
+      total.value = res.data?.total || 0
+    } catch { listError.value = '加载失败' } finally { loading.value = false }
+    return
+  }
   const version = ++listVersion
   loading.value = true; listError.value = ''; selectedRows.value = []; currentRowIndex.value = -1
   try {
