@@ -36,6 +36,8 @@ vi.mock('@/api/project', () => ({
   getProjectDetail: mockProjectDetail, createProject: mockProjectCreate, updateProject: mockProjectUpdate,
   getOwnerList: mockOwnerList, getCompanyList: mockCompanyList,
   getProjectMembers: mockMembers, addProjectMember: mockAddMember, removeProjectMember: mockRemoveMember, updateMemberRoles: mockUpdateRoles,
+  // detail.vue 首屏 KPI 看板消费；缺失会让 loadKpis 走 catch（静默路径，勿留）
+  getProjectOnebook: vi.fn(async (): Promise<any> => ({ code: 200, data: null })),
 }))
 vi.mock('@/api/system', () => ({
   getUserPage: mockUserPage,

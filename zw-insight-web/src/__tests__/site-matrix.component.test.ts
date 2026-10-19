@@ -222,9 +222,14 @@ describe('site/inspection/index.vue 检查列表（C17）', () => {
     expect(inspIndexSrc).toContain('<span v-else>-</span>')
   })
 
-  it('@matrix C-17-4 hasProblem 1→存在质量安全隐患 danger / 0→合格 success 源码钉住', () => {
-    expect(inspIndexSrc).toContain("row.hasProblem === 1 ? 'danger' : 'success'")
-    expect(inspIndexSrc).toContain("row.hasProblem === 1 ? '存在质量安全隐患' : '合格'")
+  it('@matrix C-17-4 hasProblem 检查结论取 biz-labels 唯一源（conclusionLabel/conclusionTagType 接线 INSPECTION_CONCLUSION）', () => {
+    expect(inspIndexSrc).toContain('conclusionTagType(row.hasProblem)')
+    expect(inspIndexSrc).toContain('{{ conclusionLabel(row.hasProblem) }}')
+    expect(inspIndexSrc).toContain("import { INSPECTION_CONCLUSION } from '@/constants/biz-labels'")
+    // 唯一源文案不得在模板手写复现（含历史变体）
+    expect(inspIndexSrc).not.toContain("'存在质量安全隐患'")
+    expect(inspIndexSrc).not.toContain("'有问题'")
+    expect(inspIndexSrc).not.toContain("'存在隐患'")
   })
 
   it('@matrix C-17-1 tab 切换重载：quality→getQualityInspectionPage；safety→getSafetyInspectionPage 且 page 归 1', async () => {

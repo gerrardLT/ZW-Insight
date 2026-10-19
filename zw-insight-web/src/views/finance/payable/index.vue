@@ -79,7 +79,7 @@
         <el-table-column prop="projectName" label="项目" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.projectName || `项目#${row.projectId}` }}</template>
         </el-table-column>
-        <el-table-column label="类别" width="110" align="center">
+        <el-table-column label="类别" width="140" align="center">
           <template #default="{ row }">{{ CONTRACT_CATEGORY[row.contractCategory] || row.contractCategory }}</template>
         </el-table-column>
         <el-table-column prop="supplierName" label="供应商/分包方" width="150" show-overflow-tooltip>
@@ -159,7 +159,7 @@ const bucketDefs = [
   { key: 'OVER_90', label: '90 天以上' }
 ]
 
-const query = ref({ page: 1, size: 10, projectId: undefined as number | undefined, status: '', contractCategory: '' })
+const query = ref({ page: 1, size: 10, projectId: undefined as number | string | undefined, status: '', contractCategory: '' })
 
 const SOURCE_LABELS: Record<string, string> = {
   SUBCONTRACT_SETTLEMENT: '分包结算',
@@ -250,8 +250,8 @@ async function searchProject(keyword?: string) {
 }
 
 onMounted(() => {
-  const qPid = route.query.projectId ? Number(route.query.projectId) : undefined
-  if (qPid) {
+  const qPid = route.query.projectId != null ? String(route.query.projectId).trim() : ''
+  if (qPid && qPid !== '0') {
     query.value.projectId = qPid
   }
   searchProject()

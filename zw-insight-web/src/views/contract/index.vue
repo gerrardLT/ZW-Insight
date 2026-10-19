@@ -251,7 +251,8 @@ async function handleWithdrawContract(row: any) {
 const queryParams = ref({
   page: 1,
   size: 10,
-  projectId: undefined as number | undefined,
+  // 雪花项目ID必须以字符串承接（Number() 会精度丢位，A2-07 纪律）
+  projectId: undefined as number | string | undefined,
   status: '',
   contractCode: '',
   partyAName: ''
@@ -369,8 +370,8 @@ function buildAmountSummaryOption(data: any) {
 }
 
 onMounted(() => {
-  const qPid = route.query.projectId ? Number(route.query.projectId) : undefined
-  if (qPid) {
+  const qPid = route.query.projectId != null ? String(route.query.projectId).trim() : ''
+  if (qPid && qPid !== '0') {
     queryParams.value.projectId = qPid
   }
   loadData()

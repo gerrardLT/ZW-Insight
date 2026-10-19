@@ -330,7 +330,8 @@ const submitLoading = ref(false)
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  projectId: undefined as number | undefined,
+  // 雪花项目ID以字符串承接（Number() 精度丢位，A2-07 纪律）
+  projectId: undefined as number | string | undefined,
   status: '',
   payStatus: ''
 })
@@ -609,8 +610,8 @@ function handleSaveShortcut() {
 
 onMounted(async () => {
   const routeQuery = route?.query || {}
-  const qPid = routeQuery.projectId != null ? Number(routeQuery.projectId) : undefined
-  if (qPid) {
+  const qPid = routeQuery.projectId != null ? String(routeQuery.projectId).trim() : ''
+  if (qPid && qPid !== '0') {
     queryParams.value.projectId = qPid
   }
   loadData()

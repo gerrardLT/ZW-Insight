@@ -45,13 +45,13 @@ export interface ReceivableAging {
 export function getReceivablePage(params: {
   page?: number
   size?: number
-  projectId?: number
+  projectId?: number | string
   status?: string
 }) {
   return request.get<R<PageResult<Receivable>>>('/v1/finance/receivable/page', { params })
 }
 
-export function getReceivableAging(projectId?: number) {
+export function getReceivableAging(projectId?: number | string) {
   return request.get<R<ReceivableAging>>('/v1/finance/receivable/aging', { params: { projectId } })
 }
 

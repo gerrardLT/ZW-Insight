@@ -591,7 +591,7 @@ const constantRoutes: RouteRecordRaw[] = [
         path: 'output',
         name: 'LaborOutput',
         component: () => import('@/views/labor/output.vue'),
-        meta: { title: '产值上报', icon: 'TrendCharts' }
+        meta: { title: '劳务完成产值', icon: 'TrendCharts' }
       },
       {
         path: 'settlement',

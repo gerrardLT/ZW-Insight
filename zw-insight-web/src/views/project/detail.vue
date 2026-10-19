@@ -49,6 +49,16 @@
     </div>
 
     <!-- 首屏老板看板：8大核心工程经营指标（大号字、红绿分明） -->
+    <el-alert
+      v-if="kpiError"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="kpi-error-alert"
+      title="经营指标暂时加载失败，下列金额显示为「—」，不影响下方项目详情。"
+    >
+      <el-button link type="primary" @click="loadKpis">重试</el-button>
+    </el-alert>
     <div class="boss-kpi-grid" v-loading="kpiLoading">
       <div class="kpi-card" @click="activeTab = 'contract'">
         <div class="kpi-header">
@@ -56,7 +66,7 @@
           <el-tag size="small" type="primary">收入总源</el-tag>
         </div>
         <div class="kpi-value text-brand">{{ formatKpiMoney(kpiData.contractAmount) }}</div>
-        <div class="kpi-tip">包含施工总承包合同及已生效签证</div>
+        <div class="kpi-tip">施工总承包合同签约价（签证另计）</div>
       </div>
 
       <div class="kpi-card" @click="activeTab = 'contract'">
@@ -65,7 +75,7 @@
           <el-tag size="small" type="info">已干产值</el-tag>
         </div>
         <div class="kpi-value">{{ formatKpiMoney(kpiData.outputAmount) }}</div>
-        <div class="kpi-tip">累计监理已审核认价产值</div>
+        <div class="kpi-tip">月度产值申报累计（已审批）</div>
       </div>
 
       <div class="kpi-card" @click="activeTab = 'funds'">
@@ -74,16 +84,16 @@
           <el-tag size="small" type="success">真金白银</el-tag>
         </div>
         <div class="kpi-value text-success">{{ formatKpiMoney(kpiData.receivedAmount) }}</div>
-        <div class="kpi-tip">累计已确认回款登记总额</div>
+        <div class="kpi-tip">施工合同累计已收工程款</div>
       </div>
 
       <div class="kpi-card" @click="activeTab = 'funds'">
         <div class="kpi-header">
           <span class="kpi-label">工程款未收</span>
-          <el-tag size="small" :type="kpiData.unreceived > 0 ? 'warning' : 'info'">甲方欠款</el-tag>
+          <el-tag size="small" :type="kpiData.unreceived != null && kpiData.unreceived > 0 ? 'warning' : 'info'">甲方欠款</el-tag>
         </div>
         <div class="kpi-value text-warning">{{ formatKpiMoney(kpiData.unreceived) }}</div>
-        <div class="kpi-tip">合同总造价 − 累计已回收款</div>
+        <div class="kpi-tip">合同价 + 累计签证 − 已回款</div>
       </div>
 
       <div class="kpi-card" @click="activeTab = 'funds'">
@@ -92,13 +102,13 @@
           <el-tag size="small" type="info">支出执行</el-tag>
         </div>
         <div class="kpi-value">{{ formatKpiMoney(kpiData.totalPaid) }}</div>
-        <div class="kpi-tip">五类支出合同+零星费用已批已付</div>
+        <div class="kpi-tip">五类支出合同累计已付款</div>
       </div>
 
       <div class="kpi-card" @click="activeTab = 'funds'">
         <div class="kpi-header">
           <span class="kpi-label">应付未付款</span>
-          <el-tag size="small" :type="kpiData.payableOutstanding > 0 ? 'danger' : 'info'">应付欠款</el-tag>
+          <el-tag size="small" :type="kpiData.payableOutstanding != null && kpiData.payableOutstanding > 0 ? 'danger' : 'info'">应付欠款</el-tag>
         </div>
         <div class="kpi-value text-danger">{{ formatKpiMoney(kpiData.payableOutstanding) }}</div>
         <div class="kpi-tip">已结算但尚未付清款项</div>
@@ -107,11 +117,11 @@
       <div class="kpi-card" @click="activeTab = 'operation'">
         <div class="kpi-header">
           <span class="kpi-label">实际净现金流</span>
-          <el-tag size="small" :type="kpiData.pocketProfit >= 0 ? 'success' : 'danger'">
-            {{ kpiData.pocketProfit >= 0 ? '资金造血' : '垫资失血' }}
+          <el-tag size="small" :type="kpiData.pocketProfit == null ? 'info' : (kpiData.pocketProfit >= 0 ? 'success' : 'danger')">
+            {{ kpiData.pocketProfit == null ? '待加载' : (kpiData.pocketProfit >= 0 ? '资金造血' : '垫资失血') }}
           </el-tag>
         </div>
-        <div class="kpi-value" :class="kpiData.pocketProfit >= 0 ? 'text-success' : 'text-danger'">
+        <div class="kpi-value" :class="kpiData.pocketProfit == null ? '' : (kpiData.pocketProfit >= 0 ? 'text-success' : 'text-danger')">
           {{ formatKpiMoney(kpiData.pocketProfit) }}
         </div>
         <div class="kpi-tip">累计已收工程款 − 实际总计支出</div>
@@ -123,7 +133,7 @@
           <el-tag size="small" type="primary">最终盈利</el-tag>
         </div>
         <div class="kpi-value text-brand">{{ formatKpiMoney(kpiData.forecastProfit) }}</div>
-        <div class="kpi-tip">签约总价 − 预计最终总成本(EAC)</div>
+        <div class="kpi-tip">未建 CBS 成本科目时不可算，显示「—」</div>
       </div>
     </div>
 
@@ -391,17 +401,16 @@ const projectId = computed(() => route.params.id as string)
 const projectInfo = ref<any>({})
 const activeTab = ref('info')
 
-// 首屏 8 大核心指标数据
+// 首屏 8 大核心指标数据（null=加载失败/不可算，一律显示「—」，绝不按 0 处理）
 const kpiLoading = ref(false)
-const kpiData = ref({
-  contractAmount: 0,
-  outputAmount: 0,
-  receivedAmount: 0,
-  unreceived: 0,
-  totalPaid: 0,
-  payableOutstanding: 0,
-  pocketProfit: 0,
-  forecastProfit: null as number | null
+const kpiError = ref(false)
+const KPI_NULLS = {
+  contractAmount: null, outputAmount: null, receivedAmount: null, unreceived: null,
+  totalPaid: null, payableOutstanding: null, pocketProfit: null, forecastProfit: null
+} as const
+const kpiData = ref<{ [K in keyof typeof KPI_NULLS]: number | null }>({
+  contractAmount: null, outputAmount: null, receivedAmount: null, unreceived: null,
+  totalPaid: null, payableOutstanding: null, pocketProfit: null, forecastProfit: null
 })
 
 function formatKpiMoney(v: unknown): string {
@@ -414,23 +423,31 @@ function formatKpiMoney(v: unknown): string {
 async function loadKpis() {
   if (!projectId.value) return
   kpiLoading.value = true
+  kpiError.value = false
   try {
     const res: any = await getProjectOnebook(projectId.value)
     if (res?.data) {
       const b = res.data
       kpiData.value = {
-        contractAmount: b.income?.contractAmount ?? 0,
-        outputAmount: b.income?.outputAmount ?? 0,
-        receivedAmount: b.income?.receivedAmount ?? 0,
-        unreceived: b.income?.unreceived ?? 0,
-        totalPaid: b.expense?.totalPaid ?? 0,
-        payableOutstanding: b.expense?.totalOutstanding ?? b.fund?.payableOpen ?? 0,
-        pocketProfit: b.profit?.pocketProfit ?? 0,
+        contractAmount: b.income?.contractAmount ?? null,
+        outputAmount: b.income?.outputAmount ?? null,
+        receivedAmount: b.income?.receivedAmount ?? null,
+        unreceived: b.income?.unreceived ?? null,
+        // 主取支出线五类合同合计；expense 缺失时退应付台账口径兜底（两者口径一致，见术语表 §五）
+        totalPaid: b.expense?.totalPaid ?? null,
+        payableOutstanding: b.expense?.totalOutstanding ?? b.fund?.payableOpen ?? null,
+        pocketProfit: b.profit?.pocketProfit ?? null,
         forecastProfit: b.profit?.forecastProfit ?? null
       }
+    } else {
+      kpiData.value = { ...KPI_NULLS }
+      kpiError.value = true
     }
-  } catch {
-    // 一本账加载失败不阻断详情主表显示
+  } catch (e) {
+    // 失败必须留痕且可见（不静默伪装为 0）：卡片显示「—」+ 顶部告警重试
+    console.warn('[project-detail] 一本账 KPI 加载失败', e)
+    kpiData.value = { ...KPI_NULLS }
+    kpiError.value = true
   } finally {
     kpiLoading.value = false
   }
@@ -616,6 +633,9 @@ onMounted(() => {
 }
 
 /* 老板首屏 8 大核心指标栅格卡片 */
+.kpi-error-alert {
+  margin-bottom: var(--zw-space-sm);
+}
 .boss-kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

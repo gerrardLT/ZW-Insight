@@ -17,7 +17,7 @@ import ElementPlus from 'element-plus'
 
 const {
   mockProjectDetail, mockProjectCreate, mockProjectUpdate, mockOwnerList, mockCompanyList,
-  mockRouteParams, mockRouteQuery, mockRouterPush,
+  mockRouteParams, mockRouteQuery, mockRouterPush, mockOnebook,
 } = vi.hoisted(() => ({
   mockProjectDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: { id: 1, projectName: 'P1' } })),
   mockProjectCreate: vi.fn(async (): Promise<any> => ({ code: 200 })),
@@ -27,6 +27,7 @@ const {
   mockRouteParams: { value: {} as Record<string, string> },
   mockRouteQuery: { value: {} as Record<string, string> },
   mockRouterPush: vi.fn(),
+  mockOnebook: vi.fn(async (): Promise<any> => ({ code: 200, data: null })),
 }))
 
 vi.mock('@/api/project', () => ({
@@ -37,6 +38,8 @@ vi.mock('@/api/project', () => ({
   addProjectMember: vi.fn(async (): Promise<any> => ({ code: 200 })),
   removeProjectMember: vi.fn(async (): Promise<any> => ({ code: 200 })),
   updateMemberRoles: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  // 首屏 KPI 看板消费（loadKpis）
+  getProjectOnebook: mockOnebook,
 }))
 vi.mock('@/api/system', () => ({ getUserPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })) }))
 vi.mock('vue-router', async (importOriginal) => {
@@ -63,6 +66,8 @@ let wrapper: any = null
 afterEach(() => {
   if (wrapper) { try { wrapper.unmount() } catch { /* 忽略 */ } wrapper = null }
   vi.clearAllMocks()
+  // 一本账 mock 恢复默认（A3-08/09 用 mockResolvedValue 覆盖过；clearAllMocks 不清实现）
+  mockOnebook.mockImplementation(async (): Promise<any> => ({ code: 200, data: null }))
   mockRouteParams.value = {}
   mockRouteQuery.value = {}
 })
@@ -187,5 +192,55 @@ describe('project/detail.vue 账本补测（@matrix A3）', () => {
   it('@matrix A3-06 卡片标题含项目名称', async () => {
     const w = await mountDetail({ id: 4, projectName: '高新区产业园', status: 'WON' })
     expect(w.find('.card-header').text()).toContain('项目详情：高新区产业园')
+  })
+
+  it('@matrix A3-08 首屏 8 卡 KPI：一本账金额渲染，净现金流负值标「垫资失血」', async () => {
+    // 用 mockResolvedValue（非 once）：ProjectOnebookPanel 与 loadKpis 共用同一 mock，
+    // Panel 的 watch immediate 在 setup 期就会消费掉一次 once 队列
+    mockOnebook.mockResolvedValue({
+      code: 200,
+      data: {
+        income: { contractAmount: 45000000, outputAmount: 12000000, receivedAmount: 8000000, unreceived: 37000000, visaAmount: 0, settlementAmount: 0, invoicedAmount: 0, receivableOpen: 0 },
+        expense: { categories: [], totalSettled: 0, totalPaid: 9000000, totalOutstanding: 3000000, applying: 0, reimbursementApproved: 0, reserveOutstanding: 0, wageUnpaid: 0, otherPayment: 0 },
+        cost: { baseline: 0, currentBudget: 0, commitment: 0, actual: 0, forecast: 0, hasCbs: false },
+        profit: { pocketProfit: -1000000, forecastProfit: 500000, forecastBasis: 'TEST', realizedProfit: 0, realizedBasis: 'TEST', cashIn: 0, cashOut: 0 },
+        fund: { cashIn: 0, cashOut: 0, advance: 0, retentionOutstanding: 0, bondOccupied: 0, billHeld: 0, payableOpen: 0, receivableOpen: 0 },
+        tax: { saleTax: 0, inputTax: 0, vatPayable: 0 }
+      }
+    })
+    const w = await mountDetail()
+    const cards = w.findAll('.kpi-card')
+    expect(cards.length).toBe(8)
+    expect(w.text()).toContain('¥ 45,000,000.00')   // 签约合同价
+    expect(w.text()).toContain('¥ 37,000,000.00')   // 工程款未收
+    expect(w.text()).toContain('¥ 3,000,000.00')    // 应付未付款
+    expect(w.text()).toContain('垫资失血')           // pocketProfit<0
+    expect(w.find('.kpi-error-alert').exists()).toBe(false)
+  })
+
+  it('@matrix A3-09 KPI 失败不伪装为 0：显示「—」+ 告警重试（缺失金额不按零处理纪律）', async () => {
+    mockOnebook.mockRejectedValue(new Error('onebook down'))
+    const w = await mountDetail()
+    const st = w.vm.$.setupState
+    expect(st.kpiError).toBe(true)
+    expect(w.find('.kpi-error-alert').exists()).toBe(true)
+    const values = w.findAll('.kpi-value').map((v: any) => v.text())
+    expect(values.filter((t: string) => t === '—').length).toBe(8)
+    expect(w.text()).not.toContain('¥ 0.00')
+    // 重试恢复：mock 切回正常数据后 kpiError 复位（补全 Panel 渲染所需骨架）
+    mockOnebook.mockResolvedValue({
+      code: 200,
+      data: {
+        income: { contractAmount: 1, outputAmount: 0, receivedAmount: 0, unreceived: 0, visaAmount: 0, settlementAmount: 0, invoicedAmount: 0, receivableOpen: 0 },
+        expense: { categories: [], totalSettled: 0, totalPaid: 0, totalOutstanding: 0, applying: 0, reimbursementApproved: 0, reserveOutstanding: 0, wageUnpaid: 0, otherPayment: 0 },
+        cost: { baseline: 0, currentBudget: 0, commitment: 0, actual: 0, forecast: 0, hasCbs: false },
+        profit: { pocketProfit: 0, forecastProfit: null, forecastBasis: 'TEST', realizedProfit: 0, realizedBasis: 'TEST', cashIn: 0, cashOut: 0 },
+        fund: { cashIn: 0, cashOut: 0, advance: 0, retentionOutstanding: 0, bondOccupied: 0, billHeld: 0, payableOpen: 0, receivableOpen: 0 },
+        tax: { saleTax: 0, inputTax: 0, vatPayable: 0 }
+      }
+    })
+    await st.loadKpis()
+    await flushPromises()
+    expect(st.kpiError).toBe(false)
   })
 })

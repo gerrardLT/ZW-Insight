@@ -11,9 +11,9 @@
           <ProjectSelector v-model="queryParams.projectId" style="width: 180px" />
         </el-form-item>
         <el-form-item label="检查结论">
-          <el-select v-model="queryParams.hasProblem" placeholder="全部结论" clearable style="width: 140px">
-            <el-option label="合格" :value="0" />
-            <el-option label="存在隐患" :value="1" />
+          <el-select v-model="queryParams.hasProblem" placeholder="全部结论" clearable style="width: 160px">
+            <el-option :label="conclusionLabel(0)" :value="0" />
+            <el-option :label="conclusionLabel(1)" :value="1" />
           </el-select>
         </el-form-item>
         <el-form-item label="整改状态">
@@ -37,10 +37,10 @@
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="projectName" label="项目名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="inspectionContent" label="检查内容" min-width="180" show-overflow-tooltip />
-        <el-table-column label="检查结论" width="120" align="center">
+        <el-table-column label="检查结论" width="160" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.hasProblem === 1 ? 'danger' : 'success'" size="small">
-              {{ row.hasProblem === 1 ? '存在质量安全隐患' : '合格' }}
+            <el-tag :type="conclusionTagType(row.hasProblem)" size="small">
+              {{ conclusionLabel(row.hasProblem) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -107,6 +107,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { getQualityInspectionPage, getSafetyInspectionPage, deleteQualityInspection, deleteSafetyInspection, assignRectification } from '@/api/site'
 import { getUserPage, getUserCandidates } from '@/api/system'
+import { INSPECTION_CONCLUSION } from '@/constants/biz-labels'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 
 const router = useRouter()
@@ -137,6 +138,10 @@ const RECT_MAP: Record<string, { text: string; type: 'success' | 'warning' | 'in
 }
 function rectText(s: string) { return RECT_MAP[s]?.text ?? s }
 function rectTagType(s: string) { return RECT_MAP[s]?.type ?? 'info' }
+
+// 检查结论显示名与徽章色唯一源：@/constants/biz-labels 的 INSPECTION_CONCLUSION（术语表 §四）
+function conclusionLabel(v?: number) { return INSPECTION_CONCLUSION[v ?? 0]?.label ?? '—' }
+function conclusionTagType(v?: number) { return INSPECTION_CONCLUSION[v ?? 0]?.badgeType ?? 'info' }
 
 const queryParams = ref<{ page: number; size: number; projectId: number | undefined; hasProblem: number | undefined; rectificationStatus: string }>({ page: 1, size: 10, projectId: undefined, hasProblem: undefined, rectificationStatus: '' })
 

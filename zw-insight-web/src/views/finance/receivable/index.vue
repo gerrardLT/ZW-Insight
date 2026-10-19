@@ -235,7 +235,7 @@ const tableData = ref<Receivable[]>([])
 const total = ref(0)
 const aging = ref<ReceivableAging>({ totalOpen: 0, totalOverdue: 0, projects: [] })
 const projectList = ref<any[]>([])
-const query = ref<{ page: number; size: number; projectId?: number; status?: string }>({ page: 1, size: 10 })
+const query = ref<{ page: number; size: number; projectId?: number | string; status?: string }>({ page: 1, size: 10 })
 
 function formatAmount(value?: number) {
   return value != null ? `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}` : '—'
@@ -398,8 +398,8 @@ async function saveDrill() {
 }
 
 onMounted(() => {
-  const qPid = route.query.projectId ? Number(route.query.projectId) : undefined
-  if (qPid) {
+  const qPid = route.query.projectId != null ? String(route.query.projectId).trim() : ''
+  if (qPid && qPid !== '0') {
     query.value.projectId = qPid
   }
   loadPage()
