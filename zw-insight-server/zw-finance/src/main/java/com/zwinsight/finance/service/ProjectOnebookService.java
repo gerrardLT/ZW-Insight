@@ -46,7 +46,7 @@ public class ProjectOnebookService {
         }
 
         Map<String, Object> income = incomeSection(projectId, project);
-        Map<String, Object> expense = expenseSection(projectId);
+        Map<String, Object> expense = expenseSection(projectId, project);
         Map<String, Object> cost = costSection(projectId);
         Map<String, Object> profit = profitSection(project, income, cost, projectId);
         Map<String, Object> fund = fundSection(projectId);
@@ -97,7 +97,7 @@ public class ProjectOnebookService {
 
     // ==================== ② 支出 ====================
 
-    private Map<String, Object> expenseSection(Long projectId) {
+    private Map<String, Object> expenseSection(Long projectId, BizProject project) {
         List<Map<String, Object>> byCategory = onebookMapper.sumExpenseByCategory(projectId);
         BigDecimal applying = num0(onebookMapper.sumApplying(projectId));
         BigDecimal reserveOutstanding = num0(onebookMapper.sumReserveOutstanding(projectId));
@@ -131,14 +131,13 @@ public class ProjectOnebookService {
         section.put("reimbursementApproved", reimbursement);
         section.put("reserveOutstanding", reserveOutstanding);
         section.put("wageUnpaid", wageUnpaid);
-        section.put("otherPayment", num0(onebookOtherPayment(projectId)));
+        section.put("otherPayment", num0(otherPayment(project)));
         return section;
     }
 
-    /** 其他支出（审批口径单列字段 biz_project.total_other_payment，不入 total_expense） */
-    private BigDecimal onebookOtherPayment(Long projectId) {
-        BizProject p = projectMapper.selectById(projectId);
-        return p != null && p.getTotalOtherPayment() != null ? p.getTotalOtherPayment() : BigDecimal.ZERO;
+    /** 其他支出（审批口径单列字段 biz_project.total_other_payment，不入 total_expense；复用主流程已载实体） */
+    private BigDecimal otherPayment(BizProject project) {
+        return project != null && project.getTotalOtherPayment() != null ? project.getTotalOtherPayment() : BigDecimal.ZERO;
     }
 
     // ==================== ③ 成本 ====================

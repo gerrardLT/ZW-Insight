@@ -109,9 +109,9 @@ public interface ProjectOnebookMapper {
             + "WHERE project_id = #{projectId} AND deleted = 0 AND status != 'RETURNED'")
     BigDecimal sumRetentionOutstanding(@Param("projectId") Long projectId);
 
-    /** 资金占用：保证金占压（已缴存/退还申请中） */
+    /** 资金占用：保证金占压（已缴存/退还申请中；表无 status 列，仅以 refund_status 判定——审阅 BLOCK 修正） */
     @Select("SELECT COALESCE(SUM(amount - IFNULL(refund_amount, 0)), 0) FROM biz_security_bond "
-            + "WHERE project_id = #{projectId} AND deleted = 0 AND status = 'ACTIVE' "
+            + "WHERE project_id = #{projectId} AND deleted = 0 "
             + "AND refund_status IN ('DEPOSITED', 'REFUND_APPLY')")
     BigDecimal sumBondOccupied(@Param("projectId") Long projectId);
 

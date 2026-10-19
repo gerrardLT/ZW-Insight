@@ -109,6 +109,7 @@
   ② 四结算服务测试类 @InjectMocks 缺 eventPublisher mock（9 用例 NPE）——教训：新增构造依赖必须同时穷举 'new X(' 与 '@InjectMocks+类名' 两类形态（fe3f6bf1 修）；
   ③ PayableServiceTest dueDate 断言错日（@Value 纯单测不注入）——教训：@Value 字段单测必须 ReflectionTestUtils 显式注入（f3e70d1f 修）；
   ④ 徽颍 V2026_116 绑定公式雪花 role_id 溢出（同 HOTFIX-001 根因族）→ SSH 预插绑定热修恢复，台账 ENV-HOTFIX-002。
+- 3a 审阅门一轮 BLOCK：sumBondOccupied 引用不存在的 biz_security_bond.status 列（grep -A 溢出表边界误判列清单，与审计脚本 3.2 同型陷阱）→ 删 status 条件（refund_status 已足够）；另收 NOTE：expenseSection 复用主流程 project 实体消除多余 selectById。复验：其余四表列名经 python 边界感知提取全部确认存在。
 - 部署后双机核验：flyway 113-116 全 success；910063 菜单双机在场；应付 BACKFILL 主 6 行/徽颍 2 行，OPEN 余额与项目 payable_amount 由迁移第 5 步重算自洽。
 - 待办：audit-data 脚本可增补「biz_project.payable_amount = biz_payable OPEN 余额合计」勾稽项（审阅 §8 建议，R7 基线变更需按「新生效 vs 新失败」辨析）。
 
