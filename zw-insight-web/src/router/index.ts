@@ -284,191 +284,302 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/finance',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    redirect: '/finance/invoice-apply',
+    redirect: '/finance/hub/receivable-group',
     meta: { title: '财务管理', icon: 'Money', permission: 'finance:view' },
     children: [
+      // ===== V2026_120 二级菜单收敛：29 项收敛为 8 个一等入口（Hub 内 Tab）=====
+      // 原路由全部保留（meta.hidden 退出侧边栏，URL 直达与权限码不变），入口 Tab 懒挂载原组件。
+      {
+        path: 'hub/receivable-group',
+        name: 'FinanceHubReceivable',
+        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        meta: {
+          title: '工程应收与结算', icon: 'Money', group: '收入钱链',
+          hubTabs: [
+            { key: 'settlement', label: '工程竣工结算', loader: () => import('@/views/finance/settlement/index.vue') },
+            { key: 'receivable', label: '应收工程账款台账', loader: () => import('@/views/finance/receivable/index.vue') },
+            { key: 'invoice-apply', label: '工程开票申请', loader: () => import('@/views/finance/invoice-apply.vue') },
+            { key: 'payment-received', label: '工程回款登记', loader: () => import('@/views/finance/payment-received.vue') }
+          ]
+        }
+      },
+      {
+        path: 'hub/payable-group',
+        name: 'FinanceHubPayable',
+        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        meta: {
+          title: '工程应付与支出', icon: 'CreditCard', group: '支出钱链',
+          hubTabs: [
+            { key: 'payment-apply', label: '工程付款申请', loader: () => import('@/views/finance/payment-apply.vue') },
+            { key: 'payable', label: '应付账款台账', loader: () => import('@/views/finance/payable/index.vue') },
+            { key: 'other-payment', label: '其他支出费用', loader: () => import('@/views/finance/other-payment.vue') }
+          ]
+        }
+      },
+      {
+        path: 'hub/reimbursement-group',
+        name: 'FinanceHubReimbursement',
+        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        meta: {
+          title: '日常报销与备用金', icon: 'WalletFilled', group: '支出钱链',
+          hubTabs: [
+            { key: 'project-reimbursement', label: '项目现场报销', loader: () => import('@/views/finance/project-reimbursement.vue') },
+            { key: 'personal-reimbursement', label: '员工日常报销', loader: () => import('@/views/finance/personal-reimbursement.vue') },
+            { key: 'reserve-fund', label: '备用金借支与核销', loader: () => import('@/views/finance/reserve-fund.vue') }
+          ]
+        }
+      },
+      {
+        path: 'hub/invoice-group',
+        name: 'FinanceHubInvoice',
+        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        meta: {
+          title: '发票税务台账', icon: 'Tickets', group: '发票与税务',
+          hubTabs: [
+            { key: 'invoice-received', label: '进项发票台账', loader: () => import('@/views/finance/invoice-received.vue') },
+            { key: 'invoice-issued', label: '销项发票台账', loader: () => import('@/views/finance/invoice-issued.vue') },
+            { key: 'invoice-summary', label: '进销项税负汇总', loader: () => import('@/views/finance/invoice-summary.vue') }
+          ]
+        }
+      },
+      {
+        path: 'hub/bank-group',
+        name: 'FinanceHubBank',
+        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        meta: {
+          title: '银行账户与流水', icon: 'Coin', group: '账户与资金',
+          hubTabs: [
+            { key: 'bank-account-group', label: '银行账户清单', loader: () => import('@/views/finance/bank-account-group/index.vue') },
+            { key: 'bank-flow', label: '银行流水明细', loader: () => import('@/views/finance/bank-flow/index.vue') },
+            { key: 'balance-reconciliation', label: '银行余额调节表', loader: () => import('@/views/finance/balance-reconciliation/index.vue') }
+          ]
+        }
+      },
+      {
+        path: 'hub/special-fund-group',
+        name: 'FinanceHubSpecialFund',
+        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        meta: {
+          title: '专项资金与金融', icon: 'GoldMedal', group: '专项资金台账',
+          hubTabs: [
+            { key: 'security-bond', label: '投标与履约保证金', loader: () => import('@/views/finance/security-bond/index.vue') },
+            { key: 'retention', label: '工程质量保证金', loader: () => import('@/views/finance/retention.vue') },
+            { key: 'wage-account', label: '农民工工资专户', loader: () => import('@/views/finance/wage-account/index.vue') },
+            { key: 'bill', label: '承兑汇票台账', loader: () => import('@/views/finance/bill/index.vue') },
+            { key: 'financing', label: '项目融资借款', loader: () => import('@/views/finance/financing/index.vue') }
+          ]
+        }
+      },
+      {
+        path: 'hub/plan-group',
+        name: 'FinanceHubPlan',
+        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        meta: {
+          title: '资金计划与经营分析', icon: 'Calendar', group: '经营分析',
+          hubTabs: [
+            { key: 'fund-plan', label: '月度资金收支计划', loader: () => import('@/views/finance/fund-plan/index.vue') },
+            { key: 'daily-cash-report', label: '每日资金头寸日报', loader: () => import('@/views/finance/daily-cash-report/index.vue') },
+            { key: 'fund-dashboard', label: '资金大屏看板', loader: () => import('@/views/finance/fund-dashboard/index.vue') },
+            { key: 'monthly-analysis', label: '月度综合经营分析', loader: () => import('@/views/finance/monthly-analysis/index.vue') },
+            { key: 'entertainment-analysis', label: '业务招待费专项', loader: () => import('@/views/finance/entertainment-analysis/index.vue') }
+          ]
+        }
+      },
+      {
+        path: 'hub/settings-group',
+        name: 'FinanceHubSettings',
+        component: () => import('@/views/finance/hub/FinanceHubPage.vue'),
+        meta: {
+          title: '财务基础设置', icon: 'Setting', group: '财务设置',
+          hubTabs: [
+            { key: 'fund-category', label: '收支科目设置', loader: () => import('@/views/finance/fund-category/index.vue') },
+            { key: 'tax-rate', label: '增值税率设置', loader: () => import('@/views/finance/tax-rate/index.vue') },
+            { key: 'finance-lock', label: '财务关账封账', loader: () => import('@/views/finance/finance-lock/index.vue') }
+          ]
+        }
+      },
       // —— 收入 ——（meta.group 由 utils/navigation.ts 读取，作侧边栏分组标题）
       {
         path: 'invoice-apply',
         name: 'InvoiceApply',
         component: () => import('@/views/finance/invoice-apply.vue'),
-        meta: { title: '工程开票申请', icon: 'Ticket', group: '收入与应收' }
+        meta: { title: '工程开票申请', icon: 'Ticket', group: '收入与应收', hidden: true }
       },
       {
         path: 'payment-received',
         name: 'PaymentReceived',
         component: () => import('@/views/finance/payment-received.vue'),
-        meta: { title: '工程回款登记', icon: 'WalletFilled', group: '收入与应收' }
+        meta: { title: '工程回款登记', icon: 'WalletFilled', group: '收入与应收', hidden: true }
       },
       {
         path: 'settlement',
         name: 'SettlementList',
         component: () => import('@/views/finance/settlement/index.vue'),
-        meta: { title: '工程竣工结算', icon: 'Money', group: '收入与应收' }
+        meta: { title: '工程竣工结算', icon: 'Money', group: '收入与应收', hidden: true }
       },
       {
         path: 'receivable',
         name: 'ReceivableLedger',
         component: () => import('@/views/finance/receivable/index.vue'),
-        meta: { title: '应收工程账款台账', icon: 'Money', group: '收入与应收' }
+        meta: { title: '应收工程账款台账', icon: 'Money', group: '收入与应收', hidden: true }
       },
       // —— 支出 ——
       {
         path: 'payment-apply',
         name: 'PaymentApply',
         component: () => import('@/views/finance/payment-apply.vue'),
-        meta: { title: '工程付款申请', icon: 'CreditCard', group: '支出与应付' }
+        meta: { title: '工程付款申请', icon: 'CreditCard', group: '支出与应付', hidden: true }
       },
       {
         path: 'payable',
         name: 'PayableLedger',
         component: () => import('@/views/finance/payable/index.vue'),
-        meta: { title: '应付账款台账', icon: 'Money', group: '支出与应付' }
+        meta: { title: '应付账款台账', icon: 'Money', group: '支出与应付', hidden: true }
       },
       {
         path: 'other-payment',
         name: 'OtherPayment',
         component: () => import('@/views/finance/other-payment.vue'),
-        meta: { title: '其他支出', icon: 'Coin', group: '支出与应付' }
+        meta: { title: '其他支出', icon: 'Coin', group: '支出与应付', hidden: true }
       },
       {
         path: 'project-reimbursement',
         name: 'ProjectReimbursement',
         component: () => import('@/views/finance/project-reimbursement.vue'),
-        meta: { title: '项目现场报销', icon: 'Document', group: '支出与应付' }
+        meta: { title: '项目现场报销', icon: 'Document', group: '支出与应付', hidden: true }
       },
       {
         path: 'personal-reimbursement',
         name: 'PersonalReimbursement',
         component: () => import('@/views/finance/personal-reimbursement.vue'),
-        meta: { title: '员工日常报销', icon: 'User', group: '支出与应付' }
+        meta: { title: '员工日常报销', icon: 'User', group: '支出与应付', hidden: true }
       },
       // —— 发票税务 ——
       {
         path: 'invoice-received',
         name: 'InvoiceReceived',
         component: () => import('@/views/finance/invoice-received.vue'),
-        meta: { title: '进项发票台账', icon: 'Tickets', group: '发票与税务' }
+        meta: { title: '进项发票台账', icon: 'Tickets', group: '发票与税务', hidden: true }
       },
       {
         path: 'invoice-issued',
         name: 'InvoiceIssued',
         component: () => import('@/views/finance/invoice-issued.vue'),
-        meta: { title: '销项发票台账', icon: 'Ticket', group: '发票与税务' }
+        meta: { title: '销项发票台账', icon: 'Ticket', group: '发票与税务', hidden: true }
       },
       {
         path: 'invoice-summary',
         name: 'InvoiceSummary',
         component: () => import('@/views/finance/invoice-summary.vue'),
-        meta: { title: '发票税负统计', icon: 'DataAnalysis', group: '发票与税务' }
+        meta: { title: '发票税负统计', icon: 'DataAnalysis', group: '发票与税务', hidden: true }
       },
       {
         path: 'tax-rate',
         name: 'TaxRate',
         component: () => import('@/views/finance/tax-rate/index.vue'),
-        meta: { title: '增值税率设置', icon: 'Histogram', group: '财务设置' }
+        meta: { title: '增值税率设置', icon: 'Histogram', group: '财务设置', hidden: true }
       },
       // —— 资金 ——
       {
         path: 'fund-category',
         name: 'FundCategory',
         component: () => import('@/views/finance/fund-category/index.vue'),
-        meta: { title: '收支科目设置', icon: 'Collection', group: '财务设置' }
+        meta: { title: '收支科目设置', icon: 'Collection', group: '财务设置', hidden: true }
       },
       {
         path: 'bank-account-group',
         name: 'BankAccountGroup',
         component: () => import('@/views/finance/bank-account-group/index.vue'),
-        meta: { title: '银行账户管理', icon: 'Grid', group: '账户与资金' }
+        meta: { title: '银行账户管理', icon: 'Grid', group: '账户与资金', hidden: true }
       },
       {
         path: 'bank-flow',
         name: 'BankFlow',
         component: () => import('@/views/finance/bank-flow/index.vue'),
-        meta: { title: '银行流水明细', icon: 'Sort', group: '账户与资金' }
+        meta: { title: '银行流水明细', icon: 'Sort', group: '账户与资金', hidden: true }
       },
       {
         path: 'fund-plan',
         name: 'FundPlan',
         component: () => import('@/views/finance/fund-plan/index.vue'),
-        meta: { title: '月度资金收支计划', icon: 'Calendar', group: '账户与资金' }
+        meta: { title: '月度资金收支计划', icon: 'Calendar', group: '账户与资金', hidden: true }
       },
       {
         path: 'daily-cash-report',
         name: 'DailyCashReport',
         component: () => import('@/views/finance/daily-cash-report/index.vue'),
-        meta: { title: '每日资金头寸日报', icon: 'Calendar', group: '账户与资金' }
+        meta: { title: '每日资金头寸日报', icon: 'Calendar', group: '账户与资金', hidden: true }
       },
       {
         path: 'balance-reconciliation',
         name: 'BalanceReconciliation',
         component: () => import('@/views/finance/balance-reconciliation/index.vue'),
-        meta: { title: '银行余额调节表', icon: 'Operation', group: '账户与资金' }
+        meta: { title: '银行余额调节表', icon: 'Operation', group: '账户与资金', hidden: true }
       },
       {
         path: 'bill',
         name: 'BillLedger',
         component: () => import('@/views/finance/bill/index.vue'),
-        meta: { title: '承兑汇票台账', icon: 'Tickets', group: '专项资金台账' }
+        meta: { title: '承兑汇票台账', icon: 'Tickets', group: '专项资金台账', hidden: true }
       },
       {
         path: 'financing',
         name: 'FinancingLedger',
         component: () => import('@/views/finance/financing/index.vue'),
-        meta: { title: '项目融资借款', icon: 'CreditCard', group: '专项资金台账' }
+        meta: { title: '项目融资借款', icon: 'CreditCard', group: '专项资金台账', hidden: true }
       },
       // —— 专项 ——
       {
         path: 'reserve-fund',
         name: 'ReserveFund',
         component: () => import('@/views/finance/reserve-fund.vue'),
-        meta: { title: '备用金借支与核销', icon: 'Wallet', group: '专项资金台账' }
+        meta: { title: '备用金借支与核销', icon: 'Wallet', group: '专项资金台账', hidden: true }
       },
       {
         path: 'retention',
         name: 'Retention',
         component: () => import('@/views/finance/retention.vue'),
-        meta: { title: '工程质量保证金', icon: 'GoldMedal', group: '专项资金台账' }
+        meta: { title: '工程质量保证金', icon: 'GoldMedal', group: '专项资金台账', hidden: true }
       },
       {
         path: 'security-bond',
         name: 'SecurityBond',
         component: () => import('@/views/finance/security-bond/index.vue'),
-        meta: { title: '投标与履约保证金', icon: 'Lock', group: '专项资金台账' }
+        meta: { title: '投标与履约保证金', icon: 'Lock', group: '专项资金台账', hidden: true }
       },
       {
         path: 'wage-account',
         name: 'WageAccount',
         component: () => import('@/views/finance/wage-account/index.vue'),
-        meta: { title: '农民工工资专户', icon: 'Wallet', group: '专项资金台账' }
+        meta: { title: '农民工工资专户', icon: 'Wallet', group: '专项资金台账', hidden: true }
       },
       // —— 分析 ——
       {
         path: 'fund-dashboard',
         name: 'FundDashboard',
         component: () => import('@/views/finance/fund-dashboard/index.vue'),
-        meta: { title: '资金大屏看板', icon: 'DataLine', group: '经营分析' }
+        meta: { title: '资金大屏看板', icon: 'DataLine', group: '经营分析', hidden: true }
       },
       {
         // 招待费分析（资金流转 §6.3 分析维度 + §8.1 老板默认看异常）
         path: 'entertainment-analysis',
         name: 'EntertainmentAnalysis',
         component: () => import('@/views/finance/entertainment-analysis/index.vue'),
-        meta: { title: '业务招待费专项', icon: 'DataAnalysis', group: '经营分析' }
+        meta: { title: '业务招待费专项', icon: 'DataAnalysis', group: '经营分析', hidden: true }
       },
       {
         // 月度经营分析表（资金流转 §9：10 类费用 × 6 列，项目管理层“最终只看一张表”）
         path: 'monthly-analysis',
         name: 'MonthlyOperationAnalysis',
         component: () => import('@/views/finance/monthly-analysis/index.vue'),
-        meta: { title: '月度综合经营分析', icon: 'Tickets', group: '经营分析' }
+        meta: { title: '月度综合经营分析', icon: 'Tickets', group: '经营分析', hidden: true }
       },
       // —— 治理 ——
       {
         path: 'finance-lock',
         name: 'FinanceLock',
         component: () => import('@/views/finance/finance-lock/index.vue'),
-        meta: { title: '财务关账封账', icon: 'Lock', group: '财务设置' }
+        meta: { title: '财务关账封账', icon: 'Lock', group: '财务设置', hidden: true }
       },
       {
         path: 'settlement/:id',
