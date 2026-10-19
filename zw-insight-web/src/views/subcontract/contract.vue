@@ -14,9 +14,9 @@
         </el-form-item>
       </el-form>
 
-      <div class="table-toolbar">
+      <ZwListToolbar :columns="[]" :visible="[]" @refresh="loadData">
         <el-button type="primary" @click="handleAdd">新增分包合同</el-button>
-      </div>
+      </ZwListToolbar>
 
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="contractCode" label="合同编号" width="150" />
@@ -73,6 +73,7 @@ import type { FormInstance } from 'element-plus'
 import { getSubcontractPage, createSubcontract, updateSubcontract, deleteSubcontract, submitSubcontract } from '@/api/subcontract'
 import { positiveAmount } from '@/utils/form-rules'
 import ProjectSelector from '@/components/ProjectSelector.vue'
+import ZwListToolbar from '@/components/ZwListToolbar.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)

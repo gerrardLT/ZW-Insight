@@ -32,12 +32,12 @@
         </el-form-item>
       </el-form>
 
-      <div class="table-toolbar">
+      <ZwListToolbar :columns="[]" :visible="[]" @refresh="loadData">
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增回款登记
         </el-button>
         <el-button @click="exportVisible = true">导出</el-button>
-      </div>
+      </ZwListToolbar>
 
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
@@ -156,6 +156,7 @@ import AsyncExportDialog from '@/components/AsyncExportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import ContractSelector from '@/components/ContractSelector.vue'
 import { toWan, clampPercent } from '@/utils/chart-format'
+import ZwListToolbar from '@/components/ZwListToolbar.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)

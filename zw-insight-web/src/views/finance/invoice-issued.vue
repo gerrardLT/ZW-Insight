@@ -17,9 +17,9 @@
         </el-form-item>
       </el-form>
 
-      <div class="table-toolbar">
+      <ZwListToolbar :columns="[]" :visible="[]" @refresh="loadData">
         <el-button type="primary" @click="openDialog()"><el-icon><Plus /></el-icon>登记发票</el-button>
-      </div>
+      </ZwListToolbar>
 
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="issueDate" label="开票日期" width="110" />
@@ -142,6 +142,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import ZwListToolbar from '@/components/ZwListToolbar.vue'
 import {
   getInvoiceIssuedPage,
   createInvoiceIssued,

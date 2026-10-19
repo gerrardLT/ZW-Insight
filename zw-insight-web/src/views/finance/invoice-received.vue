@@ -25,14 +25,14 @@
         </el-form-item>
       </el-form>
 
-      <div class="table-toolbar">
+      <ZwListToolbar :columns="[]" :visible="[]" @refresh="loadData">
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增收票登记
         </el-button>
         <el-button @click="ocrDialogVisible = true">
           <el-icon><DocumentChecked /></el-icon>发票识别
         </el-button>
-      </div>
+      </ZwListToolbar>
 
       <el-table :data="tableData" v-loading="loading" border show-summary :summary-method="pageSummary">
         <el-table-column type="index" label="#" width="50" />
@@ -207,6 +207,7 @@ import { getMachineContractPage } from '@/api/machine'
 import { getSubcontractPage } from '@/api/subcontract'
 import TaxRateSelector from '@/components/TaxRateSelector.vue'
 import { ocrInvoiceImage, type OcrInvoiceResult } from '@/utils/invoice-ocr'
+import ZwListToolbar from '@/components/ZwListToolbar.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
