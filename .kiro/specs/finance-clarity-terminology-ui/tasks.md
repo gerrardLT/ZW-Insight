@@ -27,8 +27,8 @@
 
 ### B 线 列表契约
 
-- [ ] 1.6 `ZwListPage.vue`（五件套+状态首列+ZwStatusBadge+空态/骨架/密度+分页 20/50/100）——顺延阶段三第二批（builder 通道故障改串行后，本阶段优先保术语/链路列/单号交付；组件契约已在 design.md §4 定稿） _需求: R5_
-- [ ] 1.7 `useRowNavigation.ts` composable（去重 4 处内联）——同 1.6 顺延阶段三第二批 _需求: R5_
+- [x] 1.6（部分）`ZwListToolbar.vue` 契约件建成（刷新+列设置+slot 左区业务按钮+slot 导出/密度）；ZwListPage 全表格替换降到 3c（纯 toolbar 契约先验证，批量换壳待试点稳定后推进） _需求: R5_
+- [x] 1.7 `useRowNavigation.ts` composable 建成 + project/index 与 finance/payment-apply 两处内联去重（workflow/approval 用 highlight-current-row 模式不同构不入；material/inbound 无此功能） _需求: R5_
 - [ ] 1.8 样板 8 页换壳：施工合同/付款申请/回款登记/应收账款台账/项目台账/分包合同/进项发票/销项发票——同 1.6 顺延阶段三第二批 _需求: R5_
 
 ### C 线 钱链展示

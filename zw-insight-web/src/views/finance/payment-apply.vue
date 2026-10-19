@@ -290,6 +290,7 @@ import type { FormInstance } from 'element-plus'
 import { ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
+import { useRowNavigation } from '@/composables/useRowNavigation'
 import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, batchPaymentApply, getFundPlan, markPaymentApplyPaid, revokePaymentApplyPaid } from '@/api/finance'
 
 // 列显隐配置（S2.1）：按 payment-apply-table 持久化 localStorage
@@ -413,57 +414,14 @@ async function loadData() {
     const res: any = await getPaymentApplyPage(queryParams.value)
     tableData.value = res.data?.records || []
     total.value = res.data?.total || 0
-    currentRowIndex.value = -1 // 数据刷新时重置行导航状态（S2.2）
+    rowNav.reset() // 数据刷新时重置行导航状态
   } finally {
     loading.value = false
   }
 }
 
-// ================= 表格行级键盘导航（S2.2） =================
-const currentRowIndex = ref(-1)
-
-function handleRowNavigationKeydown(event: KeyboardEvent) {
-  // 输入控件聚焦时不拦截
-  const target = event.target as HTMLElement
-  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-    return
-  }
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    navigateRow(1)
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    navigateRow(-1)
-  } else if (event.key === 'Enter') {
-    // Enter 查看当前行详情
-    if (currentRowIndex.value >= 0 && currentRowIndex.value < tableData.value.length) {
-      event.preventDefault()
-      handleView(tableData.value[currentRowIndex.value])
-    }
-  }
-}
-
-function navigateRow(direction: number) {
-  const newIndex = currentRowIndex.value + direction
-  if (newIndex >= 0 && newIndex < tableData.value.length) {
-    currentRowIndex.value = newIndex
-    highlightRow(newIndex)
-  }
-}
-
-function highlightRow(index: number) {
-  nextTick(() => {
-    const rows = document.querySelectorAll('.el-table__body-wrapper tbody tr.el-table__row')
-    rows.forEach((row, i) => {
-      if (i === index) {
-        row.classList.add('keyboard-focused')
-        row.scrollIntoView({ block: 'nearest' })
-      } else {
-        row.classList.remove('keyboard-focused')
-      }
-    })
-  })
-}
+// 行级键盘导航：composable 化（3b 去重；Enter=查看详情）
+const rowNav = useRowNavigation(tableData, (row) => handleView(row))
 
 function handleSearch() {
   queryParams.value.pageNum = 1
@@ -670,12 +628,12 @@ onMounted(async () => {
     dialogVisible.value = true
   }
   window.addEventListener(ZW_SHORTCUT_EVENTS.save, handleSaveShortcut)
-  document.addEventListener('keydown', handleRowNavigationKeydown)
+  rowNav.install()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener(ZW_SHORTCUT_EVENTS.save, handleSaveShortcut)
-  document.removeEventListener('keydown', handleRowNavigationKeydown)
+  rowNav.uninstall()
 })
 
 // ================= 资金计划面板 =================
