@@ -188,7 +188,7 @@
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item v-for="(v, k) in ocrFields" :key="k" :label="k">{{ v || '—' }}</el-descriptions-item>
         </el-descriptions>
-        <el-button type="primary" style="margin-top: 12px" @click="applyOcrToForm">填入表单</el-button>
+        <el-button type="primary" style="margin-top: var(--zw-space-sm)" @click="applyOcrToForm">填入表单</el-button>
       </template>
     </el-dialog>
   </div>
