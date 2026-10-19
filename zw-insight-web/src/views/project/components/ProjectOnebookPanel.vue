@@ -143,12 +143,12 @@ watch(() => props.projectId, load, { immediate: true })
 .onebook-title { margin: var(--zw-space-md) 0 var(--zw-space-xs); font-size: var(--zw-font-size-md); border-left: 3px solid var(--el-color-primary); padding-left: var(--zw-space-xs); }
 .onebook-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--zw-space-sm); }
 .onebook-grid dt { font-size: var(--zw-font-size-xs); color: var(--el-text-color-secondary); }
-.onebook-grid dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; font-size: var(--zw-font-size-md); }
+.onebook-grid dd { margin: var(--zw-space-2xs) 0 0; font-variant-numeric: tabular-nums; font-size: var(--zw-font-size-md); }
 .onebook-strong dt { color: var(--el-text-color-primary); font-weight: 600; }
 .onebook-strong dd { font-weight: 600; }
 .onebook-na { color: var(--el-text-color-secondary); font-size: var(--zw-font-size-sm); }
 .onebook-table { width: 100%; border-collapse: collapse; margin-bottom: var(--zw-space-sm); }
-.onebook-table th, .onebook-table td { border: 1px solid var(--el-border-color-lighter); padding: 4px 8px; font-size: var(--zw-font-size-sm); }
+.onebook-table th, .onebook-table td { border: 1px solid var(--el-border-color-lighter); padding: var(--zw-space-2xs) var(--zw-space-sm); font-size: var(--zw-font-size-sm); }
 .onebook-table th { background: var(--el-fill-color-light); text-align: right; }
 .onebook-table td:first-child { text-align: left; }
 .onebook-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
