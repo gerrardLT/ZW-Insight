@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import type { R } from '@/types/api'
 
 // ======================== 审批流程 ========================
 // ApprovalController: /api/v1/workflow/approval

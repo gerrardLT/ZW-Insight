@@ -29,6 +29,9 @@
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增收票登记
         </el-button>
+        <el-button @click="ocrDialogVisible = true">
+          <el-icon><DocumentChecked /></el-icon>发票识别
+        </el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading" border show-summary :summary-method="pageSummary">
@@ -170,11 +173,29 @@
         <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
       </template>
     </el-dialog>
+    <!-- 发票 OCR 识别弹窗（V2026_117：tesseract.js 本地识别，人工确认后填入） -->
+    <el-dialog v-model="ocrDialogVisible" title="发票 OCR 识别" width="500px" destroy-on-close>
+      <div class="ocr-upload-area">
+        <input ref="ocrFileInput" type="file" accept="image/*" style="display:none" @change="handleOcrFile" />
+        <el-button type="primary" @click="($refs.ocrFileInput as HTMLInputElement).click()">
+          选择发票图片
+        </el-button>
+        <p v-if="ocrProgress" class="ocr-progress">识别中… {{ ocrProgress }}%</p>
+        <p v-if="ocrError" class="ocr-error" role="alert">{{ ocrError }}</p>
+      </div>
+      <template v-if="ocrResult">
+        <el-divider content-position="left">识别结果（请人工核对后填入）</el-divider>
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item v-for="(v, k) in ocrFields" :key="k" :label="k">{{ v || '—' }}</el-descriptions-item>
+        </el-descriptions>
+        <el-button type="primary" style="margin-top: 12px" @click="applyOcrToForm">填入表单</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getInvoiceReceivedPage, createInvoiceReceived, verifyInvoiceReceived, markInvoiceReceivedBookkeep } from '@/api/finance'
@@ -185,6 +206,7 @@ import { getLaborContractPage } from '@/api/labor'
 import { getMachineContractPage } from '@/api/machine'
 import { getSubcontractPage } from '@/api/subcontract'
 import TaxRateSelector from '@/components/TaxRateSelector.vue'
+import { ocrInvoiceImage, type OcrInvoiceResult } from '@/utils/invoice-ocr'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -355,6 +377,66 @@ function pageSummary({ columns, data }: { columns: Array<{ property?: string }>;
     }
     return ''
   })
+}
+
+// ==================== 发票 OCR（V2026_117） ====================
+const ocrDialogVisible = ref(false)
+const ocrFileInput = ref<HTMLInputElement>()
+const ocrProgress = ref('')
+const ocrError = ref('')
+const ocrResult = ref<OcrInvoiceResult | null>(null)
+
+const ocrFields = computed(() => {
+  if (!ocrResult.value) return {}
+  const r = ocrResult.value
+  return {
+    '发票号码': r.invoiceNumber,
+    '发票代码': r.invoiceCode,
+    '开票日期': r.invoiceDate,
+    '含税金额': r.amount != null ? `¥${r.amount.toFixed(2)}` : '',
+    '不含税金额': r.amountWithoutTax != null ? `¥${r.amountWithoutTax.toFixed(2)}` : '',
+    '税额': r.taxAmount != null ? `¥${r.taxAmount.toFixed(2)}` : '',
+    '税率': r.taxRate != null ? `${r.taxRate}%` : '',
+    '供应方': r.supplierName
+  }
+})
+
+async function handleOcrFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  ocrProgress.value = '0'
+  ocrError.value = ''
+  ocrResult.value = null
+  try {
+    ocrProgress.value = '50'
+    const result = await ocrInvoiceImage(file, (p) => { ocrProgress.value = `${p}` })
+    ocrResult.value = result
+    if (!result.invoiceNumber && !result.amount) {
+      ocrError.value = 'OCR 未能提取到有效发票字段，请人工录入或更换图片'
+    }
+  } catch (err: any) {
+    ocrError.value = 'OCR 识别失败：' + (err?.message || '未知错误')
+  } finally {
+    ocrProgress.value = ''
+    input.value = ''
+  }
+}
+
+function applyOcrToForm() {
+  const r = ocrResult.value
+  if (!r) return
+  const fd = formData.value as any
+  if (r.invoiceNumber) fd.invoiceNumber = r.invoiceNumber
+  if (r.invoiceCode) fd.invoiceCode = r.invoiceCode
+  if (r.invoiceDate) fd.invoiceDate = r.invoiceDate
+  if (r.amount != null) fd.invoiceAmount = r.amount
+  if (r.amountWithoutTax != null) fd.amountWithoutTax = r.amountWithoutTax
+  if (r.taxAmount != null) fd.taxAmount = r.taxAmount
+  if (r.taxRate != null) fd.taxRate = r.taxRate
+  if (r.supplierName) fd.supplierName = r.supplierName
+  ocrDialogVisible.value = false
+  ElMessage.success('OCR 结果已填入表单，请核对后提交')
 }
 </script>
 
