@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
-import com.zwinsight.common.security.SecurityContextHolder;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.workflow.domain.BizWorkflowCc;
 import com.zwinsight.workflow.mapper.BizWorkflowCcMapper;
 import lombok.RequiredArgsConstructor;
