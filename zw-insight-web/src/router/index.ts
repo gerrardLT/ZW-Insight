@@ -28,16 +28,18 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '首页', icon: 'HomeFilled', permission: 'dashboard:view' }
       },
       {
+        // V2026_122 并入经营驾驶舱 Hub（保留直达，退出侧边栏）
         path: 'project-dashboard',
         name: 'ProjectDashboard',
         component: () => import('@/views/dashboard/project-dashboard.vue'),
-        meta: { title: '项目看板', icon: 'DataAnalysis', permission: 'project-dashboard:view' }
+        meta: { title: '项目看板', icon: 'DataAnalysis', permission: 'project-dashboard:view', hidden: true }
       },
       {
+        // V2026_122 并入经营驾驶舱 Hub（保留直达，退出侧边栏）
         path: 'project-cost-control',
         name: 'ProjectCostControl',
         component: () => import('@/views/dashboard/project-cost-control.vue'),
-        meta: { title: '成本主线看板', icon: 'TrendCharts', permission: 'dashboard:costcontrol:view' }
+        meta: { title: '成本主线看板', icon: 'TrendCharts', permission: 'dashboard:costcontrol:view', hidden: true }
       }
     ]
   },
@@ -168,10 +170,10 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'ProjectHubLedger',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '项目台账与工程分解', icon: 'Document', group: '项目主档',
+          title: '项目台账与工程分解', icon: 'Document', group: '项目主档', permission: 'project:view',
           hubTabs: [
             { key: 'list', label: '项目台账', loader: () => import('@/views/project/index.vue') },
-            { key: 'wbs', label: '工程分解与任务节点（WBS）', loader: () => import('@/views/project/wbs/index.vue') }
+            { key: 'wbs', label: '工程分解与任务节点（WBS）', loader: () => import('@/views/project/wbs/index.vue'), permission: 'project:wbs:view' }
           ]
         }
       },
@@ -220,11 +222,11 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'ContractHubMain',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '总包合同与产值', icon: 'Document', group: '总包合同',
+          title: '总包合同与产值', icon: 'Document', group: '总包合同', permission: 'contract:view',
           hubTabs: [
             { key: 'list', label: '施工总承包合同', loader: () => import('@/views/contract/index.vue') },
             { key: 'output-report', label: '工程产值申报', loader: () => import('@/views/contract/output-report.vue') },
-            { key: 'change-event', label: '工程变更签证', loader: () => import('@/views/contract/change-event/index.vue') }
+            { key: 'change-event', label: '工程变更签证', loader: () => import('@/views/contract/change-event/index.vue'), permission: 'contract:changeevent:view' }
           ]
         }
       },
@@ -273,17 +275,19 @@ const constantRoutes: RouteRecordRaw[] = [
     redirect: '/cockpit/hub/operation-group',
     meta: { title: '经营驾驶舱', icon: 'Odometer', permission: 'dashboard:view' },
     children: [
-      // ===== V2026_121 二级菜单收敛：三个驾驶舱合 1 入口，资金/风险中心保留 =====
+      // ===== V2026_121/122 二级菜单收敛：五看板合 1 入口，资金/风险中心保留 =====
       {
         path: 'hub/operation-group',
         name: 'CockpitHubOperation',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '经营驾驶舱', icon: 'DataBoard',
+          title: '经营驾驶舱', icon: 'DataBoard', permission: 'dashboard:view',
           hubTabs: [
             { key: 'overview', label: '经营总览', loader: () => import('@/views/cockpit/index.vue') },
             { key: 'project-operation', label: '项目经营', loader: () => import('@/views/cockpit/project-operation.vue') },
-            { key: 'cost-center', label: '成本中心', loader: () => import('@/views/cockpit/cost-center.vue') }
+            { key: 'cost-center', label: '成本中心', loader: () => import('@/views/cockpit/cost-center.vue') },
+            { key: 'project-dashboard', label: '项目看板', loader: () => import('@/views/dashboard/project-dashboard.vue'), permission: 'project-dashboard:view' },
+            { key: 'project-cost-control', label: '成本主线看板', loader: () => import('@/views/dashboard/project-cost-control.vue'), permission: 'dashboard:costcontrol:view' }
           ]
         }
       },
@@ -335,7 +339,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'FinanceHubReceivable',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '工程应收与结算', icon: 'Money', group: '收入钱链',
+          title: '工程应收与结算', icon: 'Money', group: '收入钱链', permission: 'finance:view',
           hubTabs: [
             { key: 'settlement', label: '工程竣工结算', loader: () => import('@/views/finance/settlement/index.vue') },
             { key: 'receivable', label: '应收工程账款台账', loader: () => import('@/views/finance/receivable/index.vue') },
@@ -349,7 +353,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'FinanceHubPayable',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '工程应付与支出', icon: 'CreditCard', group: '支出钱链',
+          title: '工程应付与支出', icon: 'CreditCard', group: '支出钱链', permission: 'finance:view',
           hubTabs: [
             { key: 'payment-apply', label: '工程付款申请', loader: () => import('@/views/finance/payment-apply.vue') },
             { key: 'payable', label: '应付账款台账', loader: () => import('@/views/finance/payable/index.vue') },
@@ -362,7 +366,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'FinanceHubReimbursement',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '日常报销与备用金', icon: 'WalletFilled', group: '支出钱链',
+          title: '日常报销与备用金', icon: 'WalletFilled', group: '支出钱链', permission: 'finance:view',
           hubTabs: [
             { key: 'project-reimbursement', label: '项目现场报销', loader: () => import('@/views/finance/project-reimbursement.vue') },
             { key: 'personal-reimbursement', label: '员工日常报销', loader: () => import('@/views/finance/personal-reimbursement.vue') },
@@ -375,7 +379,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'FinanceHubInvoice',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '发票税务台账', icon: 'Tickets', group: '发票与税务',
+          title: '发票税务台账', icon: 'Tickets', group: '发票与税务', permission: 'finance:view',
           hubTabs: [
             { key: 'invoice-received', label: '进项发票台账', loader: () => import('@/views/finance/invoice-received.vue') },
             { key: 'invoice-issued', label: '销项发票台账', loader: () => import('@/views/finance/invoice-issued.vue') },
@@ -388,7 +392,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'FinanceHubBank',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '银行账户与流水', icon: 'Coin', group: '账户与资金',
+          title: '银行账户与流水', icon: 'Coin', group: '账户与资金', permission: 'finance:view',
           hubTabs: [
             { key: 'bank-account-group', label: '银行账户清单', loader: () => import('@/views/finance/bank-account-group/index.vue') },
             { key: 'bank-flow', label: '银行流水明细', loader: () => import('@/views/finance/bank-flow/index.vue') },
@@ -401,7 +405,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'FinanceHubSpecialFund',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '专项资金与金融', icon: 'GoldMedal', group: '专项资金台账',
+          title: '专项资金与金融', icon: 'GoldMedal', group: '专项资金台账', permission: 'finance:view',
           hubTabs: [
             { key: 'security-bond', label: '投标与履约保证金', loader: () => import('@/views/finance/security-bond/index.vue') },
             { key: 'retention', label: '工程质量保证金', loader: () => import('@/views/finance/retention.vue') },
@@ -416,7 +420,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'FinanceHubPlan',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '资金计划与经营分析', icon: 'Calendar', group: '经营分析',
+          title: '资金计划与经营分析', icon: 'Calendar', group: '经营分析', permission: 'finance:view',
           hubTabs: [
             { key: 'fund-plan', label: '月度资金收支计划', loader: () => import('@/views/finance/fund-plan/index.vue') },
             { key: 'daily-cash-report', label: '每日资金头寸日报', loader: () => import('@/views/finance/daily-cash-report/index.vue') },
@@ -431,7 +435,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'FinanceHubSettings',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '财务基础设置', icon: 'Setting', group: '财务设置',
+          title: '财务基础设置', icon: 'Setting', group: '财务设置', permission: 'finance:view',
           hubTabs: [
             { key: 'fund-category', label: '收支科目设置', loader: () => import('@/views/finance/fund-category/index.vue') },
             { key: 'tax-rate', label: '增值税率设置', loader: () => import('@/views/finance/tax-rate/index.vue') },
@@ -643,11 +647,11 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'BudgetHubMain',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '目标成本管理', icon: 'Coin',
+          title: '目标成本管理', icon: 'Coin', permission: 'budget:view',
           hubTabs: [
             { key: 'list', label: '项目目标成本预算', loader: () => import('@/views/budget/index.vue') },
             { key: 'change', label: '目标成本调整单', loader: () => import('@/views/budget/change/index.vue') },
-            { key: 'cost-account', label: '目标成本科目（CBS）', loader: () => import('@/views/budget/cost-account/index.vue') },
+            { key: 'cost-account', label: '目标成本科目（CBS）', loader: () => import('@/views/budget/cost-account/index.vue'), permission: 'budget:costaccount:view' },
             { key: 'control-config', label: '成本预算控制配置', loader: () => import('@/views/budget/control-config/index.vue') }
           ]
         }
@@ -724,7 +728,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'LaborHubMain',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '劳务班组管理', icon: 'Avatar',
+          title: '劳务班组管理', icon: 'Avatar', permission: 'labor:view',
           hubTabs: [
             { key: 'contract', label: '劳务分包合同', loader: () => import('@/views/labor/contract.vue') },
             { key: 'team', label: '施工班组管理', loader: () => import('@/views/labor/team.vue') },
@@ -807,7 +811,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'MaterialHubMain',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '材料与采购', icon: 'Box',
+          title: '材料与采购', icon: 'Box', permission: 'material:view',
           hubTabs: [
             { key: 'inbound', label: '材料入库单', loader: () => import('@/views/material/inbound.vue') },
             { key: 'outbound', label: '现场领料单', loader: () => import('@/views/material/outbound.vue') },
@@ -872,7 +876,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'MachineHubMain',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '机械租赁管理', icon: 'Van',
+          title: '机械租赁管理', icon: 'Van', permission: 'machine:view',
           hubTabs: [
             { key: 'contract', label: '机械租赁合同', loader: () => import('@/views/machine/contract.vue') },
             { key: 'ledger', label: '机械设备台账', loader: () => import('@/views/machine/ledger.vue') },
@@ -946,7 +950,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'SubcontractHubMain',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '专业分包管理', icon: 'Connection',
+          title: '专业分包管理', icon: 'Connection', permission: 'subcontract:view',
           hubTabs: [
             { key: 'contract', label: '专业分包合同', loader: () => import('@/views/subcontract/contract.vue') },
             { key: 'settlement', label: '分包结算单', loader: () => import('@/views/subcontract/settlement.vue') },
@@ -1045,7 +1049,7 @@ const constantRoutes: RouteRecordRaw[] = [
         name: 'TenderHubMain',
         component: () => import('@/components/HubPage.vue'),
         meta: {
-          title: '投标管理', icon: 'EditPen', group: '投标揽件',
+          title: '投标管理', icon: 'EditPen', group: '投标揽件', permission: 'tender:view',
           hubTabs: [
             { key: 'register', label: '投标项目管理', loader: () => import('@/views/tender/register.vue') },
             { key: 'certificate', label: '投标证件管理', loader: () => import('@/views/tender/certificate.vue') }
