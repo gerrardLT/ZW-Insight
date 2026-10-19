@@ -35,16 +35,19 @@ export interface NavigationModel {
 
 type DomainDefinition = Omit<NavDomain, 'sections'> & { roots: readonly string[] }
 
-/** 全部可见业务路由收敛为八个稳定业务域；section 取静态路由分组标题。 */
+/**
+ * 全部可见业务路由收敛为八个稳定业务域；section 取静态路由分组标题。
+ * 标题采用工程企业日常用语，不使用抽象产品术语（2026-10-19 用户线上验收反馈）。
+ */
 export const NAV_DOMAINS: readonly DomainDefinition[] = [
   { key: 'overview', title: '经营总览', order: 10, roots: ['dashboard', 'project-dashboard', 'project-cost-control', 'cockpit'] },
-  { key: 'business', title: '经营管理', order: 20, roots: ['project', 'tender', 'contract'] },
-  { key: 'cost', title: '成本履约', order: 30, roots: ['budget', 'purchase', 'labor', 'material', 'machine', 'subcontract'] },
-  { key: 'site', title: '现场生产', order: 40, roots: ['site'] },
-  { key: 'finance', title: '财务资金', order: 50, roots: ['finance'] },
-  { key: 'resources', title: '资源档案', order: 60, roots: ['basedata', 'archive'] },
+  { key: 'business', title: '项目管理', order: 20, roots: ['project', 'tender', 'contract'] },
+  { key: 'cost', title: '成本管理', order: 30, roots: ['budget', 'purchase', 'labor', 'material', 'machine', 'subcontract'] },
+  { key: 'site', title: '施工管理', order: 40, roots: ['site'] },
+  { key: 'finance', title: '财务管理', order: 50, roots: ['finance'] },
+  { key: 'resources', title: '基础资料', order: 60, roots: ['basedata', 'archive'] },
   { key: 'collaboration', title: '协同办公', order: 70, roots: ['workflow', 'message', 'hr'] },
-  { key: 'administration', title: '平台治理', order: 80, roots: ['system', 'platform'] }
+  { key: 'administration', title: '系统管理', order: 80, roots: ['system', 'platform'] }
 ]
 
 const DOMAIN_BY_ROOT = new Map(NAV_DOMAINS.flatMap((domain) => domain.roots.map((root) => [root, domain] as const)))

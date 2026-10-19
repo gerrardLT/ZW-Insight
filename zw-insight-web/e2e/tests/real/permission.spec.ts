@@ -132,7 +132,7 @@ test.describe('权限视角 — 非 admin 真实登录（@matrix C-13/PERM-GAP�
       //   若产品意图是「STAFF = 首页 + 消息管理」→ STAFF 缺 message 子菜单授权（数据缺口）；
       //   若意图是「STAFF 仅首页」→ 需修正既有文档/记忆中的「lina 仅首页+消息管理」表述。
       //   本断言按**当前实测状态**书写；授权一旦补齐，此断言会失败，属预期信号。
-      for (const domain of ['经营管理', '成本履约', '现场生产', '财务资金', '资源档案', '平台治理', '协同办公']) {
+      for (const domain of ['项目管理', '成本管理', '施工管理', '财务管理', '基础资料', '系统管理', '协同办公']) {
         expect(railText, `lina 不应见「${domain}」域`).not.toContain(domain)
       }
 

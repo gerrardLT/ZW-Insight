@@ -129,7 +129,7 @@ describe('导航方案A：最近访问移顶栏历史下拉', () => {
     expect(items.length).toBe(2)
     const first = items[0] as HTMLElement
     expect(first.textContent).toContain('付款申请')
-    expect(first.textContent).toContain('财务资金')
+    expect(first.textContent).toContain('财务管理')
     expect(items.map((el) => el.textContent)).not.toContain(expect.stringContaining('首页'))
   })
 
