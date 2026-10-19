@@ -205,6 +205,7 @@ async function handleLogin() {
       roles: res.data.roles
     })
     userStore.setPermissions(res.data.permissions || [])
+    ElMessage.success('欢迎回来：' + (res.data.tenantName || res.data.realName || res.data.username))
     router.push('/')
   } catch {
     // 登录失败：滑块令牌已消费，重置滑块
