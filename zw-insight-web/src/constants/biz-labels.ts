@@ -93,13 +93,19 @@ export const COST_CATEGORY: Readonly<Record<string, string>> = {
   OTHER: '其他',
 }
 
-/** 支出合同类别（付款申请/结算的 contractCategory 五类） */
+/** 支出合同类别（付款申请/结算的 contractCategory 五类，标准工程命名） */
 export const CONTRACT_CATEGORY: Readonly<Record<string, string>> = {
-  SUBCONTRACT: '分包合同',
-  PURCHASE: '采购合同',
-  LABOR: '劳务合同',
-  MACHINE: '机械合同',
+  SUBCONTRACT: '专业分包合同',
+  PURCHASE: '物资采购合同',
+  LABOR: '劳务分包合同',
+  MACHINE: '机械设备租赁合同',
   OTHER: '其他支出合同',
+}
+
+/** 施工检查结论（合格 / 存在质量安全隐患） */
+export const INSPECTION_CONCLUSION: Readonly<Record<number, LabelSpec>> = {
+  0: spec('合格', 'success'),
+  1: spec('存在安全质量隐患', 'danger'),
 }
 
 /** 应收/应付台账状态 */

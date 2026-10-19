@@ -351,7 +351,7 @@ describe('labor/payroll.vue B18 矩阵', () => {
   it('B-18-5 alert 文案与 orderType 默认 FIXED 钉住（handleAdd 重置）', async () => {
     const w = await mountPayroll()
     const st = w.vm.$.setupState
-    expect(payrollSrc).toContain('结算金额由周期内已审批的用工单自动汇总，无需手工录入。')
+    expect(payrollSrc).toContain('结算金额由周期内已审批的现场点工派工单自动汇总，无需手工录入。')
     st.formData.orderType = 'TEMPORARY'
     st.handleAdd()
     expect(st.formData.orderType).toBe('FIXED')

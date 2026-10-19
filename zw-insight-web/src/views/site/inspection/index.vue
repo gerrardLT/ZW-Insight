@@ -10,10 +10,10 @@
         <el-form-item label="项目">
           <ProjectSelector v-model="queryParams.projectId" style="width: 180px" />
         </el-form-item>
-        <el-form-item label="是否有问题">
-          <el-select v-model="queryParams.hasProblem" placeholder="全部" clearable style="width: 120px">
-            <el-option label="无问题" :value="0" />
-            <el-option label="有问题" :value="1" />
+        <el-form-item label="检查结论">
+          <el-select v-model="queryParams.hasProblem" placeholder="全部结论" clearable style="width: 140px">
+            <el-option label="合格" :value="0" />
+            <el-option label="存在隐患" :value="1" />
           </el-select>
         </el-form-item>
         <el-form-item label="整改状态">
@@ -37,9 +37,11 @@
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="projectName" label="项目名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="inspectionContent" label="检查内容" min-width="180" show-overflow-tooltip />
-        <el-table-column label="是否有问题" width="100" align="center">
+        <el-table-column label="检查结论" width="120" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.hasProblem === 1 ? 'danger' : 'success'" size="small">{{ row.hasProblem === 1 ? '有问题' : '无问题' }}</el-tag>
+            <el-tag :type="row.hasProblem === 1 ? 'danger' : 'success'" size="small">
+              {{ row.hasProblem === 1 ? '存在质量安全隐患' : '合格' }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="problemDescription" label="问题描述" min-width="160" show-overflow-tooltip />

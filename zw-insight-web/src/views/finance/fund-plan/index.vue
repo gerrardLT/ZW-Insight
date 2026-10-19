@@ -9,7 +9,7 @@
           </div>
           <el-table :data="annualData" v-loading="annualLoading" border>
             <el-table-column prop="budgetYear" label="年度" width="90" align="center" />
-            <el-table-column prop="projectId" label="项目ID（空=公司整体）" min-width="170" show-overflow-tooltip />
+            <el-table-column prop="projectId" label="所属工程项目（留空为公司总部）" min-width="170" show-overflow-tooltip />
             <el-table-column label="预计收款" width="140" align="right">
               <template #default="{ row }">{{ formatAmount(row.incomePlan) }}</template>
             </el-table-column>
@@ -37,7 +37,7 @@
             <el-table-column label="月份" width="110" align="center">
               <template #default="{ row }">{{ row.planYear }}-{{ String(row.planMonth).padStart(2, '0') }}</template>
             </el-table-column>
-            <el-table-column prop="projectId" label="项目ID（空=公司整体）" min-width="170" show-overflow-tooltip />
+            <el-table-column prop="projectId" label="所属工程项目（留空为公司总部）" min-width="170" show-overflow-tooltip />
             <el-table-column label="计划收款" width="130" align="right">
               <template #default="{ row }">{{ formatAmount(row.incomePlan) }}</template>
             </el-table-column>
@@ -84,7 +84,7 @@
                 <span :class="Number(row.overdueUnpaid) > 0 ? 'gap-negative' : ''">{{ formatAmount(row.overdueUnpaid) }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="净缺口（付-收）" width="150" align="right">
+            <el-table-column label="资金净流向（付-收）" width="150" align="right">
               <template #default="{ row }">
                 <span :class="(row.netGap || 0) > 0 ? 'gap-negative' : 'gap-positive'">{{ formatAmount(row.netGap) }}</span>
               </template>
@@ -105,8 +105,8 @@
         <el-form-item label="预算年度">
           <el-input-number v-model="annualForm.budgetYear" :min="2000" :max="2100" controls-position="right" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="项目ID（选填）">
-          <el-input-number v-model="annualForm.projectId" :min="1" controls-position="right" style="width: 100%" placeholder="留空为公司整体" />
+        <el-form-item label="所属工程项目">
+          <el-input-number v-model="annualForm.projectId" :min="1" controls-position="right" style="width: 100%" placeholder="留空代表公司总部整体" />
         </el-form-item>
         <el-form-item label="预计收款计划">
           <el-input-number v-model="annualForm.incomePlan" :min="0" :precision="2" controls-position="right" style="width: 100%" />

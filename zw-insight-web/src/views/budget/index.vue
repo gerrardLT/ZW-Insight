@@ -113,9 +113,9 @@
                   </el-select>
                 </template>
               </el-table-column>
-              <el-table-column label="项目名称" min-width="140">
+              <el-table-column label="分项/物料名称" min-width="140">
                 <template #default="{ row }">
-                  <el-input v-model="row.itemName" placeholder="如：钢材" />
+                  <el-input v-model="row.itemName" placeholder="如：钢材 / 土方开挖" />
                 </template>
               </el-table-column>
               <el-table-column label="单位" width="90">

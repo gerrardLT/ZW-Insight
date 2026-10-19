@@ -608,10 +608,14 @@ function handleSaveShortcut() {
 }
 
 onMounted(async () => {
+  const routeQuery = route?.query || {}
+  const qPid = routeQuery.projectId != null ? Number(routeQuery.projectId) : undefined
+  if (qPid) {
+    queryParams.value.projectId = qPid
+  }
   loadData()
   await searchProject('')
   // P3-M5 B3：从采购结算页跳转时预填项目、采购合同与结算金额，并打开新增弹窗
-  const routeQuery = route?.query || {}
   const pid = routeQuery.projectId != null ? String(routeQuery.projectId).trim() : ''
   const contractId = routeQuery.contractId != null ? String(routeQuery.contractId).trim() : ''
   const amount = Number(routeQuery.applyAmount)

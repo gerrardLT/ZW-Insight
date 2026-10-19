@@ -88,6 +88,7 @@ vi.mock('vue-router', async (importOriginal) => {
     }),
     createWebHistory: () => ({}),
     useRouter: () => ({ push: vi.fn() }),
+    useRoute: () => ({ query: {}, params: {} }),
   }
 })
 vi.mock('element-plus', async (importOriginal) => {

@@ -222,9 +222,9 @@ describe('site/inspection/index.vue 检查列表（C17）', () => {
     expect(inspIndexSrc).toContain('<span v-else>-</span>')
   })
 
-  it('@matrix C-17-4 hasProblem 1→有问题 danger / 0→无问题 success 源码钉住', () => {
+  it('@matrix C-17-4 hasProblem 1→存在质量安全隐患 danger / 0→合格 success 源码钉住', () => {
     expect(inspIndexSrc).toContain("row.hasProblem === 1 ? 'danger' : 'success'")
-    expect(inspIndexSrc).toContain("row.hasProblem === 1 ? '有问题' : '无问题'")
+    expect(inspIndexSrc).toContain("row.hasProblem === 1 ? '存在质量安全隐患' : '合格'")
   })
 
   it('@matrix C-17-1 tab 切换重载：quality→getQualityInspectionPage；safety→getSafetyInspectionPage 且 page 归 1', async () => {

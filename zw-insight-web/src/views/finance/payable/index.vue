@@ -134,10 +134,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPayablePage, getPayableAging, type Payable, type PayableAging } from '@/api/payable'
 import { getProjectList } from '@/api/project'
 import { CONTRACT_CATEGORY } from '@/constants/biz-labels'
+
+const route = useRoute()
 
 interface ProjectOption { id: number; projectName: string }
 
@@ -247,6 +250,10 @@ async function searchProject(keyword?: string) {
 }
 
 onMounted(() => {
+  const qPid = route.query.projectId ? Number(route.query.projectId) : undefined
+  if (qPid) {
+    query.value.projectId = qPid
+  }
   searchProject()
   loadData()
   loadAging()

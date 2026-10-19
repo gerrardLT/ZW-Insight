@@ -173,7 +173,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getContractPage, deleteContract, submitContract, withdrawContract, getContractAmountSummary } from '@/api/contract'
 import { getProjectList } from '@/api/project'
@@ -203,6 +203,7 @@ const contractColumns = [
 const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('contract-table', contractColumns)
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const tableData = ref<any[]>([])
 // 收入六段链（术语表 §五）：签证→产值→结算→开票→回款；未收=合同额+签证−回款
@@ -368,6 +369,10 @@ function buildAmountSummaryOption(data: any) {
 }
 
 onMounted(() => {
+  const qPid = route.query.projectId ? Number(route.query.projectId) : undefined
+  if (qPid) {
+    queryParams.value.projectId = qPid
+  }
   loadData()
   searchProject('')
 })

@@ -97,8 +97,8 @@
 
         <!-- 清单行填报 -->
         <el-table v-if="fillMode === 'boq'" :data="boqItems" border max-height="320" size="small">
-          <el-table-column prop="itemCode" label="项目编码" width="110" show-overflow-tooltip />
-          <el-table-column prop="itemName" label="项目名称" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="itemCode" label="清单项目编码" width="120" show-overflow-tooltip />
+          <el-table-column prop="itemName" label="清单项目名称" min-width="160" show-overflow-tooltip />
           <el-table-column prop="unit" label="单位" width="70" align="center" />
           <el-table-column prop="unitPrice" label="综合单价" width="110" align="right">
             <template #default="{ row }">{{ formatMoney(row.unitPrice) }}</template>

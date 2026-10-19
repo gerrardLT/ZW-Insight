@@ -75,7 +75,7 @@
 
     <el-dialog v-model="dialogVisible" title="生成工资单" width="550px" destroy-on-close>
       <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-md)"
-        title="结算金额由周期内已审批的用工单自动汇总，无需手工录入。" />
+        title="结算金额由周期内已审批的现场点工派工单自动汇总，无需手工录入。" />
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="班组" prop="teamId">
           <el-select v-model="formData.teamId" placeholder="请选择班组" filterable style="width: 100%" @change="handleTeamChange">

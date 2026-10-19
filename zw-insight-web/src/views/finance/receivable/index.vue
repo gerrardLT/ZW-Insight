@@ -210,7 +210,10 @@
 <script setup lang="ts">
 import ZwEmptyState from '@/components/ZwEmptyState.vue'
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+
+const route = useRoute()
 import {
   getReceivablePage, getReceivableAging, getReceivableDrill, updateReceivableDrill,
   type Receivable, type ReceivableAging, type AgingBucket,
@@ -395,6 +398,10 @@ async function saveDrill() {
 }
 
 onMounted(() => {
+  const qPid = route.query.projectId ? Number(route.query.projectId) : undefined
+  if (qPid) {
+    query.value.projectId = qPid
+  }
   loadPage()
   loadAging()
   searchProject('')

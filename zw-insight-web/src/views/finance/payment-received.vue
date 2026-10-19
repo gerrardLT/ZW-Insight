@@ -148,7 +148,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+
+const route = useRoute()
 import type { FormInstance } from 'element-plus'
 import { getPaymentReceivedPage, createPaymentReceived, updatePaymentReceived, deletePaymentReceived, writeOffPaymentReceived, getCollectionRate } from '@/api/finance'
 import { getProjectList } from '@/api/project'
@@ -280,6 +283,10 @@ async function handleWriteOff(row: any) {
 }
 
 onMounted(() => {
+  const qPid = route.query.projectId ? Number(route.query.projectId) : undefined
+  if (qPid) {
+    queryParams.value.projectId = qPid
+  }
   loadData()
   searchProject('')
 })
