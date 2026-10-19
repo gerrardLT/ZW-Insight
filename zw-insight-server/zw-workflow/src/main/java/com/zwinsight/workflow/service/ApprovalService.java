@@ -49,6 +49,7 @@ public class ApprovalService {
     private final SysUserMapper sysUserMapper;
     private final com.zwinsight.workflow.notify.ApprovalNotifyPublisher approvalNotifyPublisher;
     private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final WorkflowCcService ccService;
 
     /** 超级管理员角色编码，拥有全部审批操作权限，跳过处理人校验 */
     private static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
@@ -138,6 +139,19 @@ public class ApprovalService {
 
         // 首个待办通知（事务内解析收件人，提交后发布）
         approvalNotifyPublisher.notifyActiveTasks(processInstance.getId());
+
+        // 抄送（V2026_117）：variables 含 ccUserIds（List<Long>）时自动创建抄送记录
+        Object ccObj = variables.get("ccUserIds");
+        if (ccObj instanceof List && !((List<?>) ccObj).isEmpty()) {
+            try {
+                @SuppressWarnings("unchecked")
+                List<Long> ccUserIds = (List<Long>) ccObj;
+                ccService.create(processInstance.getId(), businessType, businessId, ccUserIds, userId);
+            } catch (Exception e) {
+                log.warn("抄送记录创建失败（不影响流程）, processInstanceId={}, error={}",
+                        processInstance.getId(), e.getMessage());
+            }
+        }
 
         return processInstance.getId();
     }

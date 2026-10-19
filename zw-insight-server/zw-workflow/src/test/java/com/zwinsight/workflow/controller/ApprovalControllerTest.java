@@ -27,6 +27,8 @@ class ApprovalControllerTest {
     @Mock ApprovalService approvalService;
     @Mock UrgeService urgeService;
     @Mock BusinessDetailService businessDetailService;
+    @Mock private com.zwinsight.workflow.service.WorkflowCcService ccService;
+
     @InjectMocks ApprovalController controller;
 
     @Test
