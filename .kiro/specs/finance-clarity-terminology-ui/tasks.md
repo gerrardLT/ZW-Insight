@@ -54,7 +54,7 @@
 - [x] 2.5 应付台账页（账龄卡+台账列表+本页合计）+ V2026_116 双轨（910063 挂支出组，SUPER_ADMIN/FINANCE_STAFF role_code 绑定） _需求: R4_
 - [x] 2.6 进项发票页 show-summary 本页合计（发票金额/不含税/税额）+ 金额列右对齐 _需求: R3_
 - [x] 2.7 项目详情新增「项目经营」首页签（复用 ProjectBusinessSummary + 驾驶舱完整版跳转链接；嵌整页方案否决——cockpit/project-operation 是公司级页面无法按 projectId 过滤嵌入） _需求: R3_
-- [ ] 2.8 验收：本地 vitest 1378 绿 / tsc 144 持平 / menu-coverage 0 / labels 0；CI mvn 与 L4/R7 待部署后执行 _需求: R4_
+- [x] 2.8 验收：本地 vitest 1378 绿 / tsc 144 持平 / menu-coverage 0 / labels 0；CI run 39185360707 全绿双机部署；双机真库直跑 onebook SQL 家族通过（1054 风险清零）；L4 lifecycle 暂无应付断言段（纳入 3b 一并补） _需求: R4_
 
 ## 阶段三（P1）一本账 + 表单契约 + 抄送/OCR
 
@@ -112,6 +112,12 @@
 - 3a 审阅门一轮 BLOCK：sumBondOccupied 引用不存在的 biz_security_bond.status 列（grep -A 溢出表边界误判列清单，与审计脚本 3.2 同型陷阱）→ 删 status 条件（refund_status 已足够）；另收 NOTE：expenseSection 复用主流程 project 实体消除多余 selectById。复验：其余四表列名经 python 边界感知提取全部确认存在。
 - 部署后双机核验：flyway 113-116 全 success；910063 菜单双机在场；应付 BACKFILL 主 6 行/徽颍 2 行，OPEN 余额与项目 payable_amount 由迁移第 5 步重算自洽。
 - 待办：audit-data 脚本可增补「biz_project.payable_amount = biz_payable OPEN 余额合计」勾稽项（审阅 §8 建议，R7 基线变更需按「新生效 vs 新失败」辨析）。
+
+### 阶段三 3a 完成与部署（2026-10-19，run 39185360707 全绿）
+- 交付：onebook 六条线只读聚合全链（Mapper 14 SQL + Service 三口径利润 + Controller project:view）+ ProjectOnebookPanel 接入项目经营页签 + 未收口径 Tooltip（审阅 NOTE-3 收口）+ 单测 8 用例。
+- 审阅门一轮 BLOCK（biz_security_bond 无 status 列，1054）已修；根因=**grep -A 提列清单溢出表边界**（与审计脚本 3.2 同型陷阱），已改边界感知提取并对其余四表复验。
+- 双机核验：部署 run 全绿；主/徽颍真库直跑 onebook 关键 SQL（收入链/保证金/银行现金/销项税/支出 UNION）全部通过；双机后端 Up。
+- 3b 待办（下轮）：ZwListPage 契约+8 页换壳（1.6-1.8 并入）、ZwFormPane+3 样板、抄送、发票 OCR、支出族修订、驾驶舱落袋口径、L4 应付断言段。
 
 ## 受阻项登记表
 
