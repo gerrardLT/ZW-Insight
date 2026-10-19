@@ -134,6 +134,12 @@
             <span class="s-value">{{ formatRate(current.profitRate) }}</span>
           </div>
           <div class="strip-item">
+            <span class="s-label">落袋利润（银行口径）</span>
+            <span class="s-value" :class="pocketProfit != null && Number(pocketProfit) < 0 ? 'is-danger' : 'is-success'">
+              {{ pocketProfit != null ? `${formatWan(pocketProfit)} 万` : '—' }}
+            </span>
+          </div>
+          <div class="strip-item">
             <span class="s-label">回款</span>
             <span class="s-value">{{ formatRate(ratio(current.cumulativeReceived, current.contractIncome)) }}</span>
           </div>
@@ -258,6 +264,7 @@ import {
   getProjectHealth, getCockpitProfitTrend, getCockpitFilterOptions, getRiskPage,
   type ProjectHealth, type RiskRegister, type CockpitFilterOptions
 } from '@/api/cockpit'
+import { getProjectOnebook } from '@/api/project'
 import { getProjectCostControl, type DocCategorySummary, type CostAccountSummary } from '@/api/dashboard'
 import { formatWan, toWan } from '@/utils/chart-format'
 import { pickChartTheme, chartAxisStyle, chartTooltipStyle, chartSeriesLineStyle } from '@/constants/chart-theme'
@@ -282,6 +289,7 @@ const detail = ref<{
 }>({ budget: null, docCategories: [], accounts: [], snapshots: [], realized: null })
 const risks = ref<RiskRegister[]>([])
 const hasSnapshot = ref(false)
+const pocketProfit = ref<number | null>(null)
 
 // ==================== 单据穿透链入口（§13，P2-4）====================
 const drillVisible = ref(false)
@@ -452,6 +460,11 @@ async function selectProject(row: ProjectHealth) {
       realized: trendRes?.data?.realized || null
     }
     hasSnapshot.value = detail.value.snapshots.length > 0
+    // 落袋利润（V2026_117）：调 onebook 接口取银行现金口径
+    try {
+      const obRes: any = await getProjectOnebook(row.projectId)
+      pocketProfit.value = obRes?.data?.profit?.pocketProfit ?? null
+    } catch { pocketProfit.value = null }
     await nextTick()
     renderCharts()
   } catch (e: any) {
