@@ -31,7 +31,7 @@
         </thead>
         <tbody>
           <tr v-for="c in book.expense.categories" :key="c.category">
-            <td>{{ categoryLabel(c.category) }}</td>
+            <td><span class="cat-dot" :style="{ background: catColor(c.category) }" />{{ categoryLabel(c.category) }}</td>
             <td class="num">{{ money(c.contractAmount) }}</td>
             <td class="num">{{ money(c.settled) }}</td>
             <td class="num">{{ money(c.paid) }}</td>
@@ -112,6 +112,11 @@ function money(v: unknown): string {
   const n = Number(v)
   return Number.isFinite(n) ? n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
 }
+const CAT_COLORS: Record<string, string> = {
+  SUBCONTRACT: 'var(--el-color-primary)', LABOR: 'var(--el-color-success)',
+  MATERIAL: 'var(--el-color-warning)', MACHINE: '#9c27b0', OTHER: 'var(--el-text-color-secondary)'
+}
+function catColor(key: string): string { return CAT_COLORS[key] ?? 'var(--el-text-color-secondary)' }
 function categoryLabel(key: string): string {
   return CONTRACT_CATEGORY[key] ?? key
 }
@@ -153,4 +158,5 @@ watch(() => props.projectId, load, { immediate: true })
 .onebook-table td:first-child { text-align: left; }
 .onebook-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .onebook-table td.empty { text-align: center; color: var(--el-text-color-secondary); }
+.cat-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right: var(--zw-space-2xs); vertical-align:middle; }
 </style>
