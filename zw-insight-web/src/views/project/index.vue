@@ -36,7 +36,13 @@
 
     <!-- 列表区 -->
     <el-card shadow="never" class="table-card">
-      <div class="table-toolbar">
+      <ZwListToolbar
+        :columns="projectColumns"
+        :visible="columnVisible"
+        @update:visible="setVisible"
+        @reset="resetColumns"
+        @refresh="loadData"
+      >
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增项目
         </el-button>
@@ -44,13 +50,7 @@
         <el-button type="danger" plain :disabled="!selectedRows.length" @click="handleBatchDelete">
           <el-icon><Delete /></el-icon>批量删除（{{ selectedRows.length }}）
         </el-button>
-        <ColumnSettingPopover
-          :columns="projectColumns"
-          :visible="columnVisible"
-          @update:visible="setVisible"
-          @reset="resetColumns"
-        />
-      </div>
+      </ZwListToolbar>
     
       <!-- 首屏骨架屏：loading 期间显示骨架，完成后渲染表格（感知性能优化 S1.4） -->
       <el-skeleton :loading="loading" :rows="5" animated>
@@ -109,6 +109,7 @@ import { getProjectPage, deleteProject, batchDeleteProjects, submitProject, with
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
+import ZwListToolbar from '@/components/ZwListToolbar.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
 import { useRowNavigation } from '@/composables/useRowNavigation'
 import { PROJECT_STATUS, labelOf, typeOf } from '@/constants/biz-labels'

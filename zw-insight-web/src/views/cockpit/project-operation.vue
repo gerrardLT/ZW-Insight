@@ -78,7 +78,12 @@
             :description="quickFilter === 'ALL' ? '暂无在算项目' : `无符合「${quickFilterLabel}」的项目`" />
         </template>
       </el-table>
-      <!-- 口径如实告知：无 CBS 账户的项目「预计成本」退化为已实现支出，不具备预测意义 -->
+      <!-- 利润三口径说明（V2026_117）：完整落袋口径见项目详情→项目经营 -->
+      <div class='basis-warn' style='border-color: var(--el-color-info-light); color: var(--el-text-color-secondary);'>
+        ℹ 利润三口径：预计（合同+签证−EAC）/ 已实现（收入−支出）/ 落袋（银行实收−实付）；
+        完整对比见项目详情 → 项目经营
+      </div>
+            <!-- 口径如实告知：无 CBS 账户的项目「预计成本」退化为已实现支出，不具备预测意义 -->
       <div v-if="fallbackProjects.length" class="basis-warn">
         ⚠ {{ fallbackProjects.length }} 个项目未建 CBS 成本账户（{{ fallbackProjects.join('、') }}），
         其「预计成本/预计利润」已退化为已实现支出口径，不具备预测意义

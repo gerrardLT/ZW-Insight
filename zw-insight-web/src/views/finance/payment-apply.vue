@@ -42,8 +42,14 @@
         </el-form-item>
       </el-form>
 
-      <div class="table-toolbar">
-        <el-button type="primary" @click="handleAdd">
+      <ZwListToolbar
+        :columns="paymentColumns"
+        :visible="columnVisible"
+        @update:visible="setVisible"
+        @reset="resetColumns"
+        @refresh="loadData"
+      >
+<el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增付款申请
         </el-button>
         <!-- 批量操作（Phase 1.2）：勾选态驱动；后端整体单事务，任一失败全部回滚 -->
@@ -61,13 +67,7 @@
           :loading="batchLoading"
           @click="handleBatchSubmit"
         >批量提交（{{ selectedRows.length }}）</el-button>
-        <ColumnSettingPopover
-          :columns="paymentColumns"
-          :visible="columnVisible"
-          @update:visible="setVisible"
-          @reset="resetColumns"
-        />
-      </div>
+      </ZwListToolbar>
 
             <!-- 首屏骨架（感知性能 S1.4）：无数据且加载中显示骨架；翻页保留 v-loading 遮罩 -->
             <el-skeleton v-if="loading && !tableData.length" :rows="5" animated />
