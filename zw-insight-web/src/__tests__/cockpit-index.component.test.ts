@@ -17,7 +17,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 
 const {
-  mockOverview, mockFilterOptions, mockProfitTrend, mockAttribution,
+  mockOverview, mockPocket, mockFilterOptions, mockProfitTrend, mockAttribution,
   mockHealth, mockRiskSummary, mockRiskPage, mockScan,
   mockRollingPage, mockByDays,
   chartInstances, chartInit, mockInfo, mockError, mockPush,
@@ -47,6 +47,13 @@ const {
   })
   return {
     mockOverview: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
+    mockPocket: vi.fn(async (): Promise<any> => ({
+      code: 200,
+      data: {
+        cashIn: 110000000, cashOut: 95000000, pocketProfit: 15000000,
+        basis: 'BANK_RECONCILED', scope: 'COMPANY', note: '银行勾稽口径',
+      },
+    })),
     mockFilterOptions: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
     mockProfitTrend: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
     mockAttribution: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
@@ -66,6 +73,7 @@ const {
 
 vi.mock('@/api/cockpit', () => ({
   getCockpitOverview: mockOverview,
+  getCockpitPocketProfit: mockPocket,
   getCockpitFilterOptions: mockFilterOptions,
   getCockpitProfitTrend: mockProfitTrend,
   getProfitAttribution: mockAttribution,
@@ -195,10 +203,10 @@ describe('cockpit/index.vue 经营驾驶舱首页（§4 四要素 / §14 筛选 
     vi.restoreAllMocks()
   })
 
-  it('D-01 数字卡四要素齐备：当前值 + 环比 + 目标/口径 + 风险状态（8 张卡）', async () => {
+  it('D-01 数字卡四要素齐备：当前值 + 环比 + 目标/口径 + 风险状态（9 张卡）', async () => {
     const wrapper = await mountPage()
     const cards = wrapper.findAll('.metric-card')
-    expect(cards.length).toBe(8)
+    expect(cards.length).toBe(9)
 
     const income = cards[0]
     // ① 当前值（formatWan 1 位小数 + 万）
@@ -218,6 +226,9 @@ describe('cockpit/index.vue 经营驾驶舱首页（§4 四要素 / §14 筛选 
       expect(c.find('.metric-target').exists()).toBe(true)
       expect(c.find('.metric-status').exists()).toBe(true)
     })
+    // 第 9 张：落袋利润（银行口径），与项目一本账同口径
+    expect(cards[8].find('.metric-label').text()).toContain('落袋利润（银行口径）')
+    expect(cards[8].find('.metric-value').text()).toContain('1500.0 万')
     wrapper.unmount()
   })
 

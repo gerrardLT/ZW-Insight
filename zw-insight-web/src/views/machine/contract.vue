@@ -47,10 +47,11 @@
         <el-table-column prop="rentalType" label="租赁方式" width="100" align="center" />
         <el-table-column prop="startDate" label="开始日期" width="110" />
         <el-table-column prop="endDate" label="结束日期" width="110" />
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="340" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交审批</el-button>
+            <el-button v-if="row.status === 'EFFECTIVE'" link type="warning" @click="openRevision(row)">修订</el-button>
             <PrintButton
               link
               :show-icon="false"
@@ -88,6 +89,16 @@
         <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 支出合同通用修订（V2026_123）：审批通过后回写合同金额与税额 -->
+    <ExpenseContractRevisionDialog
+      v-model:visible="revisionVisible"
+      category="MACHINE"
+      :contract-id="revisionTarget?.id"
+      :base-version="revisionTarget?.version"
+      :before-amount="revisionTarget?.contractAmount"
+      @changed="loadData"
+    />
   </div>
 </template>
 
@@ -97,6 +108,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getMachineContractPage, createMachineContract, updateMachineContract, deleteMachineContract, submitMachineContract } from '@/api/machine'
 import PrintButton from '@/components/PrintButton.vue'
+import ExpenseContractRevisionDialog from '@/components/ExpenseContractRevisionDialog.vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 
 const formRef = ref<FormInstance>()
@@ -106,6 +118,8 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
+const revisionVisible = ref(false)
+const revisionTarget = ref<any>(null)
 
 const queryParams = ref({ pageNum: 1, pageSize: 10, contractName: '', supplierName: '' })
 const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', supplierName: '', machineName: '', contractAmount: 0, taxRate: undefined as number | undefined, unitPrice: 0.01, rentalType: '月租', startDate: '', endDate: '' })
@@ -136,6 +150,7 @@ function sumFourColumns({ columns }: { columns: any[] }) {
 
 function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', supplierName: '', machineName: '', contractAmount: 0, taxRate: undefined as number | undefined, unitPrice: 0.01, rentalType: '月租', startDate: '', endDate: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
+function openRevision(row: any) { revisionTarget.value = row; revisionVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateMachineContract(formData.value) : await createMachineContract(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteMachineContract(row.id); ElMessage.success('删除成功'); loadData() }
 // 盲点 13 修复（2026-08-15 决策 A）：补提交审批入口，合同生效链路 UI 闭环

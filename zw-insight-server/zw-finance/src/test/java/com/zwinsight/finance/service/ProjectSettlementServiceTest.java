@@ -15,9 +15,13 @@ import com.zwinsight.workflow.service.ApprovalService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -203,5 +207,27 @@ class ProjectSettlementServiceTest {
         assertNotNull(result);
         assertEquals(0, result.getTotal());
         assertTrue(result.getRecords().isEmpty());
+    }
+
+    @Test
+    @DisplayName("testSubmit_withCcUserIds — 提交时写入抄送人流程变量")
+    @SuppressWarnings("unchecked")
+    void testSubmit_withCcUserIds() {
+        Long settlementId = 9L;
+        BizProjectSettlement settlement = new BizProjectSettlement();
+        settlement.setId(settlementId);
+        settlement.setProjectId(10L);
+        settlement.setStatus("DRAFT");
+        settlement.setProfit(new java.math.BigDecimal("1000.00"));
+        when(settlementMapper.selectById(settlementId)).thenReturn(settlement);
+        when(settlementMapper.updateById(any(BizProjectSettlement.class))).thenReturn(1);
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        when(approvalService.startProcess(eq("PROJECT_SETTLEMENT"), eq(settlementId),
+                eq("project_settlement_approval"), captor.capture())).thenReturn("proc-cc");
+
+        projectSettlementService.submit(settlementId, List.of(7L, 8L));
+
+        assertEquals(List.of(7L, 8L), captor.getValue().get("ccUserIds"));
+        assertEquals("SUBMITTED", settlement.getStatus());
     }
 }

@@ -72,25 +72,33 @@
         <el-button type="primary" style="margin-left: var(--zw-space-sm)" @click="handleSearch">查询</el-button>
       </div>
 
+      <ZwListToolbar
+        :columns="ledgerColumns"
+        :visible="columnVisible"
+        @update:visible="setVisible"
+        @reset="resetColumns"
+        @refresh="handleSearch"
+      />
+
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="projectName" label="项目" min-width="160" show-overflow-tooltip>
+        <el-table-column v-if="columnVisible[0]" prop="projectName" label="项目" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.projectName || `项目#${row.projectId}` }}</template>
         </el-table-column>
-        <el-table-column label="来源" width="150" show-overflow-tooltip>
+        <el-table-column v-if="columnVisible[1]" label="来源" width="150" show-overflow-tooltip>
           <template #default="{ row }">{{ sourceLabel(row.sourceType) }} #{{ row.sourceId }}</template>
         </el-table-column>
-        <el-table-column label="应收金额" width="130" align="right">
+        <el-table-column v-if="columnVisible[2]" label="应收金额" width="130" align="right">
           <template #default="{ row }">{{ formatAmount(row.receivableAmount) }}</template>
         </el-table-column>
-        <el-table-column label="已核销" width="130" align="right">
+        <el-table-column v-if="columnVisible[3]" label="已核销" width="130" align="right">
           <template #default="{ row }">{{ formatAmount(row.writtenOffAmount) }}</template>
         </el-table-column>
-        <el-table-column label="未结余额" width="130" align="right">
+        <el-table-column v-if="columnVisible[4]" label="未结余额" width="130" align="right">
           <template #default="{ row }">
             <span :class="{ 'overdue-amount': isOverdue(row as Receivable) }">{{ formatAmount(balanceOf(row as Receivable)) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="到期日" width="120" align="center">
+        <el-table-column v-if="columnVisible[5]" label="到期日" width="120" align="center">
           <template #default="{ row }">
             <span>{{ row.dueDate }}</span>
             <el-tag v-if="isOverdue(row as Receivable)" :type="overdueTagType(overdueDays(row as Receivable))" size="small" class="overdue-tag">
@@ -98,14 +106,14 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="90" align="center">
+        <el-table-column v-if="columnVisible[6]" label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 'OPEN' ? 'warning' : 'success'" size="small">
               {{ row.status === 'OPEN' ? '未结清' : '已结清' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
+        <el-table-column v-if="columnVisible[7]" prop="remark" label="备注" min-width="140" show-overflow-tooltip />
         <!-- §10 下钻入口：八级链中五级需人工登记，故在台账行直接提供入口 -->
         <el-table-column label="操作" width="90" align="center" fixed="right">
           <template #default="{ row }">
@@ -220,6 +228,21 @@ import {
   type ReceivableDrillChain, type ReceivableDrillLevel, type ReceivableDrillInfoRequest
 } from '@/api/receivable'
 import { getProjectList } from '@/api/project'
+import ZwListToolbar from '@/components/ZwListToolbar.vue'
+import { useColumnSetting } from '@/composables/useColumnSetting'
+
+// 列显隐配置：按 receivable-ledger-table 持久化 localStorage
+const ledgerColumns = [
+  { key: 'projectName', label: '项目' },
+  { key: 'source', label: '来源' },
+  { key: 'receivableAmount', label: '应收金额' },
+  { key: 'writtenOffAmount', label: '已核销' },
+  { key: 'balance', label: '未结余额' },
+  { key: 'dueDate', label: '到期日' },
+  { key: 'status', label: '状态' },
+  { key: 'remark', label: '备注' },
+]
+const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('receivable-ledger-table', ledgerColumns)
 
 const bucketDefs: { key: AgingBucket; label: string }[] = [
   { key: 'NOT_DUE', label: '未到期' },

@@ -389,6 +389,18 @@ public class ProjectSettlementService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long settlementId) {
+        submit(settlementId, null);
+    }
+
+    /**
+     * 提交结算单审批（带可选抄送人）。
+     * <p>ccUserIds 仅在非空时写入流程变量，由 ApprovalService.startProcess 落库抄送记录。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void submit(Long settlementId, List<Long> ccUserIds) {
+        if (ccUserIds != null && ccUserIds.size() > 50) {
+            throw new BusinessException("抄送人不能超过50人");
+        }
         BizProjectSettlement settlement = settlementMapper.selectById(settlementId);
         if (settlement == null) {
             throw new BusinessException("结算单不存在");
@@ -402,6 +414,10 @@ public class ProjectSettlementService {
         variables.put("businessType", "PROJECT_SETTLEMENT");
         variables.put("projectId", settlement.getProjectId());
         variables.put("amount", settlement.getProfit());
+        // 抄送人（V2026_123）：仅非空时写入，避免空集合进入流程变量
+        if (ccUserIds != null && !ccUserIds.isEmpty()) {
+            variables.put("ccUserIds", ccUserIds);
+        }
 
         // 启动审批流程
         String processInstanceId = approvalService.startProcess(

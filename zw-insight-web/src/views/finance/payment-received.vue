@@ -32,7 +32,13 @@
         </el-form-item>
       </el-form>
 
-      <ZwListToolbar :columns="[]" :visible="[]" @refresh="loadData">
+      <ZwListToolbar
+        :columns="receivedColumns"
+        :visible="columnVisible"
+        @update:visible="setVisible"
+        @reset="resetColumns"
+        @refresh="loadData"
+      >
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增回款登记
         </el-button>
@@ -40,22 +46,22 @@
       </ZwListToolbar>
 
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="receiveAmount" label="回款金额" width="130" align="right">
+        <el-table-column v-if="columnVisible[0]" prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
+        <el-table-column v-if="columnVisible[1]" prop="receiveAmount" label="回款金额" width="130" align="right">
           <template #default="{ row }">{{ formatMoney(row.receiveAmount) }}</template>
         </el-table-column>
-        <el-table-column prop="receiveDate" label="回款日期" width="110" />
-        <el-table-column prop="receiveType" label="收款方式" width="120" />
-        <el-table-column prop="receiver" label="收款人" width="110" show-overflow-tooltip />
-        <el-table-column prop="receiveBankAccount" label="收款账户" min-width="160" show-overflow-tooltip />
-        <el-table-column label="认领状态" width="100" align="center">
+        <el-table-column v-if="columnVisible[2]" prop="receiveDate" label="回款日期" width="110" />
+        <el-table-column v-if="columnVisible[3]" prop="receiveType" label="收款方式" width="120" />
+        <el-table-column v-if="columnVisible[4]" prop="receiver" label="收款人" width="110" show-overflow-tooltip />
+        <el-table-column v-if="columnVisible[5]" prop="receiveBankAccount" label="收款账户" min-width="160" show-overflow-tooltip />
+        <el-table-column v-if="columnVisible[6]" label="认领状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.claimStatus === 'CLAIMED'" type="success">已认领</el-tag>
             <el-tag v-else-if="row.claimStatus === 'WRITTEN_OFF'" type="info">已核销</el-tag>
             <el-tag v-else type="warning">待认领</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="登记时间" width="170" />
+        <el-table-column v-if="columnVisible[7]" prop="createdAt" label="登记时间" width="170" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
@@ -160,6 +166,20 @@ import StatChartPanel from '@/components/StatChartPanel.vue'
 import ContractSelector from '@/components/ContractSelector.vue'
 import { toWan, clampPercent } from '@/utils/chart-format'
 import ZwListToolbar from '@/components/ZwListToolbar.vue'
+import { useColumnSetting } from '@/composables/useColumnSetting'
+
+// 列显隐配置：按 payment-received-table 持久化 localStorage
+const receivedColumns = [
+  { key: 'projectName', label: '项目名称' },
+  { key: 'receiveAmount', label: '回款金额' },
+  { key: 'receiveDate', label: '回款日期' },
+  { key: 'receiveType', label: '收款方式' },
+  { key: 'receiver', label: '收款人' },
+  { key: 'receiveBankAccount', label: '收款账户' },
+  { key: 'claimStatus', label: '认领状态' },
+  { key: 'createdAt', label: '登记时间' },
+]
+const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('payment-received-table', receivedColumns)
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)

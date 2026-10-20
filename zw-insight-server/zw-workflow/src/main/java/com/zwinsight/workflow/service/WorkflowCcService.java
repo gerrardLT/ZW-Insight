@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.config.SecurityContextHolder;
+import com.zwinsight.security.domain.SysUser;
+import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.workflow.domain.BizWorkflowCc;
 import com.zwinsight.workflow.mapper.BizWorkflowCcMapper;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ import java.util.List;
 public class WorkflowCcService {
 
     private final BizWorkflowCcMapper ccMapper;
+    private final SysUserMapper sysUserMapper;
 
     /**
      * 创建抄送记录（幂等：同 processInstanceId + ccUserId 已存在则跳过）。
@@ -47,6 +50,17 @@ public class WorkflowCcService {
         }
         if (ccUserIds == null || ccUserIds.isEmpty()) {
             return;
+        }
+        if (ccUserIds.size() > 50) {
+            throw new BusinessException("抄送人不能超过50人");
+        }
+        // 有效性校验：必须为本租户启用用户（防跨租户/禁用用户/不存在 ID 静默落库）
+        List<SysUser> users = sysUserMapper.selectBatchIds(ccUserIds);
+        long activeCount = users.stream()
+                .filter(u -> u.getStatus() != null && u.getStatus() == 1)
+                .count();
+        if (activeCount != ccUserIds.size()) {
+            throw new BusinessException("抄送人不存在、已停用或不属于当前租户，请刷新后重试");
         }
         for (Long ccUserId : ccUserIds) {
             Long exists = ccMapper.selectCount(new LambdaQueryWrapper<BizWorkflowCc>()

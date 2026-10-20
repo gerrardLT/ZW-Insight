@@ -17,8 +17,8 @@ export function updateSettlement(id: number | string, data: any) {
   return request.put(`/v1/project-settlements/${id}`, data)
 }
 
-export function submitSettlement(id: number | string) {
-  return request.post(`/v1/project-settlements/${id}/submit`)
+export function submitSettlement(id: number | string, ccUserIds?: string[]) {
+  return request.post(`/v1/project-settlements/${id}/submit`, ccUserIds?.length ? { ccUserIds } : undefined)
 }
 
 export function exportSettlement(id: number | string) {

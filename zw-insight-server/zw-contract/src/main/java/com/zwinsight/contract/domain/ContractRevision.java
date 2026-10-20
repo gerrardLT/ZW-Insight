@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 @TableName("biz_contract_revision")
 public class ContractRevision extends BaseEntity {
     private Long contractId;
+    /** 合同类别（V2026_123）：CONSTRUCTION/PURCHASE/LABOR/MACHINE/SUBCONTRACT */
+    private String contractCategory;
     private Long projectId;
     private Integer baseVersion;
     private BigDecimal beforeAmount;

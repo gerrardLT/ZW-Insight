@@ -8,6 +8,7 @@ import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.annotation.FinanceLockCheck;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.domain.BizInvoiceReceived;
+import com.zwinsight.finance.domain.dto.InvoiceClaimRequest;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.finance.service.InvoiceReceivedService;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +29,10 @@ public class InvoiceReceivedController {
     public R<PageResult<BizInvoiceReceived>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(invoiceReceivedService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(defaultValue = "false") boolean unlinkedContract,
+            @RequestParam(required = false) String keyword) {
+        return R.ok(invoiceReceivedService.page(page, size, projectId, unlinkedContract, keyword));
     }
 
     @PostMapping
@@ -42,6 +45,15 @@ public class InvoiceReceivedController {
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         invoiceReceivedService.delete(id);
+        return R.ok();
+    }
+
+    /**
+     * 发票库认领（V2026_123）：把已登记但未关联支出合同的发票补关联到合同。
+     */
+    @PostMapping("/{id}/claim")
+    public R<Void> claim(@PathVariable Long id, @RequestBody InvoiceClaimRequest request) {
+        invoiceReceivedService.claim(id, request);
         return R.ok();
     }
 

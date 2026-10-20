@@ -45,8 +45,13 @@ export function submitInvoiceApply(id: number) {
 }
 
 // ======================== 收票登记 ========================
-export function getInvoiceReceivedPage(params: { page?: number; size?: number; projectId?: number }) {
+export function getInvoiceReceivedPage(params: { page?: number; size?: number; projectId?: number; unlinkedContract?: boolean; keyword?: string }) {
   return request.get<R<PageResult<InvoiceReceived>>>('/v1/finance/invoice-received', { params })
+}
+
+/** 发票库认领：把未关联支出合同的发票补关联到合同（V2026_123） */
+export function claimInvoiceReceived(id: number | string, data: { contractCategory: string; contractId: number; supplierName?: string }) {
+  return request.post<R<void>>(`/v1/finance/invoice-received/${id}/claim`, data)
 }
 
 export function createInvoiceReceived(data: Partial<InvoiceReceived>) {
@@ -167,8 +172,8 @@ export function deletePaymentApply(id: number) {
   return request.delete<R<void>>(`/v1/finance/payment-apply/${id}`)
 }
 
-export function submitPaymentApply(id: number) {
-  return request.put<R<void>>(`/v1/finance/payment-apply/${id}/submit`)
+export function submitPaymentApply(id: number | string, ccUserIds?: string[]) {
+  return request.put<R<void>>(`/v1/finance/payment-apply/${id}/submit`, ccUserIds?.length ? { ccUserIds } : undefined)
 }
 
 /**

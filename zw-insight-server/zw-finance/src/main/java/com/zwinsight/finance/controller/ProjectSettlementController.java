@@ -1,6 +1,7 @@
 package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.security.RequiresPermission;
+import com.zwinsight.common.dto.SubmitWithCcRequest;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
 import com.zwinsight.common.result.PageResult;
@@ -76,8 +77,9 @@ public class ProjectSettlementController {
      * 提交审批
      */
     @PostMapping("/{id}/submit")
-    public R<Void> submit(@PathVariable Long id) {
-        settlementService.submit(id);
+    public R<Void> submit(@PathVariable Long id,
+                          @RequestBody(required = false) SubmitWithCcRequest request) {
+        settlementService.submit(id, request == null ? null : request.getCcUserIds());
         return R.ok();
     }
 

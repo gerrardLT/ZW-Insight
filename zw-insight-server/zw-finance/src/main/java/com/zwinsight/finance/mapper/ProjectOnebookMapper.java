@@ -77,6 +77,20 @@ public interface ProjectOnebookMapper {
             + "AND p.deleted = 0 AND p.project_id = #{projectId}")
     BigDecimal sumCashOut(@Param("projectId") Long projectId);
 
+    /** 公司级现金流入（银行口径）：全租户勾稽到回款登记的流水实收合计 */
+    @Select("SELECT COALESCE(SUM(COALESCE(f.match_amount, f.amount)), 0) FROM biz_bank_flow f "
+            + "JOIN biz_payment_received r ON f.matched_id = r.id "
+            + "WHERE f.deleted = 0 AND f.reconciled = 1 AND f.matched_type = 'PAYMENT_RECEIVED' "
+            + "AND r.deleted = 0")
+    BigDecimal sumCashInAll();
+
+    /** 公司级现金流出（银行口径）：全租户勾稽到已批付款的流水实付合计 */
+    @Select("SELECT COALESCE(SUM(COALESCE(f.match_amount, f.amount)), 0) FROM biz_bank_flow f "
+            + "JOIN biz_payment_apply p ON f.matched_id = p.id "
+            + "WHERE f.deleted = 0 AND f.reconciled = 1 AND f.matched_type = 'PAYMENT_APPLY' "
+            + "AND p.deleted = 0")
+    BigDecimal sumCashOutAll();
+
     /** 成本线：CBS 三算合计（目标=当前预算含变更 / 已承诺 / 实际）+ 完工预测 */
     @Select("SELECT COALESCE(SUM(baseline_amount), 0) AS baseline, "
             + "COALESCE(SUM(current_amount), 0) AS currentBudget, "

@@ -145,6 +145,8 @@
     <!-- 新增弹窗 -->
     <el-dialog v-model="dialogVisible" title="新增付款申请" width="600px" destroy-on-close @keydown.enter.prevent>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
+        <ZwFormPane description="项目与合同确定后可付上限；提交时校验累计结算与在途占用。">
+        <div class="zw-form-pane__section-title">基本信息</div>
         <el-form-item label="项目" prop="projectId">
           <el-select
             v-model="formData.projectId"
@@ -187,6 +189,7 @@
         <el-form-item label="收款单位" prop="supplierId">
           <SupplierSelector v-model="formData.supplierId" @change="handleSupplierChange" />
         </el-form-item>
+        <div class="zw-form-pane__section-title">金额与日期</div>
         <el-form-item prop="paymentAmount">
           <template #label>
             <FieldHelpLabel
@@ -202,12 +205,22 @@
         <div class="keyboard-hint" data-keyboard-field style="margin-top: var(--zw-space-sm); color: var(--el-text-color-secondary); font-size: var(--zw-font-size-xs);">
           💡 提示：按 Ctrl+Enter 快速提交表单 | 按 Tab 切换字段
         </div>
+        </ZwFormPane>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定 (Ctrl+Enter)</el-button>
       </template>
     </el-dialog>
+
+    <!-- 提交审批确认弹窗（抄送人可选，V2026_123） -->
+    <ApprovalSubmitDialog
+      v-model:visible="submitDialogVisible"
+      v-model:cc-user-ids="submitCcUserIds"
+      :message="`确定提交付款申请${submitTarget?.projectName ? `（${submitTarget.projectName}）` : ''}进入审批？可选择抄送人。`"
+      :submitting="submitSubmitting"
+      @confirm="confirmSubmitApply"
+    />
 
     <!-- 详情抽屉（真实数据源：GET /v1/finance/payment-apply/{id}；
          后端 getById 不回填 projectName，项目名回落取列表行同源字段） -->
@@ -289,6 +302,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { ZW_SHORTCUT_EVENTS } from '@/composables/useShortcuts'
 import ColumnSettingPopover from '@/components/ColumnSettingPopover.vue'
+import ApprovalSubmitDialog from '@/components/ApprovalSubmitDialog.vue'
+import ZwFormPane from '@/components/ZwFormPane.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
 import { useRowNavigation } from '@/composables/useRowNavigation'
 import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, batchPaymentApply, getFundPlan, markPaymentApplyPaid, revokePaymentApplyPaid } from '@/api/finance'
@@ -326,6 +341,11 @@ const projectList = ref<any[]>([])
 const contractOptions = ref<any[]>([])
 const dialogVisible = ref(false)
 const submitLoading = ref(false)
+// 提交审批弹窗（抄送人 V2026_123）
+const submitDialogVisible = ref(false)
+const submitTarget = ref<any>(null)
+const submitCcUserIds = ref<string[]>([])
+const submitSubmitting = ref(false)
 
 const queryParams = ref({
   pageNum: 1,
@@ -506,11 +526,24 @@ async function handleFormSubmit() {
   }
 }
 
-async function handleSubmitApply(row: any) {
-  await ElMessageBox.confirm('确定要提交该付款申请吗？', '提示', { type: 'warning' })
-  await submitPaymentApply(row.id)
-  ElMessage.success('提交成功')
-  loadData()
+function handleSubmitApply(row: any) {
+  submitTarget.value = row
+  submitCcUserIds.value = []
+  submitDialogVisible.value = true
+}
+
+async function confirmSubmitApply() {
+  if (!submitTarget.value) return
+  submitSubmitting.value = true
+  try {
+    await submitPaymentApply(submitTarget.value.id, submitCcUserIds.value)
+    ElMessage.success('提交成功')
+    submitDialogVisible.value = false
+    submitTarget.value = null
+    loadData()
+  } finally {
+    submitSubmitting.value = false
+  }
 }
 
 async function handleDelete(row: any) {

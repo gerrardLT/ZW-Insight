@@ -52,12 +52,15 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑结算单' : '新增结算单'" width="820px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
+        <ZwFormPane description="结算金额必须大于 0 且累计结算不得超过合同金额；提交后直接生效并生成应付。">
+        <div class="zw-form-pane__section-title">基本信息</div>
         <el-form-item label="项目" prop="projectId">
           <ProjectSelector v-model="formData.projectId" @change="handleProjectChange" />
         </el-form-item>
         <el-form-item label="分包合同" prop="contractId">
           <SubcontractSelector v-model="formData.contractId" :project-id="formData.projectId" />
         </el-form-item>
+        <div class="zw-form-pane__section-title">结算明细</div>
         <el-form-item label="结算明细" prop="details">
           <div style="width: 100%">
             <el-button type="primary" size="small" style="margin-bottom: var(--zw-space-sm)" @click="handleAddDetail">添加明细行</el-button>
@@ -84,6 +87,7 @@
             <div style="text-align: right; margin-top: var(--zw-space-sm); font-weight: 600">合计：{{ totalAmount.toFixed(2) }} 元</div>
           </div>
         </el-form-item>
+        </ZwFormPane>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -100,6 +104,7 @@ import type { FormInstance } from 'element-plus'
 import { getSubcontractSettlementPage, getSubcontractSettlementDetail, createSubcontractSettlement, updateSubcontractSettlement, deleteSubcontractSettlement, submitSubcontractSettlement } from '@/api/subcontract'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import SubcontractSelector from '@/components/SubcontractSelector.vue'
+import ZwFormPane from '@/components/ZwFormPane.vue'
 
 interface SettlementDetail {
   itemName: string

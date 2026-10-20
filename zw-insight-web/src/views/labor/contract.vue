@@ -55,10 +55,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交审批</el-button>
+            <el-button v-if="row.status === 'EFFECTIVE'" link type="warning" @click="openRevision(row)">修订</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -102,6 +103,16 @@
         <el-button type="primary" :loading="submitLoading" @click="handleFormSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 支出合同通用修订（V2026_123）：审批通过后回写合同金额与税额 -->
+    <ExpenseContractRevisionDialog
+      v-model:visible="revisionVisible"
+      category="LABOR"
+      :contract-id="revisionTarget?.id"
+      :base-version="revisionTarget?.version"
+      :before-amount="revisionTarget?.contractAmount"
+      @changed="loadData"
+    />
   </div>
 </template>
 
@@ -111,6 +122,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getLaborContractPage, createLaborContract, updateLaborContract, deleteLaborContract, submitLaborContract, getLaborCostRatio } from '@/api/labor'
 import ProjectSelector from '@/components/ProjectSelector.vue'
+import ExpenseContractRevisionDialog from '@/components/ExpenseContractRevisionDialog.vue'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import { toWan, clampPercent } from '@/utils/chart-format'
@@ -123,6 +135,8 @@ const dialogVisible = ref(false)
 const submitLoading = ref(false)
 const isEdit = ref(false)
 const importVisible = ref(false)
+const revisionVisible = ref(false)
+const revisionTarget = ref<any>(null)
 
 const queryParams = ref({ page: 1, size: 10, projectId: undefined as number | undefined, contractName: '', teamName: '', status: '' })
 const formData = ref({ id: undefined as number | undefined, projectId: undefined as number | undefined, contractName: '', teamName: '', contractAmount: 0, taxRate: undefined as number | undefined, startDate: '', endDate: '', remark: '' })
@@ -160,6 +174,7 @@ function handleOpenImport() {
 }
 function handleAdd() { isEdit.value = false; formData.value = { id: undefined, projectId: undefined, contractName: '', teamName: '', contractAmount: 0, taxRate: undefined as number | undefined, startDate: '', endDate: '', remark: '' }; dialogVisible.value = true }
 function handleEdit(row: any) { isEdit.value = true; formData.value = { ...row }; dialogVisible.value = true }
+function openRevision(row: any) { revisionTarget.value = row; revisionVisible.value = true }
 async function handleFormSubmit() { await formRef.value?.validate(); submitLoading.value = true; try { isEdit.value ? await updateLaborContract(formData.value) : await createLaborContract(formData.value); ElMessage.success(isEdit.value ? '更新成功' : '新增成功'); dialogVisible.value = false; loadData() } finally { submitLoading.value = false } }
 async function handleDelete(row: any) { await ElMessageBox.confirm('确定要删除吗？', '提示', { type: 'warning' }); await deleteLaborContract(row.id); ElMessage.success('删除成功'); loadData() }
 // 盲点 13 修复（2026-08-15 决策 A）：补提交审批入口，合同生效链路 UI 闭环

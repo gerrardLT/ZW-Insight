@@ -245,6 +245,28 @@ export interface CockpitProfitTrend {
 }
 
 /**
+ * 落袋利润（银行口径，V2026_123）：与项目一本账同口径。
+ * 失败/无数据时前端显示 —，不用 0 充数。
+ */
+export interface CockpitPocketProfit {
+  cashIn: number
+  cashOut: number
+  pocketProfit: number
+  basis: 'BANK_RECONCILED'
+  scope: 'COMPANY' | 'PROJECT'
+  note: string
+}
+
+/**
+ * 落袋利润（银行口径）：projectId 为空时为公司级。
+ */
+export function getCockpitPocketProfit(projectId?: number) {
+  return request.get<R<CockpitPocketProfit>>('/v1/dashboard/cockpit/pocket-profit', {
+    params: projectId ? { projectId } : undefined
+  })
+}
+
+/**
  * 经营总览 8 卡（UI §14 全局筛选：业主单位 / 项目，均可选）。
  * 有筛选时资金缺口读项目级快照且不含账户余额，须按 gapBasis 提示口径。
  */

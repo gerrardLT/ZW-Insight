@@ -258,13 +258,24 @@ public class PayableService {
      * 分页查询应付台账（projectId/status/contractCategory 可选筛选，按到期日升序）
      */
     public PageResult<BizPayable> page(int page, int size, Long projectId, String status, String contractCategory) {
+        return page(page, size, projectId, status, contractCategory, null);
+    }
+
+    /**
+     * 分页查询应付台账（增加 contractId 精确筛选，供 L4 应付断言/合同级对账使用）。
+     */
+    public PageResult<BizPayable> page(int page, int size, Long projectId, String status,
+                                       String contractCategory, Long contractId) {
         Page<BizPayable> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizPayable> wrapper = new LambdaQueryWrapper<BizPayable>()
                 .eq(projectId != null, BizPayable::getProjectId, projectId)
                 .eq(status != null && !status.isBlank(), BizPayable::getStatus, status)
                 .eq(contractCategory != null && !contractCategory.isBlank(),
                         BizPayable::getContractCategory, contractCategory)
-                .orderByAsc(BizPayable::getDueDate);
+                .eq(contractId != null, BizPayable::getContractId, contractId)
+                .orderByAsc(BizPayable::getDueDate)
+                // 稳定次序：同日到期时按 id 升序，保证分页/L4 断言取行确定
+                .orderByAsc(BizPayable::getId);
         Page<BizPayable> result = payableMapper.selectPage(pageParam, wrapper);
         ProjectNameFiller.fill(result.getRecords(), projectMapper,
                 BizPayable::getProjectId, BizPayable::setProjectName);

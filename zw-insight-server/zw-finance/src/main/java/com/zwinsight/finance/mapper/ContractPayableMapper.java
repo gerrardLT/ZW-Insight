@@ -82,6 +82,23 @@ public interface ContractPayableMapper {
             + "WHERE id = #{id} AND deleted = 0")
     int addOtherInvoiceReceived(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
+    // ==================== 合同归属项目查询（发票认领校验，V2026_123） ====================
+    // 仅用于认领时校验「合同与发票同一项目」及合同存在性，不对外返回合同详情。
+    @Select("SELECT project_id FROM biz_purchase_contract WHERE id = #{id} AND deleted = 0")
+    Long purchaseContractProjectId(@Param("id") Long id);
+
+    @Select("SELECT project_id FROM biz_labor_contract WHERE id = #{id} AND deleted = 0")
+    Long laborContractProjectId(@Param("id") Long id);
+
+    @Select("SELECT project_id FROM biz_machine_contract WHERE id = #{id} AND deleted = 0")
+    Long machineContractProjectId(@Param("id") Long id);
+
+    @Select("SELECT project_id FROM biz_subcontract WHERE id = #{id} AND deleted = 0")
+    Long subcontractProjectId(@Param("id") Long id);
+
+    @Select("SELECT project_id FROM biz_other_contract WHERE id = #{id} AND deleted = 0")
+    Long otherContractProjectId(@Param("id") Long id);
+
     // ==================== 应付未付聚合（驾驶舱 §9.1/§12，资金流转 §3.1）====================
 
     /**

@@ -24,6 +24,8 @@ class ContractRevisionServiceTest {
     @Mock ApprovalService approvals;
     @Mock JdbcTemplate jdbc;
     @Mock com.zwinsight.contract.service.ContractPayTermService payTermService;
+    @Mock com.zwinsight.common.revision.ExpenseContractRevisionHandler expenseHandler;
+    @Mock List<com.zwinsight.common.revision.ExpenseContractRevisionHandler> expenseHandlers;
     @Spy ObjectMapper json = new ObjectMapper();
     @InjectMocks ContractRevisionService service;
     private BizConstructionContract contract() {
@@ -51,12 +53,12 @@ class ContractRevisionServiceTest {
     @Test void listFailurePropagates() { when(revisions.selectList(any(Wrapper.class))).thenThrow(new IllegalStateException()); assertThrows(IllegalStateException.class, () -> service.list(1L)); }
     @Test void createSnapshotsAndDelta() {
         lock(); when(revisions.selectCount(any(Wrapper.class))).thenReturn(0L);
-        service.create(new ContractRevisionRequest(1L, 3, new BigDecimal("120"), "修订"));
+        service.create(new ContractRevisionRequest(1L, null, 3, new BigDecimal("120"), "修订"));
         ArgumentCaptor<ContractRevision> c = ArgumentCaptor.forClass(ContractRevision.class);
         verify(revisions).insert(c.capture()); assertEquals(new BigDecimal("20"), c.getValue().getDeltaAmount());
         assertNotEquals(c.getValue().getBeforeSnapshot(), c.getValue().getAfterSnapshot()); verifyNoInteractions(projects);
     }
-    @Test void staleCreateRejected() { lock(); assertThrows(RuntimeException.class, () -> service.create(new ContractRevisionRequest(1L, 2, new BigDecimal("120"), "修订"))); verify(revisions, never()).insert(any(ContractRevision.class)); }
+    @Test void staleCreateRejected() { lock(); assertThrows(RuntimeException.class, () -> service.create(new ContractRevisionRequest(1L, null, 2, new BigDecimal("120"), "修订"))); verify(revisions, never()).insert(any(ContractRevision.class)); }
     @Test void submitStartsIndependentProcess() {
         lock(); ContractRevision v = revision("DRAFT"); when(revisions.selectById(4L)).thenReturn(v);
         when(revisions.selectOne(any(Wrapper.class))).thenReturn(v); when(revisions.updateById(v)).thenReturn(1);
@@ -138,7 +140,7 @@ class ContractRevisionServiceTest {
     }
     @Test void inFlightRejectedBlocksParallelApplication() {
         lock(); when(revisions.selectCount(any(Wrapper.class))).thenReturn(1L);
-        assertThrows(RuntimeException.class, () -> service.create(new ContractRevisionRequest(1L, 3, new BigDecimal("120"), "修订")));
+        assertThrows(RuntimeException.class, () -> service.create(new ContractRevisionRequest(1L, null, 3, new BigDecimal("120"), "修订")));
         verify(revisions, never()).insert(any(ContractRevision.class));
     }
     @Test void terminateReturnedProcessReleasesApplication() {
@@ -150,5 +152,23 @@ class ContractRevisionServiceTest {
         BizConstructionContract c = contract(); c.setCumulativeInvoiceAmount(new BigDecimal("90"));
         assertThrows(RuntimeException.class, () -> ContractRevisionService.validateFloor(c, new BigDecimal("80")));
         c.setCumulativeChangeAmount(new BigDecimal("10")); assertDoesNotThrow(() -> ContractRevisionService.validateFloor(c, new BigDecimal("80")));
+    }
+
+    @Test void expenseCreateDispatchesToHandlerWithCategory() {
+        when(expenseHandlers.stream()).thenReturn(java.util.stream.Stream.of(expenseHandler));
+        when(expenseHandler.category()).thenReturn("PURCHASE");
+        when(expenseHandler.lockAndValidate(eq(88L), eq(2), eq(new BigDecimal("120"))))
+                .thenReturn(com.zwinsight.common.revision.RevisionContract.builder()
+                        .contractId(88L).projectId(3L).version(2)
+                        .contractAmount(new BigDecimal("100")).taxRate(new BigDecimal("9"))
+                        .snapshot("{}").build());
+        when(revisions.selectCount(any(Wrapper.class))).thenReturn(0L);
+
+        service.create(new ContractRevisionRequest(88L, "PURCHASE", 2, new BigDecimal("120"), "修订"));
+
+        ArgumentCaptor<ContractRevision> c = ArgumentCaptor.forClass(ContractRevision.class);
+        verify(revisions).insert(c.capture());
+        assertEquals("PURCHASE", c.getValue().getContractCategory());
+        assertEquals(new BigDecimal("20"), c.getValue().getDeltaAmount());
     }
 }

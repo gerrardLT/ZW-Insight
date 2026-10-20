@@ -592,6 +592,22 @@ section_3() {
     check_num "CBS commitment_amount vs TXN(COMMITMENT) 汇总" "0" "${ca_commit_bad:-0}" "eq" "FAIL"
   fi
 
+  RPT ""
+  RPT "### 3.7 项目应付台账勾稽（payable_amount vs OPEN 余额）"
+  RPT ""
+  # biz_project.payable_amount 为 PayableService 同事务双写不变量；
+  # OPEN 余额 = Σ(payable_amount - paid_amount)，容差 0.01（V2026_115/V2026_123）。
+  local payable_bad payable_total
+  payable_total=$(Q1 "SELECT COUNT(*) FROM biz_project WHERE deleted=0")
+  payable_bad=$(Q1 "SELECT COUNT(*) FROM biz_project p WHERE p.deleted=0 AND ABS(COALESCE(p.payable_amount,0) - COALESCE((SELECT SUM(b.payable_amount - b.paid_amount) FROM biz_payable b WHERE b.project_id=p.id AND b.status='OPEN' AND b.deleted=0),0)) > 0.01")
+  if [ "${payable_bad:-0}" = "0" ]; then
+    RPT "| ✅ PASS | \`biz_project.payable_amount\` vs OPEN 应付余额 | 0/$payable_total MISMATCH | 全部勾稽（容差 0.01） |"
+    PASS_COUNT=$((PASS_COUNT+1))
+  else
+    RPT "| ❌ FAIL | \`biz_project.payable_amount\` vs OPEN 应付余额 | $payable_bad/$payable_total MISMATCH | 双写不变量被破坏 |"
+    FAIL_COUNT=$((FAIL_COUNT+1))
+  fi
+
   section_end
 }
 

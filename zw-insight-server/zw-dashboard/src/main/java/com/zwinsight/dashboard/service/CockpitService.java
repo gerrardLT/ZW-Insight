@@ -50,6 +50,7 @@ public class CockpitService {
     private final com.zwinsight.contract.mapper.BizConstructionContractMapper constructionContractMapper;
     private final com.zwinsight.finance.mapper.BizPaymentReceivedMapper paymentReceivedMapper;
     private final com.zwinsight.dashboard.mapper.BizProfitSnapshotMapper snapshotMapper;
+    private final com.zwinsight.finance.mapper.ProjectOnebookMapper onebookMapper;
     private final ProfitSnapshotService profitSnapshotService;
     private final DashboardService dashboardService;
 
@@ -77,6 +78,28 @@ public class CockpitService {
      */
     public Map<String, Object> getOverview() {
         return getOverview(null, null);
+    }
+
+    /**
+     * 落袋利润（银行口径，V2026_123）：勾稽流水实收 − 实付。
+     * <p>与项目一本账 pocketProfit 同一口径（reconciled=1 的银行勾稽流水）；
+     * 传 projectId 时为单项目口径，不传为公司级。只读聚合，不落库。</p>
+     */
+    public Map<String, Object> getPocketProfit(Long projectId) {
+        BigDecimal cashIn = projectId == null
+                ? nvl(onebookMapper.sumCashInAll())
+                : nvl(onebookMapper.sumCashIn(projectId));
+        BigDecimal cashOut = projectId == null
+                ? nvl(onebookMapper.sumCashOutAll())
+                : nvl(onebookMapper.sumCashOut(projectId));
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("cashIn", cashIn);
+        result.put("cashOut", cashOut);
+        result.put("pocketProfit", cashIn.subtract(cashOut));
+        result.put("basis", "BANK_RECONCILED");
+        result.put("scope", projectId == null ? "COMPANY" : "PROJECT");
+        result.put("note", "银行勾稽口径：仅统计 reconciled=1 的流水，与项目一本账落袋利润一致；不是审批口径");
+        return result;
     }
 
     /**

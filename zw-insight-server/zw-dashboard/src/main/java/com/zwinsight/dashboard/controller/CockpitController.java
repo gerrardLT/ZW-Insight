@@ -59,6 +59,15 @@ public class CockpitController {
     }
 
     /**
+     * 落袋利润（银行口径，V2026_123）：勾稽流水实收 − 实付。
+     * <p>与项目一本账同口径；projectId 为空时为公司级。只读聚合。</p>
+     */
+    @GetMapping("/pocket-profit")
+    public R<Map<String, Object>> getPocketProfit(@RequestParam(required = false) Long projectId) {
+        return R.ok(cockpitService.getPocketProfit(projectId));
+    }
+
+    /**
      * 全局筛选器可选项（UI §14）：业主单位 / 项目 / 6 个快捷筛选。
      * <p>同时返回 {@code unsupportedDimensions}：区域与项目经理<b>无数据源</b>，
      * 前端据此置灰并说明原因，不得做成选了不生效的假下拉。</p>

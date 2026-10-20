@@ -17,46 +17,52 @@
         </el-form-item>
       </el-form>
 
-      <ZwListToolbar :columns="[]" :visible="[]" @refresh="loadData">
+      <ZwListToolbar
+        :columns="issuedColumns"
+        :visible="columnVisible"
+        @update:visible="setVisible"
+        @reset="resetColumns"
+        @refresh="loadData"
+      >
         <el-button type="primary" @click="openDialog()"><el-icon><Plus /></el-icon>登记发票</el-button>
       </ZwListToolbar>
 
       <el-table :data="tableData" v-loading="loading" border>
-        <el-table-column prop="issueDate" label="开票日期" width="110" />
-        <el-table-column label="方向" width="70" align="center">
+        <el-table-column v-if="columnVisible[0]" prop="issueDate" label="开票日期" width="110" />
+        <el-table-column v-if="columnVisible[1]" label="方向" width="70" align="center">
           <template #default="{ row }">
             <el-tag :type="row.direction === 'RED' ? 'danger' : 'primary'" size="small">
               {{ row.direction === 'RED' ? '红字' : '蓝字' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="invoiceNumber" label="发票号码" min-width="170" />
-        <el-table-column prop="invoiceCode" label="发票代码" width="120">
+        <el-table-column v-if="columnVisible[2]" prop="invoiceNumber" label="发票号码" min-width="170" />
+        <el-table-column v-if="columnVisible[3]" prop="invoiceCode" label="发票代码" width="120">
           <template #default="{ row }">{{ row.invoiceCode || '—' }}</template>
         </el-table-column>
-        <el-table-column prop="amount" label="价税合计" width="130" align="right">
+        <el-table-column v-if="columnVisible[4]" prop="amount" label="价税合计" width="130" align="right">
           <template #default="{ row }">{{ Number(row.amount || 0).toLocaleString() }}</template>
         </el-table-column>
-        <el-table-column prop="taxRate" label="税率" width="80" align="right">
+        <el-table-column v-if="columnVisible[5]" prop="taxRate" label="税率" width="80" align="right">
           <template #default="{ row }">{{ row.taxRate != null ? row.taxRate + '%' : '—' }}</template>
         </el-table-column>
-        <el-table-column prop="taxAmount" label="税额" width="110" align="right">
+        <el-table-column v-if="columnVisible[6]" prop="taxAmount" label="税额" width="110" align="right">
           <template #default="{ row }">{{ row.taxAmount != null ? Number(row.taxAmount).toLocaleString() : '—' }}</template>
         </el-table-column>
-        <el-table-column prop="contractId" label="关联合同" width="120">
+        <el-table-column v-if="columnVisible[7]" prop="contractId" label="关联合同" width="120">
           <template #default="{ row }">{{ row.contractId ? `合同#${row.contractId}` : '—' }}</template>
         </el-table-column>
-        <el-table-column prop="applyId" label="来源申请" width="110">
+        <el-table-column v-if="columnVisible[8]" prop="applyId" label="来源申请" width="110">
           <template #default="{ row }">{{ row.applyId ? `申请#${row.applyId}` : '手工' }}</template>
         </el-table-column>
-        <el-table-column label="查验" width="90" align="center">
+        <el-table-column v-if="columnVisible[9]" label="查验" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.verifyStatus === 'VERIFIED' ? 'success' : row.verifyStatus === 'MISMATCH' ? 'danger' : 'info'" size="small">
               {{ row.verifyStatus === 'VERIFIED' ? '已查验' : row.verifyStatus === 'MISMATCH' ? '查验不符' : '未查验' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="入账" width="80" align="center">
+        <el-table-column v-if="columnVisible[10]" label="入账" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.bookkeepStatus === 'BOOKED' ? 'success' : 'info'" size="small">
               {{ row.bookkeepStatus === 'BOOKED' ? '已入账' : '未入账' }}
@@ -143,6 +149,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import ZwListToolbar from '@/components/ZwListToolbar.vue'
+import { useColumnSetting } from '@/composables/useColumnSetting'
 import {
   getInvoiceIssuedPage,
   createInvoiceIssued,
@@ -152,6 +159,22 @@ import {
 } from '@/api/finance'
 
 defineOptions({ name: 'FinanceInvoiceIssued' })
+
+// 列显隐配置：按 invoice-issued-table 持久化 localStorage
+const issuedColumns = [
+  { key: 'issueDate', label: '开票日期' },
+  { key: 'direction', label: '方向' },
+  { key: 'invoiceNumber', label: '发票号码' },
+  { key: 'invoiceCode', label: '发票代码' },
+  { key: 'amount', label: '价税合计' },
+  { key: 'taxRate', label: '税率' },
+  { key: 'taxAmount', label: '税额' },
+  { key: 'contractId', label: '关联合同' },
+  { key: 'applyId', label: '来源申请' },
+  { key: 'verifyStatus', label: '查验' },
+  { key: 'bookkeepStatus', label: '入账' },
+]
+const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('invoice-issued-table', issuedColumns)
 
 const loading = ref(false)
 const tableData = ref<any[]>([])

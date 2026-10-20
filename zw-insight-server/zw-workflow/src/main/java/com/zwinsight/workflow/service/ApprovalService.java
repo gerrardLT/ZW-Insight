@@ -98,6 +98,8 @@ public class ApprovalService {
             variables = new HashMap<>();
         }
         variables = new HashMap<>(variables);
+        // 抄送人不是流程变量：先移出，避免持久化到 ACT_GE_BYTEARRAY 并在流程变量接口暴露（V2026_123）
+        Object ccObj = variables.remove("ccUserIds");
         variables.put("businessType", businessType);
         variables.put("businessId", businessId);
         variables.put("initiator", String.valueOf(userId));
@@ -140,17 +142,11 @@ public class ApprovalService {
         // 首个待办通知（事务内解析收件人，提交后发布）
         approvalNotifyPublisher.notifyActiveTasks(processInstance.getId());
 
-        // 抄送（V2026_117）：variables 含 ccUserIds（List<Long>）时自动创建抄送记录
-        Object ccObj = variables.get("ccUserIds");
+        // 抄送（V2026_117/V2026_123）：与流程同事务，失败则整体回滚（不静默）
         if (ccObj instanceof List && !((List<?>) ccObj).isEmpty()) {
-            try {
-                @SuppressWarnings("unchecked")
-                List<Long> ccUserIds = (List<Long>) ccObj;
-                ccService.create(processInstance.getId(), businessType, businessId, ccUserIds, userId);
-            } catch (Exception e) {
-                log.warn("抄送记录创建失败（不影响流程）, processInstanceId={}, error={}",
-                        processInstance.getId(), e.getMessage());
-            }
+            @SuppressWarnings("unchecked")
+            List<Long> ccUserIds = (List<Long>) ccObj;
+            ccService.create(processInstance.getId(), businessType, businessId, ccUserIds, userId);
         }
 
         return processInstance.getId();

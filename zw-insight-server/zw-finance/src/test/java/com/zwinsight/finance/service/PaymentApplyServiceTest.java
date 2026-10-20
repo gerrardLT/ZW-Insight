@@ -1342,4 +1342,35 @@ class PaymentApplyServiceTest {
                     .hasMessageContaining("请通过取消勾稽撤销");
         }
     }
+
+    @Test
+    @DisplayName("抄送人 — 提交时写入 ccUserIds 流程变量")
+    @SuppressWarnings("unchecked")
+    void submit_withCcUserIds_writesVariable() {
+        Long id = 77L;
+        Long contractId = 770L;
+        BizPaymentApply apply = new BizPaymentApply();
+        apply.setId(id);
+        apply.setContractId(contractId);
+        apply.setProjectId(10L);
+        apply.setPaymentAmount(new BigDecimal("30000.00"));
+        apply.setStatus("DRAFT");
+
+        BizOtherContract contract = new BizOtherContract();
+        contract.setId(contractId);
+        contract.setCumulativeSettlement(new BigDecimal("100000.00"));
+        contract.setCumulativePaid(new BigDecimal("0.00"));
+
+        when(paymentApplyMapper.selectById(id)).thenReturn(apply);
+        when(otherContractMapper.selectById(contractId)).thenReturn(contract);
+        when(settlementDataMapper.sumRewardPunishNetByContract(contractId)).thenReturn(BigDecimal.ZERO);
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        when(approvalService.startProcess(eq("PAYMENT_APPLY"), eq(id), eq("payment_apply_approval"), captor.capture()))
+                .thenReturn("proc-cc");
+
+        paymentApplyService.submit(id, List.of(5L, 6L));
+
+        assertThat(captor.getValue().get("ccUserIds")).isEqualTo(List.of(5L, 6L));
+        assertThat(apply.getStatus()).isEqualTo("SUBMITTED");
+    }
 }

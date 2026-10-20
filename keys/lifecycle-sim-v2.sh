@@ -893,6 +893,58 @@ stage_9_finance() {
   # 收款登记后回写项目总收入=120万（满足结项“款项基本结清”：产值-已收≤0）
   assert_amount "/api/v1/project/$PROJECT_ID" "totalIncome" "1200000" "项目总收入"
 
+  # ------------------------------------------------------------------
+  # 9-应付闭环: 独立分包合同 → 结算生成应付 → 付款 FIFO 核销（V2026_115/V2026_123）
+  # 不复用 stage_6 合同：stage_7 已为其生成劳务/分包应付，绝对值断言会与历史余额冲突；
+  # 新建独立合同后，该合同仅 1 张应付行，断言确定且可重复。
+  # ------------------------------------------------------------------
+  log "  -- 9-应付闭环: 独立分包合同结算与付款 --"
+  api_call POST "/api/v1/subcontract/contract" "{\"projectId\":$PROJECT_ID,\"contractName\":\"L4应付闭环分包合同\",\"partyBName\":\"应付闭环分包商\",\"supplierName\":\"应付闭环分包商\",\"signingDate\":\"2026-10-01\",\"contractAmount\":600000.00}"
+  strict_assert "创建应付闭环分包合同"
+  sleep 1
+  api_call GET "/api/v1/subcontract/contract/page?page=1&size=1&projectId=$PROJECT_ID&contractName=L4应付闭环分包合同"
+  local payable_contract_id=$(extract_first_record_id)
+  require_id "$payable_contract_id" "应付闭环分包合同 ID"
+  success "应付闭环分包合同 ID: $payable_contract_id"
+  track_resource "DELETE" "/api/v1/subcontract/contract/$payable_contract_id"
+  api_call POST "/api/v1/subcontract/contract/$payable_contract_id/submit"
+  strict_assert "提交应付闭环分包合同"
+  sleep 1
+  assert_status "/api/v1/subcontract/contract/$payable_contract_id" "status" "EFFECTIVE" "应付闭环分包合同状态"
+
+  api_call POST "/api/v1/subcontract/settlement" "{\"projectId\":$PROJECT_ID,\"contractId\":$payable_contract_id,\"details\":[{\"itemName\":\"钢结构安装\",\"unit\":\"项\",\"quantity\":1,\"unitPrice\":100000.00}]}"
+  strict_assert "创建分包结算"
+  sleep 1
+  api_call GET "/api/v1/subcontract/settlement?page=1&size=1&contractId=$payable_contract_id"
+  local sub_settlement_id=$(extract_first_record_id)
+  require_id "$sub_settlement_id" "分包结算 ID"
+  success "分包结算 ID: $sub_settlement_id"
+  track_resource "DELETE" "/api/v1/subcontract/settlement/$sub_settlement_id"
+  api_call POST "/api/v1/subcontract/settlement/$sub_settlement_id/submit"
+  strict_assert "分包结算提交（提交即生效）"
+  sleep 1
+  assert_status "/api/v1/subcontract/settlement/$sub_settlement_id" "status" "APPROVED" "分包结算状态"
+  # 应付生成：该合同 OPEN 余额 = 结算 100000，已核销 0（项目级勾稽由 audit-data 3.7 覆盖）
+  assert_amount "/api/v1/finance/payable/page?page=1&size=1&projectId=$PROJECT_ID&status=OPEN&contractId=$payable_contract_id" "payableAmount" "100000" "应付金额（结算生成）"
+  assert_amount "/api/v1/finance/payable/page?page=1&size=1&projectId=$PROJECT_ID&status=OPEN&contractId=$payable_contract_id" "paidAmount" "0" "应付已核销（未付款）"
+
+  # 付款申请 60000：提交审批 → 审批通过 FIFO 核销
+  api_call POST "/api/v1/finance/payment-apply" "{\"projectId\":$PROJECT_ID,\"contractCategory\":\"SUBCONTRACT\",\"contractId\":$payable_contract_id,\"supplierName\":\"应付闭环分包商\",\"paymentAmount\":60000.00,\"paymentDate\":\"2026-10-15\"}"
+  strict_assert "创建付款申请"
+  sleep 1
+  api_call GET "/api/v1/finance/payment-apply/page?page=1&size=1&projectId=$PROJECT_ID&contractId=$payable_contract_id&status=DRAFT"
+  local pay_apply_id=$(extract_first_record_id)
+  require_id "$pay_apply_id" "付款申请 ID"
+  success "付款申请 ID: $pay_apply_id"
+  track_resource "DELETE" "/api/v1/finance/payment-apply/$pay_apply_id"
+  api_call PUT "/api/v1/finance/payment-apply/$pay_apply_id/submit"
+  strict_assert "提交付款申请审批"
+  sleep 2
+  approve "同意付款申请" 1
+  # 审批通过：应付 FIFO 核销 60000，该合同 OPEN 余额剩 40000
+  assert_amount "/api/v1/finance/payable/page?page=1&size=1&projectId=$PROJECT_ID&status=OPEN&contractId=$payable_contract_id" "paidAmount" "60000" "应付 FIFO 核销"
+  assert_amount "/api/v1/finance/payable/page?page=1&size=1&projectId=$PROJECT_ID&status=OPEN&contractId=$payable_contract_id" "payableAmount" "100000" "应付金额不改（只增核销）"
+
   record_stage_result "PASSED"
 }
 

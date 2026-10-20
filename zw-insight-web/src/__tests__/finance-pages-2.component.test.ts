@@ -34,11 +34,16 @@ const {
 
 vi.mock('@/api/finance', () => ({
   getInvoiceReceivedPage: mockInvoiceReceivedPage, createInvoiceReceived: mockCreateInvoiceReceived,
+  claimInvoiceReceived: vi.fn(async (): Promise<any> => ({ code: 200 })),
   getPaymentReceivedPage: mockPaymentReceivedPage, createPaymentReceived: mockCreatePaymentReceived,
   updatePaymentReceived: mockUpdatePaymentReceived, deletePaymentReceived: mockDeletePaymentReceived,
   getProjectReimbursementPage: mockReimbPage, createProjectReimbursement: mockCreateReimb, submitProjectReimbursement: mockSubmitReimb,
   // T7 回款率面板使用，mock 防真实请求（空 data → 面板空态）
   getCollectionRate: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
+}))
+// 抄送人选择器数据源（V2026_123）：mock 防 request→@/router→createRouter 链穿透
+vi.mock('@/api/system', () => ({
+  getUserCandidates: vi.fn(async (): Promise<any> => ({ code: 200, data: [] })),
 }))
 // 回款登记页导出/导入组件依赖；mock 防真实请求并避免 request→@/router→createRouter 链穿透 factory mock
 vi.mock('@/api/batch', () => ({
@@ -280,11 +285,16 @@ describe('finance/settlement/index.vue 竣工结算', () => {
     expect(mockCreateSettle).toHaveBeenCalledWith(5)
   })
 
-  it('行提交调 submitSettlement', async () => {
+  it('行提交打开抄送确认弹窗，确认后调 submitSettlement（ccUserIds 空）', async () => {
     await mountPage()
-    await wrapper.vm.$.setupState.handleSubmit({ id: 21 })
+    const st = wrapper.vm.$.setupState
+    st.handleSubmit({ id: 21 })
     await flushPromises()
-    expect(mockSubmitSettle).toHaveBeenCalledWith(21)
+    expect(st.submitDialogVisible).toBe(true)
+    expect(mockSubmitSettle).not.toHaveBeenCalled()
+    await st.confirmSubmit()
+    await flushPromises()
+    expect(mockSubmitSettle).toHaveBeenCalledWith(21, [])
   })
 })
 

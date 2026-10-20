@@ -286,6 +286,19 @@ public class PaymentApplyService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
+        submit(id, null);
+    }
+
+    /**
+     * 提交审批（带可选抄送人）。
+     * <p>ccUserIds 仅在非空时写入流程变量，由 ApprovalService.startProcess 落库抄送记录；
+     * 批量提交仍走单参重载（ccUserIds 为空），行为与旧接口一致。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void submit(Long id, List<Long> ccUserIds) {
+        if (ccUserIds != null && ccUserIds.size() > 50) {
+            throw new BusinessException("抄送人不能超过50人");
+        }
         BizPaymentApply paymentApply = paymentApplyMapper.selectById(id);
         if (paymentApply == null) {
             throw new BusinessException("付款申请不存在");
@@ -333,6 +346,10 @@ public class PaymentApplyService {
             variables.put("tierName", tier.getTierName());
             log.info("付款申请命中审批档位, id={}, amount={}, tier={}, {}",
                     id, paymentApply.getPaymentAmount(), tier.getTierLevel(), tier.getTierName());
+        }
+        // 抄送人（V2026_123）：仅非空时写入，避免空集合进入流程变量
+        if (ccUserIds != null && !ccUserIds.isEmpty()) {
+            variables.put("ccUserIds", ccUserIds);
         }
         String processInstanceId = approvalService.startProcess(
                 "PAYMENT_APPLY", id, "payment_apply_approval", variables);

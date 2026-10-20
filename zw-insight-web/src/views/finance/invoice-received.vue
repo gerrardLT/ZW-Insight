@@ -25,55 +25,64 @@
         </el-form-item>
       </el-form>
 
-      <ZwListToolbar :columns="[]" :visible="[]" @refresh="loadData">
+      <ZwListToolbar
+        :columns="invoiceColumns"
+        :visible="columnVisible"
+        @update:visible="setVisible"
+        @reset="resetColumns"
+        @refresh="loadData"
+      >
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增收票登记
         </el-button>
         <el-button @click="ocrDialogVisible = true">
           <el-icon><DocumentChecked /></el-icon>发票识别
         </el-button>
+        <el-button @click="openClaimDialog">
+          <el-icon><FolderOpened /></el-icon>从发票库关联合同
+        </el-button>
       </ZwListToolbar>
 
       <el-table :data="tableData" v-loading="loading" border show-summary :summary-method="pageSummary">
         <el-table-column type="index" label="#" width="50" />
-        <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip>
+        <el-table-column v-if="columnVisible[0]" prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">{{ row.projectName || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="contractCategory" label="合同类型" width="120">
+        <el-table-column v-if="columnVisible[1]" prop="contractCategory" label="合同类型" width="120">
           <template #default="{ row }">{{ getCategoryLabel(row.contractCategory) }}</template>
         </el-table-column>
-        <el-table-column prop="contractId" label="关联合同" width="130">
+        <el-table-column v-if="columnVisible[2]" prop="contractId" label="关联合同" width="130">
           <template #default="{ row }">{{ row.contractId ? `合同#${row.contractId}` : '-' }}</template>
         </el-table-column>
-        <el-table-column prop="supplierName" label="供应商" min-width="160" show-overflow-tooltip>
+        <el-table-column v-if="columnVisible[3]" prop="supplierName" label="供应商" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.supplierName || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="invoiceAmount" label="发票金额" width="130" align="right">
+        <el-table-column v-if="columnVisible[4]" prop="invoiceAmount" label="发票金额" width="130" align="right">
           <template #default="{ row }">{{ formatMoney(row.invoiceAmount) }}</template>
         </el-table-column>
-        <el-table-column prop="invoiceNumber" label="发票号码" min-width="180" />
-        <el-table-column prop="invoiceCode" label="发票代码" min-width="130" />
-        <el-table-column prop="amountWithoutTax" label="不含税金额" width="140" align="right" />
-        <el-table-column prop="taxAmount" label="税额" width="120" align="right" />
-        <el-table-column prop="taxRate" label="税率" width="90" align="right">
+        <el-table-column v-if="columnVisible[5]" prop="invoiceNumber" label="发票号码" min-width="180" />
+        <el-table-column v-if="columnVisible[6]" prop="invoiceCode" label="发票代码" min-width="130" />
+        <el-table-column v-if="columnVisible[7]" prop="amountWithoutTax" label="不含税金额" width="140" align="right" />
+        <el-table-column v-if="columnVisible[8]" prop="taxAmount" label="税额" width="120" align="right" />
+        <el-table-column v-if="columnVisible[9]" prop="taxRate" label="税率" width="90" align="right">
           <template #default="{ row }">{{ formatTaxRate(row.taxRate) }}</template>
         </el-table-column>
-        <el-table-column prop="invoiceDate" label="收票日期" width="120" />
-        <el-table-column label="状态" width="90" align="center">
+        <el-table-column v-if="columnVisible[10]" prop="invoiceDate" label="收票日期" width="120" />
+        <el-table-column v-if="columnVisible[11]" label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 'APPROVED' ? 'success' : 'info'" size="small">
               {{ row.status === 'APPROVED' ? '已通过' : (row.status || '-') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="查验" width="90" align="center">
+        <el-table-column v-if="columnVisible[12]" label="查验" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.verifyStatus === 'VERIFIED' ? 'success' : row.verifyStatus === 'MISMATCH' ? 'danger' : 'info'" size="small">
               {{ row.verifyStatus === 'VERIFIED' ? '已查验' : row.verifyStatus === 'MISMATCH' ? '查验不符' : '未查验' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="入账" width="80" align="center">
+        <el-table-column v-if="columnVisible[13]" label="入账" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.bookkeepStatus === 'BOOKED' ? 'success' : 'info'" size="small">
               {{ row.bookkeepStatus === 'BOOKED' ? '已入账' : '未入账' }}
@@ -89,7 +98,7 @@
             </el-button>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="登记时间" width="170" />
+        <el-table-column v-if="columnVisible[14]" prop="createdAt" label="登记时间" width="170" />
       </el-table>
 
       <div class="pagination-wrap">
@@ -191,6 +200,67 @@
         <el-button type="primary" style="margin-top: var(--zw-space-sm)" @click="applyOcrToForm">填入表单</el-button>
       </template>
     </el-dialog>
+
+    <!-- 发票库（V2026_123）：列已登记但未关联支出合同的发票，选中后补关联并回写合同累计收票，
+         不复制新建（发票号唯一，重复登记会被后端 409 拒绝） -->
+    <el-dialog v-model="claimDialogVisible" title="从发票库关联合同" width="900px" destroy-on-close>
+      <el-form inline>
+        <el-form-item label="关键字">
+          <el-input v-model="claimKeyword" placeholder="发票号码 / 供应商" clearable style="width: 220px" @keyup.enter="handleClaimSearch" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleClaimSearch">搜索</el-button>
+        </el-form-item>
+      </el-form>
+      <el-table :data="claimRows" v-loading="claimLoading" border size="small" highlight-current-row @current-change="handleClaimSelect">
+        <el-table-column prop="invoiceNumber" label="发票号码" min-width="170" />
+        <el-table-column prop="invoiceCode" label="发票代码" width="120">
+          <template #default="{ row }">{{ row.invoiceCode || '—' }}</template>
+        </el-table-column>
+        <el-table-column prop="projectName" label="项目" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="supplierName" label="供应商" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="invoiceAmount" label="发票金额" width="130" align="right">
+          <template #default="{ row }">{{ formatMoney(row.invoiceAmount) }}</template>
+        </el-table-column>
+        <el-table-column prop="invoiceDate" label="收票日期" width="110" />
+      </el-table>
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="claimPage.page"
+          v-model:page-size="claimPage.size"
+          :page-sizes="[10, 20, 50]"
+          :total="claimTotal"
+          layout="total, sizes, prev, pager, next"
+          @size-change="loadClaimRows"
+          @current-change="loadClaimRows"
+        />
+      </div>
+      <el-divider content-position="left">关联合同</el-divider>
+      <el-form label-width="100px">
+        <el-form-item label="发票">
+          <span v-if="claimTarget">{{ claimTarget.invoiceNumber || '—' }} / {{ formatMoney(claimTarget.invoiceAmount) }}</span>
+          <span v-else class="claim-hint">请在上表选择一张发票</span>
+        </el-form-item>
+        <el-form-item label="合同类别">
+          <el-select v-model="claimCategory" :disabled="!claimTarget" style="width: 220px" @change="handleClaimCategoryChange">
+            <el-option label="采购合同" value="PURCHASE" />
+            <el-option label="劳务合同" value="LABOR" />
+            <el-option label="机械合同" value="MACHINE" />
+            <el-option label="分包合同" value="SUBCONTRACT" />
+            <el-option label="其他支出合同" value="OTHER_EXPENSE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="支出合同">
+          <el-select v-model="claimContractId" :disabled="!claimCategory" filterable style="width: 320px">
+            <el-option v-for="c in claimContracts" :key="c.id" :label="contractLabel(c)" :value="c.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="claimDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="claimSubmitting" :disabled="!claimTarget || !claimContractId" @click="confirmClaim">确认关联</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -198,7 +268,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { getInvoiceReceivedPage, createInvoiceReceived, verifyInvoiceReceived, markInvoiceReceivedBookkeep } from '@/api/finance'
+import { getInvoiceReceivedPage, createInvoiceReceived, verifyInvoiceReceived, markInvoiceReceivedBookkeep, claimInvoiceReceived } from '@/api/finance'
 import { getProjectList } from '@/api/project'
 import { getOtherContractPage } from '@/api/contract'
 import { getPurchaseContractPage } from '@/api/purchase'
@@ -208,6 +278,27 @@ import { getSubcontractPage } from '@/api/subcontract'
 import TaxRateSelector from '@/components/TaxRateSelector.vue'
 import { ocrInvoiceImage, type OcrInvoiceResult } from '@/utils/invoice-ocr'
 import ZwListToolbar from '@/components/ZwListToolbar.vue'
+import { useColumnSetting } from '@/composables/useColumnSetting'
+
+// 列显隐配置：按 invoice-received-table 持久化 localStorage
+const invoiceColumns = [
+  { key: 'projectName', label: '项目名称' },
+  { key: 'contractCategory', label: '合同类型' },
+  { key: 'contractId', label: '关联合同' },
+  { key: 'supplierName', label: '供应商' },
+  { key: 'invoiceAmount', label: '发票金额' },
+  { key: 'invoiceNumber', label: '发票号码' },
+  { key: 'invoiceCode', label: '发票代码' },
+  { key: 'amountWithoutTax', label: '不含税金额' },
+  { key: 'taxAmount', label: '税额' },
+  { key: 'taxRate', label: '税率' },
+  { key: 'invoiceDate', label: '收票日期' },
+  { key: 'status', label: '状态' },
+  { key: 'verifyStatus', label: '查验' },
+  { key: 'bookkeepStatus', label: '入账' },
+  { key: 'createdAt', label: '登记时间' },
+]
+const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSetting('invoice-received-table', invoiceColumns)
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -380,6 +471,103 @@ function pageSummary({ columns, data }: { columns: Array<{ property?: string }>;
   })
 }
 
+// ==================== 发票库关联合同（V2026_123） ====================
+// 发票号码唯一，复制新建会被后端 409 拒绝；「从发票库选择」实现为认领：
+// 只列未关联支出合同的发票，选中后补关联并回写合同累计收票。
+const claimDialogVisible = ref(false)
+const claimKeyword = ref('')
+const claimRows = ref<any[]>([])
+const claimTotal = ref(0)
+const claimPage = ref({ page: 1, size: 10 })
+const claimLoading = ref(false)
+const claimTarget = ref<any>(null)
+const claimCategory = ref('')
+const claimContractId = ref<number | undefined>(undefined)
+const claimContracts = ref<any[]>([])
+const claimSubmitting = ref(false)
+
+function openClaimDialog() {
+  claimKeyword.value = ''
+  claimPage.value.page = 1
+  claimTarget.value = null
+  claimCategory.value = ''
+  claimContractId.value = undefined
+  claimContracts.value = []
+  claimDialogVisible.value = true
+  loadClaimRows()
+}
+
+async function loadClaimRows() {
+  claimLoading.value = true
+  try {
+    const res: any = await getInvoiceReceivedPage({
+      page: claimPage.value.page,
+      size: claimPage.value.size,
+      unlinkedContract: true,
+      keyword: claimKeyword.value || undefined
+    })
+    claimRows.value = res.data?.records || []
+    claimTotal.value = Number(res.data?.total || 0)
+  } finally {
+    claimLoading.value = false
+  }
+}
+
+function handleClaimSearch() {
+  claimPage.value.page = 1
+  loadClaimRows()
+}
+
+function handleClaimSelect(row: any) {
+  claimTarget.value = row
+  claimCategory.value = ''
+  claimContractId.value = undefined
+  claimContracts.value = []
+}
+
+function contractLabel(c: any) {
+  const name = c.contractName || c.subcontractor || c.teamName || ''
+  const code = c.contractCode || c.subcontractCode || ''
+  return [code, name].filter(Boolean).join(' ') || `合同#${c.id}`
+}
+
+async function handleClaimCategoryChange() {
+  claimContractId.value = undefined
+  claimContracts.value = []
+  if (!claimCategory.value || !claimTarget.value?.projectId) return
+  const params: any = { projectId: claimTarget.value.projectId, page: 1, size: 100, pageNum: 1, pageSize: 100 }
+  let res: any
+  switch (claimCategory.value) {
+    case 'PURCHASE': res = await getPurchaseContractPage(params); break
+    case 'LABOR': res = await getLaborContractPage(params); break
+    case 'MACHINE': res = await getMachineContractPage(params); break
+    case 'SUBCONTRACT': res = await getSubcontractPage(params); break
+    case 'OTHER_EXPENSE': res = await getOtherContractPage({ ...params, contractCategory: 'OTHER_EXPENSE' }); break
+    default: res = null
+  }
+  claimContracts.value = res?.data?.records || res?.data || []
+}
+
+async function confirmClaim() {
+  if (!claimTarget.value || !claimCategory.value || !claimContractId.value) {
+    ElMessage.warning('请选择发票、合同类别与关联合同')
+    return
+  }
+  claimSubmitting.value = true
+  try {
+    await claimInvoiceReceived(claimTarget.value.id, {
+      contractCategory: claimCategory.value,
+      contractId: claimContractId.value,
+      supplierName: claimTarget.value.supplierName
+    })
+    ElMessage.success('已关联支出合同并回写累计收票')
+    claimDialogVisible.value = false
+    loadData()
+  } finally {
+    claimSubmitting.value = false
+  }
+}
+
 // ==================== 发票 OCR（V2026_117） ====================
 const ocrDialogVisible = ref(false)
 const ocrFileInput = ref<HTMLInputElement>()
@@ -452,5 +640,8 @@ function applyOcrToForm() {
   margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
+}
+.claim-hint {
+  color: var(--el-text-color-secondary);
 }
 </style>

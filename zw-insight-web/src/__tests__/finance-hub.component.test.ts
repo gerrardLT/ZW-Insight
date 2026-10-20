@@ -32,10 +32,19 @@ vi.mock('element-plus', async (importOriginal) => {
 })
 
 import HubPage from '@/components/HubPage.vue'
+import { defineComponent, h } from 'vue'
+
+// 壳测试与页面解耦：真实业务页会发 API 请求（happy-dom 无后端）且模块图可能在环境
+// 拆除后才解析完成（EnvironmentTeardownError）。本文件只验证 HubPage 壳的 Tab 渲染/
+// 激活/权限，用异步桩走通 defineAsyncComponent 流程；页面内容由各自单测覆盖。
+const pageStub = (name: string) =>
+  defineComponent({ name, setup: () => () => h('div', { class: `${name}-stub` }) })
+const SettlementStub = pageStub('SettlementStub')
+const ReceivableStub = pageStub('ReceivableStub')
 
 const TABS = [
-  { key: 'settlement', label: '工程竣工结算', loader: () => import('@/views/finance/settlement/index.vue') },
-  { key: 'receivable', label: '应收工程账款台账', loader: () => import('@/views/finance/receivable/index.vue') },
+  { key: 'settlement', label: '工程竣工结算', loader: () => Promise.resolve({ default: SettlementStub }) },
+  { key: 'receivable', label: '应收工程账款台账', loader: () => Promise.resolve({ default: ReceivableStub }) },
 ]
 
 let wrapper: any = null
@@ -81,8 +90,8 @@ describe('components/HubPage.vue 聚合入口壳', () => {
 
 describe('components/HubPage.vue Tab 级权限过滤（V2026_122 权限补强）', () => {
   const SECURE_TABS = [
-    { key: 'list', label: '项目台账', loader: () => import('@/views/project/index.vue') },
-    { key: 'wbs', label: '工程分解与任务节点（WBS）', loader: () => import('@/views/project/wbs/index.vue'), permission: 'project:wbs:view' },
+    { key: 'list', label: '项目台账', loader: () => Promise.resolve({ default: pageStub('ProjectLedgerStub') }) },
+    { key: 'wbs', label: '工程分解与任务节点（WBS）', loader: () => Promise.resolve({ default: pageStub('ProjectWbsStub') }), permission: 'project:wbs:view' },
   ]
 
   async function mountSecure(perms: string[], query: Record<string, string> = {}) {

@@ -29,7 +29,7 @@
 
 - [x] 1.6（部分）`ZwListToolbar.vue` 契约件建成（刷新+列设置+slot 左区业务按钮+slot 导出/密度）；ZwListPage 全表格替换降到 3c（纯 toolbar 契约先验证，批量换壳待试点稳定后推进） _需求: R5_
 - [x] 1.7 `useRowNavigation.ts` composable 建成 + project/index 与 finance/payment-apply 两处内联去重（workflow/approval 用 highlight-current-row 模式不同构不入；material/inbound 无此功能） _需求: R5_
-- [ ] 1.8 样板 8 页换壳：施工合同/付款申请/回款登记/应收账款台账/项目台账/分包合同/进项发票/销项发票——同 1.6 顺延阶段三第二批 _需求: R5_
+- [x] 1.8 样板 8 页换壳：施工合同/付款申请/回款登记/应收账款台账/项目台账/分包合同/进项发票/销项发票——8/8 接入 ZwListToolbar + 列设置（四页空数组与应收台账于 3f 收口，2026-10-19） _需求: R5_
 
 ### C 线 钱链展示
 
@@ -60,11 +60,11 @@
 
 - [x] 3.1 ProjectOnebookService + ProjectOnebookMapper + GET /v1/project/{id}/onebook（project:view；只读不落库；全部数字溯源单据表累计列/台账行）+ ProjectOnebookServiceTest 8 用例 _需求: R3_
 - [x] 3.2 项目详情「项目经营」页签接入 ProjectOnebookPanel（六条线全渲染）；驾驶舱落袋口径沿驾驶舱自身迭代（本阶段未动，如实登记） _需求: R3_
-- [ ] 3.3 ZwFormPane 契约组件 + 样板 3 表单（付款申请/分包合同/分包结算） _需求: R5_
+- [x] 3.3 ZwFormPane 契约组件 + 样板 3 表单（付款申请/分包合同/分包结算）：容器支持标题/分区样式/操作区/审批区/派生只读/可选锚点（弹窗不启用），三表单已接入分区标题 _需求: R5_
 - [ ] 3.4 ZwDetailTable（模板导入/重置/行合计）自 budget/index 上提 _需求: R5_
-- [ ] 3.5 修订行操作（合同/成本变更单/支出合同族，对接 V2026_106 修订机制） _需求: R5_
-- [ ] 3.6 抄送功能（cc 记录表 + 审批弹窗选抄送人 + 站内信真实链路 + 审批中心第四页签） _需求: R5_
-- [ ] 3.7 发票 OCR 选型决策 + 进项发票三入口（移 3b） _需求: R3_
+- [x] 3.5 修订行操作：施工合同沿用 V2026_106；四类支出合同接入统一修订（V2026_123：biz_contract_revision + contract_category、各模块 handler SPI、复用 contract_revision_approval、前端通用弹窗） _需求: R5_
+- [x] 3.6 抄送功能（cc 记录表 + 审批弹窗选抄送人 + 审批中心第四页签）：业务提交入口已接入付款申请/竣工结算（提交确认弹窗选抄送人，ccUserIds→variables→biz_workflow_cc）；**站内信未单独发送**（抄送通知以审批中心「抄送我的」+未读计数呈现）；分包结算提交即 APPROVED 无 Flowable 流程，不接入抄送 _需求: R5_
+- [x] 3.7 发票 OCR + 发票库：OCR（tesseract.js）已上线；发票号唯一，「从发票库选择」改为未关联合同发票的认领（补关联合同并回写累计收票，不复制新建） _需求: R3_
 - [ ] 3.8 ZwListPage 第二批 ~20 页铺设 + 验收（并入 3b，连同 1.6-1.8 契约组件） _需求: R5_
 
 ## 阶段四（P2，仅条目）
@@ -125,6 +125,52 @@
 - **教训**：ZwListToolbar 依赖页面的 columnVisible/setVisible/resetColumns，批量换壳前必须逐页确认
   已有 useColumnSetting setup；无列设置的页需先补 setup 或让 toolbar props 可选。
 - 补录：db-init/120_V2026_117 双轨镜像入库（此前漏 add，线上 classpath 轨未受影响）。
+
+### 3f 列设置收口与壳测试解耦（2026-10-19）
+
+- 四页列设置从空数组升级为真实可配置：分包合同（7 列）/回款登记（8 列）/进项发票（15 列）/销项发票（11 列），逐列 `v-if="columnVisible[i]"` + `useColumnSetting` 持久化；操作列与序号列不参与。
+- 应收账款台账接入 ZwListToolbar（8 列），刷新同时重载台账与账龄；8 样板页换壳至此 8/8 完成。
+- 进项发票汇总行按列 `property` 匹配（非固定索引），隐藏列不影响本页合计口径。
+- finance-hub 壳测试与业务页解耦：Tab loader 改用异步桩，避免真实页面 API 请求（happy-dom 无后端）与模块图在环境拆除后解析（EnvironmentTeardownError，用例全绿但 exit≠0）；壳的 Tab 渲染/激活/权限断言不变。
+- 验证：vitest 137 文件 / 1387 通过 + 2 skipped / 0 unhandled error（exit 0）；vue-tsc 149 = 改动前基线（0 新增）；check:labels violations=0（debt=20/hint=15 持平）；stylelint 改动文件 0 告警。
+
+### 3g 抄送人 + 发票库认领（2026-10-19，批次 1）
+
+- 抄送：`UserMultiSelector`（`/v1/system/user/candidates` 轻量视图）+ `ApprovalSubmitDialog`；付款申请/竣工结算列表行提交改为「确认+选抄送人」弹窗，后端 submit 增加可选 `SubmitWithCcRequest`，非空时写 `variables.ccUserIds`。分包结算无 Flowable 流程（提交即 APPROVED），不接入抄送；通用审批 `/start` 已禁用（403）。
+- 发票库：后端发票号唯一（重复登记 409），「复制新建」不可行 → 实现认领：`GET /invoice-received?unlinkedContract=true&keyword=` + `POST /{id}/claim`；条件 UPDATE（contract_id IS NULL）防并发重复，认领后回写合同累计收票；跨项目认领拒绝。
+- 验证：vitest 138 文件 / 1390 通过 + 2 skipped（exit 0）；vue-tsc 149 = 基线（仅 payment-apply 原有类型错误行号位移）；stylelint 改动文件 0 告警；check:labels violations=0。
+
+### 3h 支出合同族修订（2026-10-19，批次 2）
+
+- 迁移 V2026_123 双轨：biz_contract_revision 增 `contract_category`（默认 CONSTRUCTION，存量回填，索引 category+contract_id）；不同合同表 id 可重复，修订查询/在途/详情均按类别过滤。
+- 后端 SPI：`ExpenseContractRevisionHandler`（common）由采购/劳务/机械/分包四模块实现（锁合同/版本校验/累计值下限/快照/乐观锁回写税额三件套）；ContractRevisionService 按类别分派，施工逻辑不变。
+- 权限：修订 Controller 类级改 OR（contract:view/purchase:view/labor:view/machine:view/subcontract:view）；四类合同现状只有模块 view 码（写接口无细粒度 edit 码），修订入口与现状保持一致。
+- 前端：通用 `ExpenseContractRevisionDialog`（列表/新建/提交/作废/快照）+ 采购/劳务/机械/分包四页 EFFECTIVE 行「修订」按钮。
+- 验证：vitest 139 文件 / 1393 通过 + 2 skipped（exit 0）；vue-tsc 149 = 基线；stylelint 改动文件 0 告警。
+
+### 3i ZwFormPane + 3 样板（2026-10-19，批次 3）
+
+- `ZwFormPane` 契约容器：标题/描述、分区标题样式类、底部操作区、审批区、派生只读样式、可选锚点导航（复用 ZwFormAffixNav，依赖 window 滚动，仅页面级长表单启用；三个弹窗样板不启用）。
+- 三样板接入（只改结构不改字段与提交逻辑）：付款申请（基本信息/金额与日期）、分包合同（基本信息/金额与条款）、分包结算（基本信息/结算明细）。
+- 验证：vitest 140 文件 / 1397 通过 + 2 skipped（exit 0）；vue-tsc 149 = 基线；stylelint 改动文件 0 告警。
+
+### 3j 驾驶舱落袋卡 + 账本审计收口（2026-10-19，批次 4）
+
+- 落袋利润：`GET /v1/dashboard/cockpit/pocket-profit`（projectId 可选，公司级/项目级）复用一本账银行勾稽口径（biz_bank_flow reconciled=1 × PAYMENT_RECEIVED/PAYMENT_APPLY），只读不落库；驾驶舱第 9 张独立卡（失败显示 — 不伪造 0）。
+- L4 应付断言：lifecycle-sim-v2 stage_9 追加 9C（分包结算 100000 → 提交即生效生成应付 → 付款申请 60000 审批 → FIFO 核销至 40000），断言应付 payableAmount/paidAmount 与项目 payableAmount；部署后需重跑 init-test-tenant 并实跑 L4（本轮未连服务器，未伪造执行结果）。
+- audit-data：Section 3.7 新增 `biz_project.payable_amount` vs OPEN 应付余额勾稽（容差 0.01）；应付分页新增 contractId 精确筛选（Controller/Service 重载）。
+- 验证：vitest 140 文件 / 1397 通过 + 2 skipped（exit 0）；vue-tsc 149 = 基线；stylelint 0 告警；check:labels violations=0。
+
+### 3k 代码审阅与修复（2026-10-19）
+
+- CodeReview 审阅本轮全部改动，1 Critical + 3 High + 3 Medium + 2 Low；已修：
+  - C1 雪花 ID `Number()` 精度丢失（抄送错人/提交与认领错单）：选人组件与提交/认领链路全部改为字符串承载，测试改用 19 位 ID。
+  - H1 发票认领缺合同校验：新增类别白名单 + 合同存在性 + 项目一致性校验；回写命中 0 行抛错回滚（不再 200 但未入账）。
+  - H2 L4 9C 与历史应付冲突：改为新建独立分包合同，仅断言该合同应付（100000→核销 60000）；PayableService 增加 dueDate 后按 id 稳定排序。
+  - M1 四个 handler 改 `SELECT ... FOR UPDATE`；M2 税率未知时税额置 0 防 updateById 跳过 null 残留旧值；M3 抄送人有效性/50 人上限校验，抄送失败同事务回滚（不再吞异常）；L1 ccUserIds 移出流程变量；L2 日志改名避免阶段误读。
+  - 新增 WorkflowCcServiceTest 5 用例。
+- **未修并登记**：H3 修订写接口用五类 view 码 OR 放行（只读角色可发起/作废修订）——需新增四个写权限码迁移 + 角色绑定（V2026_124），列入 P2 权限治理，不在本轮混入。
+- 验证：vitest 140 文件 / 1397 通过 + 2 skipped（exit 0）；vue-tsc 149 = 基线；stylelint 0；check:labels violations=0；后端本地未编译（禁 mvn）。
 
 ## 受阻项登记表
 

@@ -36,8 +36,9 @@ public class PayableController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String contractCategory) {
-        return R.ok(payableService.page(page, size, projectId, status, contractCategory));
+            @RequestParam(required = false) String contractCategory,
+            @RequestParam(required = false) Long contractId) {
+        return R.ok(payableService.page(page, size, projectId, status, contractCategory, contractId));
     }
 
     /**

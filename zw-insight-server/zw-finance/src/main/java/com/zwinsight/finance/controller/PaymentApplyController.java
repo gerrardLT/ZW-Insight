@@ -1,6 +1,7 @@
 package com.zwinsight.finance.controller;
 
 import com.zwinsight.common.annotation.OperLog;
+import com.zwinsight.common.dto.SubmitWithCcRequest;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.common.result.R;
 import com.zwinsight.common.security.RequiresPermission;
@@ -67,8 +68,9 @@ public class PaymentApplyController {
     @RequestMapping(value = "/{id}/submit", method = {RequestMethod.POST, RequestMethod.PUT})
     @RequiresPermission("finance:payment:submit")
     @OperLog(module = "付款管理", operType = "UPDATE", description = "提交付款申请审批")
-    public R<Void> submit(@PathVariable Long id) {
-        paymentApplyService.submit(id);
+    public R<Void> submit(@PathVariable Long id,
+                          @RequestBody(required = false) SubmitWithCcRequest request) {
+        paymentApplyService.submit(id, request == null ? null : request.getCcUserIds());
         return R.ok();
     }
 

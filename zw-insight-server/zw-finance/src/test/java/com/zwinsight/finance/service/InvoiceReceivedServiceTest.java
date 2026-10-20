@@ -6,6 +6,7 @@ import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
 import com.zwinsight.finance.domain.BizInvoiceReceived;
+import com.zwinsight.finance.domain.dto.InvoiceClaimRequest;
 import com.zwinsight.finance.mapper.BizInvoiceReceivedMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
@@ -24,6 +25,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -299,5 +301,96 @@ class InvoiceReceivedServiceTest {
 
         verify(contractPayableMapper).addPurchaseInvoiceReceived(88L, new BigDecimal("-15000"));
         verify(otherContractMapper, never()).selectById(any());
+    }
+
+    @Test
+    @DisplayName("claim - 未关联合同的发票可认领并回写累计收票")
+    void claim_linksContractAndWritesBack() {
+        BizInvoiceReceived existing = new BizInvoiceReceived();
+        existing.setId(5L);
+        existing.setProjectId(10L);
+        existing.setInvoiceAmount(new BigDecimal("12000.00"));
+        when(invoiceReceivedMapper.selectById(5L)).thenReturn(existing);
+        when(contractPayableMapper.purchaseContractProjectId(88L)).thenReturn(10L);
+        when(invoiceReceivedMapper.update(isNull(), any())).thenReturn(1);
+        when(contractPayableMapper.addPurchaseInvoiceReceived(88L, new BigDecimal("12000.00"))).thenReturn(1);
+
+        InvoiceClaimRequest req = new InvoiceClaimRequest();
+        req.setContractId(88L);
+        req.setContractCategory("PURCHASE");
+
+        service.claim(5L, req);
+
+        verify(contractPayableMapper).addPurchaseInvoiceReceived(88L, new BigDecimal("12000.00"));
+    }
+
+    @Test
+    @DisplayName("claim - 合同与发票跨项目拒绝关联")
+    void claim_rejectsCrossProject() {
+        BizInvoiceReceived existing = new BizInvoiceReceived();
+        existing.setId(8L);
+        existing.setProjectId(10L);
+        existing.setInvoiceAmount(new BigDecimal("12000.00"));
+        when(invoiceReceivedMapper.selectById(8L)).thenReturn(existing);
+        when(contractPayableMapper.purchaseContractProjectId(88L)).thenReturn(11L);
+
+        InvoiceClaimRequest req = new InvoiceClaimRequest();
+        req.setContractId(88L);
+        req.setContractCategory("PURCHASE");
+
+        assertThatThrownBy(() -> service.claim(8L, req))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("同一项目");
+        verify(invoiceReceivedMapper, never()).update(any(), any());
+    }
+
+    @Test
+    @DisplayName("claim - 回写命中 0 行必须报错回滚（不允许 200 但未入账）")
+    void claim_rejectsWriteBackMiss() {
+        BizInvoiceReceived existing = new BizInvoiceReceived();
+        existing.setId(9L);
+        existing.setProjectId(10L);
+        existing.setInvoiceAmount(new BigDecimal("12000.00"));
+        when(invoiceReceivedMapper.selectById(9L)).thenReturn(existing);
+        when(contractPayableMapper.purchaseContractProjectId(88L)).thenReturn(10L);
+        when(invoiceReceivedMapper.update(isNull(), any())).thenReturn(1);
+        when(contractPayableMapper.addPurchaseInvoiceReceived(88L, new BigDecimal("12000.00"))).thenReturn(0);
+
+        InvoiceClaimRequest req = new InvoiceClaimRequest();
+        req.setContractId(88L);
+        req.setContractCategory("PURCHASE");
+
+        assertThatThrownBy(() -> service.claim(9L, req))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("回写失败");
+    }
+
+    @Test
+    @DisplayName("claim - 已关联合同的发票拒绝重复认领")
+    void claim_rejectsAlreadyLinked() {
+        BizInvoiceReceived existing = new BizInvoiceReceived();
+        existing.setId(6L);
+        existing.setProjectId(10L);
+        existing.setContractId(99L);
+        when(invoiceReceivedMapper.selectById(6L)).thenReturn(existing);
+
+        InvoiceClaimRequest req = new InvoiceClaimRequest();
+        req.setContractId(88L);
+        req.setContractCategory("PURCHASE");
+
+        assertThatThrownBy(() -> service.claim(6L, req))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("已关联支出合同");
+        verify(invoiceReceivedMapper, never()).update(any(), any());
+    }
+
+    @Test
+    @DisplayName("claim - 缺少目标合同时拒绝")
+    void claim_rejectsMissingContract() {
+        InvoiceClaimRequest req = new InvoiceClaimRequest();
+
+        assertThatThrownBy(() -> service.claim(7L, req))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("请选择要关联的支出合同");
     }
 }

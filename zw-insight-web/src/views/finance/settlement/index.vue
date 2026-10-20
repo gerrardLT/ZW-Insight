@@ -108,16 +108,26 @@
         <el-button type="primary" :loading="createLoading" @click="handleCreateSubmit">确定创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- 提交审批确认弹窗（抄送人可选，V2026_123） -->
+    <ApprovalSubmitDialog
+      v-model:visible="submitDialogVisible"
+      v-model:cc-user-ids="submitCcUserIds"
+      :message="`确定提交竣工结算${submitTarget?.projectName ? `（${submitTarget.projectName}）` : ''}进入审批？可选择抄送人。`"
+      :submitting="submitSubmitting"
+      @confirm="confirmSubmit"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getSettlementPage, createSettlement, submitSettlement, exportSettlement } from '@/api/settlement'
 import { getProjectList } from '@/api/project'
+import ApprovalSubmitDialog from '@/components/ApprovalSubmitDialog.vue'
 
 const router = useRouter()
 const createFormRef = ref<FormInstance>()
@@ -127,6 +137,11 @@ const total = ref(0)
 const projectList = ref<any[]>([])
 const createDialogVisible = ref(false)
 const createLoading = ref(false)
+// 提交审批弹窗（抄送人 V2026_123）
+const submitDialogVisible = ref(false)
+const submitTarget = ref<any>(null)
+const submitCcUserIds = ref<string[]>([])
+const submitSubmitting = ref(false)
 
 const queryParams = ref({
   pageNum: 1,
@@ -217,11 +232,24 @@ function handleView(row: any) {
   router.push({ name: 'SettlementDetail', params: { id: row.id } })
 }
 
-async function handleSubmit(row: any) {
-  await ElMessageBox.confirm('确定要提交该结算单进行审批吗？', '提示', { type: 'warning' })
-  await submitSettlement(row.id)
-  ElMessage.success('提交成功')
-  loadData()
+function handleSubmit(row: any) {
+  submitTarget.value = row
+  submitCcUserIds.value = []
+  submitDialogVisible.value = true
+}
+
+async function confirmSubmit() {
+  if (!submitTarget.value) return
+  submitSubmitting.value = true
+  try {
+    await submitSettlement(submitTarget.value.id, submitCcUserIds.value)
+    ElMessage.success('提交成功')
+    submitDialogVisible.value = false
+    submitTarget.value = null
+    loadData()
+  } finally {
+    submitSubmitting.value = false
+  }
 }
 
 async function handleExport(row: any) {

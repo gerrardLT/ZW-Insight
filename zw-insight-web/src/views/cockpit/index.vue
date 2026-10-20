@@ -319,6 +319,7 @@ import { useAppStore } from '@/stores/app'
 import DrillDownBreadcrumb, { type DrillEntry } from '@/components/DrillDownBreadcrumb.vue'
 import {
   getCockpitOverview,
+  getCockpitPocketProfit,
   getCockpitFilterOptions,
   getCockpitProfitTrend,
   getProfitAttribution,
@@ -327,6 +328,7 @@ import {
   getRiskPage,
   scanRisks,
   type CockpitOverview,
+  type CockpitPocketProfit,
   type CockpitFilterOptions,
   type ProfitAttribution,
   type ProjectHealth,
@@ -398,6 +400,8 @@ function scopeParams() {
 }
 
 const overview = ref<CockpitOverview | null>(null)
+// 落袋利润（银行口径，V2026_123）：与项目一本账同口径，失败时卡片显示 — 不伪造 0
+const pocketProfit = ref<CockpitPocketProfit | null>(null)
 const healthData = ref<ProjectHealth[]>([])
 const rollingData = ref<FundRollingForecast[]>([])
 // 当月逾期未付（rollingData 已按月份升序，首元素即当月）；
@@ -581,6 +585,26 @@ const metricCards = computed(() => {
         + (o.gapBasis === 'PROJECT_SNAPSHOT_WITHOUT_ACCOUNT_BALANCE'
           ? '；当前为业主单位/项目筛选口径，账户余额无法拆分故未计入，数值偏保守' : ''),
       alert: gapPositive
+    },
+    {
+      label: '落袋利润（银行口径）',
+      value: pocketProfit.value ? formatWan(pocketProfit.value.pocketProfit) + ' 万' : '—',
+      valueClass: Number(pocketProfit.value?.pocketProfit || 0) < 0 ? 'value-danger' : '',
+      change: pocketProfit.value
+        ? `实收 ${formatWan(pocketProfit.value.cashIn)} / 实付 ${formatWan(pocketProfit.value.cashOut)} 万`
+        : '较上期 —',
+      changeClass: '',
+      target: pocketProfit.value?.scope === 'PROJECT' ? '口径 项目银行勾稽实收 − 实付' : '口径 公司银行勾稽实收 − 实付',
+      status: pocketProfit.value
+        ? (Number(pocketProfit.value.pocketProfit) < 0 ? '🔴 净流出' : '🟢 净流入')
+        : '—',
+      statusClass: pocketProfit.value
+        ? (Number(pocketProfit.value.pocketProfit) < 0 ? 'sub-danger' : 'sub-success')
+        : '',
+      tooltip: pocketProfit.value?.note
+        || '银行勾稽口径：仅统计 reconciled=1 的流水，与项目一本账落袋利润一致；不是审批口径。'
+          + '业主单位筛选不影响银行流水口径',
+      alert: Number(pocketProfit.value?.pocketProfit || 0) < 0
     }
   ]
   // 统一补 valueClass 默认值：对象字面量部分缺字段时 TS 推为联合类型，
@@ -746,6 +770,17 @@ async function loadOverview() {
     overview.value = res.data || null
   } catch (e: any) {
     ElMessage.error('加载经营总览失败：' + (e?.message || '接口异常'))
+  }
+}
+
+/** 落袋利润（银行口径）：失败显式提示，卡片回落 “—”，不用 0 充数 */
+async function loadPocketProfit() {
+  try {
+    const res: any = await getCockpitPocketProfit(projectFilter.value || undefined)
+    pocketProfit.value = res.data || null
+  } catch (e: any) {
+    pocketProfit.value = null
+    ElMessage.error('加载落袋利润失败：' + (e?.message || '接口异常'))
   }
 }
 
@@ -957,7 +992,7 @@ function renderCharts() {
 async function loadAll() {
   loading.value = true
   try {
-    await Promise.all([loadOverview(), loadProfitTrend(), loadRolling(), loadHealth(), loadRisks()])
+    await Promise.all([loadOverview(), loadPocketProfit(), loadProfitTrend(), loadRolling(), loadHealth(), loadRisks()])
     updateTime.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
     renderCharts()
   } finally {
