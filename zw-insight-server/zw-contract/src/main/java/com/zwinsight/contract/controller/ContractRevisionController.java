@@ -13,8 +13,8 @@ import java.util.List;
 
 /**
  * 合同修订接口（V2026_123 起覆盖施工合同与四类支出合同）。
- * <p>权限：四类支出合同现状只有模块 view 码（purchase:view/labor:view/machine:view/
- * subcontract:view 即可写），故修订入口按 OR 放行对应模块 view；
+ * <p>权限：四类支出合同现状只有模块 view 码，故入口按 OR 放行对应模块 view；
+ * 服务层再按 contractCategory 做二次校验，防止仅持 A 模块权限的用户操作 B 模块修订。
  * 施工合同保留原来的 contract:contract:edit / submit 码。</p>
  */
 @RestController
@@ -33,7 +33,7 @@ public class ContractRevisionController {
 
     @GetMapping("/{id}")
     public R<ContractRevision> detail(@PathVariable Long id) {
-        return R.ok(service.detail(id));
+        return R.ok(service.detailForUser(id));
     }
 
     @PostMapping

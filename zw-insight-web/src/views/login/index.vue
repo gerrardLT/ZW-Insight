@@ -107,6 +107,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useBrandStore } from '@/stores/brand'
 import { sendSmsCaptcha } from '@/api/captcha'
+import { resolveRoleHome } from '@/utils/role-home'
 import SliderCaptcha from './SliderCaptcha.vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
@@ -206,7 +207,7 @@ async function handleLogin() {
     })
     userStore.setPermissions(res.data.permissions || [])
     ElMessage.success('欢迎回来：' + (res.data.tenantName || res.data.realName || res.data.username))
-    router.push('/')
+    router.push(resolveRoleHome(res.data.roles || [], res.data.permissions || []))
   } catch {
     // 登录失败：滑块令牌已消费，重置滑块
     sliderToken.value = ''
@@ -270,7 +271,7 @@ async function handleSmsLogin() {
       roles: res.data.roles
     })
     userStore.setPermissions(res.data.permissions || [])
-    router.push('/')
+    router.push(resolveRoleHome(res.data.roles || [], res.data.permissions || []))
   } catch {
     // 登录失败（验证码错误/手机号未注册等）已由拦截器提示，用户重新获取验证码
   } finally {

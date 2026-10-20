@@ -3,6 +3,7 @@ package com.zwinsight.finance.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
+import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.result.PageResult;
 import com.zwinsight.contract.domain.BizOtherContract;
 import com.zwinsight.contract.mapper.BizOtherContractMapper;
@@ -58,6 +59,8 @@ class PaymentApplyServiceTest {
     @Mock private com.zwinsight.budget.service.BudgetControlConfigService budgetControlConfigService;
     /** V2026_115：应付核销（onApproved 生效后 FIFO 冲减；mock 空实现即可） */
     @Mock private PayableService payableService;
+    /** V2026_124：非财务角色草稿归属守卫所需权限查询 */
+    @Mock private com.zwinsight.security.mapper.SysUserMapper sysUserMapper;
 
     @InjectMocks
     private PaymentApplyService paymentApplyService;
@@ -1340,6 +1343,112 @@ class PaymentApplyServiceTest {
             assertThatThrownBy(() -> paymentApplyService.revokePaid(35L))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("请通过取消勾稽撤销");
+        }
+    }
+
+    @Nested
+    @DisplayName("V2026_124 非财务角色草稿归属守卫")
+    class OwnershipGuardTests {
+
+        @org.junit.jupiter.api.AfterEach
+        void clearContext() {
+            SecurityContextHolder.clear();
+        }
+
+        private BizPaymentApply draft(Long id, Long createdBy) {
+            BizPaymentApply a = new BizPaymentApply();
+            a.setId(id);
+            a.setProjectId(10L);
+            a.setStatus("DRAFT");
+            a.setPaymentAmount(new BigDecimal("1000"));
+            a.setCreatedBy(createdBy);
+            return a;
+        }
+
+        @Test
+        @DisplayName("无 finance:view 且非创建人 — 编辑/删除/提交均拒绝")
+        void nonOwner_withoutFinanceView_rejected() {
+            SecurityContextHolder.setUserId(100L);
+            when(sysUserMapper.selectPermissionsByUserId(100L))
+                    .thenReturn(List.of("finance:paymentapply:edit",
+                            "finance:paymentapply:delete", "finance:paymentapply:submit"));
+
+            when(paymentApplyMapper.selectById(1L)).thenReturn(draft(1L, 200L));
+            assertThatThrownBy(() -> paymentApplyService.update(draft(1L, 200L)))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("只能操作本人创建的付款申请");
+
+            when(paymentApplyMapper.selectById(2L)).thenReturn(draft(2L, 200L));
+            assertThatThrownBy(() -> paymentApplyService.delete(2L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("只能操作本人创建的付款申请");
+
+            when(paymentApplyMapper.selectById(3L)).thenReturn(draft(3L, 200L));
+            assertThatThrownBy(() -> paymentApplyService.submit(3L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("只能操作本人创建的付款申请");
+
+            verify(paymentApplyMapper, never()).updateById(any());
+            verify(paymentApplyMapper, never()).deleteById(anyLong());
+            verify(approvalService, never()).startProcess(any(), any(), any(), anyMap());
+        }
+
+        @Test
+        @DisplayName("无 finance:view 但为创建人 — 编辑放行（项目在数据范围内）")
+        void owner_withoutFinanceView_allowed() {
+            SecurityContextHolder.setUserId(100L);
+            when(sysUserMapper.selectPermissionsByUserId(100L))
+                    .thenReturn(List.of("finance:paymentapply:edit"));
+            when(projectMapper.selectById(10L)).thenReturn(new com.zwinsight.project.domain.BizProject());
+            BizPaymentApply existing = draft(4L, 100L);
+            when(paymentApplyMapper.selectById(4L)).thenReturn(existing);
+
+            BizPaymentApply body = draft(4L, 100L);
+            body.setPaymentAmount(new BigDecimal("2000"));
+            paymentApplyService.update(body);
+
+            verify(paymentApplyMapper).updateById(existing);
+        }
+
+        @Test
+        @DisplayName("无 finance:view 发起付款 — 项目不在数据范围时拒绝落库")
+        void save_invisibleProject_withoutFinanceView_rejected() {
+            SecurityContextHolder.setUserId(100L);
+            when(sysUserMapper.selectPermissionsByUserId(100L))
+                    .thenReturn(List.of("finance:paymentapply:add"));
+            when(projectMapper.selectById(10L)).thenReturn(null);
+
+            BizPaymentApply body = draft(6L, 100L);
+            assertThatThrownBy(() -> paymentApplyService.save(body))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("无权在该项目下发起付款申请");
+            verify(paymentApplyMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("无 finance:view 发起付款 — 项目在数据范围时允许落库")
+        void save_visibleProject_withoutFinanceView_allowed() {
+            SecurityContextHolder.setUserId(100L);
+            when(sysUserMapper.selectPermissionsByUserId(100L))
+                    .thenReturn(List.of("finance:paymentapply:add"));
+            when(projectMapper.selectById(10L)).thenReturn(new com.zwinsight.project.domain.BizProject());
+
+            BizPaymentApply body = draft(7L, 100L);
+            paymentApplyService.save(body);
+
+            verify(paymentApplyMapper).insert(body);
+            assertThat(body.getStatus()).isEqualTo("DRAFT");
+        }
+
+        @Test
+        @DisplayName("持 finance:view — 不受创建人限制")
+        void financeView_skipsOwnershipGuard() {
+            SecurityContextHolder.setUserId(100L);
+            when(sysUserMapper.selectPermissionsByUserId(100L)).thenReturn(List.of("finance:view"));
+            BizPaymentApply existing = draft(5L, 200L);
+            when(paymentApplyMapper.selectById(5L)).thenReturn(existing);
+
+            BizPaymentApply body = draft(5L, 200L);
+            paymentApplyService.update(body);
+
+            verify(paymentApplyMapper).updateById(existing);
         }
     }
 

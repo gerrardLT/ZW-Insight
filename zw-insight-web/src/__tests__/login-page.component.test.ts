@@ -87,7 +87,7 @@ describe('login/index.vue 登录页', () => {
       code: 200,
       data: {
         token: 'tk-xyz', userId: 1, username: 'admin', realName: '管理员',
-        tenantId: 1, tenantName: '默认租户', roles: ['ADMIN'], permissions: ['sys:user:list'],
+        tenantId: 1, tenantName: '默认租户', roles: ['ADMIN'], permissions: ['sys:user:list', 'dashboard:view'],
       },
     })
     const w = await mountPage()
@@ -103,7 +103,27 @@ describe('login/index.vue 登录页', () => {
     }))
     const store = useUserStore()
     expect(store.token).toBe('tk-xyz')
-    expect(mockPush).toHaveBeenCalledWith('/')
+    expect(mockPush).toHaveBeenCalledWith('/dashboard')
+  })
+
+  it('登录成功：财务角色按角色落地页跳转（V2026_124）', async () => {
+    mockPost.mockResolvedValue({
+      code: 200,
+      data: {
+        token: 'tk-fin', userId: 3, username: 'wangqiang', realName: '王强',
+        tenantId: 1, tenantName: '默认租户', roles: ['FINANCE_STAFF'], permissions: ['finance:view'],
+      },
+    })
+    const w = await mountPage()
+    const st = w.vm.$.setupState
+    st.formRef = { validate: vi.fn(async () => true) }
+    st.loginForm.username = 'wangqiang'
+    st.loginForm.password = '123456'
+    st.sliderToken = 'tok-1'
+    await st.handleLogin()
+    await flushPromises()
+
+    expect(mockPush).toHaveBeenCalledWith('/finance/hub/payable-group?tab=payment-apply')
   })
 
   it('登录失败：滑块令牌重置且不跳转', async () => {
@@ -139,7 +159,7 @@ describe('login/index.vue 登录页', () => {
       code: 200,
       data: {
         token: 'tk-sms', userId: 2, username: 'zhang', realName: '张三',
-        tenantId: 1, tenantName: '默认租户', roles: ['USER'], permissions: ['proj:view'],
+        tenantId: 1, tenantName: '默认租户', roles: ['USER'], permissions: ['proj:view', 'dashboard:view'],
       },
     })
     const w = await mountPage()
@@ -155,7 +175,7 @@ describe('login/index.vue 登录页', () => {
     }))
     const store = useUserStore()
     expect(store.token).toBe('tk-sms')
-    expect(mockPush).toHaveBeenCalledWith('/')
+    expect(mockPush).toHaveBeenCalledWith('/dashboard')
   })
 
   it('短信登录失败：不跳转首页', async () => {

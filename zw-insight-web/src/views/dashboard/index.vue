@@ -22,11 +22,11 @@
         <h2>{{ greeting }}，{{ userName }}</h2>
         <p>{{ todayText }}，祝您工作顺利。</p>
       </div>
-      <div class="welcome-actions">
-        <el-button type="primary" @click="$router.push('/project/create')">
+      <div v-if="canCreateProject || canViewProjectBoard" class="welcome-actions">
+        <el-button v-if="canCreateProject" type="primary" @click="$router.push('/project/create')">
           <el-icon><Plus /></el-icon>新建项目
         </el-button>
-        <el-button @click="$router.push('/project-dashboard')">
+        <el-button v-if="canViewProjectBoard" @click="$router.push('/project-dashboard')">
           <el-icon><DataAnalysis /></el-icon>项目看板
         </el-button>
       </div>
@@ -40,19 +40,22 @@
       </button>
     </div>
 
-    <!-- 统计卡片（加载态：骨架屏；落定后逐卡错峰入场） -->
-    <ZwSkeleton v-if="!statsLoaded" variant="cards" :count="4" />
-    <div v-else class="stat-grid">
-      <div class="stat-card card-corner-marked kpi-enter" v-for="(item, idx) in statCards" :key="item.key" :style="{ '--kpi-i': idx }">
-        <div class="stat-icon-wrap" :style="{ background: item.bg, color: item.color }">
-          <el-icon><component :is="item.icon" /></el-icon>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">{{ item.label }}</span>
-          <span class="stat-value stat-number">{{ item.value }}</span>
+    <!-- 统计卡片（仅对有经营/项目数据范围的角色展示；STAFF 等无范围角色隐藏，避免恒为 0 的空卡） -->
+    <template v-if="showCompanyStats">
+      <div class="stat-scope" data-testid="stat-scope">{{ statScopeLabel }}</div>
+      <ZwSkeleton v-if="!statsLoaded" variant="cards" :count="4" />
+      <div v-else class="stat-grid">
+        <div class="stat-card card-corner-marked kpi-enter" v-for="(item, idx) in statCards" :key="item.key" :style="{ '--kpi-i': idx }">
+          <div class="stat-icon-wrap" :style="{ background: item.bg, color: item.color }">
+            <el-icon><component :is="item.icon" /></el-icon>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">{{ item.label }}</span>
+            <span class="stat-value stat-number">{{ item.value }}</span>
+          </div>
         </div>
       </div>
-    </div>
+    </template>
 
     <!-- 逾期风险告警卡（真实数据源：/v1/finance/retention/overdue，与质保金催办任务同口径；
          端点受 finance:view 类级权限保护，无权限角色不渲染、不请求） -->
@@ -92,8 +95,8 @@
       </div>
     </el-card>
 
-    <!-- 图表区域 -->
-    <el-row :gutter="16" class="chart-row">
+    <!-- 图表区域（仅对有经营/项目数据范围的角色展示） -->
+    <el-row v-if="showCompanyStats" :gutter="16" class="chart-row">
       <el-col :span="12">
         <el-card shadow="never">
           <template #header>
@@ -139,22 +142,38 @@ const appStore = useAppStore()
 const guideStore = useGuideStore()
 const routeRouter = useRouter()
 
+/* ================= 权限派生（V2026_124：与登录实际权限同源） ================= */
+const { hasPermission } = usePermission()
+const canViewFinance = computed(() => hasPermission('finance:view'))
+const canCreateProject = computed(() => hasPermission('project:create'))
+const canViewProjectBoard = computed(() => hasPermission('project-dashboard:view'))
+/** 审批工作台（待办/已办/我发起）需要审批入口权限；无权限时只保留未读消息 */
+const canApprove = computed(() => hasPermission('workflow:approval:view') || hasPermission('workflow:view'))
+/** 公司经营统计仅对全公司或项目范围角色有意义；STAFF 等无范围角色隐藏，避免恒为 0 */
+const showCompanyStats = computed(() => canViewFinance.value || hasPermission('project:view'))
+const statScopeLabel = computed(() => (canViewFinance.value ? '统计范围：全公司' : '统计范围：我的项目'))
+
 /* ================= 今日工作台（todo/done/my-initiated/unread，点击直达） ================= */
 const workbench = ref<{ todo: number | null; done: number | null; initiated: number | null; unread: number | null }>({
   todo: null, done: null, initiated: null, unread: null
 })
-const workbenchCards = computed(() => [
-  { label: '待我审批', value: workbench.value.todo, go: () => routeRouter.push('/workflow/approval?tab=todo') },
-  { label: '我已审批', value: workbench.value.done, go: () => routeRouter.push('/workflow/approval?tab=done') },
-  { label: '我发起的', value: workbench.value.initiated, go: () => routeRouter.push('/workflow/approval?tab=initiated') },
-  { label: '未读消息', value: workbench.value.unread, go: () => routeRouter.push('/message') }
-])
+const workbenchCards = computed(() => {
+  const cards = [
+    { key: 'todo', label: '待我审批', value: workbench.value.todo, go: () => routeRouter.push('/workflow/approval?tab=todo') },
+    { key: 'done', label: '我已审批', value: workbench.value.done, go: () => routeRouter.push('/workflow/approval?tab=done') },
+    { key: 'initiated', label: '我发起的', value: workbench.value.initiated, go: () => routeRouter.push('/workflow/approval?tab=initiated') },
+    { key: 'unread', label: '未读消息', value: workbench.value.unread, go: () => routeRouter.push('/message') }
+  ]
+  return canApprove.value ? cards : cards.filter((card) => card.key === 'unread')
+})
 async function loadWorkbench() {
   // 各计数独立取数：单个失败只置 null 显示 “—”，不阻断其他卡
   const totalOf = (res: any) => Number(res?.data?.total ?? res?.data?.data?.total ?? NaN)
-  getTodoTasks({ page: 1, size: 1 }).then((r: any) => { workbench.value.todo = totalOf(r) }).catch(() => { workbench.value.todo = null })
-  getDoneTasks({ page: 1, size: 1 }).then((r: any) => { workbench.value.done = totalOf(r) }).catch(() => { workbench.value.done = null })
-  getMyInitiatedProcesses({ page: 1, size: 1 }).then((r: any) => { workbench.value.initiated = totalOf(r) }).catch(() => { workbench.value.initiated = null })
+  if (canApprove.value) {
+    getTodoTasks({ page: 1, size: 1 }).then((r: any) => { workbench.value.todo = totalOf(r) }).catch(() => { workbench.value.todo = null })
+    getDoneTasks({ page: 1, size: 1 }).then((r: any) => { workbench.value.done = totalOf(r) }).catch(() => { workbench.value.done = null })
+    getMyInitiatedProcesses({ page: 1, size: 1 }).then((r: any) => { workbench.value.initiated = totalOf(r) }).catch(() => { workbench.value.initiated = null })
+  }
   getUnreadCount().then((r: any) => { workbench.value.unread = Number(r?.data ?? NaN) }).catch(() => { workbench.value.unread = null })
 }
 
@@ -169,8 +188,6 @@ function dismissGuideBanner() {
 
 // 逾期卡数据源 /overdue 受 finance:view 类级权限保护：无权限角色不渲染卡片、不发请求，
 // 避免全员首页对非财务角色必然 403 报错（超管 *:*:* 由 store 绕过）
-const { hasPermission } = usePermission()
-const canViewFinance = computed(() => hasPermission('finance:view'))
 const stats = ref<any>({})
 /** 统计卡是否完成首载：加载中走 ZwSkeleton 骨架（替代裸白块），落定后卡片带入场动效 */
 const statsLoaded = ref(false)
@@ -508,6 +525,11 @@ onBeforeUnmount(() => {
 }
 
 /* 统计卡片 */
+.stat-scope {
+  margin: 0 0 var(--zw-space-xs);
+  color: var(--zw-text-secondary);
+  font-size: var(--zw-font-size-xs);
+}
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

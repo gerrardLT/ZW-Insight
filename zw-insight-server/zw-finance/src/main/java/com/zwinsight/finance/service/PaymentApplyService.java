@@ -24,6 +24,7 @@ import com.zwinsight.finance.mapper.ContractPayableMapper;
 import com.zwinsight.finance.mapper.SettlementDataMapper;
 import com.zwinsight.project.mapper.BizProjectMapper;
 import com.zwinsight.project.util.ProjectNameFiller;
+import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +68,7 @@ public class PaymentApplyService {
     private final BudgetControlConfigService budgetControlConfigService;
     private final FinanceLockService financeLockService;
     private final PayableService payableService;
+    private final SysUserMapper sysUserMapper;
 
     /** 走各模块合同表（biz_purchase_contract 等）的合同类型；其余（OTHER_EXPENSE/OTHER_INCOME/空）走 biz_other_contract */
     private static final java.util.Set<String> MODULE_CATEGORIES =
@@ -135,6 +137,8 @@ public class PaymentApplyService {
         if (paymentApply.getPaymentAmount() == null || paymentApply.getPaymentAmount().signum() <= 0) {
             throw new BusinessException("付款金额必须大于0");
         }
+        // V2026_124：非财务角色（项目经理）发起时，项目必须在本人数据范围内
+        assertProjectVisibleIfNoFinanceView(paymentApply.getProjectId());
         // 资金分类校验（53_V2026_51）：提供了科目编码时必须有效且为支出向（不静默丢弃）
         if (paymentApply.getPaymentCategory() != null && !paymentApply.getPaymentCategory().isBlank()) {
             fundCategoryService.getByCode(paymentApply.getPaymentCategory(), "EXPENSE");
@@ -172,7 +176,7 @@ public class PaymentApplyService {
         }
     }
 
-    /** 请求体不可信的系统字段：现金执行态、可付快照、流程实例 */
+    /** 请求体不可信的系统字段：现金执行态、可付快照、流程实例、创建人 */
     private void clearSystemManagedFields(BizPaymentApply a) {
         a.setPayStatus(null);
         a.setPayDate(null);
@@ -180,6 +184,8 @@ public class PaymentApplyService {
         a.setCumulativeSettlementSnapshot(null);
         a.setUnpaidAmountSnapshot(null);
         a.setWorkflowInstanceId(null);
+        // 创建人由 MetaObjectHandler 以当前登录人回填；若信任请求体，会污染归属守卫判据
+        a.setCreatedBy(null);
     }
 
     /**
@@ -194,6 +200,46 @@ public class PaymentApplyService {
     }
 
     /**
+     * 非财务角色（无 finance:view）只能操作本人创建的付款申请。
+     * <p>项目经理通过细粒度码 finance:paymentapply:{edit,delete,submit} 进入本服务，
+     * 但其数据范围是项目级，可能看到财务人员在同一项目下创建的草稿；此处按创建人兜底，
+     * 避免跨角色修改/删除他人单据。系统任务（无 userId）与财务角色不受限制。</p>
+     */
+    private void assertOwnerIfNoFinanceView(BizPaymentApply existing) {
+        Long userId = SecurityContextHolder.getUserId();
+        if (userId == null || hasFinanceView(userId)) {
+            return;
+        }
+        if (!Objects.equals(existing.getCreatedBy(), userId)) {
+            throw new BusinessException("只能操作本人创建的付款申请");
+        }
+    }
+
+    private boolean hasFinanceView(Long userId) {
+        List<String> permissions = sysUserMapper.selectPermissionsByUserId(userId);
+        return permissions != null && permissions.contains("finance:view");
+    }
+
+    /**
+     * 非财务角色发起/改挂项目时，项目必须在其数据范围内。
+     * <p>MyBatis-Plus 数据权限拦截器不覆盖 INSERT，若只靠列表查询过滤，
+     * 项目经理可伪造 projectId 在他人的项目下建付款单。此处用带 {@code @DataPermission}
+     * 的 {@link BizProjectMapper#selectById} 做写入前校验（越权项目返回 null）。</p>
+     */
+    private void assertProjectVisibleIfNoFinanceView(Long projectId) {
+        Long userId = SecurityContextHolder.getUserId();
+        if (userId == null || hasFinanceView(userId)) {
+            return;
+        }
+        if (projectId == null) {
+            throw new BusinessException("请选择项目");
+        }
+        if (projectMapper.selectById(projectId) == null) {
+            throw new BusinessException("无权在该项目下发起付款申请");
+        }
+    }
+
+    /**
      * 更新付款申请
      */
     public void update(BizPaymentApply paymentApply) {
@@ -201,6 +247,7 @@ public class PaymentApplyService {
         if (existing == null) {
             throw new BusinessException("付款申请不存在");
         }
+        assertOwnerIfNoFinanceView(existing);
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new BusinessException("仅草稿状态可编辑");
         }
@@ -217,7 +264,10 @@ public class PaymentApplyService {
         String oldCategory = existing.getPaymentCategory();
         String oldDate = String.valueOf(existing.getPaymentDate());
         // 白名单拷贝：只允许改业务录入字段；status/payStatus/快照/workflowInstanceId 等系统字段不接受请求体
-        if (paymentApply.getProjectId() != null) existing.setProjectId(paymentApply.getProjectId());
+        if (paymentApply.getProjectId() != null) {
+            assertProjectVisibleIfNoFinanceView(paymentApply.getProjectId());
+            existing.setProjectId(paymentApply.getProjectId());
+        }
         if (paymentApply.getContractId() != null) existing.setContractId(paymentApply.getContractId());
         if (paymentApply.getContractCategory() != null) existing.setContractCategory(paymentApply.getContractCategory());
         if (paymentApply.getSupplierId() != null) existing.setSupplierId(paymentApply.getSupplierId());
@@ -263,6 +313,7 @@ public class PaymentApplyService {
         if (existing == null) {
             throw new BusinessException("付款申请不存在");
         }
+        assertOwnerIfNoFinanceView(existing);
         if (!"DRAFT".equals(existing.getStatus()) && !E2eTestGuard.containsE2eTestMarker(existing)) {
             throw new BusinessException("仅草稿状态可删除");
         }
@@ -303,6 +354,7 @@ public class PaymentApplyService {
         if (paymentApply == null) {
             throw new BusinessException("付款申请不存在");
         }
+        assertOwnerIfNoFinanceView(paymentApply);
         if (!"DRAFT".equals(paymentApply.getStatus()) && !"REJECTED".equals(paymentApply.getStatus())) {
             throw new BusinessException("仅草稿或已驳回状态可提交");
         }

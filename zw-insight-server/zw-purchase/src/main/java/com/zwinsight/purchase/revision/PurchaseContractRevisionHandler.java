@@ -82,7 +82,7 @@ public class PurchaseContractRevisionHandler implements ExpenseContractRevisionH
         BigDecimal rate = contract.getTaxRate();
         if (rate == null) {
             // 税率未知时无法派生税额：置 0（不含税=含税、税额 0），避免 updateById 跳过 null 残留旧值
-            contract.setAmountWithoutTax(BigDecimal.ZERO);
+            contract.setAmountWithoutTax(contract.getContractAmount());
             contract.setTaxAmount(BigDecimal.ZERO);
             return;
         }

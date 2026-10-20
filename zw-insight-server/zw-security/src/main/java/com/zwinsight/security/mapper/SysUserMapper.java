@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.util.Collection;
 import java.util.List;
 
 @Mapper
@@ -36,6 +37,15 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
             "AND m.status = 1 AND m.deleted = 0 AND (m.tenant_id = u.tenant_id OR m.tenant_id IS NULL) " +
             "AND m.permission IS NOT NULL AND m.permission != ''")
     List<String> selectPermissionsByUserId(@Param("userId") Long userId);
+
+    /**
+     * 查询指定租户内启用且未删除的用户 ID（抄送人校验用）。
+     * <p>sys_ 表不参与 MyBatis-Plus 租户拦截器，必须显式带 tenant_id 条件；
+     * {@link SysUser} 本身没有 tenantId 字段，不能靠 selectBatchIds 后内存比对。</p>
+     */
+    @Select("<script>SELECT id FROM sys_user WHERE tenant_id = #{tenantId} AND status = 1 AND deleted = 0 " +
+            "AND id IN <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach></script>")
+    List<Long> selectActiveIdsByTenant(@Param("tenantId") Long tenantId, @Param("ids") Collection<Long> ids);
 
     /**
      * 按角色编码解析租户内的有效用户ID（候选组任务通知用）。

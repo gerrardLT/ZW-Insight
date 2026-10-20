@@ -27,6 +27,9 @@ vi.mock('@/views/project/index.vue', () => ({ default: stub }))
 vi.mock('@/views/project/form.vue', () => ({ default: stub }))
 vi.mock('@/views/project/detail.vue', () => ({ default: stub }))
 vi.mock('@/views/finance/invoice-apply.vue', () => ({ default: stub }))
+vi.mock('@/views/finance/payment-apply.vue', () => ({ default: stub }))
+vi.mock('@/views/workflow/approval/index.vue', () => ({ default: stub }))
+vi.mock('@/views/workflow/designer/index.vue', () => ({ default: stub }))
 vi.mock('@/views/user/devices.vue', () => ({ default: stub }))
 vi.mock('@/views/system/user/index.vue', () => ({ default: stub }))
 vi.mock('@/views/error/403.vue', () => ({ default: stub }))
@@ -156,6 +159,16 @@ describe('router 全局守卫', () => {
       expect(await nav('/project/create')).toBe('/project/create')
     })
 
+    it('V2026_124 项目付款申请：需 finance:paymentapply:view', async () => {
+      const store = useUserStore()
+      store.setToken('tk-1')
+      store.setPermissions(['project:view'])
+      expect(await nav('/project/payment-apply')).toBe('/403')
+
+      store.setPermissions(['project:view', 'finance:paymentapply:view'])
+      expect(await nav('/project/payment-apply')).toBe('/project/payment-apply')
+    })
+
     it('无权限路由不受影响：个人中心（无 meta.permission）放行', async () => {
       const store = useUserStore()
       store.setToken('tk-1')
@@ -168,6 +181,36 @@ describe('router 全局守卫', () => {
       store.setToken('tk-1')
       store.setPermissions(['*:*:*'])
       expect(await nav('/system/user')).toBe('/system/user')
+    })
+
+    describe('V2026_124 审批入口细粒度权限', () => {
+      it('仅 workflow:approval:view → 可进审批中心，不可进流程设计器', async () => {
+        const store = useUserStore()
+        store.setToken('tk-1')
+        store.setPermissions(['dashboard:view', 'workflow:approval:view'])
+
+        expect(await nav('/workflow/approval')).toBe('/workflow/approval')
+        expect(await nav('/workflow/designer')).toBe('/403')
+        // 父级默认落点也按权限分发：仅审批码访问 /workflow 落到审批中心而非设计器
+        expect(await nav('/workflow')).toBe('/workflow/approval')
+      })
+
+      it('持有 workflow:view → 审批与设计器均放行（旧角色兼容）', async () => {
+        const store = useUserStore()
+        store.setToken('tk-1')
+        store.setPermissions(['workflow:view'])
+
+        expect(await nav('/workflow/approval')).toBe('/workflow/approval')
+        expect(await nav('/workflow/designer')).toBe('/workflow/designer')
+      })
+
+      it('无任何审批权限 → 审批中心 /403', async () => {
+        const store = useUserStore()
+        store.setToken('tk-1')
+        store.setPermissions(['dashboard:view'])
+
+        expect(await nav('/workflow/approval')).toBe('/403')
+      })
     })
 
     it('新版本发布 Chunk 过期异常（Failed to fetch dynamically imported module）自动重试与拦截', () => {

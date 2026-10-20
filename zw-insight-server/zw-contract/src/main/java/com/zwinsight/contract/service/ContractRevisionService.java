@@ -11,6 +11,7 @@ import com.zwinsight.contract.domain.*;
 import com.zwinsight.contract.domain.dto.ContractRevisionRequest;
 import com.zwinsight.contract.mapper.*;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import com.zwinsight.security.mapper.SysUserMapper;
 import com.zwinsight.workflow.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -43,6 +44,7 @@ public class ContractRevisionService {
     private final JdbcTemplate jdbc;
     private final ContractPayTermService payTermService;
     private final List<ExpenseContractRevisionHandler> expenseHandlers;
+    private final SysUserMapper userMapper;
 
     private ExpenseContractRevisionHandler handler(String category) {
         return expenseHandlers.stream()
@@ -66,6 +68,49 @@ public class ContractRevisionService {
         return revision;
     }
 
+    /** 用户侧详情：在内部 detail 之上补类别权限校验（审批回调仍走 detail，不受影响）。 */
+    public ContractRevision detailForUser(Long id) {
+        ContractRevision revision = detail(id);
+        assertCategoryPermission(revision.getContractCategory(), "read");
+        return revision;
+    }
+
+    /**
+     * 类别权限校验（V2026_124 审查修复）。
+     * <p>控制器的方法级注解是 5 个 view 码 OR，只能保证"持有任一模块权限"；
+     * 若不在此按类别二次校验，仅持 machine:view 的用户可借默认类别读取/修改施工合同修订。
+     * 支出合同当前只有模块 view 码，暂以其作为该模块修订写权限；施工合同沿用原写码。</p>
+     */
+    private void assertCategoryPermission(String category, String action) {
+        Long userId = SecurityContextHolder.getUserId();
+        if (userId == null) return; // 系统任务/审批回调不按操作人校验
+        List<String> permissions = userMapper.selectPermissionsByUserId(userId);
+        if (permissions == null) permissions = List.of();
+        if (permissions.contains("*:*:*")) return;
+        String required = requiredCode(category, action);
+        if (required != null && !permissions.contains(required)) {
+            throw new BusinessException(403, "无权操作该类别合同修订");
+        }
+    }
+
+    private static String requiredCode(String category, String action) {
+        String normalized = categoryOf(category);
+        if (CATEGORY_CONSTRUCTION.equals(normalized)) {
+            return switch (action) {
+                case "read" -> "contract:view";
+                case "submit" -> "contract:contract:submit";
+                default -> "contract:contract:edit";
+            };
+        }
+        return switch (normalized) {
+            case "PURCHASE" -> "purchase:view";
+            case "LABOR" -> "labor:view";
+            case "MACHINE" -> "machine:view";
+            case "SUBCONTRACT" -> "subcontract:view";
+            default -> null;
+        };
+    }
+
     private void visibleContract(String category, Long id) {
         String normalized = categoryOf(category);
         if (isConstruction(normalized)) {
@@ -81,6 +126,7 @@ public class ContractRevisionService {
 
     public List<ContractRevision> list(Long contractId, String contractCategory) {
         String category = categoryOf(contractCategory);
+        assertCategoryPermission(category, "read");
         visibleContract(category, contractId);
         return revisions.selectList(new LambdaQueryWrapper<ContractRevision>()
                 .eq(ContractRevision::getContractCategory, category)
@@ -122,6 +168,7 @@ public class ContractRevisionService {
     @Transactional(rollbackFor = Exception.class)
     public Long create(ContractRevisionRequest request) {
         String category = categoryOf(request.contractCategory());
+        assertCategoryPermission(category, "write");
         if (!isConstruction(category)) {
             return createExpense(category, request);
         }
@@ -185,6 +232,7 @@ public class ContractRevisionService {
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id) {
         ContractRevision initial = detail(id);
+        assertCategoryPermission(initial.getContractCategory(), "submit");
         if (!isConstruction(initial.getContractCategory())) {
             submitExpense(id);
             return;
@@ -290,6 +338,7 @@ public class ContractRevisionService {
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long id) {
         ContractRevision initial = detail(id);
+        assertCategoryPermission(initial.getContractCategory(), "write");
         if (isConstruction(initial.getContractCategory())) locked(initial.getContractId());
         ContractRevision v = revisions.selectOne(new LambdaQueryWrapper<ContractRevision>()
                 .eq(ContractRevision::getId, id).last("FOR UPDATE"));

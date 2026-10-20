@@ -106,6 +106,11 @@ function setupState(wrapper: any): any {
   return wrapper.vm.$.setupState
 }
 
+/** 覆盖默认的「全部放行」，只允许指定权限码（V2026_124 角色差异化用例） */
+function allowOnly(...allowed: string[]) {
+  (mockHasPermission as any).mockImplementation((p: string) => allowed.includes(p))
+}
+
 describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -282,6 +287,49 @@ describe('dashboard/index.vue 首页驾驶舱（@matrix C-29）', () => {
     const wrapper = await mountPage()
     expect(wrapper.find('[data-testid="overdue-panel"]').exists()).toBe(false)
     expect(mockGetOverdueRetention).not.toHaveBeenCalled()
+  })
+
+  it('普通员工（仅 dashboard:view）→ 隐藏新建项目/项目看板/统计与图表，工作台只剩未读消息', async () => {
+    allowOnly('dashboard:view')
+    const wrapper = await mountPage()
+
+    expect(wrapper.text()).not.toContain('新建项目')
+    expect(wrapper.text()).not.toContain('项目看板')
+    expect(wrapper.find('[data-testid="stat-scope"]').exists()).toBe(false)
+    expect(wrapper.find('.stat-grid').exists()).toBe(false)
+    expect(chartInit).not.toHaveBeenCalled()
+
+    const workbench = wrapper.find('[data-testid="workbench-row"]').text()
+    expect(workbench).toContain('未读消息')
+    expect(workbench).not.toContain('待我审批')
+    expect(workbench).not.toContain('我发起的')
+  })
+
+  it('财务角色 → 统计口径为全公司、逾期卡保留；无审批权限时工作台只剩未读消息', async () => {
+    allowOnly('dashboard:view', 'finance:view')
+    const wrapper = await mountPage()
+
+    expect(wrapper.find('[data-testid="stat-scope"]').text()).toContain('全公司')
+    expect(wrapper.find('[data-testid="overdue-panel"]').exists()).toBe(true)
+
+    const workbench = wrapper.find('[data-testid="workbench-row"]').text()
+    expect(workbench).toContain('未读消息')
+    expect(workbench).not.toContain('待我审批')
+  })
+
+  it('项目经理（project + 审批权限）→ 新建项目/项目看板/四项工作台可用，口径为我的项目', async () => {
+    allowOnly('dashboard:view', 'project:view', 'project:create', 'project-dashboard:view', 'workflow:approval:view')
+    const wrapper = await mountPage()
+
+    expect(wrapper.text()).toContain('新建项目')
+    expect(wrapper.text()).toContain('项目看板')
+    expect(wrapper.find('[data-testid="stat-scope"]').text()).toContain('我的项目')
+
+    const workbench = wrapper.find('[data-testid="workbench-row"]').text()
+    expect(workbench).toContain('待我审批')
+    expect(workbench).toContain('我已审批')
+    expect(workbench).toContain('我发起的')
+    expect(workbench).toContain('未读消息')
   })
 
   it('主题切换 → 以缓存数据重绘两图，不重复请求接口', async () => {

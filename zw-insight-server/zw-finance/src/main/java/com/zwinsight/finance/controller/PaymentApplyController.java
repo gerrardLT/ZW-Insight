@@ -28,6 +28,7 @@ public class PaymentApplyController {
     private final PaymentApplyService paymentApplyService;
 
     @GetMapping("/page")
+    @RequiresPermission({"finance:view", "finance:paymentapply:view"})
     public R<PageResult<BizPaymentApply>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -39,11 +40,13 @@ public class PaymentApplyController {
     }
 
     @GetMapping("/{id}")
+    @RequiresPermission({"finance:view", "finance:paymentapply:view"})
     public R<BizPaymentApply> getById(@PathVariable Long id) {
         return R.ok(paymentApplyService.getById(id));
     }
 
     @PostMapping
+    @RequiresPermission({"finance:view", "finance:paymentapply:add"})
     @FinanceLockCheck(dateField = "paymentDate", operation = "新增")
     @OperLog(module = "付款管理", operType = "INSERT", description = "新增付款申请")
     public R<Void> save(@RequestBody BizPaymentApply paymentApply) {
@@ -52,6 +55,7 @@ public class PaymentApplyController {
     }
 
     @PutMapping("/{id}")
+    @RequiresPermission({"finance:view", "finance:paymentapply:edit"})
     @FinanceLockCheck(dateField = "paymentDate", operation = "编辑")
     public R<Void> update(@PathVariable Long id, @RequestBody BizPaymentApply paymentApply) {
         paymentApply.setId(id);
@@ -60,13 +64,14 @@ public class PaymentApplyController {
     }
 
     @DeleteMapping("/{id}")
+    @RequiresPermission({"finance:view", "finance:paymentapply:delete"})
     public R<Void> delete(@PathVariable Long id) {
         paymentApplyService.delete(id);
         return R.ok();
     }
 
     @RequestMapping(value = "/{id}/submit", method = {RequestMethod.POST, RequestMethod.PUT})
-    @RequiresPermission("finance:payment:submit")
+    @RequiresPermission({"finance:payment:submit", "finance:paymentapply:submit"})
     @OperLog(module = "付款管理", operType = "UPDATE", description = "提交付款申请审批")
     public R<Void> submit(@PathVariable Long id,
                           @RequestBody(required = false) SubmitWithCcRequest request) {

@@ -49,11 +49,12 @@
         @reset="resetColumns"
         @refresh="loadData"
       >
-<el-button type="primary" @click="handleAdd">
+<el-button v-if="canCreate" type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon>新增付款申请
         </el-button>
         <!-- 批量操作（Phase 1.2）：勾选态驱动；后端整体单事务，任一失败全部回滚 -->
         <el-button
+          v-if="canPay"
           type="danger"
           plain
           :disabled="!selectedRows.length"
@@ -61,6 +62,7 @@
           @click="handleBatchDelete"
         >批量删除（{{ selectedRows.length }}）</el-button>
         <el-button
+          v-if="canPay"
           type="success"
           plain
           :disabled="!selectedRows.length"
@@ -112,10 +114,10 @@
         <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看</el-button>
-            <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="success" @click="handleSubmitApply(row)">提交</el-button>
-            <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
-            <el-button v-if="row.status === 'APPROVED' && row.payStatus !== 'PAID'" link type="warning" @click="handleMarkPaid(row)">标记支付</el-button>
-            <el-button v-if="row.status === 'APPROVED' && row.payStatus === 'PAID'" link type="info" @click="handleRevokePaid(row)">撤销标记</el-button>
+            <el-button v-if="(row.status === 'DRAFT' || row.status === 'REJECTED') && canOperateRow(row)" link type="success" @click="handleSubmitApply(row)">提交</el-button>
+            <el-button v-if="row.status === 'DRAFT' && canOperateRow(row)" link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="canPay && row.status === 'APPROVED' && row.payStatus !== 'PAID'" link type="warning" @click="handleMarkPaid(row)">标记支付</el-button>
+            <el-button v-if="canPay && row.status === 'APPROVED' && row.payStatus === 'PAID'" link type="info" @click="handleRevokePaid(row)">撤销标记</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -134,6 +136,7 @@
     </el-card>
 
     <stat-chart-panel
+      v-if="canViewFundPlan"
       ref="planPanelRef"
       class="stat-panel"
       title="资金计划（按月应付预测）"
@@ -273,7 +276,7 @@
 
     <!-- 手工标记支付（V2026_56；已勾稽银行流水的单据后端会拒绝，支付态以流水为准）
          v-if 懒挂载：未打开时不创建 date-picker/input-number 组件实例，降低首屏挂载成本 -->
-    <el-dialog v-if="payDialogVisible" v-model="payDialogVisible" title="标记已支付" width="440px" destroy-on-close>
+    <el-dialog v-if="canPay && payDialogVisible" v-model="payDialogVisible" title="标记已支付" width="440px" destroy-on-close>
       <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-sm-md)"
         title="支付标记为现金口径，不改变项目支出（审批口径）；若已导入网银流水，请优先在银行流水页勾稽自动产生支付态" />
       <el-form label-width="100px">
@@ -296,7 +299,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
@@ -306,6 +309,8 @@ import ApprovalSubmitDialog from '@/components/ApprovalSubmitDialog.vue'
 import ZwFormPane from '@/components/ZwFormPane.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
 import { useRowNavigation } from '@/composables/useRowNavigation'
+import { usePermission } from '@/composables/usePermission'
+import { useUserStore } from '@/stores/user'
 import { getPaymentApplyPage, getPaymentApplyDetail, createPaymentApply, deletePaymentApply, submitPaymentApply, batchPaymentApply, getFundPlan, markPaymentApplyPaid, revokePaymentApplyPaid } from '@/api/finance'
 
 // 列显隐配置（S2.1）：按 payment-apply-table 持久化 localStorage
@@ -333,6 +338,24 @@ import { positiveAmount } from '@/utils/form-rules'
 import { toWan } from '@/utils/chart-format'
 
 const route = useRoute()
+// V2026_124：财务现金动作（标记支付/撤销/批量）与资金计划面板仅财务可见；
+// 项目经理通过项目付款入口复用本页，但只能查看/新增/编辑/提交本人草稿。
+const { hasPermission } = usePermission()
+const userStore = useUserStore()
+const canPay = computed(() => hasPermission('finance:payment:submit'))
+const canViewFundPlan = computed(() => hasPermission('finance:view'))
+/** 有财务视图码或细粒度新增码才显示新增入口（与后端 save 的 OR 语义一致） */
+const canCreate = computed(() => hasPermission('finance:view') || hasPermission('finance:paymentapply:add'))
+const currentUserId = computed(() => userStore.userInfo?.userId)
+/**
+ * 行内写操作归属：财务不受限；非财务仅允许本人创建的单据。
+ * createdBy 缺失的历史数据保持可见，由后端归属守卫兜底。
+ */
+function canOperateRow(row: any): boolean {
+  if (canPay.value) return true
+  if (row?.createdBy == null) return true
+  return String(row.createdBy) === String(currentUserId.value)
+}
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const tableData = ref<any[]>([])

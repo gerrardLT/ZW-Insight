@@ -26,6 +26,7 @@ class ContractRevisionServiceTest {
     @Mock com.zwinsight.contract.service.ContractPayTermService payTermService;
     @Mock com.zwinsight.common.revision.ExpenseContractRevisionHandler expenseHandler;
     @Mock List<com.zwinsight.common.revision.ExpenseContractRevisionHandler> expenseHandlers;
+    @Mock com.zwinsight.security.mapper.SysUserMapper userMapper;
     @Spy ObjectMapper json = new ObjectMapper();
     @InjectMocks ContractRevisionService service;
     private BizConstructionContract contract() {
@@ -40,6 +41,9 @@ class ContractRevisionServiceTest {
     @org.junit.jupiter.api.BeforeEach void context() {
         com.zwinsight.common.config.SecurityContextHolder.setTenantId(9999L);
         com.zwinsight.common.config.SecurityContextHolder.setUserId(9L);
+        lenient().when(userMapper.selectPermissionsByUserId(9L)).thenReturn(List.of(
+                "contract:view", "contract:contract:edit", "contract:contract:submit",
+                "purchase:view", "labor:view", "machine:view", "subcontract:view"));
         lenient().when(contracts.selectById(1L)).thenReturn(contract());
     }
     @org.junit.jupiter.api.AfterEach void clearContext() { com.zwinsight.common.config.SecurityContextHolder.clear(); }
@@ -51,6 +55,17 @@ class ContractRevisionServiceTest {
     @Test void detailMissing() { assertThrows(RuntimeException.class, () -> service.detail(4L)); }
     @Test void listEmpty() { when(revisions.selectList(any(Wrapper.class))).thenReturn(List.of()); assertTrue(service.list(1L).isEmpty()); }
     @Test void listFailurePropagates() { when(revisions.selectList(any(Wrapper.class))).thenThrow(new IllegalStateException()); assertThrows(IllegalStateException.class, () -> service.list(1L)); }
+
+    @Test void categoryPermission_rejectsCrossModuleRead() {
+        when(userMapper.selectPermissionsByUserId(9L)).thenReturn(List.of("machine:view"));
+        assertThrows(RuntimeException.class, () -> service.list(1L, "CONSTRUCTION"));
+    }
+
+    @Test void categoryPermission_rejectsCrossModuleWrite() {
+        when(userMapper.selectPermissionsByUserId(9L)).thenReturn(List.of("machine:view"));
+        assertThrows(RuntimeException.class, () -> service.create(
+                new ContractRevisionRequest(1L, "PURCHASE", 3, new BigDecimal("120"), "修订")));
+    }
     @Test void createSnapshotsAndDelta() {
         lock(); when(revisions.selectCount(any(Wrapper.class))).thenReturn(0L);
         service.create(new ContractRevisionRequest(1L, null, 3, new BigDecimal("120"), "修订"));

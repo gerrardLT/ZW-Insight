@@ -184,6 +184,13 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: { title: '项目台账', icon: 'Document', group: '项目主档', hidden: true }
       },
       {
+        // V2026_124：项目经理发起付款的专用入口（复用财务付款页，细粒度权限码）
+        path: 'payment-apply',
+        name: 'ProjectPaymentApply',
+        component: () => import('@/views/finance/payment-apply.vue'),
+        meta: { title: '项目付款申请', icon: 'CreditCard', group: '项目主档', permission: 'finance:paymentapply:view' }
+      },
+      {
         path: 'create',
         name: 'ProjectCreate',
         component: () => import('@/views/project/form.vue'),
@@ -1173,38 +1180,45 @@ const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/workflow',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    redirect: '/workflow/designer',
-    meta: { title: '工作流管理', icon: 'Share', permission: 'workflow:view' },
+    // 默认落点按权限分发：有流程管理码进设计器，仅审批码进审批中心
+    redirect: () => {
+      const permissions = useUserStore().permissions || []
+      return permissions.includes('*:*:*') || permissions.includes('workflow:view')
+        ? '/workflow/designer'
+        : '/workflow/approval'
+    },
+    meta: { title: '工作流管理', icon: 'Share', permission: ['workflow:view', 'workflow:approval:view'] },
     children: [
       {
         path: 'designer',
         name: 'WorkflowDesigner',
         component: () => import('@/views/workflow/designer/index.vue'),
-        meta: { title: '流程设计器', icon: 'EditPen' }
+        meta: { title: '流程设计器', icon: 'EditPen', permission: 'workflow:view' }
       },
       {
         path: 'process',
         name: 'WorkflowProcess',
         component: () => import('@/views/workflow/process/index.vue'),
-        meta: { title: '流程定义', icon: 'Document' }
+        meta: { title: '流程定义', icon: 'Document', permission: 'workflow:view' }
       },
       {
         path: 'business-type',
         name: 'WorkflowBusinessType',
         component: () => import('@/views/workflow/business-type/index.vue'),
-        meta: { title: '业务类型', icon: 'Collection' }
+        meta: { title: '业务类型', icon: 'Collection', permission: 'workflow:view' }
       },
       {
         path: 'approval',
         name: 'WorkflowApproval',
         component: () => import('@/views/workflow/approval/index.vue'),
-        meta: { title: '审批管理', icon: 'Checked' }
+        // 业务角色凭细粒度审批码进入；既有 workflow:view 角色保持兼容
+        meta: { title: '审批管理', icon: 'Checked', permission: ['workflow:approval:view', 'workflow:view'] }
       },
       {
         path: 'rollback',
         name: 'WorkflowRollback',
         component: () => import('@/views/workflow/rollback/index.vue'),
-        meta: { title: '审批回滚', icon: 'RefreshLeft' }
+        meta: { title: '审批回滚', icon: 'RefreshLeft', permission: 'workflow:view' }
       }
     ]
   },

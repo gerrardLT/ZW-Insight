@@ -12,6 +12,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import ElementPlus, { ElMessageBox } from 'element-plus'
 
 const {
@@ -99,6 +100,11 @@ import PaymentApply from '@/views/finance/payment-apply.vue'
 // 不放宽断言、不跳过用例。组件侧已同步做真实挂载成本优化：
 // 标记支付对话框 v-if 懒挂载、支付状态列改用原生 title 而非每行 el-tooltip 实例。
 vi.setConfig({ testTimeout: 20_000 })
+
+// V2026_124：组件通过 usePermission() 读取 userStore，挂载前必须有 active pinia
+beforeEach(() => {
+  setActivePinia(createPinia())
+})
 
 async function mountPage() {
   const wrapper = mount(PaymentApply, {
