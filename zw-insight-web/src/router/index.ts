@@ -824,7 +824,7 @@ const constantRoutes: RouteRecordRaw[] = [
           title: '材料与采购', icon: 'Box', permission: 'material:view',
           // S2：9 个页签保留前 6 个在主区，采购 3 项收进「更多」（按 group 分组）
           hubTabs: [
-            { key: 'inbound', label: '材料入库单', loader: () => import('@/views/material/inbound.vue') },
+            { key: 'inbound', label: '材料入库单', loader: () => import('@/views/material/inbound.vue'), badge: 'materialInboundDraft' },
             { key: 'outbound', label: '现场领料单', loader: () => import('@/views/material/outbound.vue') },
             { key: 'transfer', label: '材料调拨单', loader: () => import('@/views/material/transfer.vue') },
             { key: 'stock', label: '材料库存台账', loader: () => import('@/views/material/stock.vue') },
@@ -890,7 +890,7 @@ const constantRoutes: RouteRecordRaw[] = [
           title: '机械租赁管理', icon: 'Van', permission: 'machine:view',
           // S2：首屏按角色落到点检与台班（项目经理/普通员工）或设备台账（其余），合同退到第 3 位
           hubTabs: [
-            { key: 'work-log', label: '机械现场点检与台班', loader: () => import('@/views/machine/work-log.vue'), defaultForRoles: ['PROJECT_MANAGER', 'STAFF'] },
+            { key: 'work-log', label: '机械现场点检与台班', loader: () => import('@/views/machine/work-log.vue'), defaultForRoles: ['PROJECT_MANAGER', 'STAFF'], badge: 'machineWorkLogDraft' },
             { key: 'ledger', label: '机械设备台账', loader: () => import('@/views/machine/ledger.vue'), defaultForRoles: ['SUPER_ADMIN', 'COMPANY_LEADER', 'FINANCE_STAFF', 'MATERIAL_STAFF', 'COMMERCE_STAFF', 'AUDITOR'] },
             { key: 'contract', label: '机械租赁合同', loader: () => import('@/views/machine/contract.vue') },
             { key: 'entry', label: '进出场登记', loader: () => import('@/views/machine/entry.vue') },

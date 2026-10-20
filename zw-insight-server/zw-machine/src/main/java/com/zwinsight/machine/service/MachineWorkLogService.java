@@ -91,6 +91,16 @@ public class MachineWorkLogService {
     }
 
     public PageResult<BizMachineWorkLog> page(int page, int size, Long machineId, Long projectId, String machineName, String workDate) {
+        return page(page, size, machineId, projectId, machineName, workDate, null);
+    }
+
+    /**
+     * 分页查询（可按状态过滤）
+     *
+     * @param status 单据状态（DRAFT/CONFIRMED）；空=不限。供 Hub 待办徽标统计待确认台班数使用
+     */
+    public PageResult<BizMachineWorkLog> page(int page, int size, Long machineId, Long projectId,
+                                              String machineName, String workDate, String status) {
         // machineName 属台账展示字段，需先经 biz_machine_ledger 解析为 machineId 集合再过滤
         List<Long> nameMatchedIds = null;
         if (StrUtil.isNotBlank(machineName)) {
@@ -108,6 +118,7 @@ public class MachineWorkLogService {
         wrapper.eq(machineId != null, BizMachineWorkLog::getMachineId, machineId)
                 .eq(projectId != null, BizMachineWorkLog::getProjectId, projectId)
                 .eq(workDateValue != null, BizMachineWorkLog::getWorkDate, workDateValue)
+                .eq(StrUtil.isNotBlank(status), BizMachineWorkLog::getStatus, status)
                 .in(nameMatchedIds != null, BizMachineWorkLog::getMachineId, nameMatchedIds)
                 .orderByDesc(BizMachineWorkLog::getWorkDate);
         Page<BizMachineWorkLog> result = workLogMapper.selectPage(pageParam, wrapper);

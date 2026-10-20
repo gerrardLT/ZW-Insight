@@ -56,6 +56,7 @@ class ProjectServiceTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private BizProjectStatusLogMapper statusLogMapper;
     @Mock private BizProjectChangeLogMapper changeLogMapper;
+    @Mock private com.zwinsight.project.spi.ProjectWarningIdProvider warningIdProvider;
 
     // P1-M1：真实状态机（依赖同批 mock），显式构造注入——测试走到的是真实转移边表/守卫
     private ProjectService projectService;
@@ -81,7 +82,8 @@ class ProjectServiceTest {
         ProjectStateMachine stateMachine = new ProjectStateMachine(projectMapper, statusLogMapper);
         projectService = new ProjectService(projectMapper, serialNumberService, memberService,
                 approvalService, dataPermissionDataProvider, projectMemberMapper, wbsNodeMapper,
-                userProjectMapper, eventPublisher, stateMachine, statusLogMapper, changeLogMapper);
+                userProjectMapper, eventPublisher, stateMachine, statusLogMapper, changeLogMapper,
+                warningIdProvider);
     }
 
     // =====================================================================
@@ -896,6 +898,42 @@ class ProjectServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("不支持的项目视图");
         verify(projectMapper, never()).selectPage(any(), any());
+    }
+
+    @Test
+    @DisplayName("view=WARNING 使用预警提供者下推的 ID 集合")
+    @SuppressWarnings("unchecked")
+    void page_warningViewUsesProviderIds() {
+        Page<BizProject> page = new Page<>(1, 10);
+        page.setRecords(List.of(sampleProject));
+        page.setTotal(1);
+        when(projectMapper.selectPage(any(), any())).thenReturn(page);
+        when(warningIdProvider.warningProjectIds()).thenReturn(java.util.Set.of(2L, 3L));
+
+        projectService.page(1, 10, null, null, null, "WARNING");
+
+        ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<BizProject>> captor =
+                ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class);
+        verify(projectMapper).selectPage(any(), captor.capture());
+        assertThat(captor.getValue().getSqlSegment()).contains("id IN");
+        assertThat(captor.getValue().getParamNameValuePairs().values()).contains(2L, 3L);
+    }
+
+    @Test
+    @DisplayName("view=WARNING 且提供者返回空集时查空结果，不退化为全量")
+    @SuppressWarnings("unchecked")
+    void page_warningViewEmptyIdsReturnsNothing() {
+        Page<BizProject> page = new Page<>(1, 10);
+        page.setRecords(List.of());
+        page.setTotal(0);
+        when(projectMapper.selectPage(any(), any())).thenReturn(page);
+        when(warningIdProvider.warningProjectIds()).thenReturn(java.util.Set.of());
+
+        projectService.page(1, 10, null, null, null, "WARNING");
+
+        ArgumentCaptor<Wrapper<BizProject>> captor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(projectMapper).selectPage(any(), captor.capture());
+        assertThat(captor.getValue().getSqlSegment()).contains("1 = 0");
     }
 
 }

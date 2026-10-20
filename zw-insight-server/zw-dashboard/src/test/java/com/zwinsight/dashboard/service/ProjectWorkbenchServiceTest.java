@@ -25,6 +25,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -133,7 +135,7 @@ class ProjectWorkbenchServiceTest {
         assertThat(summary.get("total")).isEqualTo(3);
         assertThat(summary.get("mine")).isEqualTo(2L);
         assertThat(summary.get("inConstruction")).isEqualTo(1L);
-        // 预警=存在活跃风险的项目数（与 view=RISK 同源）：3 号项目健康度 GREEN 但有 INFO 风险，仍计入
+        // 预警=健康度非 GREEN ∪ 活跃风险项目（与 view=WARNING 同源）：3 号项目 GREEN 但有 INFO 风险仍计入
         assertThat(summary.get("warning")).isEqualTo(3L);
         assertThat(summary.get("riskOpen")).isEqualTo(3L);
         assertThat(summary.get("overdueReceivableCount")).isEqualTo(2);
@@ -177,5 +179,25 @@ class ProjectWorkbenchServiceTest {
         Map<String, Object> result = service.summary("abc");
 
         assertThat((List<?>) result.get("projects")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("预警 ID 集合 = 健康度非 GREEN ∪ 活跃风险，第二次调用命中缓存")
+    void warningProjectIds_unionAndCache() {
+        when(projectMapper.selectList(any())).thenReturn(List.of(
+                project(1L, "CONSTRUCTION"), project(2L, "CONSTRUCTION"), project(9L, "CONSTRUCTION")));
+        // 9 号亏损（RED）但无风险单 → 仍应进预警；1 号有风险单但健康度 GREEN → 也应进
+        when(cockpitService.getProjectHealth()).thenReturn(List.of(
+                health(1L, "GREEN"), health(2L, "GREEN"), health(9L, "RED")));
+        when(riskMapper.selectList(any())).thenReturn(List.of(risk(1L, 1L, BizRiskRegister.SEVERITY_RED)));
+
+        java.util.Set<Long> first = service.warningProjectIds();
+        assertThat(first).containsExactlyInAnyOrder(1L, 9L);
+
+        java.util.Set<Long> second = service.warningProjectIds();
+        assertThat(second).isEqualTo(first);
+        // 第二次命中 60 秒缓存：不再重复查询项目/风险/健康度
+        verify(projectMapper, times(1)).selectList(any());
+        verify(cockpitService, times(1)).getProjectHealth();
     }
 }

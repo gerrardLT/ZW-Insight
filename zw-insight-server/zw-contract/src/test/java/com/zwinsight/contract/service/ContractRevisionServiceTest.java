@@ -43,7 +43,10 @@ class ContractRevisionServiceTest {
         com.zwinsight.common.config.SecurityContextHolder.setUserId(9L);
         lenient().when(userMapper.selectPermissionsByUserId(9L)).thenReturn(List.of(
                 "contract:view", "contract:contract:edit", "contract:contract:submit",
-                "purchase:view", "labor:view", "machine:view", "subcontract:view"));
+                "purchase:view", "labor:view", "machine:view", "subcontract:view",
+                // V2026_125：支出四类修订写码
+                "purchase:contract:edit", "labor:contract:edit", "machine:contract:edit",
+                "subcontract:contract:edit"));
         lenient().when(contracts.selectById(1L)).thenReturn(contract());
     }
     @org.junit.jupiter.api.AfterEach void clearContext() { com.zwinsight.common.config.SecurityContextHolder.clear(); }
@@ -64,6 +67,14 @@ class ContractRevisionServiceTest {
     @Test void categoryPermission_rejectsCrossModuleWrite() {
         when(userMapper.selectPermissionsByUserId(9L)).thenReturn(List.of("machine:view"));
         assertThrows(RuntimeException.class, () -> service.create(
+                new ContractRevisionRequest(1L, "PURCHASE", 3, new BigDecimal("120"), "修订")));
+    }
+
+    @Test void categoryPermission_rejectsViewOnlyWrite() {
+        // V2026_125：只读角色（仅模块 view 码）不得发起支出合同修订
+        when(userMapper.selectPermissionsByUserId(9L)).thenReturn(List.of(
+                "purchase:view", "labor:view", "machine:view", "subcontract:view"));
+        assertThrows(com.zwinsight.common.exception.BusinessException.class, () -> service.create(
                 new ContractRevisionRequest(1L, "PURCHASE", 3, new BigDecimal("120"), "修订")));
     }
     @Test void createSnapshotsAndDelta() {

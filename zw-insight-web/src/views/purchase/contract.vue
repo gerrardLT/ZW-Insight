@@ -1,31 +1,46 @@
 <template>
   <div class="purchase-contract-container">
-    <el-card shadow="never">
-      <el-form :model="queryParams" inline>
-        <el-form-item label="合同名称">
-          <el-input v-model="queryParams.contractName" placeholder="合同名称" clearable style="width: 200px" />
-        </el-form-item>
-        <el-form-item label="供应商">
-          <el-input v-model="queryParams.supplierName" placeholder="供应商名称" clearable style="width: 180px" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
-            <el-option label="草稿" value="DRAFT" />
-            <el-option label="审批中" value="SUBMITTED" />
-            <el-option label="已生效" value="EFFECTIVE" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
+    <ZwListPage
+      v-model:page="queryParams.pageNum"
+      v-model:size="queryParams.pageSize"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      show-summary
+      :summary-method="sumFourColumns"
+      @change="loadData"
+    >
+      <template #toolbar>
+        <el-form :model="queryParams" inline>
+          <el-form-item label="合同名称">
+            <el-input v-model="queryParams.contractName" placeholder="合同名称" clearable style="width: 200px" />
+          </el-form-item>
+          <el-form-item label="供应商">
+            <el-input v-model="queryParams.supplierName" placeholder="供应商名称" clearable style="width: 180px" />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
+              <el-option label="草稿" value="DRAFT" />
+              <el-option label="审批中" value="SUBMITTED" />
+              <el-option label="已生效" value="EFFECTIVE" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
 
-      <div class="table-toolbar">
-        <el-button type="primary" @click="handleAdd">新增采购合同</el-button>
-      </div>
+        <div class="table-toolbar">
+          <el-button type="primary" @click="handleAdd">新增采购合同</el-button>
+        </div>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border show-summary :summary-method="sumFourColumns"><template #append><div class="sum-note">本页合计（非全量）</div></template>
+      <template #table-append>
+        <div class="sum-note">本页合计（非全量）</div>
+      </template>
+
         <el-table-column prop="contractCode" label="合同编号" width="150" />
         <el-table-column prop="contractName" label="合同名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="supplierName" label="供应商" width="160" show-overflow-tooltip />
@@ -55,16 +70,11 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交审批</el-button>
-            <el-button v-if="row.status === 'EFFECTIVE'" link type="warning" @click="openRevision(row)">修订</el-button>
+            <el-button v-if="row.status === 'EFFECTIVE' && canRevise" link type="warning" @click="openRevision(row)">修订</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
-      </div>
-    </el-card>
+    </ZwListPage>
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑采购合同' : '新增采购合同'" width="650px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
@@ -107,18 +117,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { usePermission } from '@/composables/usePermission'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getPurchaseContractPage, createPurchaseContract, updatePurchaseContract, deletePurchaseContract, submitPurchaseContract } from '@/api/purchase'
 // 2026-08-17 归零重建全链路 E2E 实测缺陷#7：表单原无项目字段，导致 projectId=null
 // ① DB project_id NOT NULL 无默认值 INSERT 直接 500；② 预算切面取不到 projectId 静默跳过管控
 import ProjectSelector from '@/components/ProjectSelector.vue'
+import ZwListPage from '@/components/ZwListPage.vue'
 import ExpenseContractRevisionDialog from '@/components/ExpenseContractRevisionDialog.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const tableData = ref<any[]>([])
+// V2026_125：修订是写动作，只对持采购合同修订写码的角色显示入口
+const { hasPermission } = usePermission()
+const canRevise = computed(() => hasPermission('purchase:contract:edit'))
 const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)

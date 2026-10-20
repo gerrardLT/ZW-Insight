@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { getActivePinia } from 'pinia'
 import { useUserStore } from '@/stores/user'
 
 /**
@@ -14,8 +15,10 @@ import { useUserStore } from '@/stores/user'
  * if (hasPermission('project:create')) { ... }
  */
 export function usePermission() {
-  const userStore = useUserStore()
-  const permissionList = computed<string[]>(() => userStore.permissions || [])
+  // 壳测试（只挂 ElementPlus 未装 Pinia）下 useUserStore 会抛错；
+  // 无 Pinia 时按「无权限」处理，保证页面仍可挂载、按钮按最小权限隐藏。
+  const userStore = getActivePinia() ? useUserStore() : null
+  const permissionList = computed<string[]>(() => userStore?.permissions || [])
 
   /**
    * 判断是否拥有指定权限

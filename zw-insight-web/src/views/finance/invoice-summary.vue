@@ -1,6 +1,15 @@
 <template>
   <div class="finance-container">
-    <el-card shadow="never">
+    <ZwListPage
+      :data="tableData"
+      :loading="loading"
+      :total="tableData.length"
+      hide-pagination
+      border
+      show-summary
+      :summary-method="getSummaries"
+    >
+      <template #toolbar>
       <el-form :model="queryParams" inline>
         <el-form-item label="项目">
           <el-select
@@ -35,8 +44,7 @@
           </el-button>
         </el-form-item>
       </el-form>
-
-      <el-table :data="tableData" v-loading="loading" border show-summary :summary-method="getSummaries">
+      </template>
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">{{ row.projectName || '-' }}</template>
         </el-table-column>
@@ -58,8 +66,7 @@
             <template #default="{ row }">{{ formatMoney(row.receivedTaxAmount) }}</template>
           </el-table-column>
         </el-table-column>
-      </el-table>
-    </el-card>
+    </ZwListPage>
   </div>
 </template>
 
@@ -68,6 +75,7 @@ import { ref, onMounted } from 'vue'
 import type { TableColumnCtx } from 'element-plus'
 import { getInvoiceSummary } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import ZwListPage from '@/components/ZwListPage.vue'
 import type { InvoiceSummary } from '@/types/finance'
 
 const loading = ref(false)

@@ -30,8 +30,9 @@ public class InboundController {
     public R<PageResult<BizMaterialInbound>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long projectId) {
-        return R.ok(inboundService.page(page, size, projectId));
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String status) {
+        return R.ok(inboundService.page(page, size, projectId, status));
     }
 
     @GetMapping("/{id}")

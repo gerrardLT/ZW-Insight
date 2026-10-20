@@ -1,26 +1,36 @@
 <template>
   <div class="security-bond-container">
-    <el-card shadow="never">
-      <div class="table-toolbar">
-        <div class="filter-bar">
-          <el-select v-model="query.bondType" placeholder="保证金类型" clearable style="width: 160px" @change="loadPage">
-            <el-option label="投标保证金" value="TENDER" />
-            <el-option label="履约保证金" value="PERFORMANCE" />
-            <el-option label="质量保证金" value="QUALITY" />
-            <el-option label="农民工工资保证金" value="WAGE" />
-          </el-select>
-          <el-select v-model="query.refundStatus" placeholder="状态" clearable style="width: 140px; margin-left: var(--zw-space-sm)" @change="loadPage">
-            <el-option label="已缴存" value="DEPOSITED" />
-            <el-option label="退还申请中" value="REFUND_APPLY" />
-            <el-option label="已退还" value="REFUNDED" />
-            <el-option label="已动用" value="USED" />
-          </el-select>
-          <el-button style="margin-left: var(--zw-space-sm)" @click="loadExpiring">30天内到期</el-button>
+    <ZwListPage
+      v-model:page="query.page"
+      v-model:size="query.size"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      :layout="'total, prev, pager, next'"
+      @change="loadPage"
+    >
+      <template #toolbar>
+        <div class="table-toolbar">
+          <div class="filter-bar">
+            <el-select v-model="query.bondType" placeholder="保证金类型" clearable style="width: 160px" @change="loadPage">
+              <el-option label="投标保证金" value="TENDER" />
+              <el-option label="履约保证金" value="PERFORMANCE" />
+              <el-option label="质量保证金" value="QUALITY" />
+              <el-option label="农民工工资保证金" value="WAGE" />
+            </el-select>
+            <el-select v-model="query.refundStatus" placeholder="状态" clearable style="width: 140px; margin-left: var(--zw-space-sm)" @change="loadPage">
+              <el-option label="已缴存" value="DEPOSITED" />
+              <el-option label="退还申请中" value="REFUND_APPLY" />
+              <el-option label="已退还" value="REFUNDED" />
+              <el-option label="已动用" value="USED" />
+            </el-select>
+            <el-button style="margin-left: var(--zw-space-sm)" @click="loadExpiring">30天内到期</el-button>
+          </div>
+          <el-button type="primary" @click="handleAdd">新增保证金</el-button>
         </div>
-        <el-button type="primary" @click="handleAdd">新增保证金</el-button>
-      </div>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column label="类型" width="130" align="center">
           <template #default="{ row }">
             <el-tag :type="typeTag(row.bondType)" size="small">{{ typeLabel(row.bondType) }}</el-tag>
@@ -57,17 +67,7 @@
               link type="warning" @click="handleMarkUsed(row as SecurityBond)">标记动用</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
-        :total="total"
-        layout="total, prev, pager, next"
-        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
-        @current-change="loadPage"
-      />
-    </el-card>
+    </ZwListPage>
 
     <el-dialog v-model="dialogVisible" title="新增保证金" width="560px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="110px">
@@ -137,6 +137,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import ZwListPage from '@/components/ZwListPage.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import {
   getSecurityBondPage,

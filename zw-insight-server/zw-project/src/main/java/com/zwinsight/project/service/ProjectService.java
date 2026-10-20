@@ -75,6 +75,8 @@ public class ProjectService {
     private final ProjectStateMachine stateMachine;
     private final BizProjectStatusLogMapper statusLogMapper;
     private final BizProjectChangeLogMapper changeLogMapper;
+    /** 预警项目 ID 提供者（dashboard 实现，可选）：未装配时预警视图返回空集 */
+    private final com.zwinsight.project.spi.ProjectWarningIdProvider warningIdProvider;
 
     /** 立项审批开关（B1） */
     private static final String CONFIG_FILING_APPROVAL = "project_filing_approval_enabled";
@@ -89,7 +91,7 @@ public class ProjectService {
     /**
      * 分页查询
      *
-     * @param view 项目视图：ALL/MINE/RISK/OVERDUE（非法值 400，不静默降级）
+     * @param view 项目视图：ALL/MINE/RISK/WARNING/OVERDUE（非法值 400，不静默降级）
      */
     public PageResult<BizProject> page(int page, int size, String projectName, String status,
                                        String projectType, String view) {
@@ -106,6 +108,7 @@ public class ProjectService {
             case "RISK" -> wrapper.exists(
                     "SELECT 1 FROM biz_risk_register rr WHERE rr.project_id = biz_project.id AND rr.deleted = 0 "
                             + "AND rr.handle_status IN ('OPEN','PROCESSING')");
+            case "WARNING" -> applyWarningView(wrapper);
             case "OVERDUE" -> wrapper.exists(
                     "SELECT 1 FROM biz_receivable r WHERE r.project_id = biz_project.id AND r.deleted = 0 "
                             + "AND r.status = 'OPEN' AND r.due_date < CURDATE() "
@@ -117,7 +120,22 @@ public class ProjectService {
         return PageResult.of(result);
     }
 
-    private static final Set<String> PROJECT_VIEWS = Set.of("ALL", "MINE", "RISK", "OVERDUE");
+    /**
+     * 预警视图：健康度 RED/YELLOW ∪ 活跃风险的 ID 由 dashboard 侧 SPI 提供，
+     * 与项目工作台「预警项目」卡同源；未装配实现时返回空集（不静默退化为全量）。
+     */
+    private void applyWarningView(LambdaQueryWrapper<BizProject> wrapper) {
+        Set<Long> warningIds = warningIdProvider != null
+                ? warningIdProvider.warningProjectIds()
+                : Set.of();
+        if (warningIds == null || warningIds.isEmpty()) {
+            wrapper.apply("1 = 0");
+            return;
+        }
+        wrapper.in(BizProject::getId, warningIds);
+    }
+
+    private static final Set<String> PROJECT_VIEWS = Set.of("ALL", "MINE", "RISK", "WARNING", "OVERDUE");
 
     private static String normalizeView(String view) {
         if (StrUtil.isBlank(view) || "ALL".equalsIgnoreCase(view)) {

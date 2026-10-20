@@ -1,51 +1,60 @@
 <template>
   <div class="finance-container">
-    <el-card shadow="never">
-      <el-form :model="queryParams" inline>
-        <el-form-item label="项目">
-          <el-select
-            v-model="queryParams.projectId"
-            placeholder="请选择项目"
-            filterable
-            remote
-            :remote-method="searchProject"
-            clearable
-            style="width: 220px"
-          >
-            <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="认领状态">
-          <el-select v-model="queryParams.claimStatus" placeholder="全部" clearable style="width: 140px" @change="handleSearch">
-            <el-option label="待认领" value="UNCLAIMED" />
-            <el-option label="已认领" value="CLAIMED" />
-            <el-option label="已核销" value="WRITTEN_OFF" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>重置
-          </el-button>
-        </el-form-item>
-      </el-form>
+    <ZwListPage
+      v-model:page="queryParams.page"
+      v-model:size="queryParams.size"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      @change="loadData"
+    >
+      <template #toolbar>
+        <el-form :model="queryParams" inline>
+          <el-form-item label="项目">
+            <el-select
+              v-model="queryParams.projectId"
+              placeholder="请选择项目"
+              filterable
+              remote
+              :remote-method="searchProject"
+              clearable
+              style="width: 220px"
+            >
+              <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="认领状态">
+            <el-select v-model="queryParams.claimStatus" placeholder="全部" clearable style="width: 140px" @change="handleSearch">
+              <el-option label="待认领" value="UNCLAIMED" />
+              <el-option label="已认领" value="CLAIMED" />
+              <el-option label="已核销" value="WRITTEN_OFF" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>搜索
+            </el-button>
+            <el-button @click="handleReset">
+              <el-icon><Refresh /></el-icon>重置
+            </el-button>
+          </el-form-item>
+        </el-form>
 
-      <ZwListToolbar
-        :columns="receivedColumns"
-        :visible="columnVisible"
-        @update:visible="setVisible"
-        @reset="resetColumns"
-        @refresh="loadData"
-      >
-        <el-button type="primary" @click="handleAdd">
-          <el-icon><Plus /></el-icon>新增回款登记
-        </el-button>
-        <el-button @click="exportVisible = true">导出</el-button>
-      </ZwListToolbar>
+        <ZwListToolbar
+          :columns="receivedColumns"
+          :visible="columnVisible"
+          @update:visible="setVisible"
+          @reset="resetColumns"
+          @refresh="loadData"
+        >
+          <el-button type="primary" @click="handleAdd">
+            <el-icon><Plus /></el-icon>新增回款登记
+          </el-button>
+          <el-button @click="exportVisible = true">导出</el-button>
+        </ZwListToolbar>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column v-if="columnVisible[0]" prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
         <el-table-column v-if="columnVisible[1]" prop="receiveAmount" label="回款金额" width="130" align="right">
           <template #default="{ row }">{{ formatMoney(row.receiveAmount) }}</template>
@@ -75,20 +84,7 @@
             >核销</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="queryParams.page"
-          v-model:page-size="queryParams.size"
-          :page-sizes="[10, 20, 50]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="loadData"
-          @current-change="loadData"
-        />
-      </div>
-    </el-card>
+    </ZwListPage>
 
     <stat-chart-panel
       ref="ratePanelRef"
@@ -166,6 +162,7 @@ import StatChartPanel from '@/components/StatChartPanel.vue'
 import ContractSelector from '@/components/ContractSelector.vue'
 import { toWan, clampPercent } from '@/utils/chart-format'
 import ZwListToolbar from '@/components/ZwListToolbar.vue'
+import ZwListPage from '@/components/ZwListPage.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
 
 // 列显隐配置：按 payment-received-table 持久化 localStorage

@@ -14,7 +14,7 @@
       <el-radio-group v-model="queryParams.view" size="small" @change="handleViewChange">
         <el-radio-button label="ALL">全部项目</el-radio-button>
         <el-radio-button label="MINE">我的项目</el-radio-button>
-        <el-radio-button label="RISK">预警项目</el-radio-button>
+        <el-radio-button label="WARNING">预警项目</el-radio-button>
         <el-radio-button label="OVERDUE">逾期应收</el-radio-button>
       </el-radio-group>
       <el-button link type="primary" @click="router.push('/workflow/approval?tab=todo')">待我审批 →</el-button>
@@ -184,7 +184,7 @@ const workbench = ref<any>(null)
 const workbenchLoading = ref(false)
 const workbenchError = ref('')
 
-type ProjectView = 'ALL' | 'MINE' | 'RISK' | 'OVERDUE'
+type ProjectView = 'ALL' | 'MINE' | 'RISK' | 'WARNING' | 'OVERDUE'
 const queryParams = ref<{
   page: number
   size: number
@@ -303,7 +303,7 @@ function handleWorkbenchCard(card: { key: string }) {
     queryParams.value.view = 'MINE'
     queryParams.value.status = ''
   } else if (card.key === 'warning') {
-    queryParams.value.view = 'RISK'
+    queryParams.value.view = 'WARNING'
     queryParams.value.status = ''
   } else if (card.key === 'overdue') {
     queryParams.value.view = 'OVERDUE'

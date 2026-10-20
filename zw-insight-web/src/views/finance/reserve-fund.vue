@@ -1,37 +1,46 @@
 <template>
   <div class="finance-container">
-    <el-card shadow="never">
-      <el-form :model="queryParams" inline>
-        <el-form-item label="项目">
-          <el-select
-            v-model="queryParams.projectId"
-            placeholder="请选择项目"
-            filterable
-            remote
-            :remote-method="searchProject"
-            clearable
-            style="width: 220px"
-          >
-            <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>重置
-          </el-button>
-        </el-form-item>
-      </el-form>
+    <ZwListPage
+      v-model:page="queryParams.page"
+      v-model:size="queryParams.size"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      @change="loadData"
+    >
+      <template #toolbar>
+        <el-form :model="queryParams" inline>
+          <el-form-item label="项目">
+            <el-select
+              v-model="queryParams.projectId"
+              placeholder="请选择项目"
+              filterable
+              remote
+              :remote-method="searchProject"
+              clearable
+              style="width: 220px"
+            >
+              <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>搜索
+            </el-button>
+            <el-button @click="handleReset">
+              <el-icon><Refresh /></el-icon>重置
+            </el-button>
+          </el-form-item>
+        </el-form>
 
-      <div class="table-toolbar">
-        <el-button type="primary" @click="handleAddApply">
-          <el-icon><Plus /></el-icon>新增备用金申请
-        </el-button>
-      </div>
+        <div class="table-toolbar">
+          <el-button type="primary" @click="handleAddApply">
+            <el-icon><Plus /></el-icon>新增备用金申请
+          </el-button>
+        </div>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="applicant" label="申请人" width="130" show-overflow-tooltip />
         <el-table-column prop="applyAmount" label="申请金额" width="130" align="right">
           <template #default="{ row }">{{ formatMoney(row.applyAmount) }}</template>
@@ -54,20 +63,7 @@
             <el-button v-if="row.status === 'APPROVED'" link type="primary" @click="handleReturn(row)">归还</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="queryParams.page"
-          v-model:page-size="queryParams.size"
-          :page-sizes="[10, 20, 50]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="loadData"
-          @current-change="loadData"
-        />
-      </div>
-    </el-card>
+    </ZwListPage>
 
     <!-- 新增申请 -->
     <el-dialog v-model="applyVisible" title="新增备用金申请" width="600px" destroy-on-close>
@@ -129,6 +125,7 @@ import {
   createReserveFundReturn
 } from '@/api/finance'
 import { getProjectList } from '@/api/project'
+import ZwListPage from '@/components/ZwListPage.vue'
 
 const applyRef = ref<FormInstance>()
 const returnRef = ref<FormInstance>()

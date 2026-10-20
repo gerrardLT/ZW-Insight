@@ -1,24 +1,39 @@
 <template>
   <div class="machine-contract-container">
-    <el-card shadow="never">
-      <el-form :model="queryParams" inline>
-        <el-form-item label="合同名称">
-          <el-input v-model="queryParams.contractName" placeholder="合同名称" clearable style="width: 200px" />
-        </el-form-item>
-        <el-form-item label="设备供应商">
-          <el-input v-model="queryParams.supplierName" placeholder="设备供应商" clearable style="width: 160px" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
+    <ZwListPage
+      v-model:page="queryParams.pageNum"
+      v-model:size="queryParams.pageSize"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      show-summary
+      :summary-method="sumFourColumns"
+      @change="loadData"
+    >
+      <template #toolbar>
+        <el-form :model="queryParams" inline>
+          <el-form-item label="合同名称">
+            <el-input v-model="queryParams.contractName" placeholder="合同名称" clearable style="width: 200px" />
+          </el-form-item>
+          <el-form-item label="设备供应商">
+            <el-input v-model="queryParams.supplierName" placeholder="设备供应商" clearable style="width: 160px" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
 
-      <div class="table-toolbar">
-        <el-button type="primary" @click="handleAdd">新增机械合同</el-button>
-      </div>
+        <div class="table-toolbar">
+          <el-button type="primary" @click="handleAdd">新增机械合同</el-button>
+        </div>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border show-summary :summary-method="sumFourColumns"><template #append><div class="sum-note">本页合计（非全量）</div></template>
+      <template #table-append>
+        <div class="sum-note">本页合计（非全量）</div>
+      </template>
+
         <el-table-column prop="contractCode" label="合同编号" width="150" />
         <el-table-column prop="contractName" label="合同名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="supplierName" label="设备供应商" width="150" />
@@ -51,7 +66,7 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交审批</el-button>
-            <el-button v-if="row.status === 'EFFECTIVE'" link type="warning" @click="openRevision(row)">修订</el-button>
+            <el-button v-if="row.status === 'EFFECTIVE' && canRevise" link type="warning" @click="openRevision(row)">修订</el-button>
             <PrintButton
               link
               :show-icon="false"
@@ -63,12 +78,7 @@
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
-      </div>
-    </el-card>
+    </ZwListPage>
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑机械合同' : '新增机械合同'" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
@@ -103,17 +113,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { usePermission } from '@/composables/usePermission'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getMachineContractPage, createMachineContract, updateMachineContract, deleteMachineContract, submitMachineContract } from '@/api/machine'
 import PrintButton from '@/components/PrintButton.vue'
+import ZwListPage from '@/components/ZwListPage.vue'
 import ExpenseContractRevisionDialog from '@/components/ExpenseContractRevisionDialog.vue'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const tableData = ref<any[]>([])
+// V2026_125：修订是写动作，只对持机械合同修订写码的角色显示入口
+const { hasPermission } = usePermission()
+const canRevise = computed(() => hasPermission('machine:contract:edit'))
 const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)

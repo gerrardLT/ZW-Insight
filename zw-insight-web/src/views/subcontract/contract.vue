@@ -1,30 +1,39 @@
 <template>
   <div class="subcontract-container">
-    <el-card shadow="never">
-      <el-form :model="queryParams" inline>
-        <el-form-item label="合同名称">
-          <el-input v-model="queryParams.contractName" placeholder="合同名称" clearable style="width: 200px" />
-        </el-form-item>
-        <el-form-item label="分包方">
-          <el-input v-model="queryParams.subcontractor" placeholder="分包方" clearable style="width: 160px" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
+    <ZwListPage
+      v-model:page="queryParams.pageNum"
+      v-model:size="queryParams.pageSize"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      @change="loadData"
+    >
+      <template #toolbar>
+        <el-form :model="queryParams" inline>
+          <el-form-item label="合同名称">
+            <el-input v-model="queryParams.contractName" placeholder="合同名称" clearable style="width: 200px" />
+          </el-form-item>
+          <el-form-item label="分包方">
+            <el-input v-model="queryParams.subcontractor" placeholder="分包方" clearable style="width: 160px" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
 
-      <ZwListToolbar
-        :columns="contractColumns"
-        :visible="columnVisible"
-        @update:visible="setVisible"
-        @reset="resetColumns"
-        @refresh="loadData"
-      >
-        <el-button type="primary" @click="handleAdd">新增分包合同</el-button>
-      </ZwListToolbar>
+        <ZwListToolbar
+          :columns="contractColumns"
+          :visible="columnVisible"
+          @update:visible="setVisible"
+          @reset="resetColumns"
+          @refresh="loadData"
+        >
+          <el-button type="primary" @click="handleAdd">新增分包合同</el-button>
+        </ZwListToolbar>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column v-if="columnVisible[0]" prop="contractCode" label="合同编号" width="150" />
         <el-table-column v-if="columnVisible[1]" prop="contractName" label="合同名称" min-width="180" show-overflow-tooltip />
         <el-table-column v-if="columnVisible[2]" prop="subcontractor" label="分包方" width="150" />
@@ -44,16 +53,11 @@
           <template #default="{ row }">
             <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="success" @click="handleSubmit(row)">提交审批</el-button>
-            <el-button v-if="row.status === 'EFFECTIVE'" link type="warning" @click="openRevision(row)">修订</el-button>
+            <el-button v-if="row.status === 'EFFECTIVE' && canRevise" link type="warning" @click="openRevision(row)">修订</el-button>
             <el-button v-if="row.status === 'DRAFT'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination v-model:current-page="queryParams.pageNum" v-model:page-size="queryParams.pageSize" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="loadData" @current-change="loadData" />
-      </div>
-    </el-card>
+    </ZwListPage>
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑分包合同' : '新增分包合同'" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
@@ -88,13 +92,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { usePermission } from '@/composables/usePermission'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getSubcontractPage, createSubcontract, updateSubcontract, deleteSubcontract, submitSubcontract } from '@/api/subcontract'
 import { positiveAmount } from '@/utils/form-rules'
 import ProjectSelector from '@/components/ProjectSelector.vue'
 import ZwListToolbar from '@/components/ZwListToolbar.vue'
+import ZwListPage from '@/components/ZwListPage.vue'
 import ExpenseContractRevisionDialog from '@/components/ExpenseContractRevisionDialog.vue'
 import ZwFormPane from '@/components/ZwFormPane.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
@@ -114,6 +120,9 @@ const { visible: columnVisible, setVisible, reset: resetColumns } = useColumnSet
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const tableData = ref<any[]>([])
+// V2026_125：修订是写动作，只对持分包合同修订写码的角色显示入口
+const { hasPermission } = usePermission()
+const canRevise = computed(() => hasPermission('subcontract:contract:edit'))
 const total = ref(0)
 const dialogVisible = ref(false)
 const submitLoading = ref(false)

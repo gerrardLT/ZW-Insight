@@ -97,7 +97,8 @@ class ProjectMutationTest {
         // 参数顺序必须与 ProjectService 的 @RequiredArgsConstructor 字段声明顺序一致
         return new ProjectService(projectMapper, serialNumberService, memberService, approvalService,
                 dataPermissionDataProvider, memberMapper, wbsNodeMapper, userProjectMapper, eventPublisher,
-                new ProjectStateMachine(projectMapper, statusLogMapper), statusLogMapper, changeLogMapper);
+                new ProjectStateMachine(projectMapper, statusLogMapper), statusLogMapper, changeLogMapper,
+                null);
     }
 
     private BizProject project(String status, String totalIncome, String output) {

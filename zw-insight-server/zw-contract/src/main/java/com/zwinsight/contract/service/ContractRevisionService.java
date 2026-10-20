@@ -76,10 +76,10 @@ public class ContractRevisionService {
     }
 
     /**
-     * 类别权限校验（V2026_124 审查修复）。
-     * <p>控制器的方法级注解是 5 个 view 码 OR，只能保证"持有任一模块权限"；
-     * 若不在此按类别二次校验，仅持 machine:view 的用户可借默认类别读取/修改施工合同修订。
-     * 支出合同当前只有模块 view 码，暂以其作为该模块修订写权限；施工合同沿用原写码。</p>
+     * 类别权限校验（V2026_124 审查修复，V2026_125 升级为写码）。
+     * <p>控制器的方法级注解是 5 个写码（或 submit 的施工码）OR，只能保证"持有任一模块写权限"；
+     * 若不在此按类别二次校验，仅持 machine:contract:edit 的用户可借默认类别读取/修改施工合同修订。
+     * 读动作按模块 view 码，写/提交动作按模块修订写码（purchase/labor/machine/subcontract:contract:edit）。</p>
      */
     private void assertCategoryPermission(String category, String action) {
         Long userId = SecurityContextHolder.getUserId();
@@ -102,11 +102,12 @@ public class ContractRevisionService {
                 default -> "contract:contract:edit";
             };
         }
+        boolean readOnly = "read".equals(action);
         return switch (normalized) {
-            case "PURCHASE" -> "purchase:view";
-            case "LABOR" -> "labor:view";
-            case "MACHINE" -> "machine:view";
-            case "SUBCONTRACT" -> "subcontract:view";
+            case "PURCHASE" -> readOnly ? "purchase:view" : "purchase:contract:edit";
+            case "LABOR" -> readOnly ? "labor:view" : "labor:contract:edit";
+            case "MACHINE" -> readOnly ? "machine:view" : "machine:contract:edit";
+            case "SUBCONTRACT" -> readOnly ? "subcontract:view" : "subcontract:contract:edit";
             default -> null;
         };
     }

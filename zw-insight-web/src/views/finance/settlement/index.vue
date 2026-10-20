@@ -1,45 +1,54 @@
 <template>
   <div class="settlement-container">
-    <el-card shadow="never">
-      <el-form :model="queryParams" inline>
-        <el-form-item label="项目">
-          <el-select
-            v-model="queryParams.projectId"
-            placeholder="请选择项目"
-            filterable
-            remote
-            :remote-method="searchProject"
-            clearable
-            style="width: 220px"
-          >
-            <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
-            <el-option label="草稿" value="DRAFT" />
-            <el-option label="审批中" value="SUBMITTED" />
-            <el-option label="已通过" value="APPROVED" />
-            <el-option label="已驳回" value="REJECTED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>重置
-          </el-button>
-        </el-form-item>
-      </el-form>
+    <ZwListPage
+      v-model:page="queryParams.pageNum"
+      v-model:size="queryParams.pageSize"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      @change="loadData"
+    >
+      <template #toolbar>
+        <el-form :model="queryParams" inline>
+          <el-form-item label="项目">
+            <el-select
+              v-model="queryParams.projectId"
+              placeholder="请选择项目"
+              filterable
+              remote
+              :remote-method="searchProject"
+              clearable
+              style="width: 220px"
+            >
+              <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
+              <el-option label="草稿" value="DRAFT" />
+              <el-option label="审批中" value="SUBMITTED" />
+              <el-option label="已通过" value="APPROVED" />
+              <el-option label="已驳回" value="REJECTED" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>搜索
+            </el-button>
+            <el-button @click="handleReset">
+              <el-icon><Refresh /></el-icon>重置
+            </el-button>
+          </el-form-item>
+        </el-form>
 
-      <div class="table-toolbar">
-        <el-button type="primary" @click="handleCreate">
-          <el-icon><Plus /></el-icon>创建结算单
-        </el-button>
-      </div>
+        <div class="table-toolbar">
+          <el-button type="primary" @click="handleCreate">
+            <el-icon><Plus /></el-icon>创建结算单
+          </el-button>
+        </div>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="settlementCode" label="结算单编号" width="160" show-overflow-tooltip />
         <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="totalIncome" label="总收入" width="140" align="right">
@@ -72,20 +81,7 @@
             <el-button link type="warning" @click="handleExport(row)">导出</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
-          :page-sizes="[10, 20, 50]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="loadData"
-          @current-change="loadData"
-        />
-      </div>
-    </el-card>
+    </ZwListPage>
 
     <!-- 创建结算单弹窗：选择项目 -->
     <el-dialog v-model="createDialogVisible" title="创建结算单" width="450px" destroy-on-close>
@@ -127,6 +123,7 @@ import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getSettlementPage, createSettlement, submitSettlement, exportSettlement } from '@/api/settlement'
 import { getProjectList } from '@/api/project'
+import ZwListPage from '@/components/ZwListPage.vue'
 import ApprovalSubmitDialog from '@/components/ApprovalSubmitDialog.vue'
 
 const router = useRouter()

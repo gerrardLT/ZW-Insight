@@ -15,6 +15,7 @@ import { defineComponent, h } from 'vue'
 const {
   mockRouteQuery, mockRoutePath, mockRouterReplace,
   mockPermissions, mockRoles, mockFinanceWorkbench, mockWorkOrderPage,
+  mockMaterialInboundPage, mockMachineWorkLogPage,
 } = vi.hoisted(() => ({
   mockRouteQuery: { value: {} as Record<string, any> },
   mockRoutePath: { value: '' },
@@ -23,6 +24,8 @@ const {
   mockRoles: { value: [] as string[] },
   mockFinanceWorkbench: vi.fn(async (): Promise<any> => ({ code: 200, data: {} })),
   mockWorkOrderPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockMaterialInboundPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
+  mockMachineWorkLogPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
 }))
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -38,6 +41,8 @@ vi.mock('@/stores/user', () => ({
 }))
 vi.mock('@/api/finance', () => ({ getFinanceWorkbench: mockFinanceWorkbench }))
 vi.mock('@/api/labor', () => ({ getWorkOrderPage: mockWorkOrderPage }))
+vi.mock('@/api/material', () => ({ getMaterialInboundPage: mockMaterialInboundPage }))
+vi.mock('@/api/machine', () => ({ getMachineWorkLogPage: mockMachineWorkLogPage }))
 
 import HubPage from '@/components/HubPage.vue'
 
@@ -153,6 +158,22 @@ describe('HubPage S2 待办徽标', () => {
     const w = await mountHub([tab('work-order', { badge: 'laborWorkOrderDraft' })], { perms: ['labor:view'] })
     expect(mockWorkOrderPage).toHaveBeenCalledWith(expect.objectContaining({ page: 1, size: 1, status: 'DRAFT' }))
     expect(w.find('.hub-tab-badge').text()).toBe('7')
+  })
+
+  it('材料入库草稿徽标走 status=DRAFT 过滤', async () => {
+    mockMaterialInboundPage.mockResolvedValue({ code: 200, data: { records: [], total: 4 } })
+    const w = await mountHub([tab('inbound', { badge: 'materialInboundDraft' })], { perms: ['material:view'] })
+    expect(mockMaterialInboundPage).toHaveBeenCalledWith(expect.objectContaining({ page: 1, size: 1, status: 'DRAFT' }))
+    expect(w.find('.hub-tab-badge').text()).toBe('4')
+    expect(w.find('.hub-tab-badge').attributes('title')).toContain('草稿待提交')
+  })
+
+  it('机械台班待确认徽标走 status=DRAFT 过滤', async () => {
+    mockMachineWorkLogPage.mockResolvedValue({ code: 200, data: { records: [], total: 2 } })
+    const w = await mountHub([tab('work-log', { badge: 'machineWorkLogDraft' })], { perms: ['machine:view'] })
+    expect(mockMachineWorkLogPage).toHaveBeenCalledWith(expect.objectContaining({ page: 1, size: 1, status: 'DRAFT' }))
+    expect(w.find('.hub-tab-badge').text()).toBe('2')
+    expect(w.find('.hub-tab-badge').attributes('title')).toContain('台班待确认')
   })
 })
 

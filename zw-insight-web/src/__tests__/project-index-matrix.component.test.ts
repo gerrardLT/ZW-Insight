@@ -258,10 +258,11 @@ describe('project/index.vue 账本补测（@matrix A1）', () => {
     expect((mockProjectWorkbench.mock.calls[0] as any[])[0].projectIds).toContain('21')
 
     mockProjectPage.mockClear()
-    st.queryParams.view = 'RISK'
+    // 预警视图用 WARNING（健康度异常 ∪ 活跃风险），与摘要卡数字同源
+    st.queryParams.view = 'WARNING'
     st.handleViewChange()
     await flushPromises()
-    expect((mockProjectPage.mock.calls[0] as any[])[0].view).toBe('RISK')
+    expect((mockProjectPage.mock.calls[0] as any[])[0].view).toBe('WARNING')
   })
 
   it('S3.1 摘要卡点击切换视图并回到第 1 页', async () => {
@@ -277,5 +278,10 @@ describe('project/index.vue 账本补测（@matrix A1）', () => {
     st.handleWorkbenchCard({ key: 'mine' })
     await flushPromises()
     expect(st.queryParams.view).toBe('MINE')
+
+    // 预警卡 → view=WARNING（健康度异常 ∪ 活跃风险，与卡面数字同源）
+    st.handleWorkbenchCard({ key: 'warning' })
+    await flushPromises()
+    expect(st.queryParams.view).toBe('WARNING')
   })
 })

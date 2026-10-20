@@ -16,14 +16,21 @@ class ContractRevisionControllerTest {
     @BeforeEach void setup() { mvc = MockMvcBuilders.standaloneSetup(new ContractRevisionController(service)).build(); }
     @Test void revisionsRequireEditNotAdd() throws Exception {
         Class<ContractRevisionController> type = ContractRevisionController.class;
-        // V2026_123：四类支出合同以模块 view 码作为修订入口，施工合同保留原写码
+        // V2026_125：写接口按细粒度修订写码放行（施工保留原写码），不再用模块 view 码
+        String[] writeCodes = {"contract:contract:edit", "purchase:contract:edit", "labor:contract:edit",
+                "machine:contract:edit", "subcontract:contract:edit"};
         org.junit.jupiter.api.Assertions.assertArrayEquals(
-                new String[]{"contract:contract:edit", "purchase:view", "labor:view", "machine:view", "subcontract:view"},
+                writeCodes,
                 type.getMethod("create", com.zwinsight.contract.domain.dto.ContractRevisionRequest.class)
                         .getAnnotation(com.zwinsight.common.security.RequiresPermission.class).value());
         org.junit.jupiter.api.Assertions.assertArrayEquals(
-                new String[]{"contract:contract:edit", "purchase:view", "labor:view", "machine:view", "subcontract:view"},
+                writeCodes,
                 type.getMethod("cancel", Long.class)
+                        .getAnnotation(com.zwinsight.common.security.RequiresPermission.class).value());
+        org.junit.jupiter.api.Assertions.assertArrayEquals(
+                new String[]{"contract:contract:submit", "purchase:contract:edit", "labor:contract:edit",
+                        "machine:contract:edit", "subcontract:contract:edit"},
+                type.getMethod("submit", Long.class)
                         .getAnnotation(com.zwinsight.common.security.RequiresPermission.class).value());
     }
     @Test void listContract() throws Exception {

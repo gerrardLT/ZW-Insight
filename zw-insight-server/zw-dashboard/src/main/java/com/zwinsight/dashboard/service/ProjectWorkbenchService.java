@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -30,16 +31,46 @@ import java.util.stream.Collectors;
  * <p>一次返回项目总数、我的项目数、在建数、预警数、活跃风险数、逾期应收，以及当前页项目的
  * 健康度/风险数/逾期应收。项目范围由 {@link BizProjectMapper} 的 {@code @DataPermission}
  * 控制；风险与应收按项目 ID 归属，不另做前端拼接。</p>
+ *
+ * <p>同时实现 {@link ProjectWarningIdProvider}：把「健康度 RED/YELLOW ∪ 活跃风险」的预警
+ * ID 集合下推给 project 模块的 view=WARNING 分页，保证预警卡数字与列表行数一致。
+ * 健康度依赖利润预测，计算昂贵，结果按用户做 60 秒短缓存（同一轮翻页复用）。</p>
  */
 @Service
 @RequiredArgsConstructor
-public class ProjectWorkbenchService {
+public class ProjectWorkbenchService implements com.zwinsight.project.spi.ProjectWarningIdProvider {
+
+    /** 预警 ID 缓存时长：分钟级新鲜度足够，避免每次翻页重算 2N 次预测查询 */
+    private static final long WARNING_TTL_MS = 60_000L;
+    private static final int WARNING_CACHE_MAX = 200;
 
     private final BizProjectMapper projectMapper;
     private final BizRiskRegisterMapper riskMapper;
     private final BizReceivableMapper receivableMapper;
     private final SysUserProjectMapper userProjectMapper;
     private final CockpitService cockpitService;
+
+    /** key = tenantId:userId（数据权限随用户变化）；value = 预警项目 ID 集合 + 过期时间 */
+    private final Map<String, WarningCacheEntry> warningCache = new ConcurrentHashMap<>();
+
+    private record WarningCacheEntry(Set<Long> ids, long expiresAt) {
+    }
+
+    @Override
+    public Set<Long> warningProjectIds() {
+        String key = SecurityContextHolder.getTenantId() + ":" + SecurityContextHolder.getUserId();
+        long now = System.currentTimeMillis();
+        WarningCacheEntry cached = warningCache.get(key);
+        if (cached != null && cached.expiresAt() > now) {
+            return cached.ids();
+        }
+        Set<Long> ids = computeWarningProjectIds();
+        warningCache.put(key, new WarningCacheEntry(ids, now + WARNING_TTL_MS));
+        if (warningCache.size() > WARNING_CACHE_MAX) {
+            warningCache.entrySet().removeIf(entry -> entry.getValue().expiresAt() <= now);
+        }
+        return ids;
+    }
 
     public Map<String, Object> summary(String projectIds) {
         List<BizProject> projects = projectMapper.selectList(new LambdaQueryWrapper<>());
@@ -52,16 +83,11 @@ public class ProjectWorkbenchService {
                 .collect(Collectors.toSet());
         long riskOpen = 0L;
         Set<Long> riskProjectIds = new HashSet<>();
-        if (!scopedProjectIds.isEmpty()) {
-            List<BizRiskRegister> activeRisks = riskMapper.selectList(new LambdaQueryWrapper<BizRiskRegister>()
-                    .in(BizRiskRegister::getProjectId, scopedProjectIds)
-                    .in(BizRiskRegister::getHandleStatus,
-                            BizRiskRegister.HANDLE_OPEN, BizRiskRegister.HANDLE_PROCESSING));
-            riskOpen = activeRisks.size();
-            for (BizRiskRegister risk : activeRisks) {
-                if (risk.getProjectId() != null) {
-                    riskProjectIds.add(risk.getProjectId());
-                }
+        List<BizRiskRegister> activeRisks = activeRisks(scopedProjectIds);
+        riskOpen = activeRisks.size();
+        for (BizRiskRegister risk : activeRisks) {
+            if (risk.getProjectId() != null) {
+                riskProjectIds.add(risk.getProjectId());
             }
         }
 
@@ -93,9 +119,11 @@ public class ProjectWorkbenchService {
             row.put("topRisk", topRisks instanceof List<?> list && !list.isEmpty() ? list.get(0) : null);
         }
 
-        // 预警口径与 view=RISK 同源（存在 OPEN/PROCESSING 风险的项目），保证卡片数字点进去一致；
-        // 仅「预计利润为负」而无风险单的项目不进预警计数（健康度列仍会显示 RED）
-        long warning = riskProjectIds.size();
+        // 预警口径（与 view=WARNING 同源）：健康度 RED/YELLOW ∪ 存在 OPEN/PROCESSING 风险，
+        // 既覆盖亏损无风险单的项目，也保证卡片数字 = 点进列表的行数
+        Set<Long> warningProjectIds = unionWarningIds(healthRows, riskProjectIds);
+        primeWarningCache(warningProjectIds);
+        long warning = warningProjectIds.size();
         long inConstruction = projects.stream()
                 .filter(project -> "CONSTRUCTION".equals(project.getStatus()))
                 .count();
@@ -159,5 +187,54 @@ public class ProjectWorkbenchService {
 
     private static BigDecimal nvl(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    /** 活跃风险（OPEN/PROCESSING），按已授权项目范围收口；范围为空时不查库 */
+    private List<BizRiskRegister> activeRisks(Set<Long> scopedProjectIds) {
+        if (scopedProjectIds.isEmpty()) {
+            return List.of();
+        }
+        return riskMapper.selectList(new LambdaQueryWrapper<BizRiskRegister>()
+                .in(BizRiskRegister::getProjectId, scopedProjectIds)
+                .in(BizRiskRegister::getHandleStatus,
+                        BizRiskRegister.HANDLE_OPEN, BizRiskRegister.HANDLE_PROCESSING));
+    }
+
+    /** 预警项目 ID = 健康度非 GREEN ∪ 活跃风险项目 */
+    private static Set<Long> unionWarningIds(List<Map<String, Object>> healthRows, Set<Long> riskProjectIds) {
+        Set<Long> ids = new HashSet<>(riskProjectIds);
+        for (Map<String, Object> row : healthRows) {
+            if ("GREEN".equals(String.valueOf(row.get("health")))) {
+                continue;
+            }
+            Long projectId = toLong(row.get("projectId"));
+            if (projectId != null) {
+                ids.add(projectId);
+            }
+        }
+        return ids;
+    }
+
+    /** 独立计算预警 ID（缓存未命中时）：项目范围、风险、健康度各查一次 */
+    private Set<Long> computeWarningProjectIds() {
+        List<BizProject> projects = projectMapper.selectList(new LambdaQueryWrapper<>());
+        Set<Long> scopedProjectIds = projects.stream()
+                .map(BizProject::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> riskProjectIds = activeRisks(scopedProjectIds).stream()
+                .map(BizRiskRegister::getProjectId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> ids = unionWarningIds(cockpitService.getProjectHealth(), riskProjectIds);
+        ids.retainAll(scopedProjectIds);
+        return ids;
+    }
+
+    /** summary 已算出同一集合时直接写入缓存，避免预警列表随后翻页再算一次 */
+    private void primeWarningCache(Set<Long> warningIds) {
+        String key = SecurityContextHolder.getTenantId() + ":" + SecurityContextHolder.getUserId();
+        warningCache.put(key, new WarningCacheEntry(Set.copyOf(warningIds),
+                System.currentTimeMillis() + WARNING_TTL_MS));
     }
 }

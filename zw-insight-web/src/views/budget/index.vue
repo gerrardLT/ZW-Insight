@@ -76,7 +76,7 @@
       v-model:visible="importVisible"
       module-code="BUDGET_DETAIL"
       :extra-query="importBudgetId ? { budgetId: importBudgetId } : undefined"
-      @success="loadData"
+      @success="handleImportSuccess"
     />
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑预算' : '新增预算编制'" width="900px" destroy-on-close>
@@ -98,53 +98,52 @@
         </el-form-item>
         <!-- 2026-08-17 缺陷#8：预算管控按科目检查额度，补齐明细录入入口 -->
         <el-form-item label="预算明细">
-          <div style="width: 100%">
-            <div style="margin-bottom: var(--zw-space-sm)">
-              <el-button size="small" @click="addDetail">添加明细行</el-button>
-              <span v-if="detailsTotal > 0" style="margin-left: var(--zw-space-sm-md); color: var(--zw-text-tertiary); font-size: var(--zw-font-size-xs)">
-                明细合计：{{ detailsTotal.toLocaleString() }} 元（提交后总额以明细合计为准）
-              </span>
-            </div>
-            <el-table :data="formData.details" border size="small">
-              <el-table-column label="成本类别" width="150">
-                <template #default="{ row }">
-                  <el-select v-model="row.costCategory" placeholder="选择类别" style="width: 100%">
-                    <el-option v-for="c in COST_CATEGORIES" :key="c.value" :label="c.label" :value="c.value" />
-                  </el-select>
-                </template>
-              </el-table-column>
-              <el-table-column label="分项/物料名称" min-width="140">
-                <template #default="{ row }">
-                  <el-input v-model="row.itemName" placeholder="如：钢材 / 土方开挖" />
-                </template>
-              </el-table-column>
-              <el-table-column label="单位" width="90">
-                <template #default="{ row }">
-                  <el-input v-model="row.unit" />
-                </template>
-              </el-table-column>
-              <el-table-column label="数量" width="110">
-                <template #default="{ row }">
-                  <el-input-number v-model="row.budgetQuantity" :min="0" :precision="2" :controls="false" style="width: 100%" />
-                </template>
-              </el-table-column>
-              <el-table-column label="单价(元)" width="130">
-                <template #default="{ row }">
-                  <el-input-number v-model="row.budgetUnitPrice" :min="0" :precision="2" :controls="false" style="width: 100%" />
-                </template>
-              </el-table-column>
-              <el-table-column label="合计(元)" width="120" align="right">
-                <template #default="{ row }">
-                  {{ (detailTotal(row)).toLocaleString() }}
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="70" align="center">
-                <template #default="{ $index }">
-                  <el-button link type="danger" size="small" @click="formData.details.splice($index, 1)">删除</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
+          <ZwDetailTable
+            v-model="formData.details"
+            :importable="isEdit"
+            :resettable="false"
+            :summary-text="detailsTotal > 0 ? `${detailsTotal.toLocaleString()} 元（提交后总额以明细合计为准）` : ''"
+            @add="addDetail"
+            @import="handleDetailImport"
+          >
+            <el-table-column label="成本类别" width="150">
+              <template #default="{ row }">
+                <el-select v-model="row.costCategory" placeholder="选择类别" style="width: 100%">
+                  <el-option v-for="c in COST_CATEGORIES" :key="c.value" :label="c.label" :value="c.value" />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="分项/物料名称" min-width="140">
+              <template #default="{ row }">
+                <el-input v-model="row.itemName" placeholder="如：钢材 / 土方开挖" />
+              </template>
+            </el-table-column>
+            <el-table-column label="单位" width="90">
+              <template #default="{ row }">
+                <el-input v-model="row.unit" />
+              </template>
+            </el-table-column>
+            <el-table-column label="数量" width="110">
+              <template #default="{ row }">
+                <el-input-number v-model="row.budgetQuantity" :min="0" :precision="2" :controls="false" style="width: 100%" />
+              </template>
+            </el-table-column>
+            <el-table-column label="单价(元)" width="130">
+              <template #default="{ row }">
+                <el-input-number v-model="row.budgetUnitPrice" :min="0" :precision="2" :controls="false" style="width: 100%" />
+              </template>
+            </el-table-column>
+            <el-table-column label="合计(元)" width="120" align="right">
+              <template #default="{ row }">
+                {{ (detailTotal(row)).toLocaleString() }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="70" align="center">
+              <template #default="{ $index }">
+                <el-button link type="danger" size="small" @click="formData.details.splice($index, 1)">删除</el-button>
+              </template>
+            </el-table-column>
+          </ZwDetailTable>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -163,6 +162,7 @@ import { getBudgetPage, createBudget, updateBudget, deleteBudget, submitBudget, 
 import { getProjectList } from '@/api/project'
 import { getBudgetExecution } from '@/api/dashboard'
 import BatchImportDialog from '@/components/BatchImportDialog.vue'
+import ZwDetailTable from '@/components/ZwDetailTable.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
 import { toWan, clampPercent } from '@/utils/chart-format'
 
@@ -256,6 +256,24 @@ function handleImportDetail(row: any) {
   importVisible.value = true
 }
 
+/** 明细行内「模板导入」：仅编辑态（已有预算 id）可用，导入成功后回填明细 */
+async function handleDetailImport() {
+  if (!formData.value.id) return
+  // 导入会整体覆盖明细（后端为全删全插），先提示避免丢失未保存的手工录入
+  if (formData.value.details.length) {
+    await ElMessageBox.confirm('模板导入将以模板数据覆盖当前未保存的明细，确定继续？', '提示', { type: 'warning' })
+  }
+  importBudgetId.value = formData.value.id
+  importVisible.value = true
+}
+
+async function handleImportSuccess() {
+  loadData()
+  if (dialogVisible.value && formData.value.id) {
+    await reloadDetails(formData.value.id, true)
+  }
+}
+
 function handleAdd() {
   isEdit.value = false
   formData.value = { id: undefined, projectId: undefined, totalAmount: 0, details: [] }
@@ -267,8 +285,13 @@ async function handleEdit(row: any) {
   formData.value = { id: row.id, projectId: row.projectId, totalAmount: row.totalAmount, details: [] }
   dialogVisible.value = true
   // 回填已有明细行
+  await reloadDetails(row.id)
+}
+
+/** 拉取并回填预算明细（编辑态与模板导入后复用） */
+async function reloadDetails(budgetId: number, warnOnFail = false) {
   try {
-    const res: any = await getBudgetDetailsByBudgetId(row.id)
+    const res: any = await getBudgetDetailsByBudgetId(budgetId)
     formData.value.details = (res.data || []).map((d: any) => ({
       costCategory: d.costCategory || 'MATERIAL',
       itemName: d.itemName || '',
@@ -276,7 +299,10 @@ async function handleEdit(row: any) {
       budgetQuantity: d.budgetQuantity ?? 1,
       budgetUnitPrice: d.budgetUnitPrice ?? 0
     }))
-  } catch { /* 明细查询失败不阻断编辑，保留空明细 */ }
+  } catch {
+    // 明细查询失败不阻断编辑，保留空明细；导入后回填失败必须显式提示（否则保存会用旧数据覆盖）
+    if (warnOnFail) ElMessage.warning('明细回填失败，请关闭后重新打开编辑')
+  }
 }
 
 async function handleFormSubmit() {

@@ -93,7 +93,9 @@ describe('subcontract/contract.vue B20 矩阵', () => {
   it('B-20-8 分页为 pageNum/pageSize 口径（与结算页 page/size 不一致，钉住）', async () => {
     const w = await mountContract()
     expect(w.vm.$.setupState.queryParams).toMatchObject({ pageNum: 1, pageSize: 10 })
-    expect(contractSrc).toContain('v-model:current-page="queryParams.pageNum"')
+    // 3.8 换壳 ZwListPage 后：分页口径通过 v-model 绑定 pageNum/pageSize（壳内仍渲染 el-pagination）
+    expect(contractSrc).toContain('v-model:page="queryParams.pageNum"')
+    expect(contractSrc).toContain('v-model:size="queryParams.pageSize"')
   })
 })
 

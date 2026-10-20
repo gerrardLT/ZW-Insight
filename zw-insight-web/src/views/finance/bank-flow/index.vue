@@ -1,31 +1,41 @@
 <template>
   <div class="bank-flow-container">
-    <el-card shadow="never">
-      <div class="table-toolbar">
-        <div class="filter-bar">
-          <el-input v-model="query.accountId" placeholder="账户ID" clearable style="width: 120px" />
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            value-format="YYYY-MM-DD"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            style="width: 240px; margin-left: var(--zw-space-sm)"
-          />
-          <el-select v-model="query.reconciled" placeholder="勾稽状态" clearable style="width: 120px; margin-left: var(--zw-space-sm)">
-            <el-option label="未勾稽" :value="0" />
-            <el-option label="已勾稽" :value="1" />
-          </el-select>
-          <el-button type="primary" style="margin-left: var(--zw-space-sm)" @click="loadPage">查询</el-button>
+    <ZwListPage
+      v-model:page="query.page"
+      v-model:size="query.size"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      :layout="'total, prev, pager, next'"
+      @change="loadPage"
+    >
+      <template #toolbar>
+        <div class="table-toolbar">
+          <div class="filter-bar">
+            <el-input v-model="query.accountId" placeholder="账户ID" clearable style="width: 120px" />
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              value-format="YYYY-MM-DD"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              style="width: 240px; margin-left: var(--zw-space-sm)"
+            />
+            <el-select v-model="query.reconciled" placeholder="勾稽状态" clearable style="width: 120px; margin-left: var(--zw-space-sm)">
+              <el-option label="未勾稽" :value="0" />
+              <el-option label="已勾稽" :value="1" />
+            </el-select>
+            <el-button type="primary" style="margin-left: var(--zw-space-sm)" @click="loadPage">查询</el-button>
+          </div>
+          <div>
+            <el-button @click="balanceDialogVisible = true">余额登记</el-button>
+            <el-button @click="importDialogVisible = true">导入流水</el-button>
+            <el-button type="primary" @click="handleAddFlow">手工登记</el-button>
+          </div>
         </div>
-        <div>
-          <el-button @click="balanceDialogVisible = true">余额登记</el-button>
-          <el-button @click="importDialogVisible = true">导入流水</el-button>
-          <el-button type="primary" @click="handleAddFlow">手工登记</el-button>
-        </div>
-      </div>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="flowDate" label="交易日期" width="110" align="center" />
         <el-table-column label="方向" width="80" align="center">
           <template #default="{ row }">
@@ -53,17 +63,7 @@
             <el-button v-else link type="warning" @click="handleUnmatch(row as BankFlow)">取消勾稽</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
-        :total="total"
-        layout="total, prev, pager, next"
-        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
-        @current-change="loadPage"
-      />
-    </el-card>
+    </ZwListPage>
 
     <!-- 手工登记流水 -->
     <el-dialog v-model="flowDialogVisible" title="手工登记流水" width="520px" destroy-on-close>
@@ -180,6 +180,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import ZwListPage from '@/components/ZwListPage.vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import {

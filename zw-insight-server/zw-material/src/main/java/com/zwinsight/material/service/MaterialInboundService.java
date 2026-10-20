@@ -37,9 +37,19 @@ public class MaterialInboundService {
      * 分页查询
      */
     public PageResult<BizMaterialInbound> page(int page, int size, Long projectId) {
+        return page(page, size, projectId, null);
+    }
+
+    /**
+     * 分页查询（可按单据状态过滤）
+     *
+     * @param status 单据状态（DRAFT/APPROVED）；空=不限。供 Hub 待办徽标统计草稿数使用
+     */
+    public PageResult<BizMaterialInbound> page(int page, int size, Long projectId, String status) {
         Page<BizMaterialInbound> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizMaterialInbound> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(projectId != null, BizMaterialInbound::getProjectId, projectId)
+                .eq(status != null && !status.isBlank(), BizMaterialInbound::getStatus, status)
                 .orderByDesc(BizMaterialInbound::getCreatedAt);
         Page<BizMaterialInbound> result = inboundMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);

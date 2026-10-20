@@ -1,13 +1,22 @@
 <template>
   <div class="finance-container">
-    <el-card shadow="never">
-      <div class="table-toolbar">
-        <el-button type="primary" @click="handleAdd">
-          <el-icon><Plus /></el-icon>新增个人报销
-        </el-button>
-      </div>
+    <ZwListPage
+      v-model:page="queryParams.page"
+      v-model:size="queryParams.size"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      @change="loadData"
+    >
+      <template #toolbar>
+        <div class="table-toolbar">
+          <el-button type="primary" @click="handleAdd">
+            <el-icon><Plus /></el-icon>新增个人报销
+          </el-button>
+        </div>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="totalAmount" label="报销总金额" width="150" align="right">
           <template #default="{ row }">{{ formatMoney(row.totalAmount) }}</template>
         </el-table-column>
@@ -23,20 +32,7 @@
             <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="success" @click="handleSubmitRow(row)">提交</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="queryParams.page"
-          v-model:page-size="queryParams.size"
-          :page-sizes="[10, 20, 50]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="loadData"
-          @current-change="loadData"
-        />
-      </div>
-    </el-card>
+    </ZwListPage>
 
     <el-dialog v-model="dialogVisible" title="新增个人报销" width="600px" destroy-on-close @keydown.enter.prevent>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="110px">
@@ -66,6 +62,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { getPersonalReimbursementPage, createPersonalReimbursement, submitPersonalReimbursement } from '@/api/finance'
+import ZwListPage from '@/components/ZwListPage.vue'
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
