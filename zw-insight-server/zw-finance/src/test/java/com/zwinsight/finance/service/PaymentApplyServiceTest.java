@@ -66,6 +66,17 @@ class PaymentApplyServiceTest {
     private PaymentApplyService paymentApplyService;
 
     @org.junit.jupiter.api.BeforeEach
+    void clearSecurityContextBefore() {
+        // 单测共享静态 SecurityContextHolder，先清理防止其他测试类残留 userId 触发归属守卫
+        com.zwinsight.common.config.SecurityContextHolder.clear();
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearSecurityContextAfter() {
+        com.zwinsight.common.config.SecurityContextHolder.clear();
+    }
+
+    @org.junit.jupiter.api.BeforeEach
     void atomicWriteDefaults() {
         lenient().when(otherContractMapper.addCumulativePaid(anyLong(), any())).thenReturn(1);
         lenient().when(contractPayableMapper.addPurchasePaid(anyLong(), any())).thenReturn(1);

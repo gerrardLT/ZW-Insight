@@ -1,5 +1,7 @@
 package com.zwinsight.finance.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwinsight.common.exception.BusinessException;
 import com.zwinsight.common.result.PageResult;
@@ -10,6 +12,8 @@ import com.zwinsight.finance.domain.dto.InvoiceClaimRequest;
 import com.zwinsight.finance.mapper.BizInvoiceReceivedMapper;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.mapper.BizProjectMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +56,17 @@ class InvoiceReceivedServiceTest {
 
     @InjectMocks
     private InvoiceReceivedService service;
+
+    /**
+     * claim 使用 LambdaUpdateWrapper；纯单测环境不会自动初始化 TableInfo，
+     * CI 全量测试时因执行顺序差异会抛 "can not find lambda cache"。
+     * 显式初始化，保证单测与 CI 一致。
+     */
+    @BeforeAll
+    static void initLambdaCache() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), BizInvoiceReceived.class);
+    }
 
     @Test
     void save_calculatesTaxAndNormalizesIdentity() {
