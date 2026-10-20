@@ -8,13 +8,23 @@
       title="农民工工资专用账户（国务院令第724号）：人工费拨付周期不得超过1个月；专户资金专项用于支付农民工工资，不得挪用"
     />
 
-    <el-card shadow="never">
-      <div class="table-toolbar">
-        <el-button @click="handleScan">合规巡检</el-button>
-        <el-button type="primary" @click="handleAdd">开设专户</el-button>
-      </div>
+    <ZwListPage
+      v-model:page="query.page"
+      v-model:size="query.size"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      :layout="'total, prev, pager, next'"
+      @change="loadPage"
+    >
+      <template #toolbar>
+        <div class="table-toolbar">
+          <el-button @click="handleScan">合规巡检</el-button>
+          <el-button type="primary" @click="handleAdd">开设专户</el-button>
+        </div>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="accountNo" label="专户账号" min-width="160" show-overflow-tooltip />
         <el-table-column prop="bankName" label="开户银行" min-width="140" show-overflow-tooltip />
         <el-table-column prop="projectId" label="项目ID" width="140" show-overflow-tooltip />
@@ -50,17 +60,7 @@
             <el-button link type="info" @click="handleViewDeposits(row as WageSpecialAccount)">拨付记录</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
-        :total="total"
-        layout="total, prev, pager, next"
-        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
-        @current-change="loadPage"
-      />
-    </el-card>
+    </ZwListPage>
 
     <el-dialog v-model="addDialogVisible" title="开设工资专户" width="520px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
@@ -143,6 +143,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import ZwListPage from '@/components/ZwListPage.vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import {

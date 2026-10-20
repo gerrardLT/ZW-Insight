@@ -24,6 +24,11 @@
       </template>
     </el-table>
 
+    <!-- 表格脚注（如「本页合计（非全量）」）：渲染在表格之后、分页之前，不随表体横向滚动 -->
+    <div v-if="$slots.footer" class="zw-list-page__footer">
+      <slot name="footer" />
+    </div>
+
     <div v-if="!hidePagination" class="zw-list-page__pagination">
       <el-pagination
         v-model:current-page="currentPage"
@@ -113,6 +118,10 @@ const currentSize = computed({
 
 .zw-list-page__table {
   width: 100%;
+}
+
+.zw-list-page__footer {
+  margin-top: var(--zw-space-sm);
 }
 
 .zw-list-page__pagination {

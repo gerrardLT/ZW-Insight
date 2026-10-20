@@ -40,7 +40,7 @@
         </div>
       </template>
 
-      <template #table-append>
+      <template #footer>
         <div class="sum-note">本页合计（非全量）</div>
       </template>
 

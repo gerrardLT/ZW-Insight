@@ -45,42 +45,50 @@
     </el-card>
 
     <!-- 应收台账（结算审批自动生成，回款登记自动核销；只读，事实源为单据） -->
-    <el-card shadow="never">
-      <template #header>
+    <ZwListPage
+      v-model:page="query.page"
+      v-model:size="query.size"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      :layout="'total, prev, pager, next'"
+      @change="loadPage"
+    >
+      <template #toolbar>
         <div class="card-header">
           <span>应收台账</span>
           <el-alert type="info" :closable="false" class="ledger-tip"
             title="台账由结算审批自动生成、回款登记自动 FIFO 核销，不支持手工增删（保证与单据一致）" />
         </div>
+        <div class="filter-bar">
+          <el-select
+            v-model="query.projectId"
+            placeholder="全部项目"
+            filterable
+            remote
+            :remote-method="searchProject"
+            clearable
+            style="width: 220px"
+          >
+            <el-option v-for="p in projectList" :key="p.id" :label="p.projectName" :value="p.id" />
+          </el-select>
+          <el-select v-model="query.status" placeholder="全部状态" clearable style="width: 130px; margin-left: var(--zw-space-sm)">
+            <el-option label="未结清" value="OPEN" />
+            <el-option label="已结清" value="CLOSED" />
+          </el-select>
+          <el-button type="primary" style="margin-left: var(--zw-space-sm)" @click="handleSearch">查询</el-button>
+        </div>
+
+        <ZwListToolbar
+          :columns="ledgerColumns"
+          :visible="columnVisible"
+          @update:visible="setVisible"
+          @reset="resetColumns"
+          @refresh="handleSearch"
+        />
       </template>
-      <div class="filter-bar">
-        <el-select
-          v-model="query.projectId"
-          placeholder="全部项目"
-          filterable
-          remote
-          :remote-method="searchProject"
-          clearable
-          style="width: 220px"
-        >
-          <el-option v-for="p in projectList" :key="p.id" :label="p.projectName" :value="p.id" />
-        </el-select>
-        <el-select v-model="query.status" placeholder="全部状态" clearable style="width: 130px; margin-left: var(--zw-space-sm)">
-          <el-option label="未结清" value="OPEN" />
-          <el-option label="已结清" value="CLOSED" />
-        </el-select>
-        <el-button type="primary" style="margin-left: var(--zw-space-sm)" @click="handleSearch">查询</el-button>
-      </div>
 
-      <ZwListToolbar
-        :columns="ledgerColumns"
-        :visible="columnVisible"
-        @update:visible="setVisible"
-        @reset="resetColumns"
-        @refresh="handleSearch"
-      />
-
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column v-if="columnVisible[0]" prop="projectName" label="项目" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.projectName || `项目#${row.projectId}` }}</template>
         </el-table-column>
@@ -122,17 +130,7 @@
             </el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
-        :total="total"
-        layout="total, prev, pager, next"
-        style="margin-top: var(--zw-space-sm-md); justify-content: flex-end"
-        @current-change="loadPage"
-      />
-    </el-card>
+    </ZwListPage>
 
     <!-- §10 下钻 8 级链：项目 → 应收款 → 对应工程节点 → 应收日期 → 实际申请日期
          → 甲方审核状态 → 负责人 → 下一步动作。
@@ -229,6 +227,7 @@ import {
 } from '@/api/receivable'
 import { getProjectList } from '@/api/project'
 import ZwListToolbar from '@/components/ZwListToolbar.vue'
+import ZwListPage from '@/components/ZwListPage.vue'
 import { useColumnSetting } from '@/composables/useColumnSetting'
 
 // 列显隐配置：按 receivable-ledger-table 持久化 localStorage

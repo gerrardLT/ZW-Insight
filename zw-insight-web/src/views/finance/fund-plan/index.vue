@@ -1,104 +1,108 @@
 <template>
   <div class="fund-plan-container">
-    <el-card shadow="never">
-      <el-tabs v-model="activeTab">
-        <!-- ============ 年度预算 ============ -->
-        <el-tab-pane label="年度预算" name="annual">
-          <div class="table-toolbar">
-            <el-button type="primary" @click="annualDialogVisible = true">编制年度预算</el-button>
-          </div>
-          <el-table :data="annualData" v-loading="annualLoading" border>
-            <el-table-column prop="budgetYear" label="年度" width="90" align="center" />
-            <el-table-column prop="projectId" label="所属工程项目（留空为公司总部）" min-width="170" show-overflow-tooltip />
-            <el-table-column label="预计收款" width="140" align="right">
-              <template #default="{ row }">{{ formatAmount(row.incomePlan) }}</template>
-            </el-table-column>
-            <el-table-column label="预计付款" width="140" align="right">
-              <template #default="{ row }">{{ formatAmount(row.expensePlan) }}</template>
-            </el-table-column>
-            <el-table-column label="净额（收-付）" width="140" align="right">
-              <template #default="{ row }">
-                <span :class="(row.incomePlan - row.expensePlan) < 0 ? 'gap-negative' : 'gap-positive'">
-                  {{ formatAmount(row.incomePlan - row.expensePlan) }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="100" align="center" />
-            <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
-          </el-table>
-        </el-tab-pane>
+    <el-tabs v-model="activeTab">
+      <!-- ============ 年度预算 ============ -->
+      <el-tab-pane label="年度预算" name="annual">
+        <ZwListPage :data="annualData" :loading="annualLoading" hide-pagination>
+          <template #toolbar>
+            <div class="table-toolbar">
+              <el-button type="primary" @click="annualDialogVisible = true">编制年度预算</el-button>
+            </div>
+          </template>
+          <el-table-column prop="budgetYear" label="年度" width="90" align="center" />
+          <el-table-column prop="projectId" label="所属工程项目（留空为公司总部）" min-width="170" show-overflow-tooltip />
+          <el-table-column label="预计收款" width="140" align="right">
+            <template #default="{ row }">{{ formatAmount(row.incomePlan) }}</template>
+          </el-table-column>
+          <el-table-column label="预计付款" width="140" align="right">
+            <template #default="{ row }">{{ formatAmount(row.expensePlan) }}</template>
+          </el-table-column>
+          <el-table-column label="净额（收-付）" width="140" align="right">
+            <template #default="{ row }">
+              <span :class="(row.incomePlan - row.expensePlan) < 0 ? 'gap-negative' : 'gap-positive'">
+                {{ formatAmount(row.incomePlan - row.expensePlan) }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="100" align="center" />
+          <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
+        </ZwListPage>
+      </el-tab-pane>
 
-        <!-- ============ 月度计划 ============ -->
-        <el-tab-pane label="月度计划" name="monthly">
-          <div class="table-toolbar">
-            <el-button type="primary" @click="openMonthlyDialog">编制月度计划</el-button>
-          </div>
-          <el-table :data="monthlyData" v-loading="monthlyLoading" border>
-            <el-table-column label="月份" width="110" align="center">
-              <template #default="{ row }">{{ row.planYear }}-{{ String(row.planMonth).padStart(2, '0') }}</template>
-            </el-table-column>
-            <el-table-column prop="projectId" label="所属工程项目（留空为公司总部）" min-width="170" show-overflow-tooltip />
-            <el-table-column label="计划收款" width="130" align="right">
-              <template #default="{ row }">{{ formatAmount(row.incomePlan) }}</template>
-            </el-table-column>
-            <el-table-column label="计划付款" width="130" align="right">
-              <template #default="{ row }">{{ formatAmount(row.expensePlan) }}</template>
-            </el-table-column>
-            <el-table-column label="实际收款" width="130" align="right">
-              <template #default="{ row }">{{ formatAmount(row.actualIncome) }}</template>
-            </el-table-column>
-            <el-table-column label="实际付款" width="130" align="right">
-              <template #default="{ row }">{{ formatAmount(row.actualExpense) }}</template>
-            </el-table-column>
-            <el-table-column label="执行率" width="100" align="center">
-              <template #default="{ row }">
-                <span v-if="row.expensePlan">{{ Math.round((row.actualExpense || 0) / row.expensePlan * 100) }}%</span>
-                <span v-else>—</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" @click="handleFillActual(row as FundMonthlyPlan)">回填实际</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
+      <!-- ============ 月度计划 ============ -->
+      <el-tab-pane label="月度计划" name="monthly">
+        <ZwListPage :data="monthlyData" :loading="monthlyLoading" hide-pagination>
+          <template #toolbar>
+            <div class="table-toolbar">
+              <el-button type="primary" @click="openMonthlyDialog">编制月度计划</el-button>
+            </div>
+          </template>
+          <el-table-column label="月份" width="110" align="center">
+            <template #default="{ row }">{{ row.planYear }}-{{ String(row.planMonth).padStart(2, '0') }}</template>
+          </el-table-column>
+          <el-table-column prop="projectId" label="所属工程项目（留空为公司总部）" min-width="170" show-overflow-tooltip />
+          <el-table-column label="计划收款" width="130" align="right">
+            <template #default="{ row }">{{ formatAmount(row.incomePlan) }}</template>
+          </el-table-column>
+          <el-table-column label="计划付款" width="130" align="right">
+            <template #default="{ row }">{{ formatAmount(row.expensePlan) }}</template>
+          </el-table-column>
+          <el-table-column label="实际收款" width="130" align="right">
+            <template #default="{ row }">{{ formatAmount(row.actualIncome) }}</template>
+          </el-table-column>
+          <el-table-column label="实际付款" width="130" align="right">
+            <template #default="{ row }">{{ formatAmount(row.actualExpense) }}</template>
+          </el-table-column>
+          <el-table-column label="执行率" width="100" align="center">
+            <template #default="{ row }">
+              <span v-if="row.expensePlan">{{ Math.round((row.actualExpense || 0) / row.expensePlan * 100) }}%</span>
+              <span v-else>—</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="handleFillActual(row as FundMonthlyPlan)">回填实际</el-button>
+            </template>
+          </el-table-column>
+        </ZwListPage>
+      </el-tab-pane>
 
-        <!-- ============ 滚动预测 ============ -->
-        <el-tab-pane label="滚动预测" name="rolling">
-          <div class="table-toolbar">
-            <el-button type="primary" @click="handleGenerate">生成未来6个月预测</el-button>
-          </div>
-          <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-sm)"
-            title="「预计付款」= 当月计划内未付 + 已逾期未付；「其中逾期」为其构成项（不可与预计付款相加）。逾期未付仅计入当月，不向后续月份摊开。" />
-          <el-table :data="rollingData" v-loading="rollingLoading" border>
-            <el-table-column prop="forecastMonth" label="预测月份" width="110" align="center" />
-            <el-table-column label="预计收款" width="140" align="right">
-              <template #default="{ row }">{{ formatAmount(row.expectedReceipts) }}</template>
-            </el-table-column>
-            <el-table-column label="预计付款" width="140" align="right">
-              <template #default="{ row }">{{ formatAmount(row.expectedPayments) }}</template>
-            </el-table-column>
-            <el-table-column label="其中逾期" width="140" align="right">
-              <template #default="{ row }">
-                <span :class="Number(row.overdueUnpaid) > 0 ? 'gap-negative' : ''">{{ formatAmount(row.overdueUnpaid) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="资金净流向（付-收）" width="150" align="right">
-              <template #default="{ row }">
-                <span :class="(row.netGap || 0) > 0 ? 'gap-negative' : 'gap-positive'">{{ formatAmount(row.netGap) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="风险等级" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag :type="riskTag(row.riskLevel)" size="small">{{ riskLabel(row.riskLevel) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="snapshotDate" label="快照日期" width="110" align="center" />
-          </el-table>
-        </el-tab-pane>
-      </el-tabs>
-    </el-card>
+      <!-- ============ 滚动预测 ============ -->
+      <el-tab-pane label="滚动预测" name="rolling">
+        <ZwListPage :data="rollingData" :loading="rollingLoading" hide-pagination>
+          <template #toolbar>
+            <div class="table-toolbar">
+              <el-button type="primary" @click="handleGenerate">生成未来6个月预测</el-button>
+            </div>
+            <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--zw-space-sm)"
+              title="「预计付款」= 当月计划内未付 + 已逾期未付；「其中逾期」为其构成项（不可与预计付款相加）。逾期未付仅计入当月，不向后续月份摊开。" />
+          </template>
+          <el-table-column prop="forecastMonth" label="预测月份" width="110" align="center" />
+          <el-table-column label="预计收款" width="140" align="right">
+            <template #default="{ row }">{{ formatAmount(row.expectedReceipts) }}</template>
+          </el-table-column>
+          <el-table-column label="预计付款" width="140" align="right">
+            <template #default="{ row }">{{ formatAmount(row.expectedPayments) }}</template>
+          </el-table-column>
+          <el-table-column label="其中逾期" width="140" align="right">
+            <template #default="{ row }">
+              <span :class="Number(row.overdueUnpaid) > 0 ? 'gap-negative' : ''">{{ formatAmount(row.overdueUnpaid) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="资金净流向（付-收）" width="150" align="right">
+            <template #default="{ row }">
+              <span :class="(row.netGap || 0) > 0 ? 'gap-negative' : 'gap-positive'">{{ formatAmount(row.netGap) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="风险等级" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag :type="riskTag(row.riskLevel)" size="small">{{ riskLabel(row.riskLevel) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="snapshotDate" label="快照日期" width="110" align="center" />
+        </ZwListPage>
+      </el-tab-pane>
+    </el-tabs>
 
     <el-dialog v-model="annualDialogVisible" title="编制年度预算" width="480px" destroy-on-close>
       <el-form label-width="110px">
@@ -185,6 +189,7 @@ import {
   type FundRollingForecast
 } from '@/api/fund-plan'
 import { getEnabledCategories, type FundCategory } from '@/api/fund-category'
+import ZwListPage from '@/components/ZwListPage.vue'
 
 const activeTab = ref('annual')
 const annualLoading = ref(false)

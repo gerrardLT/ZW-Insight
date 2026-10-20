@@ -1,79 +1,87 @@
 <template>
   <div class="finance-container">
-    <el-card shadow="never">
-      <el-form :model="queryParams" inline>
-        <el-form-item label="项目">
-          <el-select
-            v-model="queryParams.projectId"
-            placeholder="请选择项目"
-            filterable
-            remote
-            :remote-method="searchProject"
-            clearable
-            style="width: 220px"
-          >
-            <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态">
-          <!-- 筛选值域与下方 statusMap 同源：后端 PaymentApplyService 产生
-               DRAFT/SUBMITTED/APPROVED/REJECTED；支付态另走 payStatus 筛选（V2026_56） -->
-          <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
-            <el-option label="草稿" value="DRAFT" />
-            <el-option label="审批中" value="SUBMITTED" />
-            <el-option label="已通过" value="APPROVED" />
-            <el-option label="已驳回" value="REJECTED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="支付状态">
-          <el-select v-model="queryParams.payStatus" placeholder="全部" clearable style="width: 120px">
-            <el-option label="未支付" value="UNPAID" />
-            <el-option label="部分支付" value="PARTIAL_PAID" />
-            <el-option label="已支付" value="PAID" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>重置
-          </el-button>
-        </el-form-item>
-      </el-form>
+    <ZwListPage
+      v-model:page="queryParams.pageNum"
+      v-model:size="queryParams.pageSize"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      @change="loadData"
+      @selection-change="handleSelectionChange"
+    >
+      <template #toolbar>
+        <el-form :model="queryParams" inline>
+          <el-form-item label="项目">
+            <el-select
+              v-model="queryParams.projectId"
+              placeholder="请选择项目"
+              filterable
+              remote
+              :remote-method="searchProject"
+              clearable
+              style="width: 220px"
+            >
+              <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <!-- 筛选值域与下方 statusMap 同源：后端 PaymentApplyService 产生
+                 DRAFT/SUBMITTED/APPROVED/REJECTED；支付态另走 payStatus 筛选（V2026_56） -->
+            <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
+              <el-option label="草稿" value="DRAFT" />
+              <el-option label="审批中" value="SUBMITTED" />
+              <el-option label="已通过" value="APPROVED" />
+              <el-option label="已驳回" value="REJECTED" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="支付状态">
+            <el-select v-model="queryParams.payStatus" placeholder="全部" clearable style="width: 120px">
+              <el-option label="未支付" value="UNPAID" />
+              <el-option label="部分支付" value="PARTIAL_PAID" />
+              <el-option label="已支付" value="PAID" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>搜索
+            </el-button>
+            <el-button @click="handleReset">
+              <el-icon><Refresh /></el-icon>重置
+            </el-button>
+          </el-form-item>
+        </el-form>
 
-      <ZwListToolbar
-        :columns="paymentColumns"
-        :visible="columnVisible"
-        @update:visible="setVisible"
-        @reset="resetColumns"
-        @refresh="loadData"
-      >
-<el-button v-if="canCreate" type="primary" @click="handleAdd">
-          <el-icon><Plus /></el-icon>新增付款申请
-        </el-button>
-        <!-- 批量操作（Phase 1.2）：勾选态驱动；后端整体单事务，任一失败全部回滚 -->
-        <el-button
-          v-if="canPay"
-          type="danger"
-          plain
-          :disabled="!selectedRows.length"
-          :loading="batchLoading"
-          @click="handleBatchDelete"
-        >批量删除（{{ selectedRows.length }}）</el-button>
-        <el-button
-          v-if="canPay"
-          type="success"
-          plain
-          :disabled="!selectedRows.length"
-          :loading="batchLoading"
-          @click="handleBatchSubmit"
-        >批量提交（{{ selectedRows.length }}）</el-button>
-      </ZwListToolbar>
+        <ZwListToolbar
+          :columns="paymentColumns"
+          :visible="columnVisible"
+          @update:visible="setVisible"
+          @reset="resetColumns"
+          @refresh="loadData"
+        >
+          <el-button v-if="canCreate" type="primary" @click="handleAdd">
+            <el-icon><Plus /></el-icon>新增付款申请
+          </el-button>
+          <!-- 批量操作（Phase 1.2）：勾选态驱动；后端整体单事务，任一失败全部回滚 -->
+          <el-button
+            v-if="canPay"
+            type="danger"
+            plain
+            :disabled="!selectedRows.length"
+            :loading="batchLoading"
+            @click="handleBatchDelete"
+          >批量删除（{{ selectedRows.length }}）</el-button>
+          <el-button
+            v-if="canPay"
+            type="success"
+            plain
+            :disabled="!selectedRows.length"
+            :loading="batchLoading"
+            @click="handleBatchSubmit"
+          >批量提交（{{ selectedRows.length }}）</el-button>
+        </ZwListToolbar>
+      </template>
 
-            <!-- 首屏骨架（感知性能 S1.4）：无数据且加载中显示骨架；翻页保留 v-loading 遮罩 -->
-            <el-skeleton v-if="loading && !tableData.length" :rows="5" animated />
-            <el-table v-else :data="tableData" v-loading="loading" border @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="44" />
         <el-table-column v-if="columnVisible[0]" prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
         <el-table-column v-if="columnVisible[1]" prop="supplierName" label="收款单位" width="150" show-overflow-tooltip />
@@ -120,20 +128,7 @@
             <el-button v-if="canPay && row.status === 'APPROVED' && row.payStatus === 'PAID'" link type="info" @click="handleRevokePaid(row)">撤销标记</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="queryParams.pageNum"
-          v-model:page-size="queryParams.pageSize"
-          :page-sizes="[10, 20, 50]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="loadData"
-          @current-change="loadData"
-        />
-      </div>
-    </el-card>
+    </ZwListPage>
 
     <stat-chart-panel
       v-if="canViewFundPlan"
@@ -333,6 +328,8 @@ import { getMachineContractPage } from '@/api/machine'
 import { getSubcontractPage } from '@/api/subcontract'
 import SupplierSelector from '@/components/SupplierSelector.vue'
 import StatChartPanel from '@/components/StatChartPanel.vue'
+import ZwListPage from '@/components/ZwListPage.vue'
+import ZwListToolbar from '@/components/ZwListToolbar.vue'
 import FieldHelpLabel from '@/components/FieldHelpLabel.vue'
 import { positiveAmount } from '@/utils/form-rules'
 import { toWan } from '@/utils/chart-format'

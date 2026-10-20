@@ -1,46 +1,55 @@
 <template>
   <div class="finance-container">
-    <el-card shadow="never">
-      <el-alert
-        v-if="expiringList.length > 0"
-        :title="`有 ${expiringList.length} 笔质保金将在 30 天内到期，请及时处理返还`"
-        type="warning"
-        show-icon
-        :closable="false"
-        style="margin-bottom: var(--zw-space-md)"
-      />
+    <ZwListPage
+      v-model:page="queryParams.page"
+      v-model:size="queryParams.size"
+      :data="tableData"
+      :loading="loading"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      @change="loadData"
+    >
+      <template #toolbar>
+        <el-alert
+          v-if="expiringList.length > 0"
+          :title="`有 ${expiringList.length} 笔质保金将在 30 天内到期，请及时处理返还`"
+          type="warning"
+          show-icon
+          :closable="false"
+          style="margin-bottom: var(--zw-space-md)"
+        />
 
-      <el-form :model="queryParams" inline>
-        <el-form-item label="项目">
-          <el-select
-            v-model="queryParams.projectId"
-            placeholder="请选择项目"
-            filterable
-            remote
-            :remote-method="searchProject"
-            clearable
-            style="width: 220px"
-          >
-            <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>搜索
+        <el-form :model="queryParams" inline>
+          <el-form-item label="项目">
+            <el-select
+              v-model="queryParams.projectId"
+              placeholder="请选择项目"
+              filterable
+              remote
+              :remote-method="searchProject"
+              clearable
+              style="width: 220px"
+            >
+              <el-option v-for="item in projectList" :key="item.id" :label="item.projectName" :value="item.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>搜索
+            </el-button>
+            <el-button @click="handleReset">
+              <el-icon><Refresh /></el-icon>重置
+            </el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="table-toolbar">
+          <el-button type="primary" @click="handleAdd">
+            <el-icon><Plus /></el-icon>新增质保金
           </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>重置
-          </el-button>
-        </el-form-item>
-      </el-form>
+        </div>
+      </template>
 
-      <div class="table-toolbar">
-        <el-button type="primary" @click="handleAdd">
-          <el-icon><Plus /></el-icon>新增质保金
-        </el-button>
-      </div>
-
-      <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="retentionAmount" label="质保金金额" width="130" align="right">
           <template #default="{ row }">{{ formatMoney(row.retentionAmount) }}</template>
         </el-table-column>
@@ -61,28 +70,23 @@
             <el-button v-if="row.status !== 'RETURNED'" link type="primary" @click="handleReturn(row)">返还</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="queryParams.page"
-          v-model:page-size="queryParams.size"
-          :page-sizes="[10, 20, 50]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="loadData"
-          @current-change="loadData"
-        />
-      </div>
-    </el-card>
+    </ZwListPage>
 
     <!-- 返还单列表（2026-10-12 补「提交审批」入口：登记后此处列出，草稿/已驳回可提交） -->
-    <el-card shadow="never" style="margin-top: var(--zw-space-md)">
-      <template #header>
-        <span>质保金返还单</span>
-      </template>
+    <div class="return-list">
+      <ZwListPage
+        v-model:page="returnQueryParams.pageNum"
+        v-model:size="returnQueryParams.pageSize"
+        :data="returnData"
+        :loading="returnLoading"
+        :total="returnTotal"
+        :page-sizes="[10, 20, 50]"
+        @change="loadReturnData"
+      >
+        <template #toolbar>
+          <span class="return-list__title">质保金返还单</span>
+        </template>
 
-      <el-table :data="returnData" v-loading="returnLoading" border>
         <el-table-column prop="retentionId" label="关联质保金" width="180" />
         <el-table-column prop="returnAmount" label="返还金额" width="130" align="right">
           <template #default="{ row }">{{ formatMoney(row.returnAmount) }}</template>
@@ -104,20 +108,8 @@
             >提交审批</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="returnQueryParams.pageNum"
-          v-model:page-size="returnQueryParams.pageSize"
-          :page-sizes="[10, 20, 50]"
-          :total="returnTotal"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="loadReturnData"
-          @current-change="loadReturnData"
-        />
-      </div>
-    </el-card>
+      </ZwListPage>
+    </div>
 
     <!-- 新增质保金 -->
     <el-dialog v-model="dialogVisible" title="新增质保金" width="600px" destroy-on-close>
@@ -194,6 +186,7 @@ import {
 } from '@/api/finance'
 import { getProjectList } from '@/api/project'
 import FieldHelpLabel from '@/components/FieldHelpLabel.vue'
+import ZwListPage from '@/components/ZwListPage.vue'
 
 const formRef = ref<FormInstance>()
 const returnRef = ref<FormInstance>()
@@ -381,5 +374,11 @@ onMounted(() => {
   margin-top: var(--zw-space-md);
   display: flex;
   justify-content: flex-end;
+}
+.return-list {
+  margin-top: var(--zw-space-md);
+}
+.return-list__title {
+  font-weight: 600;
 }
 </style>
