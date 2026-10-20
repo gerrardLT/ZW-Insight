@@ -81,10 +81,15 @@ public class PaymentApplyService {
                                             String status, String payStatus) {
         Page<BizPaymentApply> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizPaymentApply> wrapper = new LambdaQueryWrapper<>();
+        // payStatus=NOT_PAID 表示「未付清」（含部分付款，NULL 视作未付），供财务待办深链使用；
+        // 其余值仍精确匹配，保持既有列表筛选语义不变
+        boolean notPaid = "NOT_PAID".equalsIgnoreCase(payStatus);
         wrapper.eq(projectId != null, BizPaymentApply::getProjectId, projectId)
                 .eq(contractId != null, BizPaymentApply::getContractId, contractId)
                 .eq(StrUtil.isNotBlank(status), BizPaymentApply::getStatus, status)
-                .eq(StrUtil.isNotBlank(payStatus), BizPaymentApply::getPayStatus, payStatus)
+                .and(notPaid, w -> w.isNull(BizPaymentApply::getPayStatus)
+                        .or().ne(BizPaymentApply::getPayStatus, BizPaymentApply.PAY_STATUS_PAID))
+                .eq(!notPaid && StrUtil.isNotBlank(payStatus), BizPaymentApply::getPayStatus, payStatus)
                 .orderByDesc(BizPaymentApply::getCreatedAt);
         Page<BizPaymentApply> result = paymentApplyMapper.selectPage(pageParam, wrapper);
         ProjectNameFiller.fill(result.getRecords(), projectMapper,

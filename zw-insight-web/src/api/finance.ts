@@ -305,3 +305,8 @@ export function getFundPlan(projectId?: number | string, months = 6) {
   return request.get<R<any[]>>('/v1/finance/statistics/fund-plan', { params: { projectId, months } })
 }
 
+/** 财务待办首屏聚合（S3.1）：待审批/已批未付/逾期未付/应收逾期 + TOP5 */
+export function getFinanceWorkbench() {
+  return request.get<R<any>>('/v1/finance/workbench/summary')
+}
+

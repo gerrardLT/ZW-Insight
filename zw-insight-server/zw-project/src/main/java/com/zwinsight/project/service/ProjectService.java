@@ -88,16 +88,46 @@ public class ProjectService {
 
     /**
      * 分页查询
+     *
+     * @param view 项目视图：ALL/MINE/RISK/OVERDUE（非法值 400，不静默降级）
      */
-    public PageResult<BizProject> page(int page, int size, String projectName, String status, String projectType) {
+    public PageResult<BizProject> page(int page, int size, String projectName, String status,
+                                       String projectType, String view) {
+        String viewCode = normalizeView(view);
         Page<BizProject> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<BizProject> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StrUtil.isNotBlank(projectName), BizProject::getProjectName, projectName)
                 .eq(StrUtil.isNotBlank(status), BizProject::getStatus, status)
-                .eq(StrUtil.isNotBlank(projectType), BizProject::getProjectType, projectType)
-                .orderByDesc(BizProject::getCreatedAt);
+                .eq(StrUtil.isNotBlank(projectType), BizProject::getProjectType, projectType);
+        switch (viewCode) {
+            case "MINE" -> wrapper.exists(
+                    "SELECT 1 FROM sys_user_project up WHERE up.project_id = biz_project.id AND up.user_id = {0}",
+                    SecurityContextHolder.getUserId());
+            case "RISK" -> wrapper.exists(
+                    "SELECT 1 FROM biz_risk_register rr WHERE rr.project_id = biz_project.id AND rr.deleted = 0 "
+                            + "AND rr.handle_status IN ('OPEN','PROCESSING')");
+            case "OVERDUE" -> wrapper.exists(
+                    "SELECT 1 FROM biz_receivable r WHERE r.project_id = biz_project.id AND r.deleted = 0 "
+                            + "AND r.status = 'OPEN' AND r.due_date < CURDATE() "
+                            + "AND (r.receivable_amount - COALESCE(r.written_off_amount, 0)) > 0");
+            default -> { }
+        }
+        wrapper.orderByDesc(BizProject::getCreatedAt);
         Page<BizProject> result = projectMapper.selectPage(pageParam, wrapper);
         return PageResult.of(result);
+    }
+
+    private static final Set<String> PROJECT_VIEWS = Set.of("ALL", "MINE", "RISK", "OVERDUE");
+
+    private static String normalizeView(String view) {
+        if (StrUtil.isBlank(view) || "ALL".equalsIgnoreCase(view)) {
+            return "ALL";
+        }
+        String code = view.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!PROJECT_VIEWS.contains(code)) {
+            throw new BusinessException(400, "不支持的项目视图：" + view);
+        }
+        return code;
     }
 
     /**

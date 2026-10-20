@@ -27,7 +27,7 @@ const ROLE_HOME: Record<string, string> = {
   SUPER_ADMIN: '/dashboard',
   COMPANY_LEADER: '/cockpit/hub/operation-group?tab=overview',
   AUDITOR: '/cockpit/hub/operation-group?tab=overview',
-  FINANCE_STAFF: '/finance/hub/payable-group?tab=payment-apply',
+  FINANCE_STAFF: '/finance/hub/payable-group?tab=workbench',
   MATERIAL_STAFF: '/material/hub/material-purchase-group?tab=inbound',
   PROJECT_MANAGER: '/project/hub/ledger-group?tab=list',
   COMMERCE_STAFF: '/contract/hub/contract-group?tab=list',
@@ -72,7 +72,7 @@ export function resolveRoleHome(roles: string[] = [], permissions: string[] = []
   }
 
   // 兜底：按权限码推断可用首屏（顺序即优先级）
-  if (permissionList.includes('finance:view')) return '/finance/hub/payable-group?tab=payment-apply'
+  if (permissionList.includes('finance:view')) return '/finance/hub/payable-group?tab=workbench'
   if (permissionList.includes('project:view')) return '/project/hub/ledger-group?tab=list'
   if (permissionList.includes('material:view')) return '/material/hub/material-purchase-group?tab=inbound'
   if (permissionList.includes('contract:view')) return '/contract/hub/contract-group?tab=list'

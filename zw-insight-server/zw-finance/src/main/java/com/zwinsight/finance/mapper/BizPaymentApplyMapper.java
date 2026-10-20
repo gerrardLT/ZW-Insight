@@ -9,7 +9,9 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Map;
 
 @Mapper
 @DataPermission(value = {
@@ -65,6 +67,29 @@ public interface BizPaymentApplyMapper extends BaseMapper<BizPaymentApply> {
             + "AND p.project_id IN <foreach collection='projectIds' item='pid' open='(' separator=',' close=')'>#{pid}</foreach>"
             + "</script>")
     BigDecimal sumApprovedUnpaidRemainingByProjects(@Param("projectIds") Collection<Long> projectIds);
+
+    /**
+     * 已批未付「笔数 + 剩余未付额」聚合（S3.1 财务待办卡）。
+     * <p>金额口径与 {@link #sumApprovedUnpaidRemaining(Long)} 完全一致：扣减银行已勾稽额
+     * （{@code match_amount} 为空取整笔 {@code amount}），负差归 0；<b>不得</b>按 payment_amount
+     * 全额累加，否则部分付款会被重复计入资金压力。</p>
+     * <p>{@code before} 非空时只统计 {@code payment_date < before}（逾期未付口径），
+     * 为空则统计全部已批未付。受类级 {@code @DataPermission} 约束。</p>
+     *
+     * @param before 付款日期上限（严格小于，通常传今天）；空=不限
+     * @return {cnt: 笔数, amt: 剩余未付额}；无单据时 cnt=0、amt=0
+     */
+    @Select("<script>"
+            + "SELECT COUNT(*) AS cnt, IFNULL(SUM(GREATEST(p.payment_amount - COALESCE(f.matched, 0), 0)), 0) AS amt "
+            + "FROM biz_payment_apply p "
+            + "LEFT JOIN (SELECT matched_id, SUM(COALESCE(match_amount, amount)) AS matched "
+            + "             FROM biz_bank_flow "
+            + "            WHERE deleted = 0 AND reconciled = 1 AND matched_type = 'PAYMENT_APPLY' "
+            + "            GROUP BY matched_id) f ON f.matched_id = p.id "
+            + "WHERE p.deleted = 0 AND p.status = 'APPROVED' AND COALESCE(p.pay_status, 'UNPAID') != 'PAID' "
+            + "<if test='before != null'> AND p.payment_date &lt; #{before}</if>"
+            + "</script>")
+    Map<String, Object> sumApprovedUnpaidAgg(@Param("before") LocalDate before);
 
     /**
      * 同合同「审批中」付款申请合计（在途额度占用，V2026_115 对标竞品四段占用模型）。

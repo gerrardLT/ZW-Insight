@@ -670,6 +670,11 @@ onMounted(async () => {
   if (qPid && qPid !== '0') {
     queryParams.value.projectId = qPid
   }
+  // 财务待办卡/清单深链带筛选：status=SUBMITTED 待审批；payStatus=NOT_PAID 未付清
+  const qStatus = String(routeQuery.status || '').trim()
+  if (qStatus) queryParams.value.status = qStatus
+  const qPayStatus = String(routeQuery.payStatus || '').trim()
+  if (qPayStatus) queryParams.value.payStatus = qPayStatus
   loadData()
   await searchProject('')
   // P3-M5 B3：从采购结算页跳转时预填项目、采购合同与结算金额，并打开新增弹窗

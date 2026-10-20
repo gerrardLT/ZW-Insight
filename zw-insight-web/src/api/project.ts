@@ -14,6 +14,14 @@ export function getProjectPage(params: ProjectPageQuery) {
   return request.get<R<PageResult<Project>>>('/v1/project/page', { params })
 }
 
+/**
+ * 项目台账首屏聚合（S3.1）：摘要卡 + 当前页项目健康度。
+ * projectIds 为空时后端返回当前数据范围内全部项目的健康度。
+ */
+export function getProjectWorkbench(params?: { projectIds?: string }) {
+  return request.get<R<any>>('/v1/dashboard/workbench/project', { params })
+}
+
 export function getProjectList(params?: Partial<ProjectPageQuery>) {
   return request.get<R<Project[]>>('/v1/project/list', { params })
 }

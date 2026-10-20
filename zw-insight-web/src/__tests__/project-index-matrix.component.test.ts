@@ -17,7 +17,7 @@ import ElementPlus from 'element-plus'
 
 const {
   mockProjectPage, mockProjectDelete, mockProjectSubmit, mockProjectClose, mockCloseCheck,
-  mockProjectBatchDelete,
+  mockProjectBatchDelete, mockProjectWorkbench,
   mockConfirm, mockMessageSuccess, mockMessageError,
 } = vi.hoisted(() => ({
   mockProjectPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
@@ -26,6 +26,13 @@ const {
   mockProjectClose: vi.fn(async (): Promise<any> => ({ code: 200 })),
   mockCloseCheck: vi.fn(async (): Promise<any> => ({ code: 200, data: { allPassed: true, failedReasons: [] } })),
   mockProjectBatchDelete: vi.fn(async (): Promise<any> => ({ code: 200 })),
+  mockProjectWorkbench: vi.fn(async (): Promise<any> => ({
+    code: 200,
+    data: {
+      summary: { total: 0, mine: 0, inConstruction: 0, warning: 0, riskOpen: 0, overdueReceivableCount: 0, overdueReceivableAmount: 0 },
+      projects: [],
+    },
+  })),
   mockConfirm: vi.fn(async (): Promise<any> => 'confirm'),
   mockMessageSuccess: vi.fn(),
   mockMessageError: vi.fn(),
@@ -35,6 +42,7 @@ vi.mock('@/api/project', () => ({
   getProjectPage: mockProjectPage, deleteProject: mockProjectDelete, submitProject: mockProjectSubmit,
   closeProject: mockProjectClose, getProjectCloseCheck: mockCloseCheck,
   batchDeleteProjects: mockProjectBatchDelete,
+  getProjectWorkbench: mockProjectWorkbench,
   // T7 组合看板面板使用，mock 防真实请求（空 statusList → 面板空态）
   getProjectPortfolio: vi.fn(async (): Promise<any> => ({ code: 200, data: { statusList: [] } })),
 }))
@@ -241,5 +249,33 @@ describe('project/index.vue 账本补测（@matrix A1）', () => {
     const tpl = readFileSync(resolve(__testDir, '../views/project/index.vue'), 'utf-8')
     expect(tpl).toContain('type="selection"')
     expect(tpl).toContain(':selectable="isDraftRow"')
+  })
+
+  it('S3.1 首屏聚合按当前页项目 ID 请求，视图切换带 view 参数', async () => {
+    await mountPage([{ id: 21, projectName: 'P21', status: 'CONSTRUCTION' }])
+    const st = wrapper.vm.$.setupState
+    expect(mockProjectWorkbench).toHaveBeenCalled()
+    expect((mockProjectWorkbench.mock.calls[0] as any[])[0].projectIds).toContain('21')
+
+    mockProjectPage.mockClear()
+    st.queryParams.view = 'RISK'
+    st.handleViewChange()
+    await flushPromises()
+    expect((mockProjectPage.mock.calls[0] as any[])[0].view).toBe('RISK')
+  })
+
+  it('S3.1 摘要卡点击切换视图并回到第 1 页', async () => {
+    await mountPage([])
+    const st = wrapper.vm.$.setupState
+    st.queryParams.page = 3
+    st.handleWorkbenchCard({ key: 'overdue' })
+    await flushPromises()
+    expect(st.queryParams.view).toBe('OVERDUE')
+    expect(st.queryParams.page).toBe(1)
+
+    // 我的项目卡 → view=MINE（与后端 mine 计数同口径）
+    st.handleWorkbenchCard({ key: 'mine' })
+    await flushPromises()
+    expect(st.queryParams.view).toBe('MINE')
   })
 })

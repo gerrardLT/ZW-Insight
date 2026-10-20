@@ -347,9 +347,10 @@ const constantRoutes: RouteRecordRaw[] = [
         component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '工程应收与结算', icon: 'Money', group: '收入钱链', permission: 'finance:view',
+          // S2：首 Tab 由竣工结算改为应收台账（日常对账入口），结算降为次级
           hubTabs: [
+            { key: 'receivable', label: '应收工程账款台账', loader: () => import('@/views/finance/receivable/index.vue'), badge: 'financeOverdueReceivable' },
             { key: 'settlement', label: '工程竣工结算', loader: () => import('@/views/finance/settlement/index.vue') },
-            { key: 'receivable', label: '应收工程账款台账', loader: () => import('@/views/finance/receivable/index.vue') },
             { key: 'invoice-apply', label: '工程开票申请', loader: () => import('@/views/finance/invoice-apply.vue') },
             { key: 'payment-received', label: '工程回款登记', loader: () => import('@/views/finance/payment-received.vue') }
           ]
@@ -362,8 +363,9 @@ const constantRoutes: RouteRecordRaw[] = [
         meta: {
           title: '工程应付与支出', icon: 'CreditCard', group: '支出钱链', permission: 'finance:view',
           hubTabs: [
-            { key: 'payment-apply', label: '工程付款申请', loader: () => import('@/views/finance/payment-apply.vue') },
-            { key: 'payable', label: '应付账款台账', loader: () => import('@/views/finance/payable/index.vue') },
+            { key: 'workbench', label: '财务待办', loader: () => import('@/views/finance/workbench/index.vue') },
+            { key: 'payment-apply', label: '工程付款申请', loader: () => import('@/views/finance/payment-apply.vue'), badge: 'financePendingApproval' },
+            { key: 'payable', label: '应付账款台账', loader: () => import('@/views/finance/payable/index.vue'), badge: 'financeUnpaid' },
             { key: 'other-payment', label: '其他支出费用', loader: () => import('@/views/finance/other-payment.vue') }
           ]
         }
@@ -736,16 +738,17 @@ const constantRoutes: RouteRecordRaw[] = [
         component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '劳务班组管理', icon: 'Avatar', permission: 'labor:view',
+          // S2：首屏按角色落到作业页（项目经理/普通员工=点工，其余=花名册），合同退到第 3 位
           hubTabs: [
-            { key: 'contract', label: '劳务分包合同', loader: () => import('@/views/labor/contract.vue') },
-            { key: 'team', label: '施工班组管理', loader: () => import('@/views/labor/team.vue') },
-            { key: 'roster', label: '现场劳务花名册', loader: () => import('@/views/labor/roster.vue') },
-            { key: 'work-order', label: '现场点工派工单', loader: () => import('@/views/labor/work-order.vue') },
-            { key: 'payroll', label: '劳务班组工资单', loader: () => import('@/views/labor/payroll.vue') },
-            { key: 'salary-stats', label: '薪资统计', loader: () => import('@/views/labor/salary/stats.vue') },
-            { key: 'output', label: '劳务完成产值', loader: () => import('@/views/labor/output.vue') },
-            { key: 'settlement', label: '劳务结算单', loader: () => import('@/views/labor/settlement.vue') },
-            { key: 'reward-punish', label: '劳务奖惩', loader: () => import('@/views/labor/reward-punish.vue') }
+            { key: 'work-order', label: '现场点工派工单', loader: () => import('@/views/labor/work-order.vue'), defaultForRoles: ['PROJECT_MANAGER', 'STAFF'], badge: 'laborWorkOrderDraft' },
+            { key: 'roster', label: '现场劳务花名册', loader: () => import('@/views/labor/roster.vue'), defaultForRoles: ['SUPER_ADMIN', 'COMPANY_LEADER', 'FINANCE_STAFF', 'MATERIAL_STAFF', 'COMMERCE_STAFF', 'AUDITOR'] },
+            { key: 'contract', label: '劳务分包合同', loader: () => import('@/views/labor/contract.vue'), group: '合同与班组' },
+            { key: 'team', label: '施工班组管理', loader: () => import('@/views/labor/team.vue'), group: '合同与班组' },
+            { key: 'payroll', label: '劳务班组工资单', loader: () => import('@/views/labor/payroll.vue'), group: '作业与工资' },
+            { key: 'salary-stats', label: '薪资统计', loader: () => import('@/views/labor/salary/stats.vue'), group: '作业与工资' },
+            { key: 'output', label: '劳务完成产值', loader: () => import('@/views/labor/output.vue'), group: '结算与奖惩' },
+            { key: 'settlement', label: '劳务结算单', loader: () => import('@/views/labor/settlement.vue'), group: '结算与奖惩' },
+            { key: 'reward-punish', label: '劳务奖惩', loader: () => import('@/views/labor/reward-punish.vue'), group: '结算与奖惩' }
           ]
         }
       },
@@ -819,6 +822,7 @@ const constantRoutes: RouteRecordRaw[] = [
         component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '材料与采购', icon: 'Box', permission: 'material:view',
+          // S2：9 个页签保留前 6 个在主区，采购 3 项收进「更多」（按 group 分组）
           hubTabs: [
             { key: 'inbound', label: '材料入库单', loader: () => import('@/views/material/inbound.vue') },
             { key: 'outbound', label: '现场领料单', loader: () => import('@/views/material/outbound.vue') },
@@ -826,9 +830,9 @@ const constantRoutes: RouteRecordRaw[] = [
             { key: 'stock', label: '材料库存台账', loader: () => import('@/views/material/stock.vue') },
             { key: 'inventory', label: '材料盘点', loader: () => import('@/views/material/inventory.vue') },
             { key: 'refund', label: '退货退款', loader: () => import('@/views/material/refund.vue') },
-            { key: 'purchase-contract', label: '物资采购合同', loader: () => import('@/views/purchase/contract.vue') },
-            { key: 'purchase-settlement', label: '采购结算单', loader: () => import('@/views/purchase/settlement.vue') },
-            { key: 'purchase-inquiry', label: '采购询价与比价', loader: () => import('@/views/purchase/inquiry.vue') }
+            { key: 'purchase-contract', label: '物资采购合同', loader: () => import('@/views/purchase/contract.vue'), group: '采购管理' },
+            { key: 'purchase-settlement', label: '采购结算单', loader: () => import('@/views/purchase/settlement.vue'), group: '采购管理' },
+            { key: 'purchase-inquiry', label: '采购询价与比价', loader: () => import('@/views/purchase/inquiry.vue'), group: '采购管理' }
           ]
         }
       },
@@ -884,11 +888,12 @@ const constantRoutes: RouteRecordRaw[] = [
         component: () => import('@/components/HubPage.vue'),
         meta: {
           title: '机械租赁管理', icon: 'Van', permission: 'machine:view',
+          // S2：首屏按角色落到点检与台班（项目经理/普通员工）或设备台账（其余），合同退到第 3 位
           hubTabs: [
+            { key: 'work-log', label: '机械现场点检与台班', loader: () => import('@/views/machine/work-log.vue'), defaultForRoles: ['PROJECT_MANAGER', 'STAFF'] },
+            { key: 'ledger', label: '机械设备台账', loader: () => import('@/views/machine/ledger.vue'), defaultForRoles: ['SUPER_ADMIN', 'COMPANY_LEADER', 'FINANCE_STAFF', 'MATERIAL_STAFF', 'COMMERCE_STAFF', 'AUDITOR'] },
             { key: 'contract', label: '机械租赁合同', loader: () => import('@/views/machine/contract.vue') },
-            { key: 'ledger', label: '机械设备台账', loader: () => import('@/views/machine/ledger.vue') },
             { key: 'entry', label: '进出场登记', loader: () => import('@/views/machine/entry.vue') },
-            { key: 'work-log', label: '机械现场点检与台班', loader: () => import('@/views/machine/work-log.vue') },
             { key: 'repair', label: '故障维修', loader: () => import('@/views/machine/repair.vue') },
             { key: 'settlement', label: '机械结算单', loader: () => import('@/views/machine/settlement/index.vue') }
           ]

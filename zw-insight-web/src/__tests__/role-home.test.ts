@@ -19,7 +19,7 @@ describe('utils/role-home.resolveRoleHome', () => {
 
   it('财务 → 工程应付与支出（付款申请 Tab）', () => {
     expect(resolveRoleHome(['FINANCE_STAFF'], ['finance:view']))
-      .toBe('/finance/hub/payable-group?tab=payment-apply')
+      .toBe('/finance/hub/payable-group?tab=workbench')
   })
 
   it('材料 → 材料与采购（入库 Tab）', () => {
@@ -48,7 +48,7 @@ describe('utils/role-home.resolveRoleHome', () => {
 
   it('未知角色按权限兜底：finance > project > material > contract', () => {
     expect(resolveRoleHome([], ['finance:view', 'project:view']))
-      .toBe('/finance/hub/payable-group?tab=payment-apply')
+      .toBe('/finance/hub/payable-group?tab=workbench')
     expect(resolveRoleHome([], ['project:view', 'material:view']))
       .toBe('/project/hub/ledger-group?tab=list')
     expect(resolveRoleHome([], ['material:view']))
@@ -59,7 +59,7 @@ describe('utils/role-home.resolveRoleHome', () => {
 
   it('一人多角色按固定优先级取第一个（FINANCE 先于 STAFF）', () => {
     expect(resolveRoleHome(['STAFF', 'FINANCE_STAFF'], ['finance:view']))
-      .toBe('/finance/hub/payable-group?tab=payment-apply')
+      .toBe('/finance/hub/payable-group?tab=workbench')
   })
 
   it('角色命中但缺对应 view 码 → 回落到仍可进入的首页', () => {

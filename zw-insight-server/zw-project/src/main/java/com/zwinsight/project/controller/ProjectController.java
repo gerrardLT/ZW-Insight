@@ -35,8 +35,9 @@ public class ProjectController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String projectName,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String projectType) {
-        return R.ok(projectService.page(page, size, projectName, status, projectType));
+            @RequestParam(required = false) String projectType,
+            @RequestParam(required = false) String view) {
+        return R.ok(projectService.page(page, size, projectName, status, projectType, view));
     }
 
     /**

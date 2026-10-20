@@ -1051,6 +1051,32 @@ class PaymentApplyServiceTest {
             assertThat(result.getRecords()).hasSize(1);
             assertThat(result.getTotal()).isEqualTo(1);
         }
+        
+        @Test
+        @DisplayName("payStatus=NOT_PAID 走「未付清」语义：pay_status IS NULL OR <> PAID，不当作字面量筛选")
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        void page_notPaidFilter() {
+            // LambdaQueryWrapper.getSqlSegment() 需要实体 TableInfo（纯单测环境不自动初始化）
+            com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                    new org.apache.ibatis.builder.MapperBuilderAssistant(
+                            new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""),
+                    BizPaymentApply.class);
+            Page<BizPaymentApply> page = new Page<>(1, 10);
+            page.setRecords(List.of());
+            page.setTotal(0);
+            when(paymentApplyMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        
+            paymentApplyService.page(1, 10, null, null, "APPROVED", "NOT_PAID");
+        
+            ArgumentCaptor<LambdaQueryWrapper> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+            verify(paymentApplyMapper).selectPage(any(Page.class), captor.capture());
+            String sql = captor.getValue().getSqlSegment();
+            assertThat(sql).contains("pay_status");
+            assertThat(sql.toUpperCase()).contains("IS NULL");
+            assertThat(captor.getValue().getParamNameValuePairs().values())
+                    .contains("APPROVED", BizPaymentApply.PAY_STATUS_PAID)
+                    .doesNotContain("NOT_PAID");
+        }
     }
 
     // ============ 批量操作（Phase 1.2：空列表拒绝 / 逐条状态校验 / 整体事务语义） ============

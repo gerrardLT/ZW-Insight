@@ -123,7 +123,7 @@ describe('login/index.vue 登录页', () => {
     await st.handleLogin()
     await flushPromises()
 
-    expect(mockPush).toHaveBeenCalledWith('/finance/hub/payable-group?tab=payment-apply')
+    expect(mockPush).toHaveBeenCalledWith('/finance/hub/payable-group?tab=workbench')
   })
 
   it('登录失败：滑块令牌重置且不跳转', async () => {

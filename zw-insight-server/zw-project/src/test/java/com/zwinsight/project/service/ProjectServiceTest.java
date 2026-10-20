@@ -3,6 +3,11 @@ package com.zwinsight.project.service;
 import com.zwinsight.common.config.SecurityContextHolder;
 import com.zwinsight.common.event.project.ProjectDeletedEvent;
 import com.zwinsight.common.exception.BusinessException;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import com.zwinsight.file.service.SerialNumberService;
 import com.zwinsight.project.domain.BizProject;
 import com.zwinsight.project.domain.BizProjectStatusLog;
@@ -15,6 +20,7 @@ import com.zwinsight.project.mapper.SysUserProjectMapper;
 import com.zwinsight.project.mapper.BizProjectStatusLogMapper;
 import com.zwinsight.project.mapper.BizProjectChangeLogMapper;
 import com.zwinsight.workflow.service.ApprovalService;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,6 +61,16 @@ class ProjectServiceTest {
     private ProjectService projectService;
 
     private BizProject sampleProject;
+
+    /**
+     * 视图筛选断言需要读取 LambdaQueryWrapper 的 SQL 片段（LambdaQueryWrapper#exists 结合实体列），
+     * 纯单测环境不会自动初始化 TableInfo，CI 全量运行时会因执行顺序抛 "can not find lambda cache"。
+     * 显式初始化，保证单测与 CI 一致。
+     */
+    @BeforeAll
+    static void initLambdaCache() {
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), BizProject.class);
+    }
 
     @BeforeEach
     void setUp() {
@@ -841,6 +857,45 @@ class ProjectServiceTest {
         when(projectMapper.updateById(any())).thenReturn(1, 0);
         when(approvalService.startProcess(eq("PROJECT_TERMINATE"), eq(1L), eq("project_close_approval"), anyMap())).thenReturn("pi-term");
         assertThatThrownBy(() -> projectService.terminate(1L, "终止原因")).isInstanceOf(BusinessException.class).hasMessageContaining("实例回写失败");
+    }
+
+    @Test
+    @DisplayName("项目视图 MINE/RISK/OVERDUE 生成对应 EXISTS 条件")
+    void page_viewsBuildExistsConditions() {
+        Page<BizProject> page = new Page<>(1, 10);
+        page.setRecords(List.of(sampleProject));
+        page.setTotal(1);
+        when(projectMapper.selectPage(any(), any())).thenReturn(page);
+
+        SecurityContextHolder.setUserId(9L);
+        try {
+            assertViewSql("MINE", "sys_user_project");
+            assertViewSql("RISK", "biz_risk_register");
+            assertViewSql("OVERDUE", "biz_receivable");
+            // 逾期边界：严格小于今天（到期日=今天不计逾期）
+            assertViewSql("OVERDUE", "due_date < CURDATE()");
+            // 余额口径：应收金额扣减已核销金额后仍大于 0
+            assertViewSql("OVERDUE", "written_off_amount");
+        } finally {
+            SecurityContextHolder.clear();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assertViewSql(String view, String expectedTable) {
+        projectService.page(1, 10, null, null, null, view);
+        ArgumentCaptor<Wrapper<BizProject>> captor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(projectMapper, atLeastOnce()).selectPage(any(), captor.capture());
+        assertThat(captor.getValue().getSqlSegment()).contains(expectedTable);
+    }
+
+    @Test
+    @DisplayName("非法项目视图返回 400，不静默降级为全部")
+    void page_invalidViewRejected() {
+        assertThatThrownBy(() -> projectService.page(1, 10, null, null, null, "UNKNOWN"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不支持的项目视图");
+        verify(projectMapper, never()).selectPage(any(), any());
     }
 
 }

@@ -87,6 +87,8 @@ export interface ProjectPageQuery extends PageQuery {
   projectName?: string
   status?: string
   projectType?: string
+  /** S3.1 项目台账视图：ALL/MINE/RISK/OVERDUE */
+  view?: 'ALL' | 'MINE' | 'RISK' | 'OVERDUE'
 }
 
 /** 项目成员 */

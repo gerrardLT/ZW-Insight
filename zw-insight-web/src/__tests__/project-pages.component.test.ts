@@ -7,7 +7,7 @@ import ElementPlus from 'element-plus'
 
 const {
   mockProjectPage, mockProjectDelete, mockProjectSubmit, mockProjectClose, mockCloseCheck,
-  mockProjectBatchDelete,
+  mockProjectBatchDelete, mockProjectWorkbench,
   mockProjectDetail, mockProjectCreate, mockProjectUpdate, mockOwnerList, mockCompanyList,
   mockMembers, mockAddMember, mockRemoveMember, mockUpdateRoles, mockUserPage,
   mockMessageBoxAlert,
@@ -17,6 +17,13 @@ const {
     mockProjectPage: vi.fn(async (): Promise<any> => ({ code: 200, data: { records: [], total: 0 } })),
     mockProjectDelete: ok(), mockProjectSubmit: ok(), mockProjectClose: ok(),
     mockProjectBatchDelete: ok(),
+    mockProjectWorkbench: vi.fn(async (): Promise<any> => ({
+      code: 200,
+      data: {
+        summary: { total: 0, inConstruction: 0, warning: 0, riskOpen: 0, overdueReceivableCount: 0, overdueReceivableAmount: 0 },
+        projects: [],
+      },
+    })),
     mockCloseCheck: vi.fn(async (): Promise<any> => ({ code: 200, data: { allPassed: true, failedReasons: [] } })),
     mockProjectDetail: vi.fn(async (): Promise<any> => ({ code: 200, data: { id: 1, projectName: 'P1' } })),
     mockProjectCreate: ok(), mockProjectUpdate: ok(),
@@ -33,6 +40,7 @@ vi.mock('@/api/project', () => ({
   getProjectPage: mockProjectPage, deleteProject: mockProjectDelete, submitProject: mockProjectSubmit,
   closeProject: mockProjectClose, getProjectCloseCheck: mockCloseCheck,
   batchDeleteProjects: mockProjectBatchDelete,
+  getProjectWorkbench: mockProjectWorkbench,
   getProjectDetail: mockProjectDetail, createProject: mockProjectCreate, updateProject: mockProjectUpdate,
   getOwnerList: mockOwnerList, getCompanyList: mockCompanyList,
   getProjectMembers: mockMembers, addProjectMember: mockAddMember, removeProjectMember: mockRemoveMember, updateMemberRoles: mockUpdateRoles,
